@@ -10,6 +10,7 @@ from app.models.session import SessionStatus
 class SessionRead(BaseModel):
     id: str
     campaignId: str
+    partyId: Optional[str] = None
     number: int
     title: str
     joinCode: Optional[str] = None
@@ -40,6 +41,10 @@ class SessionActivateRequest(BaseModel):
     title: str
 
 
+class SessionCreateByParty(BaseModel):
+    title: str
+
+
 class SessionCommandRequest(BaseModel):
     type: str
     payload: Optional[dict] = None
@@ -48,6 +53,7 @@ class SessionCommandRequest(BaseModel):
 class ActiveSessionRead(BaseModel):
     id: str
     campaignId: str
+    partyId: Optional[str] = None
     number: int
     title: str
     joinCode: Optional[str] = None

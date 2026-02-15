@@ -11,6 +11,7 @@ from app.models.campaign import Campaign, RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.item import Item
+from app.models.party import Party
 from app.models.session import Session as CampaignSession, SessionStatus
 from app.models.user import User
 from app.schemas.inventory import InventoryBuy, InventoryRead, InventoryUpdate
@@ -31,6 +32,23 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
     )
+
+
+def resolve_party_id_for_campaign(
+    campaign_id: str,
+    session: Session,
+) -> str | None:
+    parties = session.exec(
+        select(Party).where(Party.campaign_id == campaign_id)
+    ).all()
+    if len(parties) == 1:
+        return parties[0].id
+    if len(parties) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Multiple parties found for campaign; specify party explicitly",
+        )
+    return None
 
 
 @router.get("/{campaign_id}/inventory", response_model=list[InventoryRead])
@@ -86,12 +104,21 @@ def buy_item(
     campaign = session.exec(select(Campaign).where(Campaign.id == campaign_id)).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    active = session.exec(
-        select(CampaignSession).where(
-            CampaignSession.campaign_id == campaign_id,
-            CampaignSession.status == SessionStatus.ACTIVE,
-        )
-    ).first()
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        active = session.exec(
+            select(CampaignSession).where(
+                CampaignSession.party_id == party_id,
+                CampaignSession.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+    else:
+        active = session.exec(
+            select(CampaignSession).where(
+                CampaignSession.campaign_id == campaign_id,
+                CampaignSession.status == SessionStatus.ACTIVE,
+            )
+        ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session")
     member = session.exec(

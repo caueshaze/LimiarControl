@@ -9,6 +9,7 @@ from app.api.routes import (
   inventory_router,
   items_router,
   members_router,
+  parties_router,
   npcs_router,
   preferences_router,
   role_mode_router,
@@ -51,6 +52,7 @@ app.include_router(items_router, prefix="/api/campaigns", tags=["items"])
 app.include_router(inventory_router, prefix="/api/campaigns", tags=["inventory"])
 app.include_router(npcs_router, prefix="/api/campaigns", tags=["npcs"])
 app.include_router(members_router, prefix="/api/campaigns", tags=["members"])
+app.include_router(parties_router, prefix="/api", tags=["parties"])
 app.include_router(preferences_router, prefix="/api", tags=["preferences"])
 app.include_router(dev_router, prefix="/api/dev", tags=["dev"])
 app.include_router(sessions_router, prefix="/api", tags=["sessions"])

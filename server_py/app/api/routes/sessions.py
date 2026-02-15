@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session as DbSession, select, func
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_current_user
 from app.api.deprecation import log_deprecated_route
@@ -14,6 +15,8 @@ from app.models.campaign import Campaign, RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.item import Item
+from app.models.party import Party
+from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
@@ -24,6 +27,7 @@ from app.schemas.session import (
     ActiveSessionRead,
     SessionActivateRequest,
     SessionCommandRequest,
+    SessionCreateByParty,
     SessionJoinRequest,
     SessionJoinResponse,
     SessionRead,
@@ -50,10 +54,12 @@ def ensure_unique_join_code(session: DbSession) -> str:
 
 
 def to_session_read(entry: Session, join_code: str | None) -> SessionRead:
+    number = entry.sequence_number if entry.sequence_number is not None else entry.number
     return SessionRead(
         id=entry.id,
         campaignId=entry.campaign_id,
-        number=entry.number,
+        partyId=entry.party_id,
+        number=number,
         title=entry.title,
         joinCode=join_code,
         status=entry.status,
@@ -64,6 +70,57 @@ def to_session_read(entry: Session, join_code: str | None) -> SessionRead:
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
     )
+
+
+def resolve_party_id_for_campaign(
+    campaign_id: str,
+    session: DbSession,
+) -> str | None:
+    parties = session.exec(
+        select(Party).where(Party.campaign_id == campaign_id)
+    ).all()
+    if len(parties) == 1:
+        return parties[0].id
+    if len(parties) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Multiple parties found for campaign; specify party explicitly",
+        )
+    return None
+
+
+def require_party_member_or_gm(
+    party_id: str,
+    user,
+    session: DbSession,
+) -> Party:
+    party = session.exec(select(Party).where(Party.id == party_id)).first()
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    if party.gm_user_id == user.id:
+        return party
+    member = session.exec(
+        select(PartyMember).where(
+            PartyMember.party_id == party_id,
+            PartyMember.user_id == user.id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a party member")
+    return party
+
+
+def require_party_gm(
+    party_id: str,
+    user,
+    session: DbSession,
+) -> Party:
+    party = session.exec(select(Party).where(Party.id == party_id)).first()
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    if party.gm_user_id != user.id:
+        raise HTTPException(status_code=403, detail="GM required")
+    return party
 
 
 def to_roll_read(entry: RollEvent) -> RollEventRead:
@@ -115,12 +172,21 @@ def _get_active_session(
     ).first()
     if not member:
         raise HTTPException(status_code=403, detail="Not a campaign member")
-    active = session.exec(
-        select(Session).where(
-            Session.campaign_id == campaign_id,
-            Session.status == SessionStatus.ACTIVE,
-        )
-    ).first()
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        active = session.exec(
+            select(Session).where(
+                Session.party_id == party_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+    else:
+        active = session.exec(
+            select(Session).where(
+                Session.campaign_id == campaign_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session")
     join_code = active.join_code if member.role_mode == RoleMode.GM else None
@@ -175,11 +241,19 @@ def list_sessions(
     ).first()
     if not member:
         raise HTTPException(status_code=403, detail="Not a campaign member")
-    statement = (
-        select(Session)
-        .where(Session.campaign_id == campaign_id)
-        .order_by(Session.number.desc())
-    )
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        statement = (
+            select(Session)
+            .where(Session.party_id == party_id)
+            .order_by(Session.sequence_number.desc())
+        )
+    else:
+        statement = (
+            select(Session)
+            .where(Session.campaign_id == campaign_id)
+            .order_by(Session.number.desc())
+        )
     entries = session.exec(statement).all()
     return [
         to_session_read(
@@ -210,12 +284,21 @@ async def _start_session(
     if member.role_mode != RoleMode.GM:
         raise HTTPException(status_code=403, detail="GM required")
 
-    existing_active = session.exec(
-        select(Session).where(
-            Session.campaign_id == campaign_id,
-            Session.status == SessionStatus.ACTIVE,
-        )
-    ).first()
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        existing_active = session.exec(
+            select(Session).where(
+                Session.party_id == party_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+    else:
+        existing_active = session.exec(
+            select(Session).where(
+                Session.campaign_id == campaign_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
     last_closed_source: Session | None = None
     if existing_active:
         now = datetime.now(timezone.utc)
@@ -254,37 +337,67 @@ async def _start_session(
         )
 
     if not last_closed_source:
-        last_closed_source = session.exec(
-            select(Session)
-            .where(
-                Session.campaign_id == campaign_id,
-                Session.status == SessionStatus.CLOSED,
-            )
-            .order_by(Session.ended_at.desc(), Session.number.desc())
-        ).first()
+        if party_id:
+            last_closed_source = session.exec(
+                select(Session)
+                .where(
+                    Session.party_id == party_id,
+                    Session.status == SessionStatus.CLOSED,
+                )
+                .order_by(Session.ended_at.desc(), Session.sequence_number.desc())
+            ).first()
+        else:
+            last_closed_source = session.exec(
+                select(Session)
+                .where(
+                    Session.campaign_id == campaign_id,
+                    Session.status == SessionStatus.CLOSED,
+                )
+                .order_by(Session.ended_at.desc(), Session.number.desc())
+            ).first()
 
-    next_number = session.exec(
-        select(func.coalesce(func.max(Session.number), 0)).where(
-            Session.campaign_id == campaign_id
+    max_retries = 5
+    for attempt in range(max_retries):
+        if party_id:
+            next_number = session.exec(
+                select(func.coalesce(func.max(Session.sequence_number), 0)).where(
+                    Session.party_id == party_id
+                )
+            ).one()
+        else:
+            next_number = session.exec(
+                select(func.coalesce(func.max(Session.number), 0)).where(
+                    Session.campaign_id == campaign_id
+                )
+            ).one()
+        number = int(next_number) + 1
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Invalid title")
+
+        entry = Session(
+            id=str(uuid4()),
+            party_id=party_id,
+            campaign_id=campaign_id,
+            number=number,
+            sequence_number=number if party_id else None,
+            title=title,
+            join_code=ensure_unique_join_code(session),
+            status=SessionStatus.ACTIVE,
+            started_at=datetime.now(timezone.utc),
         )
-    ).one()
-    number = int(next_number) + 1
-    title = payload.title.strip()
-    if not title:
-        raise HTTPException(status_code=400, detail="Invalid title")
-
-    entry = Session(
-        id=str(uuid4()),
-        campaign_id=campaign_id,
-        number=number,
-        title=title,
-        join_code=ensure_unique_join_code(session),
-        status=SessionStatus.ACTIVE,
-        started_at=datetime.now(timezone.utc),
-    )
-    session.add(entry)
-    session.commit()
-    session.refresh(entry)
+        session.add(entry)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            if party_id and attempt < max_retries - 1:
+                continue
+            raise
+        session.refresh(entry)
+        break
+    else:
+        raise HTTPException(status_code=409, detail="Failed to allocate session number")
     player_members = session.exec(
         select(CampaignMember).where(
             CampaignMember.campaign_id == campaign_id,
@@ -338,6 +451,122 @@ async def _start_session(
     return ActiveSessionRead(**to_session_read(entry, entry.join_code).model_dump())
 
 
+async def _start_session_for_party(
+    party: Party,
+    payload: SessionCreateByParty,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    if party.gm_user_id != user.id:
+        raise HTTPException(status_code=403, detail="GM required")
+    existing_active = session.exec(
+        select(Session).where(
+            Session.party_id == party.id,
+            Session.status == SessionStatus.ACTIVE,
+        )
+    ).first()
+    if existing_active:
+        raise HTTPException(status_code=409, detail="Active session already exists")
+
+    last_closed_source = session.exec(
+            select(Session)
+            .where(
+                Session.party_id == party.id,
+                Session.status == SessionStatus.CLOSED,
+            )
+            .order_by(Session.ended_at.desc(), Session.sequence_number.desc())
+        ).first()
+
+    max_retries = 5
+    for attempt in range(max_retries):
+        next_number = session.exec(
+            select(func.coalesce(func.max(Session.sequence_number), 0)).where(
+                Session.party_id == party.id
+            )
+        ).one()
+        number = int(next_number) + 1
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Invalid title")
+
+        entry = Session(
+            id=str(uuid4()),
+            party_id=party.id,
+            campaign_id=party.campaign_id,
+            number=number,
+            sequence_number=number,
+            title=title,
+            join_code=ensure_unique_join_code(session),
+            status=SessionStatus.ACTIVE,
+            started_at=datetime.now(timezone.utc),
+        )
+        session.add(entry)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            if attempt < max_retries - 1:
+                continue
+            raise
+        session.refresh(entry)
+        break
+    else:
+        raise HTTPException(status_code=409, detail="Failed to allocate session number")
+
+    player_members = session.exec(
+        select(PartyMember).where(
+            PartyMember.party_id == party.id,
+            PartyMember.role == RoleMode.PLAYER,
+            PartyMember.status == PartyMemberStatus.JOINED,
+        )
+    ).all()
+    previous_states = []
+    if last_closed_source:
+        previous_states = session.exec(
+            select(SessionState).where(SessionState.session_id == last_closed_source.id)
+        ).all()
+    previous_by_user = {state.player_user_id: state for state in previous_states}
+    for member_entry in player_members:
+        previous_state = previous_by_user.get(member_entry.user_id)
+        state_payload = previous_state.state_json if previous_state else {}
+        cloned_state = dict(state_payload) if isinstance(state_payload, dict) else state_payload
+        session.add(
+            SessionState(
+                id=str(uuid4()),
+                session_id=entry.id,
+                player_user_id=member_entry.user_id,
+                state_json=cloned_state,
+            )
+        )
+    session.commit()
+    await room_registry.broadcast(
+        entry.id,
+        {
+            "type": "session_started",
+            "payload": {
+                "sessionId": entry.id,
+                "campaignId": party.campaign_id,
+                "joinCode": entry.join_code,
+                "title": entry.title,
+                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+            },
+        },
+    )
+    await campaign_room_registry.broadcast(
+        party.campaign_id,
+        {
+            "type": "session_started",
+            "payload": {
+                "sessionId": entry.id,
+                "campaignId": party.campaign_id,
+                "title": entry.title,
+                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+            },
+        },
+    )
+    return ActiveSessionRead(**to_session_read(entry, entry.join_code).model_dump())
+
+
 @router.post("/campaigns/{campaign_id}/sessions", response_model=ActiveSessionRead)
 async def create_session(
     campaign_id: str,
@@ -346,6 +575,104 @@ async def create_session(
     session: DbSession = Depends(get_session),
 ):
     return await _start_session(campaign_id, payload, user, session)
+
+
+@router.post("/parties/{party_id}/sessions", response_model=ActiveSessionRead)
+async def create_party_session(
+    party_id: str,
+    payload: SessionCreateByParty,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    party = require_party_gm(party_id, user, session)
+    return await _start_session_for_party(party, payload, user, session)
+
+
+@router.get("/parties/{party_id}/sessions", response_model=list[SessionRead])
+def list_party_sessions(
+    party_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    party = require_party_member_or_gm(party_id, user, session)
+    entries = session.exec(
+        select(Session)
+        .where(Session.party_id == party_id)
+        .order_by(Session.sequence_number.desc())
+    ).all()
+    is_gm = party.gm_user_id == user.id
+    return [
+        to_session_read(entry, entry.join_code if is_gm else None)
+        for entry in entries
+    ]
+
+
+@router.get("/parties/{party_id}/sessions/active", response_model=ActiveSessionRead)
+def get_party_active_session(
+    party_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    party = require_party_member_or_gm(party_id, user, session)
+    active = session.exec(
+        select(Session).where(
+            Session.party_id == party_id,
+            Session.status == SessionStatus.ACTIVE,
+        )
+    ).first()
+    if not active:
+        raise HTTPException(status_code=404, detail="No active session")
+    join_code = active.join_code if party.gm_user_id == user.id else None
+    return ActiveSessionRead(**to_session_read(active, join_code).model_dump())
+
+
+@router.post("/parties/{party_id}/sessions/{session_id}/close", response_model=ActiveSessionRead)
+async def close_party_session(
+    party_id: str,
+    session_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    party = require_party_gm(party_id, user, session)
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry or entry.party_id != party.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if entry.status != SessionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Session is not active")
+    now = datetime.now(timezone.utc)
+    entry.status = SessionStatus.CLOSED
+    entry.ended_at = now
+    if entry.started_at:
+        entry.duration_seconds = max(
+            0,
+            entry.duration_seconds + int((now - entry.started_at).total_seconds()),
+        )
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    await room_registry.broadcast(
+        entry.id,
+        {
+            "type": "session_closed",
+            "payload": {
+                "sessionId": entry.id,
+                "campaignId": party.campaign_id,
+                "endedAt": now.isoformat(),
+            },
+        },
+    )
+    await campaign_room_registry.broadcast(
+        party.campaign_id,
+        {
+            "type": "session_closed",
+            "payload": {
+                "sessionId": entry.id,
+                "campaignId": party.campaign_id,
+                "endedAt": now.isoformat(),
+            },
+        },
+    )
+    return ActiveSessionRead(**to_session_read(entry, None).model_dump())
 
 
 @router.post(
@@ -542,12 +869,21 @@ async def end_session_deprecated(
         removal_date=DEPRECATION_REMOVAL_DATE,
         extra={"campaign_id": campaign_id, "user_id": getattr(user, "id", None)},
     )
-    active = session.exec(
-        select(Session).where(
-            Session.campaign_id == campaign_id,
-            Session.status == SessionStatus.ACTIVE,
-        )
-    ).first()
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        active = session.exec(
+            select(Session).where(
+                Session.party_id == party_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+    else:
+        active = session.exec(
+            select(Session).where(
+                Session.campaign_id == campaign_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session to end")
     return await close_session(active.id, user, session)
@@ -766,12 +1102,21 @@ async def send_session_command_deprecated(
         removal_date=DEPRECATION_REMOVAL_DATE,
         extra={"campaign_id": campaign_id, "user_id": getattr(user, "id", None)},
     )
-    active = session.exec(
-        select(Session).where(
-            Session.campaign_id == campaign_id,
-            Session.status == SessionStatus.ACTIVE,
-        )
-    ).first()
+    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if party_id:
+        active = session.exec(
+            select(Session).where(
+                Session.party_id == party_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+    else:
+        active = session.exec(
+            select(Session).where(
+                Session.campaign_id == campaign_id,
+                Session.status == SessionStatus.ACTIVE,
+            )
+        ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session")
     return await _send_session_command(active.id, payload, user, session)
