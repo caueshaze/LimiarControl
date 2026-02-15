@@ -28,7 +28,6 @@ from app.schemas.session import (
     SessionJoinResponse,
     SessionRead,
 )
-from app.schemas.session_state import SessionStateRead, SessionStateUpdate
 
 router = APIRouter()
 
@@ -99,16 +98,6 @@ def to_item_read(item: Item) -> ItemRead:
         updatedAt=item.updated_at,
     )
 
-
-def to_state_read(entry: SessionState) -> SessionStateRead:
-    return SessionStateRead(
-        id=entry.id,
-        sessionId=entry.session_id,
-        playerUserId=entry.player_user_id,
-        state=entry.state_json,
-        createdAt=entry.created_at,
-        updatedAt=entry.updated_at,
-    )
 
 def _get_active_session(
     campaign_id: str,
@@ -812,68 +801,3 @@ def list_rolls(
     )
     entries = session.exec(statement).all()
     return [to_roll_read(item) for item in entries]
-
-
-@router.get("/sessions/{session_id}/state", response_model=list[SessionStateRead])
-def get_session_state(
-    session_id: str,
-    user=Depends(get_current_user),
-    session: DbSession = Depends(get_session),
-):
-    entry = session.exec(select(Session).where(Session.id == session_id)).first()
-    if not entry:
-        raise HTTPException(status_code=404, detail="Session not found")
-    member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == entry.campaign_id,
-            CampaignMember.user_id == user.id,
-        )
-    ).first()
-    if not member:
-        raise HTTPException(status_code=403, detail="Not a campaign member")
-    states = session.exec(
-        select(SessionState).where(SessionState.session_id == session_id)
-    ).all()
-    return [to_state_read(state) for state in states]
-
-
-@router.put("/sessions/{session_id}/players/{player_id}/state", response_model=SessionStateRead)
-def upsert_session_state(
-    session_id: str,
-    player_id: str,
-    payload: SessionStateUpdate,
-    user=Depends(get_current_user),
-    session: DbSession = Depends(get_session),
-):
-    entry = session.exec(select(Session).where(Session.id == session_id)).first()
-    if not entry:
-        raise HTTPException(status_code=404, detail="Session not found")
-    member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == entry.campaign_id,
-            CampaignMember.user_id == user.id,
-        )
-    ).first()
-    if not member:
-        raise HTTPException(status_code=403, detail="Not a campaign member")
-    if member.role_mode != RoleMode.GM and user.id != player_id:
-        raise HTTPException(status_code=403, detail="Not allowed")
-    state = session.exec(
-        select(SessionState).where(
-            SessionState.session_id == session_id,
-            SessionState.player_user_id == player_id,
-        )
-    ).first()
-    if state:
-        state.state_json = payload.state
-    else:
-        state = SessionState(
-            id=str(uuid4()),
-            session_id=session_id,
-            player_user_id=player_id,
-            state_json=payload.state,
-        )
-    session.add(state)
-    session.commit()
-    session.refresh(state)
-    return to_state_read(state)
