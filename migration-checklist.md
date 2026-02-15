@@ -1,0 +1,52 @@
+# API Route Migration Checklist
+
+Critical flows to verify after route refactor:
+
+- Auth
+- Register
+- Login
+- Me
+- Campaigns
+- List campaigns (me)
+- Create campaign
+- Update campaign
+- Delete campaign
+- Join by code
+- Campaign overview
+- Role mode
+- Read
+- Update
+- Members
+- Get my member profile
+- Update my role
+- List members
+- Sessions
+- Get active session
+- List sessions
+- Create/start session
+- End session
+- Join session
+- Resume session
+- Close session
+- Session command (roll request)
+- Session rolls
+- Shop
+- List shop items (session-based)
+- Inventory
+- List inventory
+- Buy item
+- Update inventory item
+- Delete inventory item
+- NPCs
+- List
+- Create
+- Update
+- Delete
+- Preferences
+- Get
+- Update
+- WebSocket
+- Session WS
+- Campaign WS
+- Health
+- GET /health
