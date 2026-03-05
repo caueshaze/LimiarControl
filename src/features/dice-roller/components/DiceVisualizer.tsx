@@ -35,7 +35,7 @@ export const DiceVisualizer = ({ events }: DiceVisualizerProps) => {
     if (!show || !activeRoll) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-100 flex items-center justify-center pointer-events-none">
             <div className="animate-bounce-in flex flex-col items-center">
                 {/* Dice GFX Container */}
                 <div className="relative">

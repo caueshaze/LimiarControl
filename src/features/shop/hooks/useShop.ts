@@ -37,18 +37,18 @@ const normalizeItemInput = (payload: ItemInput) => {
 
   const price = parseNullableNumber(payload.price, mapFieldError("price"));
   if (!price.ok) {
-    return { ok: false, message: price.error as const };
+    return { ok: false, message: price.error };
   }
   const weight = parseNullableNumber(payload.weight, mapFieldError("weight"));
   if (!weight.ok) {
-    return { ok: false, message: weight.error as const };
+    return { ok: false, message: weight.error };
   }
   const rangeMeters = parseNullableNumber(
     payload.rangeMeters,
     mapFieldError("rangeMeters")
   );
   if (!rangeMeters.ok) {
-    return { ok: false, message: rangeMeters.error as const };
+    return { ok: false, message: rangeMeters.error };
   }
 
   return {
@@ -132,7 +132,7 @@ export const useShop = (options?: UseShopOptions) => {
     }
 
     return itemsRepo
-      .create(campaignId, normalized.value)
+      .create(campaignId, normalized.value!)
       .then((item) => {
         setItems((current) => [item, ...current]);
         return { ok: true };
@@ -157,7 +157,7 @@ export const useShop = (options?: UseShopOptions) => {
     }
 
     return itemsRepo
-      .update(campaignId, itemId, normalized.value)
+      .update(campaignId, itemId, normalized.value!)
       .then((item) => {
         setItems((current) =>
           current.map((entry) => (entry.id === itemId ? item : entry))

@@ -187,7 +187,7 @@ export const PartyDetailsPage = () => {
     return (
         <>
         <section className="space-y-8">
-            <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6 flex flex-wrap justify-between items-start gap-4">
+            <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6 flex flex-wrap justify-between items-start gap-4">
                 <div>
                     <Link to={routes.home} className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200">
                         ← Home

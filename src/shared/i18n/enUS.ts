@@ -231,6 +231,7 @@ export const enUS = {
   "playerBoard.requestedBy": "GM:",
   "playerBoard.rollNow": "Roll now",
   "playerBoard.dismiss": "Not now",
+  "playerBoard.inventoryTitle": "My Inventory",
   "campaignHome.shop": "Go to shop",
   "campaignHome.inventory": "View inventory",
   "campaignHome.npcs": "View NPCs",

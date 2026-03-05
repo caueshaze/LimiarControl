@@ -37,7 +37,7 @@ export const LoginPage = () => {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="mb-8 text-center">
-          <h1 className="bg-gradient-to-r from-limiar-300 to-limiar-500 bg-clip-text text-5xl font-extrabold text-transparent drop-shadow-sm">
+          <h1 className="bg-linear-to-r from-limiar-300 to-limiar-500 bg-clip-text text-5xl font-extrabold text-transparent drop-shadow-sm">
             Limiar
           </h1>
           <p className="mt-2 text-sm font-medium uppercase tracking-[0.3em] text-limiar-200/60">
@@ -57,7 +57,7 @@ export const LoginPage = () => {
                   {t("auth.username")}
                 </label>
                 <div className="relative group">
-                  <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
+                  <div className="absolute -inset-0.5 rounded-xl bg-linear-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
                   <input
                     {...register("username", { required: true })}
                     className="relative block w-full rounded-xl border border-white/10 bg-void-900/50 px-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-colors focus:border-limiar-500 focus:bg-void-900 focus:outline-none focus:ring-1 focus:ring-limiar-500/50"
@@ -77,7 +77,7 @@ export const LoginPage = () => {
                   {t("auth.pin")}
                 </label>
                 <div className="relative group">
-                  <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
+                  <div className="absolute -inset-0.5 rounded-xl bg-linear-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
                   <input
                     type="password"
                     {...register("pin", { required: true })}
@@ -131,7 +131,7 @@ export const LoginPage = () => {
                     t("auth.loginSubmit")
                   )}
                 </span>
-                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute inset-0 -z-10 bg-linear-to-r from-violet-600 to-indigo-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               </button>
             </form>
           </div>

@@ -76,8 +76,8 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
       const sanitized = Array.isArray(data) ? data.filter(isCampaign) : [];
       setCampaigns(sanitized);
       setCampaignsError(null);
-    } catch (error: { message?: string }) {
-      setCampaignsError(error?.message ?? "Failed to load campaigns");
+    } catch (error: unknown) {
+      setCampaignsError((error as { message?: string })?.message ?? "Failed to load campaigns");
     } finally {
       setCampaignsLoading(false);
       setCampaignsLoaded(true);

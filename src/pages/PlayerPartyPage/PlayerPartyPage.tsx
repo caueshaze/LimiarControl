@@ -145,8 +145,8 @@ export const PlayerPartyPage = () => {
     }
 
     const isLobby = activeSession?.status === "LOBBY";
-    const isMyTurnToJoin = isLobby && !hasJoinedLobby && user?.id && lobbyStatus
-        ? !lobbyStatus.ready.includes(user.id)
+    const isMyTurnToJoin = isLobby && !hasJoinedLobby && user?.userId && lobbyStatus
+        ? !lobbyStatus.ready.includes(user.userId)
         : false;
 
     return (
@@ -154,7 +154,7 @@ export const PlayerPartyPage = () => {
 
             {/* Session Lobby Notification */}
             {isLobby && (
-                <div className="relative overflow-hidden rounded-3xl border border-limiar-500/30 bg-gradient-to-br from-limiar-950/80 via-slate-950/90 to-void-950 p-8 shadow-[0_0_60px_rgba(34,197,94,0.1)]">
+                <div className="relative overflow-hidden rounded-3xl border border-limiar-500/30 bg-linear-to-br from-limiar-950/80 via-slate-950/90 to-void-950 p-8 shadow-[0_0_60px_rgba(34,197,94,0.1)]">
                     {/* Animated background glow */}
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,197,94,0.08),transparent_60%)]" />
 
@@ -178,7 +178,7 @@ export const PlayerPartyPage = () => {
                                 </p>
                             </div>
 
-                            {hasJoinedLobby || (user?.id && lobbyStatus?.ready.includes(user.id)) ? (
+                            {hasJoinedLobby || (user?.userId && lobbyStatus?.ready.includes(user.userId)) ? (
                                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-5 py-2.5">
                                     <span className="text-sm font-bold text-emerald-400">You're in! Waiting for others...</span>
                                 </div>
@@ -227,7 +227,7 @@ export const PlayerPartyPage = () => {
                 </div>
             )}
 
-            <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/10 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/10 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <Link to={routes.home} className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200">
                         ← Home
@@ -337,7 +337,7 @@ export const PlayerPartyPage = () => {
                             <span className="w-1 h-4 bg-slate-600 rounded-full"></span>
                             Session History
                         </h2>
-                        <div className="mt-6 space-y-6 relative before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-800 before:to-transparent">
+                        <div className="mt-6 space-y-6 relative before:absolute before:inset-0 before:ml-2.75 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-slate-800 before:to-transparent">
                             {sessions.length === 0 ? (
                                 <p className="text-sm text-slate-500 text-center py-8 relative">No past sessions yet.</p>
                             ) : (

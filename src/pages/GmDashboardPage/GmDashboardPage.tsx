@@ -78,11 +78,11 @@ export const GmDashboardPage = () => {
     const [shopActive, setShopActive] = useState(false);
 
     const [creating, setCreating] = useState(false);
-    const [gmName, setGmName] = useState<string | null>(null);
+    const [_gmName, setGmName] = useState<string | null>(null);
     const [overviewName, setOverviewName] = useState<string | null>(null);
     const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
 
-    const [overviewError, setOverviewError] = useState<string | null>(null);
+    const [_overviewError, setOverviewError] = useState<string | null>(null);
     const [commandSending, setCommandSending] = useState(false);
     const [rollExpression, setRollExpression] = useState("d20");
     const [rollReason, setRollReason] = useState("");
@@ -462,7 +462,7 @@ export const GmDashboardPage = () => {
                     {/* Session Actions */}
                     {activeSession?.status === "ACTIVE" && (
                         <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950/60 to-slate-900/40 p-4">
+                            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
@@ -492,7 +492,7 @@ export const GmDashboardPage = () => {
                                     {shopActive ? "Close Shop" : "Open Shop"}
                                 </button>
                             </div>
-                            <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950/60 to-slate-900/40 p-4">
+                            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">

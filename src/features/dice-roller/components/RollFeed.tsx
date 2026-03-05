@@ -1,13 +1,14 @@
 import type { RollEvent } from "../../../entities/roll";
 import type { ConnectionState } from "../../../shared/realtime/wsClient";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../../shared/i18n";
 
 type RollFeedProps = {
   events: RollEvent[];
   connectionState: ConnectionState;
 };
 
-const stateLabelKey: Record<ConnectionState, string> = {
+const stateLabelKey: Record<ConnectionState, LocaleKey> = {
   connected: "rolls.state.connected",
   reconnecting: "rolls.state.reconnecting",
   offline: "rolls.state.offline",

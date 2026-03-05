@@ -326,7 +326,7 @@ export const PlayerBoardPage = () => {
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
-      <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
+      <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -366,7 +366,7 @@ export const PlayerBoardPage = () => {
             <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
               {t("playerBoard.activityTitle")}
             </h2>
-            <div className="mt-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950/80 to-slate-900/50 p-5 text-sm text-slate-200">
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/80 to-slate-900/50 p-5 text-sm text-slate-200">
               {lastCommand?.command === "open_shop" && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>{t("playerBoard.shopPrompt")}</span>

@@ -31,13 +31,13 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
 
   return (
     <div className="min-h-screen text-slate-100">
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-void-950/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/6 bg-void-950/80 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3">
 
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <span className="h-2 w-2 flex-shrink-0 rounded-full bg-limiar-400 shadow-[0_0_10px_rgba(92,248,208,0.55)]" />
-            <span className="bg-gradient-to-r from-limiar-200 to-limiar-400 bg-clip-text text-base font-bold tracking-tight text-transparent">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-limiar-400 shadow-[0_0_10px_rgba(92,248,208,0.55)]" />
+            <span className="bg-linear-to-r from-limiar-200 to-limiar-400 bg-clip-text text-base font-bold tracking-tight text-transparent">
               {title}
             </span>
           </div>
@@ -51,16 +51,16 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                 className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 transition-colors ${
                   open
                     ? "border-limiar-500/30 bg-limiar-950/40"
-                    : "border-white/[0.08] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.07]"
+                    : "border-white/8 bg-white/4 hover:border-white/[0.14] hover:bg-white/[0.07]"
                 }`}
               >
-                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-limiar-500/20 text-[10px] font-bold text-limiar-300">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-limiar-500/20 text-[10px] font-bold text-limiar-300">
                   {initials}
                 </div>
                 <span className="hidden text-xs font-medium text-slate-200 sm:block">
                   {user.displayName || user.username}
                 </span>
-                <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <span className="rounded-full bg-white/6 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
                   {user.role}
                 </span>
                 <svg
@@ -72,12 +72,12 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               </button>
 
               {open && (
-                <div className="absolute right-0 top-[calc(100%+8px)] w-48 overflow-hidden rounded-2xl border border-white/[0.08] bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <div className="absolute right-0 top-[calc(100%+8px)] w-48 overflow-hidden rounded-2xl border border-white/8 bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
                   {/* Language */}
                   <button
                     type="button"
                     onClick={() => { toggleLocale(); setOpen(false); }}
-                    className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
                   >
                     <span className="uppercase tracking-widest text-slate-500">
                       {t("auth.language")}
@@ -87,7 +87,7 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                     </span>
                   </button>
 
-                  <div className="mx-3 border-t border-white/[0.06]" />
+                  <div className="mx-3 border-t border-white/6" />
 
                   {/* Logout */}
                   {onLogout && (

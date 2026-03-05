@@ -116,7 +116,7 @@ export const PlayerHomePage = () => {
 
       {/* Session Alert Banner */}
       {alertParty && alertSession && (
-        <div className="relative overflow-hidden rounded-3xl border border-limiar-500/30 bg-gradient-to-br from-limiar-950/80 via-slate-950/90 to-void-950 p-6 shadow-[0_0_40px_rgba(34,197,94,0.08)]">
+        <div className="relative overflow-hidden rounded-3xl border border-limiar-500/30 bg-linear-to-br from-limiar-950/80 via-slate-950/90 to-void-950 p-6 shadow-[0_0_40px_rgba(34,197,94,0.08)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,197,94,0.06),transparent_60%)]" />
           <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -150,7 +150,7 @@ export const PlayerHomePage = () => {
         </div>
       )}
 
-      <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
+      <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">
           {t("home.player.title")}
         </p>
@@ -163,7 +163,7 @@ export const PlayerHomePage = () => {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr]">
-        <div className="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950/80 to-void-950/60 p-6 space-y-6">
+        <div className="rounded-3xl border border-slate-800 bg-linear-to-br from-slate-950/80 to-void-950/60 p-6 space-y-6">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
             {t("home.playerIntroTitle")}
           </p>

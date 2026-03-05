@@ -231,6 +231,7 @@ export const ptBR = {
   "playerBoard.requestedBy": "Mestre:",
   "playerBoard.rollNow": "Rolar agora",
   "playerBoard.dismiss": "Agora nao",
+  "playerBoard.inventoryTitle": "Meu inventario",
   "campaignHome.shop": "Ir para loja",
   "campaignHome.inventory": "Ver inventario",
   "campaignHome.npcs": "Ver NPCs",
