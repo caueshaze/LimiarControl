@@ -23,9 +23,7 @@ class RoleMode(str, Enum):
 class Campaign(SQLModel, table=True):
     id: str | None = Field(default=None, primary_key=True)
     name: str
-    join_code: str = Field(
-        sa_column=Column(String, unique=True, nullable=False, index=True)
-    )
+
     system: SystemType = Field(sa_column=Column(SAEnum(SystemType), nullable=False))
     role_mode: RoleMode = Field(
         default=RoleMode.GM, sa_column=Column(SAEnum(RoleMode), nullable=False)

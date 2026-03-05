@@ -29,7 +29,6 @@ def list_my_campaigns(
         CampaignRead(
             id=campaign.id,
             name=campaign.name,
-            joinCode=campaign.join_code if member.role_mode == RoleMode.GM else None,
             systemType=campaign.system,
             roleMode=member.role_mode,
             createdAt=campaign.created_at,

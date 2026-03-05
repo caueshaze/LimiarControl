@@ -5,11 +5,13 @@ import { useCampaigns } from "../../campaign-select";
 
 type UseInventoryOptions = {
   memberId?: string | null;
+  partyId?: string | null;
 };
 
 export const useInventory = (options?: UseInventoryOptions) => {
   const { selectedCampaignId } = useCampaigns();
   const memberId = options?.memberId ?? null;
+  const partyId = options?.partyId ?? null;
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export const useInventory = (options?: UseInventoryOptions) => {
     let active = true;
     setInventoryLoading(true);
     inventoryRepo
-      .list(selectedCampaignId, memberId)
+      .list(selectedCampaignId, memberId, partyId)
       .then((data) => {
         if (!active) return;
         setInventory(Array.isArray(data) ? data : []);
@@ -47,7 +49,7 @@ export const useInventory = (options?: UseInventoryOptions) => {
     return () => {
       active = false;
     };
-  }, [selectedCampaignId, memberId, options?.memberId]);
+  }, [selectedCampaignId, memberId, partyId, options?.memberId]);
 
   const toggleEquipped = (id: string) => {
     if (!selectedCampaignId) {

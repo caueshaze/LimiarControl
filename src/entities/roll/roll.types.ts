@@ -24,4 +24,5 @@ export type RollRequest = {
   requestId: string;
   label: string | null;
   expression: string;
+  advantage?: "advantage" | "disadvantage" | null;
 };

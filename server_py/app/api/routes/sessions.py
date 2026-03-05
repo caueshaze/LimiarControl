@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_current_user
 from app.api.deprecation import log_deprecated_route
-from app.api.ws import campaign_room_registry, room_registry
+from app.api.ws import campaign_room_registry, parse_expression, room_registry, to_roll_read
 from app.db.session import get_session
 from app.models.campaign import Campaign, RoleMode
 from app.models.campaign_member import CampaignMember
@@ -17,43 +17,35 @@ from app.models.inventory import InventoryItem
 from app.models.item import Item
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
+from app.models.purchase_event import PurchaseEvent
 from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
+from app.models.user import User
 from app.schemas.inventory import InventoryBuy, InventoryRead
 from app.schemas.item import ItemRead
 from app.schemas.roll_event import RollDice, RollEventRead
 from app.schemas.session import (
     ActiveSessionRead,
+    ActivityEvent,
+    ManualRollRequest,
+    PurchaseActivityEvent,
+    RollActivityEvent,
     SessionActivateRequest,
     SessionCommandRequest,
     SessionCreateByParty,
-    SessionJoinRequest,
-    SessionJoinResponse,
     SessionRead,
 )
 
 router = APIRouter()
 
-JOIN_CODE_CHARS = string.ascii_uppercase + string.digits
-DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
+# In-memory lobby: session_id -> set of user_ids that clicked "Join"
+_lobby_ready: dict[str, set[str]] = {}
+# session_id -> {user_id: display_name} for expected players
+_lobby_expected: dict[str, dict[str, str]] = {}
 
 
-def generate_join_code() -> str:
-    length = random.randint(6, 8)
-    return "".join(random.choice(JOIN_CODE_CHARS) for _ in range(length))
-
-
-def ensure_unique_join_code(session: DbSession) -> str:
-    for _ in range(20):
-        code = generate_join_code()
-        existing = session.exec(select(Session).where(Session.join_code == code)).first()
-        if not existing:
-            return code
-    return f"{uuid4().hex[:8].upper()}"
-
-
-def to_session_read(entry: Session, join_code: str | None) -> SessionRead:
+def to_session_read(entry: Session) -> SessionRead:
     number = entry.sequence_number if entry.sequence_number is not None else entry.number
     return SessionRead(
         id=entry.id,
@@ -61,9 +53,8 @@ def to_session_read(entry: Session, join_code: str | None) -> SessionRead:
         partyId=entry.party_id,
         number=number,
         title=entry.title,
-        joinCode=join_code,
         status=entry.status,
-        isActive=entry.status == SessionStatus.ACTIVE,
+        isActive=entry.status in (SessionStatus.ACTIVE, SessionStatus.LOBBY),
         startedAt=entry.started_at,
         endedAt=entry.ended_at,
         durationSeconds=entry.duration_seconds,
@@ -128,6 +119,7 @@ def to_roll_read(entry: RollEvent) -> RollEventRead:
         id=entry.id,
         campaignId=entry.campaign_id or "",
         sessionId=entry.session_id,
+        userId=entry.user_id,
         authorName=entry.author_name,
         roleMode=entry.role_mode,
         label=entry.label,
@@ -177,20 +169,19 @@ def _get_active_session(
         active = session.exec(
             select(Session).where(
                 Session.party_id == party_id,
-                Session.status == SessionStatus.ACTIVE,
+                Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
             )
         ).first()
     else:
         active = session.exec(
             select(Session).where(
                 Session.campaign_id == campaign_id,
-                Session.status == SessionStatus.ACTIVE,
+                Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
             )
         ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session")
-    join_code = active.join_code if member.role_mode == RoleMode.GM else None
-    return ActiveSessionRead(**to_session_read(active, join_code).model_dump())
+    return ActiveSessionRead(**to_session_read(active).model_dump())
 
 
 @router.get("/campaigns/{campaign_id}/sessions/active", response_model=ActiveSessionRead)
@@ -256,10 +247,7 @@ def list_sessions(
         )
     entries = session.exec(statement).all()
     return [
-        to_session_read(
-            entry,
-            entry.join_code if member.role_mode == RoleMode.GM else None,
-        )
+        to_session_read(entry)
         for entry in entries
     ]
 
@@ -285,18 +273,23 @@ async def _start_session(
         raise HTTPException(status_code=403, detail="GM required")
 
     party_id = resolve_party_id_for_campaign(campaign_id, session)
+    if not party_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No party found for campaign; create a party before starting sessions",
+        )
     if party_id:
         existing_active = session.exec(
             select(Session).where(
                 Session.party_id == party_id,
-                Session.status == SessionStatus.ACTIVE,
+                Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
             )
         ).first()
     else:
         existing_active = session.exec(
             select(Session).where(
                 Session.campaign_id == campaign_id,
-                Session.status == SessionStatus.ACTIVE,
+                Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
             )
         ).first()
     last_closed_source: Session | None = None
@@ -382,9 +375,8 @@ async def _start_session(
             number=number,
             sequence_number=number if party_id else None,
             title=title,
-            join_code=ensure_unique_join_code(session),
-            status=SessionStatus.ACTIVE,
-            started_at=datetime.now(timezone.utc),
+            status=SessionStatus.LOBBY,
+            started_at=None,
         )
         session.add(entry)
         try:
@@ -412,8 +404,8 @@ async def _start_session(
     previous_by_user = {state.player_user_id: state for state in previous_states}
     for member_entry in player_members:
         previous_state = previous_by_user.get(member_entry.user_id)
-        payload = previous_state.state_json if previous_state else {}
-        cloned_state = dict(payload) if isinstance(payload, dict) else payload
+        state_payload = previous_state.state_json if previous_state else {}
+        cloned_state = dict(state_payload) if isinstance(state_payload, dict) else state_payload
         session.add(
             SessionState(
                 id=str(uuid4()),
@@ -423,32 +415,62 @@ async def _start_session(
             )
         )
     session.commit()
-    await room_registry.broadcast(
-        entry.id,
-        {
-            "type": "session_started",
-            "payload": {
-                "sessionId": entry.id,
-                "campaignId": campaign_id,
-                "joinCode": entry.join_code,
-                "title": entry.title,
-                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+
+    # Build lobby: get party players as expected participants
+    if party_id:
+        party_players = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == party_id,
+                PartyMember.role == RoleMode.PLAYER,
+                PartyMember.status == PartyMemberStatus.JOINED,
+            )
+        ).all()
+        # Get display names from users
+        from app.models.user import User as UserModel
+        expected: dict[str, str] = {}
+        for pm in party_players:
+            u = session.exec(select(UserModel).where(UserModel.id == pm.user_id)).first()
+            expected[pm.user_id] = (u.display_name or u.username or pm.user_id) if u else pm.user_id
+    else:
+        expected = {}
+
+    if not expected:
+        # No players to wait for — activate immediately
+        now = datetime.now(timezone.utc)
+        entry.status = SessionStatus.ACTIVE
+        entry.started_at = now
+        session.add(entry)
+        session.commit()
+        session.refresh(entry)
+        await campaign_room_registry.broadcast(
+            campaign_id,
+            {
+                "type": "session_started",
+                "payload": {
+                    "sessionId": entry.id,
+                    "campaignId": campaign_id,
+                    "title": entry.title,
+                    "startedAt": now.isoformat(),
+                },
             },
-        },
-    )
-    await campaign_room_registry.broadcast(
-        campaign_id,
-        {
-            "type": "session_started",
-            "payload": {
-                "sessionId": entry.id,
-                "campaignId": campaign_id,
-                "title": entry.title,
-                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+        )
+    else:
+        _lobby_ready[entry.id] = set()
+        _lobby_expected[entry.id] = expected
+        expected_list = [{"userId": uid, "displayName": name} for uid, name in expected.items()]
+        await campaign_room_registry.broadcast(
+            campaign_id,
+            {
+                "type": "session_lobby",
+                "payload": {
+                    "sessionId": entry.id,
+                    "campaignId": campaign_id,
+                    "title": entry.title,
+                    "expectedPlayers": expected_list,
+                },
             },
-        },
-    )
-    return ActiveSessionRead(**to_session_read(entry, entry.join_code).model_dump())
+        )
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
 async def _start_session_for_party(
@@ -462,7 +484,7 @@ async def _start_session_for_party(
     existing_active = session.exec(
         select(Session).where(
             Session.party_id == party.id,
-            Session.status == SessionStatus.ACTIVE,
+            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
         )
     ).first()
     if existing_active:
@@ -496,9 +518,8 @@ async def _start_session_for_party(
             number=number,
             sequence_number=number,
             title=title,
-            join_code=ensure_unique_join_code(session),
-            status=SessionStatus.ACTIVE,
-            started_at=datetime.now(timezone.utc),
+            status=SessionStatus.LOBBY,
+            started_at=None,
         )
         session.add(entry)
         try:
@@ -539,32 +560,50 @@ async def _start_session_for_party(
             )
         )
     session.commit()
-    await room_registry.broadcast(
-        entry.id,
-        {
-            "type": "session_started",
-            "payload": {
-                "sessionId": entry.id,
-                "campaignId": party.campaign_id,
-                "joinCode": entry.join_code,
-                "title": entry.title,
-                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+
+    # Build lobby expected players
+    from app.models.user import User as UserModel
+    expected: dict[str, str] = {}
+    for pm in player_members:
+        u = session.exec(select(UserModel).where(UserModel.id == pm.user_id)).first()
+        expected[pm.user_id] = (u.display_name or u.username or pm.user_id) if u else pm.user_id
+
+    if not expected:
+        now = datetime.now(timezone.utc)
+        entry.status = SessionStatus.ACTIVE
+        entry.started_at = now
+        session.add(entry)
+        session.commit()
+        session.refresh(entry)
+        await campaign_room_registry.broadcast(
+            party.campaign_id,
+            {
+                "type": "session_started",
+                "payload": {
+                    "sessionId": entry.id,
+                    "campaignId": party.campaign_id,
+                    "title": entry.title,
+                    "startedAt": now.isoformat(),
+                },
             },
-        },
-    )
-    await campaign_room_registry.broadcast(
-        party.campaign_id,
-        {
-            "type": "session_started",
-            "payload": {
-                "sessionId": entry.id,
-                "campaignId": party.campaign_id,
-                "title": entry.title,
-                "startedAt": entry.started_at.isoformat() if entry.started_at else None,
+        )
+    else:
+        _lobby_ready[entry.id] = set()
+        _lobby_expected[entry.id] = expected
+        expected_list = [{"userId": uid, "displayName": name} for uid, name in expected.items()]
+        await campaign_room_registry.broadcast(
+            party.campaign_id,
+            {
+                "type": "session_lobby",
+                "payload": {
+                    "sessionId": entry.id,
+                    "campaignId": party.campaign_id,
+                    "title": entry.title,
+                    "expectedPlayers": expected_list,
+                },
             },
-        },
-    )
-    return ActiveSessionRead(**to_session_read(entry, entry.join_code).model_dump())
+        )
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
 @router.post("/campaigns/{campaign_id}/sessions", response_model=ActiveSessionRead)
@@ -600,9 +639,8 @@ def list_party_sessions(
         .where(Session.party_id == party_id)
         .order_by(Session.sequence_number.desc())
     ).all()
-    is_gm = party.gm_user_id == user.id
     return [
-        to_session_read(entry, entry.join_code if is_gm else None)
+        to_session_read(entry)
         for entry in entries
     ]
 
@@ -617,13 +655,154 @@ def get_party_active_session(
     active = session.exec(
         select(Session).where(
             Session.party_id == party_id,
-            Session.status == SessionStatus.ACTIVE,
+            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
         )
     ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session")
-    join_code = active.join_code if party.gm_user_id == user.id else None
-    return ActiveSessionRead(**to_session_read(active, join_code).model_dump())
+    return ActiveSessionRead(**to_session_read(active).model_dump())
+
+
+@router.get("/sessions/{session_id}/lobby")
+def get_lobby_status(
+    session_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Session not found")
+    expected = _lobby_expected.get(session_id, {})
+    ready = list(_lobby_ready.get(session_id, set()))
+    return LobbyStatusRead(
+        sessionId=session_id,
+        expected=[{"userId": uid, "displayName": name} for uid, name in expected.items()],
+        ready=ready,
+    )
+
+
+@router.post("/sessions/{session_id}/lobby/join")
+async def join_lobby(
+    session_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if entry.status != SessionStatus.LOBBY:
+        raise HTTPException(status_code=400, detail="Session is not in lobby state")
+
+    # Validate party membership
+    if entry.party_id:
+        member = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == entry.party_id,
+                PartyMember.user_id == user.id,
+                PartyMember.status == PartyMemberStatus.JOINED,
+            )
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a party member")
+
+    expected = _lobby_expected.get(session_id, {})
+    if session_id not in _lobby_ready:
+        _lobby_ready[session_id] = set()
+    _lobby_ready[session_id].add(user.id)
+
+    display_name = expected.get(user.id, user.display_name or user.username or user.id)
+    ready_count = len(_lobby_ready[session_id])
+    total_count = len(expected)
+
+    await campaign_room_registry.broadcast(
+        entry.campaign_id,
+        {
+            "type": "player_joined_lobby",
+            "payload": {
+                "sessionId": session_id,
+                "userId": user.id,
+                "displayName": display_name,
+                "readyCount": ready_count,
+                "totalCount": total_count,
+            },
+        },
+    )
+
+    # Check if everyone is ready
+    if expected and _lobby_ready[session_id] >= set(expected.keys()):
+        now = datetime.now(timezone.utc)
+        entry.status = SessionStatus.ACTIVE
+        entry.started_at = now
+        session.add(entry)
+        session.commit()
+        session.refresh(entry)
+        _lobby_ready.pop(session_id, None)
+        _lobby_expected.pop(session_id, None)
+        await campaign_room_registry.broadcast(
+            entry.campaign_id,
+            {
+                "type": "session_started",
+                "payload": {
+                    "sessionId": entry.id,
+                    "campaignId": entry.campaign_id,
+                    "title": entry.title,
+                    "startedAt": now.isoformat(),
+                },
+            },
+        )
+
+    return {"ok": True}
+
+
+@router.post("/sessions/{session_id}/lobby/force-start")
+async def force_start_lobby(
+    session_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if entry.status != SessionStatus.LOBBY:
+        raise HTTPException(status_code=400, detail="Session is not in lobby state")
+
+    # Only GM can force start
+    if entry.party_id:
+        party = session.exec(select(Party).where(Party.id == entry.party_id)).first()
+        if not party or party.gm_user_id != user.id:
+            raise HTTPException(status_code=403, detail="GM required")
+    else:
+        member = session.exec(
+            select(CampaignMember).where(
+                CampaignMember.campaign_id == entry.campaign_id,
+                CampaignMember.user_id == user.id,
+            )
+        ).first()
+        if not member or member.role_mode != RoleMode.GM:
+            raise HTTPException(status_code=403, detail="GM required")
+
+    now = datetime.now(timezone.utc)
+    entry.status = SessionStatus.ACTIVE
+    entry.started_at = now
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    _lobby_ready.pop(session_id, None)
+    _lobby_expected.pop(session_id, None)
+
+    await campaign_room_registry.broadcast(
+        entry.campaign_id,
+        {
+            "type": "session_started",
+            "payload": {
+                "sessionId": entry.id,
+                "campaignId": entry.campaign_id,
+                "title": entry.title,
+                "startedAt": now.isoformat(),
+            },
+        },
+    )
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
 @router.post("/parties/{party_id}/sessions/{session_id}/close", response_model=ActiveSessionRead)
@@ -637,7 +816,7 @@ async def close_party_session(
     entry = session.exec(select(Session).where(Session.id == session_id)).first()
     if not entry or entry.party_id != party.id:
         raise HTTPException(status_code=404, detail="Session not found")
-    if entry.status != SessionStatus.ACTIVE:
+    if entry.status not in (SessionStatus.ACTIVE, SessionStatus.LOBBY):
         raise HTTPException(status_code=400, detail="Session is not active")
     now = datetime.now(timezone.utc)
     entry.status = SessionStatus.CLOSED
@@ -650,6 +829,8 @@ async def close_party_session(
     session.add(entry)
     session.commit()
     session.refresh(entry)
+    _lobby_ready.pop(entry.id, None)
+    _lobby_expected.pop(entry.id, None)
     await room_registry.broadcast(
         entry.id,
         {
@@ -672,7 +853,7 @@ async def close_party_session(
             },
         },
     )
-    return ActiveSessionRead(**to_session_read(entry, None).model_dump())
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
 @router.post(
@@ -726,6 +907,7 @@ def _to_inventory_read(entry: InventoryItem) -> InventoryRead:
     return InventoryRead(
         id=entry.id,
         campaignId=entry.campaign_id,
+        partyId=entry.party_id,
         memberId=entry.member_id,
         itemId=entry.item_id,
         quantity=entry.quantity,
@@ -764,13 +946,27 @@ def buy_session_shop_item(
     if payload.quantity < 1:
         raise HTTPException(status_code=400, detail="Invalid quantity")
 
+    party_id = entry.party_id
+
     existing = session.exec(
         select(InventoryItem).where(
             InventoryItem.campaign_id == entry.campaign_id,
+            InventoryItem.party_id == party_id,
             InventoryItem.member_id == member.id,
             InventoryItem.item_id == payload.itemId,
         )
     ).first()
+    purchase_log = PurchaseEvent(
+        id=str(uuid4()),
+        session_id=session_id,
+        user_id=user.id,
+        member_id=member.id,
+        item_id=payload.itemId,
+        item_name=item.name,
+        quantity=payload.quantity,
+    )
+    session.add(purchase_log)
+
     if existing:
         existing.quantity += payload.quantity
         session.add(existing)
@@ -781,6 +977,7 @@ def buy_session_shop_item(
     new_entry = InventoryItem(
         id=str(uuid4()),
         campaign_id=entry.campaign_id,
+        party_id=party_id,
         member_id=member.id,
         item_id=payload.itemId,
         quantity=payload.quantity,
@@ -812,6 +1009,12 @@ async def close_session(
         raise HTTPException(status_code=403, detail="Not a campaign member")
     if member.role_mode != RoleMode.GM:
         raise HTTPException(status_code=403, detail="GM required")
+    if entry.party_id:
+        party = session.exec(select(Party).where(Party.id == entry.party_id)).first()
+        if not party:
+            raise HTTPException(status_code=404, detail="Party not found")
+        if party.gm_user_id != user.id:
+            raise HTTPException(status_code=403, detail="GM required")
     if entry.status != SessionStatus.ACTIVE:
         raise HTTPException(status_code=400, detail="Session is not active")
     now = datetime.now(timezone.utc)
@@ -847,7 +1050,7 @@ async def close_session(
             },
         },
     )
-    return ActiveSessionRead(**to_session_read(entry, None).model_dump())
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
 @router.post(
@@ -908,6 +1111,12 @@ async def resume_session(
         raise HTTPException(status_code=403, detail="Not a campaign member")
     if member.role_mode != RoleMode.GM:
         raise HTTPException(status_code=403, detail="GM required")
+    if entry.party_id:
+        party = session.exec(select(Party).where(Party.id == entry.party_id)).first()
+        if not party:
+            raise HTTPException(status_code=404, detail="Party not found")
+        if party.gm_user_id != user.id:
+            raise HTTPException(status_code=403, detail="GM required")
 
     active = session.exec(
         select(Session).where(
@@ -961,79 +1170,10 @@ async def resume_session(
             },
         },
     )
-    return ActiveSessionRead(**to_session_read(entry, entry.join_code).model_dump())
+    return ActiveSessionRead(**to_session_read(entry).model_dump())
 
 
-@router.post("/sessions/join", response_model=SessionJoinResponse)
-def join_session(
-    payload: SessionJoinRequest,
-    user=Depends(get_current_user),
-    session: DbSession = Depends(get_session),
-):
-    join_code = payload.joinCode.strip().upper()
-    if not join_code:
-        raise HTTPException(status_code=400, detail="Invalid payload")
 
-    entry = session.exec(select(Session).where(Session.join_code == join_code)).first()
-    if not entry:
-        raise HTTPException(status_code=404, detail="Join code not found")
-    if entry.status != SessionStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail="Session is not active")
-
-    campaign = session.exec(select(Campaign).where(Campaign.id == entry.campaign_id)).first()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
-    gm_member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == entry.campaign_id,
-            CampaignMember.role_mode == RoleMode.GM,
-        )
-    ).first()
-    gm_name = gm_member.display_name if gm_member else None
-
-    member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == entry.campaign_id,
-            CampaignMember.user_id == user.id,
-        )
-    ).first()
-
-    if member:
-        if user.display_name:
-            member.display_name = user.display_name
-        session.add(member)
-        session.commit()
-        session.refresh(member)
-        return SessionJoinResponse(
-            campaignId=entry.campaign_id,
-            campaignName=campaign.name,
-            gmName=gm_name,
-            sessionId=entry.id,
-            memberId=member.id,
-            displayName=member.display_name,
-            roleMode=member.role_mode,
-        )
-
-    member = CampaignMember(
-        id=str(uuid4()),
-        campaign_id=entry.campaign_id,
-        user_id=user.id,
-        display_name=user.display_name or user.username,
-        role_mode=RoleMode.PLAYER,
-    )
-    session.add(member)
-    session.commit()
-    session.refresh(member)
-    return SessionJoinResponse(
-        campaignId=entry.campaign_id,
-        campaignName=campaign.name,
-        gmName=gm_name,
-        sessionId=entry.id,
-        memberId=member.id,
-        displayName=member.display_name,
-        roleMode=member.role_mode,
-    )
 
 
 async def _send_session_command(
@@ -1053,6 +1193,12 @@ async def _send_session_command(
     ).first()
     if not member or member.role_mode != RoleMode.GM:
         raise HTTPException(status_code=403, detail="GM required")
+    if entry.party_id:
+        party = session.exec(select(Party).where(Party.id == entry.party_id)).first()
+        if not party:
+            raise HTTPException(status_code=404, detail="Party not found")
+        if party.gm_user_id != user.id:
+            raise HTTPException(status_code=403, detail="GM required")
     if entry.status != SessionStatus.ACTIVE:
         raise HTTPException(status_code=400, detail="Session is not active")
 
@@ -1146,3 +1292,118 @@ def list_rolls(
     )
     entries = session.exec(statement).all()
     return [to_roll_read(item) for item in entries]
+
+
+@router.post("/sessions/{session_id}/rolls/manual", response_model=dict)
+async def submit_manual_roll(
+    session_id: str,
+    payload: ManualRollRequest,
+    user: User = Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if entry.status != SessionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Session is not active")
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user.id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a campaign member")
+    parsed = parse_expression(payload.expression)
+    count, sides, modifier = parsed if parsed else (1, 20, 0)
+    event = RollEvent(
+        id=str(uuid4()),
+        campaign_id=entry.campaign_id,
+        session_id=session_id,
+        user_id=user.id,
+        author_name=member.display_name,
+        role_mode=member.role_mode,
+        label=payload.label,
+        expression=payload.expression,
+        count=count,
+        sides=sides,
+        modifier=modifier,
+        results=[payload.result],
+        total=payload.result,
+    )
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    payload_out = to_roll_read(event).model_dump(mode="json")
+    await room_registry.broadcast(session_id, {"type": "roll_created", "payload": payload_out})
+    return payload_out
+
+
+@router.get("/sessions/{session_id}/activity", response_model=list[ActivityEvent])
+def get_session_activity(
+    session_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = session.exec(select(Session).where(Session.id == session_id)).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Session not found")
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user.id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a campaign member")
+
+    started_at = entry.started_at or entry.created_at
+
+    def offset(ts: datetime) -> int:
+        if not started_at or not ts:
+            return 0
+        delta = (ts.replace(tzinfo=None) - started_at.replace(tzinfo=None)).total_seconds()
+        return max(0, int(delta))
+
+    events: list[ActivityEvent] = []
+
+    # Rolls
+    rolls = session.exec(
+        select(RollEvent, User)
+        .outerjoin(User, RollEvent.user_id == User.id)
+        .where(RollEvent.session_id == session_id)
+        .order_by(RollEvent.created_at)
+    ).all()
+    for roll, roll_user in rolls:
+        events.append(RollActivityEvent(
+            userId=roll.user_id,
+            username=roll_user.username if roll_user else None,
+            displayName=(roll_user.display_name if roll_user else None) or roll.author_name,
+            expression=roll.expression,
+            results=roll.results,
+            total=roll.total,
+            label=roll.label,
+            timestamp=roll.created_at,
+            sessionOffsetSeconds=offset(roll.created_at),
+        ))
+
+    # Purchases
+    purchases = session.exec(
+        select(PurchaseEvent, User)
+        .outerjoin(User, PurchaseEvent.user_id == User.id)
+        .where(PurchaseEvent.session_id == session_id)
+        .order_by(PurchaseEvent.created_at)
+    ).all()
+    for purchase, purchase_user in purchases:
+        events.append(PurchaseActivityEvent(
+            userId=purchase.user_id,
+            username=purchase_user.username if purchase_user else None,
+            displayName=purchase_user.display_name if purchase_user else None,
+            itemName=purchase.item_name,
+            quantity=purchase.quantity,
+            timestamp=purchase.created_at,
+            sessionOffsetSeconds=offset(purchase.created_at),
+        ))
+
+    events.sort(key=lambda e: e.timestamp)
+    return events

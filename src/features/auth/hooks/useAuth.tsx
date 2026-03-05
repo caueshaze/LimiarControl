@@ -37,12 +37,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
+    const currentToken = token;
     authRepo
       .me()
       .then((data) => {
-        setUser(data);
+        if (currentToken === getToken()) {
+          setUser(data);
+        }
       })
       .catch((error: { status?: number; message?: string }) => {
+        if (currentToken !== getToken()) {
+          return;
+        }
         if (error?.status === 401) {
           console.warn("Auth expired; redirecting to login");
           clearToken();
@@ -53,7 +59,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.warn("Auth check failed", error);
         setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (currentToken === getToken()) {
+          setLoading(false);
+        }
+      });
   }, [token]);
 
   const login = useCallback(async (username: string, pin: string) => {

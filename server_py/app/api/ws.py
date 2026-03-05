@@ -12,6 +12,8 @@ from app.core.auth import decode_jwt
 from app.db.session import engine
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
+from app.models.party import Party
+from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.roll_event import RollEvent
 from app.models.session import Session as CampaignSession, SessionStatus
 from app.schemas.roll_event import RollDice, RollEventRead
@@ -59,11 +61,20 @@ room_registry = RoomRegistry()
 class CampaignRoomRegistry:
     def __init__(self) -> None:
         self._rooms: dict[str, set[WebSocket]] = {}
+        # campaign_id -> {user_id: display_name}
+        self._presence: dict[str, dict[str, str]] = {}
         self._lock = asyncio.Lock()
 
     async def add(self, campaign_id: str, websocket: WebSocket) -> None:
         async with self._lock:
             self._rooms.setdefault(campaign_id, set()).add(websocket)
+
+    async def add_with_user(
+        self, campaign_id: str, websocket: WebSocket, user_id: str, display_name: str
+    ) -> None:
+        async with self._lock:
+            self._rooms.setdefault(campaign_id, set()).add(websocket)
+            self._presence.setdefault(campaign_id, {})[user_id] = display_name
 
     async def remove(self, campaign_id: str, websocket: WebSocket) -> None:
         async with self._lock:
@@ -73,6 +84,23 @@ class CampaignRoomRegistry:
             connections.discard(websocket)
             if not connections:
                 self._rooms.pop(campaign_id, None)
+
+    async def remove_with_user(
+        self, campaign_id: str, websocket: WebSocket, user_id: str | None
+    ) -> None:
+        async with self._lock:
+            connections = self._rooms.get(campaign_id)
+            if connections:
+                connections.discard(websocket)
+                if not connections:
+                    self._rooms.pop(campaign_id, None)
+            if user_id:
+                self._presence.get(campaign_id, {}).pop(user_id, None)
+                if not self._presence.get(campaign_id):
+                    self._presence.pop(campaign_id, None)
+
+    def get_online_users(self, campaign_id: str) -> dict[str, str]:
+        return dict(self._presence.get(campaign_id, {}))
 
     async def broadcast(self, campaign_id: str, message: dict) -> None:
         async with self._lock:
@@ -113,6 +141,7 @@ def to_roll_read(entry: RollEvent) -> RollEventRead:
         id=entry.id,
         campaignId=entry.campaign_id or "",
         sessionId=entry.session_id,
+        userId=entry.user_id,
         authorName=entry.author_name,
         roleMode=entry.role_mode,
         label=entry.label,
@@ -163,6 +192,29 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
             await websocket.close(code=1008)
             return
         session_info = session_entry
+        if session_entry.party_id:
+            party = session.exec(
+                select(Party).where(Party.id == session_entry.party_id)
+            ).first()
+            if not party:
+                await websocket.send_json(
+                    {"type": "error", "payload": {"requestId": None, "message": "Party not found"}}
+                )
+                await websocket.close(code=1008)
+                return
+            if party.gm_user_id != user_id:
+                party_member = session.exec(
+                    select(PartyMember).where(
+                        PartyMember.party_id == party.id,
+                        PartyMember.user_id == user_id,
+                    )
+                ).first()
+                if not party_member or party_member.status != PartyMemberStatus.JOINED:
+                    await websocket.send_json(
+                        {"type": "error", "payload": {"requestId": None, "message": "Party join required"}}
+                    )
+                    await websocket.close(code=1008)
+                    return
         member = session.exec(
             select(CampaignMember).where(
                 CampaignMember.campaign_id == session_entry.campaign_id,
@@ -222,6 +274,7 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
             request_id = payload.get("requestId")
             expression = payload.get("expression", "")
             label = payload.get("label")
+            advantage = payload.get("advantage")  # "advantage" | "disadvantage" | None
 
             parsed = parse_expression(expression)
             if not parsed:
@@ -238,8 +291,22 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
             author_name = member_info.display_name
 
             count, sides, modifier = parsed
-            results = [random.randint(1, sides) for _ in range(count)]
-            total = sum(results) + modifier
+            if advantage in ("advantage", "disadvantage"):
+                set_a = [random.randint(1, sides) for _ in range(count)]
+                set_b = [random.randint(1, sides) for _ in range(count)]
+                sum_a = sum(set_a)
+                sum_b = sum(set_b)
+                if advantage == "advantage":
+                    chosen, other = (set_a, set_b) if sum_a >= sum_b else (set_b, set_a)
+                else:
+                    chosen, other = (set_a, set_b) if sum_a <= sum_b else (set_b, set_a)
+                results = chosen + other  # store all dice: chosen first, discarded after
+                total = sum(chosen) + modifier
+                suffix = " (Advantage)" if advantage == "advantage" else " (Disadvantage)"
+                label = (label + suffix) if label else suffix.strip()
+            else:
+                results = [random.randint(1, sides) for _ in range(count)]
+                total = sum(results) + modifier
 
             with Session(engine) as session:
                 campaign = session.exec(
@@ -257,6 +324,7 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
                     id=str(uuid4()),
                     campaign_id=campaign.id,
                     session_id=session_info.id,
+                    user_id=user_id,
                     author_name=author_name,
                     role_mode=role_mode_value,
                     label=label,
@@ -288,6 +356,8 @@ async def campaign_ws(websocket: WebSocket, campaign_id: str) -> None:
     await websocket.accept()
     await campaign_room_registry.add(campaign_id, websocket)
     print(f"WS connect campaign={campaign_id}")
+    connected_user_id: str | None = None
+    connected_display_name: str = "Unknown"
     if not token:
         await websocket.send_json(
             {"type": "error", "payload": {"requestId": None, "message": "Missing token"}}
@@ -324,12 +394,47 @@ async def campaign_ws(websocket: WebSocket, campaign_id: str) -> None:
             )
             await websocket.close(code=1008)
             return
+        connected_user_id = user_id
+        connected_display_name = member.display_name or user_id
+
+    await campaign_room_registry.add_with_user(
+        campaign_id, websocket, connected_user_id, connected_display_name
+    )
+    await campaign_room_registry.broadcast(
+        campaign_id,
+        {
+            "type": "user_online",
+            "payload": {
+                "userId": connected_user_id,
+                "displayName": connected_display_name,
+            },
+        },
+    )
     await websocket.send_json(
-        {"type": "connected", "payload": {"serverTime": datetime.now(timezone.utc).isoformat()}}
+        {
+            "type": "connected",
+            "payload": {
+                "serverTime": datetime.now(timezone.utc).isoformat(),
+                "onlineUsers": campaign_room_registry.get_online_users(campaign_id),
+            },
+        }
     )
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        await campaign_room_registry.remove(campaign_id, websocket)
+        pass
+    finally:
+        await campaign_room_registry.remove_with_user(campaign_id, websocket, connected_user_id)
+        if connected_user_id:
+            await campaign_room_registry.broadcast(
+                campaign_id,
+                {
+                    "type": "user_offline",
+                    "payload": {
+                        "userId": connected_user_id,
+                        "displayName": connected_display_name,
+                    },
+                },
+            )
         print(f"WS disconnect campaign={campaign_id}")

@@ -9,6 +9,7 @@ from sqlmodel import Field, SQLModel
 
 
 class SessionStatus(str, Enum):
+    LOBBY = "LOBBY"
     ACTIVE = "ACTIVE"
     CLOSED = "CLOSED"
 
@@ -23,9 +24,6 @@ class Session(SQLModel, table=True):
     number: int
     sequence_number: int | None = Field(default=None)
     title: str
-    join_code: str = Field(
-        sa_column=Column(String, unique=True, nullable=False, index=True)
-    )
     status: SessionStatus = Field(
         default=SessionStatus.CLOSED,
         sa_column=Column(SAEnum(SessionStatus), nullable=False),

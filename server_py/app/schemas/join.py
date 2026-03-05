@@ -11,6 +11,7 @@ class MemberRead(BaseModel):
 
 class MemberSummary(BaseModel):
     id: str
+    userId: str
     displayName: str
     roleMode: RoleMode
 

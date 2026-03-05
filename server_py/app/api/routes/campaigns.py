@@ -13,31 +13,12 @@ from app.models.campaign_member import CampaignMember
 from app.models.user import User
 from app.schemas.campaign import (
     CampaignCreate,
-    CampaignJoinRequest,
-    CampaignJoinResponse,
     CampaignOverview,
     CampaignRead,
     CampaignUpdate,
 )
 
 router = APIRouter()
-JOIN_CODE_CHARS = string.ascii_uppercase + string.digits
-
-
-def generate_join_code() -> str:
-    length = random.randint(6, 8)
-    return "".join(random.choice(JOIN_CODE_CHARS) for _ in range(length))
-
-
-def ensure_unique_join_code(session: Session) -> str:
-    for _ in range(20):
-        code = generate_join_code()
-        existing = session.exec(select(Campaign).where(Campaign.join_code == code)).first()
-        if not existing:
-            return code
-    return f"{uuid4().hex[:8].upper()}"
-
-
 @router.get("", response_model=List[CampaignRead])
 def list_campaigns(
     user: User = Depends(get_current_user),
@@ -54,7 +35,6 @@ def list_campaigns(
         CampaignRead(
             id=campaign.id,
             name=campaign.name,
-            joinCode=campaign.join_code if member.role_mode == RoleMode.GM else None,
             systemType=campaign.system,
             roleMode=member.role_mode,
             createdAt=campaign.created_at,
@@ -90,7 +70,6 @@ def campaign_overview(
     return CampaignOverview(
         id=campaign.id,
         name=campaign.name,
-        joinCode=campaign.join_code if member.role_mode == RoleMode.GM else None,
         systemType=campaign.system,
         roleMode=campaign.role_mode,
         createdAt=campaign.created_at,
@@ -111,7 +90,6 @@ def create_campaign(
         id=str(uuid4()),
         name=payload.name.strip(),
         system=payload.system,
-        join_code=ensure_unique_join_code(session),
     )
     member = CampaignMember(
         id=str(uuid4()),
@@ -127,7 +105,6 @@ def create_campaign(
     return CampaignRead(
         id=campaign.id,
         name=campaign.name,
-        joinCode=campaign.join_code,
         systemType=campaign.system,
         roleMode=campaign.role_mode,
         createdAt=campaign.created_at,
@@ -155,7 +132,6 @@ def update_campaign(
     return CampaignRead(
         id=campaign.id,
         name=campaign.name,
-        joinCode=campaign.join_code if _member.role_mode == RoleMode.GM else None,
         systemType=campaign.system,
         roleMode=campaign.role_mode,
         createdAt=campaign.created_at,
@@ -175,60 +151,3 @@ def delete_campaign(
     return None
 
 
-@router.post("/join-by-code", response_model=CampaignJoinResponse)
-def join_campaign_by_code(
-    payload: CampaignJoinRequest,
-    user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    join_code = payload.joinCode.strip().upper()
-    if not join_code:
-        raise HTTPException(status_code=400, detail="Invalid payload")
-    campaign = session.exec(select(Campaign).where(Campaign.join_code == join_code)).first()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Join code not found")
-    gm_member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == campaign.id,
-            CampaignMember.role_mode == RoleMode.GM,
-        )
-    ).first()
-    gm_name = gm_member.display_name if gm_member else None
-    member = session.exec(
-        select(CampaignMember).where(
-            CampaignMember.campaign_id == campaign.id,
-            CampaignMember.user_id == user.id,
-        )
-    ).first()
-    if member:
-        if user.display_name:
-            member.display_name = user.display_name
-        session.add(member)
-        session.commit()
-        session.refresh(member)
-        return CampaignJoinResponse(
-            campaignId=campaign.id,
-            campaignName=campaign.name,
-            gmName=gm_name,
-            memberId=member.id,
-            displayName=member.display_name,
-            roleMode=member.role_mode,
-        )
-    member = CampaignMember(
-        id=str(uuid4()),
-        campaign_id=campaign.id,
-        user_id=user.id,
-        display_name=user.display_name or user.username,
-        role_mode=RoleMode.PLAYER,
-    )
-    session.add(member)
-    session.commit()
-    session.refresh(member)
-    return CampaignJoinResponse(
-        campaignId=campaign.id,
-        campaignName=campaign.name,
-        gmName=gm_name,
-        memberId=member.id,
-        displayName=member.display_name,
-        roleMode=member.role_mode,
-    )

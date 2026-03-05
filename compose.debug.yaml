@@ -1,0 +1,6 @@
+services:
+  limiarcontrol:
+    image: limiarcontrol
+    build:
+      context: .
+      dockerfile: ./Dockerfile

@@ -98,7 +98,7 @@ export const useRollSession = () => {
       });
   }, [selectedSessionId]);
 
-  const roll = (expression: string, label?: string) => {
+  const roll = (expression: string, label?: string, advantage?: "advantage" | "disadvantage" | null) => {
     if (!selectedSessionId) {
       setLastError({ requestId: null, message: "No session selected" });
       return;
@@ -112,6 +112,7 @@ export const useRollSession = () => {
       requestId: nanoid(),
       label: label?.trim() || null,
       expression: expression.trim(),
+      advantage: advantage ?? null,
     };
     const ok = client.send({ type: "roll", payload });
     if (!ok) {

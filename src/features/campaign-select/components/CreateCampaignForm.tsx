@@ -9,7 +9,7 @@ type CreateCampaignFormProps = {
   onCreate: (
     name: string,
     systemType: CampaignSystemType
-  ) => Promise<{ ok: boolean; message?: string }>;
+  ) => Promise<{ ok: boolean; campaignId?: string; message?: string }>;
 };
 
 export const CreateCampaignForm = ({ onCreate }: CreateCampaignFormProps) => {

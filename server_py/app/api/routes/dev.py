@@ -12,7 +12,10 @@ def reset_database(session: Session = Depends(get_session)):
     if settings.app_env != "development":
         raise HTTPException(status_code=403, detail="Forbidden")
     session.exec(text("TRUNCATE TABLE roll_event RESTART IDENTITY CASCADE"))
+    session.exec(text("TRUNCATE TABLE session_state RESTART IDENTITY CASCADE"))
     session.exec(text("TRUNCATE TABLE campaign_session RESTART IDENTITY CASCADE"))
+    session.exec(text("TRUNCATE TABLE party_member RESTART IDENTITY CASCADE"))
+    session.exec(text("TRUNCATE TABLE party RESTART IDENTITY CASCADE"))
     session.exec(text("TRUNCATE TABLE campaign_member RESTART IDENTITY CASCADE"))
     session.exec(text("TRUNCATE TABLE inventoryitem RESTART IDENTITY CASCADE"))
     session.exec(text("TRUNCATE TABLE npc RESTART IDENTITY CASCADE"))

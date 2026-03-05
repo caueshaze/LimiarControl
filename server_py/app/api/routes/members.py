@@ -102,6 +102,7 @@ def list_members(
     return [
         MemberSummary(
             id=entry.id,
+            userId=entry.user_id,
             displayName=entry.display_name,
             roleMode=entry.role_mode,
         )

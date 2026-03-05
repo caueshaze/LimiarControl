@@ -40,7 +40,7 @@ export const RegisterPage = () => {
       data.role
     );
     if (profile) {
-      navigate(profile.role === "GM" ? routes.gmHome : routes.playerHome);
+      navigate(routes.home);
     } else {
       setRegisterError(t("auth.registerError"));
     }
@@ -221,7 +221,7 @@ export const RegisterPage = () => {
                       title: t("auth.devResetSuccess"),
                       description: t("auth.devResetSuccessBody"),
                     });
-                  } catch (error: { message?: string }) {
+                  } catch (error: any) {
                     showToast({
                       variant: "error",
                       title: t("auth.devResetError"),

@@ -14,7 +14,7 @@ class CampaignCreate(BaseModel):
 class CampaignRead(BaseModel):
     id: str
     name: str
-    joinCode: Optional[str] = None
+
     systemType: SystemType
     roleMode: RoleMode
     createdAt: datetime
@@ -24,7 +24,7 @@ class CampaignRead(BaseModel):
 class CampaignOverview(BaseModel):
     id: str
     name: str
-    joinCode: Optional[str] = None
+
     systemType: SystemType
     roleMode: RoleMode
     createdAt: datetime
@@ -32,17 +32,7 @@ class CampaignOverview(BaseModel):
     gmName: Optional[str] = None
 
 
-class CampaignJoinRequest(BaseModel):
-    joinCode: str
 
-
-class CampaignJoinResponse(BaseModel):
-    campaignId: str
-    campaignName: str
-    gmName: Optional[str] = None
-    memberId: str
-    displayName: str
-    roleMode: RoleMode
 
 
 class CampaignUpdate(BaseModel):

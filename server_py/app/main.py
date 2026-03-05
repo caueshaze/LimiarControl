@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Request
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.routes import (
   campaigns_router,
@@ -16,12 +18,18 @@ from app.api.routes import (
   sessions_router,
   auth_router,
   me_router,
+  users_router,
 )
 from app.api.ws import router as ws_router
 from app.core.config import settings
 from app.core.logging import RequestLoggingMiddleware
 
 app = FastAPI()
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FRONTEND_DIST_DIR = REPO_ROOT / "dist"
+FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
+FRONTEND_RESERVED_PREFIXES = {"api", "health", "ws"}
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
@@ -58,9 +66,38 @@ app.include_router(dev_router, prefix="/api/dev", tags=["dev"])
 app.include_router(sessions_router, prefix="/api", tags=["sessions"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
+app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(ws_router, prefix="/ws")
 
 
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+def _get_frontend_response(full_path: str = "") -> FileResponse:
+    normalized_path = full_path.strip("/")
+    if normalized_path:
+        first_segment = normalized_path.split("/", 1)[0]
+        if first_segment in FRONTEND_RESERVED_PREFIXES:
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        candidate = (FRONTEND_DIST_DIR / normalized_path).resolve()
+        if FRONTEND_DIST_DIR not in candidate.parents and candidate != FRONTEND_DIST_DIR:
+            raise HTTPException(status_code=404, detail="Not Found")
+        if candidate.is_file():
+            return FileResponse(candidate)
+
+    if not FRONTEND_INDEX.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(FRONTEND_INDEX)
+
+
+@app.get("/", include_in_schema=False)
+def serve_frontend_root():
+    return _get_frontend_response()
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_frontend(full_path: str):
+    return _get_frontend_response(full_path)

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Limiar favicon">
+  <defs>
+    <linearGradient id="limiar-ring" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a78bfa" />
+      <stop offset="0.55" stop-color="#8b5cf6" />
+      <stop offset="1" stop-color="#5b21b6" />
+    </linearGradient>
+    <radialGradient id="limiar-core" cx="32" cy="30" r="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ddd6fe" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </radialGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#050208" />
+  <path
+    d="M32 9c12.7 0 23 10.3 23 23S44.7 55 32 55 9 44.7 9 32 19.3 9 32 9Zm0 8c-8.3 0-15 6.7-15 15s6.7 15 15 15 15-6.7 15-15-6.7-15-15-15Z"
+    fill="url(#limiar-ring)"
+  />
+  <circle cx="32" cy="32" r="9" fill="url(#limiar-core)" />
+  <path d="M43.5 20.5 48 16" stroke="#c4b5fd" stroke-width="3" stroke-linecap="round" />
+</svg>

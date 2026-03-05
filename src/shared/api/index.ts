@@ -8,3 +8,5 @@ export { membersRepo } from "./membersRepo";
 export { npcsRepo } from "./npcsRepo";
 export { sessionsRepo } from "./sessionsRepo";
 export { preferencesRepo } from "./preferencesRepo";
+export { partiesRepo } from "./partiesRepo";
+export { usersRepo } from "./usersRepo";

@@ -8,6 +8,7 @@ from app.models.npc import NPC
 from app.models.party import Party
 from app.models.party_member import PartyMember
 from app.models.preferences import Preferences
+from app.models.purchase_event import PurchaseEvent
 from app.models.roll_event import RollEvent
 from app.models.session import Session
 from app.models.session_state import SessionState
@@ -23,6 +24,7 @@ __all__ = [
     "Party",
     "PartyMember",
     "Preferences",
+    "PurchaseEvent",
     "RollEvent",
     "Session",
     "SessionState",

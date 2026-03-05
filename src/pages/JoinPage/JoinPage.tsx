@@ -5,10 +5,10 @@ import { useCampaigns } from "../../features/campaign-select";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useToast } from "../../shared/hooks/useToast";
 import { Toast } from "../../shared/ui/Toast";
-import { sessionsRepo } from "../../shared/api/sessionsRepo";
 import { useSession } from "../../features/sessions";
 import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
+import { partiesRepo, type PartyInvite } from "../../shared/api/partiesRepo";
 
 export const JoinPage = () => {
   const { selectCampaign, upsertCampaign } = useCampaigns();
@@ -17,84 +17,73 @@ export const JoinPage = () => {
   const { t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [successDetails, setSuccessDetails] = useState<{ campaign: string; gm?: string | null } | null>(null);
+  const [partyInvites, setPartyInvites] = useState<PartyInvite[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [inviteActionId, setInviteActionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const code = params.get("code");
-    if (code) {
-      setJoinCode(code.toUpperCase());
-    }
-  }, [location.search]);
+    setInvitesLoading(true);
+    partiesRepo
+      .listInvites()
+      .then((data) => {
+        setPartyInvites(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        setPartyInvites([]);
+      })
+      .finally(() => setInvitesLoading(false));
+  }, []);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!joinCode.trim()) {
-      return;
-    }
-    setSuccessMessage(null);
-    setSuccessDetails(null);
-    setLoading(true);
+  const handleAcceptInvite = async (invite: PartyInvite) => {
+    setInviteActionId(invite.party.id);
     try {
-      const response = await campaignsRepo.joinByCode({
-        joinCode: joinCode.trim().toUpperCase(),
-      });
-      const overview = await campaignsRepo.overview(response.campaignId);
+      await partiesRepo.joinInvite(invite.party.id);
+      setPartyInvites((current) => current.filter((item) => item.party.id !== invite.party.id));
+      const overview = await campaignsRepo.overview(invite.party.campaignId);
       upsertCampaign(overview);
-      selectCampaign(response.campaignId);
-      setSelectedSessionId(null);
-      setSuccessMessage(t("join.successDescription"));
-      setSuccessDetails({ campaign: response.campaignName, gm: response.gmName });
+      selectCampaign(invite.party.campaignId);
+      setSelectedSessionId(invite.activeSession?.id ?? null);
       showToast({
         variant: "success",
         title: t("join.successTitle"),
-        description: `${t("join.successDescription")} ${response.campaignName}`,
+        description: `Party ${invite.party.name} accepted.`,
       });
-      window.setTimeout(
-        () => navigate(routes.board.replace(":campaignId", response.campaignId)),
-        700
-      );
-    } catch (error: any) {
-      if (error?.status === 404) {
-        try {
-          const response = await sessionsRepo.join({
-            joinCode: joinCode.trim().toUpperCase(),
-          });
-          const overview = await campaignsRepo.overview(response.campaignId);
-          upsertCampaign(overview);
-          selectCampaign(response.campaignId);
-          setSelectedSessionId(response.sessionId);
-          setSuccessMessage(t("join.successDescription"));
-          setSuccessDetails({ campaign: response.campaignName, gm: response.gmName });
-          showToast({
-            variant: "success",
-            title: t("join.successTitle"),
-            description: `${t("join.successDescription")} ${response.campaignName}`,
-          });
-          window.setTimeout(
-            () => navigate(routes.board.replace(":campaignId", response.campaignId)),
-            700
-          );
-        } catch (innerError: any) {
-          showToast({
-            variant: "error",
-            title: t("join.errorTitle"),
-            description: innerError?.message ?? t("join.errorDescription"),
-          });
-        }
-      } else {
-        showToast({
-          variant: "error",
-          title: t("join.errorTitle"),
-          description: error?.message ?? t("join.errorDescription"),
-        });
+      if (invite.activeSession?.isActive) {
+        window.setTimeout(
+          () => navigate(routes.board.replace(":partyId", invite.party.id)),
+          500
+        );
       }
+    } catch (error: any) {
+      showToast({
+        variant: "error",
+        title: t("join.errorTitle"),
+        description: error?.message ?? t("join.errorDescription"),
+      });
     } finally {
-      setLoading(false);
+      setInviteActionId(null);
+    }
+  };
+
+  const handleDeclineInvite = async (invite: PartyInvite) => {
+    setInviteActionId(invite.party.id);
+    try {
+      await partiesRepo.declineInvite(invite.party.id);
+      setPartyInvites((current) => current.filter((item) => item.party.id !== invite.party.id));
+      showToast({
+        variant: "success",
+        title: t("join.declineSuccess"),
+        description: `Party ${invite.party.name} was declined.`,
+      });
+    } catch (error: any) {
+      showToast({
+        variant: "error",
+        title: t("join.errorTitle"),
+        description: error?.message ?? t("join.errorDescription"),
+      });
+    } finally {
+      setInviteActionId(null);
     }
   };
 
@@ -115,10 +104,7 @@ export const JoinPage = () => {
         <h1 className="mt-2 text-2xl font-semibold">{t("join.subtitle")}</h1>
         <p className="mt-3 text-sm text-slate-400">{t("join.description")}</p>
       </header>
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
-      >
+      <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
         {user?.displayName && (
           <p className="text-xs text-slate-300">
             {t("join.signedInAs")} {user.displayName}
@@ -128,38 +114,54 @@ export const JoinPage = () => {
           <p className="text-slate-200">{t("join.helpTitle")}</p>
           <p className="mt-1">{t("join.helpBody")}</p>
         </div>
-        {successMessage && (
-          <div className="rounded-xl border border-emerald-700 bg-emerald-900/20 px-3 py-2 text-xs text-emerald-200">
-            {successMessage}
-            {successDetails && (
-              <div className="mt-1 text-[11px] text-emerald-100">
-                {successDetails.campaign}
-                {successDetails.gm ? ` · ${t("join.successGm")} ${successDetails.gm}` : ""}
-              </div>
-            )}
-          </div>
+      </div>
+
+      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            {t("join.invitesList")}
+          </p>
+        </header>
+        {invitesLoading && (
+          <p className="text-xs text-slate-400">{t("join.loading")}</p>
         )}
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {t("join.form.code")}
-          </label>
-          <input
-            value={joinCode}
-            onChange={(event) => setJoinCode(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
-            placeholder={t("join.form.codePlaceholder")}
-            autoCapitalize="characters"
-            disabled={loading}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading || !joinCode.trim()}
-          className="w-full rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? t("join.form.submitting") : t("join.form.submit")}
-        </button>
-      </form>
+        {!invitesLoading && partyInvites.length === 0 && (
+          <p className="text-xs text-slate-400">{t("join.empty")}</p>
+        )}
+        {!invitesLoading &&
+          partyInvites.map((invite) => (
+            <div
+              key={invite.party.id}
+              className="rounded-xl border border-slate-800 bg-slate-950/70 p-3"
+            >
+              <p className="text-sm font-semibold text-slate-100">{invite.party.name}</p>
+              <p className="mt-1 text-xs text-slate-400">{invite.campaignName}</p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {invite.activeSession?.isActive
+                  ? `${t("join.activeSession")} #${invite.activeSession.number} ${invite.activeSession.title}`
+                  : t("join.noActiveSession")}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  disabled={inviteActionId === invite.party.id}
+                  onClick={() => handleAcceptInvite(invite)}
+                  className="rounded-full bg-limiar-500 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-60"
+                >
+                  {t("join.accept")}
+                </button>
+                <button
+                  type="button"
+                  disabled={inviteActionId === invite.party.id}
+                  onClick={() => handleDeclineInvite(invite)}
+                  className="rounded-full border border-slate-700 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300 disabled:opacity-60"
+                >
+                  {t("join.decline")}
+                </button>
+              </div>
+            </div>
+          ))}
+      </section>
     </section>
   );
 };

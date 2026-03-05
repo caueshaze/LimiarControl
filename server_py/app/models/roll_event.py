@@ -13,6 +13,7 @@ class RollEvent(SQLModel, table=True):
     id: str | None = Field(default=None, primary_key=True)
     campaign_id: str | None = Field(default=None, foreign_key="campaign.id", index=True)
     session_id: str = Field(foreign_key="campaign_session.id", index=True)
+    user_id: str | None = Field(default=None, foreign_key="app_user.id", index=True)
     author_name: str
     role_mode: RoleMode = Field(sa_column=Column(SAEnum(RoleMode), nullable=False))
     label: str | None = None

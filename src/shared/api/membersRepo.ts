@@ -9,6 +9,7 @@ type MemberProfile = {
 
 type MemberSummary = {
   id: string;
+  userId: string;
   displayName: string;
   roleMode: RoleMode;
 };

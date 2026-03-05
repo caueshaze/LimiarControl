@@ -18,10 +18,10 @@ class PartyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
-    campaignId: str = Field(alias="campaign_id")
-    gmUserId: str = Field(alias="gm_user_id")
+    campaignId: str = Field(validation_alias="campaign_id")
+    gmUserId: str = Field(validation_alias="gm_user_id")
     name: str
-    createdAt: datetime = Field(alias="created_at")
+    createdAt: datetime = Field(validation_alias="created_at")
 
 
 class PartyMemberAdd(BaseModel):
@@ -33,10 +33,12 @@ class PartyMemberAdd(BaseModel):
 class PartyMemberRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    userId: str = Field(alias="user_id")
+    userId: str = Field(validation_alias="user_id")
     role: RoleMode
     status: PartyMemberStatus
-    createdAt: datetime = Field(alias="created_at")
+    createdAt: datetime = Field(validation_alias="created_at")
+    displayName: Optional[str] = Field(default=None, validation_alias="display_name")
+    username: Optional[str] = None
 
 
 class PartyDetail(PartyRead):
@@ -45,4 +47,11 @@ class PartyDetail(PartyRead):
 
 class PartyActiveSession(BaseModel):
     party: PartyRead
+    activeSession: Optional[ActiveSessionRead] = None
+
+
+class PartyInviteRead(BaseModel):
+    party: PartyRead
+    campaignName: str
+    status: PartyMemberStatus
     activeSession: Optional[ActiveSessionRead] = None

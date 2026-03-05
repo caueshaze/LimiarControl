@@ -1,3 +1,5 @@
+import { env } from "../../app/config";
+
 type MessageHandler = (message: unknown) => void;
 type StateHandler = (state: ConnectionState) => void;
 
@@ -89,7 +91,7 @@ class WsClient {
 }
 
 const getWsUrl = (path: string, token?: string | null) => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  const baseUrl = env.VITE_API_BASE_URL;
   if (!baseUrl) {
     throw new Error("Missing API base URL");
   }

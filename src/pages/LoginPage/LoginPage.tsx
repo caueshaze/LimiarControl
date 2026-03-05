@@ -26,7 +26,7 @@ export const LoginPage = () => {
     setLoginError(null);
     const profile = await login(data.username, data.pin);
     if (profile) {
-      navigate(profile.role === "GM" ? routes.gmHome : routes.playerHome);
+      navigate(routes.home);
     } else {
       setLoginError(t("auth.loginError"));
     }

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
 from app.models.campaign import Campaign, RoleMode
+from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session as CampaignSession, SessionStatus
@@ -16,6 +17,7 @@ from app.schemas.party import (
     PartyActiveSession,
     PartyCreate,
     PartyDetail,
+    PartyInviteRead,
     PartyMemberAdd,
     PartyMemberRead,
     PartyRead,
@@ -27,7 +29,7 @@ logger = logging.getLogger("app.parties")
 
 
 def to_active_session_read(
-    entry: CampaignSession, join_code: str | None
+    entry: CampaignSession
 ) -> ActiveSessionRead:
     number = entry.sequence_number if entry.sequence_number is not None else entry.number
     return ActiveSessionRead(
@@ -36,7 +38,6 @@ def to_active_session_read(
         partyId=entry.party_id,
         number=number,
         title=entry.title,
-        joinCode=join_code,
         status=entry.status,
         isActive=entry.status == SessionStatus.ACTIVE,
         startedAt=entry.started_at,
@@ -44,6 +45,38 @@ def to_active_session_read(
         durationSeconds=entry.duration_seconds,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
+    )
+
+
+def ensure_campaign_player_member(
+    campaign_id: str,
+    user_id: str,
+    session: Session,
+):
+    user = session.exec(select(User).where(User.id == user_id)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == campaign_id,
+            CampaignMember.user_id == user_id,
+        )
+    ).first()
+    if member:
+        if not member.display_name:
+            member.display_name = user.display_name or user.username
+            session.add(member)
+        return
+
+    session.add(
+        CampaignMember(
+            id=str(uuid4()),
+            campaign_id=campaign_id,
+            user_id=user_id,
+            display_name=user.display_name or user.username,
+            role_mode=RoleMode.PLAYER,
+        )
     )
 
 
@@ -59,6 +92,60 @@ def create_party(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     require_gm(payload.campaignId, user, session)
+    existing_party = session.exec(
+        select(Party).where(Party.campaign_id == payload.campaignId)
+    ).first()
+    if existing_party:
+        if existing_party.gm_user_id != user.id:
+            raise HTTPException(status_code=409, detail="Party already exists for campaign")
+
+        gm_member = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == existing_party.id,
+                PartyMember.user_id == user.id,
+            )
+        ).first()
+        if not gm_member:
+            session.add(
+                PartyMember(
+                    party_id=existing_party.id,
+                    user_id=user.id,
+                    role=RoleMode.GM,
+                    status=PartyMemberStatus.JOINED,
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
+
+        player_ids = {
+            player_id for player_id in (payload.playerIds or []) if player_id != user.id
+        }
+        for player_id in player_ids:
+            ensure_campaign_player_member(payload.campaignId, player_id, session)
+            entry = session.exec(
+                select(PartyMember).where(
+                    PartyMember.party_id == existing_party.id,
+                    PartyMember.user_id == player_id,
+                )
+            ).first()
+            if entry:
+                if entry.role != RoleMode.GM:
+                    entry.role = RoleMode.PLAYER
+                    entry.status = PartyMemberStatus.INVITED
+                    session.add(entry)
+                continue
+            session.add(
+                PartyMember(
+                    party_id=existing_party.id,
+                    user_id=player_id,
+                    role=RoleMode.PLAYER,
+                    status=PartyMemberStatus.INVITED,
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
+
+        session.commit()
+        session.refresh(existing_party)
+        return PartyRead.model_validate(existing_party)
 
     name = payload.name.strip()
     if not name:
@@ -72,8 +159,6 @@ def create_party(
         created_at=datetime.now(timezone.utc),
     )
     session.add(party)
-    session.commit()
-    session.refresh(party)
 
     gm_member = PartyMember(
         party_id=party.id,
@@ -84,10 +169,11 @@ def create_party(
     )
     session.add(gm_member)
 
-    player_ids = payload.playerIds or []
+    player_ids = {
+        player_id for player_id in (payload.playerIds or []) if player_id != user.id
+    }
     for player_id in player_ids:
-        if player_id == user.id:
-            continue
+        ensure_campaign_player_member(payload.campaignId, player_id, session)
         entry = PartyMember(
             party_id=party.id,
             user_id=player_id,
@@ -98,6 +184,7 @@ def create_party(
         session.add(entry)
 
     session.commit()
+    session.refresh(party)
     return PartyRead.model_validate(party)
 
 
@@ -112,7 +199,10 @@ def list_my_parties(
     parties_as_member = session.exec(
         select(Party)
         .join(PartyMember, PartyMember.party_id == Party.id)
-        .where(PartyMember.user_id == user.id)
+        .where(
+            PartyMember.user_id == user.id,
+            PartyMember.status == PartyMemberStatus.JOINED,
+        )
     ).all()
     by_id = {party.id: party for party in parties_as_gm + parties_as_member}
     return [PartyRead.model_validate(party) for party in by_id.values()]
@@ -140,17 +230,51 @@ def list_my_parties_active_sessions(
         active = session.exec(
             select(CampaignSession).where(
                 CampaignSession.party_id == party.id,
-                CampaignSession.status == SessionStatus.ACTIVE,
+                CampaignSession.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
             )
         ).first()
-        join_code = active.join_code if active and party.gm_user_id == user.id else None
         results.append(
             PartyActiveSession(
                 party=PartyRead.model_validate(party),
-                activeSession=to_active_session_read(active, join_code) if active else None,
+                activeSession=to_active_session_read(active) if active else None,
             )
         )
     return results
+
+
+@router.get("/me/party-invites", response_model=list[PartyInviteRead])
+def list_my_party_invites(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    invited_entries = session.exec(
+        select(PartyMember, Party, Campaign)
+        .join(Party, PartyMember.party_id == Party.id)
+        .join(Campaign, Party.campaign_id == Campaign.id)
+        .where(
+            PartyMember.user_id == user.id,
+            PartyMember.role == RoleMode.PLAYER,
+            PartyMember.status == PartyMemberStatus.INVITED,
+        )
+    ).all()
+
+    output: list[PartyInviteRead] = []
+    for party_member, party, campaign in invited_entries:
+        active = session.exec(
+            select(CampaignSession).where(
+                CampaignSession.party_id == party.id,
+                CampaignSession.status == SessionStatus.ACTIVE,
+            )
+        ).first()
+        output.append(
+            PartyInviteRead(
+                party=PartyRead.model_validate(party),
+                campaignName=campaign.name,
+                status=party_member.status,
+                activeSession=to_active_session_read(active) if active else None,
+            )
+        )
+    return output
 
 
 @router.post("/parties/{party_id}/members", response_model=PartyMemberRead)
@@ -165,6 +289,9 @@ def add_party_member(
         raise HTTPException(status_code=404, detail="Party not found")
     if party.gm_user_id != user.id:
         raise HTTPException(status_code=403, detail="GM required")
+
+    if payload.userId != user.id:
+        ensure_campaign_player_member(party.campaign_id, payload.userId, session)
 
     existing = session.exec(
         select(PartyMember).where(
@@ -210,12 +337,23 @@ def get_party_details(
     ).first()
     if party.gm_user_id != user.id and not is_member:
         raise HTTPException(status_code=403, detail="Not a party member")
-    members = session.exec(
-        select(PartyMember).where(PartyMember.party_id == party_id)
-    ).all()
+    members_query = (
+        select(PartyMember, User)
+        .join(User, PartyMember.user_id == User.id)
+        .where(PartyMember.party_id == party_id)
+    )
+    results = session.exec(members_query).all()
+    
+    formatted_members = []
+    for member, member_user in results:
+        data = member.model_dump()
+        data["displayName"] = member_user.display_name
+        data["username"] = member_user.username
+        formatted_members.append(PartyMemberRead(**data))
+
     return PartyDetail(
         **PartyRead.model_validate(party).model_dump(),
-        members=[PartyMemberRead.model_validate(entry) for entry in members],
+        members=formatted_members,
     )
 
 

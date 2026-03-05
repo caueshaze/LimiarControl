@@ -1,3 +1,4 @@
+import { env } from "../../app/config";
 import { getToken } from "../auth/tokenStore";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -7,12 +8,12 @@ export type HttpError = {
   message: string;
 };
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
 const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
+  const baseUrl = env.VITE_API_BASE_URL;
   if (!baseUrl) {
     throw { status: 0, message: "Missing API base URL" } satisfies HttpError;
   }
+
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) {
@@ -39,7 +40,9 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
     } catch {
       // ignore JSON errors
     }
-    throw { status: response.status, message } satisfies HttpError;
+    const err = new Error(message) as Error & HttpError;
+    err.status = response.status;
+    throw err;
   }
 
   if (response.status === 204) {

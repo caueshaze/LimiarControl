@@ -117,10 +117,10 @@ export const CatalogPage = () => {
         <p className="mt-3 text-sm text-slate-400">{t("catalog.description")}</p>
         <div className="mt-4">
           <Link
-            to={routes.gmDashboard.replace(":campaignId", selectedCampaignId)}
+            to={routes.home}
             className="inline-flex rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-800"
           >
-            ← Back to GM dashboard
+            ← Home
           </Link>
         </div>
       </header>

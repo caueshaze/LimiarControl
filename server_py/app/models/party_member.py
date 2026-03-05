@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 
@@ -22,7 +24,14 @@ class PartyMember(SQLModel, table=True):
     role: RoleMode
     status: PartyMemberStatus = Field(
         default=PartyMemberStatus.JOINED,
-        sa_column=Column(SAEnum(PartyMemberStatus), nullable=False),
+        sa_column=Column(
+            SAEnum(
+                PartyMemberStatus,
+                name="partymemberstatus",
+                values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            ),
+            nullable=False,
+        ),
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())

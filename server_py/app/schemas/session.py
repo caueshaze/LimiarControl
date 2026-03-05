@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
@@ -13,7 +13,6 @@ class SessionRead(BaseModel):
     partyId: Optional[str] = None
     number: int
     title: str
-    joinCode: Optional[str] = None
     status: SessionStatus
     isActive: bool
     startedAt: Optional[datetime] = None
@@ -22,19 +21,6 @@ class SessionRead(BaseModel):
     createdAt: datetime
     updatedAt: Optional[datetime]
 
-
-class SessionJoinRequest(BaseModel):
-    joinCode: str
-
-
-class SessionJoinResponse(BaseModel):
-    campaignId: str
-    campaignName: str
-    gmName: Optional[str] = None
-    sessionId: str
-    memberId: str
-    displayName: str
-    roleMode: RoleMode
 
 
 class SessionActivateRequest(BaseModel):
@@ -50,13 +36,45 @@ class SessionCommandRequest(BaseModel):
     payload: Optional[dict] = None
 
 
+class ManualRollRequest(BaseModel):
+    expression: str
+    result: int
+    label: Optional[str] = None
+
+
+class RollActivityEvent(BaseModel):
+    type: Literal["roll"] = "roll"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    expression: str
+    results: List[int]
+    total: int
+    label: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class PurchaseActivityEvent(BaseModel):
+    type: Literal["purchase"] = "purchase"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    itemName: str
+    quantity: int
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+ActivityEvent = Union[RollActivityEvent, PurchaseActivityEvent]
+
+
 class ActiveSessionRead(BaseModel):
     id: str
     campaignId: str
     partyId: Optional[str] = None
     number: int
     title: str
-    joinCode: Optional[str] = None
     status: SessionStatus
     isActive: bool
     startedAt: Optional[datetime] = None

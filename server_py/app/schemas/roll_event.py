@@ -16,6 +16,7 @@ class RollEventRead(BaseModel):
     id: str
     campaignId: str
     sessionId: str
+    userId: Optional[str]
     authorName: str
     roleMode: RoleMode
     label: Optional[str]

@@ -33,6 +33,16 @@ type CampaignContextValue = {
   upsertCampaign: (campaign: Campaign) => void;
   createCampaign: (name: string, systemType: CampaignSystemType) => Promise<{
     ok: boolean;
+    campaignId?: string;
+    message?: string;
+  }>;
+  updateCampaign: (
+    campaignId: string,
+    name: string,
+    systemType: CampaignSystemType
+  ) => Promise<{
+    ok: boolean;
+    campaign?: Campaign;
     message?: string;
   }>;
   selectCampaign: (campaignId: string) => void;
@@ -107,8 +117,12 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
 
     const exists = campaigns.some((campaign) => campaign.id === selectedCampaignId);
     if (!exists) {
-      setSelectedCampaignId(null);
-      preferencesRepo.update({ selectedCampaignId: null }).catch(() => { });
+      // Only clear if campaigns loaded and non-empty (avoid clearing when list is still populating)
+      if (campaigns.length > 0) {
+        setSelectedCampaignId(null);
+        // Do NOT call preferencesRepo here — this fires when the campaign is a player-only campaign
+        // (not in /me/campaigns), which would cause an infinite PUT loop with PlayerBoardPage.
+      }
     }
   }, [campaigns, campaignsLoaded, selectedCampaignId]);
 
@@ -126,7 +140,12 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
         .create({ name: name.trim(), system: systemType })
         .then((campaign) => {
           setCampaigns((current) => [campaign, ...current]);
-          return { ok: true };
+          setSelectedCampaignId(campaign.id);
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(storageKeys.selectedCampaignId, campaign.id);
+          }
+          preferencesRepo.update({ selectedCampaignId: campaign.id }).catch(() => {});
+          return { ok: true, campaignId: campaign.id };
         })
         .catch((error: { message?: string }) => ({
           ok: false,
@@ -137,12 +156,37 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const selectCampaign = useCallback((campaignId: string) => {
+    if (!campaignId || campaignId === "undefined" || selectedCampaignId === campaignId) {
+      return;
+    }
     setSelectedCampaignId(campaignId);
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(storageKeys.selectedCampaignId, campaignId);
     }
     preferencesRepo.update({ selectedCampaignId: campaignId }).catch(() => { });
-  }, []);
+  }, [selectedCampaignId]);
+
+  const updateCampaign = useCallback(
+    async (campaignId: string, name: string, systemType: CampaignSystemType) => {
+      if (!campaignId || !name.trim()) {
+        return { ok: false, message: "Invalid payload" };
+      }
+
+      return campaignsRepo
+        .update(campaignId, { name: name.trim(), system: systemType })
+        .then((campaign) => {
+          setCampaigns((current) =>
+            current.map((entry) => (entry.id === campaign.id ? campaign : entry))
+          );
+          return { ok: true, campaign };
+        })
+        .catch((error: { message?: string }) => ({
+          ok: false,
+          message: error?.message ?? "Failed to update campaign",
+        }));
+    },
+    []
+  );
 
   const setSelectedCampaignLocal = useCallback((campaignId: string | null) => {
     setSelectedCampaignId(campaignId);
@@ -189,6 +233,7 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
       refreshCampaigns,
       upsertCampaign,
       createCampaign,
+      updateCampaign,
       selectCampaign,
       setSelectedCampaignLocal,
       clearSelectedCampaign,
@@ -202,6 +247,7 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
       refreshCampaigns,
       upsertCampaign,
       createCampaign,
+      updateCampaign,
       selectCampaign,
       setSelectedCampaignLocal,
       clearSelectedCampaign,

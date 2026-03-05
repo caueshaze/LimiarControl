@@ -1,20 +1,21 @@
 export const routes = {
   root: "/",
   home: "/home",
-  gmHome: "/home/gm",
-  playerHome: "/home/player",
+  gmHome: "/gm",
   login: "/login",
   register: "/register",
-  join: "/join",
-  campaignHome: "/campaign",
-  campaigns: "/campaigns",
-  campaignDetails: "/campaigns/:campaignId",
-  campaignSessions: "/campaigns/:campaignId/sessions",
-  gmDashboard: "/campaigns/:campaignId/dashboard",
-  board: "/board/:campaignId",
-  shop: "/shop",
+  join: "/join", // Legacy URL
+
+  // GM Routes
+  campaigns: "/gm/campaigns",
+  campaignEdit: "/gm/campaigns/:campaignId",
+  partyDetails: "/gm/parties/:partyId",
+  campaignDashboard: "/gm/campaigns/:campaignId/dashboard",
+
+  // Game/Runtime Board
+  playerPartyDetails: "/parties/:partyId",
+  board: "/board/:partyId",
+
   catalog: "/catalog",
-  inventory: "/inventory",
   npcs: "/npcs",
-  rolls: "/rolls",
 } as const;

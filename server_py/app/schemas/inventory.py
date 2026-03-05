@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class InventoryRead(BaseModel):
     id: str
     campaignId: str
+    partyId: Optional[str]
     memberId: str
     itemId: str
     quantity: int

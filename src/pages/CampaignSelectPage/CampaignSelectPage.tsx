@@ -3,8 +3,9 @@ import {
   CreateCampaignForm,
   useCampaigns,
 } from "../../features/campaign-select";
+import type { CampaignSystemType } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 
 export const CampaignSelectPage = () => {
@@ -15,6 +16,15 @@ export const CampaignSelectPage = () => {
     selectCampaign,
   } = useCampaigns();
   const { t } = useLocale();
+  const navigate = useNavigate();
+
+  const handleCreateCampaign = async (name: string, system: CampaignSystemType) => {
+    const result = await createCampaign(name, system);
+    if (result.ok && result.campaignId) {
+      navigate(routes.campaignEdit.replace(":campaignId", result.campaignId));
+    }
+    return result;
+  };
 
   return (
     <section className="space-y-8">
@@ -44,10 +54,10 @@ export const CampaignSelectPage = () => {
               </div>
               {selectedCampaignId && (
                 <Link
-                  to={routes.campaignSessions.replace(":campaignId", selectedCampaignId)}
+                  to={routes.campaignEdit.replace(":campaignId", selectedCampaignId)}
                   className="rounded-full border border-limiar-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-limiar-100 hover:border-limiar-300"
                 >
-                  {t("home.gm.ctaSessions")}
+                  Party Center
                 </Link>
               )}
             </div>
@@ -62,7 +72,7 @@ export const CampaignSelectPage = () => {
         </div>
 
         <div className="space-y-6">
-          <CreateCampaignForm onCreate={createCampaign} />
+          <CreateCampaignForm onCreate={handleCreateCampaign} />
 
           {selectedCampaignId && (
             <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
@@ -74,13 +84,13 @@ export const CampaignSelectPage = () => {
               </p>
               <div className="mt-4 grid gap-3">
                 <Link
-                  to={routes.campaignSessions.replace(":campaignId", selectedCampaignId)}
+                  to={routes.campaignEdit.replace(":campaignId", selectedCampaignId)}
                   className="flex w-full items-center justify-center rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-slate-100/10 hover:bg-white"
                 >
-                  {t("home.gm.ctaSessions")}
+                  Party Center
                 </Link>
                 <Link
-                  to={routes.campaignDetails.replace(":campaignId", selectedCampaignId)}
+                  to={routes.campaignEdit.replace(":campaignId", selectedCampaignId)}
                   className="flex w-full items-center justify-center rounded-xl border border-slate-700 px-4 py-3 text-sm font-semibold text-slate-200 hover:border-slate-500"
                 >
                   {t("campaign.ctaConfig")}

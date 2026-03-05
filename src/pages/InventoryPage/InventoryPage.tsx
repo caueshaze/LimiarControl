@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useEffect, useState } from "react";
 import { useShop } from "../../features/shop";
@@ -13,12 +13,14 @@ import type { RoleMode } from "../../shared/types/role";
 export const InventoryPage = () => {
   const { items, selectedCampaignId } = useShop();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const partyId = searchParams.get("partyId") ?? null;
   const isGm = user?.role === "GM";
   const [members, setMembers] = useState<Array<{ id: string; displayName: string; roleMode: RoleMode }>>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const { inventory, inventoryLoading, inventoryError, toggleEquipped } =
-    useInventory({ memberId: isGm ? selectedMemberId : undefined });
+    useInventory({ memberId: isGm ? selectedMemberId : undefined, partyId });
   const { t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
 
@@ -105,13 +107,14 @@ export const InventoryPage = () => {
           {t("inventory.description")}
         </p>
         <div className="mt-4">
-            <Link
-              to={
-                isGm && selectedCampaignId
-                  ? routes.gmDashboard.replace(":campaignId", selectedCampaignId)
+          <Link
+            to={
+              isGm && selectedCampaignId
+                ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
                 : selectedCampaignId
-                  ? routes.board.replace(":campaignId", selectedCampaignId)
-                  : routes.playerHome
+                  // Player inventory path fallback since we don't have partyId here right now. Let's just point them home.
+                  ? routes.home
+                  : routes.home
             }
             className="inline-flex rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-800"
           >

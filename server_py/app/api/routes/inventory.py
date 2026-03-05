@@ -24,6 +24,7 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
     return InventoryRead(
         id=entry.id,
         campaignId=entry.campaign_id,
+        partyId=entry.party_id,
         memberId=entry.member_id,
         itemId=entry.item_id,
         quantity=entry.quantity,
@@ -55,6 +56,7 @@ def resolve_party_id_for_campaign(
 def list_inventory(
     campaign_id: str,
     memberId: str | None = Query(default=None),
+    partyId: str | None = Query(default=None),
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -72,10 +74,13 @@ def list_inventory(
     target_member_id = member.id
     if member.role_mode == RoleMode.GM and memberId:
         target_member_id = memberId
-    statement = select(InventoryItem).where(
+    filters = [
         InventoryItem.campaign_id == campaign_id,
         InventoryItem.member_id == target_member_id,
-    )
+    ]
+    if partyId:
+        filters.append(InventoryItem.party_id == partyId)
+    statement = select(InventoryItem).where(*filters)
     entries = session.exec(statement).all()
     return [to_inventory_read(entry) for entry in entries]
 

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
@@ -8,8 +8,10 @@ import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 
 export const CampaignHomePage = () => {
-  const { selectedCampaign, selectedCampaignId } = useCampaigns();
+  const { campaignId } = useParams<{ campaignId: string }>();
+  const { selectedCampaign, selectedCampaignId, selectCampaign } = useCampaigns();
   const { t } = useLocale();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role ?? "PLAYER";
   const [gmName, setGmName] = useState<string | null>(null);
@@ -17,14 +19,27 @@ export const CampaignHomePage = () => {
   const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const isGm = role === "GM";
+  const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
 
   useEffect(() => {
-    if (!selectedCampaignId) {
+    if (!effectiveCampaignId) {
+      return;
+    }
+    if (selectedCampaignId !== effectiveCampaignId) {
+      selectCampaign(effectiveCampaignId);
+    }
+  }, [effectiveCampaignId, selectedCampaignId, selectCampaign]);
+
+  useEffect(() => {
+    if (!effectiveCampaignId) {
       setGmName(null);
+      setOverviewName(null);
+      setOverviewSystem(null);
+      setOverviewError(null);
       return;
     }
     campaignsRepo
-      .overview(selectedCampaignId)
+      .overview(effectiveCampaignId)
       .then((data) => {
         setGmName(data.gmName ?? null);
         setOverviewName(data.name);
@@ -37,7 +52,7 @@ export const CampaignHomePage = () => {
         setOverviewSystem(null);
         setOverviewError(error?.message ?? "Failed to load campaign");
       });
-  }, [selectedCampaignId]);
+  }, [effectiveCampaignId]);
 
   return (
     <section className="space-y-6">
@@ -65,14 +80,15 @@ export const CampaignHomePage = () => {
               </p>
             )}
           </div>
-          {selectedCampaignId && (
-            <Link
-              to={routes.campaignSessions.replace(":campaignId", selectedCampaignId)}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
               className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
             >
-              {t("home.gm.ctaSessions")}
-            </Link>
-          )}
+              Voltar
+            </button>
+          </div>
         </div>
         <p className="mt-4 text-sm text-slate-400">
           {t("campaignHome.description")}
@@ -107,26 +123,6 @@ export const CampaignHomePage = () => {
         </div>
       )}
 
-      {isGm && (
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-                {t("campaignHome.inventoryTitle")}
-              </p>
-              <p className="mt-2 text-sm text-slate-400">
-                {t("campaignHome.inventoryDescription")}
-              </p>
-            </div>
-            <Link
-              to={routes.inventory}
-              className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
-            >
-              {t("campaignHome.inventory")}
-            </Link>
-          </div>
-        </div>
-      )}
     </section>
   );
 };

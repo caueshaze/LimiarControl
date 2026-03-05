@@ -3,8 +3,8 @@ export type Session = {
   campaignId: string;
   number: number;
   title: string;
-  joinCode?: string | null;
-  status?: "ACTIVE" | "CLOSED";
+
+  status?: "LOBBY" | "ACTIVE" | "CLOSED";
   isActive?: boolean;
   startedAt?: string | null;
   endedAt?: string | null;

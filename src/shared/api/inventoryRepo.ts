@@ -13,10 +13,13 @@ type InventoryBuyPayload = {
 };
 
 export const inventoryRepo = {
-  list: (campaignId: string, memberId?: string | null) =>
-    http.get<InventoryItem[]>(
-      `/campaigns/${campaignId}/inventory${memberId ? `?memberId=${memberId}` : ""}`
-    ),
+  list: (campaignId: string, memberId?: string | null, partyId?: string | null) => {
+    const params = new URLSearchParams();
+    if (memberId) params.set("memberId", memberId);
+    if (partyId) params.set("partyId", partyId);
+    const qs = params.toString();
+    return http.get<InventoryItem[]>(`/campaigns/${campaignId}/inventory${qs ? `?${qs}` : ""}`);
+  },
   buy: (sessionId: string, payload: InventoryBuyPayload) =>
     http.post<InventoryItem>(`/sessions/${sessionId}/shop/buy`, payload),
   update: (campaignId: string, invId: string, payload: InventoryUpdatePayload) =>

@@ -9,6 +9,7 @@ from sqlmodel import Field, SQLModel
 class InventoryItem(SQLModel, table=True):
     id: str | None = Field(default=None, primary_key=True)
     campaign_id: str = Field(foreign_key="campaign.id", index=True)
+    party_id: str | None = Field(default=None, foreign_key="party.id", index=True)
     member_id: str = Field(foreign_key="campaign_member.id", index=True)
     item_id: str = Field(foreign_key="item.id", index=True)
     quantity: int = Field(default=1)

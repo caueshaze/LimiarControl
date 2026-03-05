@@ -1,30 +1,36 @@
+# ======================
 # Python
-.venv/
-venv/
-__pycache__/
-*.pyc
-.env
-
-# Node
-node_modules/
-dist/
-build/
-.vite/
-
-# OS / tooling
-.DS_Store
-Thumbs.db
-
-# Python
+# ======================
 .venv/
 venv/
 __pycache__/
 *.pyc
 *.egg-info/
+*.log
+*.sqlite3
+*.db
 
-# Node
+# ======================
+# Environment
+# ======================
+.env
+
+# ======================
+# Node / Frontend
+# ======================
 node_modules/
 dist/
+build/
+.vite/
 
-# env
-.env
+# ======================
+# IDE / OS
+# ======================
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ======================
+# Misc
+# ======================
+.claude/

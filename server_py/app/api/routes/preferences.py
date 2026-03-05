@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
@@ -35,9 +36,19 @@ def update_preferences(
         prefs = Preferences(
             user_id=user.id, selected_campaign_id=payload.selectedCampaignId
         )
+        session.add(prefs)
     else:
         prefs.selected_campaign_id = payload.selectedCampaignId
-    session.add(prefs)
-    session.commit()
-    session.refresh(prefs)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        prefs = session.exec(
+            select(Preferences).where(Preferences.user_id == user.id)
+        ).first()
+        if prefs:
+            prefs.selected_campaign_id = payload.selectedCampaignId
+            session.add(prefs)
+            session.commit()
+
     return PreferencesRead(selectedCampaignId=prefs.selected_campaign_id)

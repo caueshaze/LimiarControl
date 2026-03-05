@@ -1,98 +1,35 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { useEffect } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../../shared/ui/AppLayout";
 import { APP_NAME } from "../config/appConfig";
 import {
   CampaignHomePage,
   CampaignSelectPage,
   CatalogPage,
-  GmHomePage,
   GmDashboardPage,
-  GmSessionsPage,
-  InventoryPage,
+  GmHomePage,
   JoinPage,
   LoginPage,
-  RegisterPage,
   NpcsPage,
-  RollsPage,
-  ShopPage,
   PlayerBoardPage,
   PlayerHomePage,
+  RegisterPage,
+  PartyDetailsPage,
+  PlayerPartyPage,
 } from "../../pages";
 import { routes } from "./routes";
-import { useCampaignMember, useCampaigns } from "../../features/campaign-select";
 import { RequireAuth, useAuth } from "../../features/auth";
 import type { RoleMode } from "../../shared/types/role";
 
-const CampaignHomeRoute = ({ userRole }: { userRole: RoleMode }) => {
-  const { selectedCampaignId } = useCampaigns();
-  const { memberRole, loading: memberLoading, loaded: memberLoaded } =
-    useCampaignMember(selectedCampaignId);
-  if (userRole !== "PLAYER") {
-    return <Navigate to={routes.gmHome} replace />;
-  }
-  if (!selectedCampaignId) {
-    return <Navigate to={routes.join} replace />;
-  }
-  if (memberLoading || !memberLoaded) {
-    return null;
-  }
-  if (!memberRole) {
-    return <Navigate to={routes.join} replace />;
-  }
-  return <Navigate to={routes.board.replace(":campaignId", selectedCampaignId)} replace />;
-};
-
-const RequireCampaignGmParam = ({ children }: { children: ReactNode }) => {
-  const { campaignId } = useParams<{ campaignId: string }>();
-  const { selectedCampaignId, selectCampaign } = useCampaigns();
-  const { memberRole, loading: memberLoading, loaded: memberLoaded } =
-    useCampaignMember(campaignId);
-  if (!campaignId) {
-    return <Navigate to={routes.gmHome} replace />;
-  }
-  useEffect(() => {
-    if (campaignId && selectedCampaignId !== campaignId) {
-      selectCampaign(campaignId);
-    }
-  }, [campaignId, selectedCampaignId, selectCampaign]);
-  if (memberLoading || !memberLoaded) {
-    return null;
-  }
-  if (!memberRole || memberRole !== "GM") {
-    return <Navigate to={routes.gmHome} replace />;
+const RequireGmRole = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
+  if (user?.role !== "GM") {
+    return <Navigate to={routes.home} replace />;
   }
   return <>{children}</>;
 };
 
-const RequireCampaignPlayerParam = ({ children }: { children: ReactNode }) => {
-  const { campaignId } = useParams<{ campaignId: string }>();
-  const { selectedCampaignId, setSelectedCampaignLocal } = useCampaigns();
-  const { memberRole, loading: memberLoading, loaded: memberLoaded } =
-    useCampaignMember(campaignId);
-  if (!campaignId) {
-    return <Navigate to={routes.join} replace />;
-  }
-  useEffect(() => {
-    if (campaignId && selectedCampaignId !== campaignId) {
-      setSelectedCampaignLocal(campaignId);
-    }
-  }, [campaignId, selectedCampaignId, setSelectedCampaignLocal]);
-  if (memberLoading || !memberLoaded) {
-    return null;
-  }
-  if (!memberRole) {
-    return <Navigate to={routes.join} replace />;
-  }
-  return <>{children}</>;
-};
-
-const RootRoute = ({ userRole }: { userRole: RoleMode }) => {
-  return (
-    <Navigate to={userRole === "PLAYER" ? routes.playerHome : routes.gmHome} replace />
-  );
-};
+const RootRoute = () => <Navigate to={routes.home} replace />;
 
 export const AppRoutes = () => {
   const { user, logout } = useAuth();
@@ -106,7 +43,7 @@ export const AppRoutes = () => {
           path={routes.root}
           element={
             <RequireAuth>
-              <RootRoute userRole={userRole} />
+              <RootRoute />
             </RequireAuth>
           }
         />
@@ -114,7 +51,7 @@ export const AppRoutes = () => {
           path={routes.home}
           element={
             <RequireAuth>
-              <RootRoute userRole={userRole} />
+              {userRole === "PLAYER" ? <PlayerHomePage /> : <GmHomePage />}
             </RequireAuth>
           }
         />
@@ -122,27 +59,9 @@ export const AppRoutes = () => {
           path={routes.gmHome}
           element={
             <RequireAuth>
-              {userRole === "GM" ? <GmHomePage /> : <Navigate to={routes.playerHome} replace />}
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.playerHome}
-          element={
-            <RequireAuth>
-              {userRole === "PLAYER" ? (
-                <PlayerHomePage />
-              ) : (
-                <Navigate to={routes.gmHome} replace />
-              )}
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.campaignHome}
-          element={
-            <RequireAuth>
-              <CampaignHomeRoute userRole={userRole} />
+              <RequireGmRole>
+                <Navigate to={routes.home} replace />
+              </RequireGmRole>
             </RequireAuth>
           }
         />
@@ -150,24 +69,33 @@ export const AppRoutes = () => {
           path={routes.campaigns}
           element={
             <RequireAuth>
-              {userRole === "PLAYER" ? (
-                <Navigate to={routes.playerHome} replace />
-              ) : (
+              <RequireGmRole>
                 <CampaignSelectPage />
-              )}
+              </RequireGmRole>
             </RequireAuth>
           }
         />
         <Route
-          path={routes.campaignDetails}
+          path={routes.campaignEdit}
           element={
             <RequireAuth>
-              <RequireCampaignGmParam>
+              <RequireGmRole>
                 <CampaignHomePage />
-              </RequireCampaignGmParam>
+              </RequireGmRole>
             </RequireAuth>
           }
         />
+        <Route
+          path={routes.partyDetails}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                <PartyDetailsPage />
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+
         <Route
           path={routes.join}
           element={
@@ -177,46 +105,14 @@ export const AppRoutes = () => {
           }
         />
         <Route
-          path={routes.shop}
+          path={routes.playerPartyDetails}
           element={
             <RequireAuth>
-              {userRole === "GM" ? (
-                <ShopPage />
+              {userRole === "PLAYER" ? (
+                <PlayerPartyPage />
               ) : (
-                <Navigate to={routes.campaignHome} replace />
+                <Navigate to={routes.gmHome} replace />
               )}
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.rolls}
-          element={
-            <RequireAuth>
-              {userRole === "GM" ? (
-                <RollsPage />
-              ) : (
-                <Navigate to={routes.campaignHome} replace />
-              )}
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.catalog}
-          element={
-            <RequireAuth>
-              <RequireCampaignGmParam>
-                <CatalogPage />
-              </RequireCampaignGmParam>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.campaignSessions}
-          element={
-            <RequireAuth>
-              <RequireCampaignGmParam>
-                <GmSessionsPage />
-              </RequireCampaignGmParam>
             </RequireAuth>
           }
         />
@@ -225,9 +121,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {userRole === "PLAYER" ? (
-                <RequireCampaignPlayerParam>
-                  <PlayerBoardPage />
-                </RequireCampaignPlayerParam>
+                <PlayerBoardPage />
               ) : (
                 <Navigate to={routes.gmHome} replace />
               )}
@@ -235,20 +129,12 @@ export const AppRoutes = () => {
           }
         />
         <Route
-          path={routes.gmDashboard}
+          path={routes.catalog}
           element={
             <RequireAuth>
-              <RequireCampaignGmParam>
-                <GmDashboardPage />
-              </RequireCampaignGmParam>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.inventory}
-          element={
-            <RequireAuth>
-              <InventoryPage />
+              <RequireGmRole>
+                <CatalogPage />
+              </RequireGmRole>
             </RequireAuth>
           }
         />
@@ -256,9 +142,19 @@ export const AppRoutes = () => {
           path={routes.npcs}
           element={
             <RequireAuth>
-              <RequireCampaignGmParam>
+              <RequireGmRole>
                 <NpcsPage />
-              </RequireCampaignGmParam>
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.campaignDashboard}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                <GmDashboardPage />
+              </RequireGmRole>
             </RequireAuth>
           }
         />

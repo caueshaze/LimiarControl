@@ -24,5 +24,7 @@ export type Campaign = {
   id: string;
   name: string;
   systemType: CampaignSystemType;
+  roleMode?: "GM" | "PLAYER";
   createdAt: string;
+  updatedAt?: string | null;
 };
