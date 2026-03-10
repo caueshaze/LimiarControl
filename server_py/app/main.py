@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.routes import (
   campaigns_router,
+  centrifugo_router,
+  character_sheets_router,
   dev_router,
   inventory_router,
   items_router,
@@ -23,6 +25,7 @@ from app.api.routes import (
 from app.api.ws import router as ws_router
 from app.core.config import settings
 from app.core.logging import RequestLoggingMiddleware
+from app.services.centrifugo import centrifugo
 
 app = FastAPI()
 
@@ -61,18 +64,25 @@ app.include_router(inventory_router, prefix="/api/campaigns", tags=["inventory"]
 app.include_router(npcs_router, prefix="/api/campaigns", tags=["npcs"])
 app.include_router(members_router, prefix="/api/campaigns", tags=["members"])
 app.include_router(parties_router, prefix="/api", tags=["parties"])
+app.include_router(character_sheets_router, prefix="/api", tags=["character-sheets"])
 app.include_router(preferences_router, prefix="/api", tags=["preferences"])
 app.include_router(dev_router, prefix="/api/dev", tags=["dev"])
 app.include_router(sessions_router, prefix="/api", tags=["sessions"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
+app.include_router(centrifugo_router, prefix="/api", tags=["centrifugo"])
 app.include_router(ws_router, prefix="/ws")
 
 
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    await centrifugo.close()
 
 
 def _get_frontend_response(full_path: str = "") -> FileResponse:

@@ -36,6 +36,12 @@ class SessionCommandRequest(BaseModel):
     payload: Optional[dict] = None
 
 
+class RollRequest(BaseModel):
+    expression: str
+    label: Optional[str] = None
+    advantage: Optional[Literal["advantage", "disadvantage"]] = None
+
+
 class ManualRollRequest(BaseModel):
     expression: str
     result: int
@@ -67,6 +73,17 @@ class PurchaseActivityEvent(BaseModel):
 
 
 ActivityEvent = Union[RollActivityEvent, PurchaseActivityEvent]
+
+
+class LobbyPlayer(BaseModel):
+    userId: str
+    displayName: str
+
+
+class LobbyStatusRead(BaseModel):
+    sessionId: str
+    expected: List[LobbyPlayer]
+    ready: List[str]
 
 
 class ActiveSessionRead(BaseModel):

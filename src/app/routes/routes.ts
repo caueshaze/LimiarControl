@@ -18,4 +18,6 @@ export const routes = {
 
   catalog: "/catalog",
   npcs: "/npcs",
+  characterSheet: "/character-sheet",
+  characterSheetParty: "/parties/:partyId/character-sheet",
 } as const;

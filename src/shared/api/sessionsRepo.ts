@@ -77,6 +77,10 @@ export const sessionsRepo = {
     http.post<{ ok: boolean }>(`/sessions/${sessionId}/commands`, payload),
   rolls: (sessionId: string, limit = 50) =>
     http.get<RollEvent[]>(`/sessions/${sessionId}/rolls?limit=${limit}`),
+  submitRoll: (
+    sessionId: string,
+    payload: { expression: string; label?: string | null; advantage?: "advantage" | "disadvantage" | null },
+  ) => http.post<RollEvent>(`/sessions/${sessionId}/rolls`, payload),
   getActivity: (sessionId: string) =>
     http.get<ActivityEvent[]>(`/sessions/${sessionId}/activity`),
   manualRoll: (sessionId: string, payload: { expression: string; result: number; label?: string | null }) =>

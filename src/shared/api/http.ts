@@ -6,6 +6,7 @@ type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 export type HttpError = {
   status: number;
   message: string;
+  data?: unknown;
 };
 
 const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
@@ -27,21 +28,19 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
 
   if (!response.ok) {
     let message = response.statusText;
+    let errorData: unknown;
     try {
-      const data = (await response.json()) as {
-        error?: string;
-        message?: string;
-      };
-      if (data?.error) {
-        message = data.error;
-      } else if (data?.message) {
-        message = data.message;
-      }
+      errorData = await response.json();
+      const d = errorData as { error?: string; message?: string; detail?: unknown };
+      if (typeof d?.detail === "string") message = d.detail;
+      else if (d?.error) message = d.error as string;
+      else if (d?.message) message = d.message as string;
     } catch {
       // ignore JSON errors
     }
     const err = new Error(message) as Error & HttpError;
     err.status = response.status;
+    err.data = errorData;
     throw err;
   }
 

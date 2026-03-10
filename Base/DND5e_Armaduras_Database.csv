@@ -1,0 +1,14 @@
+Nome,Categoria,Custo,CA base,Mod DEX máximo,Requisito de FOR,Desvantagem em furtividade,Peso,Descrição
+Acolchoada,Leve,5 gp,11,Ilimitado,0,Sim,8 lb,"Feita de camadas de pano acolchoado. Oferece proteção básica, mas o volume atrapalha movimentos furtivos."
+Couro,Leve,10 gp,11,Ilimitado,0,Não,10 lb,Peitoral e ombreiras feitas de couro fervido em óleo para ficar rígido.
+Couro Batido,Leve,45 gp,12,Ilimitado,0,Não,13 lb,Armadura de couro reforçada com rebites e anéis de metal.
+Gibão de Peles,Média,10 gp,12,2,0,Não,12 lb,"Armadura rústica feita de peles grossas, muito usada por tribos bárbaras e humanoides selvagens."
+Camisão de Malha,Média,50 gp,13,2,0,Não,20 lb,"Camisa feita de anéis de metal interligados, geralmente vestida entre camadas de roupa."
+Brunea,Média,50 gp,14,2,0,Sim,45 lb,"Peitoral de couro coberto por escamas de metal. Inclui caneleiras, mas é barulhenta."
+Peitoral,Média,400 gp,14,2,0,Não,20 lb,"Placa de metal moldada cobrindo o torso e protegendo órgãos vitais, deixando membros livres."
+Meia-Armadura,Média,750 gp,15,2,0,Sim,40 lb,"Placas de metal na maior parte do corpo, exceto nas pernas, o que a torna rígida e ruidosa."
+Cota de Anéis,Pesada,30 gp,14,0,0,Sim,40 lb,Armadura de couro macio com anéis de metal pesados costurados sobre ela.
+Cota de Malha,Pesada,75 gp,16,0,13,Sim,55 lb,Armadura completa de anéis de metal interligados. Inclui manoplas e botas pesadas.
+Cota de Talas,Pesada,200 gp,17,0,15,Sim,60 lb,Tiras de metal unidas em bases de couro sobre uma veste de cota de malha leve.
+Placas,Pesada,1500 gp,18,0,15,Sim,65 lb,Armadura completa de metal articulado feita sob medida. Proteção máxima com alto custo de mobilidade.
+Escudo,Escudo,10 gp,2,N/A,0,Não,6 lb,"Feito de madeira ou metal, concede +2 na Classe de Armadura quando empunhado (CA base usada como bônus)."

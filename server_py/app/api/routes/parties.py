@@ -7,6 +7,8 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
+from app.services.centrifugo import centrifugo
+from app.services.realtime import build_event, campaign_channel, event_version
 from app.models.campaign import Campaign, RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.party import Party
@@ -26,6 +28,29 @@ from app.schemas.session import ActiveSessionRead
 
 router = APIRouter()
 logger = logging.getLogger("app.parties")
+
+
+async def _broadcast_party_member_updated(
+    campaign_id: str,
+    party_id: str,
+    user_id: str,
+    role: RoleMode,
+    status: PartyMemberStatus,
+) -> None:
+    await centrifugo.publish(
+        campaign_channel(campaign_id),
+        build_event(
+            "party_member_updated",
+            {
+                "campaignId": campaign_id,
+                "partyId": party_id,
+                "userId": user_id,
+                "role": role.value if hasattr(role, "value") else str(role),
+                "status": status.value if hasattr(status, "value") else str(status),
+            },
+            version=event_version(),
+        ),
+    )
 
 
 def to_active_session_read(
@@ -278,7 +303,7 @@ def list_my_party_invites(
 
 
 @router.post("/parties/{party_id}/members", response_model=PartyMemberRead)
-def add_party_member(
+async def add_party_member(
     party_id: str,
     payload: PartyMemberAdd,
     user: User = Depends(get_current_user),
@@ -305,6 +330,13 @@ def add_party_member(
         session.add(existing)
         session.commit()
         session.refresh(existing)
+        await _broadcast_party_member_updated(
+            party.campaign_id,
+            party_id,
+            existing.user_id,
+            existing.role,
+            existing.status,
+        )
         return PartyMemberRead.model_validate(existing)
 
     entry = PartyMember(
@@ -317,6 +349,13 @@ def add_party_member(
     session.add(entry)
     session.commit()
     session.refresh(entry)
+    await _broadcast_party_member_updated(
+        party.campaign_id,
+        party_id,
+        entry.user_id,
+        entry.role,
+        entry.status,
+    )
     return PartyMemberRead.model_validate(entry)
 
 
@@ -378,7 +417,7 @@ def get_my_party_member(
 
 
 @router.post("/parties/{party_id}/members/me/join", response_model=PartyMemberRead)
-def join_party_invite(
+async def join_party_invite(
     party_id: str,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -427,6 +466,13 @@ def join_party_invite(
     session.add(member)
     session.commit()
     session.refresh(member)
+    await _broadcast_party_member_updated(
+        party.campaign_id,
+        party_id,
+        member.user_id,
+        member.role,
+        member.status,
+    )
     logger.info(
         "Party invite accepted",
         extra={
@@ -440,7 +486,7 @@ def join_party_invite(
 
 
 @router.post("/parties/{party_id}/members/me/decline", response_model=PartyMemberRead)
-def decline_party_invite(
+async def decline_party_invite(
     party_id: str,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -492,6 +538,13 @@ def decline_party_invite(
     session.add(member)
     session.commit()
     session.refresh(member)
+    await _broadcast_party_member_updated(
+        party.campaign_id,
+        party_id,
+        member.user_id,
+        member.role,
+        member.status,
+    )
     logger.info(
         "Party invite declined",
         extra={
@@ -505,7 +558,7 @@ def decline_party_invite(
 
 
 @router.post("/parties/{party_id}/members/me/leave", response_model=PartyMemberRead)
-def leave_party(
+async def leave_party(
     party_id: str,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -560,6 +613,13 @@ def leave_party(
     session.add(member)
     session.commit()
     session.refresh(member)
+    await _broadcast_party_member_updated(
+        party.campaign_id,
+        party_id,
+        member.user_id,
+        member.role,
+        member.status,
+    )
     logger.info(
         "Party left",
         extra={

@@ -31,6 +31,19 @@ class Settings:
     cors_origins: list[str] = parse_cors_origins(cors_origin)
     app_env: str = os.getenv("APP_ENV", "development")
     jwt_secret: str = os.getenv("JWT_SECRET", "dev-secret-change-me")
+    centrifugo_api_url: str = os.getenv(
+        "CENTRIFUGO_API_URL",
+        "http://centrifugo:8000/api",
+    )
+    centrifugo_api_key: str = os.getenv("CENTRIFUGO_API_KEY", "dev-api-key")
+    centrifugo_public_url: str = os.getenv(
+        "CENTRIFUGO_PUBLIC_URL",
+        "ws://localhost:8001/connection/websocket",
+    )
+    centrifugo_token_secret: str = os.getenv(
+        "CENTRIFUGO_TOKEN_SECRET",
+        jwt_secret,
+    )
 
 
 settings = Settings()

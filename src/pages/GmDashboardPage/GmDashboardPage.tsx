@@ -70,7 +70,8 @@ export const GmDashboardPage = () => {
     const navigate = useNavigate();
     const { selectedCampaign, selectedCampaignId, selectCampaign } = useCampaigns();
     const { t } = useLocale();
-    const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession();
+    const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
+    const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession(effectiveCampaignId);
     const { selectedSessionId, setSelectedSessionId } = useSession();
     const { events: rollEvents } = useRollSession();
 
@@ -96,6 +97,7 @@ export const GmDashboardPage = () => {
     const [inventoryByMemberId, setInventoryByMemberId] = useState<Record<string, InventoryItem[]>>({});
     const [inventoryOpenForUserId, setInventoryOpenForUserId] = useState<string | null>(null);
     const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
+    const wasLobbyRef = useRef(false);
 
     const rollOptions = useMemo(
         () => ["d4", "d6", "d8", "d10", "d12", "d20"],
@@ -104,8 +106,8 @@ export const GmDashboardPage = () => {
 
     const [lobbyStatus, setLobbyStatus] = useState<LobbyStatus | null>(null);
     const [forceStarting, setForceStarting] = useState(false);
+    const [missingSheetsPlayers, setMissingSheetsPlayers] = useState<{ userId: string; displayName: string }[]>([]);
 
-    const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
     const { lastEvent, onlineUsers } = useCampaignEvents(effectiveCampaignId);
 
     const refreshActivity = useCallback(async () => {
@@ -143,6 +145,12 @@ export const GmDashboardPage = () => {
         // When lobby transitions to active, refresh session state
         if (lastEvent.type === "session_started") {
             refreshSession();
+        }
+        if (lastEvent.type === "party_member_updated" && activeSession?.partyId) {
+            partiesRepo.get(activeSession.partyId).then((party) => {
+                const players = party.members.filter((m) => m.role === "PLAYER" && m.status === "joined");
+                setPartyPlayers(players);
+            }).catch(() => {});
         }
     }, [lastEvent, refreshActivity, refreshSession]);
 
@@ -248,26 +256,42 @@ export const GmDashboardPage = () => {
     useEffect(() => {
         if (!lastEvent) return;
         if (lastEvent.type === "player_joined_lobby") {
-            const p = lastEvent.payload;
-            setLobbyStatus(prev => {
-                if (!prev) return prev;
-                const ready = prev.ready.includes(p.userId)
-                    ? prev.ready
-                    : [...prev.ready, p.userId];
-                return { ...prev, ready };
-            });
+            if (activeSession?.id) {
+                sessionsRepo.getLobbyStatus(activeSession.id).then(setLobbyStatus).catch(() => {});
+            }
         }
         if (lastEvent.type === "session_started") {
             setLobbyStatus(null);
         }
-    }, [lastEvent]);
+    }, [lastEvent, activeSession?.id]);
+
+    useEffect(() => {
+        if (activeSession?.status === "LOBBY") {
+            wasLobbyRef.current = true;
+            return;
+        }
+        if (activeSession?.status === "ACTIVE" && wasLobbyRef.current && activeSession.partyId) {
+            navigate(routes.board.replace(":partyId", activeSession.partyId), { replace: true });
+            wasLobbyRef.current = false;
+            return;
+        }
+        if (!activeSession) {
+            wasLobbyRef.current = false;
+        }
+    }, [activeSession, navigate]);
 
     const handleForceStart = async () => {
         if (!activeSession?.id || forceStarting) return;
         setForceStarting(true);
+        setMissingSheetsPlayers([]);
         try {
             const updated = await sessionsRepo.forceStartLobby(activeSession.id);
             if (updated?.id) setSelectedSessionId(updated.id);
+        } catch (err: unknown) {
+            const detail = (err as { data?: { detail?: { code?: string; players?: { userId: string; displayName: string }[] } } })?.data?.detail;
+            if (detail?.code === "missing_character_sheets") {
+                setMissingSheetsPlayers(detail.players ?? []);
+            }
         } finally {
             setForceStarting(false);
         }
@@ -278,10 +302,17 @@ export const GmDashboardPage = () => {
     const handleConfirmStart = async (name: string) => {
         if (creating) return;
         setCreating(true);
+        setMissingSheetsPlayers([]);
         try {
             const session = await activate(name);
             if (session?.id) setSelectedSessionId(session.id);
             setShowStartModal(false);
+        } catch (err: unknown) {
+            const detail = (err as { data?: { detail?: { code?: string; players?: { userId: string; displayName: string }[] } } })?.data?.detail;
+            if (detail?.code === "missing_character_sheets") {
+                setMissingSheetsPlayers(detail.players ?? []);
+                setShowStartModal(false);
+            }
         } finally {
             setCreating(false);
         }
@@ -343,6 +374,36 @@ export const GmDashboardPage = () => {
                 <div className="flex gap-3">
                 </div>
             </header>
+
+            {/* Missing character sheets warning */}
+            {missingSheetsPlayers.length > 0 && (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <div className="flex items-start gap-3">
+                        <span className="mt-0.5 text-amber-400 text-lg shrink-0">&#9888;</span>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-amber-300">
+                                Session blocked — players without a character sheet:
+                            </p>
+                            <ul className="mt-2 space-y-1">
+                                {missingSheetsPlayers.map(p => (
+                                    <li key={p.userId} className="text-sm text-amber-200">
+                                        {p.displayName}
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="mt-2 text-xs text-amber-500">
+                                All players must fill and save their character sheet before the session can start.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setMissingSheetsPlayers([])}
+                            className="text-amber-500 hover:text-amber-300 text-xs shrink-0"
+                        >
+                            &#10005;
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Session Management */}
             <div className="grid gap-6">
@@ -578,6 +639,9 @@ export const GmDashboardPage = () => {
                             const items = memberId ? inventoryByMemberId[memberId] : undefined;
                             const isOpen = inventoryOpenForUserId === player.userId;
                             const isOnline = !!onlineUsers[player.userId];
+                            const playSheetRoute = activeSession?.partyId
+                                ? `${routes.characterSheetParty.replace(":partyId", activeSession.partyId)}?mode=play&playerId=${player.userId}`
+                                : null;
                             return (
                                 <div key={player.userId} className="rounded-2xl border border-slate-800 overflow-hidden">
                                     <button
@@ -598,7 +662,21 @@ export const GmDashboardPage = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className={`text-slate-500 text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
+                                        <div className="flex items-center gap-3">
+                                            {playSheetRoute && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        navigate(playSheetRoute);
+                                                    }}
+                                                    className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-limiar-300 hover:bg-limiar-500/20"
+                                                >
+                                                    Play Sheet
+                                                </button>
+                                            )}
+                                            <span className={`text-slate-500 text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
+                                        </div>
                                     </button>
                                     {isOpen && (
                                         <div className="px-4 pb-4 border-t border-slate-800/60">

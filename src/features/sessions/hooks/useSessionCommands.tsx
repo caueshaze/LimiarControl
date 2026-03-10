@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ConnectionState } from "../../../shared/realtime/wsClient";
-import { connect } from "../../../shared/realtime/wsClient";
-import { useAuth } from "../../auth";
+import {
+  type ConnectionState,
+  subscribe,
+  subscribeConnectionState,
+} from "../../../shared/realtime/centrifugoClient";
 import { useSession } from "./useSession";
 
 export type SessionCommand = {
@@ -13,60 +15,59 @@ export type SessionCommand = {
 
 export const useSessionCommands = () => {
   const { selectedSessionId } = useSession();
-  const { token } = useAuth();
   const [connectionState, setConnectionState] = useState<ConnectionState>("offline");
   const [lastCommand, setLastCommand] = useState<SessionCommand | null>(null);
   const [sessionEndedAt, setSessionEndedAt] = useState<string | null>(null);
-  const clientRef = useRef<ReturnType<typeof connect> | null>(null);
+  const latestVersionRef = useRef(0);
 
   useEffect(() => {
     setLastCommand(null);
     setSessionEndedAt(null);
-    if (!selectedSessionId || !token) {
+    latestVersionRef.current = 0;
+    if (!selectedSessionId) {
       setConnectionState("offline");
       setLastCommand(null);
       setSessionEndedAt(null);
-      clientRef.current?.close();
-      clientRef.current = null;
       return;
     }
 
-    setConnectionState("reconnecting");
-    const client = connect(selectedSessionId, token);
-    clientRef.current = client;
-
-    const unsubscribeMessage = client.onMessage((message) => {
-      if (!message || typeof message !== "object") {
-        return;
-      }
-      const data = message as { type?: string; payload?: any };
-      if (data.type === "gm_command" && data.payload) {
-        setLastCommand({
-          command: data.payload.command,
-          data: data.payload.data,
-          issuedBy: data.payload.issuedBy,
-          issuedAt: data.payload.issuedAt,
-        });
-        return;
-      }
-      if (data.type === "session_closed" || data.type === "session_ended") {
-        setLastCommand(null);
-        setSessionEndedAt(data.payload?.endedAt ?? new Date().toISOString());
-        return;
-      }
-    });
-
-    const unsubscribeState = client.onStateChange((state) => {
-      setConnectionState(state);
+    const unsubscribeState = subscribeConnectionState(setConnectionState);
+    const unsubscribeSession = subscribe(`session:${selectedSessionId}`, {
+      onPublication: (message) => {
+        if (!message || typeof message !== "object") {
+          return;
+        }
+        const data = message as { type?: string; version?: number; payload?: any };
+        if (
+          typeof data.version === "number" &&
+          data.version <= latestVersionRef.current
+        ) {
+          return;
+        }
+        if (typeof data.version === "number") {
+          latestVersionRef.current = data.version;
+        }
+        if (data.type === "gm_command" && data.payload) {
+          setLastCommand({
+            command: data.payload.command,
+            data: data.payload.data,
+            issuedBy: data.payload.issuedBy,
+            issuedAt: data.payload.issuedAt,
+          });
+          return;
+        }
+        if (data.type === "session_closed" || data.type === "session_ended") {
+          setLastCommand(null);
+          setSessionEndedAt(data.payload?.endedAt ?? new Date().toISOString());
+        }
+      },
     });
 
     return () => {
-      unsubscribeMessage();
+      unsubscribeSession();
       unsubscribeState();
-      client.close();
-      clientRef.current = null;
     };
-  }, [selectedSessionId, token]);
+  }, [selectedSessionId]);
 
   const clearCommand = useCallback(() => {
     setLastCommand(null);

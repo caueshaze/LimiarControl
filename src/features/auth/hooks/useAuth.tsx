@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { authRepo } from "../../../shared/api/authRepo";
 import { clearToken, getToken, setToken } from "../../../shared/auth/tokenStore";
+import { disconnectRealtime } from "../../../shared/realtime/centrifugoClient";
 import type { RoleMode } from "../../../shared/types/role";
 
 type AuthUser = {
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!token) {
+      disconnectRealtime();
       setLoading(false);
       return;
     }
@@ -51,6 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         if (error?.status === 401) {
           console.warn("Auth expired; redirecting to login");
+          disconnectRealtime();
           clearToken();
           setTokenState(null);
           setUser(null);
@@ -106,6 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const logout = useCallback(() => {
+    disconnectRealtime();
     clearToken();
     setTokenState(null);
     setUser(null);

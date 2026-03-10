@@ -2,14 +2,27 @@ services:
   db:
     image: postgres:16
     container_name: limiarcontrol-db
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: limiarcontrol
-    ports:
-      - "5432:5432"
     volumes:
       - limiarcontrol_db:/var/lib/postgresql/data
+
+  centrifugo:
+    image: centrifugal/centrifugo:v5
+    container_name: limiarcontrol-centrifugo
+    ports:
+      - "8001:8000"
+    command: centrifugo -c config.json
+    volumes:
+      - ./centrifugo/config.json:/centrifugo/config.json:ro
+    environment:
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: "${CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}"
+      CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:-dev-api-key}"
+      CENTRIFUGO_ALLOWED_ORIGINS: "${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:5173}"
 
 volumes:
   limiarcontrol_db:

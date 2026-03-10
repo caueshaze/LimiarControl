@@ -17,6 +17,7 @@ import {
   PartyDetailsPage,
   PlayerPartyPage,
 } from "../../pages";
+import { CharacterSheetPage } from "../../features/character-sheet";
 import { routes } from "./routes";
 import { RequireAuth, useAuth } from "../../features/auth";
 import type { RoleMode } from "../../shared/types/role";
@@ -155,6 +156,22 @@ export const AppRoutes = () => {
               <RequireGmRole>
                 <GmDashboardPage />
               </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.characterSheet}
+          element={
+            <RequireAuth>
+              <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.characterSheetParty}
+          element={
+            <RequireAuth>
+              <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />
             </RequireAuth>
           }
         />

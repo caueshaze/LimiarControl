@@ -6,6 +6,7 @@ import { usersRepo, type UserSearchResult } from "../../shared/api/usersRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { StartSessionModal } from "../../features/sessions/components/StartSessionModal";
 import { sessionsRepo, type ActivityEvent } from "../../shared/api/sessionsRepo";
+import { useCampaignEvents } from "../../features/sessions";
 
 function formatOffset(seconds: number): string {
     const h = Math.floor(seconds / 3600);
@@ -109,6 +110,20 @@ export const PartyDetailsPage = () => {
             if (pollingRef.current) clearInterval(pollingRef.current);
         };
     }, [partyId]);
+
+    // Listen to campaign WS for real-time session events
+    const { lastEvent } = useCampaignEvents(party?.campaignId ?? null);
+
+    useEffect(() => {
+        if (!lastEvent || !party) return;
+        if (lastEvent.type === "session_started") {
+            // Redirect GM to the dashboard when lobby transitions to active
+            navigate(routes.campaignDashboard.replace(":campaignId", party.campaignId));
+        }
+        if (lastEvent.type === "session_closed" || lastEvent.type === "session_lobby" || lastEvent.type === "party_member_updated") {
+            loadData();
+        }
+    }, [lastEvent, party, navigate]);
 
     useEffect(() => {
         if (searchQuery.length < 2) {

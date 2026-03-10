@@ -355,6 +355,17 @@ export const PlayerBoardPage = () => {
             </a>
           </div>
         )}
+        {activeSession?.status === "ACTIVE" && partyId && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => navigate(`${routes.characterSheetParty.replace(":partyId", partyId)}?mode=play`)}
+              className="inline-flex items-center rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-limiar-300 hover:bg-limiar-500/20"
+            >
+              Open Play Sheet
+            </button>
+          </div>
+        )}
       </header>
 
       <div

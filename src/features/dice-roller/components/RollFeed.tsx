@@ -1,5 +1,5 @@
 import type { RollEvent } from "../../../entities/roll";
-import type { ConnectionState } from "../../../shared/realtime/wsClient";
+import type { ConnectionState } from "../../../shared/realtime/centrifugoClient";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 

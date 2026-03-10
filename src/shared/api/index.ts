@@ -1,5 +1,6 @@
 export { http } from "./http";
 export { authRepo } from "./authRepo";
+export { centrifugoRepo } from "./centrifugoRepo";
 export { itemsRepo } from "./itemsRepo";
 export { campaignsRepo } from "./campaignsRepo";
 export { roleModeRepo } from "./roleModeRepo";

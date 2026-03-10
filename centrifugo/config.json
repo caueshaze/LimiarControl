@@ -1,0 +1,27 @@
+{
+  "token_hmac_secret_key": "",
+  "api_key": "",
+  "admin": false,
+  "allowed_origins": ["http://localhost:5173"],
+  "namespaces": [
+    {
+      "name": "session",
+      "presence": false,
+      "history_size": 50,
+      "history_ttl": "300s",
+      "force_recovery": true,
+      "allow_subscribe_for_client": true
+    },
+    {
+      "name": "campaign",
+      "presence": true,
+      "join_leave": true,
+      "allow_presence_for_subscriber": true,
+      "force_push_join_leave": true,
+      "history_size": 20,
+      "history_ttl": "300s",
+      "force_recovery": true,
+      "allow_subscribe_for_client": true
+    }
+  ]
+}

@@ -3,30 +3,38 @@ import { Link, useNavigate } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useAuth } from "../../features/auth";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { partiesRepo, type PartySummary, type PartyInvite, type PartyActiveSession } from "../../shared/api/partiesRepo";
-import { connectCampaign } from "../../shared/realtime/wsClient";
+import { subscribe } from "../../shared/realtime/centrifugoClient";
 
 export const PlayerHomePage = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { t } = useLocale();
   const navigate = useNavigate();
 
   const [parties, setParties] = useState<PartySummary[]>([]);
   const [invites, setInvites] = useState<PartyInvite[]>([]);
   const [activeSessions, setActiveSessions] = useState<Record<string, PartyActiveSession>>({});
+  const [campaignIds, setCampaignIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const wsClientsRef = useRef<ReturnType<typeof connectCampaign>[]>([]);
+  const subscriptionCleanupsRef = useRef<Array<() => void>>([]);
+  const partiesRef = useRef<PartySummary[]>([]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
-      const [fetchedParties, fetchedInvites] = await Promise.all([
+      const [fetchedCampaigns, fetchedParties, fetchedInvites] = await Promise.all([
+        campaignsRepo.list(),
         partiesRepo.listMine(),
         partiesRepo.listInvites(),
       ]);
       const safeParties = Array.isArray(fetchedParties) ? fetchedParties : [];
       const safeInvites = Array.isArray(fetchedInvites) ? fetchedInvites : [];
+      const safeCampaignIds = Array.isArray(fetchedCampaigns)
+        ? [...new Set(fetchedCampaigns.map((campaign) => campaign.id))]
+        : [];
+      setCampaignIds(safeCampaignIds);
       setParties(safeParties);
       setInvites(safeInvites);
 
@@ -48,44 +56,60 @@ export const PlayerHomePage = () => {
     } catch {
       setParties([]);
       setInvites([]);
+      setCampaignIds([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-    pollingRef.current = setInterval(loadData, 15_000);
+    void loadData(true);
+    pollingRef.current = setInterval(() => {
+      void loadData();
+    }, 5_000);
+    const handleFocus = () => { void loadData(); };
+    window.addEventListener("focus", handleFocus);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [loadData]);
 
+  // Keep ref in sync so WS callbacks always see latest parties
+  useEffect(() => {
+    partiesRef.current = parties;
+  }, [parties]);
+
   // Connect to each party's campaign WS for real-time session events
   useEffect(() => {
-    wsClientsRef.current.forEach(c => c.close());
-    wsClientsRef.current = [];
-    if (!token || parties.length === 0) return;
+    subscriptionCleanupsRef.current.forEach((cleanup) => cleanup());
+    subscriptionCleanupsRef.current = [];
+    if (campaignIds.length === 0) return;
 
-    const SESSION_EVENTS = new Set(["session_lobby", "session_started", "session_closed"]);
-    const campaignIds = [...new Set(parties.map(p => p.campaignId))];
+    const REFRESH_EVENTS = new Set(["session_lobby", "session_started", "session_closed", "party_member_updated"]);
 
-    wsClientsRef.current = campaignIds.map(campaignId => {
-      const client = connectCampaign(campaignId, token);
-      client.onMessage((msg) => {
-        const data = msg as { type?: string };
-        if (data.type && SESSION_EVENTS.has(data.type)) {
-          loadData();
-        }
-      });
-      return client;
-    });
+    subscriptionCleanupsRef.current = campaignIds.map((campaignId) =>
+      subscribe(`campaign:${campaignId}`, {
+        onPublication: (msg) => {
+          const data = msg as { type?: string };
+          if (data.type && REFRESH_EVENTS.has(data.type)) {
+            void loadData();
+          }
+          if (data.type === "session_started") {
+            const matchedParty = partiesRef.current.find((party) => party.campaignId === campaignId);
+            if (matchedParty) {
+              navigate(routes.board.replace(":partyId", matchedParty.id));
+            }
+          }
+        },
+      }),
+    );
 
     return () => {
-      wsClientsRef.current.forEach(c => c.close());
-      wsClientsRef.current = [];
+      subscriptionCleanupsRef.current.forEach((cleanup) => cleanup());
+      subscriptionCleanupsRef.current = [];
     };
-  }, [parties, token, loadData]);
+  }, [campaignIds, loadData, navigate]);
 
   const handleJoin = async (partyId: string) => {
     try {

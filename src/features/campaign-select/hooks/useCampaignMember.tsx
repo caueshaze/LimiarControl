@@ -29,9 +29,9 @@ export const useCampaignMember = (campaignId: string | null | undefined) => {
       setMember(data);
       setError(null);
       setLoaded(true);
-    } catch (err: { message?: string }) {
+    } catch (err: unknown) {
       setMember(null);
-      setError(err?.message ?? "Failed to load campaign member");
+      setError((err as { message?: string })?.message ?? "Failed to load campaign member");
       setLoaded(true);
     } finally {
       setLoading(false);
@@ -55,10 +55,10 @@ export const useCampaignMember = (campaignId: string | null | undefined) => {
         setError(null);
         setLoaded(true);
       })
-      .catch((err: { message?: string }) => {
+      .catch((err: unknown) => {
         if (!active) return;
         setMember(null);
-        setError(err?.message ?? "Failed to load campaign member");
+        setError((err as { message?: string })?.message ?? "Failed to load campaign member");
         setLoaded(true);
       })
       .finally(() => {

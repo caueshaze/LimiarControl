@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { nanoid } from "nanoid";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Item, ItemInput, ItemType } from "../../../entities/item";
 import { ITEM_TYPES } from "../../../entities/item";
 import { itemsRepo } from "../../../shared/api/itemsRepo";
 import { inventoryRepo } from "../../../shared/api/inventoryRepo";
 import { parseNullableNumber } from "../../../shared/lib/parse";
 import { useCampaigns } from "../../campaign-select";
+import { BASE_CATALOG_ITEMS, getBaseCatalogItemByName } from "../data/baseCatalogItems";
 
 
 const mapFieldError = (field: "price" | "weight" | "rangeMeters") => {
@@ -20,11 +20,25 @@ const isItemType = (value: string): value is ItemType =>
 const isItem = (value: Item): boolean =>
   Boolean(value?.id && value?.name && isItemType(value.type) && value.description);
 
+const withBaseMetadata = (item: Item): Item => {
+  const baseItem = getBaseCatalogItemByName(item.name);
+  const priceMatchesBase =
+    baseItem &&
+    typeof item.price === "number" &&
+    typeof baseItem.price === "number" &&
+    Math.abs(item.price - baseItem.price) < 0.0001;
+
+  return {
+    ...item,
+    priceLabel: item.priceLabel ?? (priceMatchesBase ? baseItem?.priceLabel : undefined),
+  };
+};
+
 const normalizeItems = (data: unknown): Item[] => {
   if (!Array.isArray(data)) {
     return [];
   }
-  return data.filter(isItem);
+  return data.filter(isItem).map(withBaseMetadata);
 };
 
 const normalizeItemInput = (payload: ItemInput) => {
@@ -78,37 +92,77 @@ export const useShop = (options?: UseShopOptions) => {
   const [items, setItems] = useState<Item[]>([]);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [itemsLoading, setItemsLoading] = useState(false);
+  const seededCampaignsRef = useRef<Set<string>>(new Set());
+
+  const ensureBaseCatalog = useCallback(
+    async (targetCampaignId: string, existingItems?: Item[]) => {
+      const alreadySeeded = seededCampaignsRef.current.has(targetCampaignId);
+      const normalizedExisting = existingItems ?? normalizeItems(await itemsRepo.list(targetCampaignId));
+      if (alreadySeeded) {
+        return normalizedExisting;
+      }
+
+      const existingNames = new Set(normalizedExisting.map((item) => item.name.toLowerCase()));
+      const missingItems = BASE_CATALOG_ITEMS.filter(
+        (item) => !existingNames.has(item.name.toLowerCase())
+      );
+
+      if (missingItems.length > 0) {
+        await Promise.all(
+          missingItems.map((item) =>
+            itemsRepo.create(targetCampaignId, {
+              name: item.name,
+              type: item.type,
+              description: item.description,
+              price: item.price ?? null,
+              weight: item.weight ?? null,
+              damageDice: item.damageDice,
+              rangeMeters: item.rangeMeters ?? null,
+              properties: item.properties,
+            })
+          )
+        );
+      }
+
+      seededCampaignsRef.current.add(targetCampaignId);
+      if (missingItems.length === 0) {
+        return normalizedExisting;
+      }
+      return normalizeItems(await itemsRepo.list(targetCampaignId));
+    },
+    []
+  );
 
   const loadItems = useCallback(
-    (target?: { campaignId?: string | null; sessionId?: string | null }) => {
+    async (target?: { campaignId?: string | null; sessionId?: string | null }) => {
       const targetSessionId = target?.sessionId ?? sessionId;
       const targetCampaignId = target?.campaignId ?? campaignId;
       if (!targetSessionId && !targetCampaignId) {
         setItems([]);
         setItemsError(null);
-        return Promise.resolve([]);
+        return [];
       }
       setItemsLoading(true);
-      const request = targetSessionId
-        ? itemsRepo.listBySession(targetSessionId)
-        : itemsRepo.list(targetCampaignId as string);
-      return request
-        .then((data) => {
-          const next = normalizeItems(data);
-          setItems(next);
-          setItemsError(null);
-          return next;
-        })
-        .catch((error: { message?: string }) => {
-          setItems([]);
-          setItemsError(error?.message ?? "Failed to load items");
-          return [];
-        })
-        .finally(() => {
-          setItemsLoading(false);
-        });
+      try {
+        if (targetCampaignId) {
+          await ensureBaseCatalog(targetCampaignId);
+        }
+        const data = targetSessionId
+          ? await itemsRepo.listBySession(targetSessionId)
+          : await itemsRepo.list(targetCampaignId as string);
+        const next = normalizeItems(data);
+        setItems(next);
+        setItemsError(null);
+        return next;
+      } catch (error: unknown) {
+        setItems([]);
+        setItemsError((error as { message?: string })?.message ?? "Failed to load items");
+        return [];
+      } finally {
+        setItemsLoading(false);
+      }
     },
-    [campaignId, sessionId]
+    [campaignId, ensureBaseCatalog, sessionId]
   );
 
   useEffect(() => {
@@ -134,7 +188,7 @@ export const useShop = (options?: UseShopOptions) => {
     return itemsRepo
       .create(campaignId, normalized.value!)
       .then((item) => {
-        setItems((current) => [item, ...current]);
+        setItems((current) => [normalizeItems([item])[0], ...current]);
         return { ok: true };
       })
       .catch((error: { message?: string }) => ({
@@ -160,7 +214,7 @@ export const useShop = (options?: UseShopOptions) => {
       .update(campaignId, itemId, normalized.value!)
       .then((item) => {
         setItems((current) =>
-          current.map((entry) => (entry.id === itemId ? item : entry))
+          current.map((entry) => (entry.id === itemId ? normalizeItems([item])[0] : entry))
         );
         return { ok: true };
       })

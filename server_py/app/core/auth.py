@@ -32,23 +32,25 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-def encode_jwt(payload: Dict[str, Any]) -> str:
+def encode_jwt(payload: Dict[str, Any], secret: str | None = None) -> str:
     header = {"alg": "HS256", "typ": "JWT"}
     header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
     payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
-    signature = hmac.new(settings.jwt_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    signing_secret = (secret or settings.jwt_secret).encode("utf-8")
+    signature = hmac.new(signing_secret, signing_input, hashlib.sha256).digest()
     signature_b64 = _b64url_encode(signature)
     return f"{header_b64}.{payload_b64}.{signature_b64}"
 
 
-def decode_jwt(token: str) -> Dict[str, Any] | None:
+def decode_jwt(token: str, secret: str | None = None) -> Dict[str, Any] | None:
     try:
         header_b64, payload_b64, signature_b64 = token.split(".")
     except ValueError:
         return None
     signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
-    expected = hmac.new(settings.jwt_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    signing_secret = (secret or settings.jwt_secret).encode("utf-8")
+    expected = hmac.new(signing_secret, signing_input, hashlib.sha256).digest()
     if not hmac.compare_digest(_b64url_encode(expected), signature_b64):
         return None
     try:

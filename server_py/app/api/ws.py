@@ -185,7 +185,7 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
             )
             await websocket.close(code=1008)
             return
-        if session_entry.status != SessionStatus.ACTIVE:
+        if session_entry.status not in (SessionStatus.ACTIVE, SessionStatus.LOBBY):
             await websocket.send_json(
                 {"type": "error", "payload": {"requestId": None, "message": "Session is not active"}}
             )

@@ -14,13 +14,19 @@ export type Item = {
   type: ItemType;
   description: string;
   price?: number | null;
+  priceLabel?: string;
   weight?: number | null;
   damageDice?: string;
   rangeMeters?: number | null;
   properties?: string[];
 };
 
-export type ItemInput = Omit<Item, "id" | "price" | "weight" | "rangeMeters"> & {
+export type ItemInput = {
+  name: string;
+  type: ItemType;
+  description: string;
+  damageDice?: string;
+  properties?: string[];
   price?: number | string | null;
   weight?: number | string | null;
   rangeMeters?: number | string | null;

@@ -11,3 +11,4 @@ export { NpcsPage } from "./NpcsPage";
 export { GmDashboardPage } from "./GmDashboardPage/GmDashboardPage";
 export { PartyDetailsPage } from "./PartyDetailsPage";
 export { PlayerPartyPage } from "./PlayerPartyPage";
+export { CharacterSheetTestPage } from "./CharacterSheetTestPage";

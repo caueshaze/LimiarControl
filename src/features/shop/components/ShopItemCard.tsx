@@ -19,7 +19,7 @@ export const ShopItemCard = ({ item, onBuy }: ShopItemCardProps) => {
           </p>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-900">
-          {item.price ?? "—"}
+          {item.priceLabel ?? item.price ?? "—"}
         </span>
       </div>
       <p className="mt-3 text-xs text-slate-400">{item.description}</p>

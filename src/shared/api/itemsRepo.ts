@@ -1,8 +1,8 @@
 import type { Item } from "../../entities/item";
 import { http } from "./http";
 
-type CreateItemPayload = Omit<Item, "id">;
-type UpdateItemPayload = Omit<Item, "id">;
+type CreateItemPayload = Omit<Item, "id" | "priceLabel">;
+type UpdateItemPayload = Omit<Item, "id" | "priceLabel">;
 
 export const itemsRepo = {
   list: (campaignId: string) =>

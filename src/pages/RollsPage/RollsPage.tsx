@@ -69,7 +69,7 @@ export const RollsPage = () => {
         </div>
       </header>
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <RollForm onRoll={roll} disabled={connectionState === "offline"} />
+        <RollForm onRoll={roll} disabled={false} />
         <RollFeed events={events} connectionState={connectionState} />
       </div>
     </section>

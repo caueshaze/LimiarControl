@@ -54,7 +54,7 @@ export const useActiveSession = (campaignId?: string | null) => {
         })
         .catch((err: { message?: string }) => {
           setError(err?.message ?? "Failed to activate session");
-          return null;
+          throw err; // re-throw so callers can inspect the full error
         });
     },
     [effectiveCampaignId]

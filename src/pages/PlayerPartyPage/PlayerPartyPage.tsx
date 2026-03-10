@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { partiesRepo, type PartyDetail, type PartyActiveSession } from "../../shared/api/partiesRepo";
@@ -8,6 +8,7 @@ import { useAuth } from "../../features/auth";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
 import { sessionsRepo, type LobbyStatus } from "../../shared/api/sessionsRepo";
+import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 
@@ -28,6 +29,10 @@ export const PlayerPartyPage = () => {
     const [lobbyStatus, setLobbyStatus] = useState<LobbyStatus | null>(null);
     const [joiningLobby, setJoiningLobby] = useState(false);
     const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
+    const wasLobbyRef = useRef(false);
+
+    // Character sheet
+    const [hasCharacterSheet, setHasCharacterSheet] = useState<boolean | null>(null);
 
     const loadData = useCallback(async () => {
         if (!partyId) return;
@@ -50,7 +55,15 @@ export const PlayerPartyPage = () => {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        if (!partyId) return;
+        characterSheetsRepo.getByParty(partyId)
+            .then(() => setHasCharacterSheet(true))
+            .catch((err: { status?: number }) => setHasCharacterSheet(err?.status === 404 ? false : null));
+    }, [partyId]);
+
     const { lastEvent } = useCampaignEvents(party?.campaignId ?? null);
+    const activeSession = sessions.find(s => s.isActive);
 
     useEffect(() => {
         if (!party?.campaignId) return;
@@ -67,7 +80,17 @@ export const PlayerPartyPage = () => {
 
     useEffect(() => {
         if (!lastEvent) return;
-        if (lastEvent.type === "session_started" || lastEvent.type === "session_closed") {
+        if (lastEvent.type === "session_started") {
+            setLobbyStatus(null);
+            setHasJoinedLobby(false);
+            loadData();
+            // Auto-navigate to the board when lobby transitions to active
+            if (partyId) {
+                navigate(routes.board.replace(":partyId", partyId));
+            }
+            return;
+        }
+        if (lastEvent.type === "session_closed") {
             setLobbyStatus(null);
             setHasJoinedLobby(false);
             loadData();
@@ -77,21 +100,27 @@ export const PlayerPartyPage = () => {
             loadData();
             setHasJoinedLobby(false);
         }
-        if (lastEvent.type === "player_joined_lobby") {
-            // Update lobby status from WS event
-            const payload = lastEvent.payload;
-            setLobbyStatus(prev => {
-                if (!prev) return prev;
-                const ready = prev.ready.includes(payload.userId)
-                    ? prev.ready
-                    : [...prev.ready, payload.userId];
-                return { ...prev, ready };
-            });
+        if (lastEvent.type === "party_member_updated") {
+            loadData();
         }
-    }, [lastEvent, loadData]);
+        if (lastEvent.type === "player_joined_lobby") {
+            if (activeSession?.id) {
+                sessionsRepo.getLobbyStatus(activeSession.id).then(setLobbyStatus).catch(() => {});
+            }
+        }
+    }, [lastEvent, loadData, partyId, navigate, activeSession?.id]);
 
     // Poll lobby status when in lobby
-    const activeSession = sessions.find(s => s.isActive);
+    useEffect(() => {
+        if (activeSession?.status === "LOBBY") {
+            wasLobbyRef.current = true;
+            return;
+        }
+        if (activeSession?.status === "ACTIVE" && wasLobbyRef.current && partyId) {
+            navigate(routes.board.replace(":partyId", partyId), { replace: true });
+            wasLobbyRef.current = false;
+        }
+    }, [activeSession?.status, partyId, navigate]);
     useEffect(() => {
         if (!activeSession?.id || activeSession.status !== "LOBBY") {
             setLobbyStatus(null);
@@ -148,6 +177,8 @@ export const PlayerPartyPage = () => {
     const isMyTurnToJoin = isLobby && !hasJoinedLobby && user?.userId && lobbyStatus
         ? !lobbyStatus.ready.includes(user.userId)
         : false;
+    const myMember = party?.members.find(m => m.userId === user?.userId);
+    const isPlayer = myMember?.role === "PLAYER";
 
     return (
         <section className="space-y-8 lg:p-6 mx-auto max-w-6xl">
@@ -252,6 +283,49 @@ export const PlayerPartyPage = () => {
                     </div>
                 ) : null}
             </header>
+
+            {/* Character Sheet Card */}
+            {isPlayer && hasCharacterSheet === false ? (
+                <div className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-linear-to-br from-amber-950/40 via-slate-950/80 to-slate-950 p-6 flex flex-col md:flex-row md:items-center gap-6">
+                    <div className="flex-1 space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400">Action Required</p>
+                        <h3 className="text-xl font-bold text-white">You don't have a character sheet yet</h3>
+                        <p className="text-sm text-slate-400">
+                            Your Game Master cannot start a session until all players have filled in their character sheet.
+                            Fill yours in now so the party is ready to play!
+                        </p>
+                    </div>
+                    <Link
+                        to={routes.characterSheetParty.replace(":partyId", partyId ?? "")}
+                        className="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-500 px-8 py-3 text-sm font-bold uppercase tracking-widest text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:bg-amber-400 transition-all active:scale-95"
+                    >
+                        Create Character Sheet
+                    </Link>
+                </div>
+            ) : isPlayer && hasCharacterSheet === true ? (
+                <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <p className="text-sm font-medium text-slate-300">Character sheet filled in</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link
+                            to={routes.characterSheetParty.replace(":partyId", partyId ?? "")}
+                            className="rounded-full border border-slate-700 px-4 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white transition-colors"
+                        >
+                            Character Builder
+                        </Link>
+                        {activeSession?.status === "ACTIVE" && (
+                            <Link
+                                to={`${routes.characterSheetParty.replace(":partyId", partyId ?? "")}?mode=play`}
+                                className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-1.5 text-xs font-semibold text-limiar-300 hover:bg-limiar-500/20 transition-colors"
+                            >
+                                Open Play Sheet
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            ) : null}
 
             <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                 {/* Members List */}

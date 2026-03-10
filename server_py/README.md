@@ -9,6 +9,8 @@
 docker compose up -d
 ```
 
+This now starts both Postgres and Centrifugo.
+
 ## Install deps
 ```bash
 cd server_py
@@ -16,6 +18,15 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 cp .env.example .env
+```
+
+If you run FastAPI on the host machine instead of inside Docker, add these values to `server_py/.env`:
+
+```env
+CENTRIFUGO_API_URL=http://localhost:8001/api
+CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
+CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
+CENTRIFUGO_API_KEY=dev-api-key
 ```
 
 ## Run migrations
