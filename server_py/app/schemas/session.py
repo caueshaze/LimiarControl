@@ -72,7 +72,17 @@ class PurchaseActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
-ActivityEvent = Union[RollActivityEvent, PurchaseActivityEvent]
+class ShopActivityEvent(BaseModel):
+    type: Literal["shop"] = "shop"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["opened", "closed"]
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+ActivityEvent = Union[RollActivityEvent, PurchaseActivityEvent, ShopActivityEvent]
 
 
 class LobbyPlayer(BaseModel):
@@ -82,8 +92,20 @@ class LobbyPlayer(BaseModel):
 
 class LobbyStatusRead(BaseModel):
     sessionId: str
+    campaignId: Optional[str] = None
+    partyId: Optional[str] = None
     expected: List[LobbyPlayer]
     ready: List[str]
+    readyCount: int = 0
+    totalCount: int = 0
+
+
+class SessionRuntimeRead(BaseModel):
+    sessionId: str
+    campaignId: str
+    partyId: Optional[str] = None
+    status: SessionStatus
+    shopOpen: bool
 
 
 class ActiveSessionRead(BaseModel):

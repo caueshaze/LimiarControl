@@ -11,6 +11,8 @@ from app.models.preferences import Preferences
 from app.models.purchase_event import PurchaseEvent
 from app.models.roll_event import RollEvent
 from app.models.session import Session
+from app.models.session_command_event import SessionCommandEvent
+from app.models.session_runtime import SessionRuntime
 from app.models.session_state import SessionState
 from app.models.user import User
 
@@ -27,6 +29,8 @@ __all__ = [
     "PurchaseEvent",
     "RollEvent",
     "Session",
+    "SessionCommandEvent",
+    "SessionRuntime",
     "SessionState",
     "User",
 ]

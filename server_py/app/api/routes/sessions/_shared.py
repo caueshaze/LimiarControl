@@ -10,10 +10,11 @@ from app.models.party import Party
 from app.models.party_member import PartyMember
 from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
+from app.models.session_runtime import SessionRuntime
 from app.schemas.inventory import InventoryRead
 from app.schemas.item import ItemRead
 from app.schemas.roll_event import RollDice, RollEventRead
-from app.schemas.session import ActiveSessionRead, SessionRead
+from app.schemas.session import ActiveSessionRead, LobbyStatusRead, SessionRead, SessionRuntimeRead
 
 DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
 
@@ -39,11 +40,6 @@ def parse_expression(expression: str) -> tuple[int, int, int] | None:
     if modifier < -1000 or modifier > 1000:
         return None
     return count, sides, modifier
-
-# In-memory lobby state — shared mutable dicts (mutations are visible across all importers)
-_lobby_ready: dict[str, set[str]] = {}
-_lobby_expected: dict[str, dict[str, str]] = {}
-
 
 def to_session_read(entry: Session) -> SessionRead:
     number = entry.sequence_number if entry.sequence_number is not None else entry.number
@@ -173,3 +169,60 @@ def check_character_sheets(party_id: str, player_members: list, db: DbSession) -
             status_code=422,
             detail={"code": "missing_character_sheets", "players": missing},
         )
+
+
+def get_or_create_session_runtime(session_id: str, session: DbSession) -> SessionRuntime:
+    runtime = session.exec(
+        select(SessionRuntime).where(SessionRuntime.session_id == session_id)
+    ).first()
+    if runtime:
+        return runtime
+    runtime = SessionRuntime(session_id=session_id)
+    session.add(runtime)
+    session.flush()
+    return runtime
+
+
+def lobby_expected_map(runtime: SessionRuntime | None) -> dict[str, str]:
+    entries = runtime.lobby_expected if runtime and isinstance(runtime.lobby_expected, list) else []
+    result: dict[str, str] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        user_id = entry.get("userId")
+        display_name = entry.get("displayName")
+        if isinstance(user_id, str):
+            result[user_id] = display_name if isinstance(display_name, str) else user_id
+    return result
+
+
+def lobby_ready_list(runtime: SessionRuntime | None) -> list[str]:
+    entries = runtime.lobby_ready if runtime and isinstance(runtime.lobby_ready, list) else []
+    return [entry for entry in entries if isinstance(entry, str)]
+
+
+def serialize_lobby_status(entry: Session, runtime: SessionRuntime | None) -> LobbyStatusRead:
+    expected_items = [
+        {"userId": user_id, "displayName": display_name}
+        for user_id, display_name in lobby_expected_map(runtime).items()
+    ]
+    ready_items = lobby_ready_list(runtime)
+    return LobbyStatusRead(
+        sessionId=entry.id,
+        campaignId=entry.campaign_id,
+        partyId=entry.party_id,
+        expected=expected_items,
+        ready=ready_items,
+        readyCount=len(ready_items),
+        totalCount=len(expected_items),
+    )
+
+
+def serialize_session_runtime(entry: Session, runtime: SessionRuntime | None) -> SessionRuntimeRead:
+    return SessionRuntimeRead(
+        sessionId=entry.id,
+        campaignId=entry.campaign_id,
+        partyId=entry.party_id,
+        status=entry.status,
+        shopOpen=bool(runtime.shop_open) if runtime else False,
+    )

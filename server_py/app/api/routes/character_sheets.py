@@ -13,6 +13,7 @@ from app.schemas.character_sheet import (
     CharacterSheetRead,
     CharacterSheetUpdate,
 )
+from app.services.character_sheet_inventory import sync_character_sheet_inventory
 
 router = APIRouter()
 
@@ -75,7 +76,7 @@ def create_character_sheet(
     user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    _require_party_member(party_id, user, session)
+    party = _require_party_member(party_id, user, session)
     existing = session.exec(
         select(CharacterSheet).where(
             CharacterSheet.party_id == party_id,
@@ -91,6 +92,12 @@ def create_character_sheet(
         data=payload.data,
     )
     session.add(entry)
+    sync_character_sheet_inventory(
+        party=party,
+        player_user_id=user.id,
+        sheet_data=payload.data,
+        db=session,
+    )
     session.commit()
     session.refresh(entry)
     return _to_read(entry)
@@ -103,7 +110,7 @@ def update_character_sheet(
     user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    _require_party_member(party_id, user, session)
+    party = _require_party_member(party_id, user, session)
     entry = session.exec(
         select(CharacterSheet).where(
             CharacterSheet.party_id == party_id,
@@ -114,6 +121,13 @@ def update_character_sheet(
         raise HTTPException(status_code=404, detail="Character sheet not found")
     entry.data = payload.data
     session.add(entry)
+    sync_character_sheet_inventory(
+        party=party,
+        player_user_id=user.id,
+        sheet_data=payload.data,
+        db=session,
+        only_if_inventory_empty=True,
+    )
     session.commit()
     session.refresh(entry)
     return _to_read(entry)

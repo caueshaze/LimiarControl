@@ -17,9 +17,8 @@ from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
 from app.schemas.session import ActiveSessionRead, SessionCreateByParty, SessionRead
 from ._shared import (
-    _lobby_expected,
-    _lobby_ready,
     check_character_sheets,
+    get_or_create_session_runtime,
     require_party_gm,
     require_party_member_or_gm,
     to_session_read,
@@ -44,6 +43,15 @@ async def _start_session_for_party(
     ).first()
     if existing_active:
         raise HTTPException(status_code=409, detail="Active session already exists")
+
+    player_members = session.exec(
+        select(PartyMember).where(
+            PartyMember.party_id == party.id,
+            PartyMember.role == RoleMode.PLAYER,
+            PartyMember.status == PartyMemberStatus.JOINED,
+        )
+    ).all()
+    check_character_sheets(party.id, player_members, session)
 
     last_closed_source = session.exec(
         select(Session)
@@ -85,14 +93,6 @@ async def _start_session_for_party(
     else:
         raise HTTPException(status_code=409, detail="Failed to allocate session number")
 
-    player_members = session.exec(
-        select(PartyMember).where(
-            PartyMember.party_id == party.id,
-            PartyMember.role == RoleMode.PLAYER,
-            PartyMember.status == PartyMemberStatus.JOINED,
-        )
-    ).all()
-    check_character_sheets(party.id, player_members, session)
     previous_states = []
     if last_closed_source:
         previous_states = session.exec(
@@ -118,6 +118,7 @@ async def _start_session_for_party(
             id=str(uuid4()), session_id=entry.id, player_user_id=m.user_id, state_json=cloned,
         ))
     session.commit()
+    runtime = get_or_create_session_runtime(entry.id, session)
 
     from app.models.user import User as UserModel
     expected: dict[str, str] = {}
@@ -129,12 +130,17 @@ async def _start_session_for_party(
         now = datetime.now(timezone.utc)
         entry.status = SessionStatus.ACTIVE
         entry.started_at = now
+        runtime.lobby_expected = []
+        runtime.lobby_ready = []
+        runtime.shop_open = False
         session.add(entry)
+        session.add(runtime)
         session.commit()
         session.refresh(entry)
         started_payload = {
             "sessionId": entry.id,
             "campaignId": party.campaign_id,
+            "partyId": party.id,
             "title": entry.title,
             "startedAt": now.isoformat(),
         }
@@ -148,9 +154,12 @@ async def _start_session_for_party(
             build_event("session_started", started_payload, version=version),
         )
     else:
-        _lobby_ready[entry.id] = set()
-        _lobby_expected[entry.id] = expected
         expected_list = [{"userId": uid, "displayName": name} for uid, name in expected.items()]
+        runtime.lobby_expected = expected_list
+        runtime.lobby_ready = []
+        runtime.shop_open = False
+        session.add(runtime)
+        session.commit()
         await centrifugo.publish(
             campaign_channel(party.campaign_id),
             build_event(
@@ -158,8 +167,12 @@ async def _start_session_for_party(
                 {
                     "sessionId": entry.id,
                     "campaignId": party.campaign_id,
+                    "partyId": party.id,
                     "title": entry.title,
                     "expectedPlayers": expected_list,
+                    "readyUserIds": [],
+                    "readyCount": 0,
+                    "totalCount": len(expected_list),
                 },
                 version=event_version(entry.created_at),
             ),

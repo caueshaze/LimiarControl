@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { CharacterSheetMode } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
@@ -21,6 +21,7 @@ type Props = {
   // Save UX
   partyId?: string | null;
   backHref?: string | null;
+  backLabel?: string | null;
   isDirty: boolean;
   saving: boolean;
   saveError: string | null;
@@ -36,9 +37,10 @@ type Props = {
 export const CharacterHeader = ({
   sheet, mode, canSave, showResetImport, ac, initiative, profBonus, passivePerception,
   spellSaveDC, spellAttack, hpTextColor,
-  partyId, backHref, isDirty, saving, saveError, onSave,
+  partyId, backHref, backLabel, isDirty, saving, saveError, onSave,
   importRef, importError, onExport, onImport, onReset,
 }: Props) => {
+  const navigate = useNavigate();
   const isCreation = mode === "creation";
   const activeConditions = CONDITION_NAMES.filter((c) => sheet.conditions[c]);
   const [showSaved, setShowSaved] = useState(false);
@@ -52,56 +54,27 @@ export const CharacterHeader = ({
     }
   }, [canSave, saving, isDirty, saveError, partyId]);
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    if (backHref) {
+      navigate(backHref);
+    }
+  };
+
   return (
     <div className="space-y-4 px-4 pt-4 lg:px-6">
-      {!isCreation && (
-        <div className="sticky top-16 z-40">
-          <div className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-x-5 gap-y-3 rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] px-5 py-4 shadow-[0_16px_50px_rgba(2,6,23,0.42)] backdrop-blur-xl">
-            <span className="flex items-center gap-2 text-sm font-bold text-slate-100">
-              {sheet.inspiration && (
-                <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" title="Inspired" />
-              )}
-              {sheet.name || "Unnamed"}
-              <span className="font-normal text-slate-500">
-                — {sheet.class || "?"} Lv{sheet.level}
-              </span>
-            </span>
-            <StatChip
-              label="HP"
-              value={`${sheet.currentHP}/${sheet.maxHP}${sheet.tempHP > 0 ? ` +${sheet.tempHP}` : ""}`}
-              className={hpTextColor}
-            />
-            <StatChip label="AC" value={String(ac)} />
-            <StatChip label="Init" value={formatMod(initiative)} />
-            <StatChip label="Prof" value={formatMod(profBonus)} className="text-limiar-400" />
-            <StatChip label="PP" value={String(passivePerception)} />
-            {spellSaveDC !== null && (
-              <>
-                <StatChip label="Spell DC" value={String(spellSaveDC)} className="text-violet-400" />
-                <StatChip label="Spell Atk" value={formatMod(spellAttack!)} className="text-violet-400" />
-              </>
-            )}
-            {activeConditions.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {activeConditions.map((c) => (
-                  <span key={c} className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-rose-300">
-                    {CONDITION_LABELS[c]}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-3">
-        {backHref && (
-          <Link
-            to={backHref}
+        {(backHref || window.history.length > 1) && (
+          <button
+            type="button"
+            onClick={handleBack}
             className="rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300"
           >
-            Back To Party
-          </Link>
+            {backLabel ?? "Back To Party"}
+          </button>
         )}
         {showResetImport && (
           <button type="button" onClick={onReset}
@@ -139,6 +112,46 @@ export const CharacterHeader = ({
           </div>
         )}
       </div>
+
+      {!isCreation && (
+        <div className="sticky top-18 z-30">
+          <div className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-x-5 gap-y-3 rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] px-5 py-4 shadow-[0_16px_50px_rgba(2,6,23,0.42)] backdrop-blur-xl">
+            <span className="flex items-center gap-2 text-sm font-bold text-slate-100">
+              {sheet.inspiration && (
+                <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" title="Inspired" />
+              )}
+              {sheet.name || "Unnamed"}
+              <span className="font-normal text-slate-500">
+                — {sheet.class || "?"} Lv{sheet.level}
+              </span>
+            </span>
+            <StatChip
+              label="HP"
+              value={`${sheet.currentHP}/${sheet.maxHP}${sheet.tempHP > 0 ? ` +${sheet.tempHP}` : ""}`}
+              className={hpTextColor}
+            />
+            <StatChip label="AC" value={String(ac)} />
+            <StatChip label="Init" value={formatMod(initiative)} />
+            <StatChip label="Prof" value={formatMod(profBonus)} className="text-limiar-400" />
+            <StatChip label="PP" value={String(passivePerception)} />
+            {spellSaveDC !== null && (
+              <>
+                <StatChip label="Spell DC" value={String(spellSaveDC)} className="text-violet-400" />
+                <StatChip label="Spell Atk" value={formatMod(spellAttack!)} className="text-violet-400" />
+              </>
+            )}
+            {activeConditions.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {activeConditions.map((c) => (
+                  <span key={c} className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-rose-300">
+                    {CONDITION_LABELS[c]}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {importError && (
         <div className="mx-auto max-w-[88rem] rounded-2xl border border-rose-500/30 bg-rose-950/30 p-4 text-xs text-rose-300">

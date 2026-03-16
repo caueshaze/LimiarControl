@@ -7,6 +7,9 @@ import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { partiesRepo, type PartySummary, type PartyInvite, type PartyActiveSession } from "../../shared/api/partiesRepo";
 import { subscribe } from "../../shared/realtime/centrifugoClient";
 
+const sameStringArray = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
 export const PlayerHomePage = () => {
   const { user } = useAuth();
   const { t } = useLocale();
@@ -18,8 +21,33 @@ export const PlayerHomePage = () => {
   const [campaignIds, setCampaignIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeSessionsPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const subscriptionCleanupsRef = useRef<Array<() => void>>([]);
   const partiesRef = useRef<PartySummary[]>([]);
+
+  const refreshActiveSessions = useCallback(async (targetParties?: PartySummary[]) => {
+    const sourceParties = targetParties ?? partiesRef.current;
+    if (sourceParties.length === 0) {
+      setActiveSessions({});
+      return;
+    }
+
+    const sessionResults = await Promise.allSettled(
+      sourceParties.map((party) =>
+        partiesRepo.getPartyActiveSession(party.id)
+          .then((session) => ({ partyId: party.id, session }))
+          .catch(() => null),
+      ),
+    );
+
+    const sessions: Record<string, PartyActiveSession> = {};
+    for (const result of sessionResults) {
+      if (result.status === "fulfilled" && result.value) {
+        sessions[result.value.partyId] = result.value.session;
+      }
+    }
+    setActiveSessions(sessions);
+  }, []);
 
   const loadData = useCallback(async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
@@ -32,53 +60,59 @@ export const PlayerHomePage = () => {
       const safeParties = Array.isArray(fetchedParties) ? fetchedParties : [];
       const safeInvites = Array.isArray(fetchedInvites) ? fetchedInvites : [];
       const safeCampaignIds = Array.isArray(fetchedCampaigns)
-        ? [...new Set(fetchedCampaigns.map((campaign) => campaign.id))]
+        ? [...new Set(fetchedCampaigns.map((campaign) => campaign.id))].sort()
         : [];
-      setCampaignIds(safeCampaignIds);
+      setCampaignIds((current) => (sameStringArray(current, safeCampaignIds) ? current : safeCampaignIds));
       setParties(safeParties);
       setInvites(safeInvites);
-
-      // Check active sessions for each party
-      const sessionResults = await Promise.allSettled(
-        safeParties.map(p =>
-          partiesRepo.getPartyActiveSession(p.id)
-            .then(s => ({ partyId: p.id, session: s }))
-            .catch(() => null)
-        )
-      );
-      const sessions: Record<string, PartyActiveSession> = {};
-      for (const result of sessionResults) {
-        if (result.status === "fulfilled" && result.value) {
-          sessions[result.value.partyId] = result.value.session;
-        }
-      }
-      setActiveSessions(sessions);
+      partiesRef.current = safeParties;
     } catch {
       setParties([]);
       setInvites([]);
       setCampaignIds([]);
+      partiesRef.current = [];
+      setActiveSessions({});
     } finally {
       if (showSpinner) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadData(true);
+    void loadData(true).then(() => refreshActiveSessions());
     pollingRef.current = setInterval(() => {
       void loadData();
-    }, 5_000);
-    const handleFocus = () => { void loadData(); };
+    }, 30_000);
+    activeSessionsPollingRef.current = setInterval(() => {
+      void refreshActiveSessions();
+    }, 60_000);
+    const handleFocus = () => {
+      void loadData();
+      void refreshActiveSessions();
+    };
     window.addEventListener("focus", handleFocus);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (activeSessionsPollingRef.current) clearInterval(activeSessionsPollingRef.current);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [loadData]);
+  }, [loadData, refreshActiveSessions]);
 
   // Keep ref in sync so WS callbacks always see latest parties
   useEffect(() => {
     partiesRef.current = parties;
   }, [parties]);
+
+  const upsertActiveSession = useCallback((partyId: string, session: PartyActiveSession | null) => {
+    setActiveSessions((current) => {
+      const next = { ...current };
+      if (session) {
+        next[partyId] = session;
+      } else {
+        delete next[partyId];
+      }
+      return next;
+    });
+  }, []);
 
   // Connect to each party's campaign WS for real-time session events
   useEffect(() => {
@@ -91,12 +125,37 @@ export const PlayerHomePage = () => {
     subscriptionCleanupsRef.current = campaignIds.map((campaignId) =>
       subscribe(`campaign:${campaignId}`, {
         onPublication: (msg) => {
-          const data = msg as { type?: string };
+          const data = msg as {
+            payload?: { partyId?: string | null };
+            type?: string;
+          };
           if (data.type && REFRESH_EVENTS.has(data.type)) {
             void loadData();
           }
+          if (data.type === "session_lobby" || data.type === "session_started") {
+            const matchedParty = data.payload?.partyId
+              ? partiesRef.current.find((party) => party.id === data.payload?.partyId)
+              : partiesRef.current.find((party) => party.campaignId === campaignId);
+            if (matchedParty) {
+              void partiesRepo.getPartyActiveSession(matchedParty.id)
+                .then((session) => {
+                  upsertActiveSession(matchedParty.id, session);
+                })
+                .catch(() => {});
+            }
+          }
+          if (data.type === "session_closed") {
+            const matchedParty = data.payload?.partyId
+              ? partiesRef.current.find((party) => party.id === data.payload?.partyId)
+              : partiesRef.current.find((party) => party.campaignId === campaignId);
+            if (matchedParty) {
+              upsertActiveSession(matchedParty.id, null);
+            }
+          }
           if (data.type === "session_started") {
-            const matchedParty = partiesRef.current.find((party) => party.campaignId === campaignId);
+            const matchedParty = data.payload?.partyId
+              ? partiesRef.current.find((party) => party.id === data.payload?.partyId)
+              : partiesRef.current.find((party) => party.campaignId === campaignId);
             if (matchedParty) {
               navigate(routes.board.replace(":partyId", matchedParty.id));
             }
@@ -109,12 +168,13 @@ export const PlayerHomePage = () => {
       subscriptionCleanupsRef.current.forEach((cleanup) => cleanup());
       subscriptionCleanupsRef.current = [];
     };
-  }, [campaignIds, loadData, navigate]);
+  }, [campaignIds, loadData, navigate, upsertActiveSession]);
 
   const handleJoin = async (partyId: string) => {
     try {
       await partiesRepo.joinInvite(partyId);
       await loadData();
+      await refreshActiveSessions();
     } catch (err: any) {
       alert(err?.message ?? "Failed to join party");
     }
@@ -124,6 +184,7 @@ export const PlayerHomePage = () => {
     try {
       await partiesRepo.declineInvite(partyId);
       await loadData();
+      await refreshActiveSessions();
     } catch (err: any) {
       alert(err?.message ?? "Failed to decline invite");
     }

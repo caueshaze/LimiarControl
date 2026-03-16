@@ -10,6 +10,7 @@ from app.models.campaign import RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.session import Session, SessionStatus
+from app.models.session_runtime import SessionRuntime
 from app.schemas.session import ActiveSessionRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import (
@@ -20,8 +21,6 @@ from app.services.realtime import (
 )
 from ._shared import (
     DEPRECATION_REMOVAL_DATE,
-    _lobby_expected,
-    _lobby_ready,
     require_party_gm,
     resolve_party_id_for_campaign,
     to_session_read,
@@ -53,9 +52,22 @@ async def close_party_session(
     session.add(entry)
     session.commit()
     session.refresh(entry)
-    _lobby_ready.pop(entry.id, None)
-    _lobby_expected.pop(entry.id, None)
-    closed_payload = {"sessionId": entry.id, "campaignId": party.campaign_id, "endedAt": now.isoformat()}
+    runtime = session.exec(
+        select(SessionRuntime).where(SessionRuntime.session_id == entry.id)
+    ).first()
+    if runtime:
+        runtime.lobby_expected = []
+        runtime.lobby_ready = []
+        runtime.shop_open = False
+        session.add(runtime)
+        session.commit()
+        session.refresh(entry)
+    closed_payload = {
+        "sessionId": entry.id,
+        "campaignId": party.campaign_id,
+        "partyId": party.id,
+        "endedAt": now.isoformat(),
+    }
     version = event_version(now)
     await centrifugo.publish(
         session_channel(entry.id),
@@ -101,7 +113,22 @@ async def close_session(
     session.add(entry)
     session.commit()
     session.refresh(entry)
-    closed_payload = {"sessionId": entry.id, "campaignId": entry.campaign_id, "endedAt": now.isoformat()}
+    runtime = session.exec(
+        select(SessionRuntime).where(SessionRuntime.session_id == entry.id)
+    ).first()
+    if runtime:
+        runtime.lobby_expected = []
+        runtime.lobby_ready = []
+        runtime.shop_open = False
+        session.add(runtime)
+        session.commit()
+        session.refresh(entry)
+    closed_payload = {
+        "sessionId": entry.id,
+        "campaignId": entry.campaign_id,
+        "partyId": entry.party_id,
+        "endedAt": now.isoformat(),
+    }
     version = event_version(now)
     await centrifugo.publish(
         session_channel(entry.id),

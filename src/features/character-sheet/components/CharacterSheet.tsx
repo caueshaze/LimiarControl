@@ -32,6 +32,8 @@ type Props = {
   playPlayerUserId?: string | null;
   canEditPlay?: boolean;
   backHref?: string | null;
+  backLabel?: string | null;
+  playContextLabel?: string | null;
 };
 
 export const CharacterSheet = ({
@@ -40,6 +42,8 @@ export const CharacterSheet = ({
   playPlayerUserId = null,
   canEditPlay = false,
   backHref = null,
+  backLabel = null,
+  playContextLabel = null,
 }: Props) => {
   const actions = useCharacterSheet(partyId, mode, { playPlayerUserId, canEditPlay });
   const { sheet } = actions;
@@ -104,6 +108,7 @@ export const CharacterSheet = ({
         hpTextColor={hpTextColor}
         partyId={partyId}
         backHref={backHref}
+        backLabel={backLabel}
         isDirty={actions.isDirty}
         saving={actions.saving}
         saveError={actions.saveError}
@@ -116,6 +121,17 @@ export const CharacterSheet = ({
       />
 
       <div className="relative mx-auto max-w-[88rem] space-y-3 px-4 py-8 lg:px-6">
+        {isPlay && playContextLabel && (
+          <div className="rounded-[28px] border border-sky-400/20 bg-sky-400/10 px-5 py-4 shadow-[0_16px_40px_rgba(14,165,233,0.12)]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-300">
+              GM Play View
+            </p>
+            <p className="mt-2 text-sm text-slate-100">
+              Viewing <span className="font-semibold text-sky-200">{playContextLabel}</span>'s live play sheet from the GM dashboard.
+            </p>
+          </div>
+        )}
+
         <CharacterInfo
           sheet={sheet}
           mode={mode}

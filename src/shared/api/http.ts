@@ -9,6 +9,40 @@ export type HttpError = {
   data?: unknown;
 };
 
+const formatDetailMessage = (detail: unknown) => {
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (!detail || typeof detail !== "object") {
+    return null;
+  }
+
+  const typedDetail = detail as {
+    code?: string;
+    message?: string;
+    players?: Array<{ displayName?: string | null; userId?: string | null }>;
+  };
+
+  if (typeof typedDetail.message === "string") {
+    return typedDetail.message;
+  }
+
+  if (
+    typedDetail.code === "missing_character_sheets" &&
+    Array.isArray(typedDetail.players) &&
+    typedDetail.players.length > 0
+  ) {
+    const players = typedDetail.players
+      .map((player) => player.displayName || player.userId)
+      .filter((player): player is string => Boolean(player));
+    if (players.length > 0) {
+      return `Nao e possivel iniciar a sessao. Os seguintes jogadores ainda nao possuem ficha: ${players.join(", ")}.`;
+    }
+  }
+
+  return null;
+};
+
 const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
   const baseUrl = env.VITE_API_BASE_URL;
   if (!baseUrl) {
@@ -32,7 +66,8 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
     try {
       errorData = await response.json();
       const d = errorData as { error?: string; message?: string; detail?: unknown };
-      if (typeof d?.detail === "string") message = d.detail;
+      const detailMessage = formatDetailMessage(d?.detail);
+      if (detailMessage) message = detailMessage;
       else if (d?.error) message = d.error as string;
       else if (d?.message) message = d.message as string;
     } catch {

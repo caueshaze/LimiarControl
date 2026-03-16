@@ -9,11 +9,13 @@ from app.models.campaign_member import CampaignMember
 from app.models.purchase_event import PurchaseEvent
 from app.models.roll_event import RollEvent
 from app.models.session import Session
+from app.models.session_command_event import SessionCommandEvent
 from app.models.user import User
 from app.schemas.session import (
     ActivityEvent,
     PurchaseActivityEvent,
     RollActivityEvent,
+    ShopActivityEvent,
 )
 
 router = APIRouter()
@@ -81,6 +83,23 @@ def get_session_activity(
             quantity=purchase.quantity,
             timestamp=purchase.created_at,
             sessionOffsetSeconds=offset(purchase.created_at),
+        ))
+
+    commands = session.exec(
+        select(SessionCommandEvent, User)
+        .outerjoin(User, SessionCommandEvent.user_id == User.id)
+        .where(SessionCommandEvent.session_id == session_id)
+        .where(SessionCommandEvent.command_type.in_(("open_shop", "close_shop")))
+        .order_by(SessionCommandEvent.created_at)
+    ).all()
+    for command, command_user in commands:
+        events.append(ShopActivityEvent(
+            userId=command.user_id,
+            username=command_user.username if command_user else None,
+            displayName=(command_user.display_name if command_user else None) or command.actor_name,
+            action="opened" if command.command_type == "open_shop" else "closed",
+            timestamp=command.created_at,
+            sessionOffsetSeconds=offset(command.created_at),
         ))
 
     events.sort(key=lambda e: e.timestamp)

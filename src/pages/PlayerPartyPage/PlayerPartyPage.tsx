@@ -30,6 +30,7 @@ export const PlayerPartyPage = () => {
     const [joiningLobby, setJoiningLobby] = useState(false);
     const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
     const wasLobbyRef = useRef(false);
+    const prevActiveSessionIdRef = useRef<string | null>(null);
 
     // Character sheet
     const [hasCharacterSheet, setHasCharacterSheet] = useState<boolean | null>(null);
@@ -51,9 +52,44 @@ export const PlayerPartyPage = () => {
         }
     }, [partyId]);
 
+    const refreshSessions = useCallback(async () => {
+        if (!partyId) return [];
+        try {
+            const sessionsData = await partiesRepo.listPartySessions(partyId);
+            setSessions(sessionsData);
+            return sessionsData;
+        } catch {
+            return [];
+        }
+    }, [partyId]);
+
+    const refreshActiveSession = useCallback(async () => {
+        if (!partyId) return null;
+        try {
+            const session = await partiesRepo.getPartyActiveSession(partyId);
+            setSessions((current) => {
+                const next = current.filter((entry) => entry.id !== session.id);
+                return [session, ...next];
+            });
+            return session;
+        } catch {
+            return null;
+        }
+    }, [partyId]);
+
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        if (!partyId) return;
+        const interval = setInterval(() => {
+            void refreshSessions();
+        }, 30_000);
+        return () => {
+            clearInterval(interval);
+        };
+    }, [partyId, refreshSessions]);
 
     useEffect(() => {
         if (!partyId) return;
@@ -64,6 +100,17 @@ export const PlayerPartyPage = () => {
 
     const { lastEvent } = useCampaignEvents(party?.campaignId ?? null);
     const activeSession = sessions.find(s => s.isActive);
+
+    // Fallback redirect: detect when activeSession transitions from active to null
+    // (covers cases where the Centrifugo event is missed)
+    useEffect(() => {
+        if (activeSession?.id) {
+            prevActiveSessionIdRef.current = activeSession.id;
+        } else if (prevActiveSessionIdRef.current) {
+            prevActiveSessionIdRef.current = null;
+            navigate(routes.home, { replace: true });
+        }
+    }, [activeSession?.id, navigate]);
 
     useEffect(() => {
         if (!party?.campaignId) return;
@@ -81,9 +128,12 @@ export const PlayerPartyPage = () => {
     useEffect(() => {
         if (!lastEvent) return;
         if (lastEvent.type === "session_started") {
+            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+                return;
+            }
             setLobbyStatus(null);
             setHasJoinedLobby(false);
-            loadData();
+            void refreshSessions();
             // Auto-navigate to the board when lobby transitions to active
             if (partyId) {
                 navigate(routes.board.replace(":partyId", partyId));
@@ -91,24 +141,60 @@ export const PlayerPartyPage = () => {
             return;
         }
         if (lastEvent.type === "session_closed") {
+            const eventPartyId =
+                typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+            if (eventPartyId && partyId && eventPartyId !== partyId) {
+                void refreshSessions();
+                return;
+            }
             setLobbyStatus(null);
             setHasJoinedLobby(false);
-            loadData();
+            navigate(routes.home, { replace: true });
+            return;
         }
         if (lastEvent.type === "session_lobby") {
-            // Refresh sessions to get the lobby session
-            loadData();
+            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+                return;
+            }
+            setLobbyStatus({
+                sessionId: lastEvent.payload.sessionId,
+                campaignId: lastEvent.payload.campaignId,
+                partyId: lastEvent.payload.partyId,
+                expected: lastEvent.payload.expectedPlayers,
+                ready: lastEvent.payload.readyUserIds ?? [],
+                readyCount: lastEvent.payload.readyCount ?? 0,
+                totalCount: lastEvent.payload.totalCount ?? lastEvent.payload.expectedPlayers.length,
+            });
             setHasJoinedLobby(false);
+            void refreshActiveSession().then((session) => {
+                if (session) {
+                    return;
+                }
+                void refreshSessions();
+            });
         }
         if (lastEvent.type === "party_member_updated") {
             loadData();
         }
         if (lastEvent.type === "player_joined_lobby") {
-            if (activeSession?.id) {
-                sessionsRepo.getLobbyStatus(activeSession.id).then(setLobbyStatus).catch(() => {});
+            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+                return;
             }
+            setLobbyStatus((current) => {
+                if (!current || current.sessionId !== lastEvent.payload.sessionId) {
+                    return current;
+                }
+                if (current.ready.includes(lastEvent.payload.userId)) {
+                    return current;
+                }
+                return {
+                    ...current,
+                    ready: [...current.ready, lastEvent.payload.userId],
+                    readyCount: lastEvent.payload.readyCount ?? current.readyCount + 1,
+                };
+            });
         }
-    }, [lastEvent, loadData, partyId, navigate, activeSession?.id]);
+    }, [lastEvent, loadData, navigate, partyId, refreshActiveSession, refreshSessions]);
 
     // Poll lobby status when in lobby
     useEffect(() => {
@@ -127,19 +213,32 @@ export const PlayerPartyPage = () => {
             return;
         }
         let cancelled = false;
-        sessionsRepo.getLobbyStatus(activeSession.id).then(status => {
-            if (!cancelled) setLobbyStatus(status);
-        }).catch(() => {});
+        const syncLobbyState = async () => {
+            const [status, sessionsData] = await Promise.all([
+                sessionsRepo.getLobbyStatus(activeSession.id).catch(() => null),
+                refreshSessions(),
+            ]);
+            if (cancelled) {
+                return;
+            }
+            if (status) {
+                setLobbyStatus(status);
+            }
+            const refreshedActive = sessionsData.find((session) => session.isActive) ?? null;
+            if (refreshedActive?.status === "ACTIVE" && partyId) {
+                setHasJoinedLobby(false);
+                navigate(routes.board.replace(":partyId", partyId), { replace: true });
+            }
+        };
+        void syncLobbyState();
         const interval = setInterval(() => {
-            sessionsRepo.getLobbyStatus(activeSession.id).then(status => {
-                if (!cancelled) setLobbyStatus(status);
-            }).catch(() => {});
-        }, 3000);
+            void syncLobbyState();
+        }, 5_000);
         return () => {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [activeSession?.id, activeSession?.status]);
+    }, [activeSession?.id, activeSession?.status, navigate, partyId, refreshSessions]);
 
     const handleJoinLobby = async () => {
         if (!activeSession?.id || joiningLobby) return;
@@ -147,6 +246,17 @@ export const PlayerPartyPage = () => {
         try {
             await sessionsRepo.joinLobby(activeSession.id);
             setHasJoinedLobby(true);
+            if (user?.userId) {
+                setLobbyStatus((current) => {
+                    if (!current || current.ready.includes(user.userId)) {
+                        return current;
+                    }
+                    return {
+                        ...current,
+                        ready: [...current.ready, user.userId],
+                    };
+                });
+            }
         } catch {
             // ignore
         } finally {

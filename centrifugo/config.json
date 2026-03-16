@@ -1,6 +1,4 @@
 {
-  "token_hmac_secret_key": "",
-  "api_key": "",
   "admin": false,
   "allowed_origins": ["http://localhost:5173"],
   "namespaces": [

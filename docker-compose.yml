@@ -1,4 +1,20 @@
 services:
+  dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: limiarcontrol-dev
+    working_dir: /workspace
+    command: sleep infinity
+    volumes:
+      - .:/workspace:Z
+    depends_on:
+      - db
+      - centrifugo
+    ports:
+      - "5173:5173"
+      - "8000:8000"
+
   db:
     image: postgres:16
     container_name: limiarcontrol-db
@@ -12,13 +28,13 @@ services:
       - limiarcontrol_db:/var/lib/postgresql/data
 
   centrifugo:
-    image: centrifugal/centrifugo:v5
+    image: centrifugo/centrifugo:v5
     container_name: limiarcontrol-centrifugo
     ports:
       - "8001:8000"
-    command: centrifugo -c config.json
+    command: centrifugo -c /centrifugo/config.json
     volumes:
-      - ./centrifugo/config.json:/centrifugo/config.json:ro
+      - ./centrifugo/config.json:/centrifugo/config.json:ro,Z
     environment:
       CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: "${CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}"
       CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:-dev-api-key}"

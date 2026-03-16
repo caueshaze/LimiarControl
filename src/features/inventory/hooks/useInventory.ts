@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { InventoryItem } from "../../../entities/inventory";
 import { inventoryRepo } from "../../../shared/api/inventoryRepo";
 import { useCampaigns } from "../../campaign-select";
@@ -16,6 +16,38 @@ export const useInventory = (options?: UseInventoryOptions) => {
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
 
+  const refreshInventory = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!selectedCampaignId) {
+        setInventory([]);
+        setInventoryError(null);
+        return;
+      }
+      if (options?.memberId === null) {
+        setInventory([]);
+        setInventoryError(null);
+        return;
+      }
+      if (!silent) {
+        setInventoryLoading(true);
+      }
+      try {
+        const data = await inventoryRepo.list(selectedCampaignId, memberId, partyId);
+        setInventory(Array.isArray(data) ? data : []);
+        setInventoryError(null);
+      } catch (error: unknown) {
+        const typedError = error as { message?: string };
+        setInventory([]);
+        setInventoryError(typedError?.message ?? "Failed to load inventory");
+      } finally {
+        if (!silent) {
+          setInventoryLoading(false);
+        }
+      }
+    },
+    [selectedCampaignId, memberId, partyId, options?.memberId]
+  );
+
   useEffect(() => {
     if (!selectedCampaignId) {
       setInventory([]);
@@ -27,29 +59,8 @@ export const useInventory = (options?: UseInventoryOptions) => {
       setInventoryError(null);
       return;
     }
-    let active = true;
-    setInventoryLoading(true);
-    inventoryRepo
-      .list(selectedCampaignId, memberId, partyId)
-      .then((data) => {
-        if (!active) return;
-        setInventory(Array.isArray(data) ? data : []);
-        setInventoryError(null);
-      })
-      .catch((error: { message?: string }) => {
-        if (!active) return;
-        setInventory([]);
-        setInventoryError(error?.message ?? "Failed to load inventory");
-      })
-      .finally(() => {
-        if (!active) return;
-        setInventoryLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedCampaignId, memberId, partyId, options?.memberId]);
+    void refreshInventory();
+  }, [selectedCampaignId, options?.memberId, refreshInventory]);
 
   const toggleEquipped = (id: string) => {
     if (!selectedCampaignId) {
@@ -73,6 +84,7 @@ export const useInventory = (options?: UseInventoryOptions) => {
     inventory,
     inventoryLoading,
     inventoryError,
+    refreshInventory,
     toggleEquipped,
     selectedCampaignId,
   };

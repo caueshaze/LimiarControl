@@ -20,9 +20,16 @@ pip install -e .
 cp .env.example .env
 ```
 
-If you run FastAPI on the host machine instead of inside Docker, add these values to `server_py/.env`:
+The default `server_py/.env` is meant for the dev container, so its database host should be `db`:
 
 ```env
+DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/limiarcontrol
+```
+
+If you run FastAPI on the host machine instead of inside Docker, change the database host to `localhost` and add these values to `server_py/.env`:
+
+```env
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me

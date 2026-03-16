@@ -45,7 +45,7 @@ export const useRollSession = () => {
           return;
         }
         const data = message as { type?: string; payload?: unknown };
-        if (data.type === "roll_created" && data.payload) {
+        if ((data.type === "roll_created" || data.type === "dice_rolled") && data.payload) {
           appendEvent(data.payload as RollEvent);
         }
       },

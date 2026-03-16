@@ -3,7 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
 import { ShopPanel } from "../../features/shop";
-import { useActiveSession, useCampaignEvents, useSession, useSessionCommands } from "../../features/sessions";
+import { SessionInventoryPanel } from "../../features/inventory";
+import {
+  SessionActivityToggle,
+  useCampaignEvents,
+  usePartyActiveSession,
+  useSession,
+  useSessionCommands,
+} from "../../features/sessions";
 import { routes } from "../../app/routes/routes";
 import { useRollSession } from "../../features/dice-roller";
 import { DiceVisualizer } from "../../features/dice-roller/components/DiceVisualizer";
@@ -13,57 +20,12 @@ import { partiesRepo } from "../../shared/api/partiesRepo";
 import { sessionsRepo } from "../../shared/api/sessionsRepo";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
+import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { useAuth } from "../../features/auth";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
-import type { ActivityEvent } from "../../shared/api/sessionsRepo";
-
-function formatOffset(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function ActivityRow({ event }: { event: ActivityEvent }) {
-  const actor = event.displayName ?? event.username ?? "Unknown";
-  if (event.type === "roll") {
-    return (
-      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-        <span className="mt-0.5 text-base">🎲</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-white">
-            <span className="font-semibold">{actor}</span>
-            {" rolled "}
-            <span className="font-mono text-limiar-300">{event.expression}</span>
-            {" → "}
-            <span className="font-bold text-limiar-400">{event.total}</span>
-            {event.results.length > 1 && (
-              <span className="text-xs text-slate-500 ml-1">({event.results.join(", ")})</span>
-            )}
-          </p>
-          {event.label && <p className="text-xs text-slate-400 mt-0.5">{event.label}</p>}
-        </div>
-        <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-      <span className="mt-0.5 text-base">🛒</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-white">
-          <span className="font-semibold">{actor}</span>
-          {" bought "}
-          <span className="font-semibold text-amber-300">{event.itemName}</span>
-          {event.quantity > 1 && <span className="text-slate-400"> ×{event.quantity}</span>}
-        </p>
-      </div>
-      <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
-    </div>
-  );
-}
+import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
+import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 
 type PendingRoll = {
   expression: string;
@@ -85,10 +47,11 @@ export const PlayerBoardPage = () => {
       .then((party) => setCampaignId(party.campaignId))
       .catch(() => {});
   }, [partyId]);
-  const { activeSession, refresh } = useActiveSession(campaignId);
+  const { activeSession, refresh } = usePartyActiveSession(partyId);
+  const effectiveCampaignId = campaignId ?? selectedCampaignId ?? activeSession?.campaignId ?? null;
   const { selectedSessionId, setSelectedSessionId } = useSession();
-  const { lastCommand, clearCommand, sessionEndedAt, clearSessionEnded } = useSessionCommands();
-  const { lastEvent } = useCampaignEvents(campaignId);
+  const { lastCommand, clearCommand, sessionEndedAt, clearSessionEnded, shopOpen: shopAvailable } = useSessionCommands();
+  const { lastEvent } = useCampaignEvents(effectiveCampaignId);
   const { roll, events: rollEvents } = useRollSession();
   const { toast, showToast, clearToast } = useToast();
   const [pendingRoll, setPendingRoll] = useState<PendingRoll | null>(null);
@@ -99,52 +62,58 @@ export const PlayerBoardPage = () => {
   const [shopSessionTarget, setShopSessionTarget] = useState<string | null>(null);
   const [myInventory, setMyInventory] = useState<InventoryItem[] | null>(null);
   const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
+  const [playerWallet, setPlayerWallet] = useState<CurrencyWallet | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
-  const activityIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [inventoryFlash, setInventoryFlash] = useState(false);
   const navigate = useNavigate();
   const redirectTimeoutRef = useRef<number | null>(null);
-  const effectiveCampaignId = campaignId ?? selectedCampaignId ?? activeSession?.campaignId ?? null;
+  const prevActiveSessionIdRef = useRef<string | null>(null);
+
+  const refreshInventoryData = useCallback(async () => {
+    if (!effectiveCampaignId) {
+      setMyInventory([]);
+      return;
+    }
+    try {
+      const inventory = await inventoryRepo.list(effectiveCampaignId, null, partyId);
+      setMyInventory(inventory);
+    } catch {
+      setMyInventory([]);
+    }
+  }, [effectiveCampaignId, partyId]);
+
+  const refreshPlayerWallet = useCallback(async () => {
+    if (!activeSession?.id) {
+      setPlayerWallet(null);
+      return;
+    }
+    try {
+      const record = await sessionStatesRepo.getMine(activeSession.id);
+      const nextWallet = normalizeWallet(
+        (record.state as { currency?: unknown } | null | undefined)?.currency
+      );
+      setPlayerWallet(nextWallet);
+    } catch {
+      setPlayerWallet(EMPTY_WALLET);
+    }
+  }, [activeSession?.id]);
 
   useEffect(() => {
-    if (!campaignId) return;
+    if (!effectiveCampaignId) return;
     Promise.all([
-      inventoryRepo.list(campaignId),
-      itemsRepo.list(campaignId),
+      inventoryRepo.list(effectiveCampaignId, null, partyId),
+      itemsRepo.list(effectiveCampaignId),
     ]).then(([inv, items]) => {
       const itemMap: Record<string, Item> = {};
       for (const it of items) itemMap[it.id] = it;
       setCatalogItems(itemMap);
       setMyInventory(inv);
     }).catch(() => { setMyInventory([]); });
-  }, [campaignId]);
-
-  const refreshActivity = useCallback(async () => {
-    if (!activeSession?.id) return;
-    try {
-      const events = await sessionsRepo.getActivity(activeSession.id);
-      setActivityFeed(events);
-    } catch { /* ignore */ }
-  }, [activeSession?.id]);
+  }, [effectiveCampaignId, partyId]);
 
   useEffect(() => {
-    if (!activeSession?.id) {
-      setActivityFeed([]);
-      if (activityIntervalRef.current) {
-        clearInterval(activityIntervalRef.current);
-        activityIntervalRef.current = null;
-      }
-      return;
-    }
-    refreshActivity();
-    activityIntervalRef.current = setInterval(refreshActivity, 10_000);
-    return () => {
-      if (activityIntervalRef.current) {
-        clearInterval(activityIntervalRef.current);
-        activityIntervalRef.current = null;
-      }
-    };
-  }, [activeSession?.id, refreshActivity]);
+    void refreshPlayerWallet();
+  }, [refreshPlayerWallet]);
 
   useEffect(() => {
     if (campaignId && selectedCampaignId !== campaignId) {
@@ -174,14 +143,21 @@ export const PlayerBoardPage = () => {
     if (!effectiveCampaignId) {
       return;
     }
-    if (activeSession) {
-      return;
-    }
     const handle = window.setInterval(() => {
       refresh().catch(() => { });
-    }, 10000);
+    }, activeSession ? 30_000 : 15_000);
     return () => window.clearInterval(handle);
-  }, [effectiveCampaignId, activeSession, refresh]);
+  }, [effectiveCampaignId, activeSession?.id, refresh]);
+
+  // Fallback redirect: detect when activeSession transitions from active to null
+  useEffect(() => {
+    if (activeSession?.id) {
+      prevActiveSessionIdRef.current = activeSession.id;
+    } else if (prevActiveSessionIdRef.current && effectiveCampaignId) {
+      prevActiveSessionIdRef.current = null;
+      navigate(routes.home, { replace: true });
+    }
+  }, [activeSession?.id, effectiveCampaignId, navigate]);
 
   useEffect(() => {
     if (!lastCommand) {
@@ -240,12 +216,18 @@ export const PlayerBoardPage = () => {
   }, [pendingOpenShop, activeSession?.id, shopSessionTarget]);
 
   useEffect(() => {
-    if (!lastEvent) return;
-    refreshActivity();
-  }, [lastEvent, refreshActivity]);
+    if (shopAvailable) {
+      setShopOpen(true);
+    }
+  }, [shopAvailable]);
 
   useEffect(() => {
     if (!lastEvent) {
+      return;
+    }
+    const eventPartyId =
+      typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+    if (eventPartyId && partyId && eventPartyId !== partyId) {
       return;
     }
     if (lastEvent.type === "session_started" || lastEvent.type === "session_resumed") {
@@ -257,10 +239,124 @@ export const PlayerBoardPage = () => {
       });
       refresh().catch(() => { });
     }
-    if (lastEvent.type === "session_closed") {
-      refresh().catch(() => { });
+    if (lastEvent.type === "shop_opened") {
+      setShopOpen(true);
+      return;
     }
-  }, [lastEvent, refresh, showToast, t]);
+    if (lastEvent.type === "shop_closed") {
+      setShopOpen(false);
+      setPendingOpenShop(false);
+      setShopSessionTarget(null);
+      return;
+    }
+    if (lastEvent.type === "roll_requested") {
+      const targetUserId =
+        typeof lastEvent.payload.targetUserId === "string" ? lastEvent.payload.targetUserId : null;
+      if (targetUserId && targetUserId !== user?.userId) {
+        return;
+      }
+      setPendingRoll({
+        expression: String(lastEvent.payload.expression ?? "d20"),
+        issuedBy: typeof lastEvent.payload.issuedBy === "string" ? lastEvent.payload.issuedBy : undefined,
+        reason: typeof lastEvent.payload.reason === "string" ? lastEvent.payload.reason : undefined,
+        mode:
+          lastEvent.payload.mode === "advantage" || lastEvent.payload.mode === "disadvantage"
+            ? lastEvent.payload.mode
+            : null,
+      });
+      setRollMode(null);
+      setManualValue("");
+      return;
+    }
+    if (lastEvent.type === "shop_purchase_created") {
+      const eventUserId =
+        typeof lastEvent.payload.userId === "string" ? lastEvent.payload.userId : null;
+      if (eventUserId && eventUserId === user?.userId) {
+        void refreshInventoryData();
+        void refreshPlayerWallet();
+      }
+      return;
+    }
+    if (lastEvent.type === "shop_sale_created") {
+      const eventUserId =
+        typeof lastEvent.payload.userId === "string" ? lastEvent.payload.userId : null;
+      if (eventUserId && eventUserId === user?.userId) {
+        void refreshInventoryData();
+        void refreshPlayerWallet();
+      }
+      return;
+    }
+    if (lastEvent.type === "session_state_updated") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === user?.userId) {
+        void refreshPlayerWallet();
+      }
+      return;
+    }
+    if (lastEvent.type === "gm_granted_currency") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === user?.userId) {
+        setPlayerWallet(
+          normalizeWallet(
+            (lastEvent.payload as { currentCurrency?: unknown } | null | undefined)?.currentCurrency
+          )
+        );
+        showToast({
+          variant: "success",
+          title: "Coins received",
+          description: "The GM added currency to your pouch.",
+        });
+      }
+      return;
+    }
+    if (lastEvent.type === "gm_granted_item") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === user?.userId) {
+        void refreshInventoryData();
+        showToast({
+          variant: "success",
+          title: "New item received",
+          description: `${String(lastEvent.payload.itemName ?? "Item")} added to your inventory.`,
+        });
+      }
+      return;
+    }
+    if (lastEvent.type === "session_closed") {
+      setShopOpen(false);
+      setPendingOpenShop(false);
+      setShopSessionTarget(null);
+      setPendingRoll(null);
+      setSelectedSessionId(null);
+      clearSessionEnded();
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+      navigate(routes.home, { replace: true });
+      return;
+    }
+  }, [
+    lastEvent,
+    partyId,
+    user?.userId,
+    refreshInventoryData,
+    refreshPlayerWallet,
+    setSelectedSessionId,
+    clearSessionEnded,
+    navigate,
+    refresh,
+    showToast,
+    t,
+  ]);
 
   useEffect(() => {
     if (!sessionEndedAt) {
@@ -323,6 +419,35 @@ export const PlayerBoardPage = () => {
     clearCommand();
   };
 
+  const upsertInventoryEntry = useCallback((nextEntry: InventoryItem) => {
+    setMyInventory((current) => {
+      const source = current ?? [];
+      const existing = source.find((entry) => entry.id === nextEntry.id);
+      if (existing) {
+        return source.map((entry) => (entry.id === nextEntry.id ? nextEntry : entry));
+      }
+      const sameItem = source.find((entry) => entry.itemId === nextEntry.itemId);
+      if (sameItem) {
+        return source.map((entry) =>
+          entry.itemId === nextEntry.itemId
+            ? { ...entry, quantity: nextEntry.quantity, isEquipped: nextEntry.isEquipped, notes: nextEntry.notes }
+            : entry,
+        );
+      }
+      return [nextEntry, ...source];
+    });
+  }, []);
+
+  const applySoldInventoryEntry = useCallback((soldInventoryItemId: string, nextEntry: InventoryItem | null) => {
+    setMyInventory((current) => {
+      const source = current ?? [];
+      if (nextEntry) {
+        return source.map((entry) => (entry.id === soldInventoryItemId ? nextEntry : entry));
+      }
+      return source.filter((entry) => entry.id !== soldInventoryItemId);
+    });
+  }, []);
+
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
@@ -374,11 +499,8 @@ export const PlayerBoardPage = () => {
       >
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
-              {t("playerBoard.activityTitle")}
-            </h2>
-            <div className="mt-4 rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/80 to-slate-900/50 p-5 text-sm text-slate-200">
-              {lastCommand?.command === "open_shop" && (
+            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/80 to-slate-900/50 p-5 text-sm text-slate-200">
+              {(shopAvailable || lastCommand?.command === "open_shop") && !pendingRoll && !shopOpen && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>{t("playerBoard.shopPrompt")}</span>
                   <button
@@ -390,13 +512,20 @@ export const PlayerBoardPage = () => {
                   </button>
                 </div>
               )}
-              {lastCommand?.command !== "open_shop" && !pendingRoll && (
+              {!shopAvailable && lastCommand?.command !== "open_shop" && !pendingRoll && (
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4 text-slate-300">
                   {t("playerBoard.noCommands")}
                 </div>
               )}
             </div>
           </div>
+
+          {activeSession?.id && (
+            <SessionActivityToggle
+              refreshSignal={lastEvent ? `${lastEvent.type}:${lastEvent.version ?? ""}` : null}
+              sessionId={activeSession.id}
+            />
+          )}
         </div>
 
         {shopOpen && activeSession?.id && effectiveCampaignId && (
@@ -406,18 +535,46 @@ export const PlayerBoardPage = () => {
               onClose={handleShopClose}
               sessionId={activeSession.id}
               campaignId={effectiveCampaignId}
-              onBuy={() =>
+              inventoryItems={myInventory}
+              wallet={playerWallet}
+              onBuy={(item, inventoryItem) => {
+                upsertInventoryEntry(inventoryItem);
+                void refreshInventoryData();
+                void refreshPlayerWallet();
+                setInventoryOpen(true);
+                setInventoryFlash(true);
+                window.setTimeout(() => setInventoryFlash(false), 1800);
                 showToast({
                   variant: "success",
                   title: t("shop.buyTitle"),
-                  description: t("shop.buyFallback"),
-                })
-              }
-              onBuyError={() =>
+                  description: `${item.name} ${t("shop.buyDescription")}`,
+                });
+              }}
+              onBuyError={(message) =>
                 showToast({
                   variant: "error",
                   title: t("shop.buyErrorTitle"),
-                  description: t("shop.buyErrorDescription"),
+                  description: message ?? t("shop.buyErrorDescription"),
+                })
+              }
+              onSell={(item, result) => {
+                const soldEntry = (myInventory ?? []).find((entry) => entry.itemId === result.itemId);
+                if (soldEntry) {
+                  applySoldInventoryEntry(soldEntry.id, result.inventoryItem);
+                }
+                setPlayerWallet(result.currentCurrency);
+                setInventoryOpen(true);
+                showToast({
+                  variant: "success",
+                  title: t("shop.sellSuccessTitle"),
+                  description: `${item.name} ${t("shop.sellSuccessDescription")} ${result.refundLabel}.`,
+                });
+              }}
+              onSellError={(message) =>
+                showToast({
+                  variant: "error",
+                  title: t("shop.sellErrorTitle"),
+                  description: message ?? t("shop.sellErrorDescription"),
                 })
               }
             />
@@ -539,71 +696,13 @@ export const PlayerBoardPage = () => {
       )}
       <DiceVisualizer events={rollEvents} />
 
-      {/* Activity Feed */}
-      {activeSession && (
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400 mb-4">
-            Session Activity
-          </h2>
-          {activityFeed.length === 0 ? (
-            <p className="text-sm text-slate-500">No activity yet.</p>
-          ) : (
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {[...activityFeed].reverse().map((ev, i) => (
-                <ActivityRow key={i} event={ev} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Inventory Panel */}
-      <div className="rounded-3xl border border-slate-800 bg-slate-950/60 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setInventoryOpen(v => !v)}
-          className="w-full flex items-center justify-between p-6 hover:bg-slate-900/20 transition-colors"
-        >
-          <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
-            <span className="w-1 h-4 bg-amber-500 rounded-full" />
-            {t("playerBoard.inventoryTitle") || "My Inventory"}
-            {myInventory !== null && (
-              <span className="text-xs font-normal text-slate-500 normal-case tracking-normal">
-                ({myInventory.length})
-              </span>
-            )}
-          </h2>
-          <span className={`text-slate-500 text-xs transition-transform ${inventoryOpen ? "rotate-180" : ""}`}>▼</span>
-        </button>
-        {inventoryOpen && (
-          <div className="px-6 pb-6 border-t border-slate-800/60">
-            {myInventory === null ? (
-              <p className="text-sm text-slate-500 py-4">Loading inventory...</p>
-            ) : myInventory.length === 0 ? (
-              <p className="text-sm text-slate-500 py-4">No items yet. Buy from the shop during a session.</p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {myInventory.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-2xl border border-slate-800/40 bg-slate-900/40 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-white">{catalogItems[item.itemId]?.name ?? item.itemId}</p>
-                      {catalogItems[item.itemId]?.type && (
-                        <p className="text-xs text-slate-500">{catalogItems[item.itemId]?.type}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">×{item.quantity}</span>
-                      {item.isEquipped && (
-                        <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-emerald-400">Equipped</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <SessionInventoryPanel
+        flash={inventoryFlash}
+        inventory={myInventory}
+        itemsById={catalogItems}
+        open={inventoryOpen}
+        onToggleOpen={() => setInventoryOpen((value) => !value)}
+      />
 
     </section>
   );

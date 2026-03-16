@@ -4,19 +4,22 @@ import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
 import { getCampaignSystemLabel, type CampaignSystemType } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { useActiveSession, useSession, useCampaignEvents } from "../../features/sessions";
+import { useActiveSession, useSession, useCampaignEvents, useSessionCommands } from "../../features/sessions";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { sessionsRepo, type ActivityEvent, type LobbyStatus } from "../../shared/api/sessionsRepo";
 import { partiesRepo, type PartyMemberSummary } from "../../shared/api/partiesRepo";
 import { membersRepo } from "../../shared/api/membersRepo";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
+import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import type { Item } from "../../entities/item";
 import { StartSessionModal } from "../../features/sessions/components/StartSessionModal";
 import { SessionTimer } from "../../shared/ui/SessionTimer";
 import { DiceVisualizer } from "../../features/dice-roller/components/DiceVisualizer";
 import { useRollSession } from "../../features/dice-roller";
 import type { InventoryItem } from "../../entities/inventory";
+import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
+import { EMPTY_WALLET, formatWallet, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 
 function formatOffset(seconds: number): string {
     const h = Math.floor(seconds / 3600);
@@ -27,6 +30,7 @@ function formatOffset(seconds: number): string {
 }
 
 function ActivityRow({ event }: { event: ActivityEvent }) {
+    const { t } = useLocale();
     const actor = event.displayName ?? event.username ?? "Unknown";
     if (event.type === "roll") {
         return (
@@ -43,7 +47,21 @@ function ActivityRow({ event }: { event: ActivityEvent }) {
                             <span className="text-xs text-slate-500 ml-1">({event.results.join(", ")})</span>
                         )}
                     </p>
-                    {event.label && <p className="text-xs text-slate-400 mt-0.5">{event.label}</p>}
+                    {event.label && <p className="text-xs text-slate-400 mt-0.5">{t("sessionActivity.reason")} {event.label}</p>}
+                </div>
+                <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
+            </div>
+        );
+    }
+    if (event.type === "shop") {
+        return (
+            <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+                <span className="mt-0.5 text-base">{event.action === "opened" ? "🏪" : "🔒"}</span>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white">
+                        <span className="font-semibold">{actor}</span>
+                        {event.action === "opened" ? " opened the shop" : " closed the shop"}
+                    </p>
                 </div>
                 <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
             </div>
@@ -65,6 +83,17 @@ function ActivityRow({ event }: { event: ActivityEvent }) {
     );
 }
 
+type CommandFeedback = {
+    tone: "success" | "error";
+    type: "open_shop" | "close_shop" | "request_roll";
+    message: string;
+};
+
+type GrantFeedback = {
+    tone: "success" | "error";
+    message: string;
+};
+
 export const GmDashboardPage = () => {
     const { campaignId } = useParams<{ campaignId: string }>();
     const navigate = useNavigate();
@@ -73,10 +102,8 @@ export const GmDashboardPage = () => {
     const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
     const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession(effectiveCampaignId);
     const { selectedSessionId, setSelectedSessionId } = useSession();
+    const { shopOpen: shopActive } = useSessionCommands();
     const { events: rollEvents } = useRollSession();
-
-    // State to track if shop is explicitly "opened" by GM command (local approximation)
-    const [shopActive, setShopActive] = useState(false);
 
     const [creating, setCreating] = useState(false);
     const [_gmName, setGmName] = useState<string | null>(null);
@@ -95,9 +122,21 @@ export const GmDashboardPage = () => {
     const [rollTargetUserId, setRollTargetUserId] = useState<string | null>(null);
     const [memberIdByUserId, setMemberIdByUserId] = useState<Record<string, string>>({});
     const [inventoryByMemberId, setInventoryByMemberId] = useState<Record<string, InventoryItem[]>>({});
+    const [walletByUserId, setWalletByUserId] = useState<Record<string, CurrencyWallet>>({});
     const [inventoryOpenForUserId, setInventoryOpenForUserId] = useState<string | null>(null);
     const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
-    const wasLobbyRef = useRef(false);
+    const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
+    const [shopUiOpen, setShopUiOpen] = useState(false);
+    const [grantFeedbackByUserId, setGrantFeedbackByUserId] = useState<Record<string, GrantFeedback>>({});
+    const [currencyDraftByUserId, setCurrencyDraftByUserId] = useState<
+        Record<string, { amount: string; coin: keyof CurrencyWallet }>
+    >({});
+    const [itemDraftByUserId, setItemDraftByUserId] = useState<
+        Record<string, { itemId: string; quantity: string }>
+    >({});
+    const [grantingCurrencyForUserId, setGrantingCurrencyForUserId] = useState<string | null>(null);
+    const [grantingItemForUserId, setGrantingItemForUserId] = useState<string | null>(null);
+    const commandFeedbackTimeoutRef = useRef<number | null>(null);
 
     const rollOptions = useMemo(
         () => ["d4", "d6", "d8", "d10", "d12", "d20"],
@@ -109,6 +148,34 @@ export const GmDashboardPage = () => {
     const [missingSheetsPlayers, setMissingSheetsPlayers] = useState<{ userId: string; displayName: string }[]>([]);
 
     const { lastEvent, onlineUsers } = useCampaignEvents(effectiveCampaignId);
+    const sortedCatalogItems = useMemo(
+        () => Object.values(catalogItems).sort((left, right) => left.name.localeCompare(right.name)),
+        [catalogItems]
+    );
+
+    const refreshPlayerInventory = useCallback(async (userId: string) => {
+        const memberId = memberIdByUserId[userId];
+        if (!memberId || !effectiveCampaignId) return;
+        try {
+            const items = await inventoryRepo.list(effectiveCampaignId, memberId, activeSession?.partyId);
+            setInventoryByMemberId(prev => ({ ...prev, [memberId]: items }));
+        } catch {
+            // ignore
+        }
+    }, [activeSession?.partyId, effectiveCampaignId, memberIdByUserId]);
+
+    const refreshPlayerWallet = useCallback(async (userId: string) => {
+        if (!activeSession?.id) return;
+        try {
+            const state = await sessionStatesRepo.getByPlayer(activeSession.id, userId);
+            const nextWallet = normalizeWallet(
+                (state.state as { currency?: unknown } | null | undefined)?.currency
+            );
+            setWalletByUserId(prev => ({ ...prev, [userId]: nextWallet }));
+        } catch {
+            setWalletByUserId(prev => ({ ...prev, [userId]: EMPTY_WALLET }));
+        }
+    }, [activeSession?.id]);
 
     const refreshActivity = useCallback(async () => {
         if (!activeSession?.id) return;
@@ -140,11 +207,55 @@ export const GmDashboardPage = () => {
     }, [activeSession?.id, refreshActivity]);
 
     useEffect(() => {
+        if (shopActive) {
+            setShopUiOpen(true);
+        }
+    }, [shopActive]);
+
+    useEffect(() => {
         if (!lastEvent) return;
         refreshActivity();
         // When lobby transitions to active, refresh session state
-        if (lastEvent.type === "session_started") {
+        if (lastEvent.type === "session_started" || lastEvent.type === "session_lobby" || lastEvent.type === "session_closed") {
             refreshSession();
+        }
+        if (lastEvent.type === "shop_opened") {
+            if (lastEvent.payload.partyId && activeSession?.partyId && lastEvent.payload.partyId !== activeSession.partyId) {
+                return;
+            }
+            setShopUiOpen(true);
+        }
+        if (lastEvent.type === "shop_closed") {
+            if (lastEvent.payload.partyId && activeSession?.partyId && lastEvent.payload.partyId !== activeSession.partyId) {
+                return;
+            }
+            setShopUiOpen(false);
+        }
+        if (lastEvent.type === "session_lobby") {
+            setLobbyStatus({
+                sessionId: lastEvent.payload.sessionId,
+                campaignId: lastEvent.payload.campaignId,
+                partyId: lastEvent.payload.partyId,
+                expected: lastEvent.payload.expectedPlayers,
+                ready: lastEvent.payload.readyUserIds ?? [],
+                readyCount: lastEvent.payload.readyCount ?? 0,
+                totalCount: lastEvent.payload.totalCount ?? lastEvent.payload.expectedPlayers.length,
+            });
+        }
+        if (lastEvent.type === "player_joined_lobby") {
+            setLobbyStatus((current) => {
+                if (!current || current.sessionId !== lastEvent.payload.sessionId) {
+                    return current;
+                }
+                if (current.ready.includes(lastEvent.payload.userId)) {
+                    return current;
+                }
+                return {
+                    ...current,
+                    ready: [...current.ready, lastEvent.payload.userId],
+                    readyCount: lastEvent.payload.readyCount ?? current.readyCount + 1,
+                };
+            });
         }
         if (lastEvent.type === "party_member_updated" && activeSession?.partyId) {
             partiesRepo.get(activeSession.partyId).then((party) => {
@@ -152,7 +263,41 @@ export const GmDashboardPage = () => {
                 setPartyPlayers(players);
             }).catch(() => {});
         }
-    }, [lastEvent, refreshActivity, refreshSession]);
+        if (lastEvent.type === "shop_purchase_created" || lastEvent.type === "shop_sale_created") {
+            const eventUserId =
+                typeof lastEvent.payload.userId === "string" ? lastEvent.payload.userId : null;
+            if (eventUserId) {
+                void refreshPlayerInventory(eventUserId);
+                void refreshPlayerWallet(eventUserId);
+            }
+        }
+        if (lastEvent.type === "gm_granted_item") {
+            const eventUserId =
+                typeof lastEvent.payload.playerUserId === "string" ? lastEvent.payload.playerUserId : null;
+            if (eventUserId) {
+                void refreshPlayerInventory(eventUserId);
+            }
+        }
+        if (lastEvent.type === "gm_granted_currency") {
+            const eventUserId =
+                typeof lastEvent.payload.playerUserId === "string" ? lastEvent.payload.playerUserId : null;
+            if (eventUserId) {
+                setWalletByUserId(prev => ({
+                    ...prev,
+                    [eventUserId]: normalizeWallet(
+                        (lastEvent.payload as { currentCurrency?: unknown } | null | undefined)?.currentCurrency
+                    ),
+                }));
+            }
+        }
+        if (lastEvent.type === "session_state_updated") {
+            const eventUserId =
+                typeof lastEvent.payload.playerUserId === "string" ? lastEvent.payload.playerUserId : null;
+            if (eventUserId && partyPlayers.some((player) => player.userId === eventUserId)) {
+                void refreshPlayerWallet(eventUserId);
+            }
+        }
+    }, [activeSession?.partyId, lastEvent, partyPlayers, refreshActivity, refreshPlayerInventory, refreshPlayerWallet, refreshSession]);
 
     useEffect(() => {
         if (!effectiveCampaignId) { setCatalogItems({}); return; }
@@ -167,6 +312,8 @@ export const GmDashboardPage = () => {
         if (!activeSession?.partyId || !effectiveCampaignId) {
             setPartyPlayers([]);
             setMemberIdByUserId({});
+            setInventoryByMemberId({});
+            setWalletByUserId({});
             return;
         }
         Promise.all([
@@ -226,12 +373,122 @@ export const GmDashboardPage = () => {
             return;
         }
         setInventoryOpenForUserId(userId);
-        const memberId = memberIdByUserId[userId];
-        if (!memberId || !effectiveCampaignId || inventoryByMemberId[memberId]) return;
+        await Promise.all([
+            refreshPlayerInventory(userId),
+            refreshPlayerWallet(userId),
+        ]);
+    };
+
+    const handleGrantCurrency = async (userId: string) => {
+        if (!activeSession?.id || grantingCurrencyForUserId) return;
+        const draft = currencyDraftByUserId[userId] ?? { amount: "", coin: "gp" as keyof CurrencyWallet };
+        const amount = Number(draft.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: { tone: "error", message: "Enter a valid amount before sending currency." },
+            }));
+            return;
+        }
+        setGrantingCurrencyForUserId(userId);
+        setGrantFeedbackByUserId(prev => ({
+            ...prev,
+            [userId]: { tone: "success", message: "Sending currency..." },
+        }));
         try {
-            const items = await inventoryRepo.list(effectiveCampaignId, memberId);
-            setInventoryByMemberId(prev => ({ ...prev, [memberId]: items }));
-        } catch { /* ignore */ }
+            const result = await sessionsRepo.grantCurrency(activeSession.id, {
+                playerUserId: userId,
+                currency: { [draft.coin]: amount },
+            });
+            setWalletByUserId(prev => ({
+                ...prev,
+                [userId]: normalizeWallet(result.currentCurrency),
+            }));
+            setCurrencyDraftByUserId(prev => ({
+                ...prev,
+                [userId]: { amount: "", coin: draft.coin },
+            }));
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: { tone: "success", message: `Currency delivered. Current funds: ${formatWallet(result.currentCurrency)}.` },
+            }));
+        } catch (error) {
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: {
+                    tone: "error",
+                    message: (error as { message?: string })?.message ?? "Could not deliver currency right now.",
+                },
+            }));
+        } finally {
+            setGrantingCurrencyForUserId(null);
+        }
+    };
+
+    const handleGrantItem = async (userId: string) => {
+        if (!activeSession?.id || grantingItemForUserId) return;
+        const draft = itemDraftByUserId[userId] ?? { itemId: sortedCatalogItems[0]?.id ?? "", quantity: "1" };
+        const quantity = Number(draft.quantity);
+        if (!draft.itemId) {
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: { tone: "error", message: "Choose an item before sending it." },
+            }));
+            return;
+        }
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: { tone: "error", message: "Enter a valid quantity before sending the item." },
+            }));
+            return;
+        }
+        const memberId = memberIdByUserId[userId];
+        setGrantingItemForUserId(userId);
+        setGrantFeedbackByUserId(prev => ({
+            ...prev,
+            [userId]: { tone: "success", message: "Sending item..." },
+        }));
+        try {
+            const result = await sessionsRepo.grantItem(activeSession.id, {
+                playerUserId: userId,
+                itemId: draft.itemId,
+                quantity,
+            });
+            if (memberId) {
+                setInventoryByMemberId(prev => {
+                    const current = prev[memberId] ?? [];
+                    const existing = current.find(item => item.id === result.inventoryItem.id);
+                    return {
+                        ...prev,
+                        [memberId]: existing
+                            ? current.map(item => item.id === result.inventoryItem.id ? result.inventoryItem : item)
+                            : [result.inventoryItem, ...current],
+                    };
+                });
+            }
+            setItemDraftByUserId(prev => ({
+                ...prev,
+                [userId]: { itemId: draft.itemId, quantity: "1" },
+            }));
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: {
+                    tone: "success",
+                    message: `${result.itemName} x${result.quantity} delivered successfully.`,
+                },
+            }));
+        } catch (error) {
+            setGrantFeedbackByUserId(prev => ({
+                ...prev,
+                [userId]: {
+                    tone: "error",
+                    message: (error as { message?: string })?.message ?? "Could not deliver the item right now.",
+                },
+            }));
+        } finally {
+            setGrantingItemForUserId(null);
+        }
     };
 
     // Poll lobby status when session is in LOBBY state
@@ -251,34 +508,6 @@ export const GmDashboardPage = () => {
         }, 2000);
         return () => { cancelled = true; clearInterval(interval); };
     }, [activeSession?.id, activeSession?.status]);
-
-    // Update lobby status from WS event
-    useEffect(() => {
-        if (!lastEvent) return;
-        if (lastEvent.type === "player_joined_lobby") {
-            if (activeSession?.id) {
-                sessionsRepo.getLobbyStatus(activeSession.id).then(setLobbyStatus).catch(() => {});
-            }
-        }
-        if (lastEvent.type === "session_started") {
-            setLobbyStatus(null);
-        }
-    }, [lastEvent, activeSession?.id]);
-
-    useEffect(() => {
-        if (activeSession?.status === "LOBBY") {
-            wasLobbyRef.current = true;
-            return;
-        }
-        if (activeSession?.status === "ACTIVE" && wasLobbyRef.current && activeSession.partyId) {
-            navigate(routes.board.replace(":partyId", activeSession.partyId), { replace: true });
-            wasLobbyRef.current = false;
-            return;
-        }
-        if (!activeSession) {
-            wasLobbyRef.current = false;
-        }
-    }, [activeSession, navigate]);
 
     const handleForceStart = async () => {
         if (!activeSession?.id || forceStarting) return;
@@ -322,7 +551,6 @@ export const GmDashboardPage = () => {
         if (!confirm(t("common.close") ?? "Are you sure you want to end this session?")) return;
         const partyId = activeSession?.partyId;
         await endSession();
-        setShopActive(false);
         if (partyId) {
             navigate(routes.partyDetails.replace(":partyId", partyId));
         } else {
@@ -336,6 +564,7 @@ export const GmDashboardPage = () => {
     ) => {
         if (!activeSession?.id || commandSending) return;
         setCommandSending(true);
+        setCommandFeedback(null);
         try {
             const extra: Record<string, unknown> = {};
             if (type === "request_roll" && rollTargetUserId) {
@@ -349,12 +578,48 @@ export const GmDashboardPage = () => {
                 type,
                 payload: { ...(payload ?? {}), ...extra },
             });
-            if (type === "open_shop") setShopActive(true);
-            if (type === "close_shop") setShopActive(false);
+            if (type === "open_shop") {
+                setShopUiOpen(true);
+            }
+            if (type === "close_shop") {
+                setShopUiOpen(false);
+            }
+            const message =
+                type === "open_shop"
+                    ? "Shop command accepted by the server."
+                    : type === "close_shop"
+                        ? "Close shop command accepted by the server."
+                        : "Roll request accepted by the server.";
+            if (commandFeedbackTimeoutRef.current) {
+                window.clearTimeout(commandFeedbackTimeoutRef.current);
+            }
+            setCommandFeedback({ tone: "success", type, message });
+            commandFeedbackTimeoutRef.current = window.setTimeout(() => {
+                setCommandFeedback(null);
+                commandFeedbackTimeoutRef.current = null;
+            }, 4000);
+        } catch (error) {
+            const message = (error as { message?: string })?.message ?? "Command failed before the server accepted it.";
+            if (commandFeedbackTimeoutRef.current) {
+                window.clearTimeout(commandFeedbackTimeoutRef.current);
+            }
+            setCommandFeedback({ tone: "error", type, message });
+            commandFeedbackTimeoutRef.current = window.setTimeout(() => {
+                setCommandFeedback(null);
+                commandFeedbackTimeoutRef.current = null;
+            }, 5000);
         } finally {
             setCommandSending(false);
         }
     };
+
+    useEffect(() => {
+        return () => {
+            if (commandFeedbackTimeoutRef.current) {
+                window.clearTimeout(commandFeedbackTimeoutRef.current);
+            }
+        };
+    }, []);
 
     return (
         <section className="space-y-8">
@@ -534,24 +799,33 @@ export const GmDashboardPage = () => {
                                         </p>
                                     </div>
                                     <span
-                                        className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${shopActive
+                                        className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${shopUiOpen
                                             ? "border-emerald-500/40 text-emerald-300"
                                             : "border-slate-700 text-slate-400"
                                             }`}
                                     >
-                                        {shopActive ? "Live" : "Closed"}
+                                        {shopUiOpen ? "Live" : "Closed"}
                                     </span>
                                 </div>
                                 <button
-                                    onClick={() => handleCommand(shopActive ? "close_shop" : "open_shop")}
+                                    onClick={() => handleCommand(shopUiOpen ? "close_shop" : "open_shop")}
                                     disabled={commandSending}
-                                    className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${shopActive
+                                    className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${shopUiOpen
                                         ? "bg-rose-900/40 text-rose-200 hover:bg-rose-900/60"
                                         : "bg-limiar-500/80 text-white hover:bg-limiar-500"
                                         }`}
                                 >
-                                    {shopActive ? "Close Shop" : "Open Shop"}
+                                    {shopUiOpen ? "Close Shop" : "Open Shop"}
                                 </button>
+                                {commandFeedback && (commandFeedback.type === "open_shop" || commandFeedback.type === "close_shop") && (
+                                    <div className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
+                                        commandFeedback.tone === "success"
+                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                                            : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                                    }`}>
+                                        {commandFeedback.message}
+                                    </div>
+                                )}
                             </div>
                             <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
                                 <div className="flex items-center justify-between">
@@ -624,6 +898,15 @@ export const GmDashboardPage = () => {
                                     >
                                         Request Roll{rollTargetUserId ? ` → ${partyPlayers.find(p => p.userId === rollTargetUserId)?.displayName ?? "Player"}` : ""}
                                     </button>
+                                    {commandFeedback?.type === "request_roll" && (
+                                        <div className={`rounded-2xl border px-3 py-2 text-[11px] ${
+                                            commandFeedback.tone === "success"
+                                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                                                : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                                        }`}>
+                                            {commandFeedback.message}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -640,7 +923,13 @@ export const GmDashboardPage = () => {
                             const isOpen = inventoryOpenForUserId === player.userId;
                             const isOnline = !!onlineUsers[player.userId];
                             const playSheetRoute = activeSession?.partyId
-                                ? `${routes.characterSheetParty.replace(":partyId", activeSession.partyId)}?mode=play&playerId=${player.userId}`
+                                ? `${routes.characterSheetParty.replace(":partyId", activeSession.partyId)}?${new URLSearchParams({
+                                    mode: "play",
+                                    playerId: player.userId,
+                                    playerName: player.displayName || player.username || "Player",
+                                    ...(effectiveCampaignId ? { campaignId: effectiveCampaignId } : {}),
+                                    from: "gm-dashboard",
+                                }).toString()}`
                                 : null;
                             return (
                                 <div key={player.userId} className="rounded-2xl border border-slate-800 overflow-hidden">
@@ -695,6 +984,123 @@ export const GmDashboardPage = () => {
                                                             </div>
                                                         </div>
                                                     ))}
+                                                </div>
+                                            )}
+                                            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                                                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                                        Give Currency
+                                                    </p>
+                                                    <p className="mt-2 text-xs text-slate-400">
+                                                        Current funds: <span className="font-semibold text-white">{formatWallet(walletByUserId[player.userId] ?? EMPTY_WALLET)}</span>
+                                                    </p>
+                                                    <div className="mt-3 flex gap-2">
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            value={currencyDraftByUserId[player.userId]?.amount ?? ""}
+                                                            onChange={(event) =>
+                                                                setCurrencyDraftByUserId(prev => ({
+                                                                    ...prev,
+                                                                    [player.userId]: {
+                                                                        amount: event.target.value,
+                                                                        coin: prev[player.userId]?.coin ?? "gp",
+                                                                    },
+                                                                }))
+                                                            }
+                                                            placeholder="10"
+                                                            className="w-24 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+                                                        />
+                                                        <select
+                                                            value={currencyDraftByUserId[player.userId]?.coin ?? "gp"}
+                                                            onChange={(event) =>
+                                                                setCurrencyDraftByUserId(prev => ({
+                                                                    ...prev,
+                                                                    [player.userId]: {
+                                                                        amount: prev[player.userId]?.amount ?? "",
+                                                                        coin: event.target.value as keyof CurrencyWallet,
+                                                                    },
+                                                                }))
+                                                            }
+                                                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs uppercase text-white focus:border-limiar-500 focus:outline-none"
+                                                        >
+                                                            {(["cp", "sp", "ep", "gp", "pp"] as Array<keyof CurrencyWallet>).map((coin) => (
+                                                                <option key={coin} value={coin}>
+                                                                    {coin}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleGrantCurrency(player.userId)}
+                                                            disabled={grantingCurrencyForUserId === player.userId}
+                                                            className="rounded-xl bg-emerald-500/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white hover:bg-emerald-500 disabled:opacity-60"
+                                                        >
+                                                            {grantingCurrencyForUserId === player.userId ? "Sending..." : "Give"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                                                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                                        Give Item
+                                                    </p>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <select
+                                                            value={itemDraftByUserId[player.userId]?.itemId ?? sortedCatalogItems[0]?.id ?? ""}
+                                                            onChange={(event) =>
+                                                                setItemDraftByUserId(prev => ({
+                                                                    ...prev,
+                                                                    [player.userId]: {
+                                                                        itemId: event.target.value,
+                                                                        quantity: prev[player.userId]?.quantity ?? "1",
+                                                                    },
+                                                                }))
+                                                            }
+                                                            className="min-w-[12rem] flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+                                                        >
+                                                            {sortedCatalogItems.length === 0 ? (
+                                                                <option value="">No items</option>
+                                                            ) : (
+                                                                sortedCatalogItems.map((item) => (
+                                                                    <option key={item.id} value={item.id}>
+                                                                        {item.name}
+                                                                    </option>
+                                                                ))
+                                                            )}
+                                                        </select>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            value={itemDraftByUserId[player.userId]?.quantity ?? "1"}
+                                                            onChange={(event) =>
+                                                                setItemDraftByUserId(prev => ({
+                                                                    ...prev,
+                                                                    [player.userId]: {
+                                                                        itemId: prev[player.userId]?.itemId ?? sortedCatalogItems[0]?.id ?? "",
+                                                                        quantity: event.target.value,
+                                                                    },
+                                                                }))
+                                                            }
+                                                            className="w-20 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleGrantItem(player.userId)}
+                                                            disabled={grantingItemForUserId === player.userId || sortedCatalogItems.length === 0}
+                                                            className="rounded-xl bg-limiar-500/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-500 disabled:opacity-60"
+                                                        >
+                                                            {grantingItemForUserId === player.userId ? "Sending..." : "Give"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {grantFeedbackByUserId[player.userId] && (
+                                                <div className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
+                                                    grantFeedbackByUserId[player.userId].tone === "success"
+                                                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                                                        : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                                                }`}>
+                                                    {grantFeedbackByUserId[player.userId].message}
                                                 </div>
                                             )}
                                         </div>

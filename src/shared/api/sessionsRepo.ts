@@ -1,4 +1,5 @@
 import type { RollEvent } from "../../entities/roll";
+import type { InventoryItem } from "../../entities/inventory";
 import { http } from "./http";
 
 export type RollActivityEvent = {
@@ -25,7 +26,46 @@ export type PurchaseActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
-export type ActivityEvent = RollActivityEvent | PurchaseActivityEvent;
+export type ShopActivityEvent = {
+  type: "shop";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "opened" | "closed";
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type SessionGrantCurrencyResult = {
+  playerUserId: string;
+  currentCurrency: {
+    cp: number;
+    sp: number;
+    ep: number;
+    gp: number;
+    pp: number;
+  };
+  grantedCurrency: {
+    cp: number;
+    sp: number;
+    ep: number;
+    gp: number;
+    pp: number;
+  };
+};
+
+export type SessionGrantItemResult = {
+  playerUserId: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  inventoryItem: InventoryItem;
+};
+
+export type ActivityEvent =
+  | RollActivityEvent
+  | PurchaseActivityEvent
+  | ShopActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;
@@ -41,8 +81,20 @@ export type LobbyPlayer = { userId: string; displayName: string };
 
 export type LobbyStatus = {
   sessionId: string;
+  campaignId?: string | null;
+  partyId?: string | null;
   expected: LobbyPlayer[];
   ready: string[];
+  readyCount: number;
+  totalCount: number;
+};
+
+export type SessionRuntime = {
+  sessionId: string;
+  campaignId: string;
+  partyId?: string | null;
+  status: "LOBBY" | "ACTIVE" | "CLOSED";
+  shopOpen: boolean;
 };
 
 export type SessionSummary = {
@@ -87,8 +139,21 @@ export const sessionsRepo = {
     http.post<unknown>(`/sessions/${sessionId}/rolls/manual`, payload),
   getLobbyStatus: (sessionId: string) =>
     http.get<LobbyStatus>(`/sessions/${sessionId}/lobby`),
+  getRuntime: (sessionId: string) =>
+    http.get<SessionRuntime>(`/sessions/${sessionId}/runtime`),
   joinLobby: (sessionId: string) =>
     http.post<{ ok: boolean }>(`/sessions/${sessionId}/lobby/join`, {}),
   forceStartLobby: (sessionId: string) =>
     http.post<ActiveSession>(`/sessions/${sessionId}/lobby/force-start`, {}),
+  grantCurrency: (
+    sessionId: string,
+    payload: {
+      playerUserId: string;
+      currency: { cp?: number; sp?: number; ep?: number; gp?: number; pp?: number };
+    },
+  ) => http.post<SessionGrantCurrencyResult>(`/sessions/${sessionId}/grants/currency`, payload),
+  grantItem: (
+    sessionId: string,
+    payload: { playerUserId: string; itemId: string; quantity?: number; notes?: string | null },
+  ) => http.post<SessionGrantItemResult>(`/sessions/${sessionId}/grants/item`, payload),
 };

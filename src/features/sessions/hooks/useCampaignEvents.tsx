@@ -10,14 +10,28 @@ import {
 } from "../../../shared/realtime/centrifugoClient";
 
 export type CampaignEvent =
-  | { type: "session_started"; payload: Record<string, unknown>; version?: number }
+  | {
+      type: "session_started";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        startedAt: string;
+        title: string;
+      };
+      version?: number;
+    }
   | { type: "session_closed"; payload: Record<string, unknown>; version?: number }
   | { type: "session_resumed"; payload: Record<string, unknown>; version?: number }
   | {
       type: "session_lobby";
       payload: {
         campaignId: string;
+        partyId?: string | null;
         expectedPlayers: { userId: string; displayName: string }[];
+        readyUserIds?: string[];
+        readyCount?: number;
+        totalCount?: number;
         sessionId: string;
         title: string;
       };
@@ -27,10 +41,76 @@ export type CampaignEvent =
       type: "player_joined_lobby";
       payload: {
         displayName: string;
+        partyId?: string | null;
         readyCount: number;
+        readyUserIds?: string[];
         sessionId: string;
         totalCount: number;
         userId: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_opened" | "shop_closed";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        shopOpen?: boolean;
+      };
+      version?: number;
+    }
+  | {
+      type: "roll_requested";
+      payload: {
+        campaignId: string;
+        expression: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        mode?: "advantage" | "disadvantage" | null;
+        partyId?: string | null;
+        reason?: string;
+        sessionId: string;
+        targetUserId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "dice_rolled";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        userId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_purchase_created";
+      payload: {
+        campaignId: string;
+        itemId: string;
+        itemName: string;
+        partyId?: string | null;
+        quantity: number;
+        sessionId: string;
+        userId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_sale_created";
+      payload: {
+        campaignId: string;
+        itemId: string;
+        itemName: string;
+        partyId?: string | null;
+        quantity: number;
+        refundLabel?: string;
+        sessionId: string;
+        userId?: string | null;
       };
       version?: number;
     }
@@ -54,6 +134,44 @@ export type CampaignEvent =
         sessionId: string;
       };
       version?: number;
+    }
+  | {
+      type: "gm_granted_currency";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+        currentCurrency?: {
+          cp?: number;
+          sp?: number;
+          ep?: number;
+          gp?: number;
+          pp?: number;
+        };
+        grantedCurrency?: {
+          cp?: number;
+          sp?: number;
+          ep?: number;
+          gp?: number;
+          pp?: number;
+        };
+      };
+      version?: number;
+    }
+  | {
+      type: "gm_granted_item";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+        itemId: string;
+        itemName: string;
+        quantity: number;
+        inventoryItemId?: string | null;
+      };
+      version?: number;
     };
 
 const CAMPAIGN_EVENT_TYPES = new Set([
@@ -62,8 +180,16 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "session_resumed",
   "session_lobby",
   "player_joined_lobby",
+  "shop_opened",
+  "shop_closed",
+  "roll_requested",
+  "dice_rolled",
+  "shop_purchase_created",
+  "shop_sale_created",
   "party_member_updated",
   "session_state_updated",
+  "gm_granted_currency",
+  "gm_granted_item",
 ]);
 
 const getVersionKey = (
@@ -75,12 +201,21 @@ const getVersionKey = (
       return `${event.type}:${event.payload?.partyId ?? ""}:${event.payload?.userId ?? ""}`;
     case "session_state_updated":
       return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.playerUserId ?? ""}`;
+    case "gm_granted_currency":
+    case "gm_granted_item":
+      return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.playerUserId ?? ""}`;
     case "player_joined_lobby":
-      return `${event.type}:${event.payload?.sessionId ?? ""}`;
+      return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.userId ?? ""}`;
     case "session_started":
     case "session_closed":
     case "session_resumed":
     case "session_lobby":
+    case "shop_opened":
+    case "shop_closed":
+    case "roll_requested":
+    case "dice_rolled":
+    case "shop_purchase_created":
+    case "shop_sale_created":
       return `${event.type}:${event.payload?.sessionId ?? campaignId ?? ""}`;
     default:
       return event.type ?? "unknown";

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { InventoryItem } from "../../../entities/inventory";
 import type { Item, ItemInput, ItemType } from "../../../entities/item";
 import { ITEM_TYPES } from "../../../entities/item";
 import { itemsRepo } from "../../../shared/api/itemsRepo";
-import { inventoryRepo } from "../../../shared/api/inventoryRepo";
+import {
+  inventoryRepo,
+  type InventorySellResult,
+} from "../../../shared/api/inventoryRepo";
 import { parseNullableNumber } from "../../../shared/lib/parse";
 import { useCampaigns } from "../../campaign-select";
 import { BASE_CATALOG_ITEMS, getBaseCatalogItemByName } from "../data/baseCatalogItems";
@@ -234,12 +238,22 @@ export const useShop = (options?: UseShopOptions) => {
     });
   };
 
-  const buyItem = (itemId: string) => {
+  const buyItem = (itemId: string): Promise<InventoryItem> => {
     if (!sessionId) {
-      return;
+      return Promise.reject(new Error("No active session"));
     }
     return inventoryRepo.buy(sessionId, {
       itemId,
+      quantity: 1,
+    });
+  };
+
+  const sellItem = (inventoryItemId: string): Promise<InventorySellResult> => {
+    if (!sessionId) {
+      return Promise.reject(new Error("No active session"));
+    }
+    return inventoryRepo.sell(sessionId, {
+      inventoryItemId,
       quantity: 1,
     });
   };
@@ -253,6 +267,7 @@ export const useShop = (options?: UseShopOptions) => {
     updateItem,
     deleteItem,
     buyItem,
+    sellItem,
     itemTypes: Object.values(ITEM_TYPES),
     selectedCampaignId: campaignId,
   };

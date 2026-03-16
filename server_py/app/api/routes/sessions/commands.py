@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session as DbSession, select
@@ -7,13 +8,14 @@ from app.api.deps import get_current_user
 from app.api.deprecation import log_deprecated_route
 from app.db.session import get_session
 from app.services.centrifugo import centrifugo
-from app.services.realtime import build_event, event_version, session_channel
+from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.models.campaign import RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.session import Session, SessionStatus
+from app.models.session_command_event import SessionCommandEvent
 from app.schemas.session import SessionCommandRequest
-from ._shared import DEPRECATION_REMOVAL_DATE, resolve_party_id_for_campaign
+from ._shared import DEPRECATION_REMOVAL_DATE, get_or_create_session_runtime, parse_expression, resolve_party_id_for_campaign
 
 router = APIRouter()
 
@@ -45,21 +47,72 @@ async def _send_session_command(
         raise HTTPException(status_code=400, detail="Session is not active")
     if payload.type not in _VALID_COMMANDS:
         raise HTTPException(status_code=400, detail="Invalid command")
+    runtime = get_or_create_session_runtime(entry.id, session)
+    issued_at = datetime.now(timezone.utc)
     if payload.type == "request_roll":
         expression = (payload.payload or {}).get("expression")
         if not expression or not isinstance(expression, str):
             raise HTTPException(status_code=400, detail="Missing dice expression")
-    issued_at = datetime.now(timezone.utc)
+        if not parse_expression(expression.strip()):
+            raise HTTPException(status_code=400, detail="Invalid dice expression")
+    event_payload = {
+        "sessionId": entry.id,
+        "campaignId": entry.campaign_id,
+        "partyId": entry.party_id,
+        "issuedBy": member.display_name,
+        "issuedAt": issued_at.isoformat(),
+    }
+    event_type = payload.type
+    if payload.type == "open_shop":
+        runtime.shop_open = True
+        session.add(
+            SessionCommandEvent(
+                id=str(uuid4()),
+                session_id=entry.id,
+                user_id=user.id,
+                member_id=member.id,
+                actor_name=member.display_name,
+                command_type="open_shop",
+                created_at=issued_at,
+            )
+        )
+        session.add(runtime)
+        session.commit()
+        event_type = "shop_opened"
+        event_payload["shopOpen"] = True
+    elif payload.type == "close_shop":
+        runtime.shop_open = False
+        session.add(
+            SessionCommandEvent(
+                id=str(uuid4()),
+                session_id=entry.id,
+                user_id=user.id,
+                member_id=member.id,
+                actor_name=member.display_name,
+                command_type="close_shop",
+                created_at=issued_at,
+            )
+        )
+        session.add(runtime)
+        session.commit()
+        event_type = "shop_closed"
+        event_payload["shopOpen"] = False
+    elif payload.type == "request_roll":
+        event_type = "roll_requested"
+        event_payload.update(payload.payload or {})
     await centrifugo.publish(
         session_channel(entry.id),
         build_event(
-            "gm_command",
-            {
-                "command": payload.type,
-                "data": payload.payload or {},
-                "issuedBy": member.display_name,
-                "issuedAt": issued_at.isoformat(),
-            },
+            event_type,
+            event_payload,
+            version=event_version(issued_at),
+        ),
+    )
+    await centrifugo.publish(
+        campaign_channel(entry.campaign_id),
+        build_event(
+            event_type,
+            event_payload,
             version=event_version(issued_at),
         ),
     )

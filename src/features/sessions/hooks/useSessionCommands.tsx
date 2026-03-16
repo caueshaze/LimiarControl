@@ -4,6 +4,7 @@ import {
   subscribe,
   subscribeConnectionState,
 } from "../../../shared/realtime/centrifugoClient";
+import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useSession } from "./useSession";
 
 export type SessionCommand = {
@@ -18,18 +19,33 @@ export const useSessionCommands = () => {
   const [connectionState, setConnectionState] = useState<ConnectionState>("offline");
   const [lastCommand, setLastCommand] = useState<SessionCommand | null>(null);
   const [sessionEndedAt, setSessionEndedAt] = useState<string | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
   const latestVersionRef = useRef(0);
 
   useEffect(() => {
     setLastCommand(null);
     setSessionEndedAt(null);
+    setShopOpen(false);
     latestVersionRef.current = 0;
     if (!selectedSessionId) {
       setConnectionState("offline");
       setLastCommand(null);
       setSessionEndedAt(null);
+      setShopOpen(false);
       return;
     }
+
+    const syncRuntime = () => {
+      void sessionsRepo.getRuntime(selectedSessionId)
+        .then((runtime) => {
+          setShopOpen(runtime.shopOpen);
+        })
+        .catch(() => {
+          setShopOpen(false);
+        });
+    };
+    syncRuntime();
+    const runtimePoll = setInterval(syncRuntime, 10_000);
 
     const unsubscribeState = subscribeConnectionState(setConnectionState);
     const unsubscribeSession = subscribe(`session:${selectedSessionId}`, {
@@ -47,7 +63,42 @@ export const useSessionCommands = () => {
         if (typeof data.version === "number") {
           latestVersionRef.current = data.version;
         }
+        if (data.type === "shop_opened") {
+          setShopOpen(true);
+          setLastCommand({
+            command: "open_shop",
+            data: data.payload,
+            issuedBy: data.payload?.issuedBy,
+            issuedAt: data.payload?.issuedAt,
+          });
+          return;
+        }
+        if (data.type === "shop_closed") {
+          setShopOpen(false);
+          setLastCommand({
+            command: "close_shop",
+            data: data.payload,
+            issuedBy: data.payload?.issuedBy,
+            issuedAt: data.payload?.issuedAt,
+          });
+          return;
+        }
+        if (data.type === "roll_requested") {
+          setLastCommand({
+            command: "request_roll",
+            data: data.payload,
+            issuedBy: data.payload?.issuedBy,
+            issuedAt: data.payload?.issuedAt,
+          });
+          return;
+        }
         if (data.type === "gm_command" && data.payload) {
+          if (data.payload.command === "open_shop") {
+            setShopOpen(true);
+          }
+          if (data.payload.command === "close_shop") {
+            setShopOpen(false);
+          }
           setLastCommand({
             command: data.payload.command,
             data: data.payload.data,
@@ -57,6 +108,7 @@ export const useSessionCommands = () => {
           return;
         }
         if (data.type === "session_closed" || data.type === "session_ended") {
+          setShopOpen(false);
           setLastCommand(null);
           setSessionEndedAt(data.payload?.endedAt ?? new Date().toISOString());
         }
@@ -64,6 +116,7 @@ export const useSessionCommands = () => {
     });
 
     return () => {
+      clearInterval(runtimePoll);
       unsubscribeSession();
       unsubscribeState();
     };
@@ -77,5 +130,5 @@ export const useSessionCommands = () => {
     setSessionEndedAt(null);
   }, []);
 
-  return { lastCommand, clearCommand, connectionState, sessionEndedAt, clearSessionEnded };
+  return { lastCommand, clearCommand, connectionState, sessionEndedAt, clearSessionEnded, shopOpen };
 };

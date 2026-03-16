@@ -13,7 +13,7 @@ from app.models.user import User
 from app.schemas.roll_event import RollEventRead
 from app.schemas.session import ManualRollRequest, RollRequest
 from app.services.centrifugo import centrifugo
-from app.services.realtime import build_event, event_version, session_channel
+from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from ._shared import parse_expression, to_roll_read_local
 
 router = APIRouter()
@@ -56,7 +56,7 @@ async def submit_roll(
     entry = session.exec(select(Session).where(Session.id == session_id)).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Session not found")
-    if entry.status not in (SessionStatus.ACTIVE, SessionStatus.LOBBY):
+    if entry.status != SessionStatus.ACTIVE:
         raise HTTPException(status_code=400, detail="Session is not active")
     member = session.exec(
         select(CampaignMember).where(
@@ -112,7 +112,18 @@ async def submit_roll(
     session.refresh(event)
 
     roll_read = to_roll_read_local(event)
-    payload_out = roll_read.model_dump(mode="json")
+    payload_out = {
+        **roll_read.model_dump(mode="json"),
+        "partyId": entry.party_id,
+    }
+    await centrifugo.publish(
+        session_channel(session_id),
+        build_event("dice_rolled", payload_out, version=event_version(event.created_at)),
+    )
+    await centrifugo.publish(
+        campaign_channel(entry.campaign_id),
+        build_event("dice_rolled", payload_out, version=event_version(event.created_at)),
+    )
     await centrifugo.publish(
         session_channel(session_id),
         build_event("roll_created", payload_out, version=event_version(event.created_at)),
@@ -161,7 +172,18 @@ async def submit_manual_roll(
     session.add(event)
     session.commit()
     session.refresh(event)
-    payload_out = to_roll_read_local(event).model_dump(mode="json")
+    payload_out = {
+        **to_roll_read_local(event).model_dump(mode="json"),
+        "partyId": entry.party_id,
+    }
+    await centrifugo.publish(
+        session_channel(session_id),
+        build_event("dice_rolled", payload_out, version=event_version(event.created_at)),
+    )
+    await centrifugo.publish(
+        campaign_channel(entry.campaign_id),
+        build_event("dice_rolled", payload_out, version=event_version(event.created_at)),
+    )
     await centrifugo.publish(
         session_channel(session_id),
         build_event("roll_created", payload_out, version=event_version(event.created_at)),

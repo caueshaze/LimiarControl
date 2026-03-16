@@ -117,61 +117,6 @@ def create_party(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     require_gm(payload.campaignId, user, session)
-    existing_party = session.exec(
-        select(Party).where(Party.campaign_id == payload.campaignId)
-    ).first()
-    if existing_party:
-        if existing_party.gm_user_id != user.id:
-            raise HTTPException(status_code=409, detail="Party already exists for campaign")
-
-        gm_member = session.exec(
-            select(PartyMember).where(
-                PartyMember.party_id == existing_party.id,
-                PartyMember.user_id == user.id,
-            )
-        ).first()
-        if not gm_member:
-            session.add(
-                PartyMember(
-                    party_id=existing_party.id,
-                    user_id=user.id,
-                    role=RoleMode.GM,
-                    status=PartyMemberStatus.JOINED,
-                    created_at=datetime.now(timezone.utc),
-                )
-            )
-
-        player_ids = {
-            player_id for player_id in (payload.playerIds or []) if player_id != user.id
-        }
-        for player_id in player_ids:
-            ensure_campaign_player_member(payload.campaignId, player_id, session)
-            entry = session.exec(
-                select(PartyMember).where(
-                    PartyMember.party_id == existing_party.id,
-                    PartyMember.user_id == player_id,
-                )
-            ).first()
-            if entry:
-                if entry.role != RoleMode.GM:
-                    entry.role = RoleMode.PLAYER
-                    entry.status = PartyMemberStatus.INVITED
-                    session.add(entry)
-                continue
-            session.add(
-                PartyMember(
-                    party_id=existing_party.id,
-                    user_id=player_id,
-                    role=RoleMode.PLAYER,
-                    status=PartyMemberStatus.INVITED,
-                    created_at=datetime.now(timezone.utc),
-                )
-            )
-
-        session.commit()
-        session.refresh(existing_party)
-        return PartyRead.model_validate(existing_party)
-
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Invalid name")

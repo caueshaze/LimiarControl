@@ -12,11 +12,14 @@ from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
+from app.models.session_runtime import SessionRuntime
 from app.schemas.session import ActiveSessionRead, LobbyStatusRead
 from ._shared import (
-    _lobby_expected,
-    _lobby_ready,
     check_character_sheets,
+    get_or_create_session_runtime,
+    lobby_expected_map,
+    lobby_ready_list,
+    serialize_lobby_status,
     to_session_read,
 )
 
@@ -32,13 +35,10 @@ def get_lobby_status(
     entry = session.exec(select(Session).where(Session.id == session_id)).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Session not found")
-    expected = _lobby_expected.get(session_id, {})
-    ready = list(_lobby_ready.get(session_id, set()))
-    return LobbyStatusRead(
-        sessionId=session_id,
-        expected=[{"userId": uid, "displayName": name} for uid, name in expected.items()],
-        ready=ready,
-    )
+    runtime = session.exec(
+        select(SessionRuntime).where(SessionRuntime.session_id == session_id)
+    ).first()
+    return serialize_lobby_status(entry, runtime)
 
 
 @router.post("/sessions/{session_id}/lobby/join")
@@ -64,13 +64,17 @@ async def join_lobby(
         if not member:
             raise HTTPException(status_code=403, detail="Not a party member")
 
-    expected = _lobby_expected.get(session_id, {})
-    if session_id not in _lobby_ready:
-        _lobby_ready[session_id] = set()
-    _lobby_ready[session_id].add(user.id)
+    runtime = get_or_create_session_runtime(session_id, session)
+    expected = lobby_expected_map(runtime)
+    ready = set(lobby_ready_list(runtime))
+    ready.add(user.id)
+    runtime.lobby_ready = sorted(ready)
+    session.add(runtime)
+    session.commit()
+    session.refresh(runtime)
 
     display_name = expected.get(user.id, user.display_name or user.username or user.id)
-    ready_count = len(_lobby_ready[session_id])
+    ready_count = len(runtime.lobby_ready)
     total_count = len(expected)
     join_version = event_version()
 
@@ -80,28 +84,33 @@ async def join_lobby(
             "player_joined_lobby",
             {
                 "sessionId": session_id,
+                "partyId": entry.party_id,
                 "userId": user.id,
                 "displayName": display_name,
                 "readyCount": ready_count,
                 "totalCount": total_count,
+                "readyUserIds": runtime.lobby_ready,
             },
             version=join_version,
         ),
     )
 
-    if expected and _lobby_ready[session_id] >= set(expected.keys()):
+    if expected and set(runtime.lobby_ready) >= set(expected.keys()):
         now = datetime.now(timezone.utc)
         entry.status = SessionStatus.ACTIVE
         entry.started_at = now
+        runtime.lobby_expected = []
+        runtime.lobby_ready = []
+        runtime.shop_open = False
         session.add(entry)
+        session.add(runtime)
         session.commit()
         session.refresh(entry)
-        _lobby_ready.pop(session_id, None)
-        _lobby_expected.pop(session_id, None)
         version = event_version(entry.started_at or now)
         started_payload = {
             "sessionId": entry.id,
             "campaignId": entry.campaign_id,
+            "partyId": entry.party_id,
             "title": entry.title,
             "startedAt": now.isoformat(),
         }
@@ -157,17 +166,21 @@ async def force_start_lobby(
         check_character_sheets(entry.party_id, player_members, session)
 
     now = datetime.now(timezone.utc)
+    runtime = get_or_create_session_runtime(session_id, session)
     entry.status = SessionStatus.ACTIVE
     entry.started_at = now
+    runtime.lobby_expected = []
+    runtime.lobby_ready = []
+    runtime.shop_open = False
     session.add(entry)
+    session.add(runtime)
     session.commit()
     session.refresh(entry)
-    _lobby_ready.pop(session_id, None)
-    _lobby_expected.pop(session_id, None)
     version = event_version(entry.started_at or now)
     started_payload = {
         "sessionId": entry.id,
         "campaignId": entry.campaign_id,
+        "partyId": entry.party_id,
         "title": entry.title,
         "startedAt": now.isoformat(),
     }

@@ -3,6 +3,7 @@ import { routes } from "../../app/routes/routes";
 import { useEffect, useState } from "react";
 import { useShop } from "../../features/shop";
 import { InventoryList, useInventory } from "../../features/inventory";
+import { useCampaignEvents } from "../../features/sessions";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useToast } from "../../shared/hooks/useToast";
 import { Toast } from "../../shared/ui/Toast";
@@ -16,11 +17,14 @@ export const InventoryPage = () => {
   const [searchParams] = useSearchParams();
   const partyId = searchParams.get("partyId") ?? null;
   const isGm = user?.role === "GM";
-  const [members, setMembers] = useState<Array<{ id: string; displayName: string; roleMode: RoleMode }>>([]);
+  const [members, setMembers] = useState<
+    Array<{ id: string; userId: string; displayName: string; roleMode: RoleMode }>
+  >([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const { inventory, inventoryLoading, inventoryError, toggleEquipped } =
+  const { inventory, inventoryLoading, inventoryError, refreshInventory, toggleEquipped } =
     useInventory({ memberId: isGm ? selectedMemberId : undefined, partyId });
+  const { lastEvent } = useCampaignEvents(selectedCampaignId);
   const { t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
 
@@ -67,6 +71,42 @@ export const InventoryPage = () => {
       active = false;
     };
   }, [selectedCampaignId, isGm]);
+
+  useEffect(() => {
+    if (
+      lastEvent?.type !== "shop_purchase_created" &&
+      lastEvent?.type !== "shop_sale_created" &&
+      lastEvent?.type !== "gm_granted_item"
+    ) {
+      return;
+    }
+    const eventPartyId =
+      typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+    if (partyId && eventPartyId && eventPartyId !== partyId) {
+      return;
+    }
+    const payload = lastEvent.payload as Record<string, unknown>;
+    const eventUserId =
+      typeof payload.userId === "string"
+        ? payload.userId
+        : typeof payload.playerUserId === "string"
+          ? payload.playerUserId
+          : null;
+    if (!eventUserId) {
+      return;
+    }
+    if (isGm) {
+      const selectedMember = members.find((member) => member.id === selectedMemberId);
+      if (!selectedMember || selectedMember.userId !== eventUserId) {
+        return;
+      }
+      void refreshInventory({ silent: true });
+      return;
+    }
+    if (eventUserId === user?.userId) {
+      void refreshInventory({ silent: true });
+    }
+  }, [isGm, lastEvent, members, partyId, refreshInventory, selectedMemberId, user?.userId]);
 
   if (!selectedCampaignId) {
     return (
