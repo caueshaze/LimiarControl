@@ -9,7 +9,7 @@ from app.models.campaign import RoleMode
 
 
 class CampaignMember(SQLModel, table=True):
-    __tablename__ = "campaign_member"
+    __tablename__ = "campaign_member"  # type: ignore[assignment]
     __table_args__ = (UniqueConstraint("campaign_id", "user_id"),)
 
     id: str | None = Field(default=None, primary_key=True)

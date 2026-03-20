@@ -2,6 +2,8 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item, ItemType } from "../../../entities/item";
+import { getItemPropertyLabels } from "../../../entities/item";
+import { localizedItemName } from "../utils/localizedItemName";
 import type {
   CurrencyWallet,
   InventorySellResult,
@@ -12,6 +14,15 @@ import { ShopSellList } from "./ShopSellList";
 import { useShop } from "../hooks/useShop";
 import { formatWallet } from "../utils/shopCurrency";
 import { SHOP_ITEM_TYPES } from "../utils/shopItemTypes";
+
+const normalizeInventoryKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 type ShopPanelProps = {
   open: boolean;
@@ -38,7 +49,7 @@ export const ShopPanel = ({
   onSell,
   onSellError,
 }: ShopPanelProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { items, itemsLoading, itemsError, buyItem, sellItem, loadItems } = useShop({
     campaignId,
     sessionId,
@@ -55,19 +66,38 @@ export const ShopPanel = ({
   const recentSellTimerRef = useRef<number | null>(null);
   const deferredSearch = useDeferredValue(search);
 
-  const ownedByItemId = useMemo(() => {
-    const next: Record<string, number> = {};
-    for (const entry of inventoryItems ?? []) {
-      next[entry.itemId] = (next[entry.itemId] ?? 0) + entry.quantity;
+  const canonicalKeyByItemId = useMemo(() => {
+    const next: Record<string, string> = {};
+    for (const item of items) {
+      next[item.id] = item.canonicalKeySnapshot
+        ? normalizeInventoryKey(item.canonicalKeySnapshot)
+        : normalizeInventoryKey(item.name);
     }
     return next;
-  }, [inventoryItems]);
+  }, [items]);
+
+  const ownedByCanonicalKey = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const entry of inventoryItems ?? []) {
+      const itemKey = canonicalKeyByItemId[entry.itemId] ?? entry.itemId;
+      next[itemKey] = (next[itemKey] ?? 0) + entry.quantity;
+    }
+    return next;
+  }, [canonicalKeyByItemId, inventoryItems]);
+
+  const ownedByItemId = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const item of items) {
+      next[item.id] = ownedByCanonicalKey[normalizeInventoryKey(item.name)] ?? 0;
+    }
+    return next;
+  }, [items, ownedByCanonicalKey]);
 
   const inventorySummary = useMemo(() => {
-    const unique = Object.keys(ownedByItemId).length;
-    const total = Object.values(ownedByItemId).reduce((sum, quantity) => sum + quantity, 0);
+    const unique = Object.keys(ownedByCanonicalKey).length;
+    const total = Object.values(ownedByCanonicalKey).reduce((sum, quantity) => sum + quantity, 0);
     return { unique, total };
-  }, [ownedByItemId]);
+  }, [ownedByCanonicalKey]);
 
   const typeCounts = useMemo(() => {
     const counts = Object.fromEntries(SHOP_ITEM_TYPES.map((type) => [type, 0])) as Record<
@@ -103,14 +133,18 @@ export const ShopPanel = ({
         }
         const haystack = [
           item.name,
+          item.nameEnSnapshot,
+          item.namePtSnapshot,
+          item.canonicalKeySnapshot,
           item.description,
           item.type,
           ...(item.properties ?? []),
-        ].join(" ").toLowerCase();
+          ...getItemPropertyLabels(item.properties, locale),
+        ].filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(normalizedSearch);
       })
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }, [deferredSearch, items, ownedByItemId, ownedOnly, typeFilter]);
+      .sort((left, right) => localizedItemName(left, locale).localeCompare(localizedItemName(right, locale)));
+  }, [deferredSearch, items, locale, ownedByItemId, ownedOnly, typeFilter]);
 
   const hasFilteredResults = filteredItems.length > 0;
 

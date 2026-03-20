@@ -85,6 +85,8 @@ const inventoryItemSchema = z.object({
   quantity: z.number().min(0),
   weight: z.number().min(0),
   notes: z.string(),
+  canonicalKey: z.string().nullable().optional(),
+  baseItemId: z.string().nullable().optional(),
 });
 
 const currencySchema = z.object({
@@ -109,8 +111,11 @@ const spellSlotsSchema = z.object({
   used: z.number().min(0),
 });
 
+const spellcastingModeSchema = z.enum(["known", "prepared", "spellbook"]);
+
 const spellcastingSchema = z.object({
   ability: abilityNameSchema,
+  mode: spellcastingModeSchema.default("known"),
   slots: z.record(z.coerce.number(), spellSlotsSchema),
   spells: z.array(spellSchema),
 });
@@ -171,7 +176,9 @@ export const characterSheetSchema = z.object({
   conditions: conditionsRecord,
 
   classSkillChoices: z.array(skillNameSchema).default([]),
+  classToolProficiencyChoices: z.array(z.string()).default([]),
   classEquipmentSelections: z.record(z.string(), z.string()).default({}),
+  languageChoices: z.array(z.string()).default([]),
 
   featuresAndTraits: z.string(),
   notes: z.string(),

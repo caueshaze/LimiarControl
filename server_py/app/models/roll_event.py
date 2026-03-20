@@ -9,7 +9,7 @@ from app.models.campaign import RoleMode
 
 
 class RollEvent(SQLModel, table=True):
-    __tablename__ = "roll_event"
+    __tablename__ = "roll_event"  # type: ignore[assignment]
     id: str | None = Field(default=None, primary_key=True)
     campaign_id: str | None = Field(default=None, foreign_key="campaign.id", index=True)
     session_id: str = Field(foreign_key="campaign_session.id", index=True)

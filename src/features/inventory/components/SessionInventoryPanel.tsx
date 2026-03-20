@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
+import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type SessionInventoryPanelProps = {
@@ -79,8 +80,9 @@ const SessionInventoryItem = ({
   entry: InventoryItem;
   item?: Item;
 }) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState(false);
+  const propertyLabels = getItemPropertyLabels(item?.properties, locale);
 
   const detailRows = [
     item?.priceLabel ?? item?.price
@@ -93,8 +95,8 @@ const SessionInventoryItem = ({
     item?.weight !== undefined && item?.weight !== null
       ? { label: t("inventory.weight"), value: String(item.weight) }
       : null,
-    item?.properties && item.properties.length > 0
-      ? { label: t("inventory.properties"), value: item.properties.join(", ") }
+    propertyLabels.length > 0
+      ? { label: t("inventory.properties"), value: propertyLabels.join(", ") }
       : null,
     entry.notes ? { label: t("inventory.notes"), value: entry.notes } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>;

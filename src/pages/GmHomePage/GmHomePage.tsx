@@ -1,58 +1,116 @@
-import { useState } from "react";
-import { CampaignManagementPanel, useCampaigns } from "../../features/campaign-select";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { getCampaignSystemLabel } from "../../entities/campaign";
+import { useCampaigns, CampaignManagementPanel } from "../../features/campaign-select";
 import { useAuth } from "../../features/auth";
-import { PartyManagementPanel } from "../../features/party-management";
+import { usePartyManagement } from "../../features/party-management/hooks/usePartyManagement";
 import { useLocale } from "../../shared/hooks/useLocale";
-
-type GmHomeSection = "campaigns" | "parties";
+import { routes } from "../../app/routes/routes";
+import type { PartySummary } from "../../shared/api/partiesRepo";
+import { PartyListCard } from "./PartyListCard";
+import { EmptyPartyState } from "./EmptyPartyState";
+import { NewPartyForm } from "./NewPartyForm";
+import { GmWorkspaceHero } from "./GmWorkspaceHero";
 
 export const GmHomePage = () => {
-  const { campaigns, selectCampaign } = useCampaigns();
+  const { campaigns, selectCampaign, selectedCampaign } = useCampaigns();
   const { user } = useAuth();
   const { t } = useLocale();
-  const [activeSection, setActiveSection] = useState<GmHomeSection>("campaigns");
+  const navigate = useNavigate();
+
+  const {
+    parties,
+    loading,
+    partyName,
+    setPartyName,
+    campaignId,
+    setCampaignId,
+    createParty,
+    saving,
+    error,
+  } = usePartyManagement(campaigns);
+
+  const campaignMap = useMemo(
+    () => new Map(campaigns.map((c) => [c.id, c])),
+    [campaigns]
+  );
+
+  const handleOpenParty = (party: PartySummary) => {
+    if (party.campaignId) selectCampaign(party.campaignId);
+    navigate(routes.partyDetails.replace(":partyId", party.id));
+  };
+
+  const handleCreateParty = async () => {
+    const result = await createParty();
+    if (result.ok && result.party?.id) {
+      if (result.party.campaignId) selectCampaign(result.party.campaignId);
+      navigate(routes.partyDetails.replace(":partyId", result.party.id));
+    }
+  };
 
   return (
-    <section className="space-y-8">
-      <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">
-          {t("gm.home.workspaceTitle")}
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">
-          {t("home.gm.welcome")} {user?.displayName || user?.username || "GM"}
-        </h1>
-        <p className="mt-3 text-sm text-slate-300">{t("gm.home.workspaceSubtitle")}</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setActiveSection("campaigns")}
-            className={
-              activeSection === "campaigns"
-                ? "rounded-full bg-slate-100 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-900"
-                : "rounded-full border border-slate-700 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
-            }
-          >
-            {t("gm.home.menuCampaigns")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection("parties")}
-            className={
-              activeSection === "parties"
-                ? "rounded-full bg-slate-100 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-900"
-                : "rounded-full border border-slate-700 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
-            }
-          >
-            {t("gm.home.menuParties")}
-          </button>
-        </div>
-      </header>
+    <section className="space-y-6">
+      <GmWorkspaceHero
+        displayName={user?.displayName || user?.username || "GM"}
+        campaignsCount={campaigns.length}
+        partiesCount={parties.length}
+        activeCampaignName={selectedCampaign?.name ?? null}
+      />
 
-      {activeSection === "campaigns" ? (
+      <section className="rounded-[34px] border border-limiar-300/10 bg-[linear-gradient(180deg,rgba(26,12,55,0.4),rgba(2,6,23,0.92))] p-1 shadow-[0_24px_70px_rgba(2,6,23,0.32)]">
         <CampaignManagementPanel />
-      ) : (
-        <PartyManagementPanel campaigns={campaigns} onSelectCampaign={selectCampaign} />
-      )}
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+          <header className="flex flex-col gap-4 border-b border-white/8 pb-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                {t("gm.home.activeParties")}
+              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                {t("gm.home.partiesSectionDescription")}
+              </p>
+            </div>
+          </header>
+
+          <div className="mt-5 space-y-3">
+            {loading ? (
+              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-400">
+                {t("gm.home.partyLoading")}
+              </div>
+            ) : parties.length === 0 ? (
+              <EmptyPartyState />
+            ) : (
+              parties.map((party) => {
+                const campaign = campaignMap.get(party.campaignId);
+                return (
+                  <PartyListCard
+                    key={party.id}
+                    party={party}
+                    campaignName={campaign?.name}
+                    systemLabel={
+                      campaign ? getCampaignSystemLabel(campaign.systemType) : undefined
+                    }
+                    onOpen={() => handleOpenParty(party)}
+                  />
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        <NewPartyForm
+          campaigns={campaigns}
+          partyName={partyName}
+          setPartyName={setPartyName}
+          campaignId={campaignId}
+          setCampaignId={setCampaignId}
+          onCreate={handleCreateParty}
+          saving={saving}
+          error={error}
+        />
+      </div>
     </section>
   );
 };

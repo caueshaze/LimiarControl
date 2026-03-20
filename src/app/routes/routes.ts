@@ -18,6 +18,7 @@ export const routes = {
 
   catalog: "/catalog",
   npcs: "/npcs",
+  bestiary: "/bestiary",
   characterSheet: "/character-sheet",
   characterSheetParty: "/parties/:partyId/character-sheet",
 } as const;

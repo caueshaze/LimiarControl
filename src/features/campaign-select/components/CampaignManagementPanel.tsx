@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getCampaignSystemLabel,
-  CampaignSystemType,
-  campaignSystemLabels,
+  defaultCampaignSystemType,
   type Campaign,
 } from "../../../entities/campaign";
 import { routes } from "../../../app/routes/routes";
@@ -14,12 +13,11 @@ const NewCampaignForm = ({
   onCreate,
   onClose,
 }: {
-  onCreate: (name: string, system: CampaignSystemType) => Promise<{ ok: boolean; message?: string }>;
+  onCreate: (name: string, system: typeof defaultCampaignSystemType) => Promise<{ ok: boolean; message?: string }>;
   onClose: () => void;
 }) => {
   const { t } = useLocale();
   const [name, setName] = useState("");
-  const [systemType, setSystemType] = useState<CampaignSystemType>(CampaignSystemType.DND5E);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +27,7 @@ const NewCampaignForm = ({
     setSaving(true);
     setError(null);
     try {
-      const result = await onCreate(name.trim(), systemType);
+      const result = await onCreate(name.trim(), defaultCampaignSystemType);
       if (result.ok) {
         onClose();
       } else {
@@ -55,7 +53,7 @@ const NewCampaignForm = ({
         </button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-3">
           <input
             autoFocus
             value={name}
@@ -63,17 +61,9 @@ const NewCampaignForm = ({
             placeholder={t("campaign.form.namePlaceholder")}
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
           />
-          <select
-            value={systemType}
-            onChange={(e) => setSystemType(e.target.value as CampaignSystemType)}
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
-          >
-            {Object.values(CampaignSystemType).map((opt) => (
-              <option key={opt} value={opt}>
-                {campaignSystemLabels[opt]}
-              </option>
-            ))}
-          </select>
+          <div className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100">
+            {getCampaignSystemLabel(defaultCampaignSystemType)}
+          </div>
         </div>
         {error && <p className="text-xs text-rose-300">{error}</p>}
         <div className="flex gap-3 pt-1">
@@ -151,7 +141,7 @@ export const CampaignManagementPanel = () => {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
 
-  const handleCreate = async (name: string, systemType: CampaignSystemType) => {
+  const handleCreate = async (name: string, systemType: typeof defaultCampaignSystemType) => {
     const result = await createCampaign(name, systemType);
     if (result.ok && result.campaignId) {
       selectCampaign(result.campaignId);

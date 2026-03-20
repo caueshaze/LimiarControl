@@ -1,5 +1,9 @@
 export { http } from "./http";
 export { authRepo } from "./authRepo";
+export { baseItemsRepo } from "./baseItemsRepo";
+export { baseSpellsRepo } from "./baseSpellsRepo";
+export { campaignCatalogRepo } from "./campaignCatalogRepo";
+export { campaignSpellsRepo } from "./campaignSpellsRepo";
 export { centrifugoRepo } from "./centrifugoRepo";
 export { itemsRepo } from "./itemsRepo";
 export { campaignsRepo } from "./campaignsRepo";

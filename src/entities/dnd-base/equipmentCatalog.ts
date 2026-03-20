@@ -1,6 +1,7 @@
 import armorCsv from "../../../Base/DND5e_Armaduras_Database.csv?raw";
 import weaponCsv from "../../../Base/DND5e_Armas_Database_Programador.csv?raw";
 import { parseCsvObjects } from "../../shared/lib/csv";
+import { CURATED_DND_BASE_GEARS } from "./curatedGearCatalog";
 
 export type CoinType = "cp" | "sp" | "ep" | "gp" | "pp";
 export type BaseWeaponCategory = "simple" | "martial";
@@ -64,6 +65,13 @@ export type BaseArmor = {
   dexCap: number | null;
   strengthRequirement: number | null;
   stealthDisadvantage: boolean;
+  weightLb: number | null;
+  description: string;
+};
+
+export type BaseGear = {
+  name: string;
+  price: BasePrice | null;
   weightLb: number | null;
   description: string;
 };
@@ -154,11 +162,31 @@ export const BASE_ARMORS: BaseArmor[] = parseCsvObjects<keyof ArmorRow>(armorCsv
   description: row.Descrição,
 }));
 
+const gearByName = new Map<string, BaseGear>();
+
+for (const entry of CURATED_DND_BASE_GEARS) {
+  const name = entry.name.trim();
+  if (!name || gearByName.has(name.toLowerCase())) {
+    continue;
+  }
+  gearByName.set(name.toLowerCase(), {
+    name,
+    price: entry.price ? parsePrice(entry.price) : null,
+    weightLb: entry.weightLb,
+    description: entry.description,
+  });
+}
+
+export const BASE_GEARS: BaseGear[] = [...gearByName.values()];
+
 export const findBaseWeapon = (name: string) =>
   BASE_WEAPONS.find((weapon) => weapon.name.toLowerCase() === name.trim().toLowerCase());
 
 export const findBaseArmor = (name: string) =>
   BASE_ARMORS.find((armor) => armor.name.toLowerCase() === name.trim().toLowerCase());
+
+export const findBaseGear = (name: string) =>
+  BASE_GEARS.find((gear) => gear.name.toLowerCase() === name.trim().toLowerCase());
 
 export const getBaseWeapons = (filter?: Partial<Pick<BaseWeapon, "category" | "kind">>) =>
   BASE_WEAPONS.filter((weapon) => {

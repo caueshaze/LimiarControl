@@ -10,6 +10,7 @@ import {
   safeParseInt,
 } from "../utils/calculations";
 import { getRace } from "../data/races";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   className?: string;
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export const AbilityScores = ({ className, abilities, race, mode, readOnly = false, setAbility }: Props) => {
+  const { t } = useLocale();
   const isCreation = mode === "creation";
   const raceData = getRace(race);
   const baseAbilities = { ...abilities };
@@ -34,18 +36,18 @@ export const AbilityScores = ({ className, abilities, race, mode, readOnly = fal
   const remainingPoints = ABILITY_SCORE_POOL - usedPoints;
 
   return (
-    <Section title="Ability Scores" color="bg-violet-500" className={className}>
+    <Section title={t("sheet.abilities.title")} color="bg-violet-500" className={className}>
       {!isCreation && (
         <div className="mb-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2.5 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <p className="font-semibold text-slate-200">
-            Used: <span className="text-white">{usedPoints}</span> / {ABILITY_SCORE_POOL}
+            {t("sheet.abilities.used")}: <span className="text-white">{usedPoints}</span> / {ABILITY_SCORE_POOL}
           </p>
           <p
             className={`mt-1 font-semibold ${
               remainingPoints < 0 ? "text-rose-400" : "text-limiar-300"
             }`}
           >
-            Remaining points: {remainingPoints}
+            {t("sheet.abilities.remaining")}: {remainingPoints}
           </p>
         </div>
       )}
@@ -66,6 +68,8 @@ export const AbilityScores = ({ className, abilities, race, mode, readOnly = fal
               isCreation={isCreation}
               readOnly={readOnly}
               onChange={setAbility}
+              labelFinal={t("sheet.abilities.final")}
+              labelMod={t("sheet.abilities.mod")}
             />
           );
         })}
@@ -84,9 +88,11 @@ type CardProps = {
   isCreation: boolean;
   readOnly: boolean;
   onChange: (ability: AbilityName, value: number) => void;
+  labelFinal: string;
+  labelMod: string;
 };
 
-const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreation, readOnly, onChange }: CardProps) => (
+const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreation, readOnly, onChange, labelFinal, labelMod }: CardProps) => (
   <div className={`${statBox} min-h-[130px] items-stretch justify-between gap-2`}>
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -129,13 +135,13 @@ const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreati
     <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/6 bg-white/[0.03] px-2.5 py-2">
       <div className="text-center">
         <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Final
+          {labelFinal}
         </p>
         <p className="mt-1 text-2xl font-bold text-slate-50">{value}</p>
       </div>
       <div className="text-center">
         <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Mod
+          {labelMod}
         </p>
         <p className={`mt-1 text-2xl font-bold ${mod >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
           {formatMod(mod)}

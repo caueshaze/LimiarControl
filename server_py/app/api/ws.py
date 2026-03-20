@@ -138,7 +138,7 @@ def parse_expression(expression: str) -> tuple[int, int, int] | None:
 
 def to_roll_read(entry: RollEvent) -> RollEventRead:
     return RollEventRead(
-        id=entry.id,
+        id=entry.id or "",
         campaignId=entry.campaign_id or "",
         sessionId=entry.session_id,
         userId=entry.user_id,
@@ -320,7 +320,7 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
                         }
                     )
                     continue
-                event = RollEvent(
+                event = RollEvent(  # type: ignore[call-arg]
                     id=str(uuid4()),
                     campaign_id=campaign.id,
                     session_id=session_info.id,
@@ -395,10 +395,10 @@ async def campaign_ws(websocket: WebSocket, campaign_id: str) -> None:
             await websocket.close(code=1008)
             return
         connected_user_id = user_id
-        connected_display_name = member.display_name or user_id
+        connected_display_name: str = member.display_name or user_id or ""
 
     await campaign_room_registry.add_with_user(
-        campaign_id, websocket, connected_user_id, connected_display_name
+        campaign_id, websocket, connected_user_id or "", connected_display_name
     )
     await campaign_room_registry.broadcast(
         campaign_id,

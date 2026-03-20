@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
-from app.models.campaign import Campaign, RoleMode
+from app.models.campaign import Campaign, RoleMode, SystemType
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
 from app.schemas.campaign import (
@@ -19,6 +19,14 @@ from app.schemas.campaign import (
 )
 
 router = APIRouter()
+ENABLED_CAMPAIGN_SYSTEMS = {SystemType.DND5E}
+
+
+def _ensure_supported_system(system: SystemType) -> None:
+    if system not in ENABLED_CAMPAIGN_SYSTEMS:
+        raise HTTPException(status_code=400, detail="Campaign system is not enabled")
+
+
 @router.get("", response_model=List[CampaignRead])
 def list_campaigns(
     user: User = Depends(get_current_user),
@@ -86,6 +94,7 @@ def create_campaign(
 ):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Invalid payload")
+    _ensure_supported_system(payload.system)
     campaign = Campaign(
         id=str(uuid4()),
         name=payload.name.strip(),
@@ -125,6 +134,7 @@ def update_campaign(
             raise HTTPException(status_code=400, detail="Invalid payload")
         campaign.name = payload.name.strip()
     if payload.system is not None:
+        _ensure_supported_system(payload.system)
         campaign.system = payload.system
     session.add(campaign)
     session.commit()
@@ -149,5 +159,4 @@ def delete_campaign(
     session.delete(campaign)
     session.commit()
     return None
-
 

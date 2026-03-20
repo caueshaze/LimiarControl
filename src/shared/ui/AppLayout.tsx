@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useLocale } from "../hooks/useLocale";
 import type { RoleMode } from "../types/role";
+import { BrandMark } from "./BrandMark";
 
 type AppLayoutProps = {
   title: string;
@@ -31,15 +32,20 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
 
   return (
     <div className="min-h-screen text-slate-100">
-      <header className="sticky top-0 z-50 border-b border-white/6 bg-void-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3">
+      <header className="sticky top-0 z-50 border-b border-white/6 bg-[linear-gradient(180deg,rgba(5,2,8,0.92),rgba(5,2,8,0.78))] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-limiar-300/35 to-transparent" />
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
 
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-limiar-400 shadow-[0_0_10px_rgba(92,248,208,0.55)]" />
-            <span className="bg-linear-to-r from-limiar-200 to-limiar-400 bg-clip-text text-base font-bold tracking-tight text-transparent">
-              {title}
-            </span>
+          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <BrandMark size="sm" className="shrink-0" />
+            <div className="hidden min-w-0 sm:block">
+              <p className="bg-linear-to-r from-limiar-100 via-white to-sky-100 bg-clip-text text-base font-bold tracking-tight text-transparent">
+                {title}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {t("home.subtitle")}
+              </p>
+            </div>
           </div>
 
           {/* User menu */}
@@ -48,23 +54,26 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 transition-colors ${
+                className={`flex items-center gap-3 rounded-full border px-2 py-2 pr-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-all ${
                   open
-                    ? "border-limiar-500/30 bg-limiar-950/40"
-                    : "border-white/8 bg-white/4 hover:border-white/[0.14] hover:bg-white/[0.07]"
+                    ? "border-limiar-400/30 bg-limiar-950/35"
+                    : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.08]"
                 }`}
               >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-limiar-500/20 text-[10px] font-bold text-limiar-300">
+                <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-limiar-500/18 text-xs font-bold text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                   {initials}
+                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-void-950 bg-emerald-400" />
                 </div>
-                <span className="hidden text-xs font-medium text-slate-200 sm:block">
-                  {user.displayName || user.username}
-                </span>
-                <span className="rounded-full bg-white/6 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                  {user.role}
-                </span>
+                <div className="hidden min-w-0 text-left sm:block">
+                  <p className="truncate text-xs font-semibold text-slate-100">
+                    {user.displayName || user.username}
+                  </p>
+                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                    @{user.username}
+                  </p>
+                </div>
                 <svg
-                  className={`h-3 w-3 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}
+                  className={`h-3.5 w-3.5 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -72,7 +81,16 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               </button>
 
               {open && (
-                <div className="absolute right-0 top-[calc(100%+8px)] w-48 overflow-hidden rounded-2xl border border-white/8 bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <div className="absolute right-0 top-[calc(100%+10px)] w-56 overflow-hidden rounded-[24px] border border-white/8 bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                  <div className="border-b border-white/6 px-4 py-3">
+                    <p className="text-sm font-semibold text-white">
+                      {user.displayName || user.username}
+                    </p>
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      @{user.username}
+                    </p>
+                  </div>
+
                   {/* Language */}
                   <button
                     type="button"

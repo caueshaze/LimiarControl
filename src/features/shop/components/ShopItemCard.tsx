@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Item } from "../../../entities/item";
+import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
+import { localizedItemName } from "../utils/localizedItemName";
 
 type ShopItemCardProps = {
   item: Item;
@@ -18,15 +20,16 @@ export const ShopItemCard = ({
   didJustBuy = false,
   onBuy,
 }: ShopItemCardProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState(false);
+  const propertyLabels = getItemPropertyLabels(item.properties, locale);
   const detailBits = [
     item.damageDice ? `${t("shop.card.damage")} ${item.damageDice}` : null,
     item.rangeMeters ? `${t("shop.card.range")} ${item.rangeMeters}m` : null,
     item.weight ? `${t("shop.card.weight")} ${item.weight}` : null,
   ].filter(Boolean);
   const hasExpandableContent =
-    item.description.length > 96 || (item.properties?.length ?? 0) > 0 || detailBits.length > 0;
+    item.description.length > 96 || propertyLabels.length > 0 || detailBits.length > 0;
 
   return (
     <div
@@ -39,7 +42,7 @@ export const ShopItemCard = ({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold text-slate-100">{item.name}</p>
+            <p className="text-base font-semibold text-slate-100">{localizedItemName(item, locale)}</p>
             <span className="rounded-full border border-slate-700 bg-slate-950/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
               {t(getShopItemTypeLabelKey(item.type))}
             </span>
@@ -73,9 +76,9 @@ export const ShopItemCard = ({
             {item.description}
           </p>
 
-          {expanded && item.properties && item.properties.length > 0 && (
+          {expanded && propertyLabels.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-              {item.properties.map((prop) => (
+              {propertyLabels.map((prop) => (
                 <span
                   key={prop}
                   className="rounded-full border border-slate-700 px-2 py-1 text-[11px] text-slate-300"

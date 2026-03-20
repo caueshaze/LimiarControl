@@ -15,7 +15,7 @@ class SessionStatus(str, Enum):
 
 
 class Session(SQLModel, table=True):
-    __tablename__ = "campaign_session"
+    __tablename__ = "campaign_session"  # type: ignore[assignment]
     __table_args__ = (UniqueConstraint("party_id", "sequence_number"),)
 
     id: str | None = Field(default=None, primary_key=True)

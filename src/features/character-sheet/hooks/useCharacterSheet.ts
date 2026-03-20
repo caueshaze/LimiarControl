@@ -31,6 +31,7 @@ import {
 import {
   loadCharacterSheet,
   loadPlayCharacterSheet,
+  prepareCharacterSheetForSave,
   saveCharacterSheet,
   savePlayCharacterSheet,
 } from "../services/characterSheet.service";
@@ -38,15 +39,18 @@ import { getClass } from "../data/classes";
 import { getBackground } from "../data/backgrounds";
 import { getClassCreationConfig } from "../data/classCreation";
 import { getRace } from "../data/races";
+import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
 import {
   buildCreationLoadout,
   getInitialClassEquipmentSelections,
 } from "../utils/creationEquipment";
+import { loadCreationItemCatalog } from "../utils/creationItemCatalog";
 import {
   getStartingSpellLimits,
   normalizeCreationSpellSelection,
   toggleStartingSpell,
 } from "../utils/creationSpells";
+import { loadSpellCatalog } from "../../../entities/dnd-base";
 import { subscribe } from "../../../shared/realtime/centrifugoClient";
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -67,7 +71,7 @@ type State = {
 
 const initialState: State = {
   sheet: INITIAL_SHEET,
-  loading: false,
+  loading: true,
   saving: false,
   isDirty: false,
   loadError: null,
@@ -94,7 +98,7 @@ type Action =
   | { type: "load_fail"; error: string }
   | { type: "update_sheet"; updater: (s: CharacterSheet) => CharacterSheet }
   | { type: "saving_start" }
-  | { type: "saving_success"; id: string }
+  | { type: "saving_success"; id: string; sheet?: CharacterSheet }
   | { type: "saving_fail"; error: string }
   | { type: "import_success"; sheet: CharacterSheet }
   | { type: "import_fail"; error: string }
@@ -124,7 +128,14 @@ function reducer(state: State, action: Action): State {
     case "saving_start":
       return { ...state, saving: true, saveError: null };
     case "saving_success":
-      return { ...state, saving: false, isDirty: false, remoteId: action.id, saveError: null };
+      return {
+        ...state,
+        saving: false,
+        isDirty: false,
+        remoteId: action.id,
+        saveError: null,
+        sheet: action.sheet ?? state.sheet,
+      };
     case "saving_fail":
       return { ...state, saving: false, saveError: action.error };
     case "import_success":
@@ -146,8 +157,9 @@ function reducer(state: State, action: Action): State {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-const createEmptySpellcasting = (ability: AbilityName = "intelligence"): SpellcastingData => ({
+const createEmptySpellcasting = (ability: AbilityName = "intelligence", mode: SpellcastingData["mode"] = "known"): SpellcastingData => ({
   ability,
+  mode,
   slots: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1, { max: 0, used: 0 }])),
   spells: [],
 });
@@ -223,10 +235,35 @@ const buildCreationSkillProficiencies = (
   return next;
 };
 
-const deriveLanguages = (raceName: string, backgroundName: string): string[] => {
+const deriveLanguages = (
+  raceName: string,
+  backgroundName: string,
+  languageChoices: string[] = [],
+): string[] => {
   const race = getRace(raceName);
   const background = getBackground(backgroundName);
-  return [...new Set([...(race?.languages ?? []), ...(background?.languages ?? [])])];
+  const allEntries = [...(race?.languages ?? []), ...(background?.languages ?? [])];
+
+  const fixed: string[] = [];
+  let choiceSlotIndex = 0;
+  for (const entry of allEntries) {
+    if (entry === LANGUAGE_CHOICE_SLOT) {
+      const chosen = languageChoices[choiceSlotIndex];
+      if (chosen) fixed.push(chosen);
+      choiceSlotIndex++;
+    } else {
+      fixed.push(entry);
+    }
+  }
+
+  return [...new Set(fixed)];
+};
+
+const countLanguageChoiceSlots = (raceName: string, backgroundName: string): number => {
+  const race = getRace(raceName);
+  const background = getBackground(backgroundName);
+  const allEntries = [...(race?.languages ?? []), ...(background?.languages ?? [])];
+  return allEntries.filter((e) => e === LANGUAGE_CHOICE_SLOT).length;
 };
 
 const buildCreationSpellcasting = (
@@ -235,22 +272,27 @@ const buildCreationSpellcasting = (
   abilities: CharacterSheet["abilities"],
   level: number,
   current: SpellcastingData | null = null,
+  campaignId?: string | null,
 ) => {
   if (!spellcastingAbility) return null;
+  const spellConfig = getClassCreationConfig(className)?.startingSpells;
+  const mode = spellConfig?.leveledMode ?? "known";
   const base: SpellcastingData = current
     ? {
         ...current,
         ability: spellcastingAbility,
-        slots: { ...createEmptySpellcasting(spellcastingAbility).slots, ...current.slots },
+        mode,
+        slots: { ...createEmptySpellcasting(spellcastingAbility, mode).slots, ...current.slots },
       }
-    : createEmptySpellcasting(spellcastingAbility);
-  const normalized = normalizeCreationSpellSelection(base, className, abilities, level);
+    : createEmptySpellcasting(spellcastingAbility, mode);
+  const normalized = normalizeCreationSpellSelection(base, className, abilities, level, campaignId);
   if (!normalized) return { ...base, ability: spellcastingAbility };
   const limits = getStartingSpellLimits(className, abilities, level);
   if (!limits) return normalized;
   return {
     ...normalized,
     ability: spellcastingAbility,
+    mode,
     slots: {
       ...normalized.slots,
       1: { max: limits.levelOneSlots, used: Math.min(normalized.slots[1]?.used ?? 0, limits.levelOneSlots) },
@@ -258,7 +300,16 @@ const buildCreationSpellcasting = (
   };
 };
 
-const normalizeCreationAfterClassChange = (sheet: CharacterSheet, className: string): CharacterSheet => {
+const mergeToolProficiencies = (bgTools: string[], classTools: string[]): string[] => {
+  const unique = new Set([...bgTools, ...classTools]);
+  return [...unique];
+};
+
+const normalizeCreationAfterClassChange = (
+  sheet: CharacterSheet,
+  className: string,
+  campaignId?: string | null,
+): CharacterSheet => {
   const cls = getClass(className);
   const classEquipmentSelections = getInitialClassEquipmentSelections(className);
   const loadout = buildCreationLoadout(className, sheet.background, classEquipmentSelections);
@@ -282,6 +333,7 @@ const normalizeCreationAfterClassChange = (sheet: CharacterSheet, className: str
       currency: loadout.currency,
       equippedArmor: loadout.equippedArmor,
       equippedShield: loadout.equippedShield,
+      weapons: loadout.weapons,
     };
   }
 
@@ -301,14 +353,22 @@ const normalizeCreationAfterClassChange = (sheet: CharacterSheet, className: str
     savingThrowProficiencies,
     armorProficiencies: [...cls.armorProficiencies],
     weaponProficiencies: [...cls.weaponProficiencies],
+    classToolProficiencyChoices: [],
     toolProficiencies: [...(getBackground(sheet.background)?.toolProficiencies ?? [])],
-    languages: deriveLanguages(sheet.race, sheet.background),
+    languages: deriveLanguages(sheet.race, sheet.background, sheet.languageChoices),
     hitDiceType: cls.hitDice,
     hitDiceTotal: sheet.level,
     hitDiceRemaining: sheet.level,
     maxHP,
     currentHP: maxHP,
-    spellcasting: buildCreationSpellcasting(className, cls.spellcastingAbility, sheet.abilities, sheet.level),
+    spellcasting: buildCreationSpellcasting(
+      className,
+      cls.spellcastingAbility,
+      sheet.abilities,
+      sheet.level,
+      null,
+      campaignId,
+    ),
     inventory: loadout.inventory,
     currency: loadout.currency,
     equippedArmor: loadout.equippedArmor,
@@ -323,14 +383,17 @@ const normalizeCreationAfterBackgroundChange = (sheet: CharacterSheet, backgroun
   const trimmedChoices = cls ? classChoices.slice(0, cls.skillCount) : [];
   const skillProficiencies = buildCreationSkillProficiencies(sheet.skillProficiencies, backgroundName, trimmedChoices);
   const loadout = buildCreationLoadout(sheet.class, backgroundName, sheet.classEquipmentSelections);
+  const newSlotCount = countLanguageChoiceSlots(sheet.race, backgroundName);
+  const languageChoices = sheet.languageChoices.slice(0, newSlotCount);
 
   return {
     ...sheet,
     background: backgroundName,
     classSkillChoices: trimmedChoices,
     skillProficiencies,
-    toolProficiencies: [...(bg?.toolProficiencies ?? [])],
-    languages: deriveLanguages(sheet.race, backgroundName),
+    toolProficiencies: mergeToolProficiencies(bg?.toolProficiencies ?? [], sheet.classToolProficiencyChoices),
+    languageChoices,
+    languages: deriveLanguages(sheet.race, backgroundName, languageChoices),
     inventory: loadout.inventory,
     currency: loadout.currency,
     equippedArmor: loadout.equippedArmor,
@@ -338,11 +401,17 @@ const normalizeCreationAfterBackgroundChange = (sheet: CharacterSheet, backgroun
   };
 };
 
-const normalizeCreationAfterRaceChange = (sheet: CharacterSheet, raceName: string): CharacterSheet => {
+const normalizeCreationAfterRaceChange = (
+  sheet: CharacterSheet,
+  raceName: string,
+  campaignId?: string | null,
+): CharacterSheet => {
   const race = getRace(raceName);
   const abilities = applyRaceBonusSwap(sheet.abilities, sheet.race, raceName);
   const cls = getClass(sheet.class);
   const maxHP = cls ? computeMaxHpAtLevel(cls.hitDice, sheet.level, abilities.constitution) : sheet.maxHP;
+  const newSlotCount = countLanguageChoiceSlots(raceName, sheet.background);
+  const languageChoices = sheet.languageChoices.slice(0, newSlotCount);
   return {
     ...sheet,
     race: raceName,
@@ -350,14 +419,22 @@ const normalizeCreationAfterRaceChange = (sheet: CharacterSheet, raceName: strin
     abilities,
     maxHP,
     currentHP: cls ? maxHP : sheet.currentHP,
-    spellcasting: normalizeCreationSpellSelection(sheet.spellcasting, sheet.class, abilities, sheet.level),
-    languages: deriveLanguages(raceName, sheet.background),
+    spellcasting: normalizeCreationSpellSelection(
+      sheet.spellcasting,
+      sheet.class,
+      abilities,
+      sheet.level,
+      campaignId,
+    ),
+    languageChoices,
+    languages: deriveLanguages(raceName, sheet.background, languageChoices),
   };
 };
 
 type UseCharacterSheetOptions = {
   playPlayerUserId?: string | null;
   canEditPlay?: boolean;
+  campaignId?: string | null;
 };
 
 export const useCharacterSheet = (
@@ -370,6 +447,7 @@ export const useCharacterSheet = (
   const playEventVersionRef = useRef(0);
   const playPlayerUserId = options.playPlayerUserId ?? null;
   const canEditPlay = options.canEditPlay ?? false;
+  const campaignId = options.campaignId ?? null;
   const canMutate = mode !== "play" || canEditPlay;
 
   const update = (updater: (s: CharacterSheet) => CharacterSheet) =>
@@ -381,7 +459,16 @@ export const useCharacterSheet = (
   // ── API load ────────────────────────────────────────────────────────────────
 
   const loadSheet = useCallback(async () => {
-    if (!partyId) return;
+    if (!partyId) {
+      if (mode === "creation") {
+        await Promise.all([
+          loadCreationItemCatalog(),
+          loadSpellCatalog(campaignId),
+        ]);
+      }
+      dispatch({ type: "load_success", sheet: INITIAL_SHEET, id: null });
+      return;
+    }
     dispatch({ type: "load_start" });
     try {
       if (mode === "play") {
@@ -400,12 +487,12 @@ export const useCharacterSheet = (
         return;
       }
 
-      const result = await loadCharacterSheet(partyId);
+      const result = await loadCharacterSheet(partyId, mode, campaignId);
       dispatch({ type: "load_success", sheet: result.sheet, id: result.id });
     } catch (err: unknown) {
       dispatch({ type: "load_fail", error: (err as { message?: string })?.message ?? "Failed to load" });
     }
-  }, [partyId, mode, playPlayerUserId, canEditPlay]);
+  }, [partyId, mode, playPlayerUserId, canEditPlay, campaignId]);
 
   useEffect(() => {
     void loadSheet();
@@ -486,10 +573,11 @@ export const useCharacterSheet = (
       }
     }
 
+    const sheetToSave = prepareCharacterSheetForSave(state.sheet, mode);
     dispatch({ type: "saving_start" });
     try {
-      const id = await saveCharacterSheet(partyId, state.sheet, state.remoteId ?? undefined);
-      dispatch({ type: "saving_success", id });
+      const id = await saveCharacterSheet(partyId, sheetToSave, state.remoteId ?? undefined);
+      dispatch({ type: "saving_success", id, sheet: sheetToSave });
     } catch (err: unknown) {
       dispatch({ type: "saving_fail", error: (err as { message?: string })?.message ?? "Failed to save" });
     }
@@ -505,7 +593,13 @@ export const useCharacterSheet = (
         const cls = getClass(s.class);
         if (!cls) return { ...s, level: lvl };
         const maxHP = computeMaxHpAtLevel(cls.hitDice, lvl, s.abilities.constitution);
-        const spellcasting = normalizeCreationSpellSelection(s.spellcasting, s.class, s.abilities, lvl);
+        const spellcasting = normalizeCreationSpellSelection(
+          s.spellcasting,
+          s.class,
+          s.abilities,
+          lvl,
+          campaignId,
+        );
         return {
           ...s,
           level: lvl,
@@ -536,7 +630,13 @@ export const useCharacterSheet = (
           return {
             ...s,
             abilities: nextAbilities,
-            spellcasting: normalizeCreationSpellSelection(s.spellcasting, s.class, nextAbilities, s.level),
+            spellcasting: normalizeCreationSpellSelection(
+              s.spellcasting,
+              s.class,
+              nextAbilities,
+              s.level,
+              campaignId,
+            ),
           };
         }
         const maxHP = computeMaxHpAtLevel(cls.hitDice, s.level, nextAbilities.constitution);
@@ -545,7 +645,13 @@ export const useCharacterSheet = (
           abilities: nextAbilities,
           maxHP,
           currentHP: maxHP,
-          spellcasting: normalizeCreationSpellSelection(s.spellcasting, s.class, nextAbilities, s.level),
+          spellcasting: normalizeCreationSpellSelection(
+            s.spellcasting,
+            s.class,
+            nextAbilities,
+            s.level,
+            campaignId,
+          ),
         };
       }
       return {
@@ -674,7 +780,7 @@ export const useCharacterSheet = (
 
   const selectClass = (name: string) => {
     if (mode === "creation") {
-      update((s) => normalizeCreationAfterClassChange(s, name));
+      update((s) => normalizeCreationAfterClassChange(s, name, campaignId));
       return;
     }
     const cls = getClass(name);
@@ -694,7 +800,7 @@ export const useCharacterSheet = (
 
   const selectRace = (name: string) => {
     guardedUpdate((s) => {
-      if (mode === "creation") return normalizeCreationAfterRaceChange(s, name);
+      if (mode === "creation") return normalizeCreationAfterRaceChange(s, name, campaignId);
       const race = getRace(name);
       return { ...s, race: name, speed: race?.speed ?? 0, abilities: applyRaceBonusSwap(s.abilities, s.race, name) };
     });
@@ -737,6 +843,39 @@ export const useCharacterSheet = (
       return { ...s, classSkillChoices: nextChoices, skillProficiencies: skills };
     });
 
+  const pickClassToolProficiency = (tool: string) =>
+    guardedUpdate((s) => {
+      if (mode !== "creation") return s;
+      const config = getClassCreationConfig(s.class)?.toolProficiencyChoices;
+      if (!config) return s;
+      if (!config.options.includes(tool)) return s;
+      const isChosen = s.classToolProficiencyChoices.includes(tool);
+      if (!isChosen && s.classToolProficiencyChoices.length >= config.count) return s;
+      const nextChoices = isChosen
+        ? s.classToolProficiencyChoices.filter((t) => t !== tool)
+        : [...s.classToolProficiencyChoices, tool];
+      const bgTools = getBackground(s.background)?.toolProficiencies ?? [];
+      return {
+        ...s,
+        classToolProficiencyChoices: nextChoices,
+        toolProficiencies: mergeToolProficiencies(bgTools, nextChoices),
+      };
+    });
+
+  const selectLanguageChoice = (slotIndex: number, language: string) =>
+    guardedUpdate((s) => {
+      if (mode !== "creation") return s;
+      const nextChoices = [...s.languageChoices];
+      // Ensure array is long enough
+      while (nextChoices.length <= slotIndex) nextChoices.push("");
+      nextChoices[slotIndex] = language;
+      return {
+        ...s,
+        languageChoices: nextChoices,
+        languages: deriveLanguages(s.race, s.background, nextChoices),
+      };
+    });
+
   const toggleCreationSpellSelection = (spellName: string) =>
     guardedUpdate((s) => {
       if (mode !== "creation" || !s.spellcasting || !getClassCreationConfig(s.class)?.startingSpells) {
@@ -748,6 +887,7 @@ export const useCharacterSheet = (
         s.abilities,
         s.level,
         spellName,
+        campaignId,
       );
       return nextSpellcasting ? { ...s, spellcasting: nextSpellcasting } : s;
     });
@@ -809,8 +949,8 @@ export const useCharacterSheet = (
     enableSpellcasting, disableSpellcasting, setSpellAbility, setSpellSlot,
     addSpell, removeSpell, updateSpell,
     addTag, removeTag,
-    selectClass, selectBackground, selectRace, selectClassEquipment, pickClassSkill,
-    toggleCreationSpellSelection,
+    selectClass, selectBackground, selectRace, selectClassEquipment, pickClassSkill, pickClassToolProficiency,
+    selectLanguageChoice, toggleCreationSpellSelection,
     handleExport, handleImport, resetSheet,
     safeParseInt,
   };

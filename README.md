@@ -179,6 +179,26 @@ uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 python -m py_compile app/api/routes/sessions/*.py
 ```
 
+### Base catalog import
+
+Initial D&D base item import for weapons, armors, and essential gear used by character creation:
+
+```bash
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py --dry-run
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
+```
+
+The importer currently reads:
+
+- `Base/DND5e_Armas_Database_Programador.csv`
+- `Base/DND5e_Armaduras_Database.csv`
+- `Base/DND5e_Equipamentos.json` when available
+
+If the gear JSON is missing, the importer falls back to a curated synthetic set for the
+essential packs, tools, foci, ammunition, and recurring creation items.
+
+It upserts into `base_item` and `base_item_alias` using `(system, canonical_key)` as the identity key.
+
 ## Real-time notes
 
 The app relies on Centrifugo for most live updates. Session and campaign clients subscribe to realtime channels and react to events such as:

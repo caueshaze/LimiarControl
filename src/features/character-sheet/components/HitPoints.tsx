@@ -3,6 +3,7 @@ import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
 import { input, fieldLabel } from "./styles";
 import { safeParseInt } from "../utils/calculations";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   sheet: Pick<CharacterSheet, "maxHP" | "currentHP" | "tempHP">;
@@ -27,12 +28,14 @@ export const HitPoints = ({
   adjustHP,
   set,
 }: Props) => {
+  const { t } = useLocale();
+
   if (mode === "creation") {
     return (
-      <Section title="Hit Points" color="bg-emerald-500">
+      <Section title={t("sheet.hp.title")} color="bg-emerald-500">
         <div className="grid grid-cols-1 gap-3">
           <div>
-            <label className={fieldLabel}>Max HP (Derived)</label>
+            <label className={fieldLabel}>{t("sheet.hp.maxDerived")}</label>
             <input type="number" min={0} value={sheet.maxHP} disabled className={`${input} opacity-70`} />
           </div>
         </div>
@@ -41,10 +44,10 @@ export const HitPoints = ({
   }
 
   return (
-    <Section title="Hit Points" color="bg-emerald-500">
+    <Section title={t("sheet.hp.title")} color="bg-emerald-500">
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className={fieldLabel}>Max HP</label>
+          <label className={fieldLabel}>{t("sheet.hp.maxHp")}</label>
           <input
             type="number" min={0} value={sheet.maxHP}
             disabled={readOnly}
@@ -53,7 +56,7 @@ export const HitPoints = ({
           />
         </div>
         <div>
-          <label className={fieldLabel}>Current HP</label>
+          <label className={fieldLabel}>{t("sheet.hp.currentHp")}</label>
           <input
             type="number" min={0} max={sheet.maxHP} value={sheet.currentHP}
             disabled={readOnly}
@@ -62,7 +65,7 @@ export const HitPoints = ({
           />
         </div>
         <div>
-          <label className={fieldLabel}>Temp HP</label>
+          <label className={fieldLabel}>{t("sheet.hp.tempHp")}</label>
           <input
             type="number" min={0} value={sheet.tempHP}
             disabled={readOnly}

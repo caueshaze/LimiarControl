@@ -3,7 +3,12 @@ import type { NPC } from "../../../entities/npc";
 import { npcsRepo } from "../../../shared/api/npcsRepo";
 import { useCampaigns } from "../../campaign-select";
 
-export const useNpcs = () => {
+type ApiLikeError = {
+  status?: number;
+  message?: string;
+};
+
+export const useNpcs = (enabled = true) => {
   const { selectedCampaignId } = useCampaigns();
   const [npcs, setNpcs] = useState<NPC[]>([]);
   const [npcsLoading, setNpcsLoading] = useState(false);
@@ -11,9 +16,10 @@ export const useNpcs = () => {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!selectedCampaignId) {
+    if (!selectedCampaignId || !enabled) {
       setNpcs([]);
       setNpcsError(null);
+      setNpcsLoading(false);
       return;
     }
     let active = true;
@@ -25,8 +31,13 @@ export const useNpcs = () => {
         setNpcs(Array.isArray(data) ? data : []);
         setNpcsError(null);
       })
-      .catch((error: { message?: string }) => {
+      .catch((error: ApiLikeError) => {
         if (!active) return;
+        if (error?.status === 404) {
+          setNpcs([]);
+          setNpcsError(null);
+          return;
+        }
         setNpcs([]);
         setNpcsError(error?.message ?? "Failed to load NPCs");
       })
@@ -38,7 +49,7 @@ export const useNpcs = () => {
     return () => {
       active = false;
     };
-  }, [selectedCampaignId]);
+  }, [enabled, selectedCampaignId]);
 
   const filteredNpcs = useMemo(() => {
     if (!query.trim()) {

@@ -12,23 +12,29 @@ type LocaleContextValue = {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
-const DEFAULT_LOCALE: Locale = "en";
+const LOCALE_STORAGE_KEY = "app-locale";
 
 const readLocale = (): Locale => {
-  if (typeof navigator === "undefined") {
-    return DEFAULT_LOCALE;
-  }
-  return navigator.language.toLowerCase().startsWith("pt") ? "pt" : "en";
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (stored === "en" || stored === "pt") return stored;
+  } catch {}
+  return "pt";
 };
 
 export const LocaleProvider = ({ children }: { children: ReactNode }) => {
   const [locale, setLocale] = useState<Locale>(readLocale);
 
+  const changeLocale = (next: Locale) => {
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
+    setLocale(next);
+  };
+
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
-      setLocale,
-      toggleLocale: () => setLocale((current) => (current === "en" ? "pt" : "en")),
+      setLocale: changeLocale,
+      toggleLocale: () => changeLocale(locale === "en" ? "pt" : "en"),
       t: (key) => dictionaries[locale][key] ?? dictionaries.en[key],
     }),
     [locale]

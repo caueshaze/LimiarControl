@@ -1,8 +1,14 @@
-import { findBaseArmor, findBaseWeapon } from "../../../entities/dnd-base";
 import { ARMOR_PRESETS } from "../constants";
 import { getBackground } from "../data/backgrounds";
 import { getClassCreationConfig } from "../data/classCreation";
-import type { Armor, CharacterSheet, Currency, InventoryItem, Shield } from "../model/characterSheet.types";
+import type { AbilityName, Armor, CharacterSheet, Currency, InventoryItem, Shield, Weapon } from "../model/characterSheet.types";
+import {
+  findCreationItemByCanonicalKey,
+  getCreationItemCatalog,
+  resolveCreationItem,
+  toStarterFallbackKey,
+  type CreationCatalogItem,
+} from "./creationItemCatalog";
 
 const EMPTY_CURRENCY: Currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
 
@@ -26,6 +32,11 @@ type ParsedStarterEntry =
   | { kind: "currency"; coin: keyof Currency; amount: number }
   | { kind: "item"; name: string; quantity: number };
 
+const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
+  "5_sticks_of_incense": { kind: "item", name: "Incense", quantity: 5 },
+  "50_feet_of_silk_rope": { kind: "item", name: "Silk Rope", quantity: 1 },
+};
+
 const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   const currencyMatch = entry.trim().match(/^(\d+)\s*(cp|sp|ep|gp|pp)$/i);
   if (currencyMatch) {
@@ -34,6 +45,11 @@ const parseStarterEntry = (entry: string): ParsedStarterEntry => {
       amount: Number(currencyMatch[1]),
       coin: currencyMatch[2].toLowerCase() as keyof Currency,
     };
+  }
+
+  const literalMatch = SPECIAL_LITERAL_STARTER_ITEMS[toStarterFallbackKey(entry)];
+  if (literalMatch) {
+    return literalMatch;
   }
 
   const quantityMatch = entry.trim().match(/^(.+?)\s*x(\d+)$/i);
@@ -48,8 +64,23 @@ const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   return { kind: "item", name: entry.trim(), quantity: 1 };
 };
 
-const getItemWeight = (name: string) =>
-  findBaseWeapon(name)?.weightLb ?? findBaseArmor(name)?.weightLb ?? 0;
+const resolveStarterItem = (name: string) => resolveCreationItem(name, getCreationItemCatalog());
+
+const starterStableKey = (name: string, canonicalKey?: string | null) =>
+  (canonicalKey ?? toStarterFallbackKey(name)).replace(/_/g, "-");
+
+const matchesArmorPreset = (item: InventoryItem, presetName: string) => {
+  const catalogItem = findCreationItemByCanonicalKey(item.canonicalKey, getCreationItemCatalog());
+  if (catalogItem?.armorPresetName) {
+    return catalogItem.armorPresetName === presetName;
+  }
+
+  const aliases = ARMOR_ALIASES[presetName] ?? [presetName];
+  return aliases.some((alias) => item.name.toLowerCase().includes(alias.toLowerCase()));
+};
+
+export const canonicalizeStarterItemName = (name: string) =>
+  resolveStarterItem(name)?.name ?? name.trim();
 
 export const getInitialClassEquipmentSelections = (className: string) => {
   const config = getClassCreationConfig(className);
@@ -78,6 +109,64 @@ export const resolveClassEquipmentItems = (
   ];
 };
 
+// ── Weapon auto-population from base item data ────────────────────────────
+
+const formatWeaponProperties = (propsJson: unknown): string => {
+  if (!propsJson) return "";
+  if (Array.isArray(propsJson)) return propsJson.join(", ");
+  return "";
+};
+
+const formatWeaponRange = (item: CreationCatalogItem): string => {
+  if (item.rangeNormal && item.rangeLong) return `${item.rangeNormal}/${item.rangeLong}`;
+  if (item.rangeNormal) return `${item.rangeNormal}`;
+  return "";
+};
+
+const deriveWeaponAbility = (item: CreationCatalogItem): AbilityName => {
+  const props = Array.isArray(item.weaponPropertiesJson) ? item.weaponPropertiesJson : [];
+  const hasFinesse = props.some(
+    (p: unknown) => typeof p === "string" && p.toLowerCase().includes("finesse"),
+  );
+  if (hasFinesse) return "dexterity"; // Player can choose; default to DEX for finesse
+  if (item.weaponRangeType === "ranged") return "dexterity";
+  return "strength";
+};
+
+const catalogItemToWeapon = (
+  item: CreationCatalogItem,
+  stableId: string,
+): Weapon => ({
+  id: `weapon:${stableId}`,
+  name: item.namePt || item.name,
+  ability: deriveWeaponAbility(item),
+  damageDice: item.damageDice ?? "1d4",
+  damageType: item.damageType ?? "bludgeoning",
+  proficient: true,
+  magicBonus: 0,
+  properties: formatWeaponProperties(item.weaponPropertiesJson),
+  range: formatWeaponRange(item),
+});
+
+const buildWeaponsFromInventory = (
+  inventoryMap: Map<string, InventoryItem>,
+): Weapon[] => {
+  const catalog = getCreationItemCatalog();
+  const weapons: Weapon[] = [];
+  const seen = new Set<string>();
+
+  for (const [stableId, invItem] of inventoryMap) {
+    if (!invItem.canonicalKey) continue;
+    const catalogItem = findCreationItemByCanonicalKey(invItem.canonicalKey, catalog);
+    if (!catalogItem || catalogItem.itemKind !== "weapon") continue;
+    if (seen.has(catalogItem.canonicalKey)) continue;
+    seen.add(catalogItem.canonicalKey);
+    weapons.push(catalogItemToWeapon(catalogItem, stableId.replace("starter:", "")));
+  }
+
+  return weapons;
+};
+
 export const buildCreationLoadout = (
   className: string,
   backgroundName: string,
@@ -87,6 +176,7 @@ export const buildCreationLoadout = (
   currency: Currency;
   equippedArmor: Armor;
   equippedShield: Shield | null;
+  weapons: Weapon[];
 } => {
   const inventoryMap = new Map<string, InventoryItem>();
   const currency: Currency = { ...EMPTY_CURRENCY };
@@ -102,37 +192,51 @@ export const buildCreationLoadout = (
       continue;
     }
 
-    const existing = inventoryMap.get(parsed.name);
-    const quantity = (existing?.quantity ?? 0) + parsed.quantity;
-    inventoryMap.set(parsed.name, {
-      id: existing?.id ?? `${parsed.name}-${inventoryMap.size}`,
-      name: parsed.name,
-      quantity,
-      weight: getItemWeight(parsed.name),
-      notes: "Starting equipment",
+    const resolved = resolveStarterItem(parsed.name);
+    const stableId = `starter:${starterStableKey(parsed.name, resolved?.canonicalKey)}`;
+    const existing = inventoryMap.get(stableId);
+    inventoryMap.set(stableId, {
+      id: stableId,
+      name: resolved?.name ?? parsed.name,
+      quantity: (existing?.quantity ?? 0) + parsed.quantity,
+      weight: resolved?.weight ?? existing?.weight ?? 0,
+      notes: existing?.notes ?? "Equipamento inicial",
+      canonicalKey: resolved?.canonicalKey ?? existing?.canonicalKey ?? null,
+      baseItemId: resolved?.id ?? existing?.baseItemId ?? null,
     });
   }
 
+  const weapons = buildWeaponsFromInventory(inventoryMap);
   const inventory = [...inventoryMap.values()];
+  const { equippedArmor, equippedShield } = deriveLoadoutFromInventory(inventory);
+  return { inventory, currency, equippedArmor, equippedShield, weapons };
+};
+
+export const applyCreationLoadoutToSheet = (sheet: CharacterSheet): CharacterSheet => {
+  const loadout = buildCreationLoadout(
+    sheet.class,
+    sheet.background,
+    sheet.classEquipmentSelections,
+  );
   return {
-    inventory,
-    currency,
-    equippedArmor: deriveLoadoutFromInventory(inventory).equippedArmor,
-    equippedShield: deriveLoadoutFromInventory(inventory).equippedShield,
+    ...sheet,
+    inventory: loadout.inventory,
+    currency: loadout.currency,
+    equippedArmor: loadout.equippedArmor,
+    equippedShield: loadout.equippedShield,
+    weapons: loadout.weapons,
   };
 };
 
 export const deriveLoadoutFromInventory = (inventory: CharacterSheet["inventory"]) => {
-  const equippedArmor = ARMOR_PRESETS.find((preset) => {
-    const aliases = ARMOR_ALIASES[preset.name] ?? [preset.name];
-    return inventory.some((item) =>
-      aliases.some((alias) => item.name.toLowerCase().includes(alias.toLowerCase())),
-    );
-  }) ?? ARMOR_PRESETS.find((preset) => preset.name === "None")!;
+  const equippedArmor = ARMOR_PRESETS.find((preset) =>
+    inventory.some((item) => matchesArmorPreset(item, preset.name)),
+  ) ?? ARMOR_PRESETS.find((preset) => preset.name === "None")!;
 
-  const equippedShield = inventory.some((item) =>
-    ["shield", "escudo"].some((label) => item.name.toLowerCase().includes(label)),
-  )
+  const equippedShield = inventory.some((item) => {
+    const catalogItem = findCreationItemByCanonicalKey(item.canonicalKey, getCreationItemCatalog());
+    return catalogItem?.isShield ?? ["shield", "escudo"].some((label) => item.name.toLowerCase().includes(label));
+  })
     ? { name: "Shield", bonus: 2 }
     : null;
 

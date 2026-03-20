@@ -1,0 +1,16 @@
+{
+  "include": [
+    "scripts",
+    "server_py/app"
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "server_py"
+      ]
+    }
+  ],
+  "venvPath": "server_py",
+  "venv": ".venv"
+}

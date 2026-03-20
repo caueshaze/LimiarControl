@@ -1,23 +1,20 @@
 import { useState } from "react";
 import {
-  CampaignSystemType,
-  campaignSystemLabels,
+  defaultCampaignSystemType,
+  getCampaignSystemLabel,
 } from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type CreateCampaignFormProps = {
   onCreate: (
     name: string,
-    systemType: CampaignSystemType
+    systemType: typeof defaultCampaignSystemType
   ) => Promise<{ ok: boolean; campaignId?: string; message?: string }>;
 };
 
 export const CreateCampaignForm = ({ onCreate }: CreateCampaignFormProps) => {
   const { t } = useLocale();
   const [name, setName] = useState("");
-  const [systemType, setSystemType] = useState<CampaignSystemType>(
-    CampaignSystemType.DND5E
-  );
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -26,10 +23,9 @@ export const CreateCampaignForm = ({ onCreate }: CreateCampaignFormProps) => {
       return;
     }
 
-    const result = await onCreate(name, systemType);
+    const result = await onCreate(name, defaultCampaignSystemType);
     if (result.ok) {
       setName("");
-      setSystemType(CampaignSystemType.DND5E);
       setError(null);
     } else {
       setError(result.message ?? t("campaign.form.error"));
@@ -56,19 +52,9 @@ export const CreateCampaignForm = ({ onCreate }: CreateCampaignFormProps) => {
         <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {t("campaign.form.system")}
         </label>
-        <select
-          value={systemType}
-          onChange={(event) =>
-            setSystemType(event.target.value as CampaignSystemType)
-          }
-          className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
-        >
-          {Object.values(CampaignSystemType).map((option) => (
-            <option key={option} value={option}>
-              {campaignSystemLabels[option]}
-            </option>
-          ))}
-        </select>
+        <div className="mt-2 flex min-h-11 items-center rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100">
+          {getCampaignSystemLabel(defaultCampaignSystemType)}
+        </div>
       </div>
       <button
         type="submit"

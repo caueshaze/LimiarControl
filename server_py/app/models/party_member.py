@@ -17,7 +17,7 @@ class PartyMemberStatus(str, Enum):
 
 
 class PartyMember(SQLModel, table=True):
-    __tablename__ = "party_member"
+    __tablename__ = "party_member"  # type: ignore[assignment]
 
     party_id: str = Field(foreign_key="party.id", primary_key=True, index=True)
     user_id: str = Field(foreign_key="app_user.id", primary_key=True, index=True)

@@ -7,7 +7,7 @@ from sqlmodel import Field, SQLModel
 
 
 class PurchaseEvent(SQLModel, table=True):
-    __tablename__ = "purchase_event"
+    __tablename__ = "purchase_event"  # type: ignore[assignment]
 
     id: str = Field(primary_key=True)
     session_id: str = Field(foreign_key="campaign_session.id", index=True)

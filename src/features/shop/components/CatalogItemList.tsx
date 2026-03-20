@@ -5,8 +5,8 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 type CatalogItemListProps = {
   items: Item[];
   itemTypes: ItemType[];
-  onUpdate?: (itemId: string, payload: ItemInput) => void;
-  onDelete?: (itemId: string) => void;
+  onUpdate?: (itemId: string, payload: ItemInput) => boolean | Promise<boolean>;
+  onDelete?: (itemId: string) => void | Promise<void>;
 };
 
 export const CatalogItemList = ({
@@ -18,7 +18,7 @@ export const CatalogItemList = ({
   const { t } = useLocale();
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-300">
+      <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,28,0.92),rgba(2,6,23,0.95))] p-5 text-sm text-slate-300">
         {t("catalog.empty")}
       </div>
     );

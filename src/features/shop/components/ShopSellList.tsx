@@ -2,6 +2,7 @@ import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { formatItemPrice } from "../utils/shopCurrency";
+import { localizedItemName } from "../utils/localizedItemName";
 
 type ShopSellListProps = {
   itemsById: Record<string, Item>;
@@ -18,7 +19,7 @@ export const ShopSellList = ({
   recentInventoryId = null,
   onSell,
 }: ShopSellListProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   if (inventoryItems.length === 0) {
     return (
@@ -29,8 +30,10 @@ export const ShopSellList = ({
   }
 
   const sortedItems = [...inventoryItems].sort((left, right) => {
-    const leftName = itemsById[left.itemId]?.name ?? left.itemId;
-    const rightName = itemsById[right.itemId]?.name ?? right.itemId;
+    const leftItem = itemsById[left.itemId];
+    const rightItem = itemsById[right.itemId];
+    const leftName = leftItem ? localizedItemName(leftItem, locale) : left.itemId;
+    const rightName = rightItem ? localizedItemName(rightItem, locale) : right.itemId;
     return leftName.localeCompare(rightName);
   });
 
@@ -53,7 +56,7 @@ export const ShopSellList = ({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold text-white">
-                    {item?.name ?? t("inventory.unknownItem")}
+                    {item ? localizedItemName(item, locale) : t("inventory.unknownItem")}
                   </p>
                   <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
                     x{entry.quantity}

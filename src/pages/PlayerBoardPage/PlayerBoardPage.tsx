@@ -26,6 +26,7 @@ import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
+import { PlayerEntityList } from "../../features/session-entities";
 
 type PendingRoll = {
   expression: string;
@@ -695,6 +696,8 @@ export const PlayerBoardPage = () => {
         </div>
       )}
       <DiceVisualizer events={rollEvents} />
+
+      <PlayerEntityList sessionId={activeSession?.id} lastEvent={lastEvent} />
 
       <SessionInventoryPanel
         flash={inventoryFlash}

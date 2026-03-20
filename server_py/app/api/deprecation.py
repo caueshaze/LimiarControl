@@ -23,7 +23,7 @@ def log_deprecated_route(
     if request is not None:
         payload["method"] = request.method
         payload["path"] = request.url.path
-        payload["client"] = request.client.host if request.client else None
+        payload["client"] = request.client.host if request.client else "unknown"
     if extra:
         payload.update(extra)
     logger.warning("Deprecated route used", extra=payload)

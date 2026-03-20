@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel
 
 
 class CharacterSheet(SQLModel, table=True):
-    __tablename__ = "character_sheet"
+    __tablename__ = "character_sheet"  # type: ignore[assignment]
 
     id: str = Field(primary_key=True)
     party_id: str = Field(foreign_key="party.id", index=True)

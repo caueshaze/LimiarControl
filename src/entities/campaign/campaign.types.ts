@@ -20,6 +20,22 @@ export const campaignSystemLabels: Record<CampaignSystemType, string> = {
 export const getCampaignSystemLabel = (systemType: CampaignSystemType) =>
   campaignSystemLabels[systemType];
 
+export const defaultCampaignSystemType = CampaignSystemType.DND5E;
+
+export const enabledCampaignSystemTypes = [
+  CampaignSystemType.DND5E,
+] as const satisfies readonly CampaignSystemType[];
+
+export const isCampaignSystemEnabled = (systemType: CampaignSystemType) =>
+  (enabledCampaignSystemTypes as readonly CampaignSystemType[]).includes(systemType);
+
+export const enabledCampaignSystemOptions = enabledCampaignSystemTypes.map(
+  (systemType) => ({
+    value: systemType,
+    label: campaignSystemLabels[systemType],
+  }),
+);
+
 export type Campaign = {
   id: string;
   name: string;

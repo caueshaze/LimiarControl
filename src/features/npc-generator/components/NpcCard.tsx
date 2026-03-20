@@ -11,7 +11,7 @@ export const NpcCard = ({ npc }: NpcCardProps) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-200">
+    <div className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-5 text-sm text-slate-200 shadow-[0_18px_50px_rgba(2,6,23,0.18)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-slate-100">{npc.name}</p>
@@ -22,13 +22,13 @@ export const NpcCard = ({ npc }: NpcCardProps) => {
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-200"
+          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
         >
           {expanded ? t("npc.hide") : t("npc.details")}
         </button>
       </div>
       {expanded && (
-        <div className="mt-3 space-y-2 text-xs text-slate-300">
+        <div className="mt-4 space-y-2 rounded-[18px] border border-white/8 bg-white/[0.03] p-4 text-xs text-slate-300">
           <p>
             <span className="text-slate-400">{t("npc.trait")}</span> {npc.trait}
           </p>

@@ -3,6 +3,8 @@ import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
 import { tagBadge } from "./styles";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../../shared/i18n";
 
 type TagField = "languages" | "toolProficiencies" | "weaponProficiencies" | "armorProficiencies";
 
@@ -19,16 +21,20 @@ type Props = {
 export const Proficiencies = ({
   languages, toolProficiencies, weaponProficiencies, armorProficiencies,
   onAddTag, onRemoveTag, readOnly = false,
-}: Props) => (
-  <Section title="Languages & Proficiencies" color="bg-teal-500">
-    <div className="space-y-4">
-      <TagGroup label="Languages" items={languages} field="languages" placeholder="Add language..." onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} />
-      <TagGroup label="Tool Proficiencies" items={toolProficiencies} field="toolProficiencies" placeholder="Add tool..." onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} />
-      <TagGroup label="Weapon Proficiencies" items={weaponProficiencies} field="weaponProficiencies" placeholder="Add weapon..." onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} />
-      <TagGroup label="Armor Proficiencies" items={armorProficiencies} field="armorProficiencies" placeholder="Add armor..." onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} />
-    </div>
-  </Section>
-);
+}: Props) => {
+  const { t } = useLocale();
+
+  return (
+    <Section title={t("sheet.proficiencies.title")} color="bg-teal-500">
+      <div className="space-y-4">
+        <TagGroup label={t("sheet.proficiencies.languages")} items={languages} field="languages" placeholder={t("sheet.proficiencies.addLang")} onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} t={t} />
+        <TagGroup label={t("sheet.proficiencies.tools")} items={toolProficiencies} field="toolProficiencies" placeholder={t("sheet.proficiencies.addTool")} onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} t={t} />
+        <TagGroup label={t("sheet.proficiencies.weapons")} items={weaponProficiencies} field="weaponProficiencies" placeholder={t("sheet.proficiencies.addWeapon")} onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} t={t} />
+        <TagGroup label={t("sheet.proficiencies.armors")} items={armorProficiencies} field="armorProficiencies" placeholder={t("sheet.proficiencies.addArmor")} onAdd={onAddTag} onRemove={onRemoveTag} readOnly={readOnly} t={t} />
+      </div>
+    </Section>
+  );
+};
 
 type TagGroupProps = {
   label: string;
@@ -38,9 +44,10 @@ type TagGroupProps = {
   onAdd: SheetActions["addTag"];
   onRemove: SheetActions["removeTag"];
   readOnly: boolean;
+  t: (key: LocaleKey) => string;
 };
 
-const TagGroup = ({ label, items, field, placeholder, onAdd, onRemove, readOnly }: TagGroupProps) => {
+const TagGroup = ({ label, items, field, placeholder, onAdd, onRemove, readOnly, t }: TagGroupProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
@@ -68,7 +75,7 @@ const TagGroup = ({ label, items, field, placeholder, onAdd, onRemove, readOnly 
               onClick={() => onRemove(field, idx)}
               disabled={readOnly}
               className="ml-0.5 text-slate-500 transition-colors hover:text-rose-400"
-              title={`Remove ${item}`}
+              title={t("sheet.proficiencies.remove").replace("{item}", item)}
             >
               ×
             </button>

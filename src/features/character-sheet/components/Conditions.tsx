@@ -2,6 +2,7 @@ import type { CharacterSheet, ConditionName } from "../model/characterSheet.type
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
 import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   conditions: CharacterSheet["conditions"];
@@ -10,10 +11,15 @@ type Props = {
 };
 
 export const Conditions = ({ conditions, onToggle, readOnly = false }: Props) => {
+  const { t } = useLocale();
   const activeCount = CONDITION_NAMES.filter((c) => conditions[c]).length;
 
   return (
-    <Section title={`Conditions${activeCount > 0 ? ` (${activeCount})` : ""}`} color="bg-rose-500" defaultOpen={false}>
+    <Section
+      title={`${t("sheet.conditions.title")}${activeCount > 0 ? ` (${activeCount})` : ""}`}
+      color="bg-rose-500"
+      defaultOpen={false}
+    >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
         {CONDITION_NAMES.map((condition) => (
           <ConditionBadge

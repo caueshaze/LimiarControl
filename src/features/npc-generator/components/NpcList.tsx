@@ -16,11 +16,11 @@ export const NpcList = ({ npcs, query, onQueryChange }: NpcListProps) => {
       <input
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
+        className="w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-limiar-300/35"
         placeholder={t("npc.search")}
       />
       {npcs.length === 0 ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-300">
+        <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-slate-300">
           {t("npc.empty")}
         </div>
       ) : (

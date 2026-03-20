@@ -83,6 +83,7 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   return (
     <CharacterSheet
       partyId={partyId ?? null}
+      campaignId={campaignId}
       mode={requestedMode}
       playPlayerUserId={playPlayerUserId}
       canEditPlay={viewerRole === "GM"}

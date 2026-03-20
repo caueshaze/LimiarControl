@@ -7,7 +7,7 @@ from sqlmodel import Field, SQLModel
 
 
 class SessionCommandEvent(SQLModel, table=True):
-    __tablename__ = "session_command_event"
+    __tablename__ = "session_command_event"  # type: ignore[assignment]
 
     id: str = Field(primary_key=True)
     session_id: str = Field(foreign_key="campaign_session.id", index=True)

@@ -1,41 +1,29 @@
 from __future__ import annotations
 
-import csv
-import json
+import logging
 import re
 import unicodedata
 from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
 from uuid import uuid4
 
 from sqlmodel import Session, select
 
+from app.models.base_item import BaseItem, BaseItemAlias
+from app.models.campaign import Campaign, SystemType
 from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.item import Item, ItemType
 from app.models.party import Party
+from app.services.campaign_catalog import _base_item_to_campaign_item
 
-_BASE_DIR = Path(__file__).resolve().parents[3] / "Base"
-_COIN_TO_GP = {
-    "cp": 0.01,
-    "sp": 0.1,
-    "ep": 0.5,
-    "gp": 1.0,
-    "pp": 10.0,
+logger = logging.getLogger(__name__)
+
+LEGACY_STARTER_CANONICAL_KEYS: dict[str, str] = {
+    "leather armor": "leather",
+    "studded leather armor": "studded_leather",
+    "hide armor": "hide",
+    "wooden shield": "shield",
 }
-
-
-@dataclass(frozen=True)
-class _CatalogSeed:
-    name: str
-    item_type: ItemType
-    description: str
-    price: float | None = None
-    weight: float | None = None
-    damage_dice: str | None = None
-    range_meters: float | None = None
-    properties: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -44,6 +32,15 @@ class _SheetInventorySeed:
     quantity: int
     weight: float | None = None
     notes: str | None = None
+    canonical_key: str | None = None
+    base_item_id: str | None = None
+
+
+@dataclass(frozen=True)
+class _BaseCatalogIndex:
+    by_id: dict[str, BaseItem]
+    by_canonical_key: dict[str, BaseItem]
+    by_lookup: dict[str, BaseItem]
 
 
 def sync_character_sheet_inventory(
@@ -54,6 +51,10 @@ def sync_character_sheet_inventory(
     db: Session,
     only_if_inventory_empty: bool = False,
 ) -> None:
+    campaign = db.exec(select(Campaign).where(Campaign.id == party.campaign_id)).first()
+    if not campaign:
+        return
+
     campaign_member = db.exec(
         select(CampaignMember).where(
             CampaignMember.campaign_id == party.campaign_id,
@@ -77,33 +78,56 @@ def sync_character_sheet_inventory(
     if only_if_inventory_empty and existing_inventory:
         return
 
-    campaign_items = db.exec(
-        select(Item).where(Item.campaign_id == party.campaign_id)
-    ).all()
-    items_by_key = {_normalize_name(item.name): item for item in campaign_items}
-    item_names_by_id = {item.id: _normalize_name(item.name) for item in campaign_items if item.id}
+    base_catalog = _load_base_catalog_index(campaign.system, db)
+    campaign_items = db.exec(select(Item).where(Item.campaign_id == party.campaign_id)).all()
+    items_by_base_item_id: dict[str, Item] = {}
+    items_by_lookup: dict[str, Item] = {}
+    item_keys_by_id: dict[str, str] = {}
+
+    for item in campaign_items:
+        _index_campaign_item(item, items_by_base_item_id, items_by_lookup, item_keys_by_id)
+
     existing_inventory_keys = {
-        item_names_by_id[entry.item_id]
+        item_keys_by_id[entry.item_id]
         for entry in existing_inventory
-        if entry.item_id in item_names_by_id
+        if entry.item_id in item_keys_by_id
     }
 
     for sheet_item in sheet_items:
-        item_key = _normalize_name(sheet_item.name)
-        if not item_key or item_key in existing_inventory_keys:
-            continue
-
-        catalog_item = items_by_key.get(item_key)
-        if not catalog_item:
-            catalog_item = _create_catalog_item(
+        base_item = _resolve_base_item(sheet_item, base_catalog)
+        if base_item:
+            catalog_item = _ensure_campaign_item_for_base_item(
+                campaign_id=party.campaign_id,
+                base_item=base_item,
+                db=db,
+                items_by_base_item_id=items_by_base_item_id,
+                items_by_lookup=items_by_lookup,
+                item_keys_by_id=item_keys_by_id,
+            )
+        else:
+            logger.warning(
+                "Character-sheet starter item missing from base catalog; using fallback custom item.",
+                extra={
+                    "campaign_id": party.campaign_id,
+                    "party_id": party.id,
+                    "item_name": sheet_item.name,
+                    "canonical_key": sheet_item.canonical_key,
+                },
+            )
+            catalog_item = _ensure_fallback_campaign_item(
                 campaign_id=party.campaign_id,
                 seed=sheet_item,
                 db=db,
+                items_by_lookup=items_by_lookup,
+                item_keys_by_id=item_keys_by_id,
             )
-            items_by_key[item_key] = catalog_item
+
+        item_key = _campaign_item_key(catalog_item)
+        if not item_key or item_key in existing_inventory_keys:
+            continue
 
         db.add(
-            InventoryItem(
+            InventoryItem(  # type: ignore[call-arg]
                 id=str(uuid4()),
                 campaign_id=party.campaign_id,
                 party_id=party.id,
@@ -111,37 +135,10 @@ def sync_character_sheet_inventory(
                 item_id=catalog_item.id,
                 quantity=sheet_item.quantity,
                 is_equipped=False,
-                notes=sheet_item.notes or "Starting equipment",
+                notes=sheet_item.notes or "Equipamento inicial",
             )
         )
         existing_inventory_keys.add(item_key)
-
-
-def _create_catalog_item(*, campaign_id: str, seed: _SheetInventorySeed, db: Session) -> Item:
-    catalog_seed = _load_base_catalog().get(_normalize_name(seed.name))
-    item = Item(
-        id=str(uuid4()),
-        campaign_id=campaign_id,
-        name=catalog_seed.name if catalog_seed else seed.name.strip(),
-        type=catalog_seed.item_type if catalog_seed else ItemType.MISC,
-        description=(
-            catalog_seed.description
-            if catalog_seed
-            else "Starting equipment imported from character sheet."
-        ),
-        price=catalog_seed.price if catalog_seed else None,
-        weight=(
-            catalog_seed.weight
-            if catalog_seed and catalog_seed.weight is not None
-            else seed.weight
-        ),
-        damage_dice=catalog_seed.damage_dice if catalog_seed else None,
-        range_meters=catalog_seed.range_meters if catalog_seed else None,
-        properties=list(catalog_seed.properties) if catalog_seed else [],
-    )
-    db.add(item)
-    db.flush()
-    return item
 
 
 def _extract_sheet_inventory(raw_inventory: object) -> list[_SheetInventorySeed]:
@@ -152,173 +149,237 @@ def _extract_sheet_inventory(raw_inventory: object) -> list[_SheetInventorySeed]
     for raw_entry in raw_inventory:
         if not isinstance(raw_entry, dict):
             continue
+
         name = str(raw_entry.get("name", "")).strip()
         if not name:
             continue
+
         quantity = _to_int(raw_entry.get("quantity"), default=1)
         if quantity < 1:
             continue
-        weight = _to_float(raw_entry.get("weight"))
+
         notes = raw_entry.get("notes")
         normalized_notes = notes.strip() if isinstance(notes, str) and notes.strip() else None
-        key = _normalize_name(name)
-        existing = merged.get(key)
-        merged[key] = _SheetInventorySeed(
+        canonical_key = _normalize_canonical_key(
+            raw_entry.get("canonicalKey") or raw_entry.get("canonical_key")
+        )
+        base_item_id = _normalize_optional_string(
+            raw_entry.get("baseItemId") or raw_entry.get("base_item_id")
+        )
+        weight = _to_float(raw_entry.get("weight"))
+
+        merge_key = (
+            f"base:{base_item_id}"
+            if base_item_id
+            else f"canonical:{canonical_key}"
+            if canonical_key
+            else f"name:{_normalize_lookup(name)}"
+        )
+        existing = merged.get(merge_key)
+        merged[merge_key] = _SheetInventorySeed(
             name=name,
             quantity=quantity + (existing.quantity if existing else 0),
             weight=weight if weight is not None else (existing.weight if existing else None),
             notes=normalized_notes or (existing.notes if existing else None),
+            canonical_key=canonical_key or (existing.canonical_key if existing else None),
+            base_item_id=base_item_id or (existing.base_item_id if existing else None),
         )
+
     return list(merged.values())
 
 
-@lru_cache(maxsize=1)
-def _load_base_catalog() -> dict[str, _CatalogSeed]:
-    catalog: dict[str, _CatalogSeed] = {}
-
-    weapons_path = _BASE_DIR / "DND5e_Armas_Database_Programador.csv"
-    with weapons_path.open("r", encoding="utf-8", newline="") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            name = str(row.get("Nome", "")).strip()
-            if not name:
-                continue
-            catalog[_normalize_name(name)] = _CatalogSeed(
-                name=name,
-                item_type=ItemType.WEAPON,
-                description=str(row.get("Descrição curta", "")).strip() or "Weapon",
-                price=_parse_price_gp(row.get("Custo")),
-                weight=_parse_weight(row.get("Peso")),
-                damage_dice=_clean_value(row.get("Dano")),
-                range_meters=_feet_to_meters(_to_float(row.get("Alcance normal"))),
-                properties=tuple(_split_properties(row.get("Propriedades"))),
-            )
-
-    armors_path = _BASE_DIR / "DND5e_Armaduras_Database.csv"
-    with armors_path.open("r", encoding="utf-8", newline="") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            name = str(row.get("Nome", "")).strip()
-            if not name:
-                continue
-            properties = []
-            base_ac = _to_int(row.get("CA base"), default=0)
-            if base_ac > 0:
-                properties.append(f"Base AC {base_ac}")
-            category = str(row.get("Categoria", "")).strip()
-            if category:
-                properties.append(f"Categoria {category}")
-            dex_cap = _clean_value(row.get("Mod DEX máximo"))
-            if dex_cap and dex_cap.lower() not in {"n/a", "ilimitado"}:
-                properties.append(f"DEX max {dex_cap}")
-            if str(row.get("Desvantagem em furtividade", "")).strip().lower() == "sim":
-                properties.append("Stealth disadvantage")
-            catalog[_normalize_name(name)] = _CatalogSeed(
-                name=name,
-                item_type=ItemType.ARMOR,
-                description=str(row.get("Descrição", "")).strip() or "Armor",
-                price=_parse_price_gp(row.get("Custo")),
-                weight=_parse_weight(row.get("Peso")),
-                properties=tuple(properties),
-            )
-
-    equipment_path = _BASE_DIR / "DND5e_Equipamentos.json"
-    data = json.loads(equipment_path.read_text(encoding="utf-8"))
-    for raw_entry in data:
-        if not isinstance(raw_entry, dict):
-            continue
-        name = str(raw_entry.get("name", "")).strip()
-        if not name:
-            continue
-        description = raw_entry.get("desc")
-        catalog.setdefault(
-            _normalize_name(name),
-            _CatalogSeed(
-                name=name,
-                item_type=ItemType.MISC,
-                description=(
-                    " ".join(str(part).strip() for part in description if str(part).strip())
-                    if isinstance(description, list)
-                    else str(description).strip() or "Equipment"
-                ),
-                price=_parse_json_cost(raw_entry.get("cost")),
-                weight=_to_float(raw_entry.get("weight")),
-                properties=tuple(
-                    str(part).strip()
-                    for part in raw_entry.get("properties", [])
-                    if str(part).strip()
-                ),
-            ),
+def _load_base_catalog_index(system_type: SystemType, db: Session) -> _BaseCatalogIndex:
+    base_items = db.exec(
+        select(BaseItem).where(
+            BaseItem.system == system_type,
+            BaseItem.is_active == True,  # noqa: E712
         )
+    ).all()
 
-    return catalog
+    by_id = {item.id: item for item in base_items if item.id}
+    by_canonical_key = {item.canonical_key: item for item in base_items}
+    by_lookup: dict[str, BaseItem] = {}
+
+    aliases = db.exec(
+        select(BaseItemAlias).where(
+            BaseItemAlias.base_item_id.in_(list(by_id.keys()))  # type: ignore[union-attr]
+        )
+    ).all()
+
+    for item in base_items:
+        for raw_lookup in (item.canonical_key, item.name_en, item.name_pt):
+            lookup = _normalize_lookup(raw_lookup)
+            if lookup and lookup not in by_lookup:
+                by_lookup[lookup] = item
+
+    for alias in aliases:
+        item = by_id.get(alias.base_item_id)
+        if not item:
+            continue
+        lookup = _normalize_lookup(alias.alias)
+        if lookup and lookup not in by_lookup:
+            by_lookup[lookup] = item
+
+    for lookup, canonical_key in LEGACY_STARTER_CANONICAL_KEYS.items():
+        item = by_canonical_key.get(canonical_key)
+        if item:
+            by_lookup.setdefault(lookup, item)
+
+    return _BaseCatalogIndex(
+        by_id=by_id,
+        by_canonical_key=by_canonical_key,
+        by_lookup=by_lookup,
+    )
 
 
-def _normalize_name(value: str) -> str:
+def _resolve_base_item(seed: _SheetInventorySeed, index: _BaseCatalogIndex) -> BaseItem | None:
+    if seed.base_item_id:
+        item = index.by_id.get(seed.base_item_id)
+        if item:
+            return item
+
+    if seed.canonical_key:
+        item = index.by_canonical_key.get(seed.canonical_key)
+        if item:
+            return item
+
+    compatibility_key = LEGACY_STARTER_CANONICAL_KEYS.get(_normalize_lookup(seed.name))
+    if compatibility_key:
+        item = index.by_canonical_key.get(compatibility_key)
+        if item:
+            return item
+
+    return index.by_lookup.get(_normalize_lookup(seed.name))
+
+
+def _ensure_campaign_item_for_base_item(
+    *,
+    campaign_id: str,
+    base_item: BaseItem,
+    db: Session,
+    items_by_base_item_id: dict[str, Item],
+    items_by_lookup: dict[str, Item],
+    item_keys_by_id: dict[str, str],
+) -> Item:
+    existing = items_by_base_item_id.get(base_item.id)
+    if existing:
+        return existing
+
+    for lookup in (base_item.canonical_key, base_item.name_en, base_item.name_pt):
+        matched = items_by_lookup.get(_normalize_lookup(lookup))
+        if matched:
+            _attach_base_item_metadata(matched, base_item)
+            db.add(matched)
+            db.flush()
+            _index_campaign_item(matched, items_by_base_item_id, items_by_lookup, item_keys_by_id)
+            return matched
+
+    campaign_item = _base_item_to_campaign_item(base_item, campaign_id)
+    db.add(campaign_item)
+    db.flush()
+    _index_campaign_item(campaign_item, items_by_base_item_id, items_by_lookup, item_keys_by_id)
+    return campaign_item
+
+
+def _ensure_fallback_campaign_item(
+    *,
+    campaign_id: str,
+    seed: _SheetInventorySeed,
+    db: Session,
+    items_by_lookup: dict[str, Item],
+    item_keys_by_id: dict[str, str],
+) -> Item:
+    existing = items_by_lookup.get(_normalize_lookup(seed.name))
+    if existing:
+        return existing
+
+    item = Item(  # type: ignore[call-arg]
+        id=str(uuid4()),
+        campaign_id=campaign_id,
+        name=seed.name,
+        type=ItemType.MISC,
+        description="Item temporário materializado da ficha; catálogo base ainda não possui correspondência.",
+        price=None,
+        weight=seed.weight,
+        damage_dice=None,
+        range_meters=None,
+        properties=[],
+        is_custom=True,
+        is_enabled=True,
+    )
+    db.add(item)
+    db.flush()
+    _index_campaign_item(item, {}, items_by_lookup, item_keys_by_id)
+    return item
+
+
+def _attach_base_item_metadata(item: Item, base_item: BaseItem) -> None:
+    item.base_item_id = base_item.id
+    item.canonical_key_snapshot = base_item.canonical_key
+    item.name_en_snapshot = base_item.name_en
+    item.name_pt_snapshot = base_item.name_pt
+    item.item_kind = base_item.item_kind
+    item.cost_unit = base_item.cost_unit
+    item.is_custom = False
+
+
+def _index_campaign_item(
+    item: Item,
+    items_by_base_item_id: dict[str, Item],
+    items_by_lookup: dict[str, Item],
+    item_keys_by_id: dict[str, str],
+) -> None:
+    if item.base_item_id:
+        items_by_base_item_id[item.base_item_id] = item
+
+    for lookup in (
+        item.name,
+        item.canonical_key_snapshot,
+        item.name_en_snapshot,
+        item.name_pt_snapshot,
+    ):
+        key = _normalize_lookup(lookup)
+        if key and key not in items_by_lookup:
+            items_by_lookup[key] = item
+
+    if item.id:
+        item_keys_by_id[item.id] = _campaign_item_key(item)
+
+
+def _campaign_item_key(item: Item) -> str:
+    if item.base_item_id:
+        return f"base:{item.base_item_id}"
+    if item.canonical_key_snapshot:
+        return f"canonical:{item.canonical_key_snapshot}"
+    return f"name:{_normalize_lookup(item.name)}"
+
+
+def _normalize_lookup(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
     normalized = unicodedata.normalize("NFD", value)
     ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", " ", ascii_only.lower()).strip()
 
 
-def _clean_value(value: object) -> str | None:
+def _normalize_canonical_key(value: object) -> str | None:
     if not isinstance(value, str):
         return None
-    normalized = value.strip()
-    if not normalized or normalized == "-":
-        return None
-    return normalized
+    normalized = unicodedata.normalize("NFD", value)
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    cleaned = re.sub(r"[^a-z0-9]+", "_", ascii_only.lower()).strip("_")
+    return cleaned or None
 
 
-def _split_properties(value: object) -> list[str]:
-    if not isinstance(value, str):
-        return []
-    return [part.strip() for part in value.split(",") if part.strip() and part.strip() != "-"]
-
-
-def _parse_price_gp(raw_value: object) -> float | None:
-    if not isinstance(raw_value, str):
-        return None
-    match = re.match(r"^\s*([\d.,]+)\s*(cp|sp|ep|gp|pp)\s*$", raw_value, flags=re.IGNORECASE)
-    if not match:
-        return None
-    amount = _to_float(match.group(1))
-    unit = match.group(2).lower()
-    if amount is None:
-        return None
-    return round(amount * _COIN_TO_GP[unit], 2)
-
-
-def _parse_json_cost(raw_cost: object) -> float | None:
-    if not isinstance(raw_cost, dict):
-        return None
-    amount = _to_float(raw_cost.get("quantity"))
-    unit = str(raw_cost.get("unit", "")).strip().lower()
-    if amount is None or unit not in _COIN_TO_GP:
-        return None
-    return round(amount * _COIN_TO_GP[unit], 2)
-
-
-def _parse_weight(raw_value: object) -> float | None:
-    if not isinstance(raw_value, str):
-        return None
-    match = re.search(r"[\d.,]+", raw_value)
-    if not match:
-        return None
-    return _to_float(match.group(0))
-
-
-def _feet_to_meters(feet: float | None) -> float | None:
-    if feet is None or feet <= 5:
-        return None
-    return float(max(1, round(feet * 0.3048)))
+def _normalize_optional_string(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 def _to_int(value: object, *, default: int = 0) -> int:
     try:
-        parsed = int(float(str(value)))
+        return int(float(str(value)))
     except (TypeError, ValueError):
         return default
-    return parsed
 
 
 def _to_float(value: object) -> float | None:

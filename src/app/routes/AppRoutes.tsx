@@ -1,26 +1,57 @@
-import type { ReactNode } from "react";
+import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../../shared/ui/AppLayout";
 import { APP_NAME } from "../config/appConfig";
-import {
-  CampaignHomePage,
-  CampaignSelectPage,
-  CatalogPage,
-  GmDashboardPage,
-  GmHomePage,
-  JoinPage,
-  LoginPage,
-  NpcsPage,
-  PlayerBoardPage,
-  PlayerHomePage,
-  RegisterPage,
-  PartyDetailsPage,
-  PlayerPartyPage,
-} from "../../pages";
-import { CharacterSheetPage } from "../../features/character-sheet";
 import { routes } from "./routes";
 import { RequireAuth, useAuth } from "../../features/auth";
+import { useCampaigns } from "../../features/campaign-select";
 import type { RoleMode } from "../../shared/types/role";
+import { useLocale } from "../../shared/hooks/useLocale";
+import { JoinPage } from "../../pages/JoinPage";
+import { LandingPage } from "../../pages/LandingPage";
+import { LoginPage } from "../../pages/LoginPage";
+import { RegisterPage } from "../../pages/RegisterPage";
+
+const CampaignHomePage = lazy(async () => {
+  const module = await import("../../pages/CampaignHomePage");
+  return { default: module.CampaignHomePage };
+});
+const CatalogPage = lazy(async () => {
+  const module = await import("../../pages/CatalogPage");
+  return { default: module.CatalogPage };
+});
+const GmDashboardPage = lazy(async () => {
+  const module = await import("../../pages/GmDashboardPage/GmDashboardPage");
+  return { default: module.GmDashboardPage };
+});
+const GmHomePage = lazy(async () => {
+  const module = await import("../../pages/GmHomePage/GmHomePage");
+  return { default: module.GmHomePage };
+});
+const NpcsPage = lazy(async () => {
+  const module = await import("../../pages/NpcsPage");
+  return { default: module.NpcsPage };
+});
+const PartyDetailsPage = lazy(async () => {
+  const module = await import("../../pages/PartyDetailsPage");
+  return { default: module.PartyDetailsPage };
+});
+const PlayerBoardPage = lazy(async () => {
+  const module = await import("../../pages/PlayerBoardPage");
+  return { default: module.PlayerBoardPage };
+});
+const PlayerHomePage = lazy(async () => {
+  const module = await import("../../pages/PlayerHomePage/PlayerHomePage");
+  return { default: module.PlayerHomePage };
+});
+const PlayerPartyPage = lazy(async () => {
+  const module = await import("../../pages/PlayerPartyPage");
+  return { default: module.PlayerPartyPage };
+});
+const CharacterSheetPage = lazy(async () => {
+  const module = await import("../../features/character-sheet");
+  return { default: module.CharacterSheetPage };
+});
 
 const RequireGmRole = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -30,29 +61,36 @@ const RequireGmRole = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
-const RootRoute = () => <Navigate to={routes.home} replace />;
-
 export const AppRoutes = () => {
   const { user, logout } = useAuth();
+  const { selectedCampaignId } = useCampaigns();
+  const { locale } = useLocale();
   const userRole: RoleMode = user?.role ?? "PLAYER";
+  const loadingLabel = locale === "pt" ? "Carregando..." : "Loading...";
+
+  const renderRoute = (children: ReactNode) => (
+    <Suspense
+      fallback={
+        <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,28,0.9),rgba(2,6,23,0.96))] p-5 text-sm text-slate-300">
+          {loadingLabel}
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+
   return (
     <Routes>
+      <Route path={routes.root} element={<LandingPage />} />
       <Route path={routes.login} element={<LoginPage />} />
       <Route path={routes.register} element={<RegisterPage />} />
       <Route element={<AppLayout title={APP_NAME} user={user ?? undefined} onLogout={logout} />}>
         <Route
-          path={routes.root}
-          element={
-            <RequireAuth>
-              <RootRoute />
-            </RequireAuth>
-          }
-        />
-        <Route
           path={routes.home}
           element={
             <RequireAuth>
-              {userRole === "PLAYER" ? <PlayerHomePage /> : <GmHomePage />}
+              {renderRoute(userRole === "PLAYER" ? <PlayerHomePage /> : <GmHomePage />)}
             </RequireAuth>
           }
         />
@@ -71,7 +109,14 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <CampaignSelectPage />
+                <Navigate
+                  to={
+                    selectedCampaignId
+                      ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
+                      : routes.home
+                  }
+                  replace
+                />
               </RequireGmRole>
             </RequireAuth>
           }
@@ -81,7 +126,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <CampaignHomePage />
+                {renderRoute(<CampaignHomePage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -91,7 +136,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <PartyDetailsPage />
+                {renderRoute(<PartyDetailsPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -110,7 +155,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {userRole === "PLAYER" ? (
-                <PlayerPartyPage />
+                renderRoute(<PlayerPartyPage />)
               ) : (
                 <Navigate to={routes.gmHome} replace />
               )}
@@ -122,7 +167,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {userRole === "PLAYER" ? (
-                <PlayerBoardPage />
+                renderRoute(<PlayerBoardPage />)
               ) : (
                 <Navigate to={routes.gmHome} replace />
               )}
@@ -134,7 +179,17 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <CatalogPage />
+                {renderRoute(<CatalogPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.bestiary}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<NpcsPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -144,7 +199,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <NpcsPage />
+                {renderRoute(<NpcsPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -154,7 +209,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <GmDashboardPage />
+                {renderRoute(<GmDashboardPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -163,7 +218,9 @@ export const AppRoutes = () => {
           path={routes.characterSheet}
           element={
             <RequireAuth>
-              <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />
+              {renderRoute(
+                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />,
+              )}
             </RequireAuth>
           }
         />
@@ -171,7 +228,9 @@ export const AppRoutes = () => {
           path={routes.characterSheetParty}
           element={
             <RequireAuth>
-              <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />
+              {renderRoute(
+                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />,
+              )}
             </RequireAuth>
           }
         />

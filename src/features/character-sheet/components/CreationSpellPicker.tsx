@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
+import { loadSpellCatalog, isSpellCatalogLoaded } from "../../../entities/dnd-base";
 import { getAvailableStartingSpells } from "../utils/creationSpells";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 
 type Props = {
+  campaignId?: string | null;
   className: string;
   availableCantrips: number;
   availableLeveled: number;
@@ -11,13 +14,37 @@ type Props = {
 };
 
 export const CreationSpellPicker = ({
+  campaignId = null,
   className,
   availableCantrips,
   availableLeveled,
   selectedSpells,
   onToggle,
 }: Props) => {
-  const options = getAvailableStartingSpells(className);
+  const [ready, setReady] = useState(isSpellCatalogLoaded(campaignId));
+
+  useEffect(() => {
+    setReady(isSpellCatalogLoaded(campaignId));
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (ready) return;
+    loadSpellCatalog(campaignId).then(() => setReady(true));
+  }, [campaignId, ready]);
+
+  if (!ready) {
+    return (
+      <div className="mt-5 flex items-center gap-2 text-xs text-slate-500">
+        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <circle cx="12" cy="12" r="10" strokeOpacity={0.25} />
+          <path d="M12 2a10 10 0 019.5 6.5" strokeLinecap="round" />
+        </svg>
+        Loading spells...
+      </div>
+    );
+  }
+
+  const options = getAvailableStartingSpells(className, campaignId);
   const selectedNames = new Set(selectedSpells.map((spell) => spell.name.toLowerCase()));
 
   return (

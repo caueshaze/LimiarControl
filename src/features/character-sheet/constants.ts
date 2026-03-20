@@ -13,21 +13,21 @@ export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
 // ── Abilities ───────────────────────────────────────────────────────────────
 
 export const ABILITIES: { key: AbilityName; label: string; short: string }[] = [
-  { key: "strength", label: "Strength", short: "STR" },
-  { key: "dexterity", label: "Dexterity", short: "DEX" },
-  { key: "constitution", label: "Constitution", short: "CON" },
-  { key: "intelligence", label: "Intelligence", short: "INT" },
-  { key: "wisdom", label: "Wisdom", short: "WIS" },
-  { key: "charisma", label: "Charisma", short: "CHA" },
+  { key: "strength", label: "Força", short: "FOR" },
+  { key: "dexterity", label: "Destreza", short: "DES" },
+  { key: "constitution", label: "Constituição", short: "CON" },
+  { key: "intelligence", label: "Inteligência", short: "INT" },
+  { key: "wisdom", label: "Sabedoria", short: "SAB" },
+  { key: "charisma", label: "Carisma", short: "CAR" },
 ];
 
 export const ABILITY_SHORT: Record<AbilityName, string> = {
-  strength: "STR",
-  dexterity: "DEX",
+  strength: "FOR",
+  dexterity: "DES",
   constitution: "CON",
   intelligence: "INT",
-  wisdom: "WIS",
-  charisma: "CHA",
+  wisdom: "SAB",
+  charisma: "CAR",
 };
 
 // ── Skills ──────────────────────────────────────────────────────────────────
@@ -54,24 +54,24 @@ export const SKILL_ABILITY_MAP: Record<SkillName, AbilityName> = {
 };
 
 export const SKILL_LABELS: Record<SkillName, string> = {
-  acrobatics: "Acrobatics",
-  animalHandling: "Animal Handling",
-  arcana: "Arcana",
-  athletics: "Athletics",
-  deception: "Deception",
-  history: "History",
-  insight: "Insight",
-  intimidation: "Intimidation",
-  investigation: "Investigation",
-  medicine: "Medicine",
-  nature: "Nature",
-  perception: "Perception",
-  performance: "Performance",
-  persuasion: "Persuasion",
-  religion: "Religion",
-  sleightOfHand: "Sleight of Hand",
-  stealth: "Stealth",
-  survival: "Survival",
+  acrobatics: "Acrobacia",
+  animalHandling: "Adestramento",
+  arcana: "Arcanismo",
+  athletics: "Atletismo",
+  deception: "Enganação",
+  history: "História",
+  insight: "Intuição",
+  intimidation: "Intimidação",
+  investigation: "Investigação",
+  medicine: "Medicina",
+  nature: "Natureza",
+  perception: "Percepção",
+  performance: "Atuação",
+  persuasion: "Persuasão",
+  religion: "Religião",
+  sleightOfHand: "Prestidigitação",
+  stealth: "Furtividade",
+  survival: "Sobrevivência",
 };
 
 export const SKILL_NAMES = Object.keys(SKILL_ABILITY_MAP) as SkillName[];
@@ -94,20 +94,20 @@ export const CONDITION_NAMES: ConditionName[] = [
 ];
 
 export const CONDITION_LABELS: Record<ConditionName, string> = {
-  blinded: "Blinded",
-  charmed: "Charmed",
-  deafened: "Deafened",
-  frightened: "Frightened",
-  grappled: "Grappled",
-  incapacitated: "Incapacitated",
-  invisible: "Invisible",
-  paralyzed: "Paralyzed",
-  petrified: "Petrified",
-  poisoned: "Poisoned",
-  prone: "Prone",
-  restrained: "Restrained",
-  stunned: "Stunned",
-  unconscious: "Unconscious",
+  blinded: "Cegado",
+  charmed: "Encantado",
+  deafened: "Ensurdecido",
+  frightened: "Amedrontado",
+  grappled: "Agarrado",
+  incapacitated: "Incapacitado",
+  invisible: "Invisível",
+  paralyzed: "Paralisado",
+  petrified: "Petrificado",
+  poisoned: "Envenenado",
+  prone: "Caído",
+  restrained: "Contido",
+  stunned: "Atordoado",
+  unconscious: "Inconsciente",
 };
 
 // ── Preset Armors ───────────────────────────────────────────────────────────
@@ -131,13 +131,13 @@ export const ARMOR_PRESETS: Armor[] = [
 // ── Spell Schools ───────────────────────────────────────────────────────────
 
 export const SPELL_SCHOOLS = [
-  "Abjuration", "Conjuration", "Divination", "Enchantment",
-  "Evocation", "Illusion", "Necromancy", "Transmutation",
+  "Abjuração", "Conjuração", "Adivinhação", "Encantamento",
+  "Evocação", "Ilusão", "Necromancia", "Transmutação",
 ] as const;
 
 // ── Damage Types ────────────────────────────────────────────────────────────
 
 export const DAMAGE_TYPES = [
-  "slashing", "piercing", "bludgeoning", "fire", "cold", "lightning",
-  "thunder", "acid", "poison", "necrotic", "radiant", "force", "psychic",
+  "cortante", "perfurante", "contundente", "fogo", "frio", "elétrico",
+  "trovão", "ácido", "veneno", "necrótico", "radiante", "força", "psíquico",
 ] as const;

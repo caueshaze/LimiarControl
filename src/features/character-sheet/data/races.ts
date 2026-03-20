@@ -1,8 +1,10 @@
 import type { AbilityName } from "../model/characterSheet.types";
+import { LANGUAGE_CHOICE_SLOT } from "./languages";
 
 export type Race = {
+  id: string;
   name: string;
-  size: "Small" | "Medium";
+  size: "Pequeno" | "Médio";
   darkvision: number | null;
   languages: string[];
   abilityBonuses: Partial<Record<AbilityName, number>>;
@@ -11,21 +13,21 @@ export type Race = {
 };
 
 export const RACES: Race[] = [
-  { name: "Hill Dwarf", size: "Medium", darkvision: 60, languages: ["Common", "Dwarvish"], abilityBonuses: { constitution: 2, wisdom: 1 }, speed: 25, traits: ["Dwarven Resilience", "Stonecunning", "Dwarven Toughness", "Heavy Armor Speed Unchanged"] },
-  { name: "Mountain Dwarf", size: "Medium", darkvision: 60, languages: ["Common", "Dwarvish"], abilityBonuses: { constitution: 2, strength: 2 }, speed: 25, traits: ["Dwarven Resilience", "Stonecunning", "Armor Proficiency", "Heavy Armor Speed Unchanged"] },
-  { name: "High Elf", size: "Medium", darkvision: 60, languages: ["Common", "Elvish", "Choice: Extra Language"], abilityBonuses: { dexterity: 2, intelligence: 1 }, speed: 30, traits: ["Fey Ancestry", "Trance", "Cantrip"] },
-  { name: "Wood Elf", size: "Medium", darkvision: 60, languages: ["Common", "Elvish"], abilityBonuses: { dexterity: 2, wisdom: 1 }, speed: 35, traits: ["Fey Ancestry", "Trance", "Fleet of Foot", "Mask of the Wild"] },
-  { name: "Dark Elf (Drow)", size: "Medium", darkvision: 120, languages: ["Common", "Elvish"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 30, traits: ["Fey Ancestry", "Trance", "Sunlight Sensitivity", "Drow Magic"] },
-  { name: "Lightfoot Halfling", size: "Small", darkvision: null, languages: ["Common", "Halfling"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 25, traits: ["Lucky", "Brave", "Halfling Nimbleness", "Naturally Stealthy"] },
-  { name: "Stout Halfling", size: "Small", darkvision: null, languages: ["Common", "Halfling"], abilityBonuses: { dexterity: 2, constitution: 1 }, speed: 25, traits: ["Lucky", "Brave", "Halfling Nimbleness", "Stout Resilience"] },
-  { name: "Human", size: "Medium", darkvision: null, languages: ["Common", "Choice: Extra Language"], abilityBonuses: { strength: 1, dexterity: 1, constitution: 1, intelligence: 1, wisdom: 1, charisma: 1 }, speed: 30, traits: ["Extra Skill"] },
-  { name: "Dragonborn", size: "Medium", darkvision: null, languages: ["Common", "Draconic"], abilityBonuses: { strength: 2, charisma: 1 }, speed: 30, traits: ["Draconic Ancestry", "Breath Weapon", "Damage Resistance"] },
-  { name: "Forest Gnome", size: "Small", darkvision: 60, languages: ["Common", "Gnomish"], abilityBonuses: { intelligence: 2, dexterity: 1 }, speed: 25, traits: ["Gnome Cunning", "Natural Illusionist", "Speak with Animals"] },
-  { name: "Rock Gnome", size: "Small", darkvision: 60, languages: ["Common", "Gnomish"], abilityBonuses: { intelligence: 2, constitution: 1 }, speed: 25, traits: ["Gnome Cunning", "Artificer's Lore", "Tinker"] },
-  { name: "Half-Elf", size: "Medium", darkvision: 60, languages: ["Common", "Elvish", "Choice: Extra Language"], abilityBonuses: { charisma: 2, dexterity: 1, wisdom: 1 }, speed: 30, traits: ["Fey Ancestry", "Skill Versatility"] },
-  { name: "Half-Orc", size: "Medium", darkvision: 60, languages: ["Common", "Orc"], abilityBonuses: { strength: 2, constitution: 1 }, speed: 30, traits: ["Menacing", "Relentless Endurance", "Savage Attacks"] },
-  { name: "Tiefling", size: "Medium", darkvision: 60, languages: ["Common", "Infernal"], abilityBonuses: { intelligence: 1, charisma: 2 }, speed: 30, traits: ["Hellish Resistance", "Infernal Legacy"] },
+  { id: "hill-dwarf", name: "Anão da Colina", size: "Médio", darkvision: 60, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, wisdom: 1 }, speed: 25, traits: ["Resiliência Anã", "Sentido de Pedra", "Robustez Anã", "Sem Penalidade de Armadura Pesada"] },
+  { id: "mountain-dwarf", name: "Anão da Montanha", size: "Médio", darkvision: 60, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, strength: 2 }, speed: 25, traits: ["Resiliência Anã", "Sentido de Pedra", "Proficiência em Armadura", "Sem Penalidade de Armadura Pesada"] },
+  { id: "high-elf", name: "Elfo Alto", size: "Médio", darkvision: 60, languages: ["Comum", "Élfico", LANGUAGE_CHOICE_SLOT], abilityBonuses: { dexterity: 2, intelligence: 1 }, speed: 30, traits: ["Ancestralidade Feérica", "Transe", "Truque"] },
+  { id: "wood-elf", name: "Elfo da Floresta", size: "Médio", darkvision: 60, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, wisdom: 1 }, speed: 35, traits: ["Ancestralidade Feérica", "Transe", "Pés Velozes", "Máscara da Natureza"] },
+  { id: "dark-elf", name: "Elfo Negro (Drow)", size: "Médio", darkvision: 120, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 30, traits: ["Ancestralidade Feérica", "Transe", "Sensibilidade à Luz Solar", "Magia Drow"] },
+  { id: "lightfoot-halfling", name: "Halfling Pés-Leves", size: "Pequeno", darkvision: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 25, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Naturalmente Furtivo"] },
+  { id: "stout-halfling", name: "Halfling Robusto", size: "Pequeno", darkvision: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, constitution: 1 }, speed: 25, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Resiliência Robusta"] },
+  { id: "human", name: "Humano", size: "Médio", darkvision: null, languages: ["Comum", LANGUAGE_CHOICE_SLOT], abilityBonuses: { strength: 1, dexterity: 1, constitution: 1, intelligence: 1, wisdom: 1, charisma: 1 }, speed: 30, traits: ["Perícia Extra"] },
+  { id: "dragonborn", name: "Draconato", size: "Médio", darkvision: null, languages: ["Comum", "Dracônico"], abilityBonuses: { strength: 2, charisma: 1 }, speed: 30, traits: ["Ancestralidade Dracônica", "Sopro de Dragão", "Resistência a Danos"] },
+  { id: "forest-gnome", name: "Gnomo da Floresta", size: "Pequeno", darkvision: 60, languages: ["Comum", "Gnomo"], abilityBonuses: { intelligence: 2, dexterity: 1 }, speed: 25, traits: ["Astúcia Gnômica", "Ilusionista Natural", "Falar com Animais"] },
+  { id: "rock-gnome", name: "Gnomo da Rocha", size: "Pequeno", darkvision: 60, languages: ["Comum", "Gnomo"], abilityBonuses: { intelligence: 2, constitution: 1 }, speed: 25, traits: ["Astúcia Gnômica", "Lore de Artesão", "Engenhoca"] },
+  { id: "half-elf", name: "Meio-Elfo", size: "Médio", darkvision: 60, languages: ["Comum", "Élfico", LANGUAGE_CHOICE_SLOT], abilityBonuses: { charisma: 2, dexterity: 1, wisdom: 1 }, speed: 30, traits: ["Ancestralidade Feérica", "Versatilidade de Perícias"] },
+  { id: "half-orc", name: "Meio-Orc", size: "Médio", darkvision: 60, languages: ["Comum", "Orc"], abilityBonuses: { strength: 2, constitution: 1 }, speed: 30, traits: ["Ameaçador", "Resistência Inabalável", "Ataques Brutais"] },
+  { id: "tiefling", name: "Tiefling", size: "Médio", darkvision: 60, languages: ["Comum", "Infernal"], abilityBonuses: { intelligence: 1, charisma: 2 }, speed: 30, traits: ["Resistência Infernal", "Legado Infernal"] },
 ];
 
-export const getRace = (name: string): Race | undefined =>
-  RACES.find((r) => r.name === name);
+export const getRace = (id: string): Race | undefined =>
+  RACES.find((r) => r.id === id);

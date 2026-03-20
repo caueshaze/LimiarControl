@@ -9,7 +9,7 @@ from sqlmodel import Field, SQLModel
 from app.models.campaign import RoleMode
 
 class User(SQLModel, table=True):
-    __tablename__ = "app_user"
+    __tablename__ = "app_user"  # type: ignore[assignment]
 
     id: str | None = Field(default=None, primary_key=True)
     username: str = Field(sa_column=Column(String, unique=True, nullable=False, index=True))

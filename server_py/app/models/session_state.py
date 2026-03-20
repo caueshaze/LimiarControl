@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel
 
 
 class SessionState(SQLModel, table=True):
-    __tablename__ = "session_state"
+    __tablename__ = "session_state"  # type: ignore[assignment]
 
     id: str | None = Field(default=None, primary_key=True)
     session_id: str = Field(foreign_key="campaign_session.id", index=True)

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
+import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type InventoryItemRowProps = {
@@ -14,8 +15,9 @@ export const InventoryItemRow = ({
   item,
   onToggleEquipped,
 }: InventoryItemRowProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState(false);
+  const propertyLabels = getItemPropertyLabels(item?.properties, locale);
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
@@ -77,10 +79,10 @@ export const InventoryItemRow = ({
               {item.weight}
             </p>
           )}
-          {item.properties && item.properties.length > 0 && (
+          {propertyLabels.length > 0 && (
             <p>
               <span className="text-slate-400">{t("inventory.properties")}</span>{" "}
-              {item.properties.join(", ")}
+              {propertyLabels.join(", ")}
             </p>
           )}
         </div>

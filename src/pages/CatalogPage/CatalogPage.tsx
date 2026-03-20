@@ -1,15 +1,25 @@
-import { useEffect } from "react";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import { useDeferredValue, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import {
-  CatalogItemList,
-  CreateShopItemForm,
-  useShop,
-} from "../../features/shop";
+import type { BaseSpellUpdatePayload } from "../../shared/api/baseSpellsRepo";
+import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
+import { useCampaigns } from "../../features/campaign-select";
+import { CreateShopItemForm, useShop } from "../../features/shop";
+import { useCampaignSpells } from "../../features/shop/hooks/useCampaignSpells";
+import type { ItemType } from "../../entities/item";
 import { useLocale } from "../../shared/hooks/useLocale";
-import type { LocaleKey } from "../../shared/i18n";
-import { Toast } from "../../shared/ui/Toast";
 import { useToast } from "../../shared/hooks/useToast";
+import { Toast } from "../../shared/ui/Toast";
+import { CatalogItemsSection } from "./CatalogItemsSection";
+import { CatalogNoCampaignState } from "./CatalogNoCampaignState";
+import { CatalogHero } from "./CatalogHero";
+import { CatalogSpellsSection } from "./CatalogSpellsSection";
+import { CatalogTabs } from "./CatalogTabs";
+import {
+  resolveCatalogMessage,
+  type CatalogTab,
+} from "./catalogPage.utils";
+import { useCatalogPageMetrics } from "./useCatalogPageMetrics";
 
 export const CatalogPage = () => {
   const {
@@ -21,14 +31,50 @@ export const CatalogPage = () => {
     deleteItem,
     itemTypes,
     selectedCampaignId,
+    campaignSystemType,
   } = useShop();
-  const { t } = useLocale();
+  const { selectedCampaign } = useCampaigns();
+  const { t, locale } = useLocale();
   const { toast, showToast, clearToast } = useToast();
   const location = useLocation();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<CatalogTab>("items");
+
+  // Item filters
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | ItemType>("ALL");
+  const deferredSearch = useDeferredValue(search);
+
+  // Spell filters
+  const [spellSearch, setSpellSearch] = useState("");
+  const [spellLevelFilter, setSpellLevelFilter] = useState<number | null>(null);
+  const [spellSchoolFilter, setSpellSchoolFilter] = useState<string | null>(null);
+  const [spellClassFilter, setSpellClassFilter] = useState<string | null>(null);
+  const deferredSpellSearch = useDeferredValue(spellSearch);
+
+  const {
+    spells: allSpells,
+    loading: spellsLoading,
+    error: spellsError,
+    refetch: refetchSpells,
+  } = useCampaignSpells({
+    campaignId: selectedCampaignId,
+    auto: activeTab === "spells",
+  });
 
   useEffect(() => {
     clearToast();
   }, [location.pathname, clearToast]);
+
+  useEffect(() => {
+    setSearch("");
+    setTypeFilter("ALL");
+    setSpellSearch("");
+    setSpellLevelFilter(null);
+    setSpellSchoolFilter(null);
+    setSpellClassFilter(null);
+  }, [selectedCampaignId]);
 
   useEffect(() => {
     if (!itemsError) {
@@ -41,17 +87,40 @@ export const CatalogPage = () => {
     });
   }, [itemsError, showToast, t]);
 
+  useEffect(() => {
+    if (!spellsError || activeTab !== "spells") {
+      return;
+    }
+    showToast({
+      variant: "error",
+      title: t("catalog.spells.loadErrorTitle"),
+      description: t("catalog.spells.loadErrorDescription"),
+    });
+  }, [activeTab, showToast, spellsError, t]);
+
+  const { customCount, filteredItems, filteredSpells, linkedCount, typeCounts } =
+    useCatalogPageMetrics({
+      allSpells,
+      deferredSearch,
+      deferredSpellSearch,
+      itemTypes,
+      items,
+      locale,
+      spellClassFilter,
+      spellLevelFilter,
+      spellSchoolFilter,
+      t,
+      typeFilter,
+    });
+  const campaignPanelRoute = selectedCampaignId
+    ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
+    : routes.home;
+
   if (!selectedCampaignId) {
     return (
-      <section className="space-y-4">
-        <h1 className="text-2xl font-semibold">{t("catalog.title")}</h1>
-        <p className="text-sm text-slate-400">{t("catalog.noCampaign")}</p>
-        <Link
-          to={routes.gmHome}
-          className="inline-flex rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
-        >
-          {t("catalog.goCampaigns")}
-        </Link>
+      <section className="space-y-6">
+        <Toast toast={toast} onClose={clearToast} />
+        <CatalogNoCampaignState />
       </section>
     );
   }
@@ -64,20 +133,24 @@ export const CatalogPage = () => {
         title: t("catalog.createSuccessTitle"),
         description: t("catalog.createSuccessDescription"),
       });
-    } else {
-      showToast({
-        variant: "error",
-        title: t("catalog.createErrorTitle"),
-        description: (result as { message?: string })?.message
-          ? t(((result as { message?: string }).message) as LocaleKey)
-          : t("catalog.createErrorDescription"),
-      });
+      return true;
     }
+
+    showToast({
+      variant: "error",
+      title: t("catalog.createErrorTitle"),
+      description: resolveCatalogMessage(
+        t,
+        (result as { message?: string })?.message,
+        "catalog.createErrorDescription",
+      ),
+    });
+    return false;
   };
 
   const handleUpdate = async (
     itemId: string,
-    payload: Parameters<typeof updateItem>[1]
+    payload: Parameters<typeof updateItem>[1],
   ) => {
     const result = await updateItem(itemId, payload);
     if (result?.ok) {
@@ -86,15 +159,19 @@ export const CatalogPage = () => {
         title: t("catalog.updateSuccessTitle"),
         description: t("catalog.updateSuccessDescription"),
       });
-    } else {
-      showToast({
-        variant: "error",
-        title: t("catalog.updateErrorTitle"),
-        description: (result as { message?: string })?.message
-          ? t(((result as { message?: string }).message) as LocaleKey)
-          : t("catalog.updateErrorDescription"),
-      });
+      return true;
     }
+
+    showToast({
+      variant: "error",
+      title: t("catalog.updateErrorTitle"),
+      description: resolveCatalogMessage(
+        t,
+        (result as { message?: string })?.message,
+        "catalog.updateErrorDescription",
+      ),
+    });
+    return false;
   };
 
   const handleDelete = async (itemId: string) => {
@@ -106,39 +183,103 @@ export const CatalogPage = () => {
     });
   };
 
+  const handleSpellUpdate = async (
+    spellId: string,
+    payload: BaseSpellUpdatePayload,
+  ) => {
+    if (!selectedCampaignId) {
+      return false;
+    }
+
+    try {
+      await campaignSpellsRepo.update(selectedCampaignId, spellId, payload);
+      await refetchSpells();
+      showToast({
+        variant: "success",
+        title: t("catalog.spells.updateSuccessTitle"),
+        description: t("catalog.spells.updateSuccessDescription"),
+      });
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t("catalog.spells.updateErrorDescription");
+      showToast({
+        variant: "error",
+        title: t("catalog.spells.updateErrorTitle"),
+        description: message,
+      });
+      return false;
+    }
+  };
+
+  const showEmptyFiltered = !itemsLoading && items.length > 0 && filteredItems.length === 0;
+
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
-      <header>
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-          {t("catalog.title")}
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold">{t("catalog.subtitle")}</h1>
-        <p className="mt-3 text-sm text-slate-400">{t("catalog.description")}</p>
-        <div className="mt-4">
-          <Link
-            to={routes.home}
-            className="inline-flex rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-800"
-          >
-            ← Home
-          </Link>
-        </div>
-      </header>
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <CreateShopItemForm onCreate={handleCreate} itemTypes={itemTypes} />
-        {itemsLoading ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-300">
-            {t("catalog.loading")}
+
+      <CatalogHero
+        campaignName={selectedCampaign?.name ?? t("home.activeCampaign")}
+        filteredCount={activeTab === "items" ? filteredItems.length : filteredSpells.length}
+        linkedCount={activeTab === "items" ? linkedCount : allSpells.length}
+        systemType={campaignSystemType}
+        totalCount={activeTab === "items" ? items.length : allSpells.length}
+        customCount={activeTab === "items" ? customCount : 0}
+        backTo={campaignPanelRoute}
+      />
+
+      <CatalogTabs activeTab={activeTab} onChange={setActiveTab} />
+
+      {activeTab === "items" ? (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
+          <div className="space-y-6">
+            <CreateShopItemForm onCreate={handleCreate} itemTypes={itemTypes} />
           </div>
-        ) : (
-          <CatalogItemList
-            items={items}
+
+          <CatalogItemsSection
+            filteredItemsCount={filteredItems.length}
+            itemsCount={items.length}
+            itemsLoading={itemsLoading}
             itemTypes={itemTypes}
-            onUpdate={handleUpdate}
+            items={filteredItems}
+            search={search}
+            showEmptyFiltered={showEmptyFiltered}
+            typeCounts={typeCounts}
+            typeFilter={typeFilter}
+            onClear={() => {
+              setSearch("");
+              setTypeFilter("ALL");
+            }}
             onDelete={handleDelete}
+            onSearchChange={setSearch}
+            onTypeFilterChange={setTypeFilter}
+            onUpdate={handleUpdate}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <CatalogSpellsSection
+          allSpellsCount={allSpells.length}
+          classFilter={spellClassFilter}
+          filteredSpells={filteredSpells}
+          levelFilter={spellLevelFilter}
+          schoolFilter={spellSchoolFilter}
+          search={spellSearch}
+          spellsLoading={spellsLoading}
+          onClassChange={setSpellClassFilter}
+          onClear={() => {
+            setSpellSearch("");
+            setSpellLevelFilter(null);
+            setSpellSchoolFilter(null);
+            setSpellClassFilter(null);
+          }}
+          onLevelChange={setSpellLevelFilter}
+          onSchoolChange={setSpellSchoolFilter}
+          onSearchChange={setSpellSearch}
+          onUpdate={handleSpellUpdate}
+        />
+      )}
     </section>
   );
 };

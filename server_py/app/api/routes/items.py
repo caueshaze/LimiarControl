@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.models.item import Item
 from app.models.user import User
 from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
+from app.services.item_properties import normalize_item_properties
 
 router = APIRouter()
 
@@ -25,6 +26,14 @@ def to_item_read(item: Item) -> ItemRead:
         damageDice=item.damage_dice,
         rangeMeters=item.range_meters,
         properties=item.properties,
+        baseItemId=item.base_item_id,
+        canonicalKeySnapshot=item.canonical_key_snapshot,
+        nameEnSnapshot=item.name_en_snapshot,
+        namePtSnapshot=item.name_pt_snapshot,
+        itemKind=item.item_kind,
+        costUnit=item.cost_unit,
+        isCustom=item.is_custom,
+        isEnabled=item.is_enabled,
         createdAt=item.created_at,
         updatedAt=item.updated_at,
     )
@@ -54,6 +63,12 @@ def create_item(
     require_gm(campaign_id, user, session)
     if not payload.name.strip() or not payload.description.strip():
         raise HTTPException(status_code=400, detail="Invalid payload")
+    normalized_properties, invalid_properties = normalize_item_properties(payload.properties)
+    if invalid_properties:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid item properties: {', '.join(invalid_properties)}",
+        )
     item = Item(
         id=str(uuid4()),
         campaign_id=campaign_id,
@@ -64,7 +79,8 @@ def create_item(
         weight=payload.weight,
         damage_dice=payload.damageDice,
         range_meters=payload.rangeMeters,
-        properties=payload.properties,
+        properties=normalized_properties,
+        is_custom=True,
     )
     session.add(item)
     session.commit()
@@ -88,6 +104,12 @@ def update_item(
         raise HTTPException(status_code=404, detail="Item not found")
     if not payload.name.strip() or not payload.description.strip():
         raise HTTPException(status_code=400, detail="Invalid payload")
+    normalized_properties, invalid_properties = normalize_item_properties(payload.properties)
+    if invalid_properties:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid item properties: {', '.join(invalid_properties)}",
+        )
     item.name = payload.name.strip()
     item.type = payload.type
     item.description = payload.description.strip()
@@ -95,7 +117,7 @@ def update_item(
     item.weight = payload.weight
     item.damage_dice = payload.damageDice
     item.range_meters = payload.rangeMeters
-    item.properties = payload.properties
+    item.properties = normalized_properties
     session.add(item)
     session.commit()
     session.refresh(item)

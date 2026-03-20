@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel
 
 
 class SessionRuntime(SQLModel, table=True):
-    __tablename__ = "session_runtime"
+    __tablename__ = "session_runtime"  # type: ignore[assignment]
 
     session_id: str = Field(foreign_key="campaign_session.id", primary_key=True)
     lobby_expected: list[dict] = Field(

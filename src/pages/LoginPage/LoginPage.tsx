@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { routes } from "../../app/routes/routes";
-import { useAuth } from "../../features/auth";
+import { AuthField, AuthShell, AuthSubmitButton, useAuth } from "../../features/auth";
 import { useLocale } from "../../shared/hooks/useLocale";
 
 type LoginFormInputs = {
@@ -10,11 +10,44 @@ type LoginFormInputs = {
   pin: string;
 };
 
+const UserIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0" />
+  </svg>
+);
+
+const LockIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M16.5 10.5V8.25a4.5 4.5 0 10-9 0v2.25m-1.5 0h12a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5h-12A1.5 1.5 0 014.5 18v-6A1.5 1.5 0 016 10.5z"
+    />
+  </svg>
+);
+
 export const LoginPage = () => {
   const { login } = useAuth();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const navigate = useNavigate();
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  const copy =
+    locale === "pt"
+      ? {
+          subtitle: "Acesse sua conta e volte para fichas, inventario e sessoes em andamento.",
+          usernamePlaceholder: "Digite seu usuario",
+          pinPlaceholder: "Digite seu PIN",
+          footerPrompt: "Ainda nao tem conta?",
+          requiredField: "Campo obrigatorio",
+        }
+      : {
+          subtitle: "Access your account and jump back into sheets, inventory, and live sessions.",
+          usernamePlaceholder: "Enter your username",
+          pinPlaceholder: "Enter your PIN",
+          footerPrompt: "Don't have an account yet?",
+          requiredField: "This field is required",
+        };
 
   const {
     register,
@@ -27,126 +60,70 @@ export const LoginPage = () => {
     const profile = await login(data.username, data.pin);
     if (profile) {
       navigate(routes.home);
-    } else {
-      setLoginError(t("auth.loginError"));
+      return;
     }
+    setLoginError(t("auth.loginError"));
   };
 
-  return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Brand Header */}
-        <div className="mb-8 text-center">
-          <h1 className="bg-linear-to-r from-limiar-300 to-limiar-500 bg-clip-text text-5xl font-extrabold text-transparent drop-shadow-sm">
-            Limiar
-          </h1>
-          <p className="mt-2 text-sm font-medium uppercase tracking-[0.3em] text-limiar-200/60">
-            System Control
-          </p>
+  const form = (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <AuthField
+        label={t("auth.username")}
+        placeholder={copy.usernamePlaceholder}
+        icon={<UserIcon />}
+        error={errors.username ? copy.requiredField : null}
+        autoComplete="username"
+        {...register("username", { required: true })}
+      />
+
+      <AuthField
+        type="password"
+        label={t("auth.pin")}
+        placeholder={copy.pinPlaceholder}
+        icon={<LockIcon />}
+        error={errors.pin ? copy.requiredField : null}
+        autoComplete="current-password"
+        {...register("pin", { required: true })}
+      />
+
+      {loginError ? (
+        <div className="rounded-[20px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {loginError}
         </div>
+      ) : null}
 
-        {/* Card */}
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-1 backdrop-blur-xl shadow-2xl">
-          <div className="rounded-[1.25rem] bg-void-950/80 p-8 shadow-inner border border-white/5">
-            <h2 className="mb-6 text-xl font-semibold text-white">{t("auth.loginTitle")}</h2>
+      <AuthSubmitButton
+        loading={isSubmitting}
+        idleLabel={t("auth.loginSubmit")}
+        loadingLabel={locale === "pt" ? "Entrando..." : "Signing in..."}
+      />
+    </form>
+  );
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {/* Username Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                  {t("auth.username")}
-                </label>
-                <div className="relative group">
-                  <div className="absolute -inset-0.5 rounded-xl bg-linear-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
-                  <input
-                    {...register("username", { required: true })}
-                    className="relative block w-full rounded-xl border border-white/10 bg-void-900/50 px-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-colors focus:border-limiar-500 focus:bg-void-900 focus:outline-none focus:ring-1 focus:ring-limiar-500/50"
-                    placeholder="Enter your username"
-                  />
-                </div>
-                {errors.username && (
-                  <p className="ml-1 text-xs text-rose-400">
-                    {t("auth.username")} is required
-                  </p>
-                )}
-              </div>
-
-              {/* PIN Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                  {t("auth.pin")}
-                </label>
-                <div className="relative group">
-                  <div className="absolute -inset-0.5 rounded-xl bg-linear-to-r from-limiar-500/20 to-purple-500/20 opacity-0 transition duration-500 group-focus-within:opacity-100" />
-                  <input
-                    type="password"
-                    {...register("pin", { required: true })}
-                    className="relative block w-full rounded-xl border border-white/10 bg-void-900/50 px-4 py-3 text-sm text-slate-100 placeholder-slate-600 transition-colors focus:border-limiar-500 focus:bg-void-900 focus:outline-none focus:ring-1 focus:ring-limiar-500/50"
-                    placeholder="Enter your PIN"
-                  />
-                </div>
-                {errors.pin && (
-                  <p className="ml-1 text-xs text-rose-400">
-                    {t("auth.pin")} is required
-                  </p>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {loginError && (
-                <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                  {loginError}
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="group relative mt-2 w-full overflow-hidden rounded-xl bg-limiar-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-all hover:bg-limiar-500 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {isSubmitting ? (
-                    <svg
-                      className="h-4 w-4 animate-spin text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  ) : (
-                    t("auth.loginSubmit")
-                  )}
-                </span>
-                <div className="absolute inset-0 -z-10 bg-linear-to-r from-violet-600 to-indigo-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Footer Link */}
-        <div className="mt-8 text-center">
-          <Link
-            to={routes.register}
-            className="text-xs font-medium text-slate-400 transition-colors hover:text-limiar-300"
-          >
-            {t("auth.gotoRegister")}
-          </Link>
-        </div>
+  const footer = (
+    <div className="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+      <div>
+        <p className="text-sm text-slate-400">{copy.footerPrompt}</p>
+        <Link
+          to={routes.register}
+          className="mt-1 inline-flex text-sm font-semibold text-limiar-200 transition-colors hover:text-white"
+        >
+          {t("auth.gotoRegister")}
+        </Link>
+      </div>
+      <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+        {locale === "pt" ? "Acesso a conta" : "Account access"}
       </div>
     </div>
+  );
+
+  return (
+    <AuthShell
+      mode="login"
+      title={t("auth.loginTitle")}
+      subtitle={copy.subtitle}
+      form={form}
+      footer={footer}
+    />
   );
 };

@@ -172,6 +172,48 @@ export type CampaignEvent =
         inventoryItemId?: string | null;
       };
       version?: number;
+    }
+  | {
+      type: "entity_revealed" | "entity_hidden";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "entity_hp_updated";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "session_entity_added" | "session_entity_removed";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers?: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+      };
+      version?: number;
     };
 
 const CAMPAIGN_EVENT_TYPES = new Set([
@@ -190,6 +232,11 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "session_state_updated",
   "gm_granted_currency",
   "gm_granted_item",
+  "entity_revealed",
+  "entity_hidden",
+  "entity_hp_updated",
+  "session_entity_added",
+  "session_entity_removed",
 ]);
 
 const getVersionKey = (
@@ -217,6 +264,12 @@ const getVersionKey = (
     case "shop_purchase_created":
     case "shop_sale_created":
       return `${event.type}:${event.payload?.sessionId ?? campaignId ?? ""}`;
+    case "entity_revealed":
+    case "entity_hidden":
+    case "entity_hp_updated":
+    case "session_entity_added":
+    case "session_entity_removed":
+      return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.sessionEntityId ?? ""}`;
     default:
       return event.type ?? "unknown";
   }

@@ -29,16 +29,21 @@ export const getStartingSpellLimits = (
   };
 };
 
-export const getAvailableStartingSpells = (className: string) => {
-  const spells = getBaseSpellsForClass(className, 1);
+export const getAvailableStartingSpells = (className: string, campaignId?: string | null) => {
+  const spells = getBaseSpellsForClass(className, 1, campaignId);
   return {
     cantrips: spells.filter((spell) => spell.level === 0),
     leveled: spells.filter((spell) => spell.level === 1),
   };
 };
 
-const toSheetSpell = (spellName: string, className: string, level: number): Spell | null => {
-  const baseSpell = findBaseSpell(spellName);
+const toSheetSpell = (
+  spellName: string,
+  className: string,
+  mode: SpellcastingData["mode"],
+  campaignId?: string | null,
+): Spell | null => {
+  const baseSpell = findBaseSpell(spellName, campaignId);
   if (!baseSpell || !baseSpell.classes.some((entry) => entry.toLowerCase() === className.toLowerCase())) {
     return null;
   }
@@ -47,7 +52,8 @@ const toSheetSpell = (spellName: string, className: string, level: number): Spel
     name: baseSpell.name,
     level: baseSpell.level,
     school: baseSpell.school || "Evocation",
-    prepared: level === 0 || getClassCreationConfig(className)?.startingSpells?.leveledMode !== "spellbook",
+    // Cantrips are always prepared. Leveled spells: known/prepared → auto-prepared, spellbook → not prepared until player chooses.
+    prepared: baseSpell.level === 0 || mode !== "spellbook",
     notes: "",
   };
 };
@@ -57,13 +63,17 @@ export const normalizeCreationSpellSelection = (
   className: string,
   abilities: CharacterSheet["abilities"],
   level: number,
+  campaignId?: string | null,
 ): SpellcastingData | null => {
   if (!spellcasting) return null;
 
   const limits = getStartingSpellLimits(className, abilities, level);
   if (!limits) return spellcasting;
 
-  const allowedNames = new Set(getBaseSpellsForClass(className, 1).map((spell) => spell.name.toLowerCase()));
+  const mode = spellcasting.mode;
+  const allowedNames = new Set(
+    getBaseSpellsForClass(className, 1, campaignId).map((spell) => spell.name.toLowerCase()),
+  );
   const selected = spellcasting.spells.filter((spell) => allowedNames.has(spell.name.toLowerCase()));
   const cantrips = selected.filter((spell) => spell.level === 0).slice(0, limits.cantrips);
   const leveled = selected.filter((spell) => spell.level === 1).slice(0, limits.leveledSpells);
@@ -77,10 +87,8 @@ export const normalizeCreationSpellSelection = (
     spells: sortSpells(
       [...cantrips, ...leveled].map((spell) => ({
         ...spell,
-        prepared:
-          spell.level === 0
-            ? true
-            : getClassCreationConfig(className)?.startingSpells?.leveledMode !== "spellbook",
+        // Cantrips always prepared. Leveled: known/prepared → auto-prepared, spellbook → not until chosen.
+        prepared: spell.level === 0 ? true : mode !== "spellbook",
       })),
     ),
   };
@@ -92,10 +100,11 @@ export const toggleStartingSpell = (
   abilities: CharacterSheet["abilities"],
   level: number,
   spellName: string,
+  campaignId?: string | null,
 ): SpellcastingData | null => {
   if (!spellcasting) return null;
   const limits = getStartingSpellLimits(className, abilities, level);
-  const spell = findBaseSpell(spellName);
+  const spell = findBaseSpell(spellName, campaignId);
   if (!limits || !spell || spell.level > 1) return spellcasting;
 
   const existing = spellcasting.spells.find((entry) => entry.name.toLowerCase() === spellName.toLowerCase());
@@ -112,7 +121,7 @@ export const toggleStartingSpell = (
     return spellcasting;
   }
 
-  const nextSpell = toSheetSpell(spellName, className, level);
+  const nextSpell = toSheetSpell(spellName, className, spellcasting.mode, campaignId);
   if (!nextSpell) return spellcasting;
 
   return normalizeCreationSpellSelection(
@@ -120,5 +129,6 @@ export const toggleStartingSpell = (
     className,
     abilities,
     level,
+    campaignId,
   );
 };

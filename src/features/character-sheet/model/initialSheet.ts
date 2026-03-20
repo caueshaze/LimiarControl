@@ -92,7 +92,9 @@ export const INITIAL_SHEET: CharacterSheet = {
   conditions: emptyConditions,
 
   classSkillChoices: [],
+  classToolProficiencyChoices: [],
   classEquipmentSelections: {},
+  languageChoices: [],
   featuresAndTraits: "",
   notes: "",
 };

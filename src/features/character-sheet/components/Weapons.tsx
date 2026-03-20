@@ -5,6 +5,8 @@ import { RemoveBtn } from "./Section";
 import { input, fieldLabel, chk, btnPrimary } from "./styles";
 import { ABILITIES, DAMAGE_TYPES } from "../constants";
 import { computeWeaponAttack, computeWeaponDamage, formatMod, safeParseInt } from "../utils/calculations";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../../shared/i18n";
 
 type Props = {
   weapons: CharacterSheet["weapons"];
@@ -16,28 +18,41 @@ type Props = {
   onUpdate: SheetActions["updateWeapon"];
 };
 
-export const Weapons = ({ weapons, abilities, level, readOnly = false, onAdd, onRemove, onUpdate }: Props) => (
-  <Section title="Attacks & Weapons" color="bg-orange-500">
-    <div className="space-y-3">
-      {weapons.map((weapon) => (
-        <WeaponRow
-          key={weapon.id}
-          weapon={weapon}
-          abilities={abilities}
-          level={level}
-          readOnly={readOnly}
-          onRemove={onRemove}
-          onUpdate={onUpdate}
-        />
-      ))}
-    </div>
-    {!readOnly && (
-      <button type="button" onClick={onAdd} className={`mt-4 ${btnPrimary}`}>
-        Add Weapon
-      </button>
-    )}
-  </Section>
-);
+export const Weapons = ({ weapons, abilities, level, readOnly = false, onAdd, onRemove, onUpdate }: Props) => {
+  const { t } = useLocale();
+
+  return (
+    <Section title={t("sheet.weapons.title")} color="bg-orange-500">
+      <div className="space-y-3">
+        {weapons.length === 0 && !readOnly && (
+          <div className="flex flex-col items-center gap-2 py-4 text-slate-600">
+            <svg className="h-7 w-7 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+            </svg>
+            <p className="text-xs">{t("sheet.weapons.addWeapon")}</p>
+          </div>
+        )}
+        {weapons.map((weapon) => (
+          <WeaponRow
+            key={weapon.id}
+            weapon={weapon}
+            abilities={abilities}
+            level={level}
+            readOnly={readOnly}
+            onRemove={onRemove}
+            onUpdate={onUpdate}
+            t={t}
+          />
+        ))}
+      </div>
+      {!readOnly && (
+        <button type="button" onClick={onAdd} className={`mt-4 ${btnPrimary}`}>
+          {t("sheet.weapons.addWeapon")}
+        </button>
+      )}
+    </Section>
+  );
+};
 
 type RowProps = {
   weapon: Weapon;
@@ -46,9 +61,10 @@ type RowProps = {
   readOnly: boolean;
   onRemove: SheetActions["removeWeapon"];
   onUpdate: SheetActions["updateWeapon"];
+  t: (key: LocaleKey) => string;
 };
 
-const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate }: RowProps) => {
+const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate, t }: RowProps) => {
   const atkBonus = computeWeaponAttack(weapon, abilities, level);
   const dmg = computeWeaponDamage(weapon, abilities);
 
@@ -57,7 +73,7 @@ const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate }: R
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 space-y-2">
           <input
-            type="text" placeholder="Weapon name" value={weapon.name}
+            type="text" placeholder={t("sheet.weapons.namePlaceholder")} value={weapon.name}
             disabled={readOnly}
             onChange={(e) => onUpdate(weapon.id, "name", e.target.value)}
             className={`font-bold ${input}`}
@@ -72,41 +88,41 @@ const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate }: R
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label className={fieldLabel}>Ability</label>
+          <label className={fieldLabel}>{t("sheet.weapons.ability")}</label>
           <select value={weapon.ability} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "ability", e.target.value as AbilityName)} className={input}>
             {ABILITIES.map((a) => <option key={a.key} value={a.key}>{a.short}</option>)}
           </select>
         </div>
         <div>
-          <label className={fieldLabel}>Damage Dice</label>
+          <label className={fieldLabel}>{t("sheet.weapons.damageDice")}</label>
           <input type="text" placeholder="1d8" value={weapon.damageDice} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "damageDice", e.target.value)} className={input} />
         </div>
         <div>
-          <label className={fieldLabel}>Damage Type</label>
+          <label className={fieldLabel}>{t("sheet.weapons.damageType")}</label>
           <select value={weapon.damageType} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "damageType", e.target.value)} className={input}>
-            {DAMAGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {DAMAGE_TYPES.map((dt) => <option key={dt} value={dt}>{dt}</option>)}
           </select>
         </div>
         <div>
-          <label className={fieldLabel}>Magic Bonus</label>
+          <label className={fieldLabel}>{t("sheet.weapons.magicBonus")}</label>
           <input type="number" min={0} max={3} value={weapon.magicBonus} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "magicBonus", Math.max(0, safeParseInt(e.target.value)))} className={input} />
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <label className={fieldLabel}>Properties</label>
-          <input type="text" placeholder="Finesse, Light..." value={weapon.properties} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "properties", e.target.value)} className={input} />
+          <label className={fieldLabel}>{t("sheet.weapons.properties")}</label>
+          <input type="text" placeholder={t("sheet.weapons.propertiesPlaceholder")} value={weapon.properties} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "properties", e.target.value)} className={input} />
         </div>
         <div>
-          <label className={fieldLabel}>Range</label>
-          <input type="text" placeholder="150/600" value={weapon.range} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "range", e.target.value)} className={input} />
+          <label className={fieldLabel}>{t("sheet.weapons.range")}</label>
+          <input type="text" placeholder={t("sheet.weapons.rangePlaceholder")} value={weapon.range} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "range", e.target.value)} className={input} />
         </div>
       </div>
 
       <label className="mt-3 flex items-center gap-2">
         <input type="checkbox" checked={weapon.proficient} disabled={readOnly} onChange={() => onUpdate(weapon.id, "proficient", !weapon.proficient)} className={chk} />
-        <span className="text-xs text-slate-400">Proficient</span>
+        <span className="text-xs text-slate-400">{t("sheet.weapons.proficient")}</span>
       </label>
     </div>
   );

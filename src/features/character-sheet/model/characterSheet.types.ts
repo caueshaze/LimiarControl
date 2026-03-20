@@ -68,6 +68,8 @@ export type InventoryItem = {
   quantity: number;
   weight: number;
   notes: string;
+  canonicalKey?: string | null;
+  baseItemId?: string | null;
 };
 
 export type Currency = {
@@ -79,6 +81,8 @@ export type Currency = {
 };
 
 // ── Spellcasting ────────────────────────────────────────────────────────────
+
+export type SpellcastingMode = "known" | "prepared" | "spellbook";
 
 export type Spell = {
   id: string;
@@ -96,6 +100,7 @@ export type SpellSlots = {
 
 export type SpellcastingData = {
   ability: AbilityName;
+  mode: SpellcastingMode;
   slots: Record<number, SpellSlots>; // keys 1-9
   spells: Spell[];
 };
@@ -188,7 +193,9 @@ export type CharacterSheet = {
 
   // Skill choices tracking
   classSkillChoices: SkillName[];
+  classToolProficiencyChoices: string[];
   classEquipmentSelections: Record<string, string>;
+  languageChoices: string[];
 
   // Text fields
   featuresAndTraits: string;

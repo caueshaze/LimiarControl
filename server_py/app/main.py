@@ -6,6 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.routes import (
+  base_items_router,
+  base_spells_router,
+  campaign_catalog_router,
+  campaign_spells_router,
   campaigns_router,
   centrifugo_router,
   character_sheets_router,
@@ -14,7 +18,8 @@ from app.api.routes import (
   items_router,
   members_router,
   parties_router,
-  npcs_router,
+  campaign_entities_router,
+  session_entities_router,
   preferences_router,
   role_mode_router,
   sessions_router,
@@ -58,10 +63,15 @@ async def validation_exception_handler(
 
 
 app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
+app.include_router(base_items_router, prefix="/api/base-items", tags=["base-items"])
+app.include_router(base_spells_router, prefix="/api/base-spells", tags=["base-spells"])
 app.include_router(role_mode_router, prefix="/api/campaigns", tags=["role-mode"])
+app.include_router(campaign_catalog_router, prefix="/api/campaigns", tags=["catalog"])
+app.include_router(campaign_spells_router, prefix="/api/campaigns", tags=["campaign-spells"])
 app.include_router(items_router, prefix="/api/campaigns", tags=["items"])
 app.include_router(inventory_router, prefix="/api/campaigns", tags=["inventory"])
-app.include_router(npcs_router, prefix="/api/campaigns", tags=["npcs"])
+app.include_router(campaign_entities_router, prefix="/api/campaigns", tags=["campaign-entities"])
+app.include_router(session_entities_router, prefix="/api", tags=["session-entities"])
 app.include_router(members_router, prefix="/api/campaigns", tags=["members"])
 app.include_router(parties_router, prefix="/api", tags=["parties"])
 app.include_router(character_sheets_router, prefix="/api", tags=["character-sheets"])

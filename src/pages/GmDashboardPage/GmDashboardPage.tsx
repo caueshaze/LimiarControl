@@ -20,6 +20,7 @@ import { useRollSession } from "../../features/dice-roller";
 import type { InventoryItem } from "../../entities/inventory";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, formatWallet, normalizeWallet } from "../../features/shop/utils/shopCurrency";
+import { SessionEntityPanel } from "../../features/session-entities";
 
 function formatOffset(seconds: number): string {
     const h = Math.floor(seconds / 3600);
@@ -912,6 +913,14 @@ export const GmDashboardPage = () => {
                         </div>
                     )}
                 </div>
+
+            {activeSession?.status === "ACTIVE" && effectiveCampaignId && (
+                <SessionEntityPanel
+                    sessionId={activeSession.id}
+                    campaignId={effectiveCampaignId}
+                    lastEvent={lastEvent}
+                />
+            )}
 
             {activeSession?.status === "ACTIVE" && partyPlayers.length > 0 && (
                 <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">

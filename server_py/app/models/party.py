@@ -8,7 +8,7 @@ from sqlmodel import Field, SQLModel
 
 
 class Party(SQLModel, table=True):
-    __tablename__ = "party"
+    __tablename__ = "party"  # type: ignore[assignment]
 
     id: str | None = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     campaign_id: str = Field(foreign_key="campaign.id", index=True)

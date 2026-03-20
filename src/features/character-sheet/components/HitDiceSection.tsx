@@ -3,6 +3,7 @@ import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
 import { input, fieldLabel, btnOutline } from "./styles";
 import { safeParseInt } from "../utils/calculations";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   sheet: Pick<CharacterSheet, "hitDiceType" | "hitDiceTotal" | "hitDiceRemaining" | "deathSaves">;
@@ -15,16 +16,18 @@ type Props = {
 };
 
 export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, longRest, setDeathSave }: Props) => {
+  const { t } = useLocale();
+
   if (mode === "creation") {
     return (
-      <Section title="Hit Dice" color="bg-indigo-500">
+      <Section title={t("sheet.hitDice.title")} color="bg-indigo-500">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={fieldLabel}>Die Type (Derived)</label>
+            <label className={fieldLabel}>{t("sheet.hitDice.dieDerived")}</label>
             <input type="text" value={sheet.hitDiceType || "-"} disabled className={`${input} opacity-70`} />
           </div>
           <div>
-            <label className={fieldLabel}>Total Hit Dice</label>
+            <label className={fieldLabel}>{t("sheet.hitDice.total")}</label>
             <input type="number" min={0} value={sheet.hitDiceTotal} disabled className={`${input} opacity-70`} />
           </div>
         </div>
@@ -34,16 +37,16 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
 
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <Section title="Hit Dice" color="bg-indigo-500">
+      <Section title={t("sheet.hitDice.title")} color="bg-indigo-500">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={fieldLabel}>Die Type</label>
+            <label className={fieldLabel}>{t("sheet.hitDice.dieType")}</label>
             <select value={sheet.hitDiceType} disabled={readOnly} onChange={(e) => set("hitDiceType", e.target.value)} className={`${input} ${readOnly ? "opacity-70" : ""}`}>
               {["d6", "d8", "d10", "d12"].map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div>
-            <label className={fieldLabel}>Total</label>
+            <label className={fieldLabel}>{t("sheet.hitDice.totalLabel")}</label>
             <input
               type="number" min={0} value={sheet.hitDiceTotal}
               disabled={readOnly}
@@ -54,7 +57,9 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
         </div>
         <div className="mt-3 flex items-center justify-between">
           <span className="text-sm text-slate-400">
-            Remaining: <span className="font-bold text-slate-200">{sheet.hitDiceRemaining}/{sheet.hitDiceTotal}</span>
+            {t("sheet.hitDice.remaining")
+              .replace("{used}", String(sheet.hitDiceRemaining))
+              .replace("{total}", String(sheet.hitDiceTotal))}
           </span>
           {!readOnly && (
             <button
@@ -62,28 +67,28 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
               disabled={sheet.hitDiceRemaining <= 0}
               className={`${btnOutline} ${sheet.hitDiceRemaining <= 0 ? "opacity-40" : ""}`}
             >
-              Use Hit Die
+              {t("sheet.hitDice.use")}
             </button>
           )}
         </div>
         {!readOnly && (
           <button type="button" onClick={longRest} className={`mt-2 w-full ${btnOutline}`}>
-            Long Rest (Restore All)
+            {t("sheet.hitDice.longRest")}
           </button>
         )}
       </Section>
 
-      <Section title="Death Saves" color="bg-slate-500">
+      <Section title={t("sheet.hitDice.deathSaves")} color="bg-slate-500">
         <div className="space-y-3">
-          <SaveDots label="Successes" color="emerald" count={sheet.deathSaves.successes} readOnly={readOnly} onChange={(v) => setDeathSave("successes", v)} />
-          <SaveDots label="Failures" color="rose" count={sheet.deathSaves.failures} readOnly={readOnly} onChange={(v) => setDeathSave("failures", v)} />
+          <SaveDots label={t("sheet.hitDice.successes")} color="emerald" count={sheet.deathSaves.successes} readOnly={readOnly} onChange={(v) => setDeathSave("successes", v)} />
+          <SaveDots label={t("sheet.hitDice.failures")} color="rose" count={sheet.deathSaves.failures} readOnly={readOnly} onChange={(v) => setDeathSave("failures", v)} />
           {!readOnly && (
             <button
               type="button"
               onClick={() => { setDeathSave("successes", 0); setDeathSave("failures", 0); }}
               className={`w-full ${btnOutline}`}
             >
-              Reset
+              {t("sheet.hitDice.reset")}
             </button>
           )}
         </div>

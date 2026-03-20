@@ -1,5 +1,6 @@
 import type { AbilityName, CharacterSheet, Spell } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
+import type { RequiredField } from "../utils/creationValidation";
 import { Section, RemoveBtn } from "./Section";
 import { input, fieldLabel, btnPrimary, btnDanger, chk } from "./styles";
 import { ABILITIES, SPELL_SCHOOLS } from "../constants";
@@ -7,13 +8,17 @@ import { computeSpellAttack, computeSpellSaveDC, formatMod, safeParseInt } from 
 import { getClassCreationConfig } from "../data/classCreation";
 import { getStartingSpellLimits } from "../utils/creationSpells";
 import { CreationSpellPicker } from "./CreationSpellPicker";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../../shared/i18n";
 
 type Props = {
+  campaignId?: string | null;
   className?: string;
   spellcasting: CharacterSheet["spellcasting"];
   abilities: CharacterSheet["abilities"];
   level: number;
   readOnly?: boolean;
+  missingRequiredFields?: RequiredField[];
   onEnable: SheetActions["enableSpellcasting"];
   onDisable: SheetActions["disableSpellcasting"];
   onSetAbility: SheetActions["setSpellAbility"];
@@ -25,27 +30,48 @@ type Props = {
 };
 
 export const Spellcasting = ({
+  campaignId = null,
   className = "",
   spellcasting, abilities, level,
   readOnly = false,
+  missingRequiredFields = [],
   onEnable, onDisable, onSetAbility,
   onSetSlot, onAddSpell, onRemoveSpell, onUpdateSpell,
   onToggleCreationSpell,
 }: Props) => {
+  const { t } = useLocale();
   const creationConfig = className ? getClassCreationConfig(className)?.startingSpells : null;
+  const hasSpellError = missingRequiredFields.includes("cantrips") || missingRequiredFields.includes("leveledSpells");
 
+  // In creation mode, hide the section entirely if the class has no spellcasting config.
+  // The spellcasting data is auto-created by normalizeCreationAfterClassChange when the class has startingSpells.
   if (!spellcasting) {
+    if (readOnly && !creationConfig) {
+      // Creation mode, non-caster class — don't show anything
+      return null;
+    }
+    if (readOnly) {
+      // Creation mode, caster class but spellcasting somehow null — shouldn't happen, but show loading
+      return (
+        <Section title={t("sheet.spells.title")} color="bg-violet-500">
+          <p className="py-4 text-xs text-slate-500">{t("sheet.spells.noSpellsCreation")}</p>
+        </Section>
+      );
+    }
     return (
-      <Section title="Spellcasting" color="bg-violet-500" defaultOpen={false}>
+      <Section
+        title={t("sheet.spells.title")}
+        color="bg-violet-500"
+        defaultOpen={false}
+      >
         <div className="flex flex-col items-center gap-3 py-4">
-          <p className="text-xs text-slate-500">
-            {readOnly ? "No spellcasting for this class at creation." : "This character has no spellcasting."}
-          </p>
-          {!readOnly && (
-            <button type="button" onClick={onEnable} className={btnPrimary}>
-              Enable Spellcasting
-            </button>
-          )}
+          <svg className="h-8 w-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+          <p className="text-xs text-slate-500">{t("sheet.spells.noSpells")}</p>
+          <button type="button" onClick={onEnable} className={btnPrimary}>
+            {t("sheet.spells.enable")}
+          </button>
         </div>
       </Section>
     );
@@ -57,10 +83,10 @@ export const Spellcasting = ({
   const startingSpellLimits = className ? getStartingSpellLimits(className, abilities, level) : null;
 
   return (
-    <Section title="Spellcasting" color="bg-violet-500">
+    <Section title={t("sheet.spells.title")} color="bg-violet-500">
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label className={fieldLabel}>Spellcasting Ability</label>
+          <label className={fieldLabel}>{t("sheet.spells.ability")}</label>
           {readOnly ? (
             <input
               type="text"
@@ -84,36 +110,37 @@ export const Spellcasting = ({
         </div>
         <div className="flex gap-4 text-sm">
           <div className="text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Save DC</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.saveDC")}</div>
             <div className="font-bold text-violet-300">{saveDC}</div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Atk Bonus</div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.atkBonus")}</div>
             <div className="font-bold text-violet-300">{formatMod(atkBonus)}</div>
           </div>
         </div>
         {!readOnly && (
           <button type="button" onClick={onDisable} className={`ml-auto ${btnDanger}`}>
-            Remove Spellcasting
+            {t("sheet.spells.remove")}
           </button>
         )}
       </div>
 
       {readOnly && startingSpellLimits && creationConfig && onToggleCreationSpell && (
         <>
-          <div className="mt-4 rounded-2xl border border-white/6 bg-white/[0.03] px-4 py-3 text-xs text-slate-400">
+          <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/[0.03]"}`}>
             <p className="font-semibold text-slate-200">
-              Level 1 Slots: <span className="text-violet-300">{startingSpellLimits.levelOneSlots}</span>
+              {t("sheet.spells.levelSlots").replace("{n}", "1")}: <span className="text-violet-300">{startingSpellLimits.levelOneSlots}</span>
             </p>
             <p className="mt-1">
-              {creationConfig.leveledMode === "spellbook"
-                ? "Pick the spells that go into your spellbook."
-                : creationConfig.leveledMode === "prepared"
-                  ? "Pick the spells you want prepared at creation."
-                  : "Pick the spells your class knows at level 1."}
+              {spellcasting.mode === "spellbook"
+                ? t("sheet.spells.spellbookMode")
+                : spellcasting.mode === "prepared"
+                  ? t("sheet.spells.prepMode")
+                  : t("sheet.spells.knownMode")}
             </p>
           </div>
           <CreationSpellPicker
+            campaignId={campaignId}
             className={className}
             availableCantrips={startingSpellLimits.cantrips}
             availableLeveled={startingSpellLimits.leveledSpells}
@@ -124,7 +151,7 @@ export const Spellcasting = ({
       )}
 
       {!readOnly && <div className="mt-4">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Spell Slots</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.slotsTitle")}</div>
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 9 }, (_, i) => i + 1).map((lvl) => {
             const slot = spellcasting.slots[lvl] ?? { max: 0, used: 0 };
@@ -157,23 +184,22 @@ export const Spellcasting = ({
           })}
         </div>
         <div className="mt-1 flex justify-center gap-6 text-[10px] text-slate-600">
-          <span>Top = Max slots</span>
-          <span>Bottom = Used slots</span>
+          <span>{t("sheet.spells.slotsHint")}</span>
         </div>
       </div>}
 
       {!readOnly && <div className="mt-4">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Known / Prepared Spells</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.knownTitle")}</div>
         <div className="space-y-2">
           {spellcasting.spells.map((spell) => (
-            <SpellRow key={spell.id} spell={spell} onRemove={onRemoveSpell} onUpdate={onUpdateSpell} />
+            <SpellRow key={spell.id} spell={spell} onRemove={onRemoveSpell} onUpdate={onUpdateSpell} t={t} />
           ))}
           {spellcasting.spells.length === 0 && (
-            <p className="py-2 text-center text-xs text-slate-600">No spells added yet.</p>
+            <p className="py-2 text-center text-xs text-slate-600">{t("sheet.spells.emptySpells")}</p>
           )}
         </div>
         <button type="button" onClick={onAddSpell} className={`mt-3 ${btnPrimary}`}>
-          Add Spell
+          {t("sheet.spells.addSpell")}
         </button>
       </div>}
     </Section>
@@ -209,38 +235,39 @@ type SpellRowProps = {
   spell: Spell;
   onRemove: SheetActions["removeSpell"];
   onUpdate: SheetActions["updateSpell"];
+  t: (key: LocaleKey) => string;
 };
 
-const SpellRow = ({ spell, onRemove, onUpdate }: SpellRowProps) => (
+const SpellRow = ({ spell, onRemove, onUpdate, t }: SpellRowProps) => (
   <div className="flex items-start gap-2 rounded-xl border border-slate-800/60 bg-void-950/40 p-3">
     <div className="flex-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <div className="sm:col-span-2">
-        <label className={fieldLabel}>Spell Name</label>
+        <label className={fieldLabel}>{t("sheet.spells.spellName")}</label>
         <input
-          type="text" placeholder="Spell name" value={spell.name}
+          type="text" placeholder={t("sheet.spells.namePlaceholder")} value={spell.name}
           onChange={(e) => onUpdate(spell.id, "name", e.target.value)}
           className={input}
         />
       </div>
       <div>
-        <label className={fieldLabel}>Level</label>
+        <label className={fieldLabel}>{t("sheet.spells.level")}</label>
         <select value={spell.level} onChange={(e) => onUpdate(spell.id, "level", safeParseInt(e.target.value))} className={input}>
-          <option value={0}>Cantrip</option>
+          <option value={0}>{t("sheet.spells.cantrip")}</option>
           {Array.from({ length: 9 }, (_, i) => i + 1).map((l) => (
             <option key={l} value={l}>{l}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className={fieldLabel}>School</label>
+        <label className={fieldLabel}>{t("sheet.spells.school")}</label>
         <select value={spell.school} onChange={(e) => onUpdate(spell.id, "school", e.target.value)} className={input}>
           {SPELL_SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
       <div className="sm:col-span-3">
-        <label className={fieldLabel}>Notes</label>
+        <label className={fieldLabel}>{t("sheet.equipment.notes")}</label>
         <input
-          type="text" placeholder="Concentration, 1 hour..." value={spell.notes}
+          type="text" placeholder={t("sheet.spells.notesPlaceholder")} value={spell.notes}
           onChange={(e) => onUpdate(spell.id, "notes", e.target.value)}
           className={input}
         />
@@ -252,7 +279,7 @@ const SpellRow = ({ spell, onRemove, onUpdate }: SpellRowProps) => (
             onChange={() => onUpdate(spell.id, "prepared", !spell.prepared)}
             className={chk}
           />
-          Prepared
+          {t("sheet.spells.prepared")}
         </label>
       </div>
     </div>
