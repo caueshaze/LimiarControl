@@ -1,9 +1,14 @@
-import { useState } from "react";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
-import { getItemPropertyLabels } from "../../../entities/item";
-import { useLocale } from "../../../shared/hooks/useLocale";
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import { SessionInventoryModal } from "./SessionInventoryModal";
+import {
+  buildInventorySummary,
+  buildWalletCoins,
+  getInventoryItemName,
+  type SessionInventorySelectOption,
+} from "./sessionInventoryPanel.utils";
 
 type SessionInventoryPanelProps = {
   flash?: boolean;
@@ -11,7 +16,15 @@ type SessionInventoryPanelProps = {
   itemsById: Record<string, Item>;
   wallet?: CurrencyWallet | null;
   open: boolean;
+  selectedArmorId?: string | null;
+  selectedWeaponId?: string | null;
+  armorOptions?: SessionInventorySelectOption[];
+  weaponOptions?: SessionInventorySelectOption[];
+  isSavingLoadout?: boolean;
+  loadoutStatus?: string | null;
+  onArmorChange?: (inventoryItemId: string | null) => void;
   onToggleOpen: () => void;
+  onWeaponChange?: (inventoryItemId: string | null) => void;
 };
 
 export const SessionInventoryPanel = ({
@@ -20,158 +33,183 @@ export const SessionInventoryPanel = ({
   itemsById,
   wallet = null,
   open,
+  selectedArmorId = null,
+  selectedWeaponId = null,
+  armorOptions = [],
+  weaponOptions = [],
+  isSavingLoadout = false,
+  loadoutStatus = null,
+  onArmorChange,
   onToggleOpen,
+  onWeaponChange,
 }: SessionInventoryPanelProps) => {
   const { t } = useLocale();
-  const totalItems = inventory?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const summary = buildInventorySummary(inventory, itemsById);
+  const walletCoins = buildWalletCoins(wallet);
+  const selectedWeaponLabel = weaponOptions.find((option) => option.value === selectedWeaponId)?.label ?? null;
+  const selectedArmorLabel = armorOptions.find((option) => option.value === selectedArmorId)?.label ?? null;
 
   return (
-    <div
-      className={`overflow-hidden rounded-[32px] border bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] shadow-[0_18px_60px_rgba(2,6,23,0.2)] transition-all ${
-        flash
-          ? "border-emerald-500/35 shadow-[0_0_40px_rgba(16,185,129,0.12)]"
-          : "border-white/8"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onToggleOpen}
-        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.03]"
-      >
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-            {t("playerBoard.inventoryStateLabel")}
-          </p>
-          <h2 className="mt-2 flex items-center gap-3 text-sm font-bold uppercase tracking-[0.24em] text-slate-100">
-            <span className="h-4 w-1 rounded-full bg-amber-500" />
-            {t("playerBoard.inventoryTitle")}
-          </h2>
-          {inventory !== null && (
-            <p className="mt-1 text-sm text-slate-400">
-              {totalItems} · {t("playerBoard.inventoryLoadedState")}
-            </p>
-          )}
-          <p className="mt-2 text-xs text-amber-200">
-            {t("shop.panel.wallet")}: {formatInventoryWallet(wallet)}
-          </p>
-        </div>
-        <span className={`text-xs text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}>
-          ▼
-        </span>
-      </button>
-      {open && (
-        <div className="border-t border-white/8 px-6 pb-6">
-          {inventory === null ? (
-            <p className="py-4 text-sm text-slate-400">{t("inventory.loading")}</p>
-          ) : inventory.length === 0 ? (
-            <p className="py-4 text-sm text-slate-400">{t("inventory.empty")}</p>
-          ) : (
-            <div className="mt-4 space-y-2">
-              {inventory.map((entry) => (
-                <SessionInventoryItem
-                  key={entry.id}
-                  entry={entry}
-                  item={itemsById[entry.itemId]}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const formatInventoryWallet = (wallet: CurrencyWallet | null | undefined) => {
-  const current = wallet ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
-  const parts = ([
-    ["pp", current.pp],
-    ["gp", current.gp],
-    ["ep", current.ep],
-    ["sp", current.sp],
-    ["cp", current.cp],
-  ] as const)
-    .filter(([, amount]) => amount > 0)
-    .map(([coin, amount]) => `${amount} ${coin}`);
-
-  return parts.length > 0 ? parts.join(" · ") : "0 gp";
-};
-
-const SessionInventoryItem = ({
-  entry,
-  item,
-}: {
-  entry: InventoryItem;
-  item?: Item;
-}) => {
-  const { t, locale } = useLocale();
-  const [expanded, setExpanded] = useState(false);
-  const propertyLabels = getItemPropertyLabels(item?.properties, locale);
-
-  const detailRows = [
-    item?.priceLabel ?? item?.price
-      ? { label: t("inventory.price"), value: item?.priceLabel ?? String(item?.price) }
-      : null,
-    item?.damageDice ? { label: t("inventory.damage"), value: item.damageDice } : null,
-    item?.rangeMeters !== undefined && item?.rangeMeters !== null
-      ? { label: t("inventory.range"), value: `${item.rangeMeters}m` }
-      : null,
-    item?.weight !== undefined && item?.weight !== null
-      ? { label: t("inventory.weight"), value: String(item.weight) }
-      : null,
-    propertyLabels.length > 0
-      ? { label: t("inventory.properties"), value: propertyLabels.join(", ") }
-      : null,
-    entry.notes ? { label: t("inventory.notes"), value: entry.notes } : null,
-  ].filter(Boolean) as Array<{ label: string; value: string }>;
-
-  const hasDetails = Boolean(item?.description || detailRows.length > 0);
-
-  return (
-    <div className="rounded-[24px] border border-white/8 bg-white/[0.04]">
-      <button
-        type="button"
-        onClick={() => hasDetails && setExpanded((current) => !current)}
-        className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left ${
-          hasDetails ? "hover:bg-white/[0.03]" : ""
+    <>
+      <div
+        className={`overflow-hidden rounded-[32px] border bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] shadow-[0_18px_60px_rgba(2,6,23,0.2)] transition-all ${
+          flash
+            ? "border-emerald-500/35 shadow-[0_0_40px_rgba(16,185,129,0.12)]"
+            : "border-white/8"
         }`}
       >
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-white">
-            {item?.name ?? t("inventory.unknownItem")}
-          </p>
-          <p className="text-xs text-slate-500">
-            {item?.type ?? t("inventory.unknownType")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 text-xs">
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">
-            x{entry.quantity}
-          </span>
-          {entry.isEquipped && (
-            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-emerald-400">
-              {t("inventory.equipped")}
-            </span>
-          )}
-          {hasDetails && (
-            <span className={`text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
-              ▼
-            </span>
-          )}
-        </div>
-      </button>
-      {expanded && hasDetails && (
-        <div className="space-y-3 border-t border-white/8 px-4 py-4 text-xs text-slate-300">
-          {item?.description && <p className="text-slate-400">{item.description}</p>}
-          <div className="grid gap-2 sm:grid-cols-2">
-            {detailRows.map((detail) => (
-              <p key={`${detail.label}-${detail.value}`} className="rounded-xl bg-slate-950/50 px-3 py-2">
-                <span className="text-slate-500">{detail.label}</span> {detail.value}
+        <div className="px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                {t("playerBoard.inventoryStateLabel")}
               </p>
+              <h2 className="mt-2 flex items-center gap-3 text-sm font-bold uppercase tracking-[0.24em] text-slate-100">
+                <span className="h-4 w-1 rounded-full bg-amber-500" />
+                {t("playerBoard.inventoryTitle")}
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {summary.totalItems} · {summary.distinctItems} {t("playerBoard.inventoryDistinctItems")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onToggleOpen}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              {t("playerBoard.openInventoryModal")}
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <SummaryStat label={t("playerBoard.inventoryTotalLabel")} value={String(summary.totalItems)} />
+            <SummaryStat label={t("playerBoard.inventoryDistinctLabel")} value={String(summary.distinctItems)} />
+            <SummaryStat label={t("playerBoard.inventoryEquippedLabel")} value={String(summary.equippedCount)} />
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {walletCoins.map((coin) => (
+              <span
+                key={coin.coin}
+                className={getCoinClassName(coin.coin)}
+              >
+                {coin.amount} {coin.coin}
+              </span>
             ))}
           </div>
+
+          <div className="mt-5 grid gap-4">
+            <LoadoutSelect
+              label={t("playerBoard.currentWeaponLabel")}
+              value={selectedWeaponId ?? ""}
+              options={weaponOptions}
+              placeholder={t("playerBoard.currentWeaponPlaceholder")}
+              disabled={isSavingLoadout || inventory === null}
+              helper={selectedWeaponLabel ?? t("playerBoard.currentWeaponHint")}
+              onChange={(value) => onWeaponChange?.(value || null)}
+            />
+            <LoadoutSelect
+              label={t("playerBoard.currentArmorLabel")}
+              value={selectedArmorId ?? ""}
+              options={armorOptions}
+              placeholder={t("playerBoard.currentArmorPlaceholder")}
+              disabled={isSavingLoadout || inventory === null}
+              helper={selectedArmorLabel ?? t("playerBoard.currentArmorHint")}
+              onChange={(value) => onArmorChange?.(value || null)}
+            />
+          </div>
+
+          {loadoutStatus && (
+            <p className="mt-4 text-xs font-medium text-amber-200">
+              {loadoutStatus}
+            </p>
+          )}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {summary.previewItems.length > 0 ? (
+              summary.previewItems.map((entry) => (
+                <span
+                  key={entry.entry.id}
+                  className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-xs text-slate-300"
+                >
+                  {getInventoryItemName(entry.entry, entry.item)} x{entry.entry.quantity}
+                </span>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">
+                {inventory === null ? t("inventory.loading") : t("inventory.empty")}
+              </p>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      <SessionInventoryModal
+        open={open}
+        inventory={inventory}
+        itemsById={itemsById}
+        selectedArmorId={selectedArmorId}
+        selectedWeaponId={selectedWeaponId}
+        onClose={onToggleOpen}
+      />
+    </>
   );
+};
+
+const SummaryStat = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-[22px] border border-white/8 bg-white/[0.04] px-4 py-3">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    <p className="mt-2 text-lg font-bold text-white">{value}</p>
+  </div>
+);
+
+const LoadoutSelect = ({
+  disabled,
+  helper,
+  label,
+  onChange,
+  options,
+  placeholder,
+  value,
+}: {
+  disabled: boolean;
+  helper: string;
+  label: string;
+  onChange: (value: string) => void;
+  options: SessionInventorySelectOption[];
+  placeholder: string;
+  value: string;
+}) => (
+  <label className="block">
+    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</span>
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-amber-400/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.detail ? `${option.label} · ${option.detail}` : option.label}
+        </option>
+      ))}
+    </select>
+    <span className="mt-2 block text-xs text-slate-400">{helper}</span>
+  </label>
+);
+
+const getCoinClassName = (coin: keyof CurrencyWallet) => {
+  switch (coin) {
+    case "pp":
+      return "rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200";
+    case "gp":
+      return "rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200";
+    case "ep":
+      return "rounded-full border border-lime-500/25 bg-lime-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-lime-200";
+    case "sp":
+      return "rounded-full border border-slate-500/25 bg-slate-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200";
+    default:
+      return "rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-200";
+  }
 };

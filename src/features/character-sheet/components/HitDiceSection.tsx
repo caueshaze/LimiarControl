@@ -9,13 +9,23 @@ type Props = {
   sheet: Pick<CharacterSheet, "hitDiceType" | "hitDiceTotal" | "hitDiceRemaining" | "deathSaves">;
   mode: CharacterSheetMode;
   readOnly?: boolean;
+  showRestActions?: boolean;
   set: SheetActions["set"];
   useHitDie: SheetActions["useHitDie"];
   longRest: SheetActions["longRest"];
   setDeathSave: SheetActions["setDeathSave"];
 };
 
-export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, longRest, setDeathSave }: Props) => {
+export const HitDiceSection = ({
+  mode,
+  sheet,
+  readOnly = false,
+  showRestActions = true,
+  set,
+  useHitDie,
+  longRest,
+  setDeathSave,
+}: Props) => {
   const { t } = useLocale();
 
   if (mode === "creation") {
@@ -28,7 +38,7 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
           </div>
           <div>
             <label className={fieldLabel}>{t("sheet.hitDice.total")}</label>
-            <input type="number" min={0} value={sheet.hitDiceTotal} disabled className={`${input} opacity-70`} />
+            <input type="text" value={String(sheet.hitDiceTotal)} disabled className={`${input} opacity-70`} />
           </div>
         </div>
       </Section>
@@ -41,18 +51,26 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={fieldLabel}>{t("sheet.hitDice.dieType")}</label>
-            <select value={sheet.hitDiceType} disabled={readOnly} onChange={(e) => set("hitDiceType", e.target.value)} className={`${input} ${readOnly ? "opacity-70" : ""}`}>
-              {["d6", "d8", "d10", "d12"].map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
+            {readOnly ? (
+              <input type="text" value={sheet.hitDiceType || "-"} disabled className={`${input} opacity-70`} />
+            ) : (
+              <select value={sheet.hitDiceType} disabled={readOnly} onChange={(e) => set("hitDiceType", e.target.value)} className={input}>
+                {["d6", "d8", "d10", "d12"].map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <label className={fieldLabel}>{t("sheet.hitDice.totalLabel")}</label>
-            <input
-              type="number" min={0} value={sheet.hitDiceTotal}
-              disabled={readOnly}
-              onChange={(e) => set("hitDiceTotal", Math.max(0, safeParseInt(e.target.value)))}
-              className={`${input} ${readOnly ? "opacity-70" : ""}`}
-            />
+            {readOnly ? (
+              <input type="text" value={String(sheet.hitDiceTotal)} disabled className={`${input} opacity-70`} />
+            ) : (
+              <input
+                type="number" min={0} value={sheet.hitDiceTotal}
+                disabled={readOnly}
+                onChange={(e) => set("hitDiceTotal", Math.max(0, safeParseInt(e.target.value)))}
+                className={input}
+              />
+            )}
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
@@ -61,7 +79,7 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
               .replace("{used}", String(sheet.hitDiceRemaining))
               .replace("{total}", String(sheet.hitDiceTotal))}
           </span>
-          {!readOnly && (
+          {!readOnly && showRestActions && (
             <button
               type="button" onClick={useHitDie}
               disabled={sheet.hitDiceRemaining <= 0}
@@ -71,7 +89,7 @@ export const HitDiceSection = ({ mode, sheet, readOnly = false, set, useHitDie, 
             </button>
           )}
         </div>
-        {!readOnly && (
+        {!readOnly && showRestActions && (
           <button type="button" onClick={longRest} className={`mt-2 w-full ${btnOutline}`}>
             {t("sheet.hitDice.longRest")}
           </button>

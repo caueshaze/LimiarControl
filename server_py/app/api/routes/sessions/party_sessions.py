@@ -16,6 +16,7 @@ from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
 from app.schemas.session import ActiveSessionRead, SessionCreateByParty, SessionRead
+from app.services.session_rest import ensure_rest_state
 from ._shared import (
     check_character_sheets,
     get_or_create_session_runtime,
@@ -114,6 +115,8 @@ async def _start_session_for_party(
             if base_sheet and isinstance(base_sheet.data, dict)
             else {}
         )
+        cloned = ensure_rest_state(cloned)
+        cloned["restState"] = "exploration"
         session.add(SessionState(
             id=str(uuid4()), session_id=entry.id, player_user_id=m.user_id, state_json=cloned,
         ))

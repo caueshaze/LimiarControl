@@ -28,6 +28,7 @@ type Props = {
   campaignId?: string | null;
   mode?: CharacterSheetMode;
   playPlayerUserId?: string | null;
+  creationPlayerUserId?: string | null;
   canEditPlay?: boolean;
   backHref?: string | null;
   backLabel?: string | null;
@@ -39,16 +40,23 @@ export const CharacterSheet = ({
   campaignId = null,
   mode = "play",
   playPlayerUserId = null,
+  creationPlayerUserId = null,
   canEditPlay = false,
   backHref = null,
   backLabel = null,
   playContextLabel = null,
 }: Props) => {
-  const actions = useCharacterSheet(partyId, mode, { playPlayerUserId, canEditPlay, campaignId });
+  const actions = useCharacterSheet(partyId, mode, {
+    playPlayerUserId,
+    creationPlayerUserId,
+    canEditPlay,
+    campaignId,
+  });
   const { sheet } = actions;
   const { t } = useLocale();
   const isCreation = mode === "creation";
   const isPlay = mode === "play";
+  const isGmPlayView = isPlay && canEditPlay;
   const isRuntimeReadOnly = isPlay && !canEditPlay;
   const isPlayReadOnly = isPlay;
 
@@ -154,12 +162,17 @@ export const CharacterSheet = ({
           requestingLevelUp={actions.requestingLevelUp}
           requestLevelUpError={actions.requestLevelUpError}
           onRequestLevelUp={actions.requestLevelUp}
+          showProgressPanel={!isGmPlayView}
           selectBackground={actions.selectBackground}
           selectRace={actions.selectRace}
           selectClassEquipment={actions.selectClassEquipment}
           pickClassSkill={actions.pickClassSkill}
+          pickExpertise={actions.pickExpertise}
+          pickRaceToolProficiency={actions.pickRaceToolProficiency}
           pickClassToolProficiency={actions.pickClassToolProficiency}
           selectLanguageChoice={actions.selectLanguageChoice}
+          selectRaceConfig={actions.selectRaceConfig}
+          selectSubclassConfig={actions.selectSubclassConfig}
         />
 
         <div className="grid gap-3 xl:grid-cols-12 xl:items-start">
@@ -168,6 +181,7 @@ export const CharacterSheet = ({
               <AbilityScores
                 abilities={sheet.abilities}
                 race={sheet.race}
+                raceConfig={sheet.raceConfig}
                 mode={mode}
                 readOnly={isPlayReadOnly || isSheetLocked}
                 setAbility={actions.setAbility}
@@ -192,17 +206,19 @@ export const CharacterSheet = ({
                 readOnly={isCreation || isPlayReadOnly || isSheetLocked}
               />
               <div className="space-y-3">
-                <HitPoints
-                  sheet={sheet}
-                  hpPercent={hpPercent}
-                  hpColor={hpColor}
-                  readOnly={isRuntimeReadOnly || isSheetLocked}
-                  setCurrentHP={actions.setCurrentHP}
-                  setMaxHP={actions.setMaxHP}
-                  adjustHP={actions.adjustHP}
-                  set={actions.set}
-                  mode={mode}
-                />
+                {!isGmPlayView ? (
+                  <HitPoints
+                    sheet={sheet}
+                    hpPercent={hpPercent}
+                    hpColor={hpColor}
+                    readOnly={isRuntimeReadOnly || isSheetLocked}
+                    setCurrentHP={actions.setCurrentHP}
+                    setMaxHP={actions.setMaxHP}
+                    adjustHP={actions.adjustHP}
+                    set={actions.set}
+                    mode={mode}
+                  />
+                ) : null}
                 <HitDiceSection
                   sheet={sheet}
                   set={actions.set}
@@ -210,6 +226,7 @@ export const CharacterSheet = ({
                   longRest={actions.longRest}
                   setDeathSave={actions.setDeathSave}
                   mode={mode}
+                  showRestActions={!isPlay}
                   readOnly={isRuntimeReadOnly || isSheetLocked}
                 />
               </div>

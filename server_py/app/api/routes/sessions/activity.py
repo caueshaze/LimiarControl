@@ -15,7 +15,12 @@ from app.schemas.session import (
     ActivityEvent,
     CombatActivityEvent,
     EntityActivityEvent,
+    HitDiceActivityEvent,
+    LevelUpActivityEvent,
+    PlayerHpActivityEvent,
     PurchaseActivityEvent,
+    RestActivityEvent,
+    RewardActivityEvent,
     RollActivityEvent,
     RollRequestActivityEvent,
     ShopActivityEvent,
@@ -129,6 +134,108 @@ def get_session_activity(
                 displayName=actor_name,
                 action="started" if command.command_type == "start_combat" else "ended",
                 note=payload.get("note") if isinstance(payload.get("note"), str) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type in ("start_short_rest", "start_long_rest", "end_rest"):
+            rest_type = payload.get("restType") if isinstance(payload.get("restType"), str) else None
+            if command.command_type == "start_short_rest":
+                action = "short_started"
+            elif command.command_type == "start_long_rest":
+                action = "long_started"
+            elif rest_type == "long_rest":
+                action = "long_ended"
+            else:
+                action = "short_ended"
+            events.append(RestActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                action=action,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type in ("grant_currency", "grant_item", "grant_xp"):
+            if command.command_type == "grant_currency":
+                action = "currency"
+            elif command.command_type == "grant_item":
+                action = "item"
+            else:
+                action = "xp"
+            events.append(RewardActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                action=action,
+                targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
+                targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                amountLabel=payload.get("amountLabel") if isinstance(payload.get("amountLabel"), str) else None,
+                itemName=payload.get("itemName") if isinstance(payload.get("itemName"), str) else None,
+                quantity=payload.get("quantity") if isinstance(payload.get("quantity"), int) else None,
+                currentXp=payload.get("currentXp") if isinstance(payload.get("currentXp"), int) else None,
+                nextLevelThreshold=payload.get("nextLevelThreshold") if isinstance(payload.get("nextLevelThreshold"), int) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type in ("level_up_requested", "level_up_approved", "level_up_denied"):
+            if command.command_type == "level_up_requested":
+                action = "requested"
+            elif command.command_type == "level_up_approved":
+                action = "approved"
+            else:
+                action = "denied"
+            events.append(LevelUpActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                action=action,
+                targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
+                targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                level=int(payload.get("level", 1) or 1),
+                experiencePoints=int(payload.get("experiencePoints", 0) or 0),
+                pendingLevelUp=bool(payload.get("pendingLevelUp", False)),
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "hit_dice_used":
+            events.append(HitDiceActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                roll=int(payload.get("roll", 0) or 0),
+                healingApplied=int(payload.get("healingApplied", 0) or 0),
+                currentHp=int(payload.get("currentHp", 0) or 0),
+                maxHp=payload.get("maxHp") if isinstance(payload.get("maxHp"), int) else None,
+                hitDiceRemaining=int(payload.get("hitDiceRemaining", 0) or 0),
+                hitDiceTotal=int(payload.get("hitDiceTotal", 0) or 0),
+                hitDieType=str(payload.get("hitDieType") or ""),
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "player_hp_updated":
+            delta = payload.get("delta") if isinstance(payload.get("delta"), int) else None
+            if delta is not None and delta < 0:
+                action = "damaged"
+            elif delta is not None and delta > 0:
+                action = "healed"
+            else:
+                action = "hp_set"
+            events.append(PlayerHpActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                action=action,
+                targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
+                targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                currentHp=payload.get("currentHp") if isinstance(payload.get("currentHp"), int) else None,
+                previousHp=payload.get("previousHp") if isinstance(payload.get("previousHp"), int) else None,
+                delta=abs(delta) if delta is not None else None,
+                maxHp=payload.get("maxHp") if isinstance(payload.get("maxHp"), int) else None,
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

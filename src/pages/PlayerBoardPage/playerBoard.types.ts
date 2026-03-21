@@ -6,6 +6,33 @@ export type PendingRoll = {
   mode?: "advantage" | "disadvantage" | null;
 };
 
+export type PlayerBoardStatusSummary = {
+  ac: number;
+  currentHp: number;
+  currentWeapon: PlayerBoardWeaponSummary | null;
+  experiencePoints: number;
+  hitDiceRemaining: number;
+  hitDiceTotal: number;
+  hitDieType: string;
+  hpPercent: number;
+  initiative: number;
+  level: number;
+  maxHp: number;
+  nextLevelThreshold: number | null;
+  passivePerception: number;
+  spellAttack: number | null;
+  spellSaveDC: number | null;
+  tempHp: number;
+  xpPercent: number;
+};
+
+export type PlayerBoardWeaponSummary = {
+  attackBonus: number;
+  damageLabel: string;
+  name: string;
+  proficient: boolean;
+};
+
 export const buildRollRequestKey = (payload: {
   expression: string;
   mode?: "advantage" | "disadvantage" | null;

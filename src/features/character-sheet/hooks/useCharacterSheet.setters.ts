@@ -70,12 +70,12 @@ export const buildCreationSetAbility = (
   (sheet: CharacterSheet, ability: AbilityName, value: number) => {
     if (mode === "creation") {
       if (!STANDARD_ARRAY.includes(value)) return sheet;
-      const baseAbilities = stripRaceBonusesFromAbilities(sheet.abilities, sheet.race);
+      const baseAbilities = stripRaceBonusesFromAbilities(sheet.abilities, sheet.race, sheet.raceConfig);
       const previousValue = baseAbilities[ability];
       const swappedAbility = ABILITY_ORDER.find((entry) => entry !== ability && baseAbilities[entry] === value);
       const nextBase = { ...baseAbilities, [ability]: value };
       if (swappedAbility) nextBase[swappedAbility] = previousValue;
-      const nextAbilities = applyRaceBonusesToAbilities(nextBase, sheet.race);
+      const nextAbilities = applyRaceBonusesToAbilities(nextBase, sheet.race, sheet.raceConfig);
       const cls = getClass(sheet.class);
       if (!cls) {
         return {

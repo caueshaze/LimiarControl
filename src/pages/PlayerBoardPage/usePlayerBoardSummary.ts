@@ -1,7 +1,14 @@
+import { useLocale } from "../../shared/hooks/useLocale";
+import type { Item } from "../../entities/item";
 import { useMemo } from "react";
 import type { InventoryItem } from "../../entities/inventory";
+import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/useCharacterSheetDerived";
+import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
+import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
+import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { LocaleKey } from "../../shared/i18n";
-import type { PendingRoll } from "./playerBoard.types";
+import type { PlayerBoardStatusSummary } from "./playerBoard.types";
+import { buildPlayerBoardWeaponSummary } from "./playerBoardWeaponSummary";
 
 type ActiveSessionLike = {
   status: "ACTIVE" | "LOBBY" | "CLOSED";
@@ -9,29 +16,30 @@ type ActiveSessionLike = {
 
 type Props = {
   activeSession: ActiveSessionLike | null;
-  combatActive: boolean;
   effectiveCampaignId: string | null;
   inventory: InventoryItem[] | null;
-  lastCommandType?: string;
-  pendingRoll: PendingRoll | null;
+  itemsById: Record<string, Item>;
+  playerSheet: CharacterSheet | null;
   selectedCampaignName?: string | null;
-  shopAvailable: boolean;
-  shopOpen: boolean;
   t: (key: LocaleKey) => string;
 };
 
 export const usePlayerBoardSummary = ({
   activeSession,
-  combatActive,
   effectiveCampaignId,
   inventory,
-  lastCommandType,
-  pendingRoll,
+  itemsById,
+  playerSheet,
   selectedCampaignName,
-  shopAvailable,
-  shopOpen,
   t,
 }: Props) => {
+  const { locale } = useLocale();
+  const { ac, hpPercent, initiative, passivePerception, spellAttack, spellSaveDC } =
+    useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET);
+  const xpState = getCharacterProgressState(
+    playerSheet?.level ?? INITIAL_SHEET.level,
+    playerSheet?.experiencePoints ?? INITIAL_SHEET.experiencePoints,
+  );
   const campaignTitle = useMemo(
     () => selectedCampaignName ?? t("playerBoard.noCampaign"),
     [selectedCampaignName, t],
@@ -60,31 +68,45 @@ export const usePlayerBoardSummary = ({
     return t("playerBoard.readyHint");
   }, [activeSession, effectiveCampaignId, t]);
 
-  const commandTitle = useMemo(() => {
-    if (pendingRoll) return t("playerBoard.rollRequest");
-    if (shopOpen) return t("playerBoard.shopPopoutHeading");
-    if (shopAvailable || lastCommandType === "open_shop") return t("playerBoard.shopOpenState");
-    if (combatActive) return t("playerBoard.combatStartedTitle");
-    if (activeSession) return t("playerBoard.tableWaitingState");
-    return effectiveCampaignId ? t("playerBoard.waitingSession") : t("playerBoard.noCampaign");
-  }, [activeSession, combatActive, effectiveCampaignId, lastCommandType, pendingRoll, shopAvailable, shopOpen, t]);
+  const currentWeapon = useMemo(
+    () =>
+      buildPlayerBoardWeaponSummary({
+        inventory,
+        itemsById,
+        locale,
+        playerSheet,
+      }),
+    [inventory, itemsById, locale, playerSheet],
+  );
 
-  const commandDescription = useMemo(() => {
-    if (pendingRoll?.reason) return pendingRoll.reason;
-    if (pendingRoll?.issuedBy) return `${t("playerBoard.requestedBy")} ${pendingRoll.issuedBy}`;
-    if (shopOpen) return t("playerBoard.shopPopoutBody");
-    if (shopAvailable || lastCommandType === "open_shop") return t("playerBoard.shopPrompt");
-    if (combatActive) return t("playerBoard.combatStartedDescription");
-    if (activeSession) return t("playerBoard.noCommands");
-    return effectiveCampaignId ? t("playerBoard.waitingSession") : t("playerBoard.noCampaignHint");
-  }, [activeSession, combatActive, effectiveCampaignId, lastCommandType, pendingRoll, shopAvailable, shopOpen, t]);
+  const playerStatus = useMemo<PlayerBoardStatusSummary | null>(() => {
+    if (!playerSheet) return null;
+    return {
+      ac,
+      currentHp: playerSheet.currentHP,
+      currentWeapon,
+      experiencePoints: playerSheet.experiencePoints,
+      hitDiceRemaining: playerSheet.hitDiceRemaining,
+      hitDiceTotal: playerSheet.hitDiceTotal,
+      hitDieType: playerSheet.hitDiceType,
+      hpPercent,
+      initiative,
+      level: playerSheet.level,
+      maxHp: playerSheet.maxHP,
+      nextLevelThreshold: xpState.nextLevelThreshold,
+      passivePerception,
+      spellAttack,
+      spellSaveDC,
+      tempHp: playerSheet.tempHP,
+      xpPercent: xpState.progressPercent,
+    };
+  }, [ac, currentWeapon, hpPercent, initiative, passivePerception, playerSheet, spellAttack, spellSaveDC, xpState.nextLevelThreshold, xpState.progressPercent]);
 
   return {
     boardDescription,
     campaignTitle,
-    commandDescription,
-    commandTitle,
     inventoryTotal,
+    playerStatus,
     sessionStatusLabel,
     sessionStatusTone,
   };

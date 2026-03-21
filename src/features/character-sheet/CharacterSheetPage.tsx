@@ -4,6 +4,7 @@ import { routes } from "../../app/routes/routes";
 import { useCampaignEvents } from "../sessions";
 import { partiesRepo } from "../../shared/api/partiesRepo";
 import type { RoleMode } from "../../shared/types/role";
+import { useLocale } from "../../shared/hooks/useLocale";
 import { CharacterSheet } from "./components/CharacterSheet";
 
 type Props = {
@@ -15,11 +16,17 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   const { partyId } = useParams<{ partyId?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t } = useLocale();
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const requestedMode = searchParams.get("mode") === "play" ? "play" : "creation";
   const requestedPlayerId = searchParams.get("playerId");
   const requestedCampaignId = searchParams.get("campaignId");
   const requestedPlayerName = searchParams.get("playerName");
+  const requestedReturnTo = searchParams.get("returnTo");
+  const creationPlayerUserId =
+    requestedMode === "creation" && viewerRole === "GM"
+      ? requestedPlayerId
+      : null;
   const playPlayerUserId =
     requestedMode === "play"
       ? viewerRole === "GM"
@@ -29,7 +36,9 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   const backHref =
     partyId
       ? viewerRole === "PLAYER"
-        ? routes.playerPartyDetails.replace(":partyId", partyId)
+        ? requestedMode === "play" && requestedReturnTo === "board"
+          ? routes.board.replace(":partyId", partyId)
+          : routes.playerPartyDetails.replace(":partyId", partyId)
         : requestedCampaignId
           ? routes.campaignDashboard.replace(":campaignId", requestedCampaignId)
           : routes.partyDetails.replace(":partyId", partyId)
@@ -37,7 +46,9 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   const backLabel =
     viewerRole === "GM" && requestedMode === "play"
       ? "Back To GM Dashboard"
-      : "Back To Party";
+      : viewerRole === "PLAYER" && requestedMode === "play" && requestedReturnTo === "board"
+        ? t("sheet.header.backToBoard")
+        : t("sheet.header.backToParty");
   const playContextLabel =
     viewerRole === "GM" && requestedMode === "play"
       ? requestedPlayerName || "Selected Player"
@@ -86,6 +97,7 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
       campaignId={campaignId}
       mode={requestedMode}
       playPlayerUserId={playPlayerUserId}
+      creationPlayerUserId={creationPlayerUserId}
       canEditPlay={viewerRole === "GM"}
       backHref={backHref}
       backLabel={backLabel}

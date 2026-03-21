@@ -113,19 +113,19 @@ export const CONDITION_LABELS: Record<ConditionName, string> = {
 // ── Preset Armors ───────────────────────────────────────────────────────────
 
 export const ARMOR_PRESETS: Armor[] = [
-  { name: "None", baseAC: 0, dexCap: null, armorType: "none" },
-  { name: "Padded", baseAC: 11, dexCap: null, armorType: "light" },
-  { name: "Leather", baseAC: 11, dexCap: null, armorType: "light" },
-  { name: "Studded Leather", baseAC: 12, dexCap: null, armorType: "light" },
-  { name: "Hide", baseAC: 12, dexCap: 2, armorType: "medium" },
-  { name: "Chain Shirt", baseAC: 13, dexCap: 2, armorType: "medium" },
-  { name: "Scale Mail", baseAC: 14, dexCap: 2, armorType: "medium" },
-  { name: "Breastplate", baseAC: 14, dexCap: 2, armorType: "medium" },
-  { name: "Half Plate", baseAC: 15, dexCap: 2, armorType: "medium" },
-  { name: "Ring Mail", baseAC: 14, dexCap: 0, armorType: "heavy" },
-  { name: "Chain Mail", baseAC: 16, dexCap: 0, armorType: "heavy" },
-  { name: "Splint", baseAC: 17, dexCap: 0, armorType: "heavy" },
-  { name: "Plate", baseAC: 18, dexCap: 0, armorType: "heavy" },
+  { name: "None", baseAC: 0, dexCap: null, armorType: "none", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Padded", baseAC: 11, dexCap: null, armorType: "light", allowsDex: true, stealthDisadvantage: true, minStrength: null },
+  { name: "Leather", baseAC: 11, dexCap: null, armorType: "light", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Studded Leather", baseAC: 12, dexCap: null, armorType: "light", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Hide", baseAC: 12, dexCap: 2, armorType: "medium", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Chain Shirt", baseAC: 13, dexCap: 2, armorType: "medium", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Scale Mail", baseAC: 14, dexCap: 2, armorType: "medium", allowsDex: true, stealthDisadvantage: true, minStrength: null },
+  { name: "Breastplate", baseAC: 14, dexCap: 2, armorType: "medium", allowsDex: true, stealthDisadvantage: false, minStrength: null },
+  { name: "Half Plate", baseAC: 15, dexCap: 2, armorType: "medium", allowsDex: true, stealthDisadvantage: true, minStrength: null },
+  { name: "Ring Mail", baseAC: 14, dexCap: 0, armorType: "heavy", allowsDex: false, stealthDisadvantage: true, minStrength: null },
+  { name: "Chain Mail", baseAC: 16, dexCap: 0, armorType: "heavy", allowsDex: false, stealthDisadvantage: true, minStrength: 13 },
+  { name: "Splint", baseAC: 17, dexCap: 0, armorType: "heavy", allowsDex: false, stealthDisadvantage: true, minStrength: 15 },
+  { name: "Plate", baseAC: 18, dexCap: 0, armorType: "heavy", allowsDex: false, stealthDisadvantage: true, minStrength: 15 },
 ];
 
 // ── Spell Schools ───────────────────────────────────────────────────────────

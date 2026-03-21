@@ -4,16 +4,20 @@ import { Section } from "./Section";
 import { input, fieldLabel, chk } from "./styles";
 import { ALIGNMENTS } from "../data/alignments";
 import { RACES, getRace } from "../data/races";
-import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
-import { CLASSES, getClass, isSubclassUnlocked } from "../data/classes";
+import { CLASSES, FIGHTING_STYLES, getClass, getSubclassConfigFields, hasFightingStyleAtCreation, isSubclassUnlocked } from "../data/classes";
 import { BACKGROUNDS, getBackground } from "../data/backgrounds";
 import { ClassSkillPicker } from "./ClassSkillPicker";
 import { ClassToolProficiencyPicker } from "./ClassToolProficiencyPicker";
+import { RaceToolProficiencyPicker } from "./RaceToolProficiencyPicker";
 import { ClassEquipmentChoices } from "./ClassEquipmentChoices";
+import { ClassExpertisePicker } from "./ClassExpertisePicker";
 import { LanguageChoicePicker } from "./LanguageChoicePicker";
 import { CharacterProgressPanel } from "./CharacterProgressPanel";
+import { RaceConfigPicker } from "./RaceConfigPicker";
+import { RacePreviewCard } from "./RacePreviewCard";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { RequiredField } from "../utils/creationValidation";
+import { canonicalizeStarterItemName } from "../utils/creationEquipment";
 
 type Props = {
   sheet: CharacterSheet;
@@ -27,12 +31,17 @@ type Props = {
   requestingLevelUp: boolean;
   requestLevelUpError: string | null;
   onRequestLevelUp: () => void;
+  showProgressPanel?: boolean;
   selectBackground: SheetActions["selectBackground"];
   selectRace: SheetActions["selectRace"];
   selectClassEquipment: SheetActions["selectClassEquipment"];
   pickClassSkill: SheetActions["pickClassSkill"];
+  pickExpertise: SheetActions["pickExpertise"];
+  pickRaceToolProficiency: SheetActions["pickRaceToolProficiency"];
   pickClassToolProficiency: SheetActions["pickClassToolProficiency"];
   selectLanguageChoice: SheetActions["selectLanguageChoice"];
+  selectRaceConfig: SheetActions["selectRaceConfig"];
+  selectSubclassConfig: SheetActions["selectSubclassConfig"];
 };
 
 export const CharacterInfo = ({
@@ -47,28 +56,31 @@ export const CharacterInfo = ({
   requestingLevelUp,
   requestLevelUpError,
   onRequestLevelUp,
+  showProgressPanel = true,
   selectBackground,
   selectRace,
   selectClassEquipment,
   pickClassSkill,
+  pickExpertise,
+  pickRaceToolProficiency,
   pickClassToolProficiency,
   selectLanguageChoice,
+  selectRaceConfig,
+  selectSubclassConfig,
 }: Props) => {
   const { t } = useLocale();
   const isCreation = mode === "creation";
-  const raceData = getRace(sheet.race);
+  const raceData = getRace(sheet.race, sheet.raceConfig);
   const classData = getClass(sheet.class);
   const backgroundData = getBackground(sheet.background);
-  const unlockedClassData =
-    classData && isSubclassUnlocked(classData, sheet.level) ? classData : null;
+  const unlockedClassData = classData && isSubclassUnlocked(classData, sheet.level) ? classData : null;
+  const subclassConfigFields = getSubclassConfigFields(sheet.class, sheet.subclass);
+  const showFightingStyle = !!classData && hasFightingStyleAtCreation(classData, sheet.level);
 
   const missing = new Set(missingRequiredFields);
   const hasAttempted = missingRequiredFields.length > 0;
 
-  const errorInput = (field: RequiredField) =>
-    hasAttempted && missing.has(field)
-      ? "ring-1 ring-red-500/60 border-red-500/40"
-      : "";
+  const errorInput = (field: RequiredField) => (hasAttempted && missing.has(field) ? "ring-1 ring-red-500/60 border-red-500/40" : "");
 
   const requiredMark = (field: RequiredField) =>
     isCreation && (
@@ -78,6 +90,14 @@ export const CharacterInfo = ({
         *
       </span>
     );
+
+  const formatBackgroundEquipmentEntry = (entry: string) => {
+    const quantityMatch = entry.trim().match(/^(.+?)\s*x(\d+)$/i);
+    if (quantityMatch) {
+      return `${canonicalizeStarterItemName(quantityMatch[1].trim())} x${quantityMatch[2]}`;
+    }
+    return canonicalizeStarterItemName(entry);
+  };
 
   const fieldError = (field: RequiredField) =>
     hasAttempted && missing.has(field) ? (
@@ -138,6 +158,46 @@ export const CharacterInfo = ({
             {fieldError("subclass")}
           </div>
         ) : null}
+
+        {subclassConfigFields.map((field) => (
+          <div key={field.key} className="xl:col-span-3">
+            <label className={fieldLabel}>
+              {field.label}{requiredMark("subclassConfig")}
+            </label>
+            <select
+              value={sheet.subclassConfig?.[field.key] ?? ""}
+              disabled={readOnly}
+              onChange={(e) => selectSubclassConfig(field.key, e.target.value)}
+              className={`${input} ${errorInput("subclassConfig")}`}
+            >
+              <option value="">Selecione...</option>
+              {field.options.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+            {fieldError("subclassConfig")}
+          </div>
+        ))}
+
+        {showFightingStyle && (
+          <div className="xl:col-span-3">
+            <label className={fieldLabel}>
+              {t("sheet.basicInfo.fightingStyle")}{requiredMark("fightingStyle")}
+            </label>
+            <select
+              value={sheet.fightingStyle ?? ""}
+              disabled={readOnly}
+              onChange={(e) => set("fightingStyle", e.target.value || null)}
+              className={`${input} ${errorInput("fightingStyle")}`}
+            >
+              <option value="">{t("sheet.basicInfo.selectFightingStyle")}</option>
+              {FIGHTING_STYLES.filter((s) => classData?.fightingStyleOptions.includes(s.id)).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {fieldError("fightingStyle")}
+          </div>
+        )}
 
         <div className="xl:col-span-4">
           <label className={fieldLabel}>
@@ -218,7 +278,7 @@ export const CharacterInfo = ({
           />
         </div>
 
-        {!isCreation ? (
+        {!isCreation && showProgressPanel ? (
           <CharacterProgressPanel
             level={sheet.level}
             experiencePoints={sheet.experiencePoints}
@@ -233,39 +293,7 @@ export const CharacterInfo = ({
 
       {/* Racial / class / background previews */}
       <div className="mt-5 grid gap-3 xl:grid-cols-3">
-        {raceData && (
-          <div className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("sheet.basicInfo.racePreview")}</p>
-            <p className="mt-3 text-sm font-semibold text-slate-100">{raceData.name}</p>
-            <p className="mt-1 leading-6">
-              <span className="text-slate-300">{raceData.size}</span>
-              <span className="mx-2 text-slate-600">•</span>
-              <span>{t("sheet.basicInfo.speed")} {raceData.speed}ft</span>
-              {raceData.darkvision && (
-                <>
-                  <span className="mx-2 text-slate-600">•</span>
-                  <span>{t("sheet.basicInfo.darkvision")} {raceData.darkvision}ft</span>
-                </>
-              )}
-            </p>
-            {raceData.languages.length > 0 && (() => {
-              const fixed = raceData.languages.filter((l) => l !== LANGUAGE_CHOICE_SLOT);
-              const choiceCount = raceData.languages.filter((l) => l === LANGUAGE_CHOICE_SLOT).length;
-              const parts = [...fixed];
-              if (choiceCount > 0) parts.push(`+${choiceCount} ${t("sheet.languages.toChoose")}`);
-              return <p className="mt-2 leading-6">{t("sheet.basicInfo.languages")}: {parts.join(", ")}</p>;
-            })()}
-            {Object.entries(raceData.abilityBonuses).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {Object.entries(raceData.abilityBonuses).map(([k, v]) => (
-                  <span key={k} className="rounded-full border border-limiar-500/20 bg-limiar-500/10 px-2.5 py-1 font-semibold text-limiar-300">
-                    {k.slice(0, 3).toUpperCase()} {v! >= 0 ? `+${v}` : v}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {raceData ? <RacePreviewCard raceData={raceData} sheet={sheet} /> : null}
 
         {classData && (
           <div className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -286,15 +314,31 @@ export const CharacterInfo = ({
           <div className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("sheet.basicInfo.bgPreview")}</p>
             <p className="mt-3 text-sm font-semibold text-slate-100">{backgroundData.name}</p>
-            <p className="mt-1 leading-6">{t("sheet.basicInfo.feature")}: {backgroundData.feature}</p>
-            <p className="mt-2 leading-6">{t("sheet.basicInfo.equipment")}: {backgroundData.startingEquipment.join(", ")}</p>
+            <p className="mt-1 leading-6">
+              {t("sheet.basicInfo.feature")}: {backgroundData.feature.label}
+            </p>
+            <p className="mt-1 leading-6">{backgroundData.feature.description}</p>
+            <p className="mt-2 leading-6">
+              {t("sheet.basicInfo.equipment")}:{" "}
+              {backgroundData.startingEquipment.map(formatBackgroundEquipmentEntry).join(", ")}
+            </p>
           </div>
         )}
       </div>
 
       {/* Class skill selection */}
       {isCreation && <ClassSkillPicker sheet={sheet} pickClassSkill={pickClassSkill} missingRequiredFields={missingRequiredFields} />}
+      {isCreation && <ClassExpertisePicker sheet={sheet} pickExpertise={pickExpertise} missingRequiredFields={missingRequiredFields} />}
+      {isCreation && <RaceToolProficiencyPicker sheet={sheet} pickRaceToolProficiency={pickRaceToolProficiency} missingRequiredFields={missingRequiredFields} />}
       {isCreation && <ClassToolProficiencyPicker sheet={sheet} pickClassToolProficiency={pickClassToolProficiency} missingRequiredFields={missingRequiredFields} />}
+      {isCreation && (
+        <RaceConfigPicker
+          sheet={sheet}
+          selectRaceConfig={selectRaceConfig}
+          missingRequiredFields={missingRequiredFields}
+          readOnly={readOnly}
+        />
+      )}
       {isCreation && (
         <ClassEquipmentChoices
           className={sheet.class}

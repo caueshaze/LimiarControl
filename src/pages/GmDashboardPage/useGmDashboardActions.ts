@@ -6,6 +6,7 @@ import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import type { Item } from "../../entities/item";
 import type { InventoryItem } from "../../entities/inventory";
+import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { CommandFeedback } from "./gmDashboard.types";
 import { useGmDashboardRewardActions } from "./useGmDashboardRewardActions";
 
@@ -16,9 +17,11 @@ type Props = {
   memberIdByUserId: Record<string, string>;
   navigate: (to: string) => void;
   partyPlayers: PartyMemberSummary[];
+  playerSheetByUserId: Record<string, CharacterSheet>;
   refreshPlayerInventory: (userId: string) => Promise<void>;
   refreshPlayerSheet: (userId: string) => Promise<void>;
   refreshPlayerWallet: (userId: string) => Promise<void>;
+  setRestUiState: React.Dispatch<React.SetStateAction<"exploration" | "short_rest" | "long_rest">>;
   setCombatUiActive: React.Dispatch<React.SetStateAction<boolean>>;
   setInventoryByMemberId: React.Dispatch<React.SetStateAction<Record<string, InventoryItem[]>>>;
   setSelectedSessionId: (sessionId: string | null) => void;
@@ -35,9 +38,11 @@ export const useGmDashboardActions = ({
   memberIdByUserId,
   navigate,
   partyPlayers,
+  playerSheetByUserId,
   refreshPlayerInventory,
   refreshPlayerSheet,
   refreshPlayerWallet,
+  setRestUiState,
   setCombatUiActive,
   setInventoryByMemberId,
   setSelectedSessionId,
@@ -61,6 +66,7 @@ export const useGmDashboardActions = ({
   const rewardActions = useGmDashboardRewardActions({
     activeSession,
     memberIdByUserId,
+    playerSheetByUserId,
     refreshPlayerSheet,
     setInventoryByMemberId,
     setWalletByUserId,
@@ -144,6 +150,9 @@ export const useGmDashboardActions = ({
       if (type === "close_shop") setShopUiOpen(false);
       if (type === "start_combat") setCombatUiActive(true);
       if (type === "end_combat") setCombatUiActive(false);
+      if (type === "start_short_rest") setRestUiState("short_rest");
+      if (type === "start_long_rest") setRestUiState("long_rest");
+      if (type === "end_rest") setRestUiState("exploration");
       const message =
         type === "open_shop"
           ? "Shop command accepted by the server."
@@ -153,7 +162,13 @@ export const useGmDashboardActions = ({
               ? "Combat is now live for the session."
               : type === "end_combat"
                 ? "Combat mode was closed for the session."
-                : "Roll request accepted by the server.";
+                : type === "start_short_rest"
+                  ? "Short rest started for the whole table."
+                  : type === "start_long_rest"
+                    ? "Long rest started for the whole table."
+                    : type === "end_rest"
+                      ? "The active rest was ended for the whole table."
+                      : "Roll request accepted by the server.";
       if (commandFeedbackTimeoutRef.current) window.clearTimeout(commandFeedbackTimeoutRef.current);
       setCommandFeedback({ tone: "success", type, message });
       commandFeedbackTimeoutRef.current = window.setTimeout(() => {

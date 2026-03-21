@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -13,8 +13,12 @@ import { useAuth } from "../../features/auth";
 import type { InventoryItem } from "../../entities/inventory";
 import { PlayerEntityList } from "../../features/session-entities";
 import { PlayerBoardHero } from "./PlayerBoardHero";
-import { PlayerBoardCommandCenter } from "./PlayerBoardCommandCenter";
+import { PlayerBoardRestBanner } from "./PlayerBoardRestBanner";
 import { PlayerBoardRollDialog } from "./PlayerBoardRollDialog";
+import { usePlayerBoardRestActions } from "./usePlayerBoardRestActions";
+import { PlayerBoardStatusPanel } from "./PlayerBoardStatusPanel";
+import { usePlayerBoardLoadout } from "./usePlayerBoardLoadout";
+import { usePlayerBoardRestFeedback } from "./usePlayerBoardRestFeedback";
 import { usePlayerBoardRealtime } from "./usePlayerBoardRealtime";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
@@ -36,14 +40,17 @@ export const PlayerBoardPage = () => {
     lastCommand,
     lastEvent,
     myInventory,
+    playerSheet,
     playerWallet,
     refresh,
     refreshInventoryData,
     refreshPlayerWallet,
+    restState,
     roll,
     rollEvents,
     sessionEndedAt,
     setMyInventory,
+    setPlayerSheet,
     setPlayerWallet,
     setSelectedSessionId,
     shopAvailable,
@@ -51,6 +58,7 @@ export const PlayerBoardPage = () => {
     partyId,
     selectedCampaignId,
     setSelectedCampaignLocal,
+    userId: user?.userId,
   });
   const {
     handleManualRoll,
@@ -78,7 +86,6 @@ export const PlayerBoardPage = () => {
     partyId,
     refresh,
     refreshInventoryData,
-    refreshPlayerWallet,
     roll,
     selectedCampaignId,
     sessionEndedAt,
@@ -93,29 +100,62 @@ export const PlayerBoardPage = () => {
   const {
     boardDescription,
     campaignTitle,
-    commandDescription,
-    commandTitle,
     inventoryTotal,
+    playerStatus,
     sessionStatusLabel,
     sessionStatusTone,
   } = usePlayerBoardSummary({
     activeSession,
-    combatActive,
     effectiveCampaignId,
     inventory: myInventory,
-    lastCommandType: lastCommand?.command,
-    pendingRoll,
+    itemsById: catalogItems,
+    playerSheet,
     selectedCampaignName: selectedCampaign?.name,
-    shopAvailable,
-    shopOpen,
     t,
+  });
+  const {
+    armorOptions,
+    handleArmorChange,
+    handleWeaponChange,
+    isSavingLoadout,
+    loadoutStatus,
+    selectedArmorId,
+    selectedWeaponId,
+    weaponOptions,
+  } = usePlayerBoardLoadout({
+    activeSessionId: activeSession?.id ?? null,
+    inventory: myInventory,
+    itemsById: catalogItems,
+    playerSheet,
+    setPlayerSheet,
+    showToast,
+    t,
+  });
+  const { handleUseHitDie, usingHitDie } = usePlayerBoardRestActions({
+    activeSessionId: activeSession?.id ?? null,
+    setPlayerSheet,
+    showToast,
+    t,
+  });
+
+  usePlayerBoardRestFeedback({
+    lastEvent,
+    restState,
+    showToast,
+    t,
+    userId: user?.userId,
   });
 
   const handleOpenSheet = useCallback(() => {
     if (!partyId) {
       return;
     }
-    navigate(`${routes.characterSheetParty.replace(":partyId", partyId)}?mode=play`);
+    navigate(
+      `${routes.characterSheetParty.replace(":partyId", partyId)}?${new URLSearchParams({
+        mode: "play",
+        returnTo: "board",
+      }).toString()}`,
+    );
   }, [navigate, partyId]);
 
   const upsertInventoryEntry = useCallback((nextEntry: InventoryItem) => {
@@ -161,7 +201,13 @@ export const PlayerBoardPage = () => {
         shopOpen={shopOpen}
         combatActive={combatActive}
         inventoryTotal={inventoryTotal}
-        onBack={() => navigate(-1)}
+        onBack={() =>
+          navigate(
+            partyId
+              ? routes.playerPartyDetails.replace(":partyId", partyId)
+              : routes.home,
+          )
+        }
         primaryActionLabel={activeSession?.status === "ACTIVE" && partyId ? t("playerBoard.openSheet") : null}
         onPrimaryAction={activeSession?.status === "ACTIVE" && partyId ? handleOpenSheet : undefined}
         secondaryActionLabel={effectiveCampaignId ? t("playerBoard.toggleInventory") : t("playerBoard.goJoin")}
@@ -172,22 +218,20 @@ export const PlayerBoardPage = () => {
         }
       />
 
+      <PlayerBoardRestBanner restState={restState} />
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-6">
-          <PlayerBoardCommandCenter
-            activeSessionStatus={activeSession?.status ?? null}
-            canOpenSheet={activeSession?.status === "ACTIVE" && !!partyId}
+          <PlayerBoardStatusPanel
             combatActive={combatActive}
-            commandDescription={commandDescription}
-            commandTitle={commandTitle}
-            lastCommandType={lastCommand?.command}
             pendingRoll={pendingRoll}
-            sessionStatusLabel={sessionStatusLabel}
+            playerStatus={playerStatus}
+            restState={restState}
             shopAvailable={shopAvailable}
             shopOpen={shopOpen}
-            onOpenSheet={handleOpenSheet}
+            usingHitDie={usingHitDie}
+            onUseHitDie={handleUseHitDie}
             onOpenShop={handleOpenShop}
-            onToggleInventory={() => setInventoryOpen((value) => !value)}
           />
 
           {activeSession?.id && (
@@ -211,9 +255,17 @@ export const PlayerBoardPage = () => {
             flash={inventoryFlash}
             inventory={myInventory}
             itemsById={catalogItems}
+            selectedArmorId={selectedArmorId}
+            selectedWeaponId={selectedWeaponId}
+            armorOptions={armorOptions}
+            weaponOptions={weaponOptions}
+            isSavingLoadout={isSavingLoadout}
+            loadoutStatus={loadoutStatus}
             wallet={playerWallet}
             open={inventoryOpen}
+            onArmorChange={handleArmorChange}
             onToggleOpen={() => setInventoryOpen((value) => !value)}
+            onWeaponChange={handleWeaponChange}
           />
 
           {shopOpen && activeSession?.id && effectiveCampaignId && (

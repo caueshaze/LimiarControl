@@ -10,7 +10,13 @@ import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useSession } from "./useSession";
 
 export type SessionCommand = {
-  command: "open_shop" | "close_shop" | "request_roll";
+  command:
+    | "open_shop"
+    | "close_shop"
+    | "request_roll"
+    | "start_short_rest"
+    | "start_long_rest"
+    | "end_rest";
   data?: Record<string, unknown>;
   issuedBy?: string;
   issuedAt?: string;
@@ -23,6 +29,7 @@ export const useSessionCommands = () => {
   const [sessionEndedAt, setSessionEndedAt] = useState<string | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [combatActive, setCombatActive] = useState(false);
+  const [restState, setRestState] = useState<"exploration" | "short_rest" | "long_rest">("exploration");
   const latestVersionsRef = useRef<Record<string, number>>({});
 
   const getVersionKey = useCallback((data: { type?: string; payload?: any }) => {
@@ -32,6 +39,8 @@ export const useSessionCommands = () => {
       case "roll_requested":
       case "combat_started":
       case "combat_ended":
+      case "rest_started":
+      case "rest_ended":
       case "session_closed":
       case "session_ended":
         return `${data.type}:${String(data.payload?.sessionId ?? selectedSessionId ?? "")}`;
@@ -49,6 +58,7 @@ export const useSessionCommands = () => {
     setSessionEndedAt(null);
     setShopOpen(false);
     setCombatActive(false);
+    setRestState("exploration");
     latestVersionsRef.current = {};
     if (!selectedSessionId) {
       setConnectionState("offline");
@@ -56,6 +66,7 @@ export const useSessionCommands = () => {
       setSessionEndedAt(null);
       setShopOpen(false);
       setCombatActive(false);
+      setRestState("exploration");
       return;
     }
 
@@ -64,10 +75,12 @@ export const useSessionCommands = () => {
         .then((runtime) => {
           setShopOpen(runtime.shopOpen);
           setCombatActive(runtime.combatActive);
+          setRestState(runtime.restState);
         })
         .catch(() => {
           setShopOpen(false);
           setCombatActive(false);
+          setRestState("exploration");
         });
     };
     syncRuntime();
@@ -124,6 +137,14 @@ export const useSessionCommands = () => {
         setCombatActive(false);
         return;
       }
+      if (data.type === "rest_started") {
+        setRestState(data.payload?.restType === "long_rest" ? "long_rest" : "short_rest");
+        return;
+      }
+      if (data.type === "rest_ended") {
+        setRestState("exploration");
+        return;
+      }
       if (data.type === "gm_command" && data.payload) {
         if (data.payload.command === "open_shop") {
           setShopOpen(true);
@@ -142,6 +163,7 @@ export const useSessionCommands = () => {
       if (data.type === "session_closed" || data.type === "session_ended") {
         setShopOpen(false);
         setCombatActive(false);
+        setRestState("exploration");
         setLastCommand(null);
         setSessionEndedAt(data.payload?.endedAt ?? new Date().toISOString());
       }
@@ -196,5 +218,14 @@ export const useSessionCommands = () => {
     setSessionEndedAt(null);
   }, []);
 
-  return { lastCommand, clearCommand, connectionState, sessionEndedAt, clearSessionEnded, shopOpen, combatActive };
+  return {
+    lastCommand,
+    clearCommand,
+    connectionState,
+    sessionEndedAt,
+    clearSessionEnded,
+    shopOpen,
+    combatActive,
+    restState,
+  };
 };

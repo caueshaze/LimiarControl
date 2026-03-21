@@ -8,9 +8,13 @@ thieves_tools,Ferramentas de Ladrão,tool,tools,25 gp,1 lb,Gazuas e ferramentas 
 forgery_kit,Kit de Falsificação,tool,tools,15 gp,5 lb,Ferramentas e materiais para criar documentos falsos.
 disguise_kit,Kit de Disfarce,tool,tools,25 gp,3 lb,"Maquiagem, fantasias e adereços para disfarces."
 artisans_tools,Ferramentas de Artesão,tool,tools,5 gp,5 lb,Ferramentas de ofício para um artesanato escolhido.
+tinkers_tools,Ferramentas de Engenhoqueiro,tool,tools,50 gp,10 lb,Ferramentas usadas para montar, ajustar e reparar pequenos dispositivos mecânicos.
 herbalism_kit,Kit de Herbalismo,tool,tools,5 gp,3 lb,Bolsas e podadores usados para colher e preparar ervas.
+navigators_tools,Ferramentas de Navegação,tool,tools,25 gp,2 lb,"Instrumentos, cartas e referências usados para traçar rotas seguras."
 gaming_set,Jogo de Mesa,tool,gaming_set,,,Conjunto genérico de jogo de mesa.
 musical_instrument,Instrumento Musical,tool,musical_instrument,,,Instrumento musical genérico.
+vehicles_land,Veículos (terrestres),tool,vehicle_proficiency,,,Proficiência com condução e operação de veículos terrestres.
+vehicles_water,Veículos (aquáticos),tool,vehicle_proficiency,,,Proficiência com embarcações e veículos aquáticos.
 lute,Alaúde,tool,musical_instrument,35 gp,2 lb,Instrumento de cordas comumente carregado por bardos.
 flute,Flauta,tool,musical_instrument,2 gp,1 lb,Instrumento de sopro usado como foco musical simples.
 lyre,Lira,tool,musical_instrument,30 gp,2 lb,Instrumento de cordas usado por artistas itinerantes.
@@ -21,10 +25,12 @@ bagpipes,Gaita de Foles,tool,musical_instrument,30 gp,6 lb,Instrumento de sopro 
 shawm,Oboé,tool,musical_instrument,2 gp,1 lb,Instrumento de sopro de palheta dupla com tom penetrante.
 horn,Trompete,tool,musical_instrument,3 gp,2 lb,Instrumento de metal usado para sinalização e performance.
 dulcimer,Harpa,tool,musical_instrument,25 gp,10 lb,Instrumento de cordas tocado golpeando as cordas com pequenos martelos.
+quarterstaff,Cajado,weapon,simple_melee_weapon,0.2 gp,4 lb,Arma simples de madeira longa usada em combate corpo a corpo.
 arrow,Flecha,ammo,ammunition,0.05 gp,0.05 lb,Munição padrão para arcos.
 crossbow_bolt,Virote,ammo,ammunition,0.05 gp,0.075 lb,"Munição para bestas de mão, leves e pesadas."
 case_crossbow_bolt,Estojo de Virotes,gear,container,1 gp,1 lb,Estojo para carregar virotes de besta.
 quiver,Aljava,gear,container,1 gp,1 lb,Estojo para carregar flechas ou virotes.
+adventurers_pack,Mochila do Aventureiro,pack,adventuring_pack,12 gp,59 lb,Mochila básica de aventureiro com suprimentos essenciais para exploração.
 explorers_pack,Mochila do Explorador,pack,adventuring_pack,10 gp,59 lb,Mochila de uso geral para viagens e masmorras.
 dungeoneers_pack,Mochila do Masmorrador,pack,adventuring_pack,12 gp,61.5 lb,Mochila utilitária para exploração em espaços fechados.
 burglars_pack,Mochila do Ladrão,pack,adventuring_pack,16 gp,46.5 lb,Mochila com itens essenciais para furtividade e infiltração.

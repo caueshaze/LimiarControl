@@ -13,18 +13,35 @@ from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
+from app.models.session_state import SessionState
 from app.schemas.session import SessionCommandRequest
+from app.services.session_rest import (
+    SessionRestError,
+    end_rest as end_rest_state,
+    start_rest as start_rest_state,
+)
 from ._shared import (
     DEPRECATION_REMOVAL_DATE,
     get_or_create_session_runtime,
+    get_session_rest_state,
     parse_expression,
     record_session_activity,
     resolve_party_id_for_campaign,
 )
+from .shop import _publish_session_state_realtime
 
 router = APIRouter()
 
-_VALID_COMMANDS = {"open_shop", "close_shop", "request_roll", "start_combat", "end_combat"}
+_VALID_COMMANDS = {
+    "open_shop",
+    "close_shop",
+    "request_roll",
+    "start_combat",
+    "end_combat",
+    "start_short_rest",
+    "start_long_rest",
+    "end_rest",
+}
 
 
 def _validate_roll_target(
@@ -86,6 +103,7 @@ async def _send_session_command(
     if payload.type not in _VALID_COMMANDS:
         raise HTTPException(status_code=400, detail="Invalid command")
     runtime = get_or_create_session_runtime(entry.id, session)
+    current_rest_state = get_session_rest_state(entry.id, session)
     issued_at = datetime.now(timezone.utc)
     payload_data = payload.payload or {}
     activity_payload: dict = {}
@@ -169,6 +187,8 @@ async def _send_session_command(
         )
         session.commit()
     elif payload.type == "start_combat":
+        if current_rest_state != "exploration":
+            raise HTTPException(status_code=400, detail="Cannot start combat during a rest")
         runtime.combat_active = True
         note = payload_data.get("note")
         if note is not None:
@@ -216,6 +236,94 @@ async def _send_session_command(
         event_type = "combat_ended"
         event_payload["combatActive"] = False
         event_payload.update(activity_payload)
+    elif payload.type in {"start_short_rest", "start_long_rest"}:
+        if runtime.combat_active:
+            raise HTTPException(status_code=400, detail="Cannot start a rest during combat")
+        if current_rest_state != "exploration":
+            raise HTTPException(status_code=400, detail="A rest is already active")
+
+        target_rest_type = "short_rest" if payload.type == "start_short_rest" else "long_rest"
+        activity_payload["restType"] = target_rest_type
+        record_session_activity(
+            entry,
+            payload.type,
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
+        )
+        states = session.exec(
+            select(SessionState).where(SessionState.session_id == entry.id)
+        ).all()
+        if not states:
+            raise HTTPException(status_code=400, detail="Session has no player states")
+
+        for state in states:
+            try:
+                state.state_json = start_rest_state(state.state_json, target_rest_type)
+            except SessionRestError as error:
+                raise HTTPException(status_code=400, detail=str(error)) from error
+            session.add(state)
+
+        session.commit()
+        for state in states:
+            session.refresh(state)
+
+        event_type = "rest_started"
+        event_payload["restType"] = target_rest_type
+        event_payload["issuedAt"] = issued_at.isoformat()
+        for state in states:
+            await _publish_session_state_realtime(
+                entry,
+                state.player_user_id,
+                state.updated_at or state.created_at or issued_at,
+                state.state_json if isinstance(state.state_json, dict) else None,
+            )
+    elif payload.type == "end_rest":
+        if current_rest_state == "exploration":
+            raise HTTPException(status_code=400, detail="No rest is active")
+        activity_payload["restType"] = current_rest_state
+        record_session_activity(
+            entry,
+            "end_rest",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
+        )
+
+        states = session.exec(
+            select(SessionState).where(SessionState.session_id == entry.id)
+        ).all()
+        if not states:
+            raise HTTPException(status_code=400, detail="Session has no player states")
+
+        ended_rest_type = current_rest_state
+        for state in states:
+            try:
+                state.state_json, ended_rest_type = end_rest_state(state.state_json)
+            except SessionRestError as error:
+                raise HTTPException(status_code=400, detail=str(error)) from error
+            session.add(state)
+
+        session.commit()
+        for state in states:
+            session.refresh(state)
+
+        event_type = "rest_ended"
+        event_payload["restType"] = ended_rest_type
+        event_payload["issuedAt"] = issued_at.isoformat()
+        for state in states:
+            await _publish_session_state_realtime(
+                entry,
+                state.player_user_id,
+                state.updated_at or state.created_at or issued_at,
+                state.state_json if isinstance(state.state_json, dict) else None,
+            )
     await centrifugo.publish(
         session_channel(entry.id),
         build_event(

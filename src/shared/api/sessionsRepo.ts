@@ -61,6 +61,80 @@ export type CombatActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type RestActivityEvent = {
+  type: "rest";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "short_started" | "short_ended" | "long_started" | "long_ended";
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type RewardActivityEvent = {
+  type: "reward";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "currency" | "item" | "xp";
+  targetUserId?: string | null;
+  targetDisplayName?: string | null;
+  amountLabel?: string | null;
+  itemName?: string | null;
+  quantity?: number | null;
+  currentXp?: number | null;
+  nextLevelThreshold?: number | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type LevelUpActivityEvent = {
+  type: "level_up";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "requested" | "approved" | "denied";
+  targetUserId?: string | null;
+  targetDisplayName?: string | null;
+  level: number;
+  experiencePoints: number;
+  pendingLevelUp: boolean;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type HitDiceActivityEvent = {
+  type: "hit_dice";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  roll: number;
+  healingApplied: number;
+  currentHp: number;
+  maxHp?: number | null;
+  hitDiceRemaining: number;
+  hitDiceTotal: number;
+  hitDieType: string;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type PlayerHpActivityEvent = {
+  type: "player_hp";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "damaged" | "healed" | "hp_set";
+  targetUserId?: string | null;
+  targetDisplayName?: string | null;
+  currentHp?: number | null;
+  previousHp?: number | null;
+  delta?: number | null;
+  maxHp?: number | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type EntityActivityEvent = {
   type: "entity";
   userId?: string | null;
@@ -112,12 +186,35 @@ export type SessionGrantXpResult = {
   nextLevelThreshold: number | null;
 };
 
+export type SessionRestState = "exploration" | "short_rest" | "long_rest";
+
+export type SessionUseHitDieResult = {
+  sessionId: string;
+  campaignId: string;
+  partyId?: string | null;
+  playerUserId: string;
+  currentHp: number;
+  maxHp: number;
+  hitDiceRemaining: number;
+  hitDiceTotal: number;
+  hitDieType: string;
+  roll: number;
+  healingApplied: number;
+  healingRolled: number;
+  constitutionModifier: number;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
   | ShopActivityEvent
   | RollRequestActivityEvent
   | CombatActivityEvent
+  | RestActivityEvent
+  | RewardActivityEvent
+  | LevelUpActivityEvent
+  | HitDiceActivityEvent
+  | PlayerHpActivityEvent
   | EntityActivityEvent;
 
 export type SessionJoinResponse = {
@@ -149,6 +246,7 @@ export type SessionRuntime = {
   status: "LOBBY" | "ACTIVE" | "CLOSED";
   shopOpen: boolean;
   combatActive: boolean;
+  restState: SessionRestState;
 };
 
 export type SessionSummary = {
@@ -214,4 +312,6 @@ export const sessionsRepo = {
     sessionId: string,
     payload: { playerUserId: string; amount: number },
   ) => http.post<SessionGrantXpResult>(`/sessions/${sessionId}/grants/xp`, payload),
+  useHitDie: (sessionId: string) =>
+    http.post<SessionUseHitDieResult>(`/sessions/${sessionId}/rest/use-hit-die`, {}),
 };

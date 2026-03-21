@@ -22,6 +22,7 @@ from app.schemas.session import (
     SessionActivateRequest,
     SessionRead,
 )
+from app.services.session_rest import ensure_rest_state
 from ._shared import (
     DEPRECATION_REMOVAL_DATE,
     check_character_sheets,
@@ -215,6 +216,8 @@ async def _start_session(
             if base_sheet and isinstance(base_sheet.data, dict)
             else {}
         )
+        cloned = ensure_rest_state(cloned)
+        cloned["restState"] = "exploration"
         session.add(SessionState(
             id=str(uuid4()), session_id=entry.id, player_user_id=m.user_id, state_json=cloned,
         ))

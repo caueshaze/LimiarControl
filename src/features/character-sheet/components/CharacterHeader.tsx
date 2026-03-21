@@ -9,23 +9,28 @@ import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 
-const TOTAL_REQUIRED_FIELDS = 12; // name, class, subclass, race, background, alignment, playerName, classSkills, classToolProficiencies, equipmentChoices, languageChoices, spells
-
 const REQUIRED_FIELD_LABEL_KEY: Record<RequiredField, LocaleKey> = {
   name: "sheet.basicInfo.characterName",
   class: "sheet.basicInfo.class",
   subclass: "sheet.basicInfo.subclass",
+  subclassConfig: "sheet.basicInfo.subclassConfig",
+  raceConfig: "sheet.raceConfig.title",
   race: "sheet.basicInfo.race",
   background: "sheet.basicInfo.background",
   alignment: "sheet.basicInfo.alignment",
   playerName: "sheet.basicInfo.playerName",
+  fightingStyle: "sheet.basicInfo.fightingStyle",
   classSkills: "sheet.skillPicker.classSkills",
   classToolProficiencies: "sheet.toolPicker.title",
+  raceToolProficiency: "sheet.raceToolPicker.title",
   equipmentChoices: "sheet.creation.equipmentChoices",
   languageChoices: "sheet.languages.choiceTitle",
   cantrips: "sheet.spells.cantrip",
   leveledSpells: "sheet.spells.knownTitle",
+  expertise: "sheet.expertisePicker.title",
 };
+
+const TOTAL_REQUIRED_FIELDS = Object.keys(REQUIRED_FIELD_LABEL_KEY).length;
 
 type Props = {
   sheet: CharacterSheet;

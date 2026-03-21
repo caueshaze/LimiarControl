@@ -39,6 +39,9 @@ export type Armor = {
   baseAC: number;
   dexCap: number | null; // null = unlimited
   armorType: ArmorType;
+  allowsDex?: boolean;
+  stealthDisadvantage?: boolean;
+  minStrength?: number | null;
 };
 
 export type Shield = {
@@ -132,6 +135,7 @@ export type DeathSaves = {
 };
 
 export type CharacterSheetMode = "creation" | "play";
+export type RestState = "exploration" | "short_rest" | "long_rest";
 
 // ── Character Sheet ─────────────────────────────────────────────────────────
 
@@ -142,12 +146,15 @@ export type CharacterSheet = {
   name: string;
   class: string;
   subclass: string | null;
+  currentWeaponId: string | null;
+  equippedArmorItemId: string | null;
   level: number;
   background: string;
   playerName: string;
   race: string;
   alignment: string;
   experiencePoints: number;
+  restState: RestState;
   pendingLevelUp: boolean;
   inspiration: boolean;
 
@@ -197,8 +204,22 @@ export type CharacterSheet = {
   // Skill choices tracking
   classSkillChoices: SkillName[];
   classToolProficiencyChoices: string[];
+  raceToolProficiencyChoices: string[];
   classEquipmentSelections: Record<string, string>;
   languageChoices: string[];
+  /** Race-specific configuration choices (e.g. dragonborn ancestry). */
+  raceConfig: {
+    dragonbornAncestry?: string | null;
+    gnomeSubrace?: string | null;
+    halfElfAbilityChoices?: AbilityName[];
+    halfElfSkillChoices?: SkillName[];
+  } | null;
+  /** Subclass-specific configuration choices (e.g. dragon ancestor for Draconic Bloodline). */
+  subclassConfig: Record<string, string> | null;
+  /** Fighting Style chosen at creation (Fighter lv1, Paladin/Ranger lv2). */
+  fightingStyle: string | null;
+  /** Skills chosen for Expertise (proficiency × 2) at creation (Rogue lv1, Bard lv3). */
+  expertiseChoices: SkillName[];
 
   // Text fields
   featuresAndTraits: string;

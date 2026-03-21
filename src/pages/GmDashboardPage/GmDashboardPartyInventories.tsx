@@ -5,7 +5,7 @@ import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { EMPTY_WALLET, formatWallet } from "../../features/shop/utils/shopCurrency";
-import type { CurrencyDraft, GrantFeedback, ItemDraft } from "./gmDashboard.types";
+import type { CurrencyDraft, GrantFeedback, HpActionState, ItemDraft } from "./gmDashboard.types";
 import { GmDashboardPlayerProgressBlock } from "./GmDashboardPlayerProgressBlock";
 
 type Props = {
@@ -17,6 +17,8 @@ type Props = {
   grantingCurrencyForUserId: string | null;
   grantingItemForUserId: string | null;
   grantingXpForUserId: string | null;
+  hpActionState: HpActionState | null;
+  hpDraftByUserId: Record<string, string>;
   inventoryByMemberId: Record<string, InventoryItem[]>;
   inventoryOpenForUserId: string | null;
   itemDraftByUserId: Record<string, ItemDraft>;
@@ -30,12 +32,15 @@ type Props = {
   walletByUserId: Record<string, CurrencyWallet>;
   xpDraftByUserId: Record<string, string>;
   onApproveLevelUp: (userId: string) => void;
+  onDamagePlayer: (userId: string) => void;
   onGrantCurrency: (userId: string) => void;
   onGrantItem: (userId: string) => void;
   onGrantXp: (userId: string) => void;
+  onHealPlayer: (userId: string) => void;
   onDenyLevelUp: (userId: string) => void;
   onOpenInventory: (userId: string) => void;
   setCurrencyDraftByUserId: React.Dispatch<React.SetStateAction<Record<string, CurrencyDraft>>>;
+  setHpDraftByUserId: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setItemDraftByUserId: React.Dispatch<React.SetStateAction<Record<string, ItemDraft>>>;
   setXpDraftByUserId: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 };
@@ -49,6 +54,8 @@ export const GmDashboardPartyInventories = ({
   grantingCurrencyForUserId,
   grantingItemForUserId,
   grantingXpForUserId,
+  hpActionState,
+  hpDraftByUserId,
   inventoryByMemberId,
   inventoryOpenForUserId,
   itemDraftByUserId,
@@ -62,12 +69,15 @@ export const GmDashboardPartyInventories = ({
   walletByUserId,
   xpDraftByUserId,
   onApproveLevelUp,
+  onDamagePlayer,
   onGrantCurrency,
   onGrantItem,
   onGrantXp,
+  onHealPlayer,
   onDenyLevelUp,
   onOpenInventory,
   setCurrencyDraftByUserId,
+  setHpDraftByUserId,
   setItemDraftByUserId,
   setXpDraftByUserId,
 }: Props) => {
@@ -87,6 +97,10 @@ export const GmDashboardPartyInventories = ({
             levelUpActionState?.userId === player.userId && levelUpActionState.action === "approve";
           const isDenying =
             levelUpActionState?.userId === player.userId && levelUpActionState.action === "deny";
+          const isDamaging =
+            hpActionState?.userId === player.userId && hpActionState.action === "damage";
+          const isHealing =
+            hpActionState?.userId === player.userId && hpActionState.action === "heal";
           const playSheetRoute = activeSessionPartyId
             ? `${routes.characterSheetParty.replace(":partyId", activeSessionPartyId)}?${new URLSearchParams({
                 mode: "play",
@@ -142,12 +156,20 @@ export const GmDashboardPartyInventories = ({
               {isOpen && (
                 <div className="border-t border-slate-800/60 px-4 pb-4">
                   <GmDashboardPlayerProgressBlock
+                    grantingHpAction={isDamaging || isHealing}
                     grantingXp={grantingXpForUserId === player.userId}
+                    hpActionState={hpActionState?.userId === player.userId ? hpActionState : null}
+                    hpDraft={hpDraftByUserId[player.userId] ?? ""}
                     isApproving={isApproving}
+                    isDamaging={isDamaging}
                     isDenying={isDenying}
+                    isHealing={isHealing}
+                    onDamagePlayer={() => onDamagePlayer(player.userId)}
                     onApproveLevelUp={() => onApproveLevelUp(player.userId)}
                     onDenyLevelUp={() => onDenyLevelUp(player.userId)}
                     onGrantXp={() => onGrantXp(player.userId)}
+                    onHealPlayer={() => onHealPlayer(player.userId)}
+                    setHpDraftByUserId={setHpDraftByUserId}
                     setXpDraftByUserId={setXpDraftByUserId}
                     sheet={sheet}
                     userId={player.userId}

@@ -1,6 +1,6 @@
-import { getClass, isSubclassUnlocked } from "../data/classes";
+import { getClass, getSubclassConfigFields, hasFightingStyleAtCreation, hasExpertiseAtCreation, isSubclassUnlocked } from "../data/classes";
 import { getClassCreationConfig } from "../data/classCreation";
-import { getRace } from "../data/races";
+import { getRace, getRaceConfigFields, isRaceConfigValid } from "../data/races";
 import { getBackground } from "../data/backgrounds";
 import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
 import type { CharacterSheet } from "../model/characterSheet.types";
@@ -10,16 +10,21 @@ export type RequiredField =
   | "name"
   | "class"
   | "subclass"
+  | "subclassConfig"
   | "race"
   | "background"
   | "alignment"
   | "playerName"
+  | "fightingStyle"
   | "classSkills"
   | "classToolProficiencies"
+  | "raceToolProficiency"
   | "equipmentChoices"
   | "languageChoices"
+  | "raceConfig"
   | "cantrips"
-  | "leveledSpells";
+  | "leveledSpells"
+  | "expertise";
 
 export type CreationValidationResult = {
   isValid: boolean;
@@ -52,8 +57,31 @@ export const validateCreationSheet = (
   if (cls && isSubclassUnlocked(cls, sheet.level) && isBlank(sheet.subclass)) {
     missingRequiredFields.push("subclass");
   }
+  if (sheet.subclass) {
+    const configFields = getSubclassConfigFields(sheet.class, sheet.subclass);
+    const missingConfig = configFields.some((field) => !sheet.subclassConfig?.[field.key]);
+    if (missingConfig) missingRequiredFields.push("subclassConfig");
+  }
+  if (cls && hasFightingStyleAtCreation(cls, sheet.level) && !sheet.fightingStyle) {
+    missingRequiredFields.push("fightingStyle");
+  }
   if (cls && sheet.classSkillChoices.length < cls.skillCount) {
     missingRequiredFields.push("classSkills");
+  }
+  if (cls && hasExpertiseAtCreation(cls, sheet.level) && sheet.expertiseChoices.length < cls.expertiseCount) {
+    missingRequiredFields.push("expertise");
+  }
+
+  // Race tool proficiency choice validation (e.g. Dwarf: artisan tool)
+  const raceData = getRace(sheet.race, sheet.raceConfig);
+  const raceConfigFields = getRaceConfigFields(sheet.race);
+  if (raceConfigFields.length > 0 && !isRaceConfigValid(sheet.race, sheet.raceConfig)) {
+    missingRequiredFields.push("raceConfig");
+  }
+  if (raceData?.toolProficiencyChoices) {
+    if (sheet.raceToolProficiencyChoices.length < raceData.toolProficiencyChoices.count) {
+      missingRequiredFields.push("raceToolProficiency");
+    }
   }
 
   // Tool proficiency choice validation (e.g. Bard: 3 musical instruments)
@@ -79,7 +107,7 @@ export const validateCreationSheet = (
   }
 
   // Language choice validation: all choice slots must be filled
-  const raceLanguages = getRace(sheet.race)?.languages ?? [];
+  const raceLanguages = getRace(sheet.race, sheet.raceConfig)?.languages ?? [];
   const bgLanguages = getBackground(sheet.background)?.languages ?? [];
   const totalLanguageSlots = [...raceLanguages, ...bgLanguages]
     .filter((e) => e === LANGUAGE_CHOICE_SLOT).length;

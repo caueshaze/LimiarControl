@@ -13,6 +13,14 @@ import {
     PartyDetailsMembersCard,
     PartyDetailsTimelineCard,
 } from "./PartyDetailsPageSections";
+import {
+    PartyDetailsActiveSessionBanner,
+    PartyDetailsInventoryCard,
+    PartyDetailsMissingSheetsBanner,
+    PartyDetailsOverviewStrip,
+    PartyDetailsPlayerSheetsCard,
+} from "./PartyDetailsResourceCards";
+import { usePartyDetailsResources } from "./usePartyDetailsResources";
 
 export const PartyDetailsPage = () => {
     const { partyId } = useParams<{ partyId: string }>();
@@ -24,12 +32,10 @@ export const PartyDetailsPage = () => {
     const [activeSession, setActiveSession] = useState<PartyActiveSession | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Invite state
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
     const [searching, setSearching] = useState(false);
 
-    // Session modal
     const [showStartModal, setShowStartModal] = useState(false);
     const [starting, setStarting] = useState(false);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -80,8 +86,11 @@ export const PartyDetailsPage = () => {
         };
     }, [loadData]);
 
-    // Listen to campaign WS for real-time session events
     const { lastEvent, onlineUsers } = useCampaignEvents(partyCampaignId);
+    const { loadError: resourcesError, loading: loadingResources, playerResources, summary: resourceSummary } = usePartyDetailsResources({
+        activeSession,
+        party,
+    });
 
     useEffect(() => {
         if (!lastEvent || !partyCampaignId) return;
@@ -89,7 +98,6 @@ export const PartyDetailsPage = () => {
             if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
                 return;
             }
-            // Redirect GM to the dashboard when lobby transitions to active
             navigate(routes.campaignDashboard.replace(":campaignId", partyCampaignId));
             return;
         }
@@ -250,21 +258,13 @@ export const PartyDetailsPage = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <section className="space-y-8 p-6">
-                <p className="text-slate-400">Loading party details...</p>
-            </section>
-        );
-    }
+    if (loading) return <section className="space-y-8 p-6"><p className="text-slate-400">Loading party details...</p></section>;
 
     if (!party) {
         return (
             <section className="space-y-8 p-6">
                 <p className="text-slate-400">Party not found.</p>
-                <Link to={routes.gmHome} className="text-limiar-400 hover:underline">
-                    Return to GM Home
-                </Link>
+                <Link to={routes.gmHome} className="text-limiar-400 hover:underline">Return to GM Home</Link>
             </section>
         );
     }
@@ -272,16 +272,7 @@ export const PartyDetailsPage = () => {
     return (
         <>
         <section className="space-y-8">
-            {missingSheetsPlayers.length > 0 && (
-                <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5">
-                    <p className="text-sm font-semibold text-amber-300">
-                        Nao e possivel iniciar a sessao. Os seguintes jogadores ainda nao possuem ficha:
-                    </p>
-                    <p className="mt-2 text-sm text-amber-100">
-                        {missingSheetsPlayers.map((player) => player.displayName).join(", ")}
-                    </p>
-                </div>
-            )}
+            {missingSheetsPlayers.length > 0 && <PartyDetailsMissingSheetsBanner players={missingSheetsPlayers} />}
 
             <PartyDetailsHeader
                 party={party}
@@ -300,46 +291,50 @@ export const PartyDetailsPage = () => {
                 />
             )}
 
-            {activeSession?.status === "ACTIVE" && (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs uppercase tracking-widest text-emerald-400">Active Session</p>
-                        <p className="mt-1 text-sm font-semibold text-white">{activeSession.title || "Untitled Session"}</p>
-                    </div>
-                    <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
-                        LIVE
-                    </span>
-                </div>
-            )}
+            {activeSession?.status === "ACTIVE" && <PartyDetailsActiveSessionBanner campaignId={party.campaignId} session={activeSession} />}
+
+            <PartyDetailsOverviewStrip
+                activeSessionStatus={resourceSummary.activeSessionStatus}
+                invitedPlayers={resourceSummary.invitedPlayers}
+                joinedPlayers={resourceSummary.joinedPlayers}
+                readySheets={resourceSummary.readySheets}
+                totalInventoryItems={resourceSummary.totalInventoryItems}
+                totalPlayers={resourceSummary.totalPlayers}
+            />
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                <PartyDetailsPlayerSheetsCard
+                    activeSessionPartyId={activeSession?.status === "ACTIVE" ? activeSession.partyId ?? party.id : null}
+                    campaignId={party.campaignId}
+                    loading={loadingResources}
+                    partyId={party.id}
+                    players={playerResources}
+                />
+                <PartyDetailsInventoryCard
+                    loadError={resourcesError}
+                    loading={loadingResources}
+                    players={playerResources}
+                />
+            </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-6">
-                    <PartyDetailsMembersCard
-                        party={party}
-                        searchQuery={searchQuery}
-                        searching={searching}
-                        searchResults={searchResults}
-                        onSearchChange={setSearchQuery}
-                        onInvite={handleInvite}
-                    />
-                </div>
-
-                <div className="space-y-6">
-                    <PartyDetailsTimelineCard
-                        sessions={sessions}
-                        expandedSessionId={expandedSessionId}
-                        onToggleSession={setExpandedSessionId}
-                    />
-                </div>
+                <PartyDetailsMembersCard
+                    party={party}
+                    searchQuery={searchQuery}
+                    searching={searching}
+                    searchResults={searchResults}
+                    onSearchChange={setSearchQuery}
+                    onInvite={handleInvite}
+                />
+                <PartyDetailsTimelineCard
+                    sessions={sessions}
+                    expandedSessionId={expandedSessionId}
+                    onToggleSession={setExpandedSessionId}
+                />
             </div>
         </section>
 
-        <StartSessionModal
-            isOpen={showStartModal}
-            onClose={() => setShowStartModal(false)}
-            onConfirm={handleStartSession}
-            loading={starting}
-        />
+        <StartSessionModal isOpen={showStartModal} onClose={() => setShowStartModal(false)} onConfirm={handleStartSession} loading={starting} />
         </>
     );
 };

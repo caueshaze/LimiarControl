@@ -17,6 +17,7 @@ import {
 } from "../utils/calculations";
 import {
   loadCharacterSheet,
+  loadCharacterSheetForPlayer,
   loadPlayCharacterSheet,
   prepareCharacterSheetForSave,
   requestPlaySheetLevelUp,
@@ -40,6 +41,7 @@ import {
 
 type UseCharacterSheetOptions = {
   playPlayerUserId?: string | null;
+  creationPlayerUserId?: string | null;
   canEditPlay?: boolean;
   campaignId?: string | null;
 };
@@ -58,6 +60,7 @@ export const useCharacterSheet = (
   const [requestingLevelUp, setRequestingLevelUp] = useState(false);
   const [requestLevelUpError, setRequestLevelUpError] = useState<string | null>(null);
   const playPlayerUserId = options.playPlayerUserId ?? null;
+  const creationPlayerUserId = options.creationPlayerUserId ?? null;
   const canEditPlay = options.canEditPlay ?? false;
   const campaignId = options.campaignId ?? null;
   const canMutate = mode !== "play" || canEditPlay;
@@ -99,6 +102,12 @@ export const useCharacterSheet = (
         return;
       }
 
+      if (creationPlayerUserId) {
+        const result = await loadCharacterSheetForPlayer(partyId, creationPlayerUserId, campaignId);
+        dispatch({ type: "load_success", sheet: result.sheet, id: result.id });
+        return;
+      }
+
       const result = await loadCharacterSheet(partyId, mode, campaignId);
       dispatch({ type: "load_success", sheet: result.sheet, id: result.id });
     } catch (error: unknown) {
@@ -107,7 +116,7 @@ export const useCharacterSheet = (
         error: (error as { message?: string })?.message ?? "Failed to load",
       });
     }
-  }, [partyId, mode, playPlayerUserId, canEditPlay, campaignId]);
+  }, [partyId, mode, playPlayerUserId, creationPlayerUserId, canEditPlay, campaignId]);
 
   useEffect(() => {
     void loadSheet();
@@ -130,7 +139,7 @@ export const useCharacterSheet = (
       const data = message as {
         type?: string;
         version?: number;
-        payload?: { sessionId?: string; playerUserId?: string };
+        payload?: { sessionId?: string; playerUserId?: string; state?: unknown };
       };
       if (
         data.type === "session_state_updated" &&
@@ -145,6 +154,18 @@ export const useCharacterSheet = (
         }
         if (typeof data.version === "number") {
           playEventVersionRef.current = data.version;
+        }
+        const snapshot = validateSheet(data.payload?.state);
+        if (snapshot?.ok) {
+          dispatch({
+            type: "load_success",
+            sheet: snapshot.sheet,
+            id: state.remoteId,
+            playSessionId: state.playSessionId,
+            playCampaignId: state.playCampaignId,
+            playPlayerUserId: state.playPlayerUserId,
+          });
+          return;
         }
         void loadSheet();
       }
@@ -182,6 +203,7 @@ export const useCharacterSheet = (
     state.playCampaignId,
     state.playPlayerUserId,
     state.playSessionId,
+    state.remoteId,
     loadSheet,
   ]);
 
@@ -208,8 +230,12 @@ export const useCharacterSheet = (
     }
 
     if (mode === "creation") {
-      const baseAbilities = stripRaceBonusesFromAbilities(state.sheet.abilities, state.sheet.race);
-      if (!isStandardArrayDistribution(baseAbilities)) {
+      const normalizedBaseAbilities = stripRaceBonusesFromAbilities(
+        state.sheet.abilities,
+        state.sheet.race,
+        state.sheet.raceConfig,
+      );
+      if (!isStandardArrayDistribution(normalizedBaseAbilities)) {
         dispatch({
           type: "saving_fail",
           error: `Ability scores must follow Standard Array (${STANDARD_ARRAY.join(", ")}).`,

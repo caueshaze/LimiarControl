@@ -11,6 +11,7 @@ from .activity import router as activity_router
 from .runtime import router as runtime_router
 from .state import router as state_router
 from .rewards import router as rewards_router
+from .rest import router as rest_router
 
 router = APIRouter()
 router.include_router(campaign_sessions_router)
@@ -24,3 +25,4 @@ router.include_router(activity_router)
 router.include_router(runtime_router)
 router.include_router(state_router)
 router.include_router(rewards_router)
+router.include_router(rest_router)

@@ -134,6 +134,7 @@ export type CampaignEvent =
         partyId?: string | null;
         playerUserId: string;
         sessionId: string;
+        state?: unknown;
       };
       version?: number;
     }
@@ -186,6 +187,49 @@ export type CampaignEvent =
         currentXp: number;
         currentLevel: number;
         nextLevelThreshold: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "rest_started";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        restType: "short_rest" | "long_rest";
+      };
+      version?: number;
+    }
+  | {
+      type: "rest_ended";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        restType: "short_rest" | "long_rest";
+      };
+      version?: number;
+    }
+  | {
+      type: "hit_dice_used";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        playerUserId: string;
+        roll: number;
+        healingApplied: number;
+        healingRolled: number;
+        constitutionModifier: number;
+        currentHp: number;
+        maxHp: number;
+        hitDiceRemaining: number;
+        hitDiceTotal: number;
+        hitDieType: string;
       };
       version?: number;
     }

@@ -1,9 +1,7 @@
 import type {
   AbilityName,
-  Armor,
   CharacterSheet,
   ProficiencyLevel,
-  Shield,
   SkillName,
   Weapon,
 } from "../model/characterSheet.types";
@@ -55,49 +53,6 @@ export const computeMaxHpAtLevel = (
 };
 
 // ── Derived Stats ───────────────────────────────────────────────────────────
-
-export const computeAC = (
-  armor: Armor,
-  shield: Shield | null,
-  dexMod: number,
-  miscBonus: number,
-): number => {
-  if (armor.armorType === "none") {
-    return 10 + dexMod + (shield?.bonus ?? 0) + miscBonus;
-  }
-  const cappedDex =
-    armor.dexCap !== null ? Math.min(dexMod, armor.dexCap) : dexMod;
-  return armor.baseAC + cappedDex + (shield?.bonus ?? 0) + miscBonus;
-};
-
-export const computeACBreakdown = (
-  armor: Armor,
-  shield: Shield | null,
-  dexMod: number,
-  miscBonus: number,
-): { label: string; value: number }[] => {
-  const parts: { label: string; value: number }[] = [];
-
-  if (armor.armorType === "none") {
-    parts.push({ label: "Base", value: 10 });
-    parts.push({ label: "DEX", value: dexMod });
-  } else {
-    parts.push({ label: armor.name, value: armor.baseAC });
-    const cappedDex =
-      armor.dexCap !== null ? Math.min(dexMod, armor.dexCap) : dexMod;
-    if (cappedDex !== 0) {
-      parts.push({
-        label: armor.dexCap !== null ? `DEX (max ${armor.dexCap})` : "DEX",
-        value: cappedDex,
-      });
-    }
-  }
-
-  if (shield) parts.push({ label: shield.name, value: shield.bonus });
-  if (miscBonus !== 0) parts.push({ label: "Misc", value: miscBonus });
-
-  return parts;
-};
 
 export const computeInitiative = (dexMod: number): number => dexMod;
 

@@ -23,6 +23,7 @@ from app.schemas.inventory import (
 from app.schemas.item import ItemRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
+from app.services.session_rest import ensure_rest_state
 from ._shared import get_or_create_session_runtime, to_inventory_read, to_item_read
 
 router = APIRouter()
@@ -101,6 +102,7 @@ def _ensure_player_session_state(
     if state:
         if not isinstance(state.state_json, dict):
             state.state_json = {}
+        state.state_json = ensure_rest_state(state.state_json)
         return state
 
     if not entry.party_id:
@@ -119,14 +121,19 @@ def _ensure_player_session_state(
         id=str(uuid4()),
         session_id=entry.id,
         player_user_id=player_user_id,
-        state_json=dict(base_sheet.data),
+        state_json=ensure_rest_state(dict(base_sheet.data)),
     )
     session.add(state)
     session.flush()
     return state
 
 
-async def _publish_session_state_realtime(entry: Session, player_user_id: str, timestamp) -> None:
+async def _publish_session_state_realtime(
+    entry: Session,
+    player_user_id: str,
+    timestamp,
+    state_data: dict | None = None,
+) -> None:
     await centrifugo.publish(
         campaign_channel(entry.campaign_id),
         build_event(
@@ -136,6 +143,7 @@ async def _publish_session_state_realtime(entry: Session, player_user_id: str, t
                 "partyId": entry.party_id,
                 "playerUserId": player_user_id,
                 "sessionId": entry.id,
+                "state": state_data,
             },
             version=event_version(timestamp),
         ),
@@ -240,6 +248,7 @@ async def buy_session_shop_item(
             entry,
             user.id,
             state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
         )
         return created
 
@@ -264,6 +273,7 @@ async def buy_session_shop_item(
         entry,
         user.id,
         state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
     )
     return created
 
@@ -372,6 +382,7 @@ async def sell_session_shop_item(
         entry,
         user.id,
         state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
     )
 
     return InventorySellRead(

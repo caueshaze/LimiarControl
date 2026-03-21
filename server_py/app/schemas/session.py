@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from app.models.campaign import RoleMode
 from app.models.session import SessionStatus
 
+RestState = Literal["exploration", "short_rest", "long_rest"]
+
 
 class SessionRead(BaseModel):
     id: str
@@ -107,6 +109,80 @@ class CombatActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class RestActivityEvent(BaseModel):
+    type: Literal["rest"] = "rest"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["short_started", "short_ended", "long_started", "long_ended"]
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class RewardActivityEvent(BaseModel):
+    type: Literal["reward"] = "reward"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["currency", "item", "xp"]
+    targetUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    amountLabel: Optional[str] = None
+    itemName: Optional[str] = None
+    quantity: Optional[int] = None
+    currentXp: Optional[int] = None
+    nextLevelThreshold: Optional[int] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class LevelUpActivityEvent(BaseModel):
+    type: Literal["level_up"] = "level_up"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["requested", "approved", "denied"]
+    targetUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    level: int
+    experiencePoints: int
+    pendingLevelUp: bool
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class HitDiceActivityEvent(BaseModel):
+    type: Literal["hit_dice"] = "hit_dice"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    roll: int
+    healingApplied: int
+    currentHp: int
+    maxHp: Optional[int] = None
+    hitDiceRemaining: int
+    hitDiceTotal: int
+    hitDieType: str
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class PlayerHpActivityEvent(BaseModel):
+    type: Literal["player_hp"] = "player_hp"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["damaged", "healed", "hp_set"]
+    targetUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    currentHp: Optional[int] = None
+    previousHp: Optional[int] = None
+    delta: Optional[int] = None
+    maxHp: Optional[int] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 class EntityActivityEvent(BaseModel):
     type: Literal["entity"] = "entity"
     userId: Optional[str] = None
@@ -130,6 +206,11 @@ ActivityEvent = Union[
     ShopActivityEvent,
     RollRequestActivityEvent,
     CombatActivityEvent,
+    RestActivityEvent,
+    RewardActivityEvent,
+    LevelUpActivityEvent,
+    HitDiceActivityEvent,
+    PlayerHpActivityEvent,
     EntityActivityEvent,
 ]
 
@@ -156,6 +237,7 @@ class SessionRuntimeRead(BaseModel):
     status: SessionStatus
     shopOpen: bool
     combatActive: bool
+    restState: RestState = "exploration"
 
 
 class ActiveSessionRead(BaseModel):

@@ -1,15 +1,19 @@
 import { useState } from "react";
+import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { sessionsRepo, type ActiveSession, type SessionGrantItemResult } from "../../shared/api/sessionsRepo";
 import { formatWallet, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 import type { Item } from "../../entities/item";
 import type { InventoryItem } from "../../entities/inventory";
-import type { CurrencyDraft, GrantFeedback, ItemDraft } from "./gmDashboard.types";
+import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
+import { clampHP } from "../../features/character-sheet/utils/calculations";
+import type { CurrencyDraft, GrantFeedback, HpActionState, ItemDraft } from "./gmDashboard.types";
 
 type Props = {
   activeSession: ActiveSession | null;
   memberIdByUserId: Record<string, string>;
+  playerSheetByUserId: Record<string, CharacterSheet>;
   refreshPlayerSheet: (userId: string) => Promise<void>;
   setInventoryByMemberId: React.Dispatch<React.SetStateAction<Record<string, InventoryItem[]>>>;
   setWalletByUserId: React.Dispatch<React.SetStateAction<Record<string, CurrencyWallet>>>;
@@ -19,6 +23,7 @@ type Props = {
 export const useGmDashboardRewardActions = ({
   activeSession,
   memberIdByUserId,
+  playerSheetByUserId,
   refreshPlayerSheet,
   setInventoryByMemberId,
   setWalletByUserId,
@@ -28,9 +33,11 @@ export const useGmDashboardRewardActions = ({
   const [currencyDraftByUserId, setCurrencyDraftByUserId] = useState<Record<string, CurrencyDraft>>({});
   const [itemDraftByUserId, setItemDraftByUserId] = useState<Record<string, ItemDraft>>({});
   const [xpDraftByUserId, setXpDraftByUserId] = useState<Record<string, string>>({});
+  const [hpDraftByUserId, setHpDraftByUserId] = useState<Record<string, string>>({});
   const [grantingCurrencyForUserId, setGrantingCurrencyForUserId] = useState<string | null>(null);
   const [grantingItemForUserId, setGrantingItemForUserId] = useState<string | null>(null);
   const [grantingXpForUserId, setGrantingXpForUserId] = useState<string | null>(null);
+  const [hpActionState, setHpActionState] = useState<HpActionState | null>(null);
   const [levelUpActionState, setLevelUpActionState] = useState<{
     action: "approve" | "deny";
     userId: string;
@@ -238,20 +245,84 @@ export const useGmDashboardRewardActions = ({
     }
   };
 
+  const handleAdjustHp = async (userId: string, action: "damage" | "heal") => {
+    if (!activeSession?.id || hpActionState) return;
+
+    const amount = Number(hpDraftByUserId[userId] ?? "");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setGrantFeedbackByUserId((current) => ({
+        ...current,
+        [userId]: { tone: "error", message: "Enter a valid HP amount before applying it." },
+      }));
+      return;
+    }
+
+    const sheet = playerSheetByUserId[userId];
+    if (!sheet) {
+      setGrantFeedbackByUserId((current) => ({
+        ...current,
+        [userId]: { tone: "error", message: "Player sheet is still loading." },
+      }));
+      return;
+    }
+
+    setHpActionState({ action, userId });
+    setGrantFeedbackByUserId((current) => ({
+      ...current,
+      [userId]: {
+        tone: "success",
+        message: action === "damage" ? "Applying damage..." : "Applying healing...",
+      },
+    }));
+
+    try {
+      const delta = action === "damage" ? -amount : amount;
+      const nextCurrentHp = clampHP(sheet.currentHP + delta, sheet.maxHP);
+      await sessionStatesRepo.updateByPlayer(activeSession.id, userId, {
+        ...sheet,
+        currentHP: nextCurrentHp,
+      });
+      await refreshPlayerSheet(userId);
+      setHpDraftByUserId((current) => ({ ...current, [userId]: "" }));
+      setGrantFeedbackByUserId((current) => ({
+        ...current,
+        [userId]: {
+          tone: "success",
+          message: `HP updated to ${nextCurrentHp}/${sheet.maxHP}.`,
+        },
+      }));
+    } catch (error) {
+      setGrantFeedbackByUserId((current) => ({
+        ...current,
+        [userId]: {
+          tone: "error",
+          message: (error as { message?: string })?.message ?? "Could not update HP right now.",
+        },
+      }));
+    } finally {
+      setHpActionState(null);
+    }
+  };
+
   return {
     currencyDraftByUserId,
     grantFeedbackByUserId,
     grantingCurrencyForUserId,
     grantingItemForUserId,
     grantingXpForUserId,
+    handleDamagePlayer: (userId: string) => handleAdjustHp(userId, "damage"),
+    handleHealPlayer: (userId: string) => handleAdjustHp(userId, "heal"),
     handleApproveLevelUp: (userId: string) => handleLevelUpDecision(userId, "approve"),
     handleDenyLevelUp: (userId: string) => handleLevelUpDecision(userId, "deny"),
     handleGrantCurrency,
     handleGrantItem,
     handleGrantXp,
+    hpActionState,
+    hpDraftByUserId,
     itemDraftByUserId,
     levelUpActionState,
     setCurrencyDraftByUserId,
+    setHpDraftByUserId,
     setItemDraftByUserId,
     setXpDraftByUserId,
     xpDraftByUserId,

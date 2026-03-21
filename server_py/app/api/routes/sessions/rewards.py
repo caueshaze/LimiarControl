@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -26,11 +27,12 @@ from app.services.character_progression import build_progression_snapshot, grant
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 
-from ._shared import to_inventory_read
+from ._shared import record_session_activity, to_inventory_read
 from .shop import (
     _cp_to_currency,
     _currency_to_cp,
     _ensure_player_session_state,
+    _format_cp_label,
     _publish_session_state_realtime,
     _to_currency_read,
 )
@@ -85,6 +87,18 @@ def _get_target_member(
     if not campaign_member:
         raise HTTPException(status_code=404, detail="Campaign member not found")
     return campaign_member
+
+
+def _get_actor_member(entry: Session, user_id: str, db: DbSession) -> CampaignMember:
+    member = db.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user_id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Campaign member not found")
+    return member
 
 
 def _merge_session_inventory(
@@ -162,7 +176,8 @@ async def grant_session_currency(
     session: DbSession = Depends(get_session),
 ):
     entry, party = _get_active_party_session_for_gm(session_id, user, session)
-    _get_target_member(
+    actor_member = _get_actor_member(entry, user.id, session)
+    target_member = _get_target_member(
         campaign_id=entry.campaign_id,
         party_id=party.id,
         player_user_id=payload.playerUserId,
@@ -182,6 +197,21 @@ async def grant_session_currency(
         "currency": next_currency,
     }
     session.add(state)
+    issued_at = datetime.now(timezone.utc)
+    record_session_activity(
+        entry,
+        "grant_currency",
+        session,
+        member_id=str(actor_member.id),
+        user_id=user.id,
+        actor_name=actor_member.display_name,
+        payload={
+            "targetUserId": payload.playerUserId,
+            "targetDisplayName": target_member.display_name,
+            "amountLabel": _format_cp_label(granted_cp),
+        },
+        created_at=issued_at,
+    )
     session.commit()
     session.refresh(state)
 
@@ -204,6 +234,7 @@ async def grant_session_currency(
         entry,
         payload.playerUserId,
         state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
     )
 
     return SessionGrantCurrencyRead(
@@ -224,6 +255,7 @@ async def grant_session_item(
     session: DbSession = Depends(get_session),
 ):
     entry, party = _get_active_party_session_for_gm(session_id, user, session)
+    actor_member = _get_actor_member(entry, user.id, session)
     target_member = _get_target_member(
         campaign_id=entry.campaign_id,
         party_id=party.id,
@@ -274,6 +306,23 @@ async def grant_session_item(
         )
         session.add(inventory_entry)
 
+    issued_at = datetime.now(timezone.utc)
+    record_session_activity(
+        entry,
+        "grant_item",
+        session,
+        member_id=str(actor_member.id),
+        user_id=user.id,
+        actor_name=actor_member.display_name,
+        payload={
+            "targetUserId": payload.playerUserId,
+            "targetDisplayName": target_member.display_name,
+            "itemName": item.name,
+            "quantity": payload.quantity,
+        },
+        created_at=issued_at,
+    )
+
     session.commit()
     session.refresh(state)
     session.refresh(inventory_entry)
@@ -299,6 +348,7 @@ async def grant_session_item(
         entry,
         payload.playerUserId,
         state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
     )
 
     return SessionGrantItemRead(
@@ -321,7 +371,8 @@ async def grant_session_xp(
     session: DbSession = Depends(get_session),
 ):
     entry, party = _get_active_party_session_for_gm(session_id, user, session)
-    _get_target_member(
+    actor_member = _get_actor_member(entry, user.id, session)
+    target_member = _get_target_member(
         campaign_id=entry.campaign_id,
         party_id=party.id,
         player_user_id=payload.playerUserId,
@@ -349,6 +400,27 @@ async def grant_session_xp(
         "pendingLevelUp": snapshot["pendingLevelUp"],
     }
     session.add(state)
+    issued_at = datetime.now(timezone.utc)
+    record_session_activity(
+        entry,
+        "grant_xp",
+        session,
+        member_id=str(actor_member.id),
+        user_id=user.id,
+        actor_name=actor_member.display_name,
+        payload={
+            "targetUserId": payload.playerUserId,
+            "targetDisplayName": target_member.display_name,
+            "amountLabel": f"{payload.amount} XP",
+            "currentXp": int(snapshot["experiencePoints"]),
+            "nextLevelThreshold": (
+                int(snapshot["nextLevelThreshold"])
+                if snapshot["nextLevelThreshold"] is not None
+                else None
+            ),
+        },
+        created_at=issued_at,
+    )
     session.commit()
     session.refresh(sheet)
     session.refresh(state)
@@ -374,6 +446,7 @@ async def grant_session_xp(
         entry,
         payload.playerUserId,
         state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
     )
 
     return SessionGrantXpRead(

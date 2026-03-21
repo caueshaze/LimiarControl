@@ -13,10 +13,12 @@ from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
 from app.models.session_command_event import SessionCommandEvent
 from app.models.session_runtime import SessionRuntime
+from app.models.session_state import SessionState
 from app.schemas.inventory import InventoryRead
 from app.schemas.item import ItemRead
 from app.schemas.roll_event import RollDice, RollEventRead
 from app.schemas.session import ActiveSessionRead, LobbyStatusRead, SessionRead, SessionRuntimeRead
+from app.services.session_rest import normalize_rest_state
 
 DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
 
@@ -202,7 +204,24 @@ def serialize_lobby_status(entry: Session, runtime: SessionRuntime | None) -> Lo
     )
 
 
-def serialize_session_runtime(entry: Session, runtime: SessionRuntime | None) -> SessionRuntimeRead:
+def get_session_rest_state(session_id: str, session: DbSession) -> str:
+    states = session.exec(
+        select(SessionState).where(SessionState.session_id == session_id)
+    ).all()
+    for state in states:
+        if not isinstance(state.state_json, dict):
+            continue
+        rest_state = normalize_rest_state(state.state_json.get("restState"))
+        if rest_state != "exploration":
+            return rest_state
+    return "exploration"
+
+
+def serialize_session_runtime(
+    entry: Session,
+    runtime: SessionRuntime | None,
+    session: DbSession,
+) -> SessionRuntimeRead:
     return SessionRuntimeRead(
         sessionId=entry.id,
         campaignId=entry.campaign_id,
@@ -210,6 +229,7 @@ def serialize_session_runtime(entry: Session, runtime: SessionRuntime | None) ->
         status=entry.status,
         shopOpen=bool(runtime.shop_open) if runtime else False,
         combatActive=bool(runtime.combat_active) if runtime else False,
+        restState=get_session_rest_state(entry.id, session),
     )
 
 

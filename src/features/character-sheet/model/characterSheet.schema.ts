@@ -1,5 +1,7 @@
 import { z } from "zod/v4";
 import { normalizeSubclassId } from "../data/classes";
+import { normalizeBackgroundId } from "../data/backgrounds";
+import { getRaceFixedToolProficiencies, normalizeRaceState } from "../data/races";
 import type { CharacterSheet } from "./characterSheet.types";
 
 const abilityNameSchema = z.enum([
@@ -61,6 +63,9 @@ const armorSchema = z.object({
   baseAC: z.number(),
   dexCap: z.number().nullable(),
   armorType: z.enum(["none", "light", "medium", "heavy"]),
+  allowsDex: z.boolean().optional(),
+  stealthDisadvantage: z.boolean().optional(),
+  minStrength: z.number().nullable().optional(),
 });
 
 const shieldSchema = z.object({
@@ -126,6 +131,13 @@ const deathSavesSchema = z.object({
   successes: z.number().min(0).max(3),
   failures: z.number().min(0).max(3),
 });
+const restStateSchema = z.enum(["exploration", "short_rest", "long_rest"]);
+const raceConfigSchema = z.object({
+  dragonbornAncestry: z.string().nullable().optional(),
+  gnomeSubrace: z.string().nullable().optional(),
+  halfElfAbilityChoices: z.array(abilityNameSchema).max(2).optional(),
+  halfElfSkillChoices: z.array(skillNameSchema).max(2).optional(),
+});
 
 const abilitiesRecord = z.record(abilityNameSchema, z.number().min(0).max(30));
 const savesRecord = z.record(abilityNameSchema, z.boolean());
@@ -142,12 +154,23 @@ export const characterSheetSchema = z.object({
     if (typeof value !== "string") return value;
     return value.trim().length > 0 ? value : null;
   }, z.string().nullable()),
+  currentWeaponId: z.preprocess((value) => {
+    if (value == null) return null;
+    if (typeof value !== "string") return value;
+    return value.trim().length > 0 ? value : null;
+  }, z.string().nullable()).default(null),
+  equippedArmorItemId: z.preprocess((value) => {
+    if (value == null) return null;
+    if (typeof value !== "string") return value;
+    return value.trim().length > 0 ? value : null;
+  }, z.string().nullable()).default(null),
   level: z.number().min(1).max(20),
   background: z.string(),
   playerName: z.string(),
   race: z.string(),
   alignment: z.string(),
   experiencePoints: z.number().min(0),
+  restState: restStateSchema.default("exploration"),
   pendingLevelUp: z.boolean().default(false),
   inspiration: z.boolean(),
 
@@ -185,8 +208,13 @@ export const characterSheetSchema = z.object({
 
   classSkillChoices: z.array(skillNameSchema).default([]),
   classToolProficiencyChoices: z.array(z.string()).default([]),
+  raceToolProficiencyChoices: z.array(z.string()).default([]),
   classEquipmentSelections: z.record(z.string(), z.string()).default({}),
   languageChoices: z.array(z.string()).default([]),
+  raceConfig: raceConfigSchema.nullable().default(null),
+  subclassConfig: z.record(z.string(), z.string()).nullable().default(null),
+  fightingStyle: z.string().nullable().default(null),
+  expertiseChoices: z.array(skillNameSchema).default([]),
 
   featuresAndTraits: z.string(),
   notes: z.string(),
@@ -202,8 +230,17 @@ export function parseCharacterSheet(raw: unknown): CharacterSheet {
   if (!result.success) {
     throw new Error(z.prettifyError(result.error));
   }
+  const normalizedRace = normalizeRaceState(result.data.race, result.data.raceConfig);
+  const fixedRaceTools = getRaceFixedToolProficiencies(
+    normalizedRace.raceId,
+    normalizedRace.raceConfig,
+  );
   return {
     ...result.data,
+    background: normalizeBackgroundId(result.data.background),
+    race: normalizedRace.raceId,
+    raceConfig: normalizedRace.raceConfig,
+    toolProficiencies: [...new Set([...(result.data.toolProficiencies ?? []), ...fixedRaceTools])],
     subclass: normalizeSubclassId(result.data.class, result.data.subclass),
   } as CharacterSheet;
 }
@@ -217,10 +254,19 @@ export function validateSheet(
 ): { ok: true; sheet: CharacterSheet } | { ok: false; error: string } {
   const result = characterSheetSchema.safeParse(data);
   if (result.success) {
+    const normalizedRace = normalizeRaceState(result.data.race, result.data.raceConfig);
+    const fixedRaceTools = getRaceFixedToolProficiencies(
+      normalizedRace.raceId,
+      normalizedRace.raceConfig,
+    );
     return {
       ok: true,
       sheet: {
         ...result.data,
+        background: normalizeBackgroundId(result.data.background),
+        race: normalizedRace.raceId,
+        raceConfig: normalizedRace.raceConfig,
+        toolProficiencies: [...new Set([...(result.data.toolProficiencies ?? []), ...fixedRaceTools])],
         subclass: normalizeSubclassId(result.data.class, result.data.subclass),
       } as CharacterSheet,
     };

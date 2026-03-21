@@ -7,6 +7,10 @@ export const characterSheetsRepo = {
   getByParty: (partyId: string) =>
     http.get<CharacterSheetRecord>(`/parties/${partyId}/character-sheet/me`),
 
+  /** GET /parties/:partyId/character-sheets/:playerUserId — leitura do GM para ficha base do player */
+  getForPlayer: (partyId: string, playerUserId: string) =>
+    http.get<CharacterSheetRecord>(`/parties/${partyId}/character-sheets/${playerUserId}`),
+
   /** POST /parties/:partyId/character-sheet — cria nova ficha */
   create: (partyId: string, data: CharacterSheet) =>
     http.post<CharacterSheetRecord>(`/parties/${partyId}/character-sheet`, { data }),

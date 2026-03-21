@@ -119,6 +119,147 @@ export const SessionActivityRow = ({ event }: { event: ActivityEvent }) => {
     );
   }
 
+  if (event.type === "rest") {
+    const summary =
+      event.action === "short_started"
+        ? t("sessionActivity.shortRestStarted")
+        : event.action === "short_ended"
+          ? t("sessionActivity.shortRestEnded")
+          : event.action === "long_started"
+            ? t("sessionActivity.longRestStarted")
+            : t("sessionActivity.longRestEnded");
+
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">{event.action.includes("long") ? "🌙" : "☕"}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{actor}</span>
+            {" "}
+            {summary}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
+  if (event.type === "reward") {
+    const target = event.targetDisplayName ?? t("sessionActivity.unknownTarget");
+    const summary =
+      event.action === "currency"
+        ? `${t("sessionActivity.grantedCurrency")} ${event.amountLabel ?? "?"} ${t("sessionActivity.toTarget")} ${target}`
+        : event.action === "item"
+          ? `${t("sessionActivity.grantedItem")} ${event.itemName ?? "Item"}${event.quantity && event.quantity > 1 ? ` ×${event.quantity}` : ""} ${t("sessionActivity.toTarget")} ${target}`
+          : `${t("sessionActivity.grantedXp")} ${event.amountLabel ?? "?"} ${t("sessionActivity.toTarget")} ${target}`;
+
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">{event.action === "xp" ? "⭐" : event.action === "item" ? "🎁" : "💰"}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{actor}</span>
+            {" "}
+            {summary}
+          </p>
+          {event.action === "xp" && event.currentXp != null && (
+            <p className="mt-0.5 text-xs text-slate-400">
+              {event.nextLevelThreshold != null
+                ? `${t("sessionActivity.currentXp")} ${event.currentXp}/${event.nextLevelThreshold}`
+                : `${t("sessionActivity.currentXp")} ${event.currentXp}`}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
+  if (event.type === "level_up") {
+    const target = event.targetDisplayName ?? actor;
+    const summary =
+      event.action === "requested"
+        ? `${target} ${t("sessionActivity.levelUpRequested")}`
+        : event.action === "approved"
+          ? `${t("sessionActivity.levelUpApproved")} ${target}`
+          : `${t("sessionActivity.levelUpDenied")} ${target}`;
+
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">🆙</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{actor}</span>
+            {" "}
+            {summary}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400">
+            {`${t("sheet.basicInfo.level")} ${event.level} · XP ${event.experiencePoints}`}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
+  if (event.type === "hit_dice") {
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">❤️‍🩹</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{actor}</span>
+            {" "}
+            {t("sessionActivity.usedHitDie")}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400">
+            {`${t("sessionActivity.roll")} ${event.roll} · ${t("sessionActivity.healedHp")} ${event.healingApplied} · ${t("sessionActivity.currentHp")} ${event.currentHp}${event.maxHp != null ? `/${event.maxHp}` : ""}`}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
+  if (event.type === "player_hp") {
+    const target = event.targetDisplayName ?? t("sessionActivity.unknownTarget");
+    const summary =
+      event.action === "damaged"
+        ? `${t("sessionActivity.playerDamaged")} ${target} ${event.delta ?? 0} HP`
+        : event.action === "healed"
+          ? `${t("sessionActivity.playerHealed")} ${target} ${event.delta ?? 0} HP`
+          : `${t("sessionActivity.playerHpSet")} ${target}`;
+
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">{event.action === "healed" ? "💚" : "🩸"}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{actor}</span>
+            {" "}
+            {summary}
+          </p>
+          {event.currentHp != null && (
+            <p className="mt-0.5 text-xs text-slate-400">
+              {`${t("sessionActivity.currentHp")} ${event.currentHp}${event.maxHp != null ? `/${event.maxHp}` : ""}`}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
   if (event.type === "entity") {
     const entityName = formatEntityDisplayName(event);
     const currentHp = formatCurrentHp(event);

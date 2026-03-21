@@ -32,4 +32,4 @@ def get_session_runtime(
     runtime = session.exec(
         select(SessionRuntime).where(SessionRuntime.session_id == session_id)
     ).first()
-    return serialize_session_runtime(entry, runtime)
+    return serialize_session_runtime(entry, runtime, session)

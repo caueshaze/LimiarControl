@@ -59,10 +59,11 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
     startingSpells: { cantrips: 3, leveledSpells: 1, leveledMode: "prepared", preparationAbility: "wisdom", levelOneSlots: 2 },
   },
   druid: {
-    fixedEquipment: ["Leather", "Explorer's Pack", "Druidic Focus"],
+    fixedEquipment: ["Leather", "Druidic Focus"],
     equipmentChoices: [
-      { id: "druid-shield", label: "Escolha sua defesa", options: uniqueOptions([option("Escudo de Madeira", "Shield"), ...simpleWeaponOptions]) },
+      { id: "druid-shield", label: "Escolha um escudo ou arma simples", options: uniqueOptions([option("Escudo de Madeira", "Shield"), ...simpleWeaponOptions]) },
       { id: "druid-weapon", label: "Escolha sua arma de druida", options: uniqueOptions([option("Cimitarra", "Scimitar"), ...simpleMeleeWeaponOptions]) },
+      { id: "druid-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Estudioso", "Scholar's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
     ],
     startingSpells: { cantrips: 2, leveledSpells: 1, leveledMode: "prepared", preparationAbility: "wisdom", levelOneSlots: 2 },
   },
@@ -74,7 +75,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
         label: "Escolha seu pacote de armadura",
         options: [
           { id: "fighter-chain-mail", label: "Cota de Malha", items: ["Chain Mail"] },
-          { id: "fighter-leather-longbow", label: "Couro + Arco Longo + 20 flechas", items: ["Leather", "Longbow", "Arrow x20"] },
+          { id: "fighter-hide-longbow", label: "Gibão de Peles + Arco Longo + 20 flechas", items: ["Hide", "Longbow", "Arrow x20"] },
         ],
       },
       {
@@ -87,18 +88,51 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
         label: "Escolha sua arma de alcance",
         options: [
           option("Besta Leve + 20 virotes", "Light Crossbow", "Crossbow bolt x20"),
-          option("Machadinha x2", "Handaxe", "Handaxe"),
+          option("Machado de Arremesso x2", "Handaxe", "Handaxe"),
         ],
       },
-      { id: "fighter-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Masmorrador", "Dungeoneer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "fighter-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Aventureiro", "Adventurer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
     ],
   },
   monk: {
     fixedEquipment: ["Dart x10"],
     equipmentChoices: [
       { id: "monk-weapon", label: "Escolha sua arma de monge", options: uniqueOptions([option("Espada Curta", "Shortsword"), ...simpleWeaponOptions]) },
-      { id: "monk-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Masmorrador", "Dungeoneer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "monk-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Explorador", "Explorer's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
+    toolProficiencyChoices: {
+      count: 1,
+      label: "Escolha uma ferramenta de artesão ou instrumento musical (proficiência)",
+      options: [
+        "Ferramentas de Alquimista",
+        "Ferramentas de Cervejeiro",
+        "Ferramentas de Calígrafo",
+        "Ferramentas de Carpinteiro",
+        "Ferramentas de Cartógrafo",
+        "Ferramentas de Sapateiro",
+        "Utensílios de Cozinheiro",
+        "Ferramentas de Vidraceiro",
+        "Ferramentas de Joalheiro",
+        "Ferramentas de Curtidor",
+        "Ferramentas de Pedreiro",
+        "Ferramentas de Pintor",
+        "Ferramentas de Oleiro",
+        "Ferramentas de Ferreiro",
+        "Ferramentas de Funileiro",
+        "Ferramentas de Tecedor",
+        "Ferramentas de Escultor em Madeira",
+        "Alaúde",
+        "Flauta",
+        "Lira",
+        "Tambor",
+        "Viola",
+        "Flauta de Pã",
+        "Gaita de Foles",
+        "Oboé",
+        "Trompete",
+        "Harpa",
+      ],
+    },
   },
   paladin: {
     fixedEquipment: ["Chain Mail", "Holy Symbol"],
@@ -113,7 +147,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
         label: "Escolha sua arma secundária",
         options: uniqueOptions([option("Dardo de Arremesso x5", "Javelin", "Javelin", "Javelin", "Javelin", "Javelin"), ...simpleMeleeWeaponOptions]),
       },
-      { id: "paladin-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Sacerdote", "Priest's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "paladin-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Sacerdote", "Priest's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
   },
   ranger: {
@@ -121,13 +155,13 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
     equipmentChoices: [
       { id: "ranger-armor", label: "Escolha sua armadura", options: [option("Brunea", "Scale Mail"), option("Couro", "Leather")] },
       { id: "ranger-weapons", label: "Escolha suas armas corpo a corpo", options: uniqueOptions([option("Espada Curta x2", "Shortsword", "Shortsword"), ...simpleMeleePairOptions]) },
-      { id: "ranger-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Masmorrador", "Dungeoneer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "ranger-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Explorador", "Explorer's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
   },
   rogue: {
     fixedEquipment: ["Leather", "Dagger x2", "Thieves' Tools"],
     equipmentChoices: [
-      { id: "rogue-weapon", label: "Escolha sua arma principal", options: [option("Rapieira", "Rapier"), option("Espada Curta", "Shortsword")] },
+      { id: "rogue-weapon", label: "Escolha sua arma principal", options: [option("Rapieira", "Rapier"), option("Espada Longa", "Longsword")] },
       {
         id: "rogue-secondary",
         label: "Escolha sua arma secundária",
@@ -136,7 +170,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
           option("Espada Curta", "Shortsword"),
         ],
       },
-      { id: "rogue-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Ladrão", "Burglar's Pack"], ["Mochila do Masmorrador", "Dungeoneer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "rogue-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Ladrão", "Burglar's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
     ],
   },
   sorcerer: {
@@ -151,7 +185,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
         ],
       },
       { id: "sorcerer-focus", label: "Escolha seu foco", options: packOptions(["Bolsa de Componentes", "Component Pouch"], ["Foco Arcano", "Arcane Focus"]) },
-      { id: "sorcerer-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Masmorrador", "Dungeoneer's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
+      { id: "sorcerer-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Explorador", "Explorer's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
     startingSpells: { cantrips: 4, leveledSpells: 2, leveledMode: "known", levelOneSlots: 2 },
   },
@@ -175,7 +209,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
   wizard: {
     fixedEquipment: ["Spellbook"],
     equipmentChoices: [
-      { id: "wizard-weapon", label: "Escolha sua arma inicial", options: [option("Cajado", "Quarterstaff"), option("Adaga", "Dagger")] },
+      { id: "wizard-weapon", label: "Escolha sua arma inicial", options: [option("Bordão", "Quarterstaff"), option("Adaga", "Dagger")] },
       { id: "wizard-focus", label: "Escolha seu foco", options: packOptions(["Bolsa de Componentes", "Component Pouch"], ["Foco Arcano", "Arcane Focus"]) },
       { id: "wizard-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Estudioso", "Scholar's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
     ],

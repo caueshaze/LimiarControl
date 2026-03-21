@@ -2,6 +2,7 @@ import { SessionTimer } from "../../shared/ui/SessionTimer";
 import type { ActiveSession, LobbyStatus } from "../../shared/api/sessionsRepo";
 import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CommandFeedback } from "./gmDashboard.types";
+import { GmDashboardRestControlCard } from "./GmDashboardRestControlCard";
 
 type Props = {
   activeSession: ActiveSession | null;
@@ -14,6 +15,7 @@ type Props = {
   lobbyStatus: LobbyStatus | null;
   onlineUsers: Record<string, string>;
   partyPlayers: PartyMemberSummary[];
+  restState: "exploration" | "short_rest" | "long_rest";
   rollAdvantage: "normal" | "advantage" | "disadvantage";
   rollExpression: string;
   rollOptions: string[];
@@ -22,7 +24,15 @@ type Props = {
   shopUiOpen: boolean;
   onActivateClick: () => void;
   onCommand: (
-    type: "open_shop" | "close_shop" | "request_roll" | "start_combat" | "end_combat",
+    type:
+      | "open_shop"
+      | "close_shop"
+      | "request_roll"
+      | "start_combat"
+      | "end_combat"
+      | "start_short_rest"
+      | "start_long_rest"
+      | "end_rest",
     payload?: Record<string, unknown>,
   ) => void;
   onEndSession: () => void;
@@ -44,6 +54,7 @@ export const GmDashboardSessionPanel = ({
   lobbyStatus,
   onlineUsers,
   partyPlayers,
+  restState,
   rollAdvantage,
   rollExpression,
   rollOptions,
@@ -188,7 +199,7 @@ export const GmDashboardSessionPanel = ({
       </div>
 
       {activeSession?.status === "ACTIVE" && (
-        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -309,6 +320,14 @@ export const GmDashboardSessionPanel = ({
               </div>
             )}
           </div>
+
+          <GmDashboardRestControlCard
+            combatUiActive={combatUiActive}
+            commandFeedback={commandFeedback}
+            commandSending={commandSending}
+            restState={restState}
+            onCommand={onCommand}
+          />
         </div>
       )}
     </div>

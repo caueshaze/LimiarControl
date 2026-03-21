@@ -7,6 +7,8 @@ import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
+import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
+import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import {
   useCampaignEvents,
   usePartyActiveSession,
@@ -19,12 +21,14 @@ type Props = {
   partyId: string | undefined;
   selectedCampaignId: string | null;
   setSelectedCampaignLocal: (campaignId: string) => void;
+  userId?: string | null;
 };
 
 export const usePlayerBoardResources = ({
   partyId,
   selectedCampaignId,
   setSelectedCampaignLocal,
+  userId = null,
 }: Props) => {
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const { activeSession, refresh } = usePartyActiveSession(partyId);
@@ -36,6 +40,7 @@ export const usePlayerBoardResources = ({
     clearSessionEnded,
     shopOpen: shopAvailable,
     combatActive,
+    restState,
   } = useSessionCommands();
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? activeSession?.campaignId ?? null;
   const { lastEvent } = useCampaignEvents(effectiveCampaignId);
@@ -43,6 +48,18 @@ export const usePlayerBoardResources = ({
   const [myInventory, setMyInventory] = useState<InventoryItem[] | null>(null);
   const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
   const [playerWallet, setPlayerWallet] = useState<CurrencyWallet | null>(null);
+  const [playerSheet, setPlayerSheet] = useState<CharacterSheet | null>(null);
+
+  const applyRealtimeStateSnapshot = useCallback((rawState: unknown): boolean => {
+    try {
+      const nextSheet = parseCharacterSheet(rawState);
+      setPlayerSheet(nextSheet);
+      setPlayerWallet(normalizeWallet(nextSheet.currency));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     if (!partyId) {
@@ -81,21 +98,28 @@ export const usePlayerBoardResources = ({
     }
   }, [effectiveCampaignId, partyId]);
 
-  const refreshPlayerWallet = useCallback(async () => {
+  const refreshPlayerState = useCallback(async () => {
     if (!activeSession?.id) {
       setPlayerWallet(null);
+      setPlayerSheet(null);
       return;
     }
     try {
       const record = await sessionStatesRepo.getMine(activeSession.id);
+      setPlayerSheet(parseCharacterSheet(record.state));
       const nextWallet = normalizeWallet(
         (record.state as { currency?: unknown } | null | undefined)?.currency,
       );
       setPlayerWallet(nextWallet);
     } catch {
       setPlayerWallet(EMPTY_WALLET);
+      setPlayerSheet(null);
     }
   }, [activeSession?.id]);
+
+  const refreshPlayerWallet = useCallback(async () => {
+    await refreshPlayerState();
+  }, [refreshPlayerState]);
 
   useEffect(() => {
     if (!effectiveCampaignId) {
@@ -132,8 +156,95 @@ export const usePlayerBoardResources = ({
   }, [effectiveCampaignId, partyId]);
 
   useEffect(() => {
-    void refreshPlayerWallet();
-  }, [refreshPlayerWallet]);
+    void refreshPlayerState();
+  }, [refreshPlayerState]);
+
+  useEffect(() => {
+    if (!activeSession?.id || !userId || !lastEvent) {
+      return;
+    }
+
+    const eventPartyId =
+      typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+    if (eventPartyId && partyId && eventPartyId !== partyId) {
+      return;
+    }
+
+    const eventPlayerUserId =
+      typeof (lastEvent.payload as { playerUserId?: unknown } | null | undefined)?.playerUserId === "string"
+        ? (lastEvent.payload as { playerUserId: string }).playerUserId
+        : null;
+    const eventUserId =
+      typeof (lastEvent.payload as { userId?: unknown } | null | undefined)?.userId === "string"
+        ? (lastEvent.payload as { userId: string }).userId
+        : null;
+
+    const isOwnPlayerEvent = eventPlayerUserId === userId;
+    const isOwnUserEvent = eventUserId === userId;
+
+    if (
+      lastEvent.type === "session_state_updated" &&
+      isOwnPlayerEvent
+    ) {
+      if (!applyRealtimeStateSnapshot(lastEvent.payload.state)) {
+        void refreshPlayerState();
+      }
+      return;
+    }
+
+    if (
+      (lastEvent.type === "gm_granted_xp" ||
+        lastEvent.type === "rest_started" ||
+        lastEvent.type === "rest_ended" ||
+        lastEvent.type === "hit_dice_used" ||
+        lastEvent.type === "level_up_requested" ||
+        lastEvent.type === "level_up_approved" ||
+        lastEvent.type === "level_up_denied" ||
+        lastEvent.type === "gm_granted_currency") &&
+      (lastEvent.type === "rest_started" ||
+        lastEvent.type === "rest_ended" ||
+        isOwnPlayerEvent)
+    ) {
+      void refreshPlayerState();
+      return;
+    }
+
+    if (lastEvent.type === "gm_granted_item" && isOwnPlayerEvent) {
+      void refreshInventoryData();
+      void refreshPlayerState();
+      return;
+    }
+
+    if (
+      (lastEvent.type === "shop_purchase_created" || lastEvent.type === "shop_sale_created") &&
+      isOwnUserEvent
+    ) {
+      void refreshInventoryData();
+      void refreshPlayerState();
+    }
+  }, [
+    activeSession?.id,
+    applyRealtimeStateSnapshot,
+    lastEvent,
+    partyId,
+    refreshInventoryData,
+    refreshPlayerState,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!activeSession?.id) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshPlayerState();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeSession?.id, refreshPlayerState]);
 
   useEffect(() => {
     if (campaignId && selectedCampaignId !== campaignId) {
@@ -187,14 +298,18 @@ export const usePlayerBoardResources = ({
     lastCommand,
     lastEvent,
     myInventory,
+    playerSheet,
     playerWallet,
     refresh,
     refreshInventoryData,
+    refreshPlayerState,
     refreshPlayerWallet,
+    restState,
     roll,
     rollEvents,
     sessionEndedAt,
     setMyInventory,
+    setPlayerSheet,
     setPlayerWallet,
     setSelectedSessionId,
     shopAvailable,

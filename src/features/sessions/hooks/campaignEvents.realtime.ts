@@ -19,6 +19,9 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "gm_granted_currency",
   "gm_granted_item",
   "gm_granted_xp",
+  "rest_started",
+  "rest_ended",
+  "hit_dice_used",
   "level_up_requested",
   "level_up_approved",
   "level_up_denied",
@@ -44,6 +47,7 @@ export const getCampaignEventVersionKey = (
     case "gm_granted_currency":
     case "gm_granted_item":
     case "gm_granted_xp":
+    case "hit_dice_used":
       return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.playerUserId ?? ""}`;
     case "level_up_requested":
     case "level_up_approved":
@@ -59,6 +63,8 @@ export const getCampaignEventVersionKey = (
     case "shop_closed":
     case "combat_started":
     case "combat_ended":
+    case "rest_started":
+    case "rest_ended":
     case "roll_requested":
     case "dice_rolled":
     case "shop_purchase_created":

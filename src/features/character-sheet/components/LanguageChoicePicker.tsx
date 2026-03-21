@@ -19,7 +19,7 @@ export const LanguageChoicePicker = ({
   missingRequiredFields = [],
 }: Props) => {
   const { t } = useLocale();
-  const race = getRace(sheet.race);
+  const race = getRace(sheet.race, sheet.raceConfig);
   const background = getBackground(sheet.background);
 
   // Collect all language entries from race + background

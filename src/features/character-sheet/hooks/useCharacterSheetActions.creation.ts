@@ -1,8 +1,8 @@
 import type { CharacterSheet, SkillName } from "../model/characterSheet.types";
 import type { CharacterSheetHookAction } from "./useCharacterSheet.state";
-import { getClass } from "../data/classes";
+import { getClass, getSubclassLanguageGrants, hasExpertiseAtCreation } from "../data/classes";
 import { getBackground } from "../data/backgrounds";
-import { getRace } from "../data/races";
+import { getRace, normalizeRaceState } from "../data/races";
 import { getClassCreationConfig } from "../data/classCreation";
 import { buildCreationLoadout } from "../utils/creationEquipment";
 import { toggleStartingSpell } from "../utils/creationSpells";
@@ -15,6 +15,7 @@ import {
   normalizeCreationAfterBackgroundChange,
   normalizeCreationAfterClassChange,
   normalizeCreationAfterRaceChange,
+  normalizeCreationAfterRaceConfigChange,
 } from "./useCharacterSheet.creation";
 
 type GuardedUpdate = (updater: (sheet: CharacterSheet) => CharacterSheet) => void;
@@ -43,6 +44,11 @@ export const createCreationSheetActions = ({
   importRef,
   sheet,
 }: Props) => {
+  const normalizeRaceConfigForRace = (
+    raceName: string,
+    raceConfig: CharacterSheet["raceConfig"],
+  ): CharacterSheet["raceConfig"] => normalizeRaceState(raceName, raceConfig).raceConfig;
+
   const selectClass = (name: string) => {
     if (mode === "creation") {
       update((current) => normalizeCreationAfterClassChange(current, name, campaignId));
@@ -63,24 +69,70 @@ export const createCreationSheetActions = ({
     }
     const background = getBackground(name);
     if (!background) return set("background", name);
-    guardedUpdate((current) => ({ ...current, background: name }));
+    guardedUpdate((current) => ({ ...current, background: background.id }));
   };
 
   const selectRace = (name: string) => {
     guardedUpdate((current) => {
       if (mode === "creation") return normalizeCreationAfterRaceChange(current, name, campaignId);
-      const race = getRace(name);
+      const normalizedRace = normalizeRaceState(name, current.raceConfig);
+      const race = getRace(normalizedRace.raceId, normalizedRace.raceConfig);
       return {
         ...current,
-        race: name,
+        race: normalizedRace.raceId,
         speed: race?.speed ?? 0,
-        abilities: applyRaceBonusSwap(current.abilities, current.race, name),
+        raceConfig: normalizeRaceConfigForRace(normalizedRace.raceId, normalizedRace.raceConfig),
+        abilities: applyRaceBonusSwap(
+          current.abilities,
+          current.race,
+          normalizedRace.raceId,
+          current.raceConfig,
+          normalizeRaceConfigForRace(normalizedRace.raceId, normalizedRace.raceConfig),
+        ),
       };
     });
   };
 
   const selectSubclass = (id: string) =>
-    guardedUpdate((current) => ({ ...current, subclass: id || null }));
+    guardedUpdate((current) => {
+      const prevGrants = getSubclassLanguageGrants(current.class, current.subclass);
+      const nextGrants = getSubclassLanguageGrants(current.class, id || null);
+      // Base languages = what race + background + choices grant (no subclass influence)
+      const baseLanguages = deriveLanguages(current.race, current.background, current.languageChoices);
+      // Remove old subclass grants that aren't also from race/background
+      const withoutOld = current.languages.filter(
+        (lang) => !prevGrants.includes(lang) || baseLanguages.includes(lang),
+      );
+      // Add new subclass language grants (deduplicated)
+      const languages = [...new Set([...withoutOld, ...nextGrants])];
+      return { ...current, subclass: id || null, subclassConfig: null, languages };
+    });
+
+  const selectSubclassConfig = (key: string, value: string) =>
+    guardedUpdate((current) => ({
+      ...current,
+      subclassConfig: { ...(current.subclassConfig ?? {}), [key]: value },
+    }));
+
+  const selectRaceConfig = (key: string, value: string | string[]) =>
+    guardedUpdate((current) => {
+      const nextRaceConfig = { ...(current.raceConfig ?? {}), [key]: value || null };
+      if (mode === "creation") {
+        return normalizeCreationAfterRaceConfigChange(current, nextRaceConfig, campaignId);
+      }
+      const normalizedRaceConfig = normalizeRaceConfigForRace(current.race, nextRaceConfig);
+      return {
+        ...current,
+        raceConfig: normalizedRaceConfig,
+        abilities: applyRaceBonusSwap(
+          current.abilities,
+          current.race,
+          current.race,
+          current.raceConfig,
+          normalizedRaceConfig,
+        ),
+      };
+    });
 
   const selectClassEquipment = (groupId: string, optionId: string) =>
     guardedUpdate((current) => {
@@ -110,12 +162,17 @@ export const createCreationSheetActions = ({
         ? current.classSkillChoices.filter((entry) => entry !== skill)
         : [...current.classSkillChoices, skill];
       if (mode === "creation") {
+        // If a skill was de-selected it can no longer have expertise — re-filter
+        const nextExpertise = current.expertiseChoices.filter((e) => nextChoices.includes(e));
+        const raceFixedSkills = getRace(current.race, current.raceConfig)?.skillProficiencies ?? [];
         const skills = buildCreationSkillProficiencies(
           current.skillProficiencies,
           current.background,
           nextChoices,
+          nextExpertise,
+          raceFixedSkills,
         );
-        return { ...current, classSkillChoices: nextChoices, skillProficiencies: skills };
+        return { ...current, classSkillChoices: nextChoices, expertiseChoices: nextExpertise, skillProficiencies: skills };
       }
       const skills = { ...current.skillProficiencies };
       if (isChosen) {
@@ -124,6 +181,53 @@ export const createCreationSheetActions = ({
         skills[skill] = 1;
       }
       return { ...current, classSkillChoices: nextChoices, skillProficiencies: skills };
+    });
+
+  const pickExpertise = (skill: SkillName) =>
+    guardedUpdate((current) => {
+      if (mode !== "creation") return current;
+      const cls = getClass(current.class);
+      if (!cls || !hasExpertiseAtCreation(cls, current.level)) return current;
+      // Only proficient skills (class or background) can receive expertise
+      const proficientSkills = new Set<SkillName>([
+        ...(getBackground(current.background)?.skillProficiencies ?? []),
+        ...current.classSkillChoices,
+      ]);
+      if (!proficientSkills.has(skill)) return current;
+      const isChosen = current.expertiseChoices.includes(skill);
+      if (!isChosen && current.expertiseChoices.length >= cls.expertiseCount) return current;
+      const nextExpertise = isChosen
+        ? current.expertiseChoices.filter((e) => e !== skill)
+        : [...current.expertiseChoices, skill];
+      const raceFixedSkillsExp = getRace(current.race, current.raceConfig)?.skillProficiencies ?? [];
+      const skills = buildCreationSkillProficiencies(
+        current.skillProficiencies,
+        current.background,
+        current.classSkillChoices,
+        nextExpertise,
+        raceFixedSkillsExp,
+      );
+      return { ...current, expertiseChoices: nextExpertise, skillProficiencies: skills };
+    });
+
+  const pickRaceToolProficiency = (tool: string) =>
+    guardedUpdate((current) => {
+      if (mode !== "creation") return current;
+      const race = getRace(current.race, current.raceConfig);
+      const config = race?.toolProficiencyChoices;
+      if (!config) return current;
+      if (!config.options.includes(tool)) return current;
+      const isChosen = current.raceToolProficiencyChoices.includes(tool);
+      if (!isChosen && current.raceToolProficiencyChoices.length >= config.count) return current;
+      const nextChoices = isChosen
+        ? current.raceToolProficiencyChoices.filter((entry) => entry !== tool)
+        : [...current.raceToolProficiencyChoices, tool];
+      const bgTools = getBackground(current.background)?.toolProficiencies ?? [];
+      return {
+        ...current,
+        raceToolProficiencyChoices: nextChoices,
+        toolProficiencies: mergeToolProficiencies(bgTools, current.classToolProficiencyChoices, nextChoices),
+      };
     });
 
   const pickClassToolProficiency = (tool: string) =>
@@ -154,7 +258,7 @@ export const createCreationSheetActions = ({
       return {
         ...current,
         languageChoices: nextChoices,
-        languages: deriveLanguages(current.race, current.background, nextChoices),
+        languages: deriveLanguages(current.race, current.background, nextChoices, current.raceConfig),
       };
     });
 
@@ -208,8 +312,12 @@ export const createCreationSheetActions = ({
     selectBackground,
     selectRace,
     selectSubclass,
+    selectSubclassConfig,
+    selectRaceConfig,
     selectClassEquipment,
     pickClassSkill,
+    pickExpertise,
+    pickRaceToolProficiency,
     pickClassToolProficiency,
     selectLanguageChoice,
     toggleCreationSpellSelection,

@@ -1,6 +1,4 @@
 import {
-  computeAC,
-  computeACBreakdown,
   computeInitiative,
   computePassivePerception,
   computeSpellAttack,
@@ -8,17 +6,18 @@ import {
   getModifier,
   getProficiencyBonus,
 } from "../utils/calculations";
+import {
+  buildCharacterAcStateFromSheet,
+  calculateArmorClass,
+  getArmorClassBreakdownRows,
+} from "../utils/armorClass";
 import type { CharacterSheet } from "../model/characterSheet.types";
 
 export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
+  const acResult = calculateArmorClass(buildCharacterAcStateFromSheet(sheet));
+  const ac = acResult.total;
+  const acBreakdown = getArmorClassBreakdownRows(acResult);
   const dexMod = getModifier(sheet.abilities.dexterity);
-  const ac = computeAC(sheet.equippedArmor, sheet.equippedShield, dexMod, sheet.miscACBonus);
-  const acBreakdown = computeACBreakdown(
-    sheet.equippedArmor,
-    sheet.equippedShield,
-    dexMod,
-    sheet.miscACBonus,
-  );
   const initiative = computeInitiative(dexMod);
   const profBonus = getProficiencyBonus(sheet.level);
   const passivePerception = computePassivePerception(sheet);

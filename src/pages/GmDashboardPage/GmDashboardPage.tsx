@@ -41,9 +41,11 @@ export const GmDashboardPage = () => {
         refreshPlayerInventory,
         refreshPlayerSheet,
         refreshPlayerWallet,
+        restUiState,
         rollEvents,
         setCombatUiActive,
         setInventoryByMemberId,
+        setRestUiState,
         setShopUiOpen,
         setWalletByUserId,
         shopUiOpen,
@@ -67,6 +69,7 @@ export const GmDashboardPage = () => {
         grantingItemForUserId,
         grantingXpForUserId,
         handleActivateClick,
+        handleDamagePlayer,
         handleApproveLevelUp,
         handleCommand,
         handleConfirmStart,
@@ -76,6 +79,9 @@ export const GmDashboardPage = () => {
         handleGrantCurrency,
         handleGrantItem,
         handleGrantXp,
+        handleHealPlayer,
+        hpActionState,
+        hpDraftByUserId,
         handleOpenInventory,
         inventoryOpenForUserId,
         itemDraftByUserId,
@@ -87,6 +93,7 @@ export const GmDashboardPage = () => {
         rollReason,
         rollTargetUserId,
         setCurrencyDraftByUserId,
+        setHpDraftByUserId,
         setItemDraftByUserId,
         setMissingSheetsPlayers,
         setRollAdvantage,
@@ -104,9 +111,11 @@ export const GmDashboardPage = () => {
         memberIdByUserId,
         navigate,
         partyPlayers,
+        playerSheetByUserId,
         refreshPlayerInventory,
         refreshPlayerSheet,
         refreshPlayerWallet,
+        setRestUiState,
         setCombatUiActive,
         setInventoryByMemberId,
         setSelectedSessionId,
@@ -115,10 +124,15 @@ export const GmDashboardPage = () => {
         sortedCatalogItems,
         t,
     });
+    const dashboardBackHref = activeSession?.partyId
+        ? routes.partyDetails.replace(":partyId", activeSession.partyId)
+        : routes.home;
 
     return (
         <section className="space-y-8">
             <GmDashboardHeader
+                backHref={dashboardBackHref}
+                backLabel={t("gm.dashboard.backToParty")}
                 overviewName={overviewName}
                 overviewSystem={overviewSystem}
                 selectedCampaignName={selectedCampaign?.name}
@@ -140,6 +154,7 @@ export const GmDashboardPage = () => {
                 lobbyStatus={lobbyStatus}
                 onlineUsers={onlineUsers}
                 partyPlayers={partyPlayers}
+                restState={restUiState}
                 rollAdvantage={rollAdvantage}
                 rollExpression={rollExpression}
                 rollOptions={rollOptions}
@@ -175,6 +190,8 @@ export const GmDashboardPage = () => {
                     grantingCurrencyForUserId={grantingCurrencyForUserId}
                     grantingItemForUserId={grantingItemForUserId}
                     grantingXpForUserId={grantingXpForUserId}
+                    hpActionState={hpActionState}
+                    hpDraftByUserId={hpDraftByUserId}
                     inventoryByMemberId={inventoryByMemberId}
                     inventoryOpenForUserId={inventoryOpenForUserId}
                     itemDraftByUserId={itemDraftByUserId}
@@ -187,13 +204,16 @@ export const GmDashboardPage = () => {
                     sortedCatalogItems={sortedCatalogItems}
                     walletByUserId={walletByUserId}
                     xpDraftByUserId={xpDraftByUserId}
+                    onDamagePlayer={handleDamagePlayer}
                     onApproveLevelUp={handleApproveLevelUp}
                     onGrantCurrency={handleGrantCurrency}
                     onGrantItem={handleGrantItem}
                     onGrantXp={handleGrantXp}
+                    onHealPlayer={handleHealPlayer}
                     onDenyLevelUp={handleDenyLevelUp}
                     onOpenInventory={handleOpenInventory}
                     setCurrencyDraftByUserId={setCurrencyDraftByUserId}
+                    setHpDraftByUserId={setHpDraftByUserId}
                     setItemDraftByUserId={setItemDraftByUserId}
                     setXpDraftByUserId={setXpDraftByUserId}
                 />

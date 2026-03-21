@@ -36,7 +36,7 @@ export const HitPoints = ({
         <div className="grid grid-cols-1 gap-3">
           <div>
             <label className={fieldLabel}>{t("sheet.hp.maxDerived")}</label>
-            <input type="number" min={0} value={sheet.maxHP} disabled className={`${input} opacity-70`} />
+            <input type="text" value={String(sheet.maxHP)} disabled className={`${input} opacity-70`} />
           </div>
         </div>
       </Section>
@@ -48,12 +48,16 @@ export const HitPoints = ({
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className={fieldLabel}>{t("sheet.hp.maxHp")}</label>
-          <input
-            type="number" min={0} value={sheet.maxHP}
-            disabled={readOnly}
-            onChange={(e) => setMaxHP(safeParseInt(e.target.value))}
-            className={`${input} ${readOnly ? "opacity-70" : ""}`}
-          />
+          {readOnly ? (
+            <input type="text" value={String(sheet.maxHP)} disabled className={`${input} opacity-70`} />
+          ) : (
+            <input
+              type="number" min={0} value={sheet.maxHP}
+              disabled={readOnly}
+              onChange={(e) => setMaxHP(safeParseInt(e.target.value))}
+              className={input}
+            />
+          )}
         </div>
         <div>
           <label className={fieldLabel}>{t("sheet.hp.currentHp")}</label>

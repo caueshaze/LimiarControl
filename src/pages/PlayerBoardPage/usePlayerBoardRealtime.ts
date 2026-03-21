@@ -33,7 +33,6 @@ type Props = {
   partyId: string | undefined;
   refresh: () => Promise<unknown>;
   refreshInventoryData: () => Promise<void>;
-  refreshPlayerWallet: () => Promise<void>;
   roll: (
     expression: string,
     label?: string,
@@ -60,7 +59,6 @@ export const usePlayerBoardRealtime = ({
   partyId,
   refresh,
   refreshInventoryData,
-  refreshPlayerWallet,
   roll,
   selectedCampaignId,
   sessionEndedAt,
@@ -78,6 +76,14 @@ export const usePlayerBoardRealtime = ({
   const [inventoryFlash, setInventoryFlash] = useState(false);
   const redirectTimeoutRef = useRef<number | null>(null);
   const prevActiveSessionIdRef = useRef<string | null>(null);
+  const navigateBackToParty = (replace = false) => {
+    navigate(
+      partyId
+        ? routes.playerPartyDetails.replace(":partyId", partyId)
+        : routes.home,
+      replace ? { replace: true } : undefined,
+    );
+  };
   const {
     clearPendingRoll,
     handleManualRoll,
@@ -103,9 +109,9 @@ export const usePlayerBoardRealtime = ({
       prevActiveSessionIdRef.current = activeSession.id;
     } else if (prevActiveSessionIdRef.current && effectiveCampaignId) {
       prevActiveSessionIdRef.current = null;
-      navigate(routes.home, { replace: true });
+      navigateBackToParty(true);
     }
-  }, [activeSession?.id, effectiveCampaignId, navigate]);
+  }, [activeSession?.id, effectiveCampaignId, navigate, partyId]);
   useEffect(() => {
     if (!lastCommand) return;
     if (lastCommand.command === "open_shop") {
@@ -209,17 +215,6 @@ export const usePlayerBoardRealtime = ({
         typeof lastEvent.payload.userId === "string" ? lastEvent.payload.userId : null;
       if (eventUserId && eventUserId === userId) {
         void refreshInventoryData();
-        void refreshPlayerWallet();
-      }
-      return;
-    }
-    if (lastEvent.type === "session_state_updated") {
-      const eventPlayerUserId =
-        typeof lastEvent.payload.playerUserId === "string"
-          ? lastEvent.payload.playerUserId
-          : null;
-      if (eventPlayerUserId && eventPlayerUserId === userId) {
-        void refreshPlayerWallet();
       }
       return;
     }
@@ -229,7 +224,6 @@ export const usePlayerBoardRealtime = ({
           ? lastEvent.payload.playerUserId
           : null;
       if (eventPlayerUserId && eventPlayerUserId === userId) {
-        void refreshPlayerWallet();
         showToast({
           variant: "success",
           title: "Coins received",
@@ -244,11 +238,52 @@ export const usePlayerBoardRealtime = ({
           ? lastEvent.payload.playerUserId
           : null;
       if (eventPlayerUserId && eventPlayerUserId === userId) {
-        void refreshInventoryData();
         showToast({
           variant: "success",
           title: "New item received",
           description: `${String(lastEvent.payload.itemName ?? "Item")} added to your inventory.`,
+        });
+      }
+      return;
+    }
+    if (lastEvent.type === "gm_granted_xp") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === userId) {
+        showToast({
+          variant: "success",
+          title: "XP received",
+          description: `The GM granted ${String(lastEvent.payload.grantedAmount ?? 0)} XP.`,
+        });
+      }
+      return;
+    }
+    if (lastEvent.type === "level_up_approved") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === userId) {
+        showToast({
+          variant: "success",
+          title: "Level-up approved",
+          description: "Your character sheet has been updated.",
+        });
+      }
+      return;
+    }
+    if (lastEvent.type === "level_up_denied") {
+      const eventPlayerUserId =
+        typeof lastEvent.payload.playerUserId === "string"
+          ? lastEvent.payload.playerUserId
+          : null;
+      if (eventPlayerUserId && eventPlayerUserId === userId) {
+        showToast({
+          variant: "info",
+          title: "Level-up denied",
+          description: "The GM cleared your pending request.",
         });
       }
       return;
@@ -264,7 +299,7 @@ export const usePlayerBoardRealtime = ({
         window.clearTimeout(redirectTimeoutRef.current);
         redirectTimeoutRef.current = null;
       }
-      navigate(routes.home, { replace: true });
+      navigateBackToParty(true);
     }
   }, [
     activeSession?.id,
@@ -275,7 +310,6 @@ export const usePlayerBoardRealtime = ({
     partyId,
     refresh,
     refreshInventoryData,
-    refreshPlayerWallet,
     setSelectedSessionId,
     showToast,
     t,
@@ -301,7 +335,7 @@ export const usePlayerBoardRealtime = ({
     }
     redirectTimeoutRef.current = window.setTimeout(() => {
       clearSessionEnded();
-      navigate(routes.home);
+      navigateBackToParty();
       redirectTimeoutRef.current = null;
     }, 3200);
   }, [
@@ -313,6 +347,7 @@ export const usePlayerBoardRealtime = ({
     setSelectedSessionId,
     showToast,
     t,
+    partyId,
   ]);
 
   useEffect(() => {

@@ -32,7 +32,7 @@ export const useGmDashboardData = ({
 }: Props) => {
   const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession(effectiveCampaignId);
   const { selectedSessionId, setSelectedSessionId } = useSession();
-  const { shopOpen: shopActive, combatActive } = useSessionCommands();
+  const { shopOpen: shopActive, combatActive, restState } = useSessionCommands();
   const { events: rollEvents } = useRollSession();
   const { lastEvent, onlineUsers } = useCampaignEvents(effectiveCampaignId);
   const [overviewName, setOverviewName] = useState<string | null>(null);
@@ -46,6 +46,7 @@ export const useGmDashboardData = ({
   const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
   const [shopUiOpen, setShopUiOpen] = useState(false);
   const [combatUiActive, setCombatUiActive] = useState(false);
+  const [restUiState, setRestUiState] = useState<"exploration" | "short_rest" | "long_rest">("exploration");
   const [lobbyStatus, setLobbyStatus] = useState<LobbyStatus | null>(null);
   const { playerSheetByUserId, refreshPlayerSheet } = useGmDashboardPlayerProgress({
     activeSession,
@@ -120,6 +121,10 @@ export const useGmDashboardData = ({
   }, [combatActive]);
 
   useEffect(() => {
+    setRestUiState(restState);
+  }, [restState]);
+
+  useEffect(() => {
     if (!lastEvent) return;
     void refreshActivity();
 
@@ -139,6 +144,12 @@ export const useGmDashboardData = ({
     if (lastEvent.type === "shop_closed" && !isOtherPartyEvent) setShopUiOpen(false);
     if (lastEvent.type === "combat_started" && !isOtherPartyEvent) setCombatUiActive(true);
     if (lastEvent.type === "combat_ended" && !isOtherPartyEvent) setCombatUiActive(false);
+    if (lastEvent.type === "rest_started" && !isOtherPartyEvent) {
+      setRestUiState(lastEvent.payload.restType === "long_rest" ? "long_rest" : "short_rest");
+    }
+    if (lastEvent.type === "rest_ended" && !isOtherPartyEvent) {
+      setRestUiState("exploration");
+    }
 
     if (lastEvent.type === "session_lobby") {
       setLobbyStatus({
@@ -333,10 +344,12 @@ export const useGmDashboardData = ({
     refreshPlayerInventory,
     refreshPlayerSheet,
     refreshPlayerWallet,
+    restUiState,
     rollEvents,
     setCombatUiActive,
     setInventoryByMemberId,
     setLobbyStatus,
+    setRestUiState,
     setSelectedSessionId,
     setShopUiOpen,
     setWalletByUserId,

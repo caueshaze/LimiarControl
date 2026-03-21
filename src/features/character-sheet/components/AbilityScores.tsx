@@ -16,15 +16,16 @@ type Props = {
   className?: string;
   abilities: CharacterSheet["abilities"];
   race: CharacterSheet["race"];
+  raceConfig?: CharacterSheet["raceConfig"];
   mode: CharacterSheetMode;
   readOnly?: boolean;
   setAbility: SheetActions["setAbility"];
 };
 
-export const AbilityScores = ({ className, abilities, race, mode, readOnly = false, setAbility }: Props) => {
+export const AbilityScores = ({ className, abilities, race, raceConfig = null, mode, readOnly = false, setAbility }: Props) => {
   const { t } = useLocale();
   const isCreation = mode === "creation";
-  const raceData = getRace(race);
+  const raceData = getRace(race, raceConfig);
   const baseAbilities = { ...abilities };
   if (isCreation && raceData) {
     for (const [key, bonus] of Object.entries(raceData.abilityBonuses)) {
@@ -32,7 +33,7 @@ export const AbilityScores = ({ className, abilities, race, mode, readOnly = fal
       baseAbilities[abilityKey] -= bonus ?? 0;
     }
   }
-  const usedPoints = computeAbilityScoreTotal(abilities);
+  const usedPoints = computeAbilityScoreTotal(isCreation ? baseAbilities : abilities);
   const remainingPoints = ABILITY_SCORE_POOL - usedPoints;
 
   return (

@@ -27,14 +27,14 @@ export const PartyDetailsHeader = ({
           to={routes.home}
           className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200"
         >
-          ← Home
+          ← GM Home
         </Link>
         <p className="mt-3 text-xs uppercase tracking-[0.3em] text-limiar-300">
           {t("gm.home.partyPanelTitle")}
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-white">{party.name}</h1>
         <p className="mt-3 text-sm text-slate-300">
-          Manage your group, invite players, and view timeline.
+          Manage the roster, inspect sheets, and keep inventory close before the next session goes live.
         </p>
       </div>
       <div className="flex gap-3">

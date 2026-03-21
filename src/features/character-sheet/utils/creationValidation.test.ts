@@ -178,4 +178,87 @@ describe("validateCreationSheet", () => {
 
     expect(result.missingRequiredFields).toContain("subclass");
   });
+
+  it("requires a dragonborn ancestry during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "dragonborn",
+      raceConfig: null,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).toContain("raceConfig");
+  });
+
+  it("accepts a valid dragonborn ancestry during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "dragonborn",
+      raceConfig: { dragonbornAncestry: "red" },
+    });
+
+    expect(result.missingRequiredFields).not.toContain("raceConfig");
+  });
+
+  it("requires a gnome subrace during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "gnome",
+      raceConfig: null,
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).toContain("raceConfig");
+  });
+
+  it("accepts a valid gnome subrace during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "gnome",
+      raceConfig: { gnomeSubrace: "forest" },
+    });
+
+    expect(result.missingRequiredFields).not.toContain("raceConfig");
+  });
+
+  it("requires half-elf attribute and skill choices during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "half-elf",
+      raceConfig: null,
+      languageChoices: ["Gnomo"],
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).toContain("raceConfig");
+  });
+
+  it("rejects invalid half-elf raceConfig choices during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "half-elf",
+      raceConfig: {
+        halfElfAbilityChoices: ["charisma", "wisdom"],
+        halfElfSkillChoices: ["insight", "insight"],
+      },
+      languageChoices: ["Gnomo"],
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).toContain("raceConfig");
+  });
+
+  it("accepts valid half-elf choices during creation", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("fighter", 1),
+      race: "half-elf",
+      raceConfig: {
+        halfElfAbilityChoices: ["constitution", "wisdom"],
+        halfElfSkillChoices: ["insight", "persuasion"],
+      },
+      languageChoices: ["Gnomo"],
+    });
+
+    expect(result.missingRequiredFields).not.toContain("raceConfig");
+  });
 });

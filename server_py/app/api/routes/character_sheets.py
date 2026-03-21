@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
+from app.models.campaign_member import CampaignMember
 from app.models.character_sheet import CharacterSheet
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
@@ -14,6 +15,7 @@ from app.schemas.character_sheet import (
     CharacterSheetRead,
     CharacterSheetUpdate,
 )
+from app.api.routes.sessions._shared import record_session_activity
 from app.services.character_progression import (
     CharacterProgressionError,
     approve_level_up as approve_level_up_data,
@@ -22,6 +24,7 @@ from app.services.character_progression import (
 )
 from app.services.character_sheet_inventory import sync_character_sheet_inventory
 from app.services.centrifugo import centrifugo
+from app.services.race_config import normalize_race_state, validate_race_state
 from app.services.realtime import build_event, campaign_channel, event_version
 from app.api.routes.sessions.shop import (
     _ensure_player_session_state,
@@ -60,6 +63,23 @@ def _to_read(entry: CharacterSheet) -> CharacterSheetRead:
     )
 
 
+def _validate_character_sheet_payload(data) -> None:
+    ok, error = validate_race_state(data)
+    if not ok:
+        raise HTTPException(status_code=422, detail=error)
+
+
+def _normalize_character_sheet_payload(data):
+    if not isinstance(data, dict):
+        return data
+    normalized = normalize_race_state(data.get("race"), data.get("raceConfig"))
+    return {
+        **data,
+        "race": normalized["race"],
+        "raceConfig": normalized["raceConfig"],
+    }
+
+
 @router.get("/parties/{party_id}/character-sheet/me", response_model=CharacterSheetRead)
 def get_my_character_sheet(
     party_id: str,
@@ -71,6 +91,33 @@ def get_my_character_sheet(
         select(CharacterSheet).where(
             CharacterSheet.party_id == party_id,
             CharacterSheet.player_user_id == user.id,
+        )
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Character sheet not found")
+    return _to_read(entry)
+
+
+@router.get(
+    "/parties/{party_id}/character-sheets/{player_user_id}",
+    response_model=CharacterSheetRead,
+)
+def get_party_character_sheet(
+    party_id: str,
+    player_user_id: str,
+    user=Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    party = session.exec(select(Party).where(Party.id == party_id)).first()
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    if party.gm_user_id != user.id:
+        raise HTTPException(status_code=403, detail="GM required")
+
+    entry = session.exec(
+        select(CharacterSheet).where(
+            CharacterSheet.party_id == party_id,
+            CharacterSheet.player_user_id == player_user_id,
         )
     ).first()
     if not entry:
@@ -98,17 +145,19 @@ def create_character_sheet(
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail="Character sheet already exists")
+    _validate_character_sheet_payload(payload.data)
+    normalized_payload = _normalize_character_sheet_payload(payload.data)
     entry = CharacterSheet(
         id=str(uuid4()),
         party_id=party_id,
         player_user_id=user.id,
-        data=payload.data,
+        data=normalized_payload,
     )
     session.add(entry)
     sync_character_sheet_inventory(
         party=party,
         player_user_id=user.id,
-        sheet_data=payload.data,
+        sheet_data=normalized_payload,
         db=session,
     )
     session.commit()
@@ -132,12 +181,14 @@ def update_character_sheet(
     ).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Character sheet not found")
-    entry.data = payload.data
+    _validate_character_sheet_payload(payload.data)
+    normalized_payload = _normalize_character_sheet_payload(payload.data)
+    entry.data = normalized_payload
     session.add(entry)
     sync_character_sheet_inventory(
         party=party,
         player_user_id=user.id,
-        sheet_data=payload.data,
+        sheet_data=normalized_payload,
         db=session,
         only_if_inventory_empty=True,
     )
@@ -195,6 +246,15 @@ def _get_open_party_session(party_id: str, session: Session) -> CampaignSession 
         select(CampaignSession).where(
             CampaignSession.party_id == party_id,
             CampaignSession.status.in_([SessionStatus.LOBBY, SessionStatus.ACTIVE]),
+        )
+    ).first()
+
+
+def _get_campaign_member(campaign_id: str, user_id: str, session: Session) -> CampaignMember | None:
+    return session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == campaign_id,
+            CampaignMember.user_id == user_id,
         )
     ).first()
 
@@ -276,6 +336,24 @@ async def request_level_up(
         sheet_data=data,
         session=session,
     )
+    if open_session:
+        actor_member = _get_campaign_member(open_session.campaign_id, user.id, session)
+        if actor_member:
+            record_session_activity(
+                open_session,
+                "level_up_requested",
+                session,
+                member_id=str(actor_member.id),
+                user_id=user.id,
+                actor_name=actor_member.display_name,
+                payload={
+                    "targetUserId": user.id,
+                    "targetDisplayName": actor_member.display_name,
+                    "level": int(data.get("level", 1)),
+                    "experiencePoints": int(data.get("experiencePoints", 0)),
+                    "pendingLevelUp": bool(data.get("pendingLevelUp", False)),
+                },
+            )
     session.commit()
     session.refresh(entry)
     if state:
@@ -292,6 +370,7 @@ async def request_level_up(
             open_session,
             user.id,
             state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
         )
 
     return _to_read(entry)
@@ -332,6 +411,25 @@ async def approve_level_up(
         sheet_data=data,
         session=session,
     )
+    if open_session:
+        actor_member = _get_campaign_member(open_session.campaign_id, user.id, session)
+        target_member = _get_campaign_member(open_session.campaign_id, player_user_id, session)
+        if actor_member:
+            record_session_activity(
+                open_session,
+                "level_up_approved",
+                session,
+                member_id=str(actor_member.id),
+                user_id=user.id,
+                actor_name=actor_member.display_name,
+                payload={
+                    "targetUserId": player_user_id,
+                    "targetDisplayName": target_member.display_name if target_member else player_user_id,
+                    "level": int(data.get("level", 1)),
+                    "experiencePoints": int(data.get("experiencePoints", 0)),
+                    "pendingLevelUp": bool(data.get("pendingLevelUp", False)),
+                },
+            )
     session.commit()
     session.refresh(entry)
     if state:
@@ -348,6 +446,7 @@ async def approve_level_up(
             open_session,
             player_user_id,
             state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
         )
 
     return _to_read(entry)
@@ -388,6 +487,25 @@ async def deny_level_up(
         sheet_data=data,
         session=session,
     )
+    if open_session:
+        actor_member = _get_campaign_member(open_session.campaign_id, user.id, session)
+        target_member = _get_campaign_member(open_session.campaign_id, player_user_id, session)
+        if actor_member:
+            record_session_activity(
+                open_session,
+                "level_up_denied",
+                session,
+                member_id=str(actor_member.id),
+                user_id=user.id,
+                actor_name=actor_member.display_name,
+                payload={
+                    "targetUserId": player_user_id,
+                    "targetDisplayName": target_member.display_name if target_member else player_user_id,
+                    "level": int(data.get("level", 1)),
+                    "experiencePoints": int(data.get("experiencePoints", 0)),
+                    "pendingLevelUp": bool(data.get("pendingLevelUp", False)),
+                },
+            )
     session.commit()
     session.refresh(entry)
     if state:
@@ -404,6 +522,7 @@ async def deny_level_up(
             open_session,
             player_user_id,
             state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
         )
 
     return _to_read(entry)

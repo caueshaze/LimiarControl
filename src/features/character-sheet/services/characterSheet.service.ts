@@ -4,6 +4,7 @@ import { partiesRepo } from "../../../shared/api/partiesRepo";
 import { parseCharacterSheet } from "../model/characterSheet.schema";
 import { INITIAL_SHEET } from "../model/initialSheet";
 import type { CharacterSheet } from "../model/characterSheet.types";
+import { normalizeRaceState } from "../data/races";
 import { applyCreationLoadoutToSheet } from "../utils/creationEquipment";
 import { loadCreationItemCatalog } from "../utils/creationItemCatalog";
 import { loadSpellCatalog } from "../../../entities/dnd-base";
@@ -42,11 +43,39 @@ export async function loadCharacterSheet(
   }
 }
 
+export async function loadCharacterSheetForPlayer(
+  partyId: string,
+  playerUserId: string,
+  campaignId?: string | null,
+): Promise<{ id: string | null; sheet: CharacterSheet }> {
+  await Promise.all([
+    loadCreationItemCatalog(campaignId),
+    loadSpellCatalog(campaignId),
+  ]);
+
+  const record = await characterSheetsRepo.getForPlayer(partyId, playerUserId);
+  return {
+    id: record.id,
+    sheet: applyCreationLoadoutToSheet(parseCharacterSheet(record.data)),
+  };
+}
+
+const normalizeCharacterSheetForPersistence = (sheet: CharacterSheet): CharacterSheet => {
+  const normalizedRace = normalizeRaceState(sheet.race, sheet.raceConfig);
+  return {
+    ...sheet,
+    race: normalizedRace.raceId,
+    raceConfig: normalizedRace.raceConfig,
+  };
+};
+
 export const prepareCharacterSheetForSave = (
   sheet: CharacterSheet,
   mode: "creation" | "play",
 ): CharacterSheet =>
-  mode === "creation" ? applyCreationLoadoutToSheet(sheet) : sheet;
+  mode === "creation"
+    ? applyCreationLoadoutToSheet(normalizeCharacterSheetForPersistence(sheet))
+    : normalizeCharacterSheetForPersistence(sheet);
 
 /**
  * Salva a ficha: cria (POST) se não existir, atualiza (PUT) se já existir.
@@ -88,7 +117,11 @@ export async function savePlayCharacterSheet(
   playerUserId: string,
   sheet: CharacterSheet,
 ): Promise<string> {
-  const record = await sessionStatesRepo.updateByPlayer(sessionId, playerUserId, sheet);
+  const record = await sessionStatesRepo.updateByPlayer(
+    sessionId,
+    playerUserId,
+    normalizeCharacterSheetForPersistence(sheet),
+  );
   return record.id;
 }
 
