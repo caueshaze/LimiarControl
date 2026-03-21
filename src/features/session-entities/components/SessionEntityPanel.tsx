@@ -8,6 +8,7 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 type Props = {
   sessionId: string;
   campaignId: string;
+  combatActive?: boolean;
   lastEvent?: CampaignEvent | null;
 };
 
@@ -19,7 +20,12 @@ const ENTITY_EVENT_TYPES = new Set([
   "entity_hp_updated",
 ]);
 
-export const SessionEntityPanel = ({ sessionId, campaignId, lastEvent }: Props) => {
+export const SessionEntityPanel = ({
+  sessionId,
+  campaignId,
+  combatActive = false,
+  lastEvent,
+}: Props) => {
   const { t } = useLocale();
   const { entities, loading, refresh, addEntity, removeEntity, toggleVisibility, updateHp } =
     useSessionEntities(sessionId);
@@ -34,7 +40,12 @@ export const SessionEntityPanel = ({ sessionId, campaignId, lastEvent }: Props) 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">{t("entity.session.panelTitle")}</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-white">{t("entity.session.panelTitle")}</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            {combatActive ? t("entity.session.combatLive") : t("entity.session.combatIdle")}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setShowPicker((v) => !v)}

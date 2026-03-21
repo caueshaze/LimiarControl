@@ -5,40 +5,15 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
+from app.api.serializers.item import to_item_read
 from app.db.session import get_session
 from app.models.base_item import BaseItemKind
 from app.models.campaign import Campaign
-from app.models.item import Item
 from app.models.user import User
 from app.schemas.item import ItemRead
-from app.services.campaign_catalog import list_campaign_catalog, seed_campaign_catalog
+from app.services.campaign_catalog import list_campaign_catalog, snapshot_campaign_catalog
 
 router = APIRouter()
-
-
-def to_item_read(item: Item) -> ItemRead:
-    return ItemRead(
-        id=item.id,
-        campaignId=item.campaign_id,
-        name=item.name,
-        type=item.type,
-        description=item.description,
-        price=item.price,
-        weight=item.weight,
-        damageDice=item.damage_dice,
-        rangeMeters=item.range_meters,
-        properties=item.properties,
-        baseItemId=item.base_item_id,
-        canonicalKeySnapshot=item.canonical_key_snapshot,
-        nameEnSnapshot=item.name_en_snapshot,
-        namePtSnapshot=item.name_pt_snapshot,
-        itemKind=item.item_kind,
-        costUnit=item.cost_unit,
-        isCustom=item.is_custom,
-        isEnabled=item.is_enabled,
-        createdAt=item.created_at,
-        updatedAt=item.updated_at,
-    )
 
 
 class CatalogSeedResult(BaseModel):
@@ -60,7 +35,12 @@ def seed_catalog(
     campaign = session.exec(select(Campaign).where(Campaign.id == campaign_id)).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    result = seed_campaign_catalog(campaign_id, campaign.system, session)
+    if campaign.item_catalog_snapshot_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign item catalog snapshot is locked after campaign creation",
+        )
+    result = snapshot_campaign_catalog(campaign=campaign, db=session)
     return CatalogSeedResult(**result)
 
 

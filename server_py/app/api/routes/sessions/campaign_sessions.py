@@ -127,6 +127,7 @@ async def _start_session(
             existing_runtime.lobby_expected = []
             existing_runtime.lobby_ready = []
             existing_runtime.shop_open = False
+            existing_runtime.combat_active = False
             session.add(existing_runtime)
             session.commit()
         last_closed_source = existing_active
@@ -233,6 +234,7 @@ async def _start_session(
         runtime.lobby_expected = []
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(entry)
         session.add(runtime)
         session.commit()
@@ -258,6 +260,7 @@ async def _start_session(
         runtime.lobby_expected = expected_list
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(runtime)
         session.commit()
         await centrifugo.publish(

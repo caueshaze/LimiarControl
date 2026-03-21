@@ -6,18 +6,9 @@ import { usersRepo, type UserSearchResult } from "../../shared/api/usersRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { StartSessionModal } from "../../features/sessions/components/StartSessionModal";
 import { sessionsRepo, type ActivityEvent, type LobbyStatus } from "../../shared/api/sessionsRepo";
-import { useCampaignEvents } from "../../features/sessions";
-
-function formatOffset(seconds: number): string {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
+import { SessionActivityRow, useCampaignEvents } from "../../features/sessions";
 
 function SessionActivityLog({ sessionId }: { sessionId: string }) {
-    const { t } = useLocale();
     const [events, setEvents] = useState<ActivityEvent[] | null>(null);
 
     useEffect(() => {
@@ -29,50 +20,9 @@ function SessionActivityLog({ sessionId }: { sessionId: string }) {
 
     return (
         <div className="mt-3 space-y-1.5">
-            {events.map((ev, i) => {
-                const actor = ev.displayName ?? ev.username ?? "Unknown";
-                if (ev.type === "roll") {
-                    return (
-                        <div key={i} className="flex items-start gap-2 rounded-lg bg-slate-900/60 px-3 py-2">
-                            <span className="text-sm">🎲</span>
-                            <p className="flex-1 text-xs text-white">
-                                <span className="font-semibold">{actor}</span>
-                                {" rolled "}
-                                <span className="font-mono text-limiar-300">{ev.expression}</span>
-                                {" → "}
-                                <span className="font-bold text-limiar-400">{ev.total}</span>
-                                {ev.results.length > 1 && <span className="text-slate-500 ml-1">({ev.results.join(", ")})</span>}
-                            </p>
-                            {ev.label && <p className="mt-0.5 text-[11px] text-slate-400">{t("sessionActivity.reason")} {ev.label}</p>}
-                            <span className="text-[10px] font-mono text-slate-600 shrink-0">{formatOffset(ev.sessionOffsetSeconds)}</span>
-                        </div>
-                    );
-                }
-                if (ev.type === "shop") {
-                    return (
-                        <div key={i} className="flex items-start gap-2 rounded-lg bg-slate-900/60 px-3 py-2">
-                            <span className="text-sm">{ev.action === "opened" ? "🏪" : "🔒"}</span>
-                            <p className="flex-1 text-xs text-white">
-                                <span className="font-semibold">{actor}</span>
-                                {ev.action === "opened" ? " opened the shop" : " closed the shop"}
-                            </p>
-                            <span className="text-[10px] font-mono text-slate-600 shrink-0">{formatOffset(ev.sessionOffsetSeconds)}</span>
-                        </div>
-                    );
-                }
-                return (
-                    <div key={i} className="flex items-start gap-2 rounded-lg bg-slate-900/60 px-3 py-2">
-                        <span className="text-sm">🛒</span>
-                        <p className="flex-1 text-xs text-white">
-                            <span className="font-semibold">{actor}</span>
-                            {" bought "}
-                            <span className="font-semibold text-amber-300">{ev.itemName}</span>
-                            {ev.quantity > 1 && <span className="text-slate-400"> ×{ev.quantity}</span>}
-                        </p>
-                        <span className="text-[10px] font-mono text-slate-600 shrink-0">{formatOffset(ev.sessionOffsetSeconds)}</span>
-                    </div>
-                );
-            })}
+            {events.map((ev, i) => (
+                <SessionActivityRow key={i} event={ev} />
+            ))}
         </div>
     );
 }

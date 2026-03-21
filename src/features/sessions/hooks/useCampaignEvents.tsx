@@ -63,6 +63,19 @@ export type CampaignEvent =
       version?: number;
     }
   | {
+      type: "combat_started" | "combat_ended";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        combatActive?: boolean;
+        note?: string;
+      };
+      version?: number;
+    }
+  | {
       type: "roll_requested";
       payload: {
         campaignId: string;
@@ -184,6 +197,9 @@ export type CampaignEvent =
         visibleToPlayers: boolean;
         label?: string | null;
         currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
       };
       version?: number;
     }
@@ -198,6 +214,11 @@ export type CampaignEvent =
         visibleToPlayers: boolean;
         label?: string | null;
         currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
+        previousHp?: number | null;
+        hpDelta?: number | null;
       };
       version?: number;
     }
@@ -212,6 +233,9 @@ export type CampaignEvent =
         visibleToPlayers?: boolean;
         label?: string | null;
         currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
       };
       version?: number;
     };
@@ -224,6 +248,8 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "player_joined_lobby",
   "shop_opened",
   "shop_closed",
+  "combat_started",
+  "combat_ended",
   "roll_requested",
   "dice_rolled",
   "shop_purchase_created",
@@ -259,6 +285,8 @@ const getVersionKey = (
     case "session_lobby":
     case "shop_opened":
     case "shop_closed":
+    case "combat_started":
+    case "combat_ended":
     case "roll_requested":
     case "dice_rolled":
     case "shop_purchase_created":

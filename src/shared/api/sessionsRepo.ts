@@ -36,6 +36,48 @@ export type ShopActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type RollRequestActivityEvent = {
+  type: "roll_request";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  expression: string;
+  reason?: string | null;
+  mode?: "advantage" | "disadvantage" | null;
+  targetUserId?: string | null;
+  targetDisplayName?: string | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type CombatActivityEvent = {
+  type: "combat";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "started" | "ended";
+  note?: string | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type EntityActivityEvent = {
+  type: "entity";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  action: "added" | "removed" | "revealed" | "hidden" | "damaged" | "healed" | "hp_set";
+  entityName: string;
+  entityCategory?: string | null;
+  label?: string | null;
+  currentHp?: number | null;
+  previousHp?: number | null;
+  delta?: number | null;
+  maxHp?: number | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type SessionGrantCurrencyResult = {
   playerUserId: string;
   currentCurrency: {
@@ -65,7 +107,10 @@ export type SessionGrantItemResult = {
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
-  | ShopActivityEvent;
+  | ShopActivityEvent
+  | RollRequestActivityEvent
+  | CombatActivityEvent
+  | EntityActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;
@@ -95,6 +140,7 @@ export type SessionRuntime = {
   partyId?: string | null;
   status: "LOBBY" | "ACTIVE" | "CLOSED";
   shopOpen: boolean;
+  combatActive: boolean;
 };
 
 export type SessionSummary = {

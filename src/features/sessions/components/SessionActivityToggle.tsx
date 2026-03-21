@@ -2,21 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
 import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { SessionActivityRow } from "./SessionActivityRow";
 
 type SessionActivityToggleProps = {
   refreshSignal?: string | number | null;
   sessionId?: string | null;
 };
-
-function formatOffset(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}h${String(m).padStart(2, "0")}m`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
 
 export const SessionActivityToggle = ({
   refreshSignal = null,
@@ -128,81 +119,12 @@ export const SessionActivityToggle = ({
           ) : (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {orderedEvents.map((event, index) => (
-                <ActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
+                <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
               ))}
             </div>
           )}
         </div>
       )}
-    </div>
-  );
-};
-
-const ActivityRow = ({ event }: { event: ActivityEvent }) => {
-  const { t } = useLocale();
-  const actor = event.displayName ?? event.username ?? "Unknown";
-
-  if (event.type === "roll") {
-    return (
-      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-        <span className="mt-0.5 text-base">🎲</span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-white">
-            <span className="font-semibold">{actor}</span>
-            {" rolled "}
-            <span className="font-mono text-limiar-300">{event.expression}</span>
-            {" → "}
-            <span className="font-bold text-limiar-400">{event.total}</span>
-            {event.results.length > 1 && (
-              <span className="ml-1 text-xs text-slate-500">({event.results.join(", ")})</span>
-            )}
-          </p>
-          {event.label && (
-            <p className="mt-0.5 text-xs text-slate-400">
-              {t("sessionActivity.reason")} {event.label}
-            </p>
-          )}
-        </div>
-        <span className="shrink-0 text-xs font-mono text-slate-500">
-          {formatOffset(event.sessionOffsetSeconds)}
-        </span>
-      </div>
-    );
-  }
-
-  if (event.type === "shop") {
-    return (
-      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-        <span className="mt-0.5 text-base">{event.action === "opened" ? "🏪" : "🔒"}</span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-white">
-            <span className="font-semibold">{actor}</span>
-            {event.action === "opened"
-              ? ` ${t("sessionActivity.shopOpened")}`
-              : ` ${t("sessionActivity.shopClosed")}`}
-          </p>
-        </div>
-        <span className="shrink-0 text-xs font-mono text-slate-500">
-          {formatOffset(event.sessionOffsetSeconds)}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-      <span className="mt-0.5 text-base">🛒</span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-white">
-          <span className="font-semibold">{actor}</span>
-          {" bought "}
-          <span className="font-semibold text-amber-300">{event.itemName}</span>
-          {event.quantity > 1 && <span className="text-slate-400"> ×{event.quantity}</span>}
-        </p>
-      </div>
-      <span className="shrink-0 text-xs font-mono text-slate-500">
-        {formatOffset(event.sessionOffsetSeconds)}
-      </span>
     </div>
   );
 };

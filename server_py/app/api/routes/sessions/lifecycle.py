@@ -21,6 +21,7 @@ from app.services.realtime import (
 )
 from ._shared import (
     DEPRECATION_REMOVAL_DATE,
+    get_or_create_session_runtime,
     require_party_gm,
     resolve_party_id_for_campaign,
     to_session_read,
@@ -59,6 +60,7 @@ async def close_party_session(
         runtime.lobby_expected = []
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(runtime)
         session.commit()
         session.refresh(entry)
@@ -120,6 +122,7 @@ async def close_session(
         runtime.lobby_expected = []
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(runtime)
         session.commit()
         session.refresh(entry)
@@ -215,6 +218,16 @@ async def resume_session(
             )
         session.add(active)
         session.commit()
+        active_runtime = session.exec(
+            select(SessionRuntime).where(SessionRuntime.session_id == active.id)
+        ).first()
+        if active_runtime:
+            active_runtime.lobby_expected = []
+            active_runtime.lobby_ready = []
+            active_runtime.shop_open = False
+            active_runtime.combat_active = False
+            session.add(active_runtime)
+            session.commit()
         closed_payload = {
             "sessionId": active.id,
             "campaignId": active.campaign_id,
@@ -234,7 +247,13 @@ async def resume_session(
     entry.status = SessionStatus.ACTIVE
     entry.started_at = now
     entry.ended_at = None
+    runtime = get_or_create_session_runtime(entry.id, session)
+    runtime.lobby_expected = []
+    runtime.lobby_ready = []
+    runtime.shop_open = False
+    runtime.combat_active = False
     session.add(entry)
+    session.add(runtime)
     session.commit()
     session.refresh(entry)
     resumed_payload = {

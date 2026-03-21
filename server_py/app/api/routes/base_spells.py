@@ -16,11 +16,13 @@ from app.services.base_spells import (
 )
 
 router = APIRouter()
+BASE_SPELL_WRITE_DISABLED_DETAIL = (
+    "Base spell catalog is read-only via API to preserve campaign isolation"
+)
 
 
-def require_spell_catalog_editor(user: User) -> None:
-    if user.role != RoleMode.GM:
-        raise HTTPException(status_code=403, detail="GM required")
+def require_spell_catalog_editor(_user: User) -> None:
+    raise HTTPException(status_code=403, detail=BASE_SPELL_WRITE_DISABLED_DETAIL)
 
 
 def to_base_spell_alias_read(alias: BaseSpellAlias) -> BaseSpellAliasRead:

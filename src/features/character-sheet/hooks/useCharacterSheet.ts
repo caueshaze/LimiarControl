@@ -347,6 +347,7 @@ const normalizeCreationAfterClassChange = (
   return {
     ...sheet,
     class: className,
+    subclass: "",
     classSkillChoices: trimmedChoices,
     classEquipmentSelections,
     skillProficiencies,
@@ -462,7 +463,7 @@ export const useCharacterSheet = (
     if (!partyId) {
       if (mode === "creation") {
         await Promise.all([
-          loadCreationItemCatalog(),
+          loadCreationItemCatalog(campaignId),
           loadSpellCatalog(campaignId),
         ]);
       }
@@ -806,6 +807,9 @@ export const useCharacterSheet = (
     });
   };
 
+  const selectSubclass = (id: string) =>
+    guardedUpdate((s) => ({ ...s, subclass: id }));
+
   const selectClassEquipment = (groupId: string, optionId: string) =>
     guardedUpdate((s) => {
       if (mode !== "creation") return s;
@@ -949,7 +953,7 @@ export const useCharacterSheet = (
     enableSpellcasting, disableSpellcasting, setSpellAbility, setSpellSlot,
     addSpell, removeSpell, updateSpell,
     addTag, removeTag,
-    selectClass, selectBackground, selectRace, selectClassEquipment, pickClassSkill, pickClassToolProficiency,
+    selectClass, selectSubclass, selectBackground, selectRace, selectClassEquipment, pickClassSkill, pickClassToolProficiency,
     selectLanguageChoice, toggleCreationSpellSelection,
     handleExport, handleImport, resetSheet,
     safeParseInt,

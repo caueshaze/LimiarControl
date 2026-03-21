@@ -17,6 +17,8 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
   const category = (entity.entity?.category ?? "npc") as EntityCategory;
   const displayName = entity.label ? `${name} (${entity.label})` : name;
   const hp = entity.currentHp;
+  const maxHp = entity.entity?.baseHp ?? null;
+  const adjustments = [-10, -5, -1, 1, 5, 10];
 
   const handleHpChange = (delta: number) => {
     const next = Math.max(0, (hp ?? 0) + delta);
@@ -54,22 +56,24 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
 
       {/* HP control */}
       {hp != null && (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => handleHpChange(-1)}
-            className="w-6 h-6 rounded bg-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/30"
-          >
-            -
-          </button>
-          <span className="w-8 text-center text-xs font-bold text-white">{hp}</span>
-          <button
-            type="button"
-            onClick={() => handleHpChange(1)}
-            className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30"
-          >
-            +
-          </button>
+        <div className="flex items-center gap-1.5">
+          {adjustments.map((delta) => (
+            <button
+              key={delta}
+              type="button"
+              onClick={() => handleHpChange(delta)}
+              className={`rounded px-1.5 py-1 text-[10px] font-bold ${
+                delta < 0
+                  ? "bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                  : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+              }`}
+            >
+              {delta > 0 ? `+${delta}` : delta}
+            </button>
+          ))}
+          <span className="min-w-14 text-center text-xs font-bold text-white">
+            {maxHp != null ? `${hp}/${maxHp}` : hp}
+          </span>
         </div>
       )}
 

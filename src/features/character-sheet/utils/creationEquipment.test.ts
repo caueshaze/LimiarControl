@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { INITIAL_SHEET } from "../model/initialSheet";
+import { getClassCreationConfig } from "../data/classCreation";
 import { BACKGROUNDS } from "../data/backgrounds";
 import {
   applyCreationLoadoutToSheet,
@@ -45,6 +46,15 @@ describe("creationEquipment", () => {
     expect(defaultLoadout.inventory.map((item) => item.name)).toContain("Mace");
     expect(updatedLoadout.inventory.map((item) => item.name)).toContain("Warhammer");
     expect(updatedLoadout.inventory.map((item) => item.name)).not.toContain("Mace");
+  });
+
+  it("anchors class equipment choices to stable catalog tokens when the catalog is loaded", () => {
+    const config = getClassCreationConfig("cleric");
+
+    expect(config?.fixedEquipment).toEqual(["catalog:shield", "catalog:holy_symbol"]);
+    expect(config?.equipmentChoices.find((group) => group.id === "cleric-weapon")?.options[0]?.items).toEqual([
+      "catalog:mace",
+    ]);
   });
 
   it("resolves problematic starter item names to canonical names", () => {

@@ -28,6 +28,14 @@ class Campaign(SQLModel, table=True):
     role_mode: RoleMode = Field(
         default=RoleMode.GM, sa_column=Column(SAEnum(RoleMode), nullable=False)
     )
+    item_catalog_snapshot_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+    spell_catalog_snapshot_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

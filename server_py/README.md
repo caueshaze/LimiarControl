@@ -42,6 +42,38 @@ cd server_py
 alembic upgrade head
 ```
 
+## Seed base catalogs
+
+After the schema is up to date, seed the D&D base catalogs used by character creation, shop flows, and campaign spell setup.
+
+Dry-run:
+
+```bash
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py --dry-run
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py --dry-run
+```
+
+Execute the imports:
+
+```bash
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py
+```
+
+Notes:
+
+- Items are loaded into `base_item` and `base_item_alias`
+- Spells are loaded into `base_spell` and `base_spell_alias`
+- If `Base/DND5e_Equipamentos.json` is missing, the item importer falls back to synthetic essential gear seeds
+- The importers can be rerun safely because they upsert by canonical identity keys
+
+Validated local result:
+
+- `base_item`: 112 rows
+- `base_item_alias`: 243 rows
+- `base_spell`: 319 rows
+- `base_spell_alias`: 319 rows
+
 ## Run the API (port 3000)
 ```bash
 cd server_py

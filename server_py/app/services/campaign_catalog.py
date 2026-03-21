@@ -1,13 +1,14 @@
 """Service for materializing base_item catalog into campaign-level items."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import logging
 from uuid import uuid4
 
 from sqlmodel import Session, select
 
 from app.models.base_item import BaseItem, BaseItemCostUnit, BaseItemKind
-from app.models.campaign import SystemType
+from app.models.campaign import Campaign, SystemType
 from app.models.item import Item, ItemType
 
 logger = logging.getLogger(__name__)
@@ -55,28 +56,7 @@ def _build_weapon_properties(base_item: BaseItem) -> list[str]:
 
 
 def _build_armor_properties(base_item: BaseItem) -> list[str]:
-    props: list[str] = []
-    if base_item.armor_class_base is not None:
-        props.append(f"CA base {base_item.armor_class_base}")
-    if base_item.armor_category:
-        category_labels = {
-            "light": "leve",
-            "medium": "média",
-            "heavy": "pesada",
-            "shield": "escudo",
-        }
-        label = category_labels.get(base_item.armor_category.value, base_item.armor_category.value)
-        if base_item.armor_category.value == "shield":
-            props.append("Bônus de escudo")
-        else:
-            props.append(f"Tipo {label}")
-    if base_item.dex_bonus_rule and base_item.dex_bonus_rule != "unlimited":
-        props.append(f"DEX máx {base_item.dex_bonus_rule}")
-    if base_item.strength_requirement:
-        props.append(f"FOR {base_item.strength_requirement}")
-    if base_item.stealth_disadvantage:
-        props.append("Desvantagem em furtividade")
-    return props
+    return ["stealth_disadvantage"] if base_item.stealth_disadvantage else []
 
 
 def _base_item_to_campaign_item(
@@ -100,7 +80,18 @@ def _base_item_to_campaign_item(
         price=_base_item_price_gp(base_item),
         weight=base_item.weight,
         damage_dice=base_item.damage_dice,
+        damage_type=base_item.damage_type,
         range_meters=_feet_to_meters(base_item.range_normal),
+        range_long_meters=_feet_to_meters(base_item.range_long),
+        versatile_damage=base_item.versatile_damage,
+        weapon_category=base_item.weapon_category,
+        weapon_range_type=base_item.weapon_range_type,
+        armor_category=base_item.armor_category,
+        armor_class_base=base_item.armor_class_base,
+        dex_bonus_rule=None if base_item.is_shield else base_item.dex_bonus_rule,
+        strength_requirement=base_item.strength_requirement,
+        stealth_disadvantage=bool(base_item.stealth_disadvantage),
+        is_shield=base_item.is_shield,
         properties=properties,
         base_item_id=base_item.id,
         canonical_key_snapshot=base_item.canonical_key,
@@ -117,6 +108,8 @@ def seed_campaign_catalog(
     campaign_id: str,
     system: SystemType,
     db: Session,
+    *,
+    commit: bool = True,
 ) -> dict[str, int]:
     """Materializes active base items into campaign-level items.
 
@@ -148,7 +141,7 @@ def seed_campaign_catalog(
         db.add(campaign_item)
         inserted += 1
 
-    if inserted > 0:
+    if commit and inserted > 0:
         db.commit()
         logger.info(
             "Seeded %d campaign items for campaign=%s system=%s",
@@ -158,6 +151,42 @@ def seed_campaign_catalog(
         )
 
     return {"inserted": inserted, "existing": len(existing_base_ids)}
+
+
+def snapshot_campaign_catalog(
+    *,
+    campaign: Campaign,
+    db: Session,
+    commit: bool = True,
+) -> dict[str, int]:
+    """Freeze the campaign item catalog against the current base catalog state."""
+    if not campaign.id:
+        raise ValueError("Campaign must have an id before catalog snapshotting")
+
+    if campaign.item_catalog_snapshot_at is not None:
+        existing = db.exec(
+            select(Item.base_item_id).where(
+                Item.campaign_id == campaign.id,
+                Item.base_item_id.is_not(None),  # type: ignore[union-attr]
+            )
+        ).all()
+        existing_count = len([row for row in existing if row is not None])
+        return {"inserted": 0, "existing": existing_count}
+
+    result = seed_campaign_catalog(
+        campaign.id,
+        campaign.system,
+        db,
+        commit=False,
+    )
+    campaign.item_catalog_snapshot_at = datetime.now(timezone.utc)
+    db.add(campaign)
+
+    if commit:
+        db.commit()
+        db.refresh(campaign)
+
+    return result
 
 
 def list_campaign_catalog(

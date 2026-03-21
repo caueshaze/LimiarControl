@@ -86,6 +86,7 @@ const inventoryItemSchema = z.object({
   weight: z.number().min(0),
   notes: z.string(),
   canonicalKey: z.string().nullable().optional(),
+  campaignItemId: z.string().nullable().optional(),
   baseItemId: z.string().nullable().optional(),
 });
 
@@ -135,6 +136,7 @@ export const characterSheetSchema = z.object({
 
   name: z.string(),
   class: z.string(),
+  subclass: z.string().default(""),
   level: z.number().min(1).max(20),
   background: z.string(),
   playerName: z.string(),

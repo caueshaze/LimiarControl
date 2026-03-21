@@ -82,7 +82,56 @@ class ShopActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
-ActivityEvent = Union[RollActivityEvent, PurchaseActivityEvent, ShopActivityEvent]
+class RollRequestActivityEvent(BaseModel):
+    type: Literal["roll_request"] = "roll_request"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    expression: str
+    reason: Optional[str] = None
+    mode: Optional[Literal["advantage", "disadvantage"]] = None
+    targetUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class CombatActivityEvent(BaseModel):
+    type: Literal["combat"] = "combat"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["started", "ended"]
+    note: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class EntityActivityEvent(BaseModel):
+    type: Literal["entity"] = "entity"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    action: Literal["added", "removed", "revealed", "hidden", "damaged", "healed", "hp_set"]
+    entityName: str
+    entityCategory: Optional[str] = None
+    label: Optional[str] = None
+    currentHp: Optional[int] = None
+    previousHp: Optional[int] = None
+    delta: Optional[int] = None
+    maxHp: Optional[int] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+ActivityEvent = Union[
+    RollActivityEvent,
+    PurchaseActivityEvent,
+    ShopActivityEvent,
+    RollRequestActivityEvent,
+    CombatActivityEvent,
+    EntityActivityEvent,
+]
 
 
 class LobbyPlayer(BaseModel):
@@ -106,6 +155,7 @@ class SessionRuntimeRead(BaseModel):
     partyId: Optional[str] = None
     status: SessionStatus
     shopOpen: bool
+    combatActive: bool
 
 
 class ActiveSessionRead(BaseModel):

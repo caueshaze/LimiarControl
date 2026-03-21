@@ -181,23 +181,47 @@ python -m py_compile app/api/routes/sessions/*.py
 
 ### Base catalog import
 
-Initial D&D base item import for weapons, armors, and essential gear used by character creation:
+After running migrations, seed the D&D base catalogs used by character creation, shop flows, and campaign spell setup.
+
+Dry-run both importers first:
 
 ```bash
 /workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py --dry-run
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py --dry-run
 ```
 
-The importer currently reads:
+Then execute the real imports:
+
+```bash
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
+/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py
+```
+
+What each importer does:
+
+- `import_dnd_base_items.py` loads weapons, armor, and essential gear into `base_item` and `base_item_alias`
+- `import_dnd_base_spells.py` loads spells into `base_spell` and `base_spell_alias`
+
+Item sources used by the importer:
 
 - `Base/DND5e_Armas_Database_Programador.csv`
 - `Base/DND5e_Armaduras_Database.csv`
 - `Base/DND5e_Equipamentos.json` when available
 
-If the gear JSON is missing, the importer falls back to a curated synthetic set for the
-essential packs, tools, foci, ammunition, and recurring creation items.
+Spell source used by the importer:
 
-It upserts into `base_item` and `base_item_alias` using `(system, canonical_key)` as the identity key.
+- `Base/DND5e_Magias_Completas_API.csv`
+
+If `Base/DND5e_Equipamentos.json` is missing, the item importer falls back to synthetic seeds for essential packs, tools, foci, ammunition, and recurring character-creation items.
+
+The importers are safe to rerun: they upsert by canonical identity keys instead of blindly duplicating rows.
+
+Current validated result in the local dev database:
+
+- `base_item`: 112 rows
+- `base_item_alias`: 243 rows
+- `base_spell`: 319 rows
+- `base_spell_alias`: 319 rows
 
 ## Real-time notes
 

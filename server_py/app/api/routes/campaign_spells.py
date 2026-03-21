@@ -10,7 +10,6 @@ from app.models.user import User
 from app.schemas.base_spell import BaseSpellRead, BaseSpellUpdate
 from app.services.campaign_spells import (
     disable_campaign_spell,
-    ensure_campaign_spells_seeded,
     get_campaign_spell_by_id,
     list_campaign_spells,
     update_campaign_spell,
@@ -62,11 +61,6 @@ def list_spells(
     session: Session = Depends(get_session),
 ):
     campaign, _member = require_campaign_member(campaign_id, user, session)
-    ensure_campaign_spells_seeded(
-        db=session,
-        campaign_id=campaign_id,
-        system=campaign.system,
-    )
     spells = list_campaign_spells(
         db=session,
         campaign_id=campaign_id,

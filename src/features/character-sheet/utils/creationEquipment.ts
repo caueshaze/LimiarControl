@@ -5,6 +5,7 @@ import type { AbilityName, Armor, CharacterSheet, Currency, InventoryItem, Shiel
 import {
   findCreationItemByCanonicalKey,
   getCreationItemCatalog,
+  parseCatalogStarterCanonicalKey,
   resolveCreationItem,
   toStarterFallbackKey,
   type CreationCatalogItem,
@@ -30,7 +31,7 @@ const ARMOR_ALIASES: Record<string, string[]> = {
 
 type ParsedStarterEntry =
   | { kind: "currency"; coin: keyof Currency; amount: number }
-  | { kind: "item"; name: string; quantity: number };
+  | { kind: "item"; name: string; quantity: number; canonicalKey?: string | null };
 
 const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
   "5_sticks_of_incense": { kind: "item", name: "Incense", quantity: 5 },
@@ -53,6 +54,17 @@ const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   }
 
   const quantityMatch = entry.trim().match(/^(.+?)\s*x(\d+)$/i);
+  const tokenSource = quantityMatch ? quantityMatch[1].trim() : entry.trim();
+  const tokenCanonicalKey = parseCatalogStarterCanonicalKey(tokenSource);
+  if (tokenCanonicalKey) {
+    return {
+      kind: "item",
+      name: tokenCanonicalKey,
+      quantity: quantityMatch ? Number(quantityMatch[2]) : 1,
+      canonicalKey: tokenCanonicalKey,
+    };
+  }
+
   if (quantityMatch) {
     return {
       kind: "item",
@@ -64,7 +76,15 @@ const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   return { kind: "item", name: entry.trim(), quantity: 1 };
 };
 
-const resolveStarterItem = (name: string) => resolveCreationItem(name, getCreationItemCatalog());
+const resolveStarterItem = (entry: ParsedStarterEntry | string) => {
+  if (typeof entry === "string") {
+    return resolveCreationItem(entry, getCreationItemCatalog());
+  }
+  if (entry.canonicalKey) {
+    return findCreationItemByCanonicalKey(entry.canonicalKey, getCreationItemCatalog());
+  }
+  return resolveCreationItem(entry.name, getCreationItemCatalog());
+};
 
 const starterStableKey = (name: string, canonicalKey?: string | null) =>
   (canonicalKey ?? toStarterFallbackKey(name)).replace(/_/g, "-");
@@ -80,7 +100,7 @@ const matchesArmorPreset = (item: InventoryItem, presetName: string) => {
 };
 
 export const canonicalizeStarterItemName = (name: string) =>
-  resolveStarterItem(name)?.name ?? name.trim();
+  resolveStarterItem(parseStarterEntry(name))?.name ?? name.trim();
 
 export const getInitialClassEquipmentSelections = (className: string) => {
   const config = getClassCreationConfig(className);
@@ -192,8 +212,8 @@ export const buildCreationLoadout = (
       continue;
     }
 
-    const resolved = resolveStarterItem(parsed.name);
-    const stableId = `starter:${starterStableKey(parsed.name, resolved?.canonicalKey)}`;
+    const resolved = resolveStarterItem(parsed);
+    const stableId = `starter:${starterStableKey(parsed.name, resolved?.canonicalKey ?? parsed.canonicalKey)}`;
     const existing = inventoryMap.get(stableId);
     inventoryMap.set(stableId, {
       id: stableId,
@@ -202,7 +222,8 @@ export const buildCreationLoadout = (
       weight: resolved?.weight ?? existing?.weight ?? 0,
       notes: existing?.notes ?? "Equipamento inicial",
       canonicalKey: resolved?.canonicalKey ?? existing?.canonicalKey ?? null,
-      baseItemId: resolved?.id ?? existing?.baseItemId ?? null,
+      campaignItemId: resolved?.campaignItemId ?? existing?.campaignItemId ?? null,
+      baseItemId: resolved?.baseItemId ?? existing?.baseItemId ?? null,
     });
   }
 

@@ -17,6 +17,8 @@ from app.schemas.campaign import (
     CampaignRead,
     CampaignUpdate,
 )
+from app.services.campaign_catalog import snapshot_campaign_catalog
+from app.services.campaign_spells import snapshot_campaign_spells
 
 router = APIRouter()
 ENABLED_CAMPAIGN_SYSTEMS = {SystemType.DND5E}
@@ -109,6 +111,9 @@ def create_campaign(
     )
     session.add(campaign)
     session.add(member)
+    session.flush()
+    snapshot_campaign_catalog(campaign=campaign, db=session, commit=False)
+    snapshot_campaign_spells(campaign=campaign, db=session, commit=False)
     session.commit()
     session.refresh(campaign)
     return CampaignRead(
@@ -159,4 +164,3 @@ def delete_campaign(
     session.delete(campaign)
     session.commit()
     return None
-

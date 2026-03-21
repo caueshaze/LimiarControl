@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.models.base_spell import BaseSpell
 from app.models.campaign_spell import CampaignSpell
-from app.models.campaign import SystemType
+from app.models.campaign import Campaign, SystemType
 from app.models.base_spell import SpellSchool
 
 
@@ -13,11 +15,12 @@ def _normalize_lookup(value: str) -> str:
     return value.strip().lower()
 
 
-def ensure_campaign_spells_seeded(
+def seed_campaign_spells(
     *,
     db: Session,
     campaign_id: str,
     system: SystemType,
+    commit: bool = True,
 ) -> int:
     existing_count = db.exec(
         select(func.count())
@@ -68,8 +71,41 @@ def ensure_campaign_spells_seeded(
         )
         inserted += 1
 
-    if inserted:
+    if commit and inserted:
         db.commit()
+
+    return inserted
+
+
+def snapshot_campaign_spells(
+    *,
+    campaign: Campaign,
+    db: Session,
+    commit: bool = True,
+) -> int:
+    """Freeze the campaign spell catalog against the current base catalog state."""
+    if not campaign.id:
+        raise ValueError("Campaign must have an id before spell snapshotting")
+
+    if campaign.spell_catalog_snapshot_at is not None:
+        return db.exec(
+            select(func.count())
+            .select_from(CampaignSpell)
+            .where(CampaignSpell.campaign_id == campaign.id)
+        ).one()
+
+    inserted = seed_campaign_spells(
+        db=db,
+        campaign_id=campaign.id,
+        system=campaign.system,
+        commit=False,
+    )
+    campaign.spell_catalog_snapshot_at = datetime.now(timezone.utc)
+    db.add(campaign)
+
+    if commit:
+        db.commit()
+        db.refresh(campaign)
 
     return inserted
 

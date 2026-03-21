@@ -5,38 +5,52 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
+from app.api.serializers.item import to_item_read
 from app.db.session import get_session
+from app.models.base_item import BaseItemKind
+from app.models.inventory import InventoryItem
 from app.models.item import Item
+from app.models.item import ItemType
 from app.models.user import User
 from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
 from app.services.item_properties import normalize_item_properties
 
 router = APIRouter()
 
+def _infer_item_kind(item_type: ItemType) -> BaseItemKind | None:
+    if item_type == ItemType.WEAPON:
+        return BaseItemKind.WEAPON
+    if item_type == ItemType.ARMOR:
+        return BaseItemKind.ARMOR
+    if item_type == ItemType.CONSUMABLE:
+        return BaseItemKind.CONSUMABLE
+    return None
 
-def to_item_read(item: Item) -> ItemRead:
-    return ItemRead(
-        id=item.id,
-        campaignId=item.campaign_id,
-        name=item.name,
-        type=item.type,
-        description=item.description,
-        price=item.price,
-        weight=item.weight,
-        damageDice=item.damage_dice,
-        rangeMeters=item.range_meters,
-        properties=item.properties,
-        baseItemId=item.base_item_id,
-        canonicalKeySnapshot=item.canonical_key_snapshot,
-        nameEnSnapshot=item.name_en_snapshot,
-        namePtSnapshot=item.name_pt_snapshot,
-        itemKind=item.item_kind,
-        costUnit=item.cost_unit,
-        isCustom=item.is_custom,
-        isEnabled=item.is_enabled,
-        createdAt=item.created_at,
-        updatedAt=item.updated_at,
-    )
+
+def _apply_item_payload(item: Item, payload: ItemCreate | ItemUpdate) -> None:
+    item.name = payload.name
+    item.type = payload.type
+    item.description = payload.description
+    item.price = payload.price
+    item.weight = payload.weight
+    item.damage_dice = payload.damageDice
+    item.damage_type = payload.damageType
+    item.range_meters = payload.rangeMeters
+    item.range_long_meters = payload.rangeLongMeters
+    item.versatile_damage = payload.versatileDamage
+    item.weapon_category = payload.weaponCategory
+    item.weapon_range_type = payload.weaponRangeType
+    item.armor_category = payload.armorCategory
+    item.armor_class_base = payload.armorClassBase
+    item.dex_bonus_rule = payload.dexBonusRule
+    item.strength_requirement = payload.strengthRequirement
+    item.stealth_disadvantage = payload.stealthDisadvantage
+    item.is_shield = payload.isShield
+    item.properties = payload.properties
+    if item.is_custom:
+        item.item_kind = _infer_item_kind(payload.type)
+        item.name_en_snapshot = payload.name
+        item.name_pt_snapshot = payload.name
 
 
 @router.get("/{campaign_id}/items", response_model=List[ItemRead])
@@ -69,19 +83,13 @@ def create_item(
             status_code=400,
             detail=f"Invalid item properties: {', '.join(invalid_properties)}",
         )
+    payload.properties = normalized_properties
     item = Item(
         id=str(uuid4()),
         campaign_id=campaign_id,
-        name=payload.name.strip(),
-        type=payload.type,
-        description=payload.description.strip(),
-        price=payload.price,
-        weight=payload.weight,
-        damage_dice=payload.damageDice,
-        range_meters=payload.rangeMeters,
-        properties=normalized_properties,
         is_custom=True,
     )
+    _apply_item_payload(item, payload)
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -110,14 +118,8 @@ def update_item(
             status_code=400,
             detail=f"Invalid item properties: {', '.join(invalid_properties)}",
         )
-    item.name = payload.name.strip()
-    item.type = payload.type
-    item.description = payload.description.strip()
-    item.price = payload.price
-    item.weight = payload.weight
-    item.damage_dice = payload.damageDice
-    item.range_meters = payload.rangeMeters
-    item.properties = normalized_properties
+    payload.properties = normalized_properties
+    _apply_item_payload(item, payload)
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -137,6 +139,22 @@ def delete_item(
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+    if item.base_item_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Base campaign items cannot be deleted because character-sheet automation depends on stable ids",
+        )
+    in_use = session.exec(
+        select(InventoryItem.id).where(
+            InventoryItem.campaign_id == campaign_id,
+            InventoryItem.item_id == item_id,
+        )
+    ).first()
+    if in_use:
+        raise HTTPException(
+            status_code=409,
+            detail="Item cannot be deleted because it is already present in a character inventory",
+        )
     session.delete(item)
     session.commit()
     return None

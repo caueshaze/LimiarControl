@@ -1,7 +1,12 @@
 import type { AbilityName, SpellcastingMode } from "../model/characterSheet.types";
 import { getCreationWeapons } from "./creationWeapons";
 import { CLASS_EQUIPMENT_RULES } from "./classEquipmentRules";
-import { getCreationItemCatalog } from "../utils/creationItemCatalog";
+import {
+  getCreationItemCatalog,
+  getWeaponsFromCatalog,
+  resolveCreationItem,
+  toCatalogStarterToken,
+} from "../utils/creationItemCatalog";
 import { resolveClassEquipmentRules } from "../utils/resolveClassEquipmentRules";
 
 // Source of truth for class-based starting equipment during character creation.
@@ -71,12 +76,24 @@ const uniqueOptions = (options: ClassEquipmentOption[]) => {
 
 const weaponOptions = (
   filter: Parameters<typeof getCreationWeapons>[0],
-): ClassEquipmentOption[] =>
-  getCreationWeapons(filter).map((weapon) => ({
+): ClassEquipmentOption[] => {
+  const catalog = getCreationItemCatalog();
+  if (catalog.itemsByCanonicalKey.size > 0) {
+    const category = filter.category;
+    const rangeType = filter.kind;
+    return getWeaponsFromCatalog(catalog, { category, rangeType }).map((weapon) => ({
+      id: slugify(weapon.canonicalKey),
+      label: weapon.namePt || weapon.name,
+      items: [toCatalogStarterToken(weapon.canonicalKey)],
+    }));
+  }
+
+  return getCreationWeapons(filter).map((weapon) => ({
     id: slugify(weapon.label),
     label: weapon.label,
     items: [weapon.name],
   }));
+};
 
 const simpleWeaponOptions = weaponOptions({ category: "simple" });
 const simpleMeleeWeaponOptions = weaponOptions({ category: "simple", kind: "melee" });
@@ -101,6 +118,38 @@ const pack = (label: string, englishKey: string): ClassEquipmentOption => ({
 });
 const packOptions = (...pairs: [string, string][]) => pairs.map(([label, key]) => pack(label, key));
 
+const resolveStaticStarterEntry = (entry: string) => {
+  const quantityMatch = entry.trim().match(/^(.+?)\s*x(\d+)$/i);
+  const rawName = quantityMatch ? quantityMatch[1].trim() : entry.trim();
+  const quantity = quantityMatch ? Number(quantityMatch[2]) : 1;
+  const resolved = resolveCreationItem(rawName, getCreationItemCatalog());
+  if (!resolved) {
+    return entry;
+  }
+  return toCatalogStarterToken(resolved.canonicalKey, quantity);
+};
+
+const resolveStaticConfigAgainstCatalog = (
+  config: ClassCreationConfig,
+): ClassCreationConfig => {
+  const catalog = getCreationItemCatalog();
+  if (catalog.itemsByCanonicalKey.size === 0) {
+    return config;
+  }
+
+  return {
+    ...config,
+    fixedEquipment: config.fixedEquipment.map(resolveStaticStarterEntry),
+    equipmentChoices: config.equipmentChoices.map((group) => ({
+      ...group,
+      options: group.options.map((option) => ({
+        ...option,
+        items: option.items.map(resolveStaticStarterEntry),
+      })),
+    })),
+  };
+};
+
 export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
   // PHB p.48: (a) machado grande ou (b) qualquer marcial corpo-a-corpo
   //           (a) dois machados de mão ou (b) qualquer simples
@@ -110,12 +159,15 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
     equipmentChoices: [
       {
         id: "barbarian-weapon-1",
-        label: "Escolha 1: Arma principal",
-        options: martialMeleeWeaponOptions,
+        label: "Escolha sua arma principal",
+        options: uniqueOptions([
+          option("Machado Grande", "Greataxe"),
+          ...martialMeleeWeaponOptions,
+        ]),
       },
       {
         id: "barbarian-weapon-2",
-        label: "Escolha 2: Arma secundária",
+        label: "Escolha sua arma secundária",
         options: uniqueOptions([
           option("Machadinha x2", "Handaxe", "Handaxe"),
           ...simpleWeaponOptions,
@@ -256,7 +308,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
         ],
       },
       { id: "warlock-focus", label: "Escolha seu foco", options: packOptions(["Bolsa de Componentes", "Component Pouch"], ["Foco Arcano", "Arcane Focus"]) },
-      { id: "warlock-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Estudioso", "Scholar's Pack"], ["Mochila do Masmorrador", "Dungeoneer's Pack"]) },
+      { id: "warlock-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Estudioso", "Scholar's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
       { id: "warlock-bonus-weapon", label: "Escolha sua arma simples adicional", options: simpleWeaponOptions },
     ],
     startingSpells: { cantrips: 2, leveledSpells: 2, leveledMode: "known", levelOneSlots: 1 },
@@ -288,11 +340,15 @@ export const getClassCreationConfig = (className: string): ClassCreationConfig |
   }
 
   // Fallback to static config
-  return CLASS_CREATION_CONFIG[className];
+  const staticConfig = CLASS_CREATION_CONFIG[className];
+  if (!staticConfig) {
+    return undefined;
+  }
+  return resolveStaticConfigAgainstCatalog(staticConfig);
 };
 
 export const describeDefaultClassStartingEquipment = (className: string): string[] => {
-  const config = getClassCreationConfig(className);
+  const config = CLASS_CREATION_CONFIG[className];
   if (!config) {
     return [];
   }

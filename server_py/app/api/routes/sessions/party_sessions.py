@@ -133,6 +133,7 @@ async def _start_session_for_party(
         runtime.lobby_expected = []
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(entry)
         session.add(runtime)
         session.commit()
@@ -158,6 +159,7 @@ async def _start_session_for_party(
         runtime.lobby_expected = expected_list
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(runtime)
         session.commit()
         await centrifugo.publish(

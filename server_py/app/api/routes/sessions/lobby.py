@@ -102,6 +102,7 @@ async def join_lobby(
         runtime.lobby_expected = []
         runtime.lobby_ready = []
         runtime.shop_open = False
+        runtime.combat_active = False
         session.add(entry)
         session.add(runtime)
         session.commit()
@@ -172,6 +173,7 @@ async def force_start_lobby(
     runtime.lobby_expected = []
     runtime.lobby_ready = []
     runtime.shop_open = False
+    runtime.combat_active = False
     session.add(entry)
     session.add(runtime)
     session.commit()

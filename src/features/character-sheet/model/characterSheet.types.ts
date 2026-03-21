@@ -69,6 +69,7 @@ export type InventoryItem = {
   weight: number;
   notes: string;
   canonicalKey?: string | null;
+  campaignItemId?: string | null;
   baseItemId?: string | null;
 };
 
@@ -140,6 +141,7 @@ export type CharacterSheet = {
   // Basic info
   name: string;
   class: string;
+  subclass: string;
   level: number;
   background: string;
   playerName: string;

@@ -22,6 +22,7 @@ type Props = {
   missingRequiredFields?: RequiredField[];
   set: SheetActions["set"];
   selectClass: SheetActions["selectClass"];
+  selectSubclass: SheetActions["selectSubclass"];
   selectBackground: SheetActions["selectBackground"];
   selectRace: SheetActions["selectRace"];
   selectClassEquipment: SheetActions["selectClassEquipment"];
@@ -37,6 +38,7 @@ export const CharacterInfo = ({
   missingRequiredFields = [],
   set,
   selectClass,
+  selectSubclass,
   selectBackground,
   selectRace,
   selectClassEquipment,
@@ -106,6 +108,26 @@ export const CharacterInfo = ({
           </select>
           {fieldError("class")}
         </div>
+
+        {isCreation && classData?.subclasses?.length ? (
+          <div className="xl:col-span-3">
+            <label className={fieldLabel}>
+              {classData.subclassLabel ?? t("sheet.basicInfo.subclass")}{requiredMark("subclass")}
+            </label>
+            <select
+              value={sheet.subclass}
+              disabled={readOnly}
+              onChange={(e) => selectSubclass(e.target.value)}
+              className={`${input} ${errorInput("subclass")}`}
+            >
+              <option value="">{t("sheet.basicInfo.selectSubclass")}</option>
+              {classData.subclasses.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {fieldError("subclass")}
+          </div>
+        ) : null}
 
         <div className="xl:col-span-4">
           <label className={fieldLabel}>

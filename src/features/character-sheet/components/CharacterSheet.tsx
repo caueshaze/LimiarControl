@@ -220,6 +220,7 @@ export const CharacterSheet = ({
           missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
           set={actions.set}
           selectClass={actions.selectClass}
+          selectSubclass={actions.selectSubclass}
           selectBackground={actions.selectBackground}
           selectRace={actions.selectRace}
           selectClassEquipment={actions.selectClassEquipment}

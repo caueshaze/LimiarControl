@@ -1,4 +1,9 @@
 import { useState, type ReactNode } from "react";
+import type {
+  BaseItemArmorCategory,
+  BaseItemWeaponCategory,
+  BaseItemWeaponRangeType,
+} from "../../../entities/base-item";
 import {
   getItemPropertyLabels,
   normalizeItemProperties,
@@ -12,7 +17,7 @@ import { localizedItemName } from "../utils/localizedItemName";
 import { CATALOG_TYPE_META } from "../utils/catalogTypeMeta";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { formatItemPrice } from "../utils/shopCurrency";
-import { ItemPropertiesSelector } from "./ItemPropertiesSelector";
+import { ItemAutomationFields } from "./ItemAutomationFields";
 
 type CatalogItemCardProps = {
   item: Item;
@@ -21,7 +26,18 @@ type CatalogItemCardProps = {
   onDelete?: (itemId: string) => void | Promise<void>;
 };
 
-const DAMAGE_OPTIONS = ["", "1d4", "1d6", "1d8", "1d10", "1d12", "2d6"];
+const DEX_RULE_LABELS = {
+  full: { en: "Full DEX", pt: "DEX completo" },
+  max_2: { en: "Max +2 DEX", pt: "Máx. +2 DEX" },
+  none: { en: "No DEX bonus", pt: "Sem bônus de DEX" },
+} as const;
+
+const localizeDexRule = (value: string | null | undefined, locale: string) => {
+  if (!value) return null;
+  const labels = DEX_RULE_LABELS[value as keyof typeof DEX_RULE_LABELS];
+  if (!labels) return value;
+  return locale === "pt" ? labels.pt : labels.en;
+};
 
 export const CatalogItemCard = ({
   item,
@@ -38,7 +54,29 @@ export const CatalogItemCard = ({
   const [price, setPrice] = useState(item.price?.toString() ?? "");
   const [weight, setWeight] = useState(item.weight?.toString() ?? "");
   const [damageDice, setDamageDice] = useState(item.damageDice ?? "");
+  const [damageType, setDamageType] = useState(item.damageType ?? "");
   const [rangeMeters, setRangeMeters] = useState(item.rangeMeters?.toString() ?? "");
+  const [rangeLongMeters, setRangeLongMeters] = useState(item.rangeLongMeters?.toString() ?? "");
+  const [versatileDamage, setVersatileDamage] = useState(item.versatileDamage ?? "");
+  const [weaponCategory, setWeaponCategory] = useState<BaseItemWeaponCategory | "">(
+    item.weaponCategory ?? "",
+  );
+  const [weaponRangeType, setWeaponRangeType] = useState<BaseItemWeaponRangeType | "">(
+    item.weaponRangeType ?? "",
+  );
+  const [armorCategory, setArmorCategory] = useState<BaseItemArmorCategory | "">(
+    item.armorCategory ?? "",
+  );
+  const [armorClassBase, setArmorClassBase] = useState(
+    item.armorClassBase?.toString() ?? "",
+  );
+  const [dexBonusRule, setDexBonusRule] = useState(item.dexBonusRule ?? "");
+  const [strengthRequirement, setStrengthRequirement] = useState(
+    item.strengthRequirement?.toString() ?? "",
+  );
+  const [stealthDisadvantage, setStealthDisadvantage] = useState(
+    item.stealthDisadvantage ?? false,
+  );
   const initialProperties = normalizeItemProperties(item.properties);
   const [selectedProperties, setSelectedProperties] = useState<ItemPropertySlug[]>(
     initialProperties.value,
@@ -56,18 +94,38 @@ export const CatalogItemCard = ({
         : null;
   const meta = CATALOG_TYPE_META[item.type];
   const editingMeta = CATALOG_TYPE_META[type];
-  const supportsCombatFields = type === "WEAPON" || type === "MAGIC";
   const canSave = Boolean(name.trim() && description.trim());
-  const damageValues = DAMAGE_OPTIONS.includes(damageDice)
-    ? DAMAGE_OPTIONS
-    : ["", damageDice, ...DAMAGE_OPTIONS.slice(1)];
 
   const statItems = [
     item.damageDice
-      ? { label: t("catalog.card.damage"), value: item.damageDice }
+      ? {
+          label: t("catalog.card.damage"),
+          value: item.damageType ? `${item.damageDice} ${item.damageType}` : item.damageDice,
+        }
       : null,
     typeof item.rangeMeters === "number"
-      ? { label: t("catalog.card.range"), value: `${item.rangeMeters} m` }
+      ? {
+          label: t("catalog.card.range"),
+          value:
+            typeof item.rangeLongMeters === "number"
+              ? `${item.rangeMeters}/${item.rangeLongMeters} m`
+              : `${item.rangeMeters} m`,
+        }
+      : null,
+    item.versatileDamage
+      ? { label: t("catalog.card.versatileDamage"), value: item.versatileDamage }
+      : null,
+    typeof item.armorClassBase === "number"
+      ? { label: t("catalog.card.armorClassBase"), value: `${item.armorClassBase}` }
+      : null,
+    item.dexBonusRule
+      ? {
+          label: t("catalog.card.dexBonusRule"),
+          value: localizeDexRule(item.dexBonusRule, locale) ?? item.dexBonusRule,
+        }
+      : null,
+    typeof item.strengthRequirement === "number"
+      ? { label: t("catalog.card.strengthRequirement"), value: `${item.strengthRequirement}` }
       : null,
     typeof item.weight === "number"
       ? { label: t("catalog.card.weight"), value: `${item.weight}` }
@@ -96,9 +154,44 @@ export const CatalogItemCard = ({
         description: description.trim(),
         price,
         weight,
-        damageDice: supportsCombatFields && damageDice.trim() ? damageDice.trim() : undefined,
-        rangeMeters,
-        properties: selectedProperties.length > 0 ? selectedProperties : undefined,
+        damageDice:
+          (type === "WEAPON" || type === "MAGIC") && damageDice.trim()
+            ? damageDice.trim()
+            : undefined,
+        damageType:
+          (type === "WEAPON" || type === "MAGIC") && damageType.trim()
+            ? damageType.trim()
+            : undefined,
+        rangeMeters:
+          (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
+            ? rangeMeters
+            : undefined,
+        rangeLongMeters:
+          (type === "WEAPON" || type === "MAGIC") && rangeLongMeters.trim()
+            ? rangeLongMeters
+            : undefined,
+        versatileDamage:
+          type === "WEAPON" && versatileDamage.trim()
+            ? versatileDamage.trim()
+            : undefined,
+        weaponCategory: type === "WEAPON" && weaponCategory ? weaponCategory : undefined,
+        weaponRangeType:
+          type === "WEAPON" && weaponRangeType ? weaponRangeType : undefined,
+        armorCategory: type === "ARMOR" && armorCategory ? armorCategory : undefined,
+        armorClassBase:
+          type === "ARMOR" && armorClassBase.trim() ? armorClassBase : undefined,
+        dexBonusRule:
+          type === "ARMOR" && dexBonusRule.trim() ? dexBonusRule.trim() : undefined,
+        strengthRequirement:
+          type === "ARMOR" && strengthRequirement.trim()
+            ? strengthRequirement
+            : undefined,
+        stealthDisadvantage: type === "ARMOR" ? stealthDisadvantage : undefined,
+        isShield: type === "ARMOR" && armorCategory === "shield",
+        properties:
+          type !== "ARMOR" && selectedProperties.length > 0
+            ? selectedProperties
+            : undefined,
       });
       if (updated) {
         setIsEditing(false);
@@ -309,39 +402,36 @@ export const CatalogItemCard = ({
             </Field>
           </div>
 
-          {supportsCombatFields && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("shop.form.damage")}>
-                <select
-                  value={damageDice}
-                  onChange={(event) => setDamageDice(event.target.value)}
-                  className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
-                >
-                  {damageValues.map((option) => (
-                    <option key={option || "none"} value={option}>
-                      {option || t("shop.form.damageNone")}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("shop.form.range")}>
-                <input
-                  value={rangeMeters}
-                  onChange={(event) => setRangeMeters(event.target.value)}
-                  className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-                  placeholder={t("shop.form.rangePlaceholder")}
-                />
-              </Field>
-            </div>
-          )}
-
-          <Field label={t("shop.form.properties")}>
-            <ItemPropertiesSelector
-              value={selectedProperties}
-              legacyUnknown={initialProperties.invalid}
-              onChange={setSelectedProperties}
-            />
-          </Field>
+          <ItemAutomationFields
+            type={type}
+            damageDice={damageDice}
+            damageType={damageType}
+            rangeMeters={rangeMeters}
+            rangeLongMeters={rangeLongMeters}
+            versatileDamage={versatileDamage}
+            weaponCategory={weaponCategory}
+            weaponRangeType={weaponRangeType}
+            armorCategory={armorCategory}
+            armorClassBase={armorClassBase}
+            dexBonusRule={dexBonusRule}
+            strengthRequirement={strengthRequirement}
+            stealthDisadvantage={stealthDisadvantage}
+            properties={selectedProperties}
+            legacyUnknownProperties={initialProperties.invalid}
+            onDamageDiceChange={setDamageDice}
+            onDamageTypeChange={setDamageType}
+            onRangeMetersChange={setRangeMeters}
+            onRangeLongMetersChange={setRangeLongMeters}
+            onVersatileDamageChange={setVersatileDamage}
+            onWeaponCategoryChange={setWeaponCategory}
+            onWeaponRangeTypeChange={setWeaponRangeType}
+            onArmorCategoryChange={setArmorCategory}
+            onArmorClassBaseChange={setArmorClassBase}
+            onDexBonusRuleChange={setDexBonusRule}
+            onStrengthRequirementChange={setStrengthRequirement}
+            onStealthDisadvantageChange={setStealthDisadvantage}
+            onPropertiesChange={setSelectedProperties}
+          />
 
           <div className="flex flex-wrap gap-2">
             <button

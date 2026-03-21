@@ -18,6 +18,7 @@ import type { CreationItemCatalog, CreationCatalogItem } from "./creationItemCat
 import {
   getWeaponsFromCatalog,
   findCreationItemByCanonicalKey,
+  toCatalogStarterToken,
 } from "./creationItemCatalog";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -31,9 +32,9 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "");
 
 const weaponOptionFromCatalog = (item: CreationCatalogItem): ClassEquipmentOption => ({
-  id: slugify(item.namePt),
-  label: item.namePt,
-  items: [item.name], // English name — consumed by resolveCreationItem
+  id: slugify(item.canonicalKey),
+  label: item.namePt || item.name,
+  items: [toCatalogStarterToken(item.canonicalKey)],
 });
 
 const specificItemsOption = (
@@ -44,10 +45,7 @@ const specificItemsOption = (
   for (const spec of source.items) {
     const item = findCreationItemByCanonicalKey(spec.canonicalKey, catalog);
     if (!item) return null; // item not in catalog — skip this option
-    const qty = spec.quantity ?? 1;
-    for (let i = 0; i < qty; i++) {
-      resolvedItems.push(item.name);
-    }
+    resolvedItems.push(toCatalogStarterToken(item.canonicalKey, spec.quantity ?? 1));
   }
 
   return {
@@ -86,7 +84,7 @@ const resolvePackChoice = (
       return {
         id: slugify(pack.canonicalKey),
         label: pack.labelPt,
-        items: [item?.name ?? pack.canonicalKey],
+        items: [item ? toCatalogStarterToken(item.canonicalKey) : pack.canonicalKey],
       };
     });
 
@@ -131,9 +129,8 @@ const resolveFixedItems = (
 ): string[] =>
   rules.fixedItems.map((spec) => {
     const item = findCreationItemByCanonicalKey(spec.canonicalKey, catalog);
-    const name = item?.name ?? spec.canonicalKey;
     const qty = spec.quantity ?? 1;
-    return qty > 1 ? `${name} x${qty}` : name;
+    return item ? toCatalogStarterToken(item.canonicalKey, qty) : spec.canonicalKey;
   });
 
 /**

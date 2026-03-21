@@ -1,15 +1,17 @@
 import re
 from datetime import date, datetime, timezone
+from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlmodel import Session as DbSession, select
 
+from app.api.serializers.item import to_item_read
 from app.models.inventory import InventoryItem
-from app.models.item import Item
 from app.models.party import Party
 from app.models.party_member import PartyMember
 from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
+from app.models.session_command_event import SessionCommandEvent
 from app.models.session_runtime import SessionRuntime
 from app.schemas.inventory import InventoryRead
 from app.schemas.item import ItemRead
@@ -114,32 +116,6 @@ def to_roll_read_local(entry: RollEvent) -> RollEventRead:
         createdAt=entry.created_at,
     )
 
-
-def to_item_read(item: Item) -> ItemRead:
-    return ItemRead(
-        id=item.id,
-        campaignId=item.campaign_id,
-        name=item.name,
-        type=item.type,
-        description=item.description,
-        price=item.price,
-        weight=item.weight,
-        damageDice=item.damage_dice,
-        rangeMeters=item.range_meters,
-        properties=item.properties,
-        baseItemId=item.base_item_id,
-        canonicalKeySnapshot=item.canonical_key_snapshot,
-        nameEnSnapshot=item.name_en_snapshot,
-        namePtSnapshot=item.name_pt_snapshot,
-        itemKind=item.item_kind,
-        costUnit=item.cost_unit,
-        isCustom=item.is_custom,
-        isEnabled=item.is_enabled,
-        createdAt=item.created_at,
-        updatedAt=item.updated_at,
-    )
-
-
 def to_inventory_read(entry: InventoryItem) -> InventoryRead:
     return InventoryRead(
         id=entry.id,
@@ -233,4 +209,30 @@ def serialize_session_runtime(entry: Session, runtime: SessionRuntime | None) ->
         partyId=entry.party_id,
         status=entry.status,
         shopOpen=bool(runtime.shop_open) if runtime else False,
+        combatActive=bool(runtime.combat_active) if runtime else False,
     )
+
+
+def record_session_activity(
+    session_entry: Session,
+    command_type: str,
+    db: DbSession,
+    *,
+    member_id: str,
+    user_id: str | None = None,
+    actor_name: str | None = None,
+    payload: dict | None = None,
+    created_at: datetime | None = None,
+) -> SessionCommandEvent:
+    entry = SessionCommandEvent(
+        id=str(uuid4()),
+        session_id=session_entry.id,
+        user_id=user_id,
+        member_id=member_id,
+        actor_name=actor_name,
+        command_type=command_type,
+        payload_json=payload if isinstance(payload, dict) and payload else None,
+        created_at=created_at or datetime.now(timezone.utc),
+    )
+    db.add(entry)
+    return entry

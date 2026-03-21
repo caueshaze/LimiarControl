@@ -1,14 +1,16 @@
-import { CampaignSystemType } from "../../../entities/campaign";
 import type { BaseItem } from "../../../entities/base-item";
 import type {
   BaseItemKind,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
-import { baseItemsRepo } from "../../../shared/api/baseItemsRepo";
+import type { Item } from "../../../entities/item";
+import { itemsRepo } from "../../../shared/api/itemsRepo";
 
 export type CreationCatalogItem = {
   id: string;
+  campaignItemId: string | null;
+  baseItemId: string | null;
   canonicalKey: string;
   name: string;
   namePt: string;
@@ -36,10 +38,19 @@ const EMPTY_CATALOG: CreationItemCatalog = {
   itemsByLookup: new Map(),
 };
 
+const CATALOG_STARTER_PREFIX = "catalog:";
+
 const COMPATIBILITY_CANONICAL_KEYS: Record<string, string> = {
   "leather armor": "leather",
   "studded leather armor": "studded_leather",
   "hide armor": "hide",
+  staff: "quarterstaff",
+  "wooden shield": "shield",
+  amulet: "holy_symbol",
+  reliquary: "holy_symbol",
+  "crossbow light": "light_crossbow",
+  bolt: "crossbow_bolt",
+  "con tools": "forgery_kit",
 };
 
 const normalizeLookup = (value: string) =>
@@ -51,11 +62,94 @@ const normalizeLookup = (value: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const toArmorPresetName = (item: BaseItem) => {
-  if (item.itemKind !== "armor" || item.isShield) {
+const inferItemKind = (item: Item): BaseItemKind | null => {
+  if (item.itemKind) {
+    return item.itemKind;
+  }
+  if (item.type === "WEAPON") {
+    return "weapon";
+  }
+  if (item.type === "ARMOR") {
+    return "armor";
+  }
+  if (item.type === "CONSUMABLE") {
+    return "consumable";
+  }
+  return null;
+};
+
+const toArmorPresetName = (itemKind: BaseItemKind, isShield: boolean, nameEn: string) => {
+  if (itemKind !== "armor" || isShield) {
     return null;
   }
-  return item.nameEn;
+  return nameEn;
+};
+
+const buildCatalogEntryFromBaseItem = (item: BaseItem): CreationCatalogItem => ({
+  id: item.id,
+  campaignItemId: null,
+  baseItemId: item.id,
+  canonicalKey: item.canonicalKey,
+  name: item.nameEn,
+  namePt: item.namePt,
+  weight: item.weight ?? 0,
+  armorPresetName: toArmorPresetName(item.itemKind, item.isShield, item.nameEn),
+  isShield: item.isShield,
+  itemKind: item.itemKind,
+  weaponCategory: item.weaponCategory ?? null,
+  weaponRangeType: item.weaponRangeType ?? null,
+  damageDice: item.damageDice ?? null,
+  damageType: item.damageType ?? null,
+  weaponPropertiesJson: item.weaponPropertiesJson ?? null,
+  rangeNormal: item.rangeNormal ?? null,
+  rangeLong: item.rangeLong ?? null,
+  versatileDamage: item.versatileDamage ?? null,
+});
+
+const buildCatalogEntryFromCampaignItem = (item: Item): CreationCatalogItem | null => {
+  const itemKind = inferItemKind(item);
+  const canonicalKey = item.canonicalKeySnapshot ?? "";
+  if (!itemKind || !canonicalKey) {
+    return null;
+  }
+
+  const stableName = item.nameEnSnapshot ?? item.name;
+  const stableNamePt = item.namePtSnapshot ?? item.name;
+  const displayName = item.name;
+
+  return {
+    id: item.baseItemId ?? item.id,
+    campaignItemId: item.id,
+    baseItemId: item.baseItemId ?? null,
+    canonicalKey,
+    name: displayName,
+    namePt: displayName,
+    weight: item.weight ?? 0,
+    armorPresetName: toArmorPresetName(itemKind, item.isShield ?? false, stableName),
+    isShield: item.isShield ?? false,
+    itemKind,
+    weaponCategory: item.weaponCategory ?? null,
+    weaponRangeType: item.weaponRangeType ?? null,
+    damageDice: item.damageDice ?? null,
+    damageType: item.damageType ?? null,
+    weaponPropertiesJson: item.properties ?? null,
+    rangeNormal: item.rangeMeters ?? null,
+    rangeLong: item.rangeLongMeters ?? null,
+    versatileDamage: item.versatileDamage ?? null,
+  };
+};
+
+const registerLookups = (
+  entry: CreationCatalogItem,
+  lookups: string[],
+  itemsByLookup: Map<string, CreationCatalogItem>,
+) => {
+  for (const lookup of lookups) {
+    const key = normalizeLookup(lookup);
+    if (key && !itemsByLookup.has(key)) {
+      itemsByLookup.set(key, entry);
+    }
+  }
 };
 
 export const buildCreationItemCatalog = (items: BaseItem[]): CreationItemCatalog => {
@@ -63,40 +157,53 @@ export const buildCreationItemCatalog = (items: BaseItem[]): CreationItemCatalog
   const itemsByLookup = new Map<string, CreationCatalogItem>();
 
   for (const item of items) {
-    const entry: CreationCatalogItem = {
-      id: item.id,
-      canonicalKey: item.canonicalKey,
-      name: item.nameEn,
-      namePt: item.namePt,
-      weight: item.weight ?? 0,
-      armorPresetName: toArmorPresetName(item),
-      isShield: item.isShield,
-      itemKind: item.itemKind,
-      weaponCategory: item.weaponCategory ?? null,
-      weaponRangeType: item.weaponRangeType ?? null,
-      damageDice: item.damageDice ?? null,
-      damageType: item.damageType ?? null,
-      weaponPropertiesJson: item.weaponPropertiesJson ?? null,
-      rangeNormal: item.rangeNormal ?? null,
-      rangeLong: item.rangeLong ?? null,
-      versatileDamage: item.versatileDamage ?? null,
-    };
-
+    const entry = buildCatalogEntryFromBaseItem(item);
     itemsByCanonicalKey.set(item.canonicalKey, entry);
+    registerLookups(
+      entry,
+      [
+        item.canonicalKey,
+        item.nameEn,
+        item.namePt,
+        ...item.aliases.map((alias) => alias.alias),
+      ],
+      itemsByLookup,
+    );
+  }
 
-    const lookups = [
-      item.canonicalKey,
-      item.nameEn,
-      item.namePt,
-      ...item.aliases.map((alias) => alias.alias),
-    ];
-
-    for (const lookup of lookups) {
-      const key = normalizeLookup(lookup);
-      if (key && !itemsByLookup.has(key)) {
-        itemsByLookup.set(key, entry);
-      }
+  for (const [lookup, canonicalKey] of Object.entries(COMPATIBILITY_CANONICAL_KEYS)) {
+    const target = itemsByCanonicalKey.get(canonicalKey);
+    if (target) {
+      itemsByLookup.set(lookup, target);
     }
+  }
+
+  return { itemsByCanonicalKey, itemsByLookup };
+};
+
+const buildCreationItemCatalogFromCampaignItems = (items: Item[]): CreationItemCatalog => {
+  const itemsByCanonicalKey = new Map<string, CreationCatalogItem>();
+  const itemsByLookup = new Map<string, CreationCatalogItem>();
+
+  for (const item of items) {
+    const entry = buildCatalogEntryFromCampaignItem(item);
+    if (!entry) {
+      continue;
+    }
+    const stableName = item.nameEnSnapshot ?? item.name;
+    const stableNamePt = item.namePtSnapshot ?? item.name;
+    itemsByCanonicalKey.set(entry.canonicalKey, entry);
+    registerLookups(
+      entry,
+      [
+        entry.canonicalKey,
+        item.name,
+        stableName,
+        stableNamePt,
+        entry.name,
+      ],
+      itemsByLookup,
+    );
   }
 
   for (const [lookup, canonicalKey] of Object.entries(COMPATIBILITY_CANONICAL_KEYS)) {
@@ -110,7 +217,8 @@ export const buildCreationItemCatalog = (items: BaseItem[]): CreationItemCatalog
 };
 
 let cachedCatalog = EMPTY_CATALOG;
-let loadingCatalogPromise: Promise<CreationItemCatalog> | null = null;
+let cachedCatalogKey: string | null = null;
+const loadingCatalogPromises = new Map<string, Promise<CreationItemCatalog>>();
 
 export const getCreationItemCatalog = () => cachedCatalog;
 
@@ -136,42 +244,74 @@ export const resolveCreationItem = (
   return catalog.itemsByLookup.get(lookup) ?? null;
 };
 
-export const loadCreationItemCatalog = async () => {
-  if (loadingCatalogPromise) {
-    return loadingCatalogPromise;
+export const loadCreationItemCatalog = async (campaignId?: string | null) => {
+  if (!campaignId) {
+    cachedCatalog = EMPTY_CATALOG;
+    cachedCatalogKey = null;
+    return cachedCatalog;
   }
 
-  loadingCatalogPromise = baseItemsRepo
-    .list({ system: CampaignSystemType.DND5E })
+  const existingPromise = loadingCatalogPromises.get(campaignId);
+  if (existingPromise) {
+    return existingPromise;
+  }
+  if (cachedCatalogKey === campaignId) {
+    return cachedCatalog;
+  }
+
+  const nextPromise = itemsRepo
+    .list(campaignId)
     .then((items) => {
-      cachedCatalog = buildCreationItemCatalog(items);
+      cachedCatalog = buildCreationItemCatalogFromCampaignItems(items);
+      cachedCatalogKey = campaignId;
       return cachedCatalog;
     })
     .catch((error) => {
-      console.warn("Failed to load persisted creation item catalog.", error);
+      console.warn("Failed to load campaign-scoped creation item catalog.", error);
       cachedCatalog = EMPTY_CATALOG;
-      loadingCatalogPromise = null;
+      cachedCatalogKey = campaignId;
       return cachedCatalog;
+    })
+    .finally(() => {
+      loadingCatalogPromises.delete(campaignId);
     });
 
-  return loadingCatalogPromise;
+  loadingCatalogPromises.set(campaignId, nextPromise);
+  return nextPromise;
 };
 
 export const seedCreationItemCatalogForTests = (items: BaseItem[]) => {
   cachedCatalog = buildCreationItemCatalog(items);
-  loadingCatalogPromise = Promise.resolve(cachedCatalog);
+  cachedCatalogKey = "tests";
+  loadingCatalogPromises.set("tests", Promise.resolve(cachedCatalog));
   return cachedCatalog;
 };
 
 export const resetCreationItemCatalogForTests = () => {
   cachedCatalog = EMPTY_CATALOG;
-  loadingCatalogPromise = null;
+  cachedCatalogKey = null;
+  loadingCatalogPromises.clear();
 };
 
 export const toStarterFallbackKey = (value: string) =>
   normalizeLookup(value).replace(/\s+/g, "_");
 
-// ── DB-driven weapon queries ───────────────────────────────────────────────
+export const toCatalogStarterToken = (
+  canonicalKey: string,
+  quantity = 1,
+) => {
+  const baseToken = `${CATALOG_STARTER_PREFIX}${canonicalKey}`;
+  return quantity > 1 ? `${baseToken} x${quantity}` : baseToken;
+};
+
+export const parseCatalogStarterCanonicalKey = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed.toLowerCase().startsWith(CATALOG_STARTER_PREFIX)) {
+    return null;
+  }
+  const body = trimmed.slice(CATALOG_STARTER_PREFIX.length).trim();
+  return body || null;
+};
 
 export type CatalogWeaponFilter = {
   category?: BaseItemWeaponCategory;

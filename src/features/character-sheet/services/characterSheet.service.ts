@@ -21,7 +21,7 @@ export async function loadCharacterSheet(
 ): Promise<{ id: string | null; sheet: CharacterSheet }> {
   if (mode === "creation") {
     await Promise.all([
-      loadCreationItemCatalog(),
+      loadCreationItemCatalog(campaignId),
       loadSpellCatalog(campaignId),
     ]);
   }

@@ -20,18 +20,21 @@ export const useSessionCommands = () => {
   const [lastCommand, setLastCommand] = useState<SessionCommand | null>(null);
   const [sessionEndedAt, setSessionEndedAt] = useState<string | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
+  const [combatActive, setCombatActive] = useState(false);
   const latestVersionRef = useRef(0);
 
   useEffect(() => {
     setLastCommand(null);
     setSessionEndedAt(null);
     setShopOpen(false);
+    setCombatActive(false);
     latestVersionRef.current = 0;
     if (!selectedSessionId) {
       setConnectionState("offline");
       setLastCommand(null);
       setSessionEndedAt(null);
       setShopOpen(false);
+      setCombatActive(false);
       return;
     }
 
@@ -39,9 +42,11 @@ export const useSessionCommands = () => {
       void sessionsRepo.getRuntime(selectedSessionId)
         .then((runtime) => {
           setShopOpen(runtime.shopOpen);
+          setCombatActive(runtime.combatActive);
         })
         .catch(() => {
           setShopOpen(false);
+          setCombatActive(false);
         });
     };
     syncRuntime();
@@ -92,6 +97,14 @@ export const useSessionCommands = () => {
           });
           return;
         }
+        if (data.type === "combat_started") {
+          setCombatActive(true);
+          return;
+        }
+        if (data.type === "combat_ended") {
+          setCombatActive(false);
+          return;
+        }
         if (data.type === "gm_command" && data.payload) {
           if (data.payload.command === "open_shop") {
             setShopOpen(true);
@@ -109,6 +122,7 @@ export const useSessionCommands = () => {
         }
         if (data.type === "session_closed" || data.type === "session_ended") {
           setShopOpen(false);
+          setCombatActive(false);
           setLastCommand(null);
           setSessionEndedAt(data.payload?.endedAt ?? new Date().toISOString());
         }
@@ -130,5 +144,5 @@ export const useSessionCommands = () => {
     setSessionEndedAt(null);
   }, []);
 
-  return { lastCommand, clearCommand, connectionState, sessionEndedAt, clearSessionEnded, shopOpen };
+  return { lastCommand, clearCommand, connectionState, sessionEndedAt, clearSessionEnded, shopOpen, combatActive };
 };

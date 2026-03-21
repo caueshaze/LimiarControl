@@ -54,49 +54,6 @@ export type ClassEquipmentRules = {
   choices: EquipmentChoiceRule[];
 };
 
-// ── Barbarian ───────────────────────────────────────────────────────────────
-
-/**
- * PHB p.48 — Equipamento do Bárbaro:
- *  - (a) um machado grande ou (b) qualquer arma marcial corpo-a-corpo
- *  - (a) dois machados de mão ou (b) qualquer arma simples
- *  - Um pacote de aventureiro e quatro azagaias (fixo)
- */
-export const BARBARIAN_EQUIPMENT_RULES: ClassEquipmentRules = {
-  fixedItems: [
-    { canonicalKey: "explorers_pack" },
-    { canonicalKey: "javelin", quantity: 4 },
-  ],
-  choices: [
-    {
-      id: "barbarian-weapon-1",
-      labelPt: "Escolha 1: Arma principal",
-      sources: [
-        // (a) Greataxe or (b) any martial MELEE weapon — PHB restricts to melee
-        { kind: "weapon_filter", category: "martial", rangeType: "melee" },
-      ],
-    },
-    {
-      id: "barbarian-weapon-2",
-      labelPt: "Escolha 2: Arma secundária",
-      sources: [
-        // (a) two handaxes
-        {
-          kind: "specific_items",
-          labelPt: "Machadinha x2",
-          items: [
-            { canonicalKey: "handaxe", quantity: 2 },
-          ],
-        },
-        // (b) any simple weapon
-        { kind: "weapon_filter", category: "simple" },
-      ],
-    },
-  ],
-};
-
 // ── Registry ────────────────────────────────────────────────────────────────
 
-export const CLASS_EQUIPMENT_RULES: Record<string, ClassEquipmentRules> = {
-  barbarian: BARBARIAN_EQUIPMENT_RULES,
-};
+export const CLASS_EQUIPMENT_RULES: Record<string, ClassEquipmentRules> = {};

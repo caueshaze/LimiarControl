@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session as DbSession, select
@@ -12,14 +11,53 @@ from app.services.realtime import build_event, campaign_channel, event_version, 
 from app.models.campaign import RoleMode
 from app.models.campaign_member import CampaignMember
 from app.models.party import Party
+from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
-from app.models.session_command_event import SessionCommandEvent
 from app.schemas.session import SessionCommandRequest
-from ._shared import DEPRECATION_REMOVAL_DATE, get_or_create_session_runtime, parse_expression, resolve_party_id_for_campaign
+from ._shared import (
+    DEPRECATION_REMOVAL_DATE,
+    get_or_create_session_runtime,
+    parse_expression,
+    record_session_activity,
+    resolve_party_id_for_campaign,
+)
 
 router = APIRouter()
 
-_VALID_COMMANDS = {"open_shop", "close_shop", "request_roll"}
+_VALID_COMMANDS = {"open_shop", "close_shop", "request_roll", "start_combat", "end_combat"}
+
+
+def _validate_roll_target(
+    entry: Session,
+    target_user_id: object,
+    session: DbSession,
+) -> tuple[str, str] | None:
+    if target_user_id is None:
+        return None
+    if not isinstance(target_user_id, str) or not target_user_id.strip():
+        raise HTTPException(status_code=400, detail="Invalid target user")
+    target_user_id = target_user_id.strip()
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == target_user_id,
+            CampaignMember.role_mode == RoleMode.PLAYER,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=400, detail="Target user must be a player in this campaign")
+    if entry.party_id:
+        party_member = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == entry.party_id,
+                PartyMember.user_id == target_user_id,
+                PartyMember.status == PartyMemberStatus.JOINED,
+            )
+        ).first()
+        if not party_member:
+            raise HTTPException(status_code=400, detail="Target user is not in the active party")
+    display_name = member.display_name or target_user_id
+    return target_user_id, display_name
 
 
 async def _send_session_command(
@@ -49,12 +87,31 @@ async def _send_session_command(
         raise HTTPException(status_code=400, detail="Invalid command")
     runtime = get_or_create_session_runtime(entry.id, session)
     issued_at = datetime.now(timezone.utc)
+    payload_data = payload.payload or {}
+    activity_payload: dict = {}
     if payload.type == "request_roll":
-        expression = (payload.payload or {}).get("expression")
+        expression = payload_data.get("expression")
         if not expression or not isinstance(expression, str):
             raise HTTPException(status_code=400, detail="Missing dice expression")
         if not parse_expression(expression.strip()):
             raise HTTPException(status_code=400, detail="Invalid dice expression")
+        activity_payload["expression"] = expression.strip()
+        reason = payload_data.get("reason")
+        if reason is not None:
+            if not isinstance(reason, str):
+                raise HTTPException(status_code=400, detail="Reason must be a string")
+            reason = reason.strip()
+            if reason:
+                activity_payload["reason"] = reason
+        mode = payload_data.get("mode")
+        if mode is not None:
+            if mode not in {"advantage", "disadvantage"}:
+                raise HTTPException(status_code=400, detail="Invalid roll mode")
+            activity_payload["mode"] = mode
+        target = _validate_roll_target(entry, payload_data.get("targetUserId"), session)
+        if target:
+            activity_payload["targetUserId"] = target[0]
+            activity_payload["targetDisplayName"] = target[1]
     event_payload = {
         "sessionId": entry.id,
         "campaignId": entry.campaign_id,
@@ -65,16 +122,16 @@ async def _send_session_command(
     event_type = payload.type
     if payload.type == "open_shop":
         runtime.shop_open = True
-        session.add(
-            SessionCommandEvent(
-                id=str(uuid4()),
-                session_id=entry.id,
-                user_id=user.id,
-                member_id=member.id,
-                actor_name=member.display_name,
-                command_type="open_shop",
-                created_at=issued_at,
-            )
+        activity_payload["shopOpen"] = True
+        record_session_activity(
+            entry,
+            "open_shop",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
         )
         session.add(runtime)
         session.commit()
@@ -82,16 +139,16 @@ async def _send_session_command(
         event_payload["shopOpen"] = True
     elif payload.type == "close_shop":
         runtime.shop_open = False
-        session.add(
-            SessionCommandEvent(
-                id=str(uuid4()),
-                session_id=entry.id,
-                user_id=user.id,
-                member_id=member.id,
-                actor_name=member.display_name,
-                command_type="close_shop",
-                created_at=issued_at,
-            )
+        activity_payload["shopOpen"] = False
+        record_session_activity(
+            entry,
+            "close_shop",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
         )
         session.add(runtime)
         session.commit()
@@ -99,7 +156,66 @@ async def _send_session_command(
         event_payload["shopOpen"] = False
     elif payload.type == "request_roll":
         event_type = "roll_requested"
-        event_payload.update(payload.payload or {})
+        event_payload.update(activity_payload)
+        record_session_activity(
+            entry,
+            "request_roll",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
+        )
+        session.commit()
+    elif payload.type == "start_combat":
+        runtime.combat_active = True
+        note = payload_data.get("note")
+        if note is not None:
+            if not isinstance(note, str):
+                raise HTTPException(status_code=400, detail="Combat note must be a string")
+            note = note.strip()
+            if note:
+                activity_payload["note"] = note
+        record_session_activity(
+            entry,
+            "start_combat",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
+        )
+        session.add(runtime)
+        session.commit()
+        event_type = "combat_started"
+        event_payload["combatActive"] = True
+        event_payload.update(activity_payload)
+    elif payload.type == "end_combat":
+        runtime.combat_active = False
+        note = payload_data.get("note")
+        if note is not None:
+            if not isinstance(note, str):
+                raise HTTPException(status_code=400, detail="Combat note must be a string")
+            note = note.strip()
+            if note:
+                activity_payload["note"] = note
+        record_session_activity(
+            entry,
+            "end_combat",
+            session,
+            member_id=member.id,
+            user_id=user.id,
+            actor_name=member.display_name,
+            payload=activity_payload,
+            created_at=issued_at,
+        )
+        session.add(runtime)
+        session.commit()
+        event_type = "combat_ended"
+        event_payload["combatActive"] = False
+        event_payload.update(activity_payload)
     await centrifugo.publish(
         session_channel(entry.id),
         build_event(

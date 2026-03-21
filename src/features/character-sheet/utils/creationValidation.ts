@@ -9,6 +9,7 @@ import { getStartingSpellLimits } from "./creationSpells";
 export type RequiredField =
   | "name"
   | "class"
+  | "subclass"
   | "race"
   | "background"
   | "alignment"
@@ -48,6 +49,9 @@ export const validateCreationSheet = (
   if (isBlank(sheet.playerName)) missingRequiredFields.push("playerName");
 
   const cls = getClass(sheet.class);
+  if (cls?.subclasses?.length && isBlank(sheet.subclass)) {
+    missingRequiredFields.push("subclass");
+  }
   if (cls && sheet.classSkillChoices.length < cls.skillCount) {
     missingRequiredFields.push("classSkills");
   }

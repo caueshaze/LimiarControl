@@ -16,6 +16,7 @@ export const INITIAL_SHEET: CharacterSheet = {
 
   name: "",
   class: "",
+  subclass: "",
   level: 1,
   background: "",
   playerName: "",

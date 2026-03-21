@@ -8,7 +8,13 @@ from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, St
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
 
-from app.models.base_item import BaseItemCostUnit, BaseItemKind
+from app.models.base_item import (
+    BaseItemArmorCategory,
+    BaseItemCostUnit,
+    BaseItemKind,
+    BaseItemWeaponCategory,
+    BaseItemWeaponRangeType,
+)
 
 
 def _enum_values(enum_cls: type[Enum]) -> list[str]:
@@ -40,7 +46,54 @@ class Item(SQLModel, table=True):
     price: float | None = None
     weight: float | None = None
     damage_dice: str | None = None
+    damage_type: str | None = None
     range_meters: float | None = None
+    range_long_meters: float | None = None
+    versatile_damage: str | None = None
+    weapon_category: Optional[BaseItemWeaponCategory] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemWeaponCategory,
+                name="baseitemweaponcategory",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
+    weapon_range_type: Optional[BaseItemWeaponRangeType] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemWeaponRangeType,
+                name="baseitemweaponrangetype",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
+    armor_category: Optional[BaseItemArmorCategory] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemArmorCategory,
+                name="baseitemarmorcategory",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
+    armor_class_base: int | None = None
+    dex_bonus_rule: str | None = None
+    strength_requirement: int | None = None
+    stealth_disadvantage: bool | None = None
+    is_shield: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
     properties: list[str] = Field(
         default_factory=list,
         sa_column=Column(ARRAY(String), nullable=False, server_default="{}"),

@@ -1,21 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CampaignSystemType } from "../../../entities/campaign";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item, ItemInput, ItemType } from "../../../entities/item";
 import { ITEM_TYPES } from "../../../entities/item";
 import { normalizeItemProperties } from "../../../entities/item";
 import { itemsRepo } from "../../../shared/api/itemsRepo";
-import { campaignCatalogRepo } from "../../../shared/api/campaignCatalogRepo";
 import {
   inventoryRepo,
   type InventorySellResult,
 } from "../../../shared/api/inventoryRepo";
-import { parseNullableNumber } from "../../../shared/lib/parse";
+import { parseNullableInt, parseNullableNumber } from "../../../shared/lib/parse";
 import { useCampaigns } from "../../campaign-select";
 
-const mapFieldError = (field: "price" | "weight" | "rangeMeters") => {
+const mapFieldError = (
+  field:
+    | "price"
+    | "weight"
+    | "rangeMeters"
+    | "rangeLongMeters"
+    | "armorClassBase"
+    | "strengthRequirement",
+) => {
   if (field === "price") return "catalog.validation.price";
   if (field === "weight") return "catalog.validation.weight";
+  if (field === "armorClassBase") return "catalog.validation.armorClass";
+  if (field === "strengthRequirement") return "catalog.validation.strengthRequirement";
   return "catalog.validation.range";
 };
 
@@ -24,6 +33,44 @@ const isItemType = (value: string): value is ItemType =>
 
 const isItem = (value: Item): boolean =>
   Boolean(value?.id && value?.name && isItemType(value.type) && value.description);
+
+const validateStructuredPayload = (payload: ItemInput) => {
+  if (payload.rangeLongMeters !== null && payload.rangeLongMeters !== undefined && `${payload.rangeLongMeters}`.trim() !== "" && (payload.rangeMeters === null || payload.rangeMeters === undefined || `${payload.rangeMeters}`.trim() === "")) {
+    return "catalog.validation.range" as const;
+  }
+
+  if (payload.type === "WEAPON") {
+    if (
+      !payload.damageDice?.trim()
+      || !payload.damageType?.trim()
+      || !payload.weaponCategory
+      || !payload.weaponRangeType
+    ) {
+      return "catalog.validation.weaponFields" as const;
+    }
+    if (payload.weaponRangeType === "ranged" && (payload.rangeMeters === null || payload.rangeMeters === undefined || `${payload.rangeMeters}`.trim() === "")) {
+      return "catalog.validation.weaponFields" as const;
+    }
+    if (payload.versatileDamage && !payload.properties?.includes("versatile")) {
+      return "catalog.validation.versatile" as const;
+    }
+  }
+
+  if (payload.type === "MAGIC" && payload.damageDice?.trim() && !payload.damageType?.trim()) {
+    return "catalog.validation.magicDamageType" as const;
+  }
+
+  if (payload.type === "ARMOR") {
+    if (!payload.armorCategory || payload.armorClassBase === null || payload.armorClassBase === undefined || `${payload.armorClassBase}`.trim() === "") {
+      return "catalog.validation.armorFields" as const;
+    }
+    if (payload.armorCategory !== "shield" && !payload.dexBonusRule?.trim()) {
+      return "catalog.validation.armorFields" as const;
+    }
+  }
+
+  return null;
+};
 
 type UseShopOptions = {
   campaignId?: string | null;
@@ -41,23 +88,6 @@ export const useShop = (options?: UseShopOptions) => {
   const [items, setItems] = useState<Item[]>([]);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [itemsLoading, setItemsLoading] = useState(false);
-  const seededCampaignsRef = useRef<Set<string>>(new Set());
-
-  const ensureBaseCatalog = useCallback(
-    async (targetCampaignId: string) => {
-      if (seededCampaignsRef.current.has(targetCampaignId)) {
-        return;
-      }
-      try {
-        await campaignCatalogRepo.seed(targetCampaignId);
-      } catch {
-        // Seed may fail for non-GM users; the catalog items
-        // materialized by the GM will still be visible via list.
-      }
-      seededCampaignsRef.current.add(targetCampaignId);
-    },
-    [],
-  );
 
   const loadItems = useCallback(
     async (target?: { campaignId?: string | null; sessionId?: string | null }) => {
@@ -70,9 +100,6 @@ export const useShop = (options?: UseShopOptions) => {
       }
       setItemsLoading(true);
       try {
-        if (targetCampaignId) {
-          await ensureBaseCatalog(targetCampaignId);
-        }
         const data = targetSessionId
           ? await itemsRepo.listBySession(targetSessionId)
           : await itemsRepo.list(targetCampaignId as string);
@@ -88,7 +115,7 @@ export const useShop = (options?: UseShopOptions) => {
         setItemsLoading(false);
       }
     },
-    [campaignId, ensureBaseCatalog, sessionId],
+    [campaignId, sessionId],
   );
 
   useEffect(() => {
@@ -122,9 +149,41 @@ export const useShop = (options?: UseShopOptions) => {
     if (!rangeMeters.ok) {
       return { ok: false, message: rangeMeters.error };
     }
+    const rangeLongMeters = parseNullableNumber(
+      payload.rangeLongMeters,
+      mapFieldError("rangeLongMeters"),
+    );
+    if (!rangeLongMeters.ok) {
+      return { ok: false, message: rangeLongMeters.error };
+    }
+    const armorClassBase = parseNullableInt(
+      payload.armorClassBase,
+      mapFieldError("armorClassBase"),
+    );
+    if (!armorClassBase.ok) {
+      return { ok: false, message: armorClassBase.error };
+    }
+    const strengthRequirement = parseNullableInt(
+      payload.strengthRequirement,
+      mapFieldError("strengthRequirement"),
+    );
+    if (!strengthRequirement.ok) {
+      return { ok: false, message: strengthRequirement.error };
+    }
     const properties = normalizeItemProperties(payload.properties);
     if (!properties.ok) {
       return { ok: false, message: "catalog.validation.properties" as const };
+    }
+    const structuredValidationError = validateStructuredPayload({
+      ...payload,
+      rangeMeters: rangeMeters.value,
+      rangeLongMeters: rangeLongMeters.value,
+      armorClassBase: armorClassBase.value,
+      strengthRequirement: strengthRequirement.value,
+      properties: properties.value,
+    });
+    if (structuredValidationError) {
+      return { ok: false, message: structuredValidationError };
     }
 
     try {
@@ -135,7 +194,18 @@ export const useShop = (options?: UseShopOptions) => {
         price: price.value,
         weight: weight.value,
         damageDice: payload.damageDice,
+        damageType: payload.damageType,
         rangeMeters: rangeMeters.value,
+        rangeLongMeters: rangeLongMeters.value,
+        versatileDamage: payload.versatileDamage,
+        weaponCategory: payload.weaponCategory || undefined,
+        weaponRangeType: payload.weaponRangeType || undefined,
+        armorCategory: payload.armorCategory || undefined,
+        armorClassBase: armorClassBase.value,
+        dexBonusRule: payload.dexBonusRule?.trim() ? payload.dexBonusRule.trim() : undefined,
+        strengthRequirement: strengthRequirement.value,
+        stealthDisadvantage: payload.stealthDisadvantage,
+        isShield: payload.isShield,
         properties: properties.value,
       });
       if (item) {
@@ -174,9 +244,41 @@ export const useShop = (options?: UseShopOptions) => {
     if (!rangeMeters.ok) {
       return { ok: false, message: rangeMeters.error };
     }
+    const rangeLongMeters = parseNullableNumber(
+      payload.rangeLongMeters,
+      mapFieldError("rangeLongMeters"),
+    );
+    if (!rangeLongMeters.ok) {
+      return { ok: false, message: rangeLongMeters.error };
+    }
+    const armorClassBase = parseNullableInt(
+      payload.armorClassBase,
+      mapFieldError("armorClassBase"),
+    );
+    if (!armorClassBase.ok) {
+      return { ok: false, message: armorClassBase.error };
+    }
+    const strengthRequirement = parseNullableInt(
+      payload.strengthRequirement,
+      mapFieldError("strengthRequirement"),
+    );
+    if (!strengthRequirement.ok) {
+      return { ok: false, message: strengthRequirement.error };
+    }
     const properties = normalizeItemProperties(payload.properties);
     if (!properties.ok) {
       return { ok: false, message: "catalog.validation.properties" as const };
+    }
+    const structuredValidationError = validateStructuredPayload({
+      ...payload,
+      rangeMeters: rangeMeters.value,
+      rangeLongMeters: rangeLongMeters.value,
+      armorClassBase: armorClassBase.value,
+      strengthRequirement: strengthRequirement.value,
+      properties: properties.value,
+    });
+    if (structuredValidationError) {
+      return { ok: false, message: structuredValidationError };
     }
 
     try {
@@ -187,7 +289,18 @@ export const useShop = (options?: UseShopOptions) => {
         price: price.value,
         weight: weight.value,
         damageDice: payload.damageDice,
+        damageType: payload.damageType,
         rangeMeters: rangeMeters.value,
+        rangeLongMeters: rangeLongMeters.value,
+        versatileDamage: payload.versatileDamage,
+        weaponCategory: payload.weaponCategory || undefined,
+        weaponRangeType: payload.weaponRangeType || undefined,
+        armorCategory: payload.armorCategory || undefined,
+        armorClassBase: armorClassBase.value,
+        dexBonusRule: payload.dexBonusRule?.trim() ? payload.dexBonusRule.trim() : undefined,
+        strengthRequirement: strengthRequirement.value,
+        stealthDisadvantage: payload.stealthDisadvantage,
+        isShield: payload.isShield,
         properties: properties.value,
       });
       if (item) {

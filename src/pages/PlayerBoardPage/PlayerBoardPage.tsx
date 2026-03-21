@@ -51,7 +51,14 @@ export const PlayerBoardPage = () => {
   const { activeSession, refresh } = usePartyActiveSession(partyId);
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? activeSession?.campaignId ?? null;
   const { selectedSessionId, setSelectedSessionId } = useSession();
-  const { lastCommand, clearCommand, sessionEndedAt, clearSessionEnded, shopOpen: shopAvailable } = useSessionCommands();
+  const {
+    lastCommand,
+    clearCommand,
+    sessionEndedAt,
+    clearSessionEnded,
+    shopOpen: shopAvailable,
+    combatActive,
+  } = useSessionCommands();
   const { lastEvent } = useCampaignEvents(effectiveCampaignId);
   const { roll, events: rollEvents } = useRollSession();
   const { toast, showToast, clearToast } = useToast();
@@ -248,6 +255,22 @@ export const PlayerBoardPage = () => {
       setShopOpen(false);
       setPendingOpenShop(false);
       setShopSessionTarget(null);
+      return;
+    }
+    if (lastEvent.type === "combat_started") {
+      showToast({
+        variant: "info",
+        title: t("playerBoard.combatStartedTitle"),
+        description: t("playerBoard.combatStartedDescription"),
+      });
+      return;
+    }
+    if (lastEvent.type === "combat_ended") {
+      showToast({
+        variant: "info",
+        title: t("playerBoard.combatEndedTitle"),
+        description: t("playerBoard.combatEndedDescription"),
+      });
       return;
     }
     if (lastEvent.type === "roll_requested") {
@@ -522,6 +545,25 @@ export const PlayerBoardPage = () => {
           </div>
 
           {activeSession?.id && (
+            <PlayerEntityList
+              sessionId={activeSession.id}
+              combatActive={combatActive}
+              lastEvent={lastEvent}
+            />
+          )}
+
+          {combatActive && (
+            <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-5 text-sm text-rose-100">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-rose-200">
+                {t("entity.player.combatLive")}
+              </p>
+              <p className="mt-2 text-sm text-rose-50">
+                {t("playerBoard.combatStartedDescription")}
+              </p>
+            </div>
+          )}
+
+          {activeSession?.id && (
             <SessionActivityToggle
               refreshSignal={lastEvent ? `${lastEvent.type}:${lastEvent.version ?? ""}` : null}
               sessionId={activeSession.id}
@@ -696,8 +738,6 @@ export const PlayerBoardPage = () => {
         </div>
       )}
       <DiceVisualizer events={rollEvents} />
-
-      <PlayerEntityList sessionId={activeSession?.id} lastEvent={lastEvent} />
 
       <SessionInventoryPanel
         flash={inventoryFlash}

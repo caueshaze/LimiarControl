@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -15,6 +16,7 @@ class SessionCommandEvent(SQLModel, table=True):
     member_id: str = Field(foreign_key="campaign_member.id", index=True)
     actor_name: str | None = None
     command_type: str = Field(index=True)
+    payload_json: dict | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

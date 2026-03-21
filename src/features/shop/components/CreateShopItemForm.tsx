@@ -1,4 +1,9 @@
 import { useState, type FormEvent, type ReactNode } from "react";
+import type {
+  BaseItemArmorCategory,
+  BaseItemWeaponCategory,
+  BaseItemWeaponRangeType,
+} from "../../../entities/base-item";
 import {
   type ItemPropertySlug,
   type ItemInput,
@@ -7,14 +12,12 @@ import {
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { CATALOG_TYPE_META } from "../utils/catalogTypeMeta";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
-import { ItemPropertiesSelector } from "./ItemPropertiesSelector";
+import { ItemAutomationFields } from "./ItemAutomationFields";
 
 type CreateShopItemFormProps = {
   onCreate: (payload: ItemInput) => boolean | Promise<boolean>;
   itemTypes: ItemType[];
 };
-
-const DAMAGE_OPTIONS = ["", "1d4", "1d6", "1d8", "1d10", "1d12", "2d6"];
 
 export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormProps) => {
   const { t } = useLocale();
@@ -24,12 +27,21 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
   const [price, setPrice] = useState("");
   const [weight, setWeight] = useState("");
   const [damageDice, setDamageDice] = useState("");
+  const [damageType, setDamageType] = useState("");
   const [rangeMeters, setRangeMeters] = useState("");
+  const [rangeLongMeters, setRangeLongMeters] = useState("");
+  const [versatileDamage, setVersatileDamage] = useState("");
+  const [weaponCategory, setWeaponCategory] = useState<BaseItemWeaponCategory | "">("");
+  const [weaponRangeType, setWeaponRangeType] = useState<BaseItemWeaponRangeType | "">("");
+  const [armorCategory, setArmorCategory] = useState<BaseItemArmorCategory | "">("");
+  const [armorClassBase, setArmorClassBase] = useState("");
+  const [dexBonusRule, setDexBonusRule] = useState("");
+  const [strengthRequirement, setStrengthRequirement] = useState("");
+  const [stealthDisadvantage, setStealthDisadvantage] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<ItemPropertySlug[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = Boolean(name.trim() && description.trim() && price.trim());
-  const supportsCombatFields = type === "WEAPON" || type === "MAGIC";
   const meta = CATALOG_TYPE_META[type];
 
   const resetForm = () => {
@@ -39,7 +51,17 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
     setPrice("");
     setWeight("");
     setDamageDice("");
+    setDamageType("");
     setRangeMeters("");
+    setRangeLongMeters("");
+    setVersatileDamage("");
+    setWeaponCategory("");
+    setWeaponRangeType("");
+    setArmorCategory("");
+    setArmorClassBase("");
+    setDexBonusRule("");
+    setStrengthRequirement("");
+    setStealthDisadvantage(false);
     setSelectedProperties([]);
   };
 
@@ -57,9 +79,46 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
         description: description.trim(),
         price: Number(price),
         weight: weight.trim() ? Number(weight) : undefined,
-        damageDice: supportsCombatFields && damageDice.trim() ? damageDice : undefined,
-        rangeMeters: supportsCombatFields && rangeMeters.trim() ? Number(rangeMeters) : undefined,
-        properties: selectedProperties.length > 0 ? selectedProperties : undefined,
+        damageDice:
+          (type === "WEAPON" || type === "MAGIC") && damageDice.trim()
+            ? damageDice.trim()
+            : undefined,
+        damageType:
+          (type === "WEAPON" || type === "MAGIC") && damageType.trim()
+            ? damageType.trim()
+            : undefined,
+        rangeMeters:
+          (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
+            ? Number(rangeMeters)
+            : undefined,
+        rangeLongMeters:
+          (type === "WEAPON" || type === "MAGIC") && rangeLongMeters.trim()
+            ? Number(rangeLongMeters)
+            : undefined,
+        versatileDamage:
+          type === "WEAPON" && versatileDamage.trim()
+            ? versatileDamage.trim()
+            : undefined,
+        weaponCategory: type === "WEAPON" && weaponCategory ? weaponCategory : undefined,
+        weaponRangeType:
+          type === "WEAPON" && weaponRangeType ? weaponRangeType : undefined,
+        armorCategory: type === "ARMOR" && armorCategory ? armorCategory : undefined,
+        armorClassBase:
+          type === "ARMOR" && armorClassBase.trim()
+            ? Number(armorClassBase)
+            : undefined,
+        dexBonusRule:
+          type === "ARMOR" && dexBonusRule.trim() ? dexBonusRule.trim() : undefined,
+        strengthRequirement:
+          type === "ARMOR" && strengthRequirement.trim()
+            ? Number(strengthRequirement)
+            : undefined,
+        stealthDisadvantage: type === "ARMOR" ? stealthDisadvantage : undefined,
+        isShield: type === "ARMOR" && armorCategory === "shield",
+        properties:
+          type !== "ARMOR" && selectedProperties.length > 0
+            ? selectedProperties
+            : undefined,
       });
       if (created) {
         resetForm();
@@ -191,39 +250,35 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             </Field>
           </div>
 
-          {supportsCombatFields && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("shop.form.damage")}>
-                <select
-                  value={damageDice}
-                  onChange={(event) => setDamageDice(event.target.value)}
-                  className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
-                >
-                  {DAMAGE_OPTIONS.map((option) => (
-                    <option key={option || "none"} value={option}>
-                      {option || t("shop.form.damageNone")}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("shop.form.range")}>
-                <input
-                  value={rangeMeters}
-                  onChange={(event) => setRangeMeters(event.target.value)}
-                  className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-                  inputMode="decimal"
-                  placeholder={t("shop.form.rangePlaceholder")}
-                />
-              </Field>
-            </div>
-          )}
-
-          <Field label={t("shop.form.properties")}>
-            <ItemPropertiesSelector
-              value={selectedProperties}
-              onChange={setSelectedProperties}
-            />
-          </Field>
+          <ItemAutomationFields
+            type={type}
+            damageDice={damageDice}
+            damageType={damageType}
+            rangeMeters={rangeMeters}
+            rangeLongMeters={rangeLongMeters}
+            versatileDamage={versatileDamage}
+            weaponCategory={weaponCategory}
+            weaponRangeType={weaponRangeType}
+            armorCategory={armorCategory}
+            armorClassBase={armorClassBase}
+            dexBonusRule={dexBonusRule}
+            strengthRequirement={strengthRequirement}
+            stealthDisadvantage={stealthDisadvantage}
+            properties={selectedProperties}
+            onDamageDiceChange={setDamageDice}
+            onDamageTypeChange={setDamageType}
+            onRangeMetersChange={setRangeMeters}
+            onRangeLongMetersChange={setRangeLongMeters}
+            onVersatileDamageChange={setVersatileDamage}
+            onWeaponCategoryChange={setWeaponCategory}
+            onWeaponRangeTypeChange={setWeaponRangeType}
+            onArmorCategoryChange={setArmorCategory}
+            onArmorClassBaseChange={setArmorClassBase}
+            onDexBonusRuleChange={setDexBonusRule}
+            onStrengthRequirementChange={setStrengthRequirement}
+            onStealthDisadvantageChange={setStealthDisadvantage}
+            onPropertiesChange={setSelectedProperties}
+          />
 
           <button
             type="submit"

@@ -1,6 +1,11 @@
 import type { AbilityName, SkillName } from "../model/characterSheet.types";
 import { describeDefaultClassStartingEquipment } from "./classCreation";
 
+export type DndSubclass = {
+  id: string;
+  name: string;
+};
+
 export type DndClass = {
   id: string;
   name: string;
@@ -12,12 +17,16 @@ export type DndClass = {
   skillChoices: SkillName[];
   skillCount: number;
   spellcastingAbility: AbilityName | null;
+  /** Label shown in the creation UI for subclass picker (e.g. "Patrono Transcendental") */
+  subclassLabel?: string;
+  /** Available subclass options chosen at level 1. Leave undefined for level 3+ choices. */
+  subclasses?: DndSubclass[];
   // Derived preview only. Character creation uses classCreation.ts as source of truth.
   startingEquipment: string[];
 };
 
 const CLASS_DEFINITIONS: Omit<DndClass, "startingEquipment">[] = [
-  { id: "barbarian", name: "Bárbaro", hitDice: "d12", primaryAbility: ["strength"], savingThrows: ["strength", "constitution"], armorProficiencies: ["Leve", "Média", "Escudos"], weaponProficiencies: ["Simples", "Marciais"], skillChoices: ["animalHandling", "athletics", "intimidation", "nature", "perception", "survival"], skillCount: 2, spellcastingAbility: null },
+  { id: "barbarian", name: "Bárbaro", hitDice: "d12", primaryAbility: ["strength"], savingThrows: ["strength", "constitution"], armorProficiencies: ["Leve", "Média", "Escudos"], weaponProficiencies: ["Simples", "Marciais"], skillChoices: ["animalHandling", "athletics", "intimidation", "nature", "perception", "survival"], skillCount: 2, spellcastingAbility: null, subclassLabel: "Caminho Primitivo", subclasses: [{ id: "furioso", name: "Caminho do Furioso" }, { id: "guerreiro-totemico", name: "Caminho do Guerreiro Totêmico" }] },
   { id: "bard", name: "Bardo", hitDice: "d8", primaryAbility: ["charisma"], savingThrows: ["dexterity", "charisma"], armorProficiencies: ["Leve"], weaponProficiencies: ["Simples", "Bestas de mão", "Espadas longas", "Rapieiras", "Espadas curtas"], skillChoices: ["acrobatics", "animalHandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightOfHand", "stealth", "survival"], skillCount: 3, spellcastingAbility: "charisma" },
   { id: "cleric", name: "Clérigo", hitDice: "d8", primaryAbility: ["wisdom"], savingThrows: ["wisdom", "charisma"], armorProficiencies: ["Leve", "Média", "Escudos"], weaponProficiencies: ["Simples"], skillChoices: ["history", "insight", "medicine", "persuasion", "religion"], skillCount: 2, spellcastingAbility: "wisdom" },
   { id: "druid", name: "Druida", hitDice: "d8", primaryAbility: ["wisdom"], savingThrows: ["intelligence", "wisdom"], armorProficiencies: ["Leve", "Média", "Escudos (não-metálicos)"], weaponProficiencies: ["Clavas", "Adagas", "Dardos de arremesso", "Maças", "Cajados", "Cimitarras", "Foices", "Fundas", "Lanças"], skillChoices: ["arcana", "animalHandling", "insight", "medicine", "nature", "perception", "religion", "survival"], skillCount: 2, spellcastingAbility: "wisdom" },
@@ -27,7 +36,7 @@ const CLASS_DEFINITIONS: Omit<DndClass, "startingEquipment">[] = [
   { id: "ranger", name: "Patrulheiro", hitDice: "d10", primaryAbility: ["dexterity", "wisdom"], savingThrows: ["strength", "dexterity"], armorProficiencies: ["Leve", "Média", "Escudos"], weaponProficiencies: ["Simples", "Marciais"], skillChoices: ["animalHandling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"], skillCount: 3, spellcastingAbility: "wisdom" },
   { id: "rogue", name: "Ladino", hitDice: "d8", primaryAbility: ["dexterity"], savingThrows: ["dexterity", "intelligence"], armorProficiencies: ["Leve"], weaponProficiencies: ["Simples", "Bestas de mão", "Espadas longas", "Rapieiras", "Espadas curtas"], skillChoices: ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "performance", "persuasion", "sleightOfHand", "stealth"], skillCount: 4, spellcastingAbility: null },
   { id: "sorcerer", name: "Feiticeiro", hitDice: "d6", primaryAbility: ["charisma"], savingThrows: ["constitution", "charisma"], armorProficiencies: [], weaponProficiencies: ["Adagas", "Dardos", "Fundas", "Cajados", "Bestas leves"], skillChoices: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"], skillCount: 2, spellcastingAbility: "charisma" },
-  { id: "warlock", name: "Bruxo", hitDice: "d8", primaryAbility: ["charisma"], savingThrows: ["wisdom", "charisma"], armorProficiencies: ["Leve"], weaponProficiencies: ["Simples"], skillChoices: ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], skillCount: 2, spellcastingAbility: "charisma" },
+  { id: "warlock", name: "Bruxo", hitDice: "d8", primaryAbility: ["charisma"], savingThrows: ["wisdom", "charisma"], armorProficiencies: ["Leve"], weaponProficiencies: ["Simples"], skillChoices: ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], skillCount: 2, spellcastingAbility: "charisma", subclassLabel: "Patrono Transcendental", subclasses: [{ id: "arquifada", name: "A Arquifada" }, { id: "corruptor", name: "O Corruptor" }, { id: "grande-antigo", name: "O Grande Antigo" }] },
   { id: "wizard", name: "Mago", hitDice: "d6", primaryAbility: ["intelligence"], savingThrows: ["intelligence", "wisdom"], armorProficiencies: [], weaponProficiencies: ["Adagas", "Dardos", "Fundas", "Cajados", "Bestas leves"], skillChoices: ["arcana", "history", "insight", "investigation", "medicine", "religion"], skillCount: 2, spellcastingAbility: "intelligence" },
 ];
 

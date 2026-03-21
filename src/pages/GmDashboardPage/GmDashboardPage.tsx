@@ -4,7 +4,13 @@ import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
 import { getCampaignSystemLabel, type CampaignSystemType } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { useActiveSession, useSession, useCampaignEvents, useSessionCommands } from "../../features/sessions";
+import {
+    SessionActivityRow,
+    useActiveSession,
+    useSession,
+    useCampaignEvents,
+    useSessionCommands,
+} from "../../features/sessions";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { sessionsRepo, type ActivityEvent, type LobbyStatus } from "../../shared/api/sessionsRepo";
 import { partiesRepo, type PartyMemberSummary } from "../../shared/api/partiesRepo";
@@ -22,71 +28,9 @@ import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, formatWallet, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 import { SessionEntityPanel } from "../../features/session-entities";
 
-function formatOffset(seconds: number): string {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function ActivityRow({ event }: { event: ActivityEvent }) {
-    const { t } = useLocale();
-    const actor = event.displayName ?? event.username ?? "Unknown";
-    if (event.type === "roll") {
-        return (
-            <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-                <span className="mt-0.5 text-base">🎲</span>
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white">
-                        <span className="font-semibold">{actor}</span>
-                        {" rolled "}
-                        <span className="font-mono text-limiar-300">{event.expression}</span>
-                        {" → "}
-                        <span className="font-bold text-limiar-400">{event.total}</span>
-                        {event.results.length > 1 && (
-                            <span className="text-xs text-slate-500 ml-1">({event.results.join(", ")})</span>
-                        )}
-                    </p>
-                    {event.label && <p className="text-xs text-slate-400 mt-0.5">{t("sessionActivity.reason")} {event.label}</p>}
-                </div>
-                <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
-            </div>
-        );
-    }
-    if (event.type === "shop") {
-        return (
-            <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-                <span className="mt-0.5 text-base">{event.action === "opened" ? "🏪" : "🔒"}</span>
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white">
-                        <span className="font-semibold">{actor}</span>
-                        {event.action === "opened" ? " opened the shop" : " closed the shop"}
-                    </p>
-                </div>
-                <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
-            </div>
-        );
-    }
-    return (
-        <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-            <span className="mt-0.5 text-base">🛒</span>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm text-white">
-                    <span className="font-semibold">{actor}</span>
-                    {" bought "}
-                    <span className="font-semibold text-amber-300">{event.itemName}</span>
-                    {event.quantity > 1 && <span className="text-slate-400"> ×{event.quantity}</span>}
-                </p>
-            </div>
-            <span className="text-xs font-mono text-slate-500 shrink-0">{formatOffset(event.sessionOffsetSeconds)}</span>
-        </div>
-    );
-}
-
 type CommandFeedback = {
     tone: "success" | "error";
-    type: "open_shop" | "close_shop" | "request_roll";
+    type: "open_shop" | "close_shop" | "request_roll" | "start_combat" | "end_combat";
     message: string;
 };
 
@@ -103,7 +47,7 @@ export const GmDashboardPage = () => {
     const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
     const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession(effectiveCampaignId);
     const { selectedSessionId, setSelectedSessionId } = useSession();
-    const { shopOpen: shopActive } = useSessionCommands();
+    const { shopOpen: shopActive, combatActive } = useSessionCommands();
     const { events: rollEvents } = useRollSession();
 
     const [creating, setCreating] = useState(false);
@@ -128,6 +72,7 @@ export const GmDashboardPage = () => {
     const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
     const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
     const [shopUiOpen, setShopUiOpen] = useState(false);
+    const [combatUiActive, setCombatUiActive] = useState(false);
     const [grantFeedbackByUserId, setGrantFeedbackByUserId] = useState<Record<string, GrantFeedback>>({});
     const [currencyDraftByUserId, setCurrencyDraftByUserId] = useState<
         Record<string, { amount: string; coin: keyof CurrencyWallet }>
@@ -208,10 +153,12 @@ export const GmDashboardPage = () => {
     }, [activeSession?.id, refreshActivity]);
 
     useEffect(() => {
-        if (shopActive) {
-            setShopUiOpen(true);
-        }
+        setShopUiOpen(shopActive);
     }, [shopActive]);
+
+    useEffect(() => {
+        setCombatUiActive(combatActive);
+    }, [combatActive]);
 
     useEffect(() => {
         if (!lastEvent) return;
@@ -231,6 +178,18 @@ export const GmDashboardPage = () => {
                 return;
             }
             setShopUiOpen(false);
+        }
+        if (lastEvent.type === "combat_started") {
+            if (lastEvent.payload.partyId && activeSession?.partyId && lastEvent.payload.partyId !== activeSession.partyId) {
+                return;
+            }
+            setCombatUiActive(true);
+        }
+        if (lastEvent.type === "combat_ended") {
+            if (lastEvent.payload.partyId && activeSession?.partyId && lastEvent.payload.partyId !== activeSession.partyId) {
+                return;
+            }
+            setCombatUiActive(false);
         }
         if (lastEvent.type === "session_lobby") {
             setLobbyStatus({
@@ -560,7 +519,7 @@ export const GmDashboardPage = () => {
     };
 
     const handleCommand = async (
-        type: "open_shop" | "close_shop" | "request_roll",
+        type: "open_shop" | "close_shop" | "request_roll" | "start_combat" | "end_combat",
         payload?: Record<string, unknown>
     ) => {
         if (!activeSession?.id || commandSending) return;
@@ -585,12 +544,22 @@ export const GmDashboardPage = () => {
             if (type === "close_shop") {
                 setShopUiOpen(false);
             }
+            if (type === "start_combat") {
+                setCombatUiActive(true);
+            }
+            if (type === "end_combat") {
+                setCombatUiActive(false);
+            }
             const message =
                 type === "open_shop"
                     ? "Shop command accepted by the server."
                     : type === "close_shop"
                         ? "Close shop command accepted by the server."
-                        : "Roll request accepted by the server.";
+                        : type === "start_combat"
+                            ? "Combat is now live for the session."
+                            : type === "end_combat"
+                                ? "Combat mode was closed for the session."
+                                : "Roll request accepted by the server.";
             if (commandFeedbackTimeoutRef.current) {
                 window.clearTimeout(commandFeedbackTimeoutRef.current);
             }
@@ -788,7 +757,7 @@ export const GmDashboardPage = () => {
 
                     {/* Session Actions */}
                     {activeSession?.status === "ACTIVE" && (
-                        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                             <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -910,6 +879,47 @@ export const GmDashboardPage = () => {
                                     )}
                                 </div>
                             </div>
+                            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+                                            Combat Control
+                                        </label>
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            Mark the session as in combat and keep entity sheets ready for players.
+                                        </p>
+                                    </div>
+                                    <span
+                                        className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+                                            combatUiActive
+                                                ? "border-rose-500/40 text-rose-300"
+                                                : "border-slate-700 text-slate-400"
+                                        }`}
+                                    >
+                                        {combatUiActive ? "Live" : "Standby"}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => handleCommand(combatUiActive ? "end_combat" : "start_combat")}
+                                    disabled={commandSending}
+                                    className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
+                                        combatUiActive
+                                            ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                            : "bg-rose-900/50 text-rose-100 hover:bg-rose-900/70"
+                                    }`}
+                                >
+                                    {combatUiActive ? "End Combat" : "Start Combat"}
+                                </button>
+                                {commandFeedback && (commandFeedback.type === "start_combat" || commandFeedback.type === "end_combat") && (
+                                    <div className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
+                                        commandFeedback.tone === "success"
+                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                                            : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                                    }`}>
+                                        {commandFeedback.message}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -918,6 +928,7 @@ export const GmDashboardPage = () => {
                 <SessionEntityPanel
                     sessionId={activeSession.id}
                     campaignId={effectiveCampaignId}
+                    combatActive={combatUiActive}
                     lastEvent={lastEvent}
                 />
             )}
@@ -1129,7 +1140,7 @@ export const GmDashboardPage = () => {
                     ) : (
                         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                             {[...activityFeed].reverse().map((ev, i) => (
-                                <ActivityRow key={i} event={ev} />
+                                <SessionActivityRow key={i} event={ev} />
                             ))}
                         </div>
                     )}

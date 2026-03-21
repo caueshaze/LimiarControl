@@ -25,7 +25,7 @@ export const PlayerEntityCard = ({ entity }: Props) => {
         <div className="mt-1 flex gap-3 text-xs">
           {entity.currentHp != null && (
             <span className="rounded-lg bg-red-500/10 border border-red-500/20 px-2 py-0.5 font-bold text-red-400">
-              HP {entity.currentHp}
+              HP {ce.baseHp != null ? `${entity.currentHp}/${ce.baseHp}` : entity.currentHp}
             </span>
           )}
           {ce.baseAc != null && (
