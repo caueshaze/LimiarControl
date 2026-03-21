@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import { partiesRepo, type PartyActiveSession, type PartyDetail } from "../../shared/api/partiesRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaignEvents } from "../../features/sessions";
 import { useAuth } from "../../features/auth";
-import { inventoryRepo } from "../../shared/api/inventoryRepo";
-import { itemsRepo } from "../../shared/api/itemsRepo";
-import { sessionsRepo, type LobbyStatus } from "../../shared/api/sessionsRepo";
-import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
-import type { InventoryItem } from "../../entities/inventory";
-import type { Item } from "../../entities/item";
+import { sessionsRepo } from "../../shared/api/sessionsRepo";
 import { PlayerPartyHeader } from "./components/PlayerPartyHeader";
 import { PlayerPartyInventoryCard } from "./components/PlayerPartyInventoryCard";
 import { PlayerPartyItemModal } from "./components/PlayerPartyItemModal";
@@ -18,99 +12,44 @@ import { PlayerPartyMembersCard } from "./components/PlayerPartyMembersCard";
 import { PlayerPartySessionCard } from "./components/PlayerPartySessionCard";
 import { PlayerPartySessionHistoryCard } from "./components/PlayerPartySessionHistoryCard";
 import { PlayerPartySheetCard } from "./components/PlayerPartySheetCard";
-import type { PlayerPartySelectedItem } from "./playerParty.types";
+import { useToast } from "../../shared/hooks/useToast";
+import { Toast } from "../../shared/ui";
+import { usePlayerPartyPageData } from "./usePlayerPartyPageData";
 
 export const PlayerPartyPage = () => {
   const { partyId } = useParams<{ partyId: string }>();
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const { user } = useAuth();
-
-  const [party, setParty] = useState<PartyDetail | null>(null);
-  const [sessions, setSessions] = useState<PartyActiveSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [myInventory, setMyInventory] = useState<InventoryItem[] | null>(null);
-  const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
-  const [selectedItem, setSelectedItem] = useState<PlayerPartySelectedItem | null>(null);
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
-
-  const [lobbyStatus, setLobbyStatus] = useState<LobbyStatus | null>(null);
-  const [joiningLobby, setJoiningLobby] = useState(false);
-  const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
-  const wasLobbyRef = useRef(false);
-  const prevActiveSessionIdRef = useRef<string | null>(null);
-
-  const [hasCharacterSheet, setHasCharacterSheet] = useState<boolean | null>(null);
-
-  const loadData = useCallback(async () => {
-    if (!partyId) return;
-    setLoading(true);
-    try {
-      const [partyData, sessionsData] = await Promise.all([
-        partiesRepo.get(partyId),
-        partiesRepo.listPartySessions(partyId),
-      ]);
-      setParty(partyData);
-      setSessions(sessionsData);
-    } catch {
-      setParty(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [partyId]);
-
-  const refreshSessions = useCallback(async () => {
-    if (!partyId) return [];
-    try {
-      const sessionsData = await partiesRepo.listPartySessions(partyId);
-      setSessions(sessionsData);
-      return sessionsData;
-    } catch {
-      return [];
-    }
-  }, [partyId]);
-
-  const refreshActiveSession = useCallback(async () => {
-    if (!partyId) return null;
-    try {
-      const session = await partiesRepo.getPartyActiveSession(partyId);
-      setSessions((current) => {
-        const next = current.filter((entry) => entry.id !== session.id);
-        return [session, ...next];
-      });
-      return session;
-    } catch {
-      return null;
-    }
-  }, [partyId]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    if (!partyId) return;
-    const interval = setInterval(() => {
-      void refreshSessions();
-    }, 30_000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [partyId, refreshSessions]);
-
-  useEffect(() => {
-    if (!partyId) return;
-    characterSheetsRepo
-      .getByParty(partyId)
-      .then(() => setHasCharacterSheet(true))
-      .catch((error: { status?: number }) =>
-        setHasCharacterSheet(error?.status === 404 ? false : null),
-      );
-  }, [partyId]);
+  const { toast, showToast, clearToast } = useToast();
+  const {
+    party,
+    sessions,
+    activeSession,
+    loading,
+    myInventory,
+    catalogItems,
+    selectedItem,
+    expandedSessionId,
+    lobbyStatus,
+    joiningLobby,
+    hasJoinedLobby,
+    hasCharacterSheet,
+    wasLobbyRef,
+    prevActiveSessionIdRef,
+    notifiedLobbySessionIdRef,
+    loadData,
+    refreshSessions,
+    refreshActiveSession,
+    syncActiveSessionFromRealtime,
+    handleJoinLobby,
+    setSelectedItem,
+    setExpandedSessionId,
+    setLobbyStatus,
+    setHasJoinedLobby,
+  } = usePlayerPartyPageData({ partyId, userId: user?.userId });
 
   const { lastEvent } = useCampaignEvents(party?.campaignId ?? null);
-  const activeSession = sessions.find((session) => session.isActive) ?? null;
 
   useEffect(() => {
     if (activeSession?.id) {
@@ -119,24 +58,7 @@ export const PlayerPartyPage = () => {
       prevActiveSessionIdRef.current = null;
       navigate(routes.home, { replace: true });
     }
-  }, [activeSession?.id, navigate]);
-
-  useEffect(() => {
-    if (!party?.campaignId) return;
-
-    Promise.all([inventoryRepo.list(party.campaignId), itemsRepo.list(party.campaignId)])
-      .then(([inventory, items]) => {
-        const itemMap: Record<string, Item> = {};
-        for (const item of items) {
-          itemMap[item.id] = item;
-        }
-        setCatalogItems(itemMap);
-        setMyInventory(inventory);
-      })
-      .catch(() => {
-        setMyInventory([]);
-      });
-  }, [party?.campaignId]);
+  }, [activeSession?.id, navigate, prevActiveSessionIdRef]);
 
   useEffect(() => {
     if (!lastEvent) return;
@@ -147,7 +69,8 @@ export const PlayerPartyPage = () => {
       }
       setLobbyStatus(null);
       setHasJoinedLobby(false);
-      void refreshSessions();
+      notifiedLobbySessionIdRef.current = lastEvent.payload.sessionId;
+      void syncActiveSessionFromRealtime(lastEvent.payload.sessionId);
       if (partyId) {
         navigate(routes.board.replace(":partyId", partyId));
       }
@@ -182,11 +105,22 @@ export const PlayerPartyPage = () => {
           lastEvent.payload.totalCount ?? lastEvent.payload.expectedPlayers.length,
       });
       setHasJoinedLobby(false);
-      void refreshActiveSession().then((session) => {
-        if (!session) {
-          void refreshSessions();
-        }
-      });
+      if (notifiedLobbySessionIdRef.current !== lastEvent.payload.sessionId) {
+        notifiedLobbySessionIdRef.current = lastEvent.payload.sessionId;
+        showToast({
+          variant: "info",
+          title:
+            locale === "pt"
+              ? "Sessao aberta pelo GM"
+              : "GM opened the session",
+          description:
+            locale === "pt"
+              ? `${lastEvent.payload.title} ja esta pronta na sala de espera.`
+              : `${lastEvent.payload.title} is ready in the lobby.`,
+          duration: 4500,
+        });
+      }
+      void syncActiveSessionFromRealtime(lastEvent.payload.sessionId);
       return;
     }
 
@@ -213,7 +147,7 @@ export const PlayerPartyPage = () => {
         };
       });
     }
-  }, [lastEvent, loadData, navigate, partyId, refreshActiveSession, refreshSessions]);
+  }, [lastEvent, loadData, locale, navigate, partyId, refreshSessions, showToast, syncActiveSessionFromRealtime]);
 
   useEffect(() => {
     if (activeSession?.status === "LOBBY") {
@@ -226,67 +160,6 @@ export const PlayerPartyPage = () => {
       wasLobbyRef.current = false;
     }
   }, [activeSession?.status, navigate, partyId]);
-
-  useEffect(() => {
-    if (!activeSession?.id || activeSession.status !== "LOBBY") {
-      setLobbyStatus(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    const syncLobbyState = async () => {
-      const [status, sessionsData] = await Promise.all([
-        sessionsRepo.getLobbyStatus(activeSession.id).catch(() => null),
-        refreshSessions(),
-      ]);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (status) {
-        setLobbyStatus(status);
-      }
-
-      const refreshedActive = sessionsData.find((session) => session.isActive) ?? null;
-      if (refreshedActive?.status === "ACTIVE" && partyId) {
-        setHasJoinedLobby(false);
-        navigate(routes.board.replace(":partyId", partyId), { replace: true });
-      }
-    };
-
-    void syncLobbyState();
-    const interval = setInterval(() => {
-      void syncLobbyState();
-    }, 5_000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [activeSession?.id, activeSession?.status, navigate, partyId, refreshSessions]);
-
-  const handleJoinLobby = async () => {
-    if (!activeSession?.id || joiningLobby) return;
-    setJoiningLobby(true);
-    try {
-      await sessionsRepo.joinLobby(activeSession.id);
-      setHasJoinedLobby(true);
-      if (user?.userId) {
-        setLobbyStatus((current) => {
-          if (!current || current.ready.includes(user.userId)) {
-            return current;
-          }
-          return { ...current, ready: [...current.ready, user.userId] };
-        });
-      }
-    } catch {
-      // ignore
-    } finally {
-      setJoiningLobby(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -317,6 +190,7 @@ export const PlayerPartyPage = () => {
 
   return (
     <>
+      <Toast toast={toast} onClose={clearToast} />
       <section className="space-y-6">
         <PlayerPartyHeader
           partyName={party.name}

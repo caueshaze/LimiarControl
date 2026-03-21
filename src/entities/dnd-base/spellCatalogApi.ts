@@ -11,6 +11,7 @@ import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 
 /** Shape expected by consumers (matches the old CSV-based BaseSpell). */
 export type BaseSpell = {
+  canonicalKey: string;
   name: string;
   level: number;
   school: string;
@@ -37,6 +38,7 @@ const cacheByScope = new Map<string, BaseSpell[]>();
 const loadPromiseByScope = new Map<string, Promise<void>>();
 
 const adapt = (api: ApiBaseSpell): BaseSpell => ({
+  canonicalKey: api.canonicalKey,
   name: api.nameEn,
   level: api.level,
   school: api.school || "Evocation",

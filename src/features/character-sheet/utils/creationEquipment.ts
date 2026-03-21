@@ -80,6 +80,9 @@ const resolveStarterItem = (entry: ParsedStarterEntry | string) => {
   if (typeof entry === "string") {
     return resolveCreationItem(entry, getCreationItemCatalog());
   }
+  if (entry.kind === "currency") {
+    return null;
+  }
   if (entry.canonicalKey) {
     return findCreationItemByCanonicalKey(entry.canonicalKey, getCreationItemCatalog());
   }

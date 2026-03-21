@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { normalizeSubclassId } from "../data/classes";
 import type { CharacterSheet } from "./characterSheet.types";
 
 const abilityNameSchema = z.enum([
@@ -136,13 +137,18 @@ export const characterSheetSchema = z.object({
 
   name: z.string(),
   class: z.string(),
-  subclass: z.string().default(""),
+  subclass: z.preprocess((value) => {
+    if (value == null) return null;
+    if (typeof value !== "string") return value;
+    return value.trim().length > 0 ? value : null;
+  }, z.string().nullable()),
   level: z.number().min(1).max(20),
   background: z.string(),
   playerName: z.string(),
   race: z.string(),
   alignment: z.string(),
   experiencePoints: z.number().min(0),
+  pendingLevelUp: z.boolean().default(false),
   inspiration: z.boolean(),
 
   abilities: abilitiesRecord,
@@ -196,7 +202,10 @@ export function parseCharacterSheet(raw: unknown): CharacterSheet {
   if (!result.success) {
     throw new Error(z.prettifyError(result.error));
   }
-  return result.data as CharacterSheet;
+  return {
+    ...result.data,
+    subclass: normalizeSubclassId(result.data.class, result.data.subclass),
+  } as CharacterSheet;
 }
 
 /**
@@ -208,7 +217,13 @@ export function validateSheet(
 ): { ok: true; sheet: CharacterSheet } | { ok: false; error: string } {
   const result = characterSheetSchema.safeParse(data);
   if (result.success) {
-    return { ok: true, sheet: result.data as CharacterSheet };
+    return {
+      ok: true,
+      sheet: {
+        ...result.data,
+        subclass: normalizeSubclassId(result.data.class, result.data.subclass),
+      } as CharacterSheet,
+    };
   }
   return { ok: false, error: z.prettifyError(result.error) };
 }

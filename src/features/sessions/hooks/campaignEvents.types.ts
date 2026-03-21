@@ -1,0 +1,256 @@
+export type CampaignEvent =
+  | {
+      type: "session_started";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        startedAt: string;
+        title: string;
+      };
+      version?: number;
+    }
+  | { type: "session_closed"; payload: Record<string, unknown>; version?: number }
+  | { type: "session_resumed"; payload: Record<string, unknown>; version?: number }
+  | {
+      type: "session_lobby";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        expectedPlayers: { userId: string; displayName: string }[];
+        readyUserIds?: string[];
+        readyCount?: number;
+        totalCount?: number;
+        sessionId: string;
+        title: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "player_joined_lobby";
+      payload: {
+        displayName: string;
+        partyId?: string | null;
+        readyCount: number;
+        readyUserIds?: string[];
+        sessionId: string;
+        totalCount: number;
+        userId: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_opened" | "shop_closed";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        shopOpen?: boolean;
+      };
+      version?: number;
+    }
+  | {
+      type: "combat_started" | "combat_ended";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        combatActive?: boolean;
+        note?: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "roll_requested";
+      payload: {
+        campaignId: string;
+        expression: string;
+        issuedAt?: string;
+        issuedBy?: string;
+        mode?: "advantage" | "disadvantage" | null;
+        partyId?: string | null;
+        reason?: string;
+        sessionId: string;
+        targetUserId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "dice_rolled";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        userId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_purchase_created";
+      payload: {
+        campaignId: string;
+        itemId: string;
+        itemName: string;
+        partyId?: string | null;
+        quantity: number;
+        sessionId: string;
+        userId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "shop_sale_created";
+      payload: {
+        campaignId: string;
+        itemId: string;
+        itemName: string;
+        partyId?: string | null;
+        quantity: number;
+        refundLabel?: string;
+        sessionId: string;
+        userId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "party_member_updated";
+      payload: {
+        campaignId: string;
+        partyId: string;
+        role: "GM" | "PLAYER";
+        status: string;
+        userId: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "session_state_updated";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "gm_granted_currency";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+        currentCurrency?: {
+          cp?: number;
+          sp?: number;
+          ep?: number;
+          gp?: number;
+          pp?: number;
+        };
+        grantedCurrency?: {
+          cp?: number;
+          sp?: number;
+          ep?: number;
+          gp?: number;
+          pp?: number;
+        };
+      };
+      version?: number;
+    }
+  | {
+      type: "gm_granted_item";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+        itemId: string;
+        itemName: string;
+        quantity: number;
+        inventoryItemId?: string | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "gm_granted_xp";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        sessionId: string;
+        grantedAmount: number;
+        currentXp: number;
+        currentLevel: number;
+        nextLevelThreshold: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "level_up_requested" | "level_up_approved" | "level_up_denied";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        level: number;
+        experiencePoints: number;
+        pendingLevelUp: boolean;
+      };
+      version?: number;
+    }
+  | {
+      type: "entity_revealed" | "entity_hidden";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "entity_hp_updated";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
+        previousHp?: number | null;
+        hpDelta?: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "session_entity_added" | "session_entity_removed";
+      payload: {
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
+        sessionEntityId: string;
+        campaignEntityId: string;
+        visibleToPlayers?: boolean;
+        label?: string | null;
+        currentHp?: number | null;
+        entityName?: string | null;
+        entityCategory?: string | null;
+        maxHp?: number | null;
+      };
+      version?: number;
+    };

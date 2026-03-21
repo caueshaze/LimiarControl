@@ -79,6 +79,10 @@ function SessionActivityLog({ sessionId }: { sessionId: string }) {
           );
         }
 
+        if (event.type !== "purchase") {
+          return null;
+        }
+
         return (
           <div
             key={`${event.type}-${index}`}

@@ -27,3 +27,16 @@ class SessionGrantItemRead(BaseModel):
     itemName: str
     quantity: int
     inventoryItem: InventoryRead
+
+
+class SessionGrantXpRequest(BaseModel):
+    playerUserId: str
+    amount: int = Field(ge=1)
+
+
+class SessionGrantXpRead(BaseModel):
+    playerUserId: str
+    grantedAmount: int
+    currentXp: int
+    currentLevel: int
+    nextLevelThreshold: int | None

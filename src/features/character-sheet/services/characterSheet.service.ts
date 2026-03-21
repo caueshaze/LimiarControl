@@ -91,3 +91,12 @@ export async function savePlayCharacterSheet(
   const record = await sessionStatesRepo.updateByPlayer(sessionId, playerUserId, sheet);
   return record.id;
 }
+
+export async function requestPlaySheetLevelUp(
+  partyId: string,
+  playerUserId: string,
+  useOwnState: boolean,
+): Promise<{ id: string | null; sheet: CharacterSheet; sessionId: string; campaignId: string }> {
+  await characterSheetsRepo.requestLevelUp(partyId);
+  return loadPlayCharacterSheet(partyId, playerUserId, useOwnState);
+}

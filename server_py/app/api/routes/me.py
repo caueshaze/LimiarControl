@@ -19,7 +19,14 @@ def list_my_campaigns(
     session: Session = Depends(get_session),
 ):
     statement = (
-        select(Campaign, CampaignMember)
+        select(
+            Campaign.id,
+            Campaign.name,
+            Campaign.system,
+            Campaign.created_at,
+            Campaign.updated_at,
+            CampaignMember.role_mode,
+        )
         .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
         .where(CampaignMember.user_id == user.id)
         .order_by(Campaign.created_at.desc())
@@ -27,12 +34,12 @@ def list_my_campaigns(
     entries = session.exec(statement).all()
     return [
         CampaignRead(
-            id=campaign.id,
-            name=campaign.name,
-            systemType=campaign.system,
-            roleMode=member.role_mode,
-            createdAt=campaign.created_at,
-            updatedAt=campaign.updated_at,
+            id=campaign_id,
+            name=name,
+            systemType=system,
+            roleMode=role_mode,
+            createdAt=created_at,
+            updatedAt=updated_at,
         )
-        for campaign, member in entries
+        for campaign_id, name, system, created_at, updated_at, role_mode in entries
     ]

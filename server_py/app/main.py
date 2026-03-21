@@ -30,6 +30,7 @@ from app.api.routes import (
 from app.api.ws import router as ws_router
 from app.core.config import settings
 from app.core.logging import RequestLoggingMiddleware
+from app.db.migrations import ensure_database_schema
 from app.services.centrifugo import centrifugo
 
 app = FastAPI()
@@ -88,6 +89,11 @@ app.include_router(ws_router, prefix="/ws")
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    ensure_database_schema()
 
 
 @app.on_event("shutdown")

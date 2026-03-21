@@ -141,13 +141,14 @@ export type CharacterSheet = {
   // Basic info
   name: string;
   class: string;
-  subclass: string;
+  subclass: string | null;
   level: number;
   background: string;
   playerName: string;
   race: string;
   alignment: string;
   experiencePoints: number;
+  pendingLevelUp: boolean;
   inspiration: boolean;
 
   // Abilities

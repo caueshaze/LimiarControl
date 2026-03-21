@@ -16,13 +16,14 @@ export const INITIAL_SHEET: CharacterSheet = {
 
   name: "",
   class: "",
-  subclass: "",
+  subclass: null,
   level: 1,
   background: "",
   playerName: "",
   race: "",
   alignment: "",
   experiencePoints: 0,
+  pendingLevelUp: false,
   inspiration: false,
 
   abilities: {

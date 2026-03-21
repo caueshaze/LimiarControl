@@ -126,7 +126,7 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
   const content = showcaseContent[locale][mode];
 
   return (
-    <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,11,28,0.92),rgba(3,7,18,0.96))] p-6 shadow-[0_30px_120px_rgba(2,6,23,0.5)] sm:p-8">
+    <section className="relative h-full overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,11,28,0.92),rgba(3,7,18,0.96))] p-6 shadow-[0_30px_120px_rgba(2,6,23,0.5)] sm:p-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.2),transparent_34%),radial-gradient(circle_at_80%_15%,rgba(103,232,249,0.16),transparent_24%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.1),transparent_24%)]" />
       <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px]" />
       <div className="absolute -right-10 top-16 h-32 w-32 rounded-full bg-sky-400/20 blur-3xl motion-safe:animate-[auth-orbit_18s_linear_infinite]" />

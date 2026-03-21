@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { SessionEntity } from "../../../entities/session-entity";
 import { CategoryBadge } from "../../campaign-entities";
 import type { EntityCategory } from "../../../entities/campaign-entity";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   entity: SessionEntity;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRemove }: Props) => {
+  const { t } = useLocale();
   const [removing, setRemoving] = useState(false);
 
   const name = entity.entity?.name ?? "Unknown";
@@ -19,6 +21,7 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
   const hp = entity.currentHp;
   const maxHp = entity.entity?.baseHp ?? null;
   const adjustments = [-10, -5, -1, 1, 5, 10];
+  const isDead = typeof hp === "number" && hp <= 0;
 
   const handleHpChange = (delta: number) => {
     const next = Math.max(0, (hp ?? 0) + delta);
@@ -40,10 +43,14 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
       <button
         type="button"
         onClick={() => void onToggleVisibility(entity.id)}
-        className={`shrink-0 text-lg ${entity.visibleToPlayers ? "text-emerald-400" : "text-slate-600"}`}
-        title={entity.visibleToPlayers ? "Visible to players — click to hide" : "Hidden — click to reveal"}
+        className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
+          entity.visibleToPlayers
+            ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/18"
+            : "border-slate-700 bg-slate-800/70 text-slate-300 hover:bg-slate-800"
+        }`}
+        title={entity.visibleToPlayers ? t("entity.session.hide") : t("entity.session.reveal")}
       >
-        {entity.visibleToPlayers ? "👁" : "👁‍🗨"}
+        {entity.visibleToPlayers ? t("entity.session.hide") : t("entity.session.reveal")}
       </button>
 
       {/* Name + badge */}
@@ -51,6 +58,11 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-white">{displayName}</span>
           <CategoryBadge category={category} />
+          {isDead && (
+            <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-red-200">
+              {t("entity.dead")}
+            </span>
+          )}
         </div>
       </div>
 

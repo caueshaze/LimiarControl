@@ -104,6 +104,14 @@ export type SessionGrantItemResult = {
   inventoryItem: InventoryItem;
 };
 
+export type SessionGrantXpResult = {
+  playerUserId: string;
+  grantedAmount: number;
+  currentXp: number;
+  currentLevel: number;
+  nextLevelThreshold: number | null;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
@@ -202,4 +210,8 @@ export const sessionsRepo = {
     sessionId: string,
     payload: { playerUserId: string; itemId: string; quantity?: number; notes?: string | null },
   ) => http.post<SessionGrantItemResult>(`/sessions/${sessionId}/grants/item`, payload),
+  grantXp: (
+    sessionId: string,
+    payload: { playerUserId: string; amount: number },
+  ) => http.post<SessionGrantXpResult>(`/sessions/${sessionId}/grants/xp`, payload),
 };

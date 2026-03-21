@@ -22,6 +22,8 @@ _REQUIRED_SHEET_KEYS = {
     "name",
     "class",
     "level",
+    "experiencePoints",
+    "pendingLevelUp",
     "background",
     "playerName",
     "race",

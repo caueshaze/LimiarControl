@@ -1,7 +1,7 @@
 import armorCsv from "../../../Base/DND5e_Armaduras_Database.csv?raw";
+import gearCsv from "../../../Base/DND5e_Equipamentos_Database.csv?raw";
 import weaponCsv from "../../../Base/DND5e_Armas_Database_Programador.csv?raw";
 import { parseCsvObjects } from "../../shared/lib/csv";
-import { CURATED_DND_BASE_GEARS } from "./curatedGearCatalog";
 
 export type CoinType = "cp" | "sp" | "ep" | "gp" | "pp";
 export type BaseWeaponCategory = "simple" | "martial";
@@ -9,6 +9,7 @@ export type BaseWeaponKind = "melee" | "ranged";
 export type BaseArmorCategory = "light" | "medium" | "heavy" | "shield";
 
 type WeaponRow = {
+  canonical_key: string;
   Nome: string;
   Categoria: string;
   Tipo: string;
@@ -24,6 +25,7 @@ type WeaponRow = {
 };
 
 type ArmorRow = {
+  canonical_key: string;
   Nome: string;
   Categoria: string;
   Custo: string;
@@ -35,6 +37,16 @@ type ArmorRow = {
   Descrição: string;
 };
 
+type GearRow = {
+  canonical_key: string;
+  Nome: string;
+  Tipo: string;
+  Categoria: string;
+  Custo: string;
+  Peso: string;
+  "Descrição": string;
+};
+
 export type BasePrice = {
   amount: number;
   coin: CoinType;
@@ -43,6 +55,7 @@ export type BasePrice = {
 };
 
 export type BaseWeapon = {
+  canonicalKey: string;
   name: string;
   category: BaseWeaponCategory;
   kind: BaseWeaponKind;
@@ -58,6 +71,7 @@ export type BaseWeapon = {
 };
 
 export type BaseArmor = {
+  canonicalKey: string;
   name: string;
   category: BaseArmorCategory;
   price: BasePrice;
@@ -70,7 +84,10 @@ export type BaseArmor = {
 };
 
 export type BaseGear = {
+  canonicalKey: string;
   name: string;
+  itemKind: string;
+  equipmentCategory: string;
   price: BasePrice | null;
   weightLb: number | null;
   description: string;
@@ -136,6 +153,7 @@ const parseProperties = (raw: string) =>
     .filter((entry) => entry && entry !== "-");
 
 export const BASE_WEAPONS: BaseWeapon[] = parseCsvObjects<keyof WeaponRow>(weaponCsv).map((row) => ({
+  canonicalKey: row.canonical_key,
   name: row.Nome,
   category: mapWeaponCategory(row.Categoria),
   kind: mapWeaponKind(row.Tipo),
@@ -151,6 +169,7 @@ export const BASE_WEAPONS: BaseWeapon[] = parseCsvObjects<keyof WeaponRow>(weapo
 }));
 
 export const BASE_ARMORS: BaseArmor[] = parseCsvObjects<keyof ArmorRow>(armorCsv).map((row) => ({
+  canonicalKey: row.canonical_key,
   name: row.Nome,
   category: mapArmorCategory(row.Categoria),
   price: parsePrice(row.Custo),
@@ -162,22 +181,15 @@ export const BASE_ARMORS: BaseArmor[] = parseCsvObjects<keyof ArmorRow>(armorCsv
   description: row.Descrição,
 }));
 
-const gearByName = new Map<string, BaseGear>();
-
-for (const entry of CURATED_DND_BASE_GEARS) {
-  const name = entry.name.trim();
-  if (!name || gearByName.has(name.toLowerCase())) {
-    continue;
-  }
-  gearByName.set(name.toLowerCase(), {
-    name,
-    price: entry.price ? parsePrice(entry.price) : null,
-    weightLb: entry.weightLb,
-    description: entry.description,
-  });
-}
-
-export const BASE_GEARS: BaseGear[] = [...gearByName.values()];
+export const BASE_GEARS: BaseGear[] = parseCsvObjects<keyof GearRow>(gearCsv).map((row) => ({
+  canonicalKey: row.canonical_key,
+  name: row.Nome,
+  itemKind: row.Tipo,
+  equipmentCategory: row.Categoria,
+  price: row.Custo ? parsePrice(row.Custo) : null,
+  weightLb: row.Peso ? parseWeight(row.Peso) : null,
+  description: row["Descrição"],
+}));
 
 export const findBaseWeapon = (name: string) =>
   BASE_WEAPONS.find((weapon) => weapon.name.toLowerCase() === name.trim().toLowerCase());

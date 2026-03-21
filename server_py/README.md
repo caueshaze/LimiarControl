@@ -42,6 +42,9 @@ cd server_py
 alembic upgrade head
 ```
 
+In development, the API now runs `alembic upgrade head` automatically on startup by default.
+Set `AUTO_MIGRATE=false` if you prefer fail-fast behavior instead of automatic upgrades.
+
 ## Seed base catalogs
 
 After the schema is up to date, seed the D&D base catalogs used by character creation, shop flows, and campaign spell setup.

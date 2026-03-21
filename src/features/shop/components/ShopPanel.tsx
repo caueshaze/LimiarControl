@@ -10,10 +10,13 @@ import type {
 } from "../../../shared/api/inventoryRepo";
 import { ShopItemList } from "./ShopItemList";
 import { ShopFilterBar } from "./ShopFilterBar";
-import { ShopSellList } from "./ShopSellList";
 import { useShop } from "../hooks/useShop";
-import { formatWallet } from "../utils/shopCurrency";
 import { SHOP_ITEM_TYPES } from "../utils/shopItemTypes";
+import {
+  ShopPanelHeader,
+  ShopPanelInventorySummary,
+  ShopPanelSellSection,
+} from "./ShopPanelSections";
 
 const normalizeInventoryKey = (value: string) =>
   value
@@ -173,27 +176,13 @@ export const ShopPanel = ({
       }`}
       aria-hidden={!open}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            {t("shop.title")}
-          </p>
-          <h2 className="mt-2 text-xl font-semibold text-white">
-            {t("shop.subtitle")}
-          </h2>
-          <p className="mt-2 text-sm text-slate-400">
-            {t("shop.description")}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-9 w-9 rounded-full border border-slate-700 text-xs font-semibold text-slate-300 hover:border-slate-500"
-          aria-label={t("shop.close") ?? "Close shop"}
-        >
-          ✕
-        </button>
-      </div>
+      <ShopPanelHeader
+        closeLabel={t("shop.close") ?? "Close shop"}
+        description={t("shop.description")}
+        subtitle={t("shop.subtitle")}
+        title={t("shop.title")}
+        onClose={onClose}
+      />
 
       <div className="mt-4">
         {itemsLoading ? (
@@ -217,81 +206,50 @@ export const ShopPanel = ({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                {t("shop.panel.inventory")}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                    {t("shop.panel.unique")}
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.unique}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                    {t("shop.panel.total")}
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.total}</p>
-                </div>
-                <div className="min-w-[12rem] rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                    {t("shop.panel.wallet")}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">{formatWallet(wallet)}</p>
-                </div>
-              </div>
-            </div>
+            <ShopPanelInventorySummary
+              inventorySummary={inventorySummary}
+              totalLabel={t("shop.panel.total")}
+              uniqueLabel={t("shop.panel.unique")}
+              wallet={wallet}
+              walletLabel={t("shop.panel.wallet")}
+            />
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                    {t("shop.sell.title")}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {t("shop.sell.description")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 max-h-56 overflow-y-auto pr-1">
-                <ShopSellList
-                  inventoryItems={inventoryItems ?? []}
-                  itemsById={itemsById}
-                  pendingInventoryId={pendingSellInventoryId}
-                  recentInventoryId={recentSellInventoryId}
-                  onSell={async (inventoryItemId) => {
-                    const inventoryEntry = (inventoryItems ?? []).find((entry) => entry.id === inventoryItemId);
-                    if (!inventoryEntry) {
-                      return;
-                    }
-                    const selectedItem = itemsById[inventoryEntry.itemId];
-                    if (!selectedItem) {
-                      return;
-                    }
-                    setPendingSellInventoryId(inventoryItemId);
-                    try {
-                      const result = await sellItem(inventoryItemId);
-                      if (recentSellTimerRef.current) {
-                        window.clearTimeout(recentSellTimerRef.current);
-                      }
-                      setRecentSellInventoryId(inventoryItemId);
-                      recentSellTimerRef.current = window.setTimeout(() => {
-                        setRecentSellInventoryId(null);
-                        recentSellTimerRef.current = null;
-                      }, 1800);
-                      onSell?.(selectedItem, result);
-                    } catch (error) {
-                      const message = (error as { message?: string })?.message;
-                      onSellError?.(message);
-                    } finally {
-                      setPendingSellInventoryId(null);
-                    }
-                  }}
-                />
-              </div>
-            </div>
+            <ShopPanelSellSection
+              description={t("shop.sell.description")}
+              inventoryItems={inventoryItems ?? []}
+              itemsById={itemsById}
+              pendingInventoryId={pendingSellInventoryId}
+              recentInventoryId={recentSellInventoryId}
+              title={t("shop.sell.title")}
+              onSell={async (inventoryItemId) => {
+                const inventoryEntry = (inventoryItems ?? []).find((entry) => entry.id === inventoryItemId);
+                if (!inventoryEntry) {
+                  return;
+                }
+                const selectedItem = itemsById[inventoryEntry.itemId];
+                if (!selectedItem) {
+                  return;
+                }
+                setPendingSellInventoryId(inventoryItemId);
+                try {
+                  const result = await sellItem(inventoryItemId);
+                  if (recentSellTimerRef.current) {
+                    window.clearTimeout(recentSellTimerRef.current);
+                  }
+                  setRecentSellInventoryId(inventoryItemId);
+                  recentSellTimerRef.current = window.setTimeout(() => {
+                    setRecentSellInventoryId(null);
+                    recentSellTimerRef.current = null;
+                  }, 1800);
+                  onSell?.(selectedItem, result);
+                } catch (error) {
+                  const message = (error as { message?: string })?.message;
+                  onSellError?.(message);
+                } finally {
+                  setPendingSellInventoryId(null);
+                }
+              }}
+            />
 
             <ShopFilterBar
               filteredCount={filteredItems.length}

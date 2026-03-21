@@ -1,5 +1,6 @@
 import {
   Centrifuge,
+  SubscriptionState,
   UnauthorizedError,
   type ClientInfo,
   type ConnectionTokenContext,
@@ -24,6 +25,11 @@ export type RealtimePresenceMember = {
   displayName: string;
   info: ClientInfo;
   userId: string;
+};
+
+export type RealtimeHistoryPublication = {
+  data: unknown;
+  offset?: string;
 };
 
 type SubscriptionHandlers = {
@@ -223,6 +229,16 @@ export const subscribe = (channel: string, handlers: SubscriptionHandlers) => {
   entry.subscription.subscribe();
   getClient().connect();
 
+  if (entry.subscription.state === SubscriptionState.Subscribed) {
+    Promise.resolve().then(() => {
+      const currentEntry = channelEntries.get(channel);
+      if (!currentEntry?.listeners.has(listenerId)) {
+        return;
+      }
+      handlers.onSubscribed?.({ channel } as SubscribedContext);
+    });
+  }
+
   return () => {
     releaseChannelListener(channel, listenerId);
   };
@@ -257,6 +273,17 @@ export const getPresence = async (channel: string) => {
       toPresenceMember(clientId, info),
     ]),
   );
+};
+
+export const getHistory = async (channel: string, limit = 20) => {
+  const entry = channelEntries.get(channel);
+  const result = entry
+    ? await entry.subscription.history({ limit })
+    : await getClient().history(channel, { limit });
+  return (result.publications ?? []).map((publication) => ({
+    data: publication.data,
+    offset: publication.offset,
+  })) as RealtimeHistoryPublication[];
 };
 
 export const disconnectRealtime = () => {

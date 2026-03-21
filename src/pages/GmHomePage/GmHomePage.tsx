@@ -34,6 +34,8 @@ export const GmHomePage = () => {
     () => new Map(campaigns.map((c) => [c.id, c])),
     [campaigns]
   );
+  const latestParty = parties[0] ?? null;
+  const otherParties = latestParty ? parties.slice(1) : [];
 
   const handleOpenParty = (party: PartySummary) => {
     if (party.campaignId) selectCampaign(party.campaignId);
@@ -58,10 +60,6 @@ export const GmHomePage = () => {
       />
 
       <section className="rounded-[34px] border border-limiar-300/10 bg-[linear-gradient(180deg,rgba(26,12,55,0.4),rgba(2,6,23,0.92))] p-1 shadow-[0_24px_70px_rgba(2,6,23,0.32)]">
-        <CampaignManagementPanel />
-      </section>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
           <header className="flex flex-col gap-4 border-b border-white/8 pb-5">
             <div>
@@ -74,7 +72,7 @@ export const GmHomePage = () => {
             </div>
           </header>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-4">
             {loading ? (
               <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-400">
                 {t("gm.home.partyLoading")}
@@ -82,34 +80,62 @@ export const GmHomePage = () => {
             ) : parties.length === 0 ? (
               <EmptyPartyState />
             ) : (
-              parties.map((party) => {
-                const campaign = campaignMap.get(party.campaignId);
-                return (
+              <>
+                {latestParty && (
                   <PartyListCard
-                    key={party.id}
-                    party={party}
-                    campaignName={campaign?.name}
+                    party={latestParty}
+                    campaignName={campaignMap.get(latestParty.campaignId)?.name}
                     systemLabel={
-                      campaign ? getCampaignSystemLabel(campaign.systemType) : undefined
+                      campaignMap.get(latestParty.campaignId)
+                        ? getCampaignSystemLabel(campaignMap.get(latestParty.campaignId)!.systemType)
+                        : undefined
                     }
-                    onOpen={() => handleOpenParty(party)}
+                    onOpen={() => handleOpenParty(latestParty)}
+                    featured
                   />
-                );
-              })
+                )}
+
+                {otherParties.length > 0 && (
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {otherParties.map((party) => {
+                      const campaign = campaignMap.get(party.campaignId);
+                      return (
+                        <PartyListCard
+                          key={party.id}
+                          party={party}
+                          campaignName={campaign?.name}
+                          systemLabel={
+                            campaign ? getCampaignSystemLabel(campaign.systemType) : undefined
+                          }
+                          onOpen={() => handleOpenParty(party)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
+      </section>
 
-        <NewPartyForm
-          campaigns={campaigns}
-          partyName={partyName}
-          setPartyName={setPartyName}
-          campaignId={campaignId}
-          setCampaignId={setCampaignId}
-          onCreate={handleCreateParty}
-          saving={saving}
-          error={error}
-        />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section className="rounded-[34px] border border-limiar-300/10 bg-[linear-gradient(180deg,rgba(26,12,55,0.4),rgba(2,6,23,0.92))] p-1 shadow-[0_24px_70px_rgba(2,6,23,0.32)]">
+          <CampaignManagementPanel />
+        </section>
+
+        <div>
+          <NewPartyForm
+            campaigns={campaigns}
+            partyName={partyName}
+            setPartyName={setPartyName}
+            campaignId={campaignId}
+            setCampaignId={setCampaignId}
+            onCreate={handleCreateParty}
+            saving={saving}
+            error={error}
+          />
+        </div>
       </div>
     </section>
   );

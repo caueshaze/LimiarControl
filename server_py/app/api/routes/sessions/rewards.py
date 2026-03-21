@@ -8,6 +8,7 @@ from sqlmodel import Session as DbSession, select
 from app.api.deps import get_current_user
 from app.db.session import get_session
 from app.models.campaign_member import CampaignMember
+from app.models.character_sheet import CharacterSheet
 from app.models.inventory import InventoryItem
 from app.models.item import Item
 from app.models.party import Party
@@ -18,7 +19,10 @@ from app.schemas.session_reward import (
     SessionGrantCurrencyRequest,
     SessionGrantItemRead,
     SessionGrantItemRequest,
+    SessionGrantXpRead,
+    SessionGrantXpRequest,
 )
+from app.services.character_progression import build_progression_snapshot, grant_experience
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 
@@ -303,4 +307,83 @@ async def grant_session_item(
         itemName=item.name,
         quantity=payload.quantity,
         inventoryItem=to_inventory_read(inventory_entry),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/grants/xp",
+    response_model=SessionGrantXpRead,
+)
+async def grant_session_xp(
+    session_id: str,
+    payload: SessionGrantXpRequest,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry, party = _get_active_party_session_for_gm(session_id, user, session)
+    _get_target_member(
+        campaign_id=entry.campaign_id,
+        party_id=party.id,
+        player_user_id=payload.playerUserId,
+        db=session,
+    )
+
+    sheet = session.exec(
+        select(CharacterSheet).where(
+            CharacterSheet.party_id == party.id,
+            CharacterSheet.player_user_id == payload.playerUserId,
+        )
+    ).first()
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Character sheet not found")
+
+    data = grant_experience(sheet.data, payload.amount)
+    snapshot = build_progression_snapshot(data)
+    sheet.data = data
+    session.add(sheet)
+    state = _ensure_player_session_state(entry, payload.playerUserId, session)
+    state.state_json = {
+        **state.state_json,
+        "experiencePoints": snapshot["experiencePoints"],
+        "level": snapshot["level"],
+        "pendingLevelUp": snapshot["pendingLevelUp"],
+    }
+    session.add(state)
+    session.commit()
+    session.refresh(sheet)
+    session.refresh(state)
+
+    event_payload = {
+        "sessionId": entry.id,
+        "campaignId": entry.campaign_id,
+        "partyId": entry.party_id,
+        "playerUserId": payload.playerUserId,
+        "grantedAmount": payload.amount,
+        "currentXp": snapshot["experiencePoints"],
+        "currentLevel": snapshot["level"],
+        "nextLevelThreshold": snapshot["nextLevelThreshold"],
+        "issuedAt": (sheet.updated_at or sheet.created_at).isoformat(),
+    }
+    await _publish_reward_realtime(
+        entry,
+        event_type="gm_granted_xp",
+        payload=event_payload,
+        version_source=sheet.updated_at or sheet.created_at,
+    )
+    await _publish_session_state_realtime(
+        entry,
+        payload.playerUserId,
+        state.updated_at or state.created_at,
+    )
+
+    return SessionGrantXpRead(
+        playerUserId=payload.playerUserId,
+        grantedAmount=payload.amount,
+        currentXp=int(snapshot["experiencePoints"]),
+        currentLevel=int(snapshot["level"]),
+        nextLevelThreshold=(
+            int(snapshot["nextLevelThreshold"])
+            if snapshot["nextLevelThreshold"] is not None
+            else None
+        ),
     )

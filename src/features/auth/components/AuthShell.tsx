@@ -94,14 +94,14 @@ export const AuthShell = ({
 
         <main className="flex flex-1 items-center py-6 lg:py-10">
           <div className="grid w-full items-stretch gap-8 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
-            <div className="order-2 lg:order-1 motion-safe:animate-[landing-rise_0.85s_ease-out_both]">
+            <div className="order-2 h-full lg:order-1 motion-safe:animate-[landing-rise_0.85s_ease-out_both]">
               <AuthShowcase mode={mode} />
             </div>
 
-            <section className="order-1 flex items-center lg:order-2">
-              <div className="w-full rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,15,30,0.9),rgba(4,8,20,0.96))] p-1 shadow-[0_32px_100px_rgba(2,6,23,0.54)]">
-                <div className="rounded-[32px] border border-white/6 bg-slate-950/75 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl sm:p-8">
-                  <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 sm:p-7">
+            <section className="order-1 flex h-full lg:order-2">
+              <div className="flex h-full w-full flex-col rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,15,30,0.9),rgba(4,8,20,0.96))] p-1 shadow-[0_32px_100px_rgba(2,6,23,0.54)]">
+                <div className="flex h-full flex-col rounded-[32px] border border-white/6 bg-slate-950/75 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl sm:p-8">
+                  <div className="flex h-full flex-col rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 sm:p-7">
                     <div className="inline-flex items-center gap-2 rounded-full border border-limiar-300/15 bg-limiar-400/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-limiar-100">
                       <BrandMark size="sm" className="h-7 w-7 rounded-lg shadow-none" imageClassName="p-1" />
                       {APP_NAME}
@@ -109,8 +109,10 @@ export const AuthShell = ({
                     <h1 className="mt-5 text-3xl font-bold text-white sm:text-4xl">{title}</h1>
                     <p className="mt-3 max-w-xl text-sm leading-7 text-slate-400 sm:text-base">{subtitle}</p>
 
-                    <div className="mt-8">{form}</div>
-                    <div className="mt-8 border-t border-white/8 pt-6">{footer}</div>
+                    <div className="mt-8 flex flex-1 flex-col">
+                      <div>{form}</div>
+                      <div className="mt-auto border-t border-white/8 pt-6">{footer}</div>
+                    </div>
                   </div>
                 </div>
               </div>

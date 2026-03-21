@@ -3,32 +3,19 @@ from sqlmodel import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
-from app.models.base_item import BaseItem, BaseItemAlias, BaseItemKind
+from app.models.base_item import BaseItem, BaseItemKind
 from app.models.campaign import SystemType
 from app.models.user import User
-from app.schemas.base_item import BaseItemAliasRead, BaseItemRead
+from app.schemas.base_item import BaseItemRead
 from app.services.base_items import (
     get_base_item_by_id,
-    list_base_item_aliases,
     list_base_items as list_catalog_base_items,
 )
 
 router = APIRouter()
 
 
-def to_base_item_alias_read(alias: BaseItemAlias) -> BaseItemAliasRead:
-    return BaseItemAliasRead(
-        id=alias.id,
-        alias=alias.alias,
-        locale=alias.locale,
-        aliasType=alias.alias_type,
-    )
-
-
-def to_base_item_read(
-    item: BaseItem,
-    aliases: list[BaseItemAlias],
-) -> BaseItemRead:
+def to_base_item_read(item: BaseItem) -> BaseItemRead:
     return BaseItemRead(
         id=item.id,
         system=item.system,
@@ -60,7 +47,7 @@ def to_base_item_read(
         sourceRef=item.source_ref,
         isSrd=item.is_srd,
         isActive=item.is_active,
-        aliases=[to_base_item_alias_read(alias) for alias in aliases],
+        aliases=[],
     )
 
 
@@ -78,14 +65,7 @@ def list_base_items(
         item_kind=item_kind,
         canonical_key=canonical_key,
     )
-    aliases_by_item_id = list_base_item_aliases(
-        db=session,
-        base_item_ids=[item.id for item in items if item.id],
-    )
-    return [
-        to_base_item_read(item, aliases_by_item_id.get(item.id, []))
-        for item in items
-    ]
+    return [to_base_item_read(item) for item in items]
 
 
 @router.get("/{base_item_id}", response_model=BaseItemRead)
@@ -98,8 +78,4 @@ def get_base_item(
     if not item:
         raise HTTPException(status_code=404, detail="Base item not found")
 
-    aliases_by_item_id = list_base_item_aliases(
-        db=session,
-        base_item_ids=[base_item_id],
-    )
-    return to_base_item_read(item, aliases_by_item_id.get(base_item_id, []))
+    return to_base_item_read(item)

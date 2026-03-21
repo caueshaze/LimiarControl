@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from collections import defaultdict
-
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.base_spell import BaseSpell, BaseSpellAlias, SpellSchool
+from app.models.base_spell import BaseSpell, SpellSchool
 from app.models.campaign import SystemType
 
 
@@ -65,23 +63,6 @@ def get_base_spell_by_canonical_key(
     ).first()
 
 
-def get_base_spell_by_alias(
-    *,
-    db: Session,
-    system: SystemType,
-    alias: str,
-) -> BaseSpell | None:
-    statement = (
-        select(BaseSpell)
-        .join(BaseSpellAlias, BaseSpellAlias.base_spell_id == BaseSpell.id)  # type: ignore[arg-type]
-        .where(
-            BaseSpell.system == system,
-            func.lower(BaseSpellAlias.alias) == _normalize_lookup(alias),
-        )
-    )
-    return db.exec(statement).first()
-
-
 def update_base_spell(
     *,
     db: Session,
@@ -104,32 +85,6 @@ def delete_base_spell(*, db: Session, base_spell_id: str) -> bool:
     spell = db.exec(select(BaseSpell).where(BaseSpell.id == base_spell_id)).first()
     if not spell:
         return False
-    # Delete aliases first
-    aliases = db.exec(
-        select(BaseSpellAlias).where(BaseSpellAlias.base_spell_id == base_spell_id)
-    ).all()
-    for alias in aliases:
-        db.delete(alias)
     db.delete(spell)
     db.commit()
     return True
-
-
-def list_base_spell_aliases(
-    *,
-    db: Session,
-    base_spell_ids: list[str],
-) -> dict[str, list[BaseSpellAlias]]:
-    if not base_spell_ids:
-        return {}
-
-    aliases = db.exec(
-        select(BaseSpellAlias)
-        .where(BaseSpellAlias.base_spell_id.in_(base_spell_ids))  # type: ignore[union-attr]
-        .order_by(BaseSpellAlias.alias)
-    ).all()
-
-    grouped: dict[str, list[BaseSpellAlias]] = defaultdict(list)
-    for alias in aliases:
-        grouped[alias.base_spell_id].append(alias)
-    return dict(grouped)

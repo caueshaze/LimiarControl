@@ -16,18 +16,12 @@ import { Spellcasting } from "./Spellcasting";
 import { Proficiencies } from "./Proficiencies";
 import { Conditions } from "./Conditions";
 import { FeaturesTraits } from "./FeaturesTraits";
-import {
-  getModifier,
-  computeAC,
-  computeACBreakdown,
-  computeInitiative,
-  computePassivePerception,
-  computeSpellSaveDC,
-  computeSpellAttack,
-  getProficiencyBonus,
-} from "../utils/calculations";
+import { CharacterSheetCreationConfirmDialog } from "./CharacterSheetCreationConfirmDialog";
+import { CharacterSheetStateScreen } from "./CharacterSheetStateScreen";
+import { CharacterSheetStatusBanners } from "./CharacterSheetStatusBanners";
 import { validateCreationSheet } from "../utils/creationValidation";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { useCharacterSheetDerived } from "../hooks/useCharacterSheetDerived";
 
 type Props = {
   partyId?: string | null;
@@ -77,43 +71,25 @@ export const CharacterSheet = ({
     void actions.save();
   };
 
-  // Derived values — never stored in state
-  const dexMod = getModifier(sheet.abilities.dexterity);
-  const ac = computeAC(sheet.equippedArmor, sheet.equippedShield, dexMod, sheet.miscACBonus);
-  const acBreakdown = computeACBreakdown(sheet.equippedArmor, sheet.equippedShield, dexMod, sheet.miscACBonus);
-  const initiative = computeInitiative(dexMod);
-  const profBonus = getProficiencyBonus(sheet.level);
-  const passivePerception = computePassivePerception(sheet);
-
-  const spellAbilityScore = sheet.spellcasting
-    ? sheet.abilities[sheet.spellcasting.ability]
-    : sheet.abilities.intelligence;
-  const spellSaveDC = sheet.spellcasting ? computeSpellSaveDC(sheet.level, spellAbilityScore) : null;
-  const spellAttack = sheet.spellcasting ? computeSpellAttack(sheet.level, spellAbilityScore) : null;
-
-  const hpPercent = sheet.maxHP > 0 ? (sheet.currentHP / sheet.maxHP) * 100 : 0;
-  const hpColor =
-    hpPercent > 50 ? "bg-emerald-500" : hpPercent > 25 ? "bg-amber-500" : "bg-rose-500";
-  const hpTextColor =
-    hpPercent > 50 ? "text-emerald-400" : hpPercent > 25 ? "text-amber-400" : "text-rose-400";
+  const {
+    ac,
+    acBreakdown,
+    hpColor,
+    hpPercent,
+    hpTextColor,
+    initiative,
+    passivePerception,
+    profBonus,
+    spellAttack,
+    spellSaveDC,
+  } = useCharacterSheetDerived(sheet);
 
   if (actions.loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void-950 text-slate-400">
-        Loading character sheet...
-      </div>
-    );
+    return <CharacterSheetStateScreen />;
   }
 
   if (actions.loadError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void-950">
-        <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-6 text-center text-rose-300">
-          <p className="mb-2 font-bold">Failed to load character sheet</p>
-          <p className="text-xs text-rose-400/80">{actions.loadError}</p>
-        </div>
-      </div>
-    );
+    return <CharacterSheetStateScreen error={actions.loadError} />;
   }
 
   return (
@@ -147,71 +123,24 @@ export const CharacterSheet = ({
         onReset={actions.resetSheet}
       />
 
-      {/* Confirmation modal — first-time creation save */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-          <div className="w-full max-w-md rounded-3xl border border-amber-500/30 bg-slate-950 p-8 shadow-2xl">
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-amber-400">{t("sheet.creation.confirmWarning")}</p>
-            <h2 className="mt-2 text-lg font-bold text-white">{t("sheet.creation.confirmTitle")}</h2>
-            <p className="mt-3 text-sm text-slate-400">
-              {t("sheet.creation.confirmBody").split("cannot be changed").length > 1 ? (
-                <>
-                  {t("sheet.creation.confirmBody").split("cannot be changed")[0]}
-                  <span className="font-semibold text-white">cannot be changed</span>
-                  {t("sheet.creation.confirmBody").split("cannot be changed")[1]}
-                </>
-              ) : (
-                t("sheet.creation.confirmBody")
-              )}
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
-                className="rounded-full border border-slate-700 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-300 hover:border-slate-500"
-              >
-                {t("sheet.creation.cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (!saveBlockedReason) { setShowConfirm(false); void actions.save(); } }}
-                disabled={!!saveBlockedReason}
-                className={`rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-widest ${
-                  saveBlockedReason
-                    ? "cursor-not-allowed border border-white/8 text-slate-600"
-                    : "bg-amber-500 text-slate-950 hover:bg-amber-400 active:scale-95"
-                }`}
-              >
-                {t("sheet.creation.confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CharacterSheetCreationConfirmDialog
+        open={showConfirm}
+        disabled={!!saveBlockedReason}
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => {
+          if (!saveBlockedReason) {
+            setShowConfirm(false);
+            void actions.save();
+          }
+        }}
+      />
 
       <div className="relative mx-auto max-w-[88rem] space-y-3 px-4 py-8 lg:px-6">
-        {/* Locked banner — sheet already saved, player cannot edit */}
-        {isSheetLocked && (
-          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-slate-500" />
-              <p className="text-sm text-slate-400">
-                Sua ficha está confirmada e <span className="font-semibold text-slate-300">não pode ser alterada</span>. Apenas o mestre pode fazer edições.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {isPlay && playContextLabel && (
-          <div className="rounded-[28px] border border-sky-400/20 bg-sky-400/10 px-5 py-4 shadow-[0_16px_40px_rgba(14,165,233,0.12)]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-300">
-              GM Play View
-            </p>
-            <p className="mt-2 text-sm text-slate-100">
-              Viewing <span className="font-semibold text-sky-200">{playContextLabel}</span>'s live play sheet from the GM dashboard.
-            </p>
-          </div>
-        )}
+        <CharacterSheetStatusBanners
+          isPlay={isPlay}
+          isSheetLocked={isSheetLocked}
+          playContextLabel={playContextLabel}
+        />
 
         <CharacterInfo
           sheet={sheet}
@@ -221,6 +150,10 @@ export const CharacterSheet = ({
           set={actions.set}
           selectClass={actions.selectClass}
           selectSubclass={actions.selectSubclass}
+          canRequestLevelUp={isPlay && !canEditPlay && !!partyId}
+          requestingLevelUp={actions.requestingLevelUp}
+          requestLevelUpError={actions.requestLevelUpError}
+          onRequestLevelUp={actions.requestLevelUp}
           selectBackground={actions.selectBackground}
           selectRace={actions.selectRace}
           selectClassEquipment={actions.selectClassEquipment}

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Import D&D 5e spells from CSV into base_spell / base_spell_alias tables."""
+"""Import D&D 5e spells from CSV into the base_spell table.
+
+Source of truth: Base/DND5e_Magias_Completas_API.csv
+Each row must include a `canonical_key` column used as the unique spell identifier.
+"""
 from __future__ import annotations
 
 import argparse
 import csv
 import logging
-import re
 import sys
-import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +21,7 @@ if str(SERVER_ROOT) not in sys.path:
 from sqlmodel import Session, select
 
 from app.db.session import engine
-from app.models.base_spell import BaseSpell, BaseSpellAlias, SpellSchool
+from app.models.base_spell import BaseSpell, SpellSchool
 from app.models.campaign import SystemType
 
 LOGGER = logging.getLogger("import_dnd_base_spells")
@@ -39,20 +41,11 @@ SCHOOL_MAP: dict[str, SpellSchool] = {
 }
 
 
-@dataclass(frozen=True)
-class AliasSeed:
-    alias: str
-    locale: str | None = None
-    alias_type: str | None = None
-
-
 @dataclass
 class BaseSpellSeed:
     canonical_key: str
-    name_en: str
-    name_pt: str | None
-    description_en: str
-    description_pt: str | None
+    name: str
+    description: str
     level: int
     school: SpellSchool
     classes_json: list[str]
@@ -65,23 +58,14 @@ class BaseSpellSeed:
     ritual: bool = False
     damage_type: str | None = None
     saving_throw: str | None = None
-    source: str | None = None
-    source_ref: str | None = None
-    aliases: list[AliasSeed] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def normalize_lookup(value: str) -> str:
-    normalized = unicodedata.normalize("NFD", value)
-    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9]+", " ", ascii_only.lower()).strip()
+# ── Parsing utilities ───────────────────────────────────────────────────
 
 
-def snake_case(value: str) -> str:
-    return normalize_lookup(value).replace(" ", "_")
+def load_csv(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        return list(csv.DictReader(file))
 
 
 def parse_level(raw: str) -> int:
@@ -104,18 +88,12 @@ def parse_classes(raw: str) -> list[str]:
     return [c.strip() for c in raw.split(",") if c.strip()]
 
 
-def parse_components(raw: str) -> tuple[list[str], str | None]:
-    """Parse component string like 'V, S, M' into list and extract material text."""
+def parse_components(raw: str) -> list[str] | None:
     raw = raw.strip()
     if not raw:
-        return [], None
-
-    components: list[str] = []
-    for part in raw.split(","):
-        component = part.strip().upper()
-        if component in ("V", "S", "M"):
-            components.append(component)
-    return components, None
+        return None
+    components = [p.strip().upper() for p in raw.split(",") if p.strip().upper() in ("V", "S", "M")]
+    return components or None
 
 
 def parse_bool_pt(raw: str) -> bool:
@@ -129,184 +107,53 @@ def parse_nullable(raw: str) -> str | None:
     return raw
 
 
-def load_spells_csv() -> list[dict[str, str]]:
-    with SPELLS_CSV_PATH.open("r", encoding="utf-8-sig", newline="") as f:
-        return list(csv.DictReader(f))
+# ── Row normalization ───────────────────────────────────────────────────
 
-
-# ---------------------------------------------------------------------------
-# Normalization
-# ---------------------------------------------------------------------------
 
 def normalize_spell_row(row: dict[str, str]) -> BaseSpellSeed | None:
-    name_en = row["Nome"].strip()
-    if not name_en:
-        LOGGER.warning("Skipping row with empty name")
+    canonical_key = row.get("canonical_key", "").strip()
+    name = row.get("Nome", "").strip()
+    if not canonical_key or not name:
+        LOGGER.warning("Skipping row without canonical_key or Nome: %s", row)
         return None
 
-    school = parse_school(row["Escola"])
+    school = parse_school(row.get("Escola", ""))
     if not school:
-        LOGGER.warning("Skipping spell with unknown school: %s", name_en)
         return None
 
-    level = parse_level(row["Nível"])
-    classes = parse_classes(row["Classe(s)"])
-    components, material_text = parse_components(row["Componentes"])
-    concentration = parse_bool_pt(row["Concentração"])
-    ritual = parse_bool_pt(row["Ritual"])
-
-    description_en = row["Descrição"].strip()
-    if not description_en:
-        LOGGER.warning("Skipping spell with empty description: %s", name_en)
+    description = row.get("Descrição", "").strip()
+    if not description:
+        LOGGER.warning("Skipping spell with empty description: %s", name)
         return None
-
-    canonical_key = snake_case(name_en)
-
-    aliases: list[AliasSeed] = [
-        AliasSeed(alias=name_en, locale="en", alias_type="primary"),
-    ]
 
     return BaseSpellSeed(
         canonical_key=canonical_key,
-        name_en=name_en,
-        name_pt=None,
-        description_en=description_en,
-        description_pt=None,
-        level=level,
+        name=name,
+        description=description,
+        level=parse_level(row.get("Nível", "")),
         school=school,
-        classes_json=classes,
-        casting_time=row["Tempo de conjuração"].strip() or None,
-        range_text=row["Alcance"].strip() or None,
-        duration=row["Duração"].strip() or None,
-        components_json=components if components else None,
-        material_component_text=material_text,
-        concentration=concentration,
-        ritual=ritual,
-        damage_type=parse_nullable(row["Tipo de dano"]),
-        saving_throw=parse_nullable(row["Teste de resistência"]),
-        source=SPELLS_CSV_PATH.name,
-        source_ref=name_en,
-        aliases=aliases,
+        classes_json=parse_classes(row.get("Classe(s)", "")),
+        casting_time=row.get("Tempo de conjuração", "").strip() or None,
+        range_text=row.get("Alcance", "").strip() or None,
+        duration=row.get("Duração", "").strip() or None,
+        components_json=parse_components(row.get("Componentes", "")),
+        concentration=parse_bool_pt(row.get("Concentração", "")),
+        ritual=parse_bool_pt(row.get("Ritual", "")),
+        damage_type=parse_nullable(row.get("Tipo de dano", "")),
+        saving_throw=parse_nullable(row.get("Teste de resistência", "")),
     )
 
 
-# ---------------------------------------------------------------------------
-# Alias sync
-# ---------------------------------------------------------------------------
-
-def dedupe_aliases(aliases: list[AliasSeed]) -> list[AliasSeed]:
-    deduped: list[AliasSeed] = []
-    seen: set[str] = set()
-    for entry in aliases:
-        alias_key = normalize_lookup(entry.alias)
-        if not alias_key or alias_key in seen:
-            continue
-        seen.add(alias_key)
-        deduped.append(entry)
-    return deduped
-
-
-def sync_aliases(
-    *,
-    session: Session,
-    spell: BaseSpell,
-    alias_seeds: list[AliasSeed],
-    aliases_by_spell_id: dict[str, dict[str, BaseSpellAlias]],
-    alias_owner_by_key: dict[str, str],
-) -> tuple[int, int]:
-    created = 0
-    updated = 0
-    existing_aliases = aliases_by_spell_id.setdefault(spell.id, {})
-
-    for alias_seed in dedupe_aliases(alias_seeds):
-        alias_key = normalize_lookup(alias_seed.alias)
-        if not alias_key:
-            continue
-
-        owner_id = alias_owner_by_key.get(alias_key)
-        if owner_id and owner_id != spell.id:
-            LOGGER.warning(
-                "Alias conflict for %s: %s already belongs to another spell (%s)",
-                spell.canonical_key,
-                alias_seed.alias,
-                owner_id,
-            )
-            continue
-
-        existing = existing_aliases.get(alias_key)
-        if existing:
-            changed = False
-            if alias_seed.locale is not None and existing.locale != alias_seed.locale:
-                existing.locale = alias_seed.locale
-                changed = True
-            if alias_seed.alias_type is not None and existing.alias_type != alias_seed.alias_type:
-                existing.alias_type = alias_seed.alias_type
-                changed = True
-            if changed:
-                session.add(existing)
-                updated += 1
-            continue
-
-        alias_record = BaseSpellAlias(
-            base_spell_id=spell.id,
-            alias=alias_seed.alias,
-            locale=alias_seed.locale,
-            alias_type=alias_seed.alias_type,
-        )
-        session.add(alias_record)
-        session.flush()
-        existing_aliases[alias_key] = alias_record
-        alias_owner_by_key[alias_key] = spell.id
-        created += 1
-
-    return created, updated
-
-
-# ---------------------------------------------------------------------------
-# DB helpers
-# ---------------------------------------------------------------------------
-
-def load_existing_spells(
-    session: Session,
-) -> tuple[dict[str, BaseSpell], dict[str, dict[str, BaseSpellAlias]], dict[str, str]]:
-    spells = session.exec(
-        select(BaseSpell).where(BaseSpell.system == SYSTEM)
-    ).all()
-    spells_by_key = {spell.canonical_key: spell for spell in spells}
-
-    aliases = session.exec(
-        select(BaseSpellAlias, BaseSpell)
-        .join(BaseSpell, BaseSpellAlias.base_spell_id == BaseSpell.id)  # type: ignore[arg-type]
-        .where(BaseSpell.system == SYSTEM)
-    ).all()
-
-    aliases_by_spell_id: dict[str, dict[str, BaseSpellAlias]] = {}
-    alias_owner_by_key: dict[str, str] = {}
-
-    for alias, spell in aliases:
-        spell_aliases = aliases_by_spell_id.setdefault(spell.id, {})
-        alias_key = normalize_lookup(alias.alias)
-        if alias_key in alias_owner_by_key and alias_owner_by_key[alias_key] != spell.id:
-            LOGGER.warning(
-                "Existing alias conflict in database: %s used by %s and %s",
-                alias.alias,
-                alias_owner_by_key[alias_key],
-                spell.id,
-            )
-            continue
-        spell_aliases[alias_key] = alias
-        alias_owner_by_key[alias_key] = spell.id
-
-    return spells_by_key, aliases_by_spell_id, alias_owner_by_key
+# ── Database operations ─────────────────────────────────────────────────
 
 
 def apply_seed_to_spell(spell: BaseSpell, seed: BaseSpellSeed) -> None:
     spell.system = SYSTEM
     spell.canonical_key = seed.canonical_key
-    spell.name_en = seed.name_en
-    spell.name_pt = seed.name_pt
-    spell.description_en = seed.description_en
-    spell.description_pt = seed.description_pt
+    spell.name_en = seed.name
+    spell.name_pt = seed.name
+    spell.description_en = seed.description
+    spell.description_pt = seed.description
     spell.level = seed.level
     spell.school = seed.school
     spell.classes_json = seed.classes_json
@@ -319,24 +166,20 @@ def apply_seed_to_spell(spell: BaseSpell, seed: BaseSpellSeed) -> None:
     spell.ritual = seed.ritual
     spell.damage_type = seed.damage_type
     spell.saving_throw = seed.saving_throw
-    spell.source = seed.source
-    spell.source_ref = seed.source_ref
+    spell.source = "csv_import"
+    spell.source_ref = seed.name
     spell.is_srd = False
     spell.is_active = True
 
 
-# ---------------------------------------------------------------------------
-# Main import
-# ---------------------------------------------------------------------------
-
 def run_import(*, dry_run: bool = False) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    rows = load_spells_csv()
+    rows = load_csv(SPELLS_CSV_PATH)
     LOGGER.info("Loaded %d rows from CSV.", len(rows))
 
-    prepared_spells: list[BaseSpellSeed] = []
-    seen_canonical_keys: dict[str, str] = {}
+    seeds: list[BaseSpellSeed] = []
+    seen_keys: dict[str, str] = {}
     skipped = 0
 
     for row in rows:
@@ -345,39 +188,30 @@ def run_import(*, dry_run: bool = False) -> None:
             skipped += 1
             continue
 
-        previous = seen_canonical_keys.get(seed.canonical_key)
-        if previous and previous != seed.name_en:
-            LOGGER.warning(
-                "Canonical key conflict: %s maps both %s and %s. Skipping %s.",
-                seed.canonical_key,
-                previous,
-                seed.name_en,
-                seed.name_en,
-            )
+        prev = seen_keys.get(seed.canonical_key)
+        if prev and prev != seed.name:
+            LOGGER.warning("Duplicate canonical_key %s: %s vs %s", seed.canonical_key, prev, seed.name)
             skipped += 1
             continue
 
-        seen_canonical_keys[seed.canonical_key] = seed.name_en
-        prepared_spells.append(seed)
-
-    LOGGER.info("Prepared %d spells (%d skipped).", len(prepared_spells), skipped)
+        seen_keys[seed.canonical_key] = seed.name
+        seeds.append(seed)
 
     inserted = 0
     updated = 0
-    created_aliases = 0
-    updated_aliases = 0
 
     with Session(engine) as session:
-        spells_by_key, aliases_by_spell_id, alias_owner_by_key = load_existing_spells(session)
+        existing = session.exec(select(BaseSpell).where(BaseSpell.system == SYSTEM)).all()
+        spells_by_key = {spell.canonical_key: spell for spell in existing}
 
-        for seed in prepared_spells:
+        for seed in seeds:
             spell = spells_by_key.get(seed.canonical_key)
             if spell is None:
-                spell = BaseSpell(  # type: ignore[call-arg]
+                spell = BaseSpell(
                     system=SYSTEM,
                     canonical_key=seed.canonical_key,
-                    name_en=seed.name_en,
-                    description_en=seed.description_en,
+                    name_en=seed.name,
+                    description_en=seed.description,
                     level=seed.level,
                     school=seed.school,
                 )
@@ -386,56 +220,24 @@ def run_import(*, dry_run: bool = False) -> None:
                 session.flush()
                 spells_by_key[seed.canonical_key] = spell
                 inserted += 1
-                LOGGER.info("Inserted %s (%s)", seed.name_en, seed.canonical_key)
+                LOGGER.info("Inserted %s (%s)", seed.name, seed.canonical_key)
             else:
                 apply_seed_to_spell(spell, seed)
                 session.add(spell)
                 updated += 1
-                LOGGER.info("Updated %s (%s)", seed.name_en, seed.canonical_key)
-
-            alias_created, alias_updated = sync_aliases(
-                session=session,
-                spell=spell,
-                alias_seeds=seed.aliases,
-                aliases_by_spell_id=aliases_by_spell_id,
-                alias_owner_by_key=alias_owner_by_key,
-            )
-            created_aliases += alias_created
-            updated_aliases += alias_updated
 
         if dry_run:
             session.rollback()
-            LOGGER.info("Dry-run completed. Database changes were rolled back.")
+            LOGGER.info("Dry-run completed. Changes rolled back.")
         else:
             session.commit()
 
-    LOGGER.info(
-        "Import summary: %d inserted, %d updated, %d aliases created, %d aliases updated, %d skipped.",
-        inserted,
-        updated,
-        created_aliases,
-        updated_aliases,
-        skipped,
-    )
-
-    # Spot-check: verify famous spells
-    spot_check = ["magic_missile", "mage_hand", "shield", "fire_bolt", "cure_wounds", "guiding_bolt"]
-    found = [k for k in spot_check if k in seen_canonical_keys]
-    missing = [k for k in spot_check if k not in seen_canonical_keys]
-    LOGGER.info("Spot-check found: %s", ", ".join(found) if found else "(none)")
-    if missing:
-        LOGGER.warning("Spot-check missing: %s", ", ".join(missing))
+    LOGGER.info("Import: %d inserted, %d updated, %d skipped.", inserted, updated, skipped)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Import D&D 5e spells from CSV into base_spell/base_spell_alias."
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Load and normalize data, but roll back database changes at the end.",
-    )
+    parser = argparse.ArgumentParser(description="Import D&D 5e spells from CSV.")
+    parser.add_argument("--dry-run", action="store_true", help="Roll back changes after import.")
     args = parser.parse_args()
     run_import(dry_run=args.dry_run)
 

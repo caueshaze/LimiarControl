@@ -6,6 +6,12 @@ def parse_cors_origins(raw: str) -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
+def parse_bool(raw: str | None, default: bool = False) -> bool:
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def load_env() -> None:
     env_path = Path(__file__).resolve().parents[2] / ".env"
     if not env_path.exists():
@@ -19,6 +25,8 @@ def load_env() -> None:
 
 
 load_env()
+DEFAULT_APP_ENV = os.getenv("APP_ENV", "development")
+DEFAULT_AUTO_MIGRATE = DEFAULT_APP_ENV == "development"
 
 
 class Settings:
@@ -29,7 +37,14 @@ class Settings:
     port: int = int(os.getenv("PORT", "3000"))
     cors_origin: str = os.getenv("CORS_ORIGIN", "http://localhost:5173")
     cors_origins: list[str] = parse_cors_origins(cors_origin)
-    app_env: str = os.getenv("APP_ENV", "development")
+    app_env: str = DEFAULT_APP_ENV
+    auto_migrate: bool = parse_bool(
+        os.getenv("AUTO_MIGRATE"), default=DEFAULT_AUTO_MIGRATE
+    )
+    db_startup_retries: int = int(os.getenv("DB_STARTUP_RETRIES", "5"))
+    db_startup_retry_delay_seconds: float = float(
+        os.getenv("DB_STARTUP_RETRY_DELAY_SECONDS", "1.5")
+    )
     jwt_secret: str = os.getenv("JWT_SECRET", "dev-secret-change-me")
     centrifugo_api_url: str = os.getenv(
         "CENTRIFUGO_API_URL",

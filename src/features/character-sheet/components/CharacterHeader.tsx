@@ -9,11 +9,12 @@ import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 
-const TOTAL_REQUIRED_FIELDS = 11; // name, class, race, background, alignment, playerName, classSkills, classToolProficiencies, equipmentChoices, languageChoices, spells
+const TOTAL_REQUIRED_FIELDS = 12; // name, class, subclass, race, background, alignment, playerName, classSkills, classToolProficiencies, equipmentChoices, languageChoices, spells
 
 const REQUIRED_FIELD_LABEL_KEY: Record<RequiredField, LocaleKey> = {
   name: "sheet.basicInfo.characterName",
   class: "sheet.basicInfo.class",
+  subclass: "sheet.basicInfo.subclass",
   race: "sheet.basicInfo.race",
   background: "sheet.basicInfo.background",
   alignment: "sheet.basicInfo.alignment",

@@ -13,13 +13,13 @@ import { getInitialClassEquipmentSelections } from "./creationEquipment";
 // so that getAvailableStartingSpells works without a backend.
 beforeAll(() => {
   seedSpellCatalogCache([
-    { name: "Guidance", level: 0, school: "Divination", castingTime: "1 action", range: "Touch", components: "V, S", duration: "Up to 1 minute", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric", "Druid"] },
-    { name: "Light", level: 0, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, M", duration: "1 hour", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Sorcerer", "Wizard"] },
-    { name: "Sacred Flame", level: 0, school: "Evocation", castingTime: "1 action", range: "60 feet", components: "V, S", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: "Radiant", savingThrow: "DEX", classes: ["Cleric"] },
-    { name: "Thaumaturgy", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 feet", components: "V", duration: "Up to 1 minute", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric"] },
-    { name: "Bless", level: 1, school: "Enchantment", castingTime: "1 action", range: "30 feet", components: "V, S, M", duration: "Up to 1 minute", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric", "Paladin"] },
-    { name: "Cure Wounds", level: 1, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, S", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid", "Paladin", "Ranger"] },
-    { name: "Healing Word", level: 1, school: "Evocation", castingTime: "1 bonus action", range: "60 feet", components: "V", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid"] },
+    { canonicalKey: "guidance", name: "Guidance", level: 0, school: "Divination", castingTime: "1 action", range: "Touch", components: "V, S", duration: "Up to 1 minute", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric", "Druid"] },
+    { canonicalKey: "light", name: "Light", level: 0, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, M", duration: "1 hour", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Sorcerer", "Wizard"] },
+    { canonicalKey: "sacred_flame", name: "Sacred Flame", level: 0, school: "Evocation", castingTime: "1 action", range: "60 feet", components: "V, S", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: "Radiant", savingThrow: "DEX", classes: ["Cleric"] },
+    { canonicalKey: "thaumaturgy", name: "Thaumaturgy", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 feet", components: "V", duration: "Up to 1 minute", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric"] },
+    { canonicalKey: "bless", name: "Bless", level: 1, school: "Enchantment", castingTime: "1 action", range: "30 feet", components: "V, S, M", duration: "Up to 1 minute", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric", "Paladin"] },
+    { canonicalKey: "cure_wounds", name: "Cure Wounds", level: 1, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, S", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid", "Paladin", "Ranger"] },
+    { canonicalKey: "healing_word", name: "Healing Word", level: 1, school: "Evocation", castingTime: "1 bonus action", range: "60 feet", components: "V", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid"] },
   ]);
 });
 
@@ -50,6 +50,23 @@ const buildSpellSelection = (className: string, cantripCount: number, leveledCou
         notes: "",
       })),
     ],
+  };
+};
+
+const buildBaseCreationSheet = (className: string, level = 1) => {
+  const cls = getClass(className);
+
+  return {
+    ...INITIAL_SHEET,
+    name: "Teste",
+    class: className,
+    level,
+    race: "human",
+    background: "soldier",
+    alignment: "Neutral",
+    playerName: "Player",
+    classSkillChoices: cls?.skillChoices.slice(0, cls.skillCount) ?? [],
+    classEquipmentSelections: getInitialClassEquipmentSelections(className),
   };
 };
 
@@ -117,6 +134,7 @@ describe("validateCreationSheet", () => {
       background: "acolyte",
       alignment: "Neutral Good",
       playerName: "Player Two",
+      subclass: "life",
       classSkillChoices: ["history", "religion"],
       classEquipmentSelections: getInitialClassEquipmentSelections("cleric"),
       languageChoices: ["Élfico", "Anão", "Gnomo"],
@@ -125,5 +143,39 @@ describe("validateCreationSheet", () => {
 
     expect(result.isValid).toBe(true);
     expect(result.missingRequiredFields).toEqual([]);
+  });
+
+  it("requires a cleric subclass at level 1", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("cleric"),
+      background: "acolyte",
+      classSkillChoices: ["history", "religion"],
+    });
+
+    expect(result.missingRequiredFields).toContain("subclass");
+  });
+
+  it("does not require a fighter subclass at level 1", () => {
+    const result = validateCreationSheet(buildBaseCreationSheet("fighter", 1));
+
+    expect(result.missingRequiredFields).not.toContain("subclass");
+  });
+
+  it("requires a fighter subclass at level 3", () => {
+    const result = validateCreationSheet(buildBaseCreationSheet("fighter", 3));
+
+    expect(result.missingRequiredFields).toContain("subclass");
+  });
+
+  it("does not require a wizard subclass at level 1", () => {
+    const result = validateCreationSheet(buildBaseCreationSheet("wizard", 1));
+
+    expect(result.missingRequiredFields).not.toContain("subclass");
+  });
+
+  it("requires a wizard subclass at level 2", () => {
+    const result = validateCreationSheet(buildBaseCreationSheet("wizard", 2));
+
+    expect(result.missingRequiredFields).toContain("subclass");
   });
 });

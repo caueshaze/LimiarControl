@@ -5,13 +5,13 @@ import { input, fieldLabel, chk } from "./styles";
 import { ALIGNMENTS } from "../data/alignments";
 import { RACES, getRace } from "../data/races";
 import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
-import { CLASSES, getClass } from "../data/classes";
+import { CLASSES, getClass, isSubclassUnlocked } from "../data/classes";
 import { BACKGROUNDS, getBackground } from "../data/backgrounds";
-import { safeParseInt } from "../utils/calculations";
 import { ClassSkillPicker } from "./ClassSkillPicker";
 import { ClassToolProficiencyPicker } from "./ClassToolProficiencyPicker";
 import { ClassEquipmentChoices } from "./ClassEquipmentChoices";
 import { LanguageChoicePicker } from "./LanguageChoicePicker";
+import { CharacterProgressPanel } from "./CharacterProgressPanel";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { RequiredField } from "../utils/creationValidation";
 
@@ -23,6 +23,10 @@ type Props = {
   set: SheetActions["set"];
   selectClass: SheetActions["selectClass"];
   selectSubclass: SheetActions["selectSubclass"];
+  canRequestLevelUp: boolean;
+  requestingLevelUp: boolean;
+  requestLevelUpError: string | null;
+  onRequestLevelUp: () => void;
   selectBackground: SheetActions["selectBackground"];
   selectRace: SheetActions["selectRace"];
   selectClassEquipment: SheetActions["selectClassEquipment"];
@@ -39,6 +43,10 @@ export const CharacterInfo = ({
   set,
   selectClass,
   selectSubclass,
+  canRequestLevelUp,
+  requestingLevelUp,
+  requestLevelUpError,
+  onRequestLevelUp,
   selectBackground,
   selectRace,
   selectClassEquipment,
@@ -51,6 +59,8 @@ export const CharacterInfo = ({
   const raceData = getRace(sheet.race);
   const classData = getClass(sheet.class);
   const backgroundData = getBackground(sheet.background);
+  const unlockedClassData =
+    classData && isSubclassUnlocked(classData, sheet.level) ? classData : null;
 
   const missing = new Set(missingRequiredFields);
   const hasAttempted = missingRequiredFields.length > 0;
@@ -109,19 +119,19 @@ export const CharacterInfo = ({
           {fieldError("class")}
         </div>
 
-        {isCreation && classData?.subclasses?.length ? (
+        {unlockedClassData ? (
           <div className="xl:col-span-3">
             <label className={fieldLabel}>
-              {classData.subclassLabel ?? t("sheet.basicInfo.subclass")}{requiredMark("subclass")}
+              {unlockedClassData.subclassLabel}{requiredMark("subclass")}
             </label>
             <select
-              value={sheet.subclass}
+              value={sheet.subclass ?? ""}
               disabled={readOnly}
               onChange={(e) => selectSubclass(e.target.value)}
               className={`${input} ${errorInput("subclass")}`}
             >
               <option value="">{t("sheet.basicInfo.selectSubclass")}</option>
-              {classData.subclasses.map((s) => (
+              {unlockedClassData.subclasses.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
@@ -198,22 +208,27 @@ export const CharacterInfo = ({
         <div className="xl:col-span-2">
           <label className={fieldLabel}>{t("sheet.basicInfo.level")}</label>
           <input
-            type="number" min={1} max={20} value={sheet.level} disabled={isCreation || readOnly}
-            onChange={(e) => set("level", Math.max(1, Math.min(20, safeParseInt(e.target.value, 1))))}
-            className={`${input} ${isCreation || readOnly ? "opacity-70" : ""}`}
+            type="number"
+            min={1}
+            max={20}
+            value={sheet.level}
+            disabled
+            readOnly
+            className={`${input} opacity-70`}
           />
         </div>
 
-        {!isCreation && !readOnly && (
-          <div className="xl:col-span-2">
-            <label className={fieldLabel}>{t("sheet.basicInfo.xp")}</label>
-            <input
-              type="number" min={0} value={sheet.experiencePoints}
-              onChange={(e) => set("experiencePoints", Math.max(0, safeParseInt(e.target.value)))}
-              className={input}
-            />
-          </div>
-        )}
+        {!isCreation ? (
+          <CharacterProgressPanel
+            level={sheet.level}
+            experiencePoints={sheet.experiencePoints}
+            pendingLevelUp={sheet.pendingLevelUp}
+            canRequestLevelUp={canRequestLevelUp}
+            requestingLevelUp={requestingLevelUp}
+            requestLevelUpError={requestLevelUpError}
+            onRequestLevelUp={onRequestLevelUp}
+          />
+        ) : null}
       </div>
 
       {/* Racial / class / background previews */}

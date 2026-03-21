@@ -101,19 +101,14 @@ export const LoginPage = () => {
   );
 
   const footer = (
-    <div className="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-      <div>
-        <p className="text-sm text-slate-400">{copy.footerPrompt}</p>
-        <Link
-          to={routes.register}
-          className="mt-1 inline-flex text-sm font-semibold text-limiar-200 transition-colors hover:text-white"
-        >
-          {t("auth.gotoRegister")}
-        </Link>
-      </div>
-      <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-        {locale === "pt" ? "Acesso a conta" : "Account access"}
-      </div>
+    <div className="text-center sm:text-left">
+      <p className="text-sm text-slate-400">{copy.footerPrompt}</p>
+      <Link
+        to={routes.register}
+        className="mt-1 inline-flex text-sm font-semibold text-limiar-200 transition-colors hover:text-white"
+      >
+        {t("auth.gotoRegister")}
+      </Link>
     </div>
   );
 

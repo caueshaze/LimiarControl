@@ -3,14 +3,13 @@ from sqlmodel import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
-from app.models.base_spell import BaseSpell, BaseSpellAlias, SpellSchool
-from app.models.campaign import RoleMode, SystemType
+from app.models.base_spell import BaseSpell, SpellSchool
+from app.models.campaign import SystemType
 from app.models.user import User
-from app.schemas.base_spell import BaseSpellAliasRead, BaseSpellRead, BaseSpellUpdate
+from app.schemas.base_spell import BaseSpellRead, BaseSpellUpdate
 from app.services.base_spells import (
     delete_base_spell as delete_base_spell_svc,
     get_base_spell_by_id,
-    list_base_spell_aliases,
     list_base_spells as list_catalog_base_spells,
     update_base_spell as update_base_spell_svc,
 )
@@ -25,19 +24,7 @@ def require_spell_catalog_editor(_user: User) -> None:
     raise HTTPException(status_code=403, detail=BASE_SPELL_WRITE_DISABLED_DETAIL)
 
 
-def to_base_spell_alias_read(alias: BaseSpellAlias) -> BaseSpellAliasRead:
-    return BaseSpellAliasRead(
-        id=alias.id,
-        alias=alias.alias,
-        locale=alias.locale,
-        aliasType=alias.alias_type,
-    )
-
-
-def to_base_spell_read(
-    spell: BaseSpell,
-    aliases: list[BaseSpellAlias],
-) -> BaseSpellRead:
+def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
     return BaseSpellRead(
         id=spell.id,
         system=spell.system,
@@ -62,7 +49,7 @@ def to_base_spell_read(
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
         isActive=spell.is_active,
-        aliases=[to_base_spell_alias_read(a) for a in aliases],
+        aliases=[],
     )
 
 
@@ -84,14 +71,7 @@ def list_base_spells(
         class_name=class_name,
         canonical_key=canonical_key,
     )
-    aliases_by_spell_id = list_base_spell_aliases(
-        db=session,
-        base_spell_ids=[s.id for s in spells if s.id],
-    )
-    return [
-        to_base_spell_read(spell, aliases_by_spell_id.get(spell.id, []))
-        for spell in spells
-    ]
+    return [to_base_spell_read(spell) for spell in spells]
 
 
 @router.get("/{base_spell_id}", response_model=BaseSpellRead)
@@ -104,11 +84,7 @@ def get_base_spell(
     if not spell:
         raise HTTPException(status_code=404, detail="Base spell not found")
 
-    aliases_by_spell_id = list_base_spell_aliases(
-        db=session,
-        base_spell_ids=[base_spell_id],
-    )
-    return to_base_spell_read(spell, aliases_by_spell_id.get(base_spell_id, []))
+    return to_base_spell_read(spell)
 
 
 @router.put("/{base_spell_id}", response_model=BaseSpellRead)
@@ -142,11 +118,7 @@ def update_base_spell(
     if not spell:
         raise HTTPException(status_code=404, detail="Base spell not found")
 
-    aliases_by_spell_id = list_base_spell_aliases(
-        db=session,
-        base_spell_ids=[base_spell_id],
-    )
-    return to_base_spell_read(spell, aliases_by_spell_id.get(base_spell_id, []))
+    return to_base_spell_read(spell)
 
 
 @router.delete("/{base_spell_id}", status_code=204)

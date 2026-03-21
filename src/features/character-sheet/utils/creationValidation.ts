@@ -1,4 +1,4 @@
-import { getClass } from "../data/classes";
+import { getClass, isSubclassUnlocked } from "../data/classes";
 import { getClassCreationConfig } from "../data/classCreation";
 import { getRace } from "../data/races";
 import { getBackground } from "../data/backgrounds";
@@ -34,7 +34,7 @@ export type CreationValidationResult = {
   };
 };
 
-const isBlank = (value: string) => value.trim().length === 0;
+const isBlank = (value: string | null | undefined) => !value || value.trim().length === 0;
 
 export const validateCreationSheet = (
   sheet: CharacterSheet,
@@ -49,7 +49,7 @@ export const validateCreationSheet = (
   if (isBlank(sheet.playerName)) missingRequiredFields.push("playerName");
 
   const cls = getClass(sheet.class);
-  if (cls?.subclasses?.length && isBlank(sheet.subclass)) {
+  if (cls && isSubclassUnlocked(cls, sheet.level) && isBlank(sheet.subclass)) {
     missingRequiredFields.push("subclass");
   }
   if (cls && sheet.classSkillChoices.length < cls.skillCount) {

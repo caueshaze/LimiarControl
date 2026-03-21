@@ -1,0 +1,65 @@
+canonical_key,Nome,Tipo,Categoria,Custo,Peso,Descrição
+arcane_focus,Foco Arcano,focus,spellcasting_focus,10 gp,,Foco usado por conjuradores arcanos.
+druidic_focus,Foco Druídico,focus,spellcasting_focus,1 gp,,Foco usado por druidas.
+holy_symbol,Símbolo Sagrado,focus,spellcasting_focus,5 gp,1 lb,Foco divino usado por clérigos e paladinos.
+component_pouch,Bolsa de Componentes,gear,spellcasting_gear,25 gp,2 lb,Pequena bolsa com componentes materiais de magia.
+spellbook,Grimório,gear,book,50 gp,3 lb,Grimório usado por magos para registrar fórmulas arcanas.
+thieves_tools,Ferramentas de Ladrão,tool,tools,25 gp,1 lb,Gazuas e ferramentas de precisão usadas por ladinos.
+forgery_kit,Kit de Falsificação,tool,tools,15 gp,5 lb,Ferramentas e materiais para criar documentos falsos.
+disguise_kit,Kit de Disfarce,tool,tools,25 gp,3 lb,"Maquiagem, fantasias e adereços para disfarces."
+artisans_tools,Ferramentas de Artesão,tool,tools,5 gp,5 lb,Ferramentas de ofício para um artesanato escolhido.
+herbalism_kit,Kit de Herbalismo,tool,tools,5 gp,3 lb,Bolsas e podadores usados para colher e preparar ervas.
+gaming_set,Jogo de Mesa,tool,gaming_set,,,Conjunto genérico de jogo de mesa.
+musical_instrument,Instrumento Musical,tool,musical_instrument,,,Instrumento musical genérico.
+lute,Alaúde,tool,musical_instrument,35 gp,2 lb,Instrumento de cordas comumente carregado por bardos.
+flute,Flauta,tool,musical_instrument,2 gp,1 lb,Instrumento de sopro usado como foco musical simples.
+lyre,Lira,tool,musical_instrument,30 gp,2 lb,Instrumento de cordas usado por artistas itinerantes.
+drum,Tambor,tool,musical_instrument,6 gp,3 lb,Instrumento de percussão carregado por artistas viajantes.
+viol,Viola,tool,musical_instrument,30 gp,1 lb,Instrumento de cordas com arco para apresentações formais.
+pan_flute,Flauta de Pã,tool,musical_instrument,12 gp,2 lb,Conjunto de palhetas afinadas unidas como instrumento de sopro.
+bagpipes,Gaita de Foles,tool,musical_instrument,30 gp,6 lb,Instrumento de sopro com tubos de palheta e bolsa inflável.
+shawm,Oboé,tool,musical_instrument,2 gp,1 lb,Instrumento de sopro de palheta dupla com tom penetrante.
+horn,Trompete,tool,musical_instrument,3 gp,2 lb,Instrumento de metal usado para sinalização e performance.
+dulcimer,Harpa,tool,musical_instrument,25 gp,10 lb,Instrumento de cordas tocado golpeando as cordas com pequenos martelos.
+arrow,Flecha,ammo,ammunition,0.05 gp,0.05 lb,Munição padrão para arcos.
+crossbow_bolt,Virote,ammo,ammunition,0.05 gp,0.075 lb,"Munição para bestas de mão, leves e pesadas."
+case_crossbow_bolt,Estojo de Virotes,gear,container,1 gp,1 lb,Estojo para carregar virotes de besta.
+quiver,Aljava,gear,container,1 gp,1 lb,Estojo para carregar flechas ou virotes.
+explorers_pack,Mochila do Explorador,pack,adventuring_pack,10 gp,59 lb,Mochila de uso geral para viagens e masmorras.
+dungeoneers_pack,Mochila do Masmorrador,pack,adventuring_pack,12 gp,61.5 lb,Mochila utilitária para exploração em espaços fechados.
+burglars_pack,Mochila do Ladrão,pack,adventuring_pack,16 gp,46.5 lb,Mochila com itens essenciais para furtividade e infiltração.
+scholars_pack,Mochila do Estudioso,pack,adventuring_pack,40 gp,10 lb,"Mochila de estudo com materiais de escrita, referência e pesquisa."
+priests_pack,Mochila do Sacerdote,pack,adventuring_pack,19 gp,24 lb,Mochila com suprimentos devocionais e de viagem básicos.
+diplomats_pack,Mochila do Diplomata,pack,adventuring_pack,39 gp,39 lb,Mochila formal com suprimentos para viagem nobre.
+entertainers_pack,Mochila do Artista,pack,adventuring_pack,40 gp,38 lb,Mochila com suprimentos práticos para artistas na estrada.
+fine_clothes,Roupas Finas,gear,clothing,15 gp,6 lb,Roupas formais para ocasiões sociais.
+common_clothes,Roupas Comuns,gear,clothing,0.5 gp,3 lb,Roupas simples do dia a dia.
+travelers_clothes,Roupas de Viagem,gear,clothing,2 gp,4 lb,Roupas resistentes para longas jornadas.
+scroll_case,Estojo de Pergaminho,gear,container,1 gp,0.5 lb,"Estojo protetor para mapas, pergaminhos ou documentos."
+winter_blanket,Cobertor de Inverno,gear,supplies,0.5 gp,3 lb,Cobertor grosso para viagens em clima frio.
+shovel,Pá,gear,tools,2 gp,5 lb,Ferramenta simples para cavar.
+iron_pot,Panela de Ferro,gear,supplies,2 gp,10 lb,Panela pesada para refeições no acampamento.
+letter_of_introduction,Carta de Introdução,gear,document,,,Carta usada para estabelecer identidade ou recomendação.
+crowbar,Pé de Cabra,gear,tools,2 gp,5 lb,Barra de alavanca para forçar portas e caixas.
+costume,Fantasia,gear,clothing,5 gp,4 lb,Traje de palco ou disfarce usado por artistas.
+prayer_book,Livro de Orações,gear,book,,,Livro devocional usado em prática religiosa.
+incense,Incenso,gear,consumable_supply,,,Pequenos bastões de incenso usados em rituais e oferendas.
+vestments,Vestes Litúrgicas,gear,clothing,,,Roupas cerimoniais religiosas.
+dark_common_clothes_with_hood,Roupas Comuns Escuras com Capuz,gear,clothing,,,Roupas comuns escuras feitas para manter um perfil discreto.
+favor_of_an_admirer,Lembrança de um Admirador,gear,memento,,,Token de afeição mantido como lembrança sentimental.
+signet_ring,Anel de Sinete,gear,jewelry,,,Anel com selo de família ou instituição.
+scroll_of_pedigree,Pergaminho de Linhagem,gear,document,,,Registro oficial atestando linhagem ou posição nobre.
+hunting_trap,Armadilha de Caça,gear,tools,,,Armadilha de aço para capturar ou conter presas.
+animal_trophy,Troféu Animal,gear,trophy,,,Lembrança feita de um animal ou monstro.
+bottle_of_black_ink,Frasco de Tinta Preta,gear,writing_supply,,,Frasco de tinta escura para correspondência e estudo.
+quill,Pena de Escrita,gear,writing_supply,,,Pena para escrita com tinta e pergaminho.
+small_knife,Faca Pequena,gear,utility_tool,,,Faca utilitária para tarefas pequenas não-marciais.
+letter_with_unanswered_question,Carta com Pergunta sem Resposta,gear,document,,,Uma carta cuja pergunta não respondida ainda persiste.
+belaying_pin,Pino de Amarração,gear,sailing_gear,,,Pino de madeira usado em navios para prender a cordagem.
+silk_rope,Corda de Seda,gear,rope,10 gp,5 lb,Corda fina mas resistente de seda para escalada e viagem.
+lucky_charm,Amuleto da Sorte,gear,memento,,,Token simples carregado para sorte ou proteção.
+insignia_of_rank,Insígnia de Patente,gear,insignia,,,Marca de status e serviço militar.
+trophy_from_fallen_enemy,Troféu de Inimigo Derrotado,gear,trophy,,,Lembrança tomada de um inimigo derrotado.
+map_of_home_city,Mapa da Cidade Natal,gear,document,,,Mapa marcando ruas familiares e atalhos.
+pet_mouse,Rato de Estimação,gear,pet,,,Pequeno companheiro mantido por perto para conforto e sorte.
+token_from_parent,Lembrança dos Pais,gear,memento,,,Token sentimental carregado dos pais.

@@ -165,7 +165,6 @@ export const buildCreationItemCatalog = (items: BaseItem[]): CreationItemCatalog
         item.canonicalKey,
         item.nameEn,
         item.namePt,
-        ...item.aliases.map((alias) => alias.alias),
       ],
       itemsByLookup,
     );

@@ -35,7 +35,14 @@ def list_campaigns(
     session: Session = Depends(get_session),
 ):
     statement = (
-        select(Campaign, CampaignMember)
+        select(
+            Campaign.id,
+            Campaign.name,
+            Campaign.system,
+            Campaign.created_at,
+            Campaign.updated_at,
+            CampaignMember.role_mode,
+        )
         .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
         .where(CampaignMember.user_id == user.id)
         .order_by(Campaign.created_at.desc())
@@ -43,14 +50,14 @@ def list_campaigns(
     entries = session.exec(statement).all()
     return [
         CampaignRead(
-            id=campaign.id,
-            name=campaign.name,
-            systemType=campaign.system,
-            roleMode=member.role_mode,
-            createdAt=campaign.created_at,
-            updatedAt=campaign.updated_at,
+            id=campaign_id,
+            name=name,
+            systemType=system,
+            roleMode=role_mode,
+            createdAt=created_at,
+            updatedAt=updated_at,
         )
-        for campaign, member in entries
+        for campaign_id, name, system, created_at, updated_at, role_mode in entries
     ]
 
 
@@ -60,8 +67,17 @@ def campaign_overview(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    campaign = session.exec(select(Campaign).where(Campaign.id == campaign_id)).first()
-    if not campaign:
+    campaign_entry = session.exec(
+        select(
+            Campaign.id,
+            Campaign.name,
+            Campaign.system,
+            Campaign.role_mode,
+            Campaign.created_at,
+            Campaign.updated_at,
+        ).where(Campaign.id == campaign_id)
+    ).first()
+    if not campaign_entry:
         raise HTTPException(status_code=404, detail="Campaign not found")
     member = session.exec(
         select(CampaignMember).where(
@@ -77,13 +93,21 @@ def campaign_overview(
             CampaignMember.role_mode == RoleMode.GM,
         )
     ).first()
+    (
+        campaign_entry_id,
+        campaign_name,
+        campaign_system,
+        campaign_role_mode,
+        campaign_created_at,
+        campaign_updated_at,
+    ) = campaign_entry
     return CampaignOverview(
-        id=campaign.id,
-        name=campaign.name,
-        systemType=campaign.system,
-        roleMode=campaign.role_mode,
-        createdAt=campaign.created_at,
-        updatedAt=campaign.updated_at,
+        id=campaign_entry_id,
+        name=campaign_name,
+        systemType=campaign_system,
+        roleMode=campaign_role_mode,
+        createdAt=campaign_created_at,
+        updatedAt=campaign_updated_at,
         gmName=gm_member.display_name if gm_member else None,
     )
 

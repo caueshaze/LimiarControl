@@ -2,6 +2,7 @@ import spellsCsv from "../../../Base/DND5e_Magias_Completas_API.csv?raw";
 import { parseCsvObjects } from "../../shared/lib/csv";
 
 type SpellRow = {
+  canonical_key: string;
   Nome: string;
   Nível: string;
   Escola: string;
@@ -18,6 +19,7 @@ type SpellRow = {
 };
 
 export type BaseSpell = {
+  canonicalKey: string;
   name: string;
   level: number;
   school: string;
@@ -34,6 +36,7 @@ export type BaseSpell = {
 };
 
 export const BASE_SPELLS: BaseSpell[] = parseCsvObjects<keyof SpellRow>(spellsCsv).map((row) => ({
+  canonicalKey: row.canonical_key,
   name: row.Nome,
   level: Number(row.Nível) || 0,
   school: row.Escola,
