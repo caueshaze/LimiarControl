@@ -50,6 +50,7 @@ const toSheetSpell = (
   return {
     id: nanoid(),
     name: baseSpell.name,
+    canonicalKey: baseSpell.canonicalKey,
     level: baseSpell.level,
     school: baseSpell.school || "Evocation",
     // Cantrips are always prepared. Leveled spells: known/prepared → auto-prepared, spellbook → not prepared until player chooses.

@@ -1,20 +1,4 @@
 services:
-  dev:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    container_name: limiarcontrol-dev
-    working_dir: /workspace
-    command: sleep infinity
-    volumes:
-      - .:/workspace:Z
-    depends_on:
-      - db
-      - centrifugo
-    ports:
-      - "5173:5173"
-      - "8000:8000"
-
   db:
     image: postgres:16
     container_name: limiarcontrol-db

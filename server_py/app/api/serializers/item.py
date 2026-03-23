@@ -1,5 +1,6 @@
 from app.models.item import Item
 from app.schemas.item import ItemRead
+from app.services.money import to_copper
 
 
 def to_item_read(item: Item) -> ItemRead:
@@ -10,6 +11,11 @@ def to_item_read(item: Item) -> ItemRead:
         type=item.type,
         description=item.description,
         price=item.price,
+        priceCopperValue=(
+            to_copper(item.price, item.cost_unit.value if item.cost_unit else "gp")
+            if item.price is not None
+            else None
+        ),
         weight=item.weight,
         damageDice=item.damage_dice,
         damageType=item.damage_type,

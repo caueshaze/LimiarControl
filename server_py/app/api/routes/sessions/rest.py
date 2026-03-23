@@ -12,6 +12,7 @@ from app.schemas.session_state import SessionUseHitDieRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.services.session_rest import SessionRestError, use_hit_die
+from app.services.session_state_finalize import finalize_session_state_data
 
 from ._shared import get_session_rest_state, record_session_activity
 from .shop import _ensure_player_session_state, _publish_session_state_realtime
@@ -78,7 +79,7 @@ async def use_session_hit_die(
     except SessionRestError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    state.state_json = next_state
+    state.state_json = finalize_session_state_data(next_state)
     session.add(state)
     record_session_activity(
         entry,

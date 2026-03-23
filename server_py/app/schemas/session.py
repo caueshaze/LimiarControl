@@ -68,8 +68,10 @@ class PurchaseActivityEvent(BaseModel):
     userId: Optional[str] = None
     username: Optional[str] = None
     displayName: Optional[str] = None
+    action: Literal["bought", "sold"] = "bought"
     itemName: str
     quantity: int
+    amountLabel: Optional[str] = None
     timestamp: datetime
     sessionOffsetSeconds: int
 
@@ -92,6 +94,10 @@ class RollRequestActivityEvent(BaseModel):
     expression: str
     reason: Optional[str] = None
     mode: Optional[Literal["advantage", "disadvantage"]] = None
+    rollType: Optional[str] = None
+    ability: Optional[str] = None
+    skill: Optional[str] = None
+    dc: Optional[int] = None
     targetUserId: Optional[str] = None
     targetDisplayName: Optional[str] = None
     timestamp: datetime
@@ -200,6 +206,29 @@ class EntityActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class RollResolvedActivityEvent(BaseModel):
+    type: Literal["roll_resolved"] = "roll_resolved"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    rollType: str
+    actorName: str
+    actorKind: str
+    ability: Optional[str] = None
+    skill: Optional[str] = None
+    rolls: List[int]
+    selectedRoll: int
+    total: int
+    modifierUsed: int
+    advantageMode: str
+    dc: Optional[int] = None
+    targetAc: Optional[int] = None
+    success: Optional[bool] = None
+    isGmRoll: bool = False
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 ActivityEvent = Union[
     RollActivityEvent,
     PurchaseActivityEvent,
@@ -212,6 +241,7 @@ ActivityEvent = Union[
     HitDiceActivityEvent,
     PlayerHpActivityEvent,
     EntityActivityEvent,
+    RollResolvedActivityEvent,
 ]
 
 

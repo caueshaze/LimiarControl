@@ -4,6 +4,7 @@ import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { localizedItemName } from "../utils/localizedItemName";
+import { formatItemPrice } from "../utils/shopCurrency";
 
 type ShopItemCardProps = {
   item: Item;
@@ -60,7 +61,7 @@ export const ShopItemCard = ({
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
             <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-900">
-              {item.priceLabel ?? item.price ?? "—"}
+              {formatItemPrice(item.price, item.priceLabel, item.priceCopperValue)}
             </span>
             {detailBits.map((bit) => (
               <span

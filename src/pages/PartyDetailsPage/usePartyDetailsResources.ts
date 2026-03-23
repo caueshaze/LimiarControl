@@ -38,10 +38,11 @@ export type PartyDetailsPlayerResource = {
 
 type Props = {
   activeSession: PartyActiveSession | null;
+  locale: "en" | "pt" | string;
   party: PartyDetail | null;
 };
 
-export const usePartyDetailsResources = ({ activeSession, party }: Props) => {
+export const usePartyDetailsResources = ({ activeSession, locale, party }: Props) => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [playerResources, setPlayerResources] = useState<PartyDetailsPlayerResource[]>([]);
@@ -104,8 +105,8 @@ export const usePartyDetailsResources = ({ activeSession, party }: Props) => {
                 }),
             ]);
 
-            const summary = buildInventorySummary(inventory, itemsById);
-            const previewItems = resolveInventoryEntries(inventory, itemsById)
+            const summary = buildInventorySummary(inventory, itemsById, locale);
+            const previewItems = resolveInventoryEntries(inventory, itemsById, locale)
               .slice(0, 3)
               .map(({ entry, name }) => ({
                 id: entry.id,
@@ -149,7 +150,7 @@ export const usePartyDetailsResources = ({ activeSession, party }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [joinedPlayers, party?.campaignId, party?.id]);
+  }, [joinedPlayers, locale, party?.campaignId, party?.id]);
 
   const summary = useMemo(() => {
     const invitedPlayers = party?.members.filter(

@@ -22,7 +22,7 @@ It is designed around party-based play: players join a party, create their chara
 - Backend: FastAPI, SQLModel, Alembic
 - Database: PostgreSQL 16
 - Real-time: Centrifugo
-- Local infrastructure: Docker Compose
+- Local infrastructure: Docker Compose for PostgreSQL and Centrifugo
 
 ## Repository layout
 
@@ -79,12 +79,6 @@ Start PostgreSQL and Centrifugo:
 docker compose up -d db centrifugo
 ```
 
-Optional: if you use the dev container service defined in `docker-compose.yml`, you can start it too:
-
-```bash
-docker compose up -d dev
-```
-
 ### 2. Backend setup
 
 ```bash
@@ -98,15 +92,15 @@ alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
-Important: `server_py/.env.example` is configured for the Docker/dev-container network, where PostgreSQL is reachable as `db` and Centrifugo as `centrifugo`.
-
-If you run FastAPI directly on your host machine, update `server_py/.env` to use localhost instead:
+Use `server_py/.env` with localhost values when running FastAPI directly on your machine:
 
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
 PORT=3000
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 APP_ENV=development
+AUTO_MIGRATE=true
+JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
@@ -149,11 +143,13 @@ VITE_ENABLE_MAPS=true
 Default example:
 
 ```env
-DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/limiarcontrol
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
 PORT=3000
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
 APP_ENV=development
-CENTRIFUGO_API_URL=http://centrifugo:8000/api
+AUTO_MIGRATE=true
+JWT_SECRET=dev-secret-change-me
+CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
@@ -186,15 +182,15 @@ After running migrations, seed the D&D base catalogs used by character creation,
 Dry-run both importers first:
 
 ```bash
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py --dry-run
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py --dry-run
+server_py/.venv/bin/python scripts/import_dnd_base_items.py --dry-run
+server_py/.venv/bin/python scripts/import_dnd_base_spells.py --dry-run
 ```
 
 Then execute the real imports:
 
 ```bash
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py
+server_py/.venv/bin/python scripts/import_dnd_base_items.py
+server_py/.venv/bin/python scripts/import_dnd_base_spells.py
 ```
 
 What each importer does:

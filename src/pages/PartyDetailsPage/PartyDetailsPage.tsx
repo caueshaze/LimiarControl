@@ -25,7 +25,7 @@ import { usePartyDetailsResources } from "./usePartyDetailsResources";
 export const PartyDetailsPage = () => {
     const { partyId } = useParams<{ partyId: string }>();
     const navigate = useNavigate();
-    const { t } = useLocale();
+    const { locale, t } = useLocale();
 
     const [party, setParty] = useState<PartyDetail | null>(null);
     const [sessions, setSessions] = useState<PartyActiveSession[]>([]);
@@ -89,6 +89,7 @@ export const PartyDetailsPage = () => {
     const { lastEvent, onlineUsers } = useCampaignEvents(partyCampaignId);
     const { loadError: resourcesError, loading: loadingResources, playerResources, summary: resourceSummary } = usePartyDetailsResources({
         activeSession,
+        locale,
         party,
     });
 

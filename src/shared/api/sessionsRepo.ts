@@ -20,8 +20,10 @@ export type PurchaseActivityEvent = {
   userId?: string | null;
   username?: string | null;
   displayName?: string | null;
+  action: "bought" | "sold";
   itemName: string;
   quantity: number;
+  amountLabel?: string | null;
   timestamp: string;
   sessionOffsetSeconds: number;
 };
@@ -44,6 +46,10 @@ export type RollRequestActivityEvent = {
   expression: string;
   reason?: string | null;
   mode?: "advantage" | "disadvantage" | null;
+  rollType?: string | null;
+  ability?: string | null;
+  skill?: string | null;
+  dc?: number | null;
   targetUserId?: string | null;
   targetDisplayName?: string | null;
   timestamp: string;
@@ -155,18 +161,10 @@ export type EntityActivityEvent = {
 export type SessionGrantCurrencyResult = {
   playerUserId: string;
   currentCurrency: {
-    cp: number;
-    sp: number;
-    ep: number;
-    gp: number;
-    pp: number;
+    copperValue: number;
   };
   grantedCurrency: {
-    cp: number;
-    sp: number;
-    ep: number;
-    gp: number;
-    pp: number;
+    copperValue: number;
   };
 };
 
@@ -204,6 +202,29 @@ export type SessionUseHitDieResult = {
   constitutionModifier: number;
 };
 
+export type RollResolvedActivityEvent = {
+  type: "roll_resolved";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  rollType: string;
+  actorName: string;
+  actorKind: string;
+  ability?: string | null;
+  skill?: string | null;
+  rolls: number[];
+  selectedRoll: number;
+  total: number;
+  modifierUsed: number;
+  advantageMode: string;
+  dc?: number | null;
+  targetAc?: number | null;
+  success?: boolean | null;
+  isGmRoll: boolean;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
@@ -215,7 +236,8 @@ export type ActivityEvent =
   | LevelUpActivityEvent
   | HitDiceActivityEvent
   | PlayerHpActivityEvent
-  | EntityActivityEvent;
+  | EntityActivityEvent
+  | RollResolvedActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;
@@ -301,7 +323,7 @@ export const sessionsRepo = {
     sessionId: string,
     payload: {
       playerUserId: string;
-      currency: { cp?: number; sp?: number; ep?: number; gp?: number; pp?: number };
+      copperValue: number;
     },
   ) => http.post<SessionGrantCurrencyResult>(`/sessions/${sessionId}/grants/currency`, payload),
   grantItem: (

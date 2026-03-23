@@ -12,6 +12,7 @@ import type {
 import { ARMOR_PRESETS } from "../constants";
 import { clampHP } from "../utils/calculations";
 import { createEmptySpellcasting } from "./useCharacterSheet.creation";
+import { fromCopper, toCopper } from "../../../shared/utils/money";
 
 type GuardedUpdate = (updater: (sheet: CharacterSheet) => CharacterSheet) => void;
 type SetField = <K extends keyof CharacterSheet>(key: K, value: CharacterSheet[K]) => void;
@@ -132,11 +133,22 @@ export const createBaseSheetActions = (
       inventory: sheet.inventory.map((item) => (item.id === id ? { ...item, [key]: value } : item)),
     }));
 
-  const setCurrency = (coin: keyof CharacterSheet["currency"], value: number) =>
-    guardedUpdate((sheet) => ({
-      ...sheet,
-      currency: { ...sheet.currency, [coin]: Math.max(0, value) },
-    }));
+  const setCurrency = (coin: "cp" | "sp" | "ep" | "gp" | "pp", value: number) =>
+    guardedUpdate((sheet) => {
+      const nextCoins = fromCopper(sheet.currency.copperValue);
+      nextCoins[coin] = Math.max(0, value);
+      return {
+        ...sheet,
+        currency: {
+          copperValue:
+            toCopper(nextCoins.cp, "cp") +
+            toCopper(nextCoins.sp, "sp") +
+            toCopper(nextCoins.ep, "ep") +
+            toCopper(nextCoins.gp, "gp") +
+            toCopper(nextCoins.pp, "pp"),
+        },
+      };
+    });
 
   const enableSpellcasting = () => set("spellcasting", createEmptySpellcasting());
   const disableSpellcasting = () => set("spellcasting", null);

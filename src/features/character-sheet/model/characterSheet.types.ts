@@ -77,11 +77,7 @@ export type InventoryItem = {
 };
 
 export type Currency = {
-  cp: number;
-  sp: number;
-  ep: number;
-  gp: number;
-  pp: number;
+  copperValue: number;
 };
 
 // ── Spellcasting ────────────────────────────────────────────────────────────
@@ -91,6 +87,7 @@ export type SpellcastingMode = "known" | "prepared" | "spellbook";
 export type Spell = {
   id: string;
   name: string;
+  canonicalKey?: string | null;
   level: number; // 0 = cantrip
   school: string;
   prepared: boolean;

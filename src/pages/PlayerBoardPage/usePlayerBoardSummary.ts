@@ -85,6 +85,8 @@ export const usePlayerBoardSummary = ({
       ac,
       currentHp: playerSheet.currentHP,
       currentWeapon,
+      deathSaveFailures: playerSheet.deathSaves.failures,
+      deathSaveSuccesses: playerSheet.deathSaves.successes,
       experiencePoints: playerSheet.experiencePoints,
       hitDiceRemaining: playerSheet.hitDiceRemaining,
       hitDiceTotal: playerSheet.hitDiceTotal,

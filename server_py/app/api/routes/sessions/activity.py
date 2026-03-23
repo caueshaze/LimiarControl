@@ -6,6 +6,7 @@ from sqlmodel import Session as DbSession, select
 from app.api.deps import get_current_user
 from app.db.session import get_session
 from app.models.campaign_member import CampaignMember
+from app.models.item import Item
 from app.models.purchase_event import PurchaseEvent
 from app.models.roll_event import RollEvent
 from app.models.session import Session
@@ -23,8 +24,10 @@ from app.schemas.session import (
     RewardActivityEvent,
     RollActivityEvent,
     RollRequestActivityEvent,
+    RollResolvedActivityEvent,
     ShopActivityEvent,
 )
+from .shop import _format_cp_label, _price_to_cp
 
 router = APIRouter()
 
@@ -77,18 +80,21 @@ def get_session_activity(
         ))
 
     purchases = session.exec(
-        select(PurchaseEvent, User)
+        select(PurchaseEvent, User, Item)
         .outerjoin(User, PurchaseEvent.user_id == User.id)
+        .outerjoin(Item, PurchaseEvent.item_id == Item.id)
         .where(PurchaseEvent.session_id == session_id)
         .order_by(PurchaseEvent.created_at)
     ).all()
-    for purchase, purchase_user in purchases:
+    for purchase, purchase_user, purchase_item in purchases:
         events.append(PurchaseActivityEvent(
             userId=purchase.user_id,
             username=purchase_user.username if purchase_user else None,
             displayName=purchase_user.display_name if purchase_user else None,
+            action="bought",
             itemName=purchase.item_name,
             quantity=purchase.quantity,
+            amountLabel=_format_cp_label(_price_to_cp(purchase_item.price if purchase_item else None, purchase.quantity)),
             timestamp=purchase.created_at,
             sessionOffsetSeconds=offset(purchase.created_at),
         ))
@@ -112,6 +118,19 @@ def get_session_activity(
                 sessionOffsetSeconds=offset(command.created_at),
             ))
             continue
+        if command.command_type == "shop_sale":
+            events.append(PurchaseActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                action="sold",
+                itemName=str(payload.get("itemName") or "Item"),
+                quantity=int(payload.get("quantity", 1) or 1),
+                amountLabel=payload.get("amountLabel") if isinstance(payload.get("amountLabel"), str) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
         if command.command_type == "request_roll":
             mode = payload.get("mode") if payload.get("mode") in {"advantage", "disadvantage"} else None
             events.append(RollRequestActivityEvent(
@@ -121,6 +140,10 @@ def get_session_activity(
                 expression=str(payload.get("expression") or "d20"),
                 reason=payload.get("reason") if isinstance(payload.get("reason"), str) else None,
                 mode=mode,
+                rollType=payload.get("rollType") if isinstance(payload.get("rollType"), str) else None,
+                ability=payload.get("ability") if isinstance(payload.get("ability"), str) else None,
+                skill=payload.get("skill") if isinstance(payload.get("skill"), str) else None,
+                dc=payload.get("dc") if isinstance(payload.get("dc"), int) else None,
                 targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
                 targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
                 timestamp=command.created_at,
@@ -274,6 +297,29 @@ def get_session_activity(
                 previousHp=payload.get("previousHp") if isinstance(payload.get("previousHp"), int) else None,
                 delta=abs(hp_delta) if hp_delta is not None else None,
                 maxHp=payload.get("maxHp") if isinstance(payload.get("maxHp"), int) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "roll_resolved":
+            events.append(RollResolvedActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                rollType=payload.get("roll_type") or "ability",
+                actorName=payload.get("actor_display_name") or actor_name or "",
+                actorKind=payload.get("actor_kind") or "player",
+                ability=payload.get("ability"),
+                skill=payload.get("skill"),
+                rolls=payload.get("rolls") if isinstance(payload.get("rolls"), list) else [],
+                selectedRoll=int(payload.get("selected_roll", 0) or 0),
+                total=int(payload.get("total", 0) or 0),
+                modifierUsed=int(payload.get("modifier_used", 0) or 0),
+                advantageMode=payload.get("advantage_mode") or "normal",
+                dc=payload.get("dc") if isinstance(payload.get("dc"), int) else None,
+                targetAc=payload.get("target_ac") if isinstance(payload.get("target_ac"), int) else None,
+                success=payload.get("success") if isinstance(payload.get("success"), bool) else None,
+                isGmRoll=bool(payload.get("is_gm_roll", False)),
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

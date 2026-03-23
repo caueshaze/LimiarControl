@@ -1,69 +1,51 @@
-from __future__ import annotations
+from app.schemas.campaign_entity_actions import CombatAction
+from app.schemas.campaign_entity_models import (
+    CampaignEntityBase,
+    CampaignEntityCreate,
+    CampaignEntityPublicRead,
+    CampaignEntityRead,
+    CampaignEntityUpdate,
+)
+from app.schemas.campaign_entity_shared import (
+    AbilityName,
+    AbilityScores,
+    CombatActionKind,
+    ConditionType,
+    CreatureType,
+    DamageType,
+    EntitySenses,
+    EntitySize,
+    EntitySpellcasting,
+    SkillName,
+    SKILL_ABILITY_MAP,
+    VALID_CATEGORIES,
+    ability_modifier,
+    resolve_initiative_bonus,
+    resolve_saving_throw_bonus,
+    resolve_skill_bonus,
+)
 
-from datetime import datetime
-from typing import Optional
-
-from pydantic import BaseModel
-
-
-VALID_CATEGORIES = {"npc", "enemy", "creature", "ally"}
-
-_Int = int
-
-
-class AbilityStats(BaseModel):
-    str: Optional[_Int] = None
-    dex: Optional[_Int] = None
-    con: Optional[_Int] = None
-    int: Optional[_Int] = None
-    wis: Optional[_Int] = None
-    cha: Optional[_Int] = None
-
-
-class CampaignEntityCreate(BaseModel):
-    name: str
-    category: str = "npc"
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    baseHp: Optional[int] = None
-    baseAc: Optional[int] = None
-    stats: Optional[AbilityStats] = None
-    actions: Optional[str] = None
-    notesPrivate: Optional[str] = None
-    notesPublic: Optional[str] = None
-
-
-class CampaignEntityUpdate(CampaignEntityCreate):
-    pass
-
-
-class CampaignEntityRead(BaseModel):
-    id: str
-    campaignId: str
-    name: str
-    category: str
-    description: Optional[str]
-    imageUrl: Optional[str]
-    baseHp: Optional[int]
-    baseAc: Optional[int]
-    stats: Optional[AbilityStats]
-    actions: Optional[str]
-    notesPrivate: Optional[str]
-    notesPublic: Optional[str]
-    createdAt: datetime
-    updatedAt: Optional[datetime]
-
-
-class CampaignEntityPublicRead(BaseModel):
-    id: str
-    campaignId: str
-    name: str
-    category: str
-    description: Optional[str]
-    imageUrl: Optional[str]
-    baseHp: Optional[int]
-    baseAc: Optional[int]
-    stats: Optional[AbilityStats]
-    actions: Optional[str]
-    notesPublic: Optional[str]
-    createdAt: datetime
+__all__ = [
+    "AbilityName",
+    "AbilityScores",
+    "CombatAction",
+    "CombatActionKind",
+    "CampaignEntityBase",
+    "CampaignEntityCreate",
+    "CampaignEntityPublicRead",
+    "CampaignEntityRead",
+    "CampaignEntityUpdate",
+    "ConditionType",
+    "CreatureType",
+    "DamageType",
+    "EntitySenses",
+    "EntitySize",
+    "EntitySpellcasting",
+    "SkillName",
+    "SKILL_ABILITY_MAP",
+    "VALID_CATEGORIES",
+    "ability_modifier",
+    "resolve_initiative_bonus",
+    "resolve_saving_throw_bonus",
+    "resolve_skill_bonus",
+]

@@ -43,8 +43,8 @@ export const SessionInventoryPanel = ({
   onToggleOpen,
   onWeaponChange,
 }: SessionInventoryPanelProps) => {
-  const { t } = useLocale();
-  const summary = buildInventorySummary(inventory, itemsById);
+  const { locale, t } = useLocale();
+  const summary = buildInventorySummary(inventory, itemsById, locale);
   const walletCoins = buildWalletCoins(wallet);
   const selectedWeaponLabel = weaponOptions.find((option) => option.value === selectedWeaponId)?.label ?? null;
   const selectedArmorLabel = armorOptions.find((option) => option.value === selectedArmorId)?.label ?? null;
@@ -68,9 +68,6 @@ export const SessionInventoryPanel = ({
                 <span className="h-4 w-1 rounded-full bg-amber-500" />
                 {t("playerBoard.inventoryTitle")}
               </h2>
-              <p className="mt-2 text-sm text-slate-400">
-                {summary.totalItems} · {summary.distinctItems} {t("playerBoard.inventoryDistinctItems")}
-              </p>
             </div>
             <button
               type="button"
@@ -81,19 +78,14 @@ export const SessionInventoryPanel = ({
             </button>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <SummaryStat label={t("playerBoard.inventoryTotalLabel")} value={String(summary.totalItems)} />
-            <SummaryStat label={t("playerBoard.inventoryDistinctLabel")} value={String(summary.distinctItems)} />
-            <SummaryStat label={t("playerBoard.inventoryEquippedLabel")} value={String(summary.equippedCount)} />
-          </div>
-
           <div className="mt-5 flex flex-wrap gap-2">
             {walletCoins.map((coin) => (
               <span
                 key={coin.coin}
-                className={getCoinClassName(coin.coin)}
+                className={coin.className}
+                title={coin.longLabel}
               >
-                {coin.amount} {coin.coin}
+                {coin.amount} {coin.shortLabel}
               </span>
             ))}
           </div>
@@ -132,7 +124,7 @@ export const SessionInventoryPanel = ({
                   key={entry.entry.id}
                   className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-xs text-slate-300"
                 >
-                  {getInventoryItemName(entry.entry, entry.item)} x{entry.entry.quantity}
+                  {getInventoryItemName(entry.entry, entry.item, locale)} x{entry.entry.quantity}
                 </span>
               ))
             ) : (
@@ -150,18 +142,12 @@ export const SessionInventoryPanel = ({
         itemsById={itemsById}
         selectedArmorId={selectedArmorId}
         selectedWeaponId={selectedWeaponId}
+        locale={locale}
         onClose={onToggleOpen}
       />
     </>
   );
 };
-
-const SummaryStat = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-[22px] border border-white/8 bg-white/[0.04] px-4 py-3">
-    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
-    <p className="mt-2 text-lg font-bold text-white">{value}</p>
-  </div>
-);
 
 const LoadoutSelect = ({
   disabled,
@@ -198,18 +184,3 @@ const LoadoutSelect = ({
     <span className="mt-2 block text-xs text-slate-400">{helper}</span>
   </label>
 );
-
-const getCoinClassName = (coin: keyof CurrencyWallet) => {
-  switch (coin) {
-    case "pp":
-      return "rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200";
-    case "gp":
-      return "rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200";
-    case "ep":
-      return "rounded-full border border-lime-500/25 bg-lime-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-lime-200";
-    case "sp":
-      return "rounded-full border border-slate-500/25 bg-slate-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200";
-    default:
-      return "rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-200";
-  }
-};

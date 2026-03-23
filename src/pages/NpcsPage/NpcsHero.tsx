@@ -6,6 +6,7 @@ type NpcsHeroProps = {
   totalCount: number;
   visibleCount: number;
   backTo: string;
+  eyebrow: string;
   title: string;
   description: string;
 };
@@ -15,6 +16,7 @@ export const NpcsHero = ({
   totalCount,
   visibleCount,
   backTo,
+  eyebrow,
   title,
   description,
 }: NpcsHeroProps) => {
@@ -37,7 +39,7 @@ export const NpcsHero = ({
       <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-emerald-100/80">
-            {t("npc.heroEyebrow")}
+            {eyebrow}
           </p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-tight text-white sm:text-5xl">
             {title}

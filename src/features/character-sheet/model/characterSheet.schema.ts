@@ -97,16 +97,28 @@ const inventoryItemSchema = z.object({
 });
 
 const currencySchema = z.object({
-  cp: z.number().min(0),
-  sp: z.number().min(0),
-  ep: z.number().min(0),
-  gp: z.number().min(0),
-  pp: z.number().min(0),
-});
+  copperValue: z.number().min(0),
+}).or(
+  z.object({
+    cp: z.number().min(0),
+    sp: z.number().min(0),
+    ep: z.number().min(0),
+    gp: z.number().min(0),
+    pp: z.number().min(0),
+  }).transform((value) => ({
+    copperValue:
+      value.cp +
+      value.sp * 10 +
+      value.ep * 50 +
+      value.gp * 100 +
+      value.pp * 1000,
+  })),
+);
 
 const spellSchema = z.object({
   id: z.string(),
   name: z.string(),
+  canonicalKey: z.string().nullable().optional(),
   level: z.number().min(0).max(9),
   school: z.string(),
   prepared: z.boolean(),

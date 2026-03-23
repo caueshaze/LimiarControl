@@ -1,4 +1,4 @@
-import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
+import type { CurrencyUnit } from "../../shared/utils/money";
 
 export type CommandFeedback = {
   tone: "success" | "error";
@@ -21,7 +21,7 @@ export type GrantFeedback = {
 
 export type CurrencyDraft = {
   amount: string;
-  coin: keyof CurrencyWallet;
+  coin: CurrencyUnit;
 };
 
 export type ItemDraft = {

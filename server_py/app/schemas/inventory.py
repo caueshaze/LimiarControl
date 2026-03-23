@@ -5,11 +5,7 @@ from pydantic import BaseModel
 
 
 class CurrencyRead(BaseModel):
-    cp: int = 0
-    sp: int = 0
-    ep: int = 0
-    gp: int = 0
-    pp: int = 0
+    copperValue: int = 0
 
 
 class InventoryRead(BaseModel):

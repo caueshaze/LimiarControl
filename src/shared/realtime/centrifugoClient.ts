@@ -55,9 +55,13 @@ const connectionStateListeners = new Set<ConnectionStateListener>();
 let client: Centrifuge | null = null;
 let currentConnectionState: ConnectionState = "offline";
 let nextListenerId = 1;
+let connectionRequested = false;
 
 const notifyConnectionState = (state: ConnectionState) => {
   currentConnectionState = state;
+  if (state === "offline" || state === "connected") {
+    connectionRequested = false;
+  }
   connectionStateListeners.forEach((listener) => listener(state));
 };
 
@@ -139,6 +143,20 @@ export const getClient = () => {
   return client;
 };
 
+const ensureClientConnected = () => {
+  const realtimeClient = getClient();
+  if (currentConnectionState === "offline" && !connectionRequested) {
+    connectionRequested = true;
+    realtimeClient.connect();
+  }
+};
+
+const ensureSubscriptionActive = (subscription: Subscription) => {
+  if (subscription.state === SubscriptionState.Unsubscribed) {
+    subscription.subscribe();
+  }
+};
+
 const createSubscription = (channel: string) => {
   const subscription = getClient().newSubscription(channel, {
     getToken: ({ channel: targetChannel }: SubscriptionTokenContext) =>
@@ -209,6 +227,7 @@ const releaseChannelListener = (channel: string, listenerId: number) => {
   channelEntries.delete(channel);
 
   if (channelEntries.size === 0) {
+    connectionRequested = false;
     getClient().disconnect();
     notifyConnectionState("offline");
   }
@@ -226,8 +245,8 @@ export const subscribe = (channel: string, handlers: SubscriptionHandlers) => {
 
   const listenerId = nextListenerId++;
   entry.listeners.set(listenerId, handlers);
-  entry.subscription.subscribe();
-  getClient().connect();
+  ensureSubscriptionActive(entry.subscription);
+  ensureClientConnected();
 
   if (entry.subscription.state === SubscriptionState.Subscribed) {
     Promise.resolve().then(() => {
@@ -298,6 +317,7 @@ export const disconnectRealtime = () => {
     client?.removeSubscription(entry.subscription);
   });
   channelEntries.clear();
+  connectionRequested = false;
   client.disconnect();
   notifyConnectionState("offline");
 };

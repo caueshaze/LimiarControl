@@ -1,115 +1,26 @@
-from datetime import datetime, timezone
-from uuid import uuid4
+from fastapi import APIRouter, Depends
+from sqlmodel import Session as DbSession
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session as DbSession, select
-
-from app.api.deps import get_current_user, require_campaign_member, require_gm
+from app.api.deps import get_current_user
 from app.db.session import get_session
-from app.models.campaign_entity import CampaignEntity
-from app.models.session import Session, SessionStatus
-from app.models.session_entity import SessionEntity
 from app.models.user import User
-from app.api.routes.sessions._shared import record_session_activity
 from app.schemas.session_entity import (
     SessionEntityCreate,
     SessionEntityPlayerRead,
     SessionEntityRead,
     SessionEntityUpdate,
 )
-from app.api.routes.campaign_entities import to_campaign_entity_read, to_campaign_entity_public_read
-from app.services.centrifugo import centrifugo
-from app.services.realtime import build_event, campaign_channel, event_version, session_channel
+from app.api.routes.session_entities_service import (
+    add_session_entity_service,
+    hide_session_entity_service,
+    list_session_entities_service,
+    list_visible_session_entities_service,
+    remove_session_entity_service,
+    reveal_session_entity_service,
+    update_session_entity_service,
+)
 
 router = APIRouter()
-
-
-def _get_session_entry(session_id: str, db: DbSession) -> Session:
-    entry = db.exec(select(Session).where(Session.id == session_id)).first()
-    if not entry:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return entry
-
-
-def _require_session_gm(session_entry: Session, user: User, db: DbSession):
-    return require_gm(session_entry.campaign_id, user, db)[1]
-
-
-def _to_session_entity_read(
-    se: SessionEntity, ce: CampaignEntity | None
-) -> SessionEntityRead:
-    return SessionEntityRead(
-        id=se.id,
-        sessionId=se.session_id,
-        campaignEntityId=se.campaign_entity_id,
-        visibleToPlayers=se.visible_to_players,
-        currentHp=se.current_hp,
-        overrides=se.overrides,
-        label=se.label,
-        revealedAt=se.revealed_at,
-        createdAt=se.created_at,
-        updatedAt=se.updated_at,
-        entity=to_campaign_entity_read(ce) if ce else None,
-    )
-
-
-def _to_session_entity_player_read(
-    se: SessionEntity, ce: CampaignEntity | None
-) -> SessionEntityPlayerRead:
-    return SessionEntityPlayerRead(
-        id=se.id,
-        sessionId=se.session_id,
-        campaignEntityId=se.campaign_entity_id,
-        currentHp=se.current_hp,
-        label=se.label,
-        revealedAt=se.revealed_at,
-        entity=to_campaign_entity_public_read(ce) if ce else None,
-    )
-
-
-async def _publish_entity_event(
-    session_entry: Session,
-    event_type: str,
-    payload: dict,
-    version_source: datetime | None = None,
-) -> None:
-    version = event_version(version_source or datetime.now(timezone.utc))
-    await centrifugo.publish(
-        session_channel(session_entry.id),
-        build_event(event_type, payload, version=version),
-    )
-    await centrifugo.publish(
-        campaign_channel(session_entry.campaign_id),
-        build_event(event_type, payload, version=version),
-    )
-
-
-def _entity_event_payload(
-    session_entry: Session,
-    se: SessionEntity,
-    ce: CampaignEntity | None,
-    *,
-    previous_hp: int | None = None,
-    hp_delta: int | None = None,
-) -> dict:
-    payload = {
-        "sessionId": session_entry.id,
-        "campaignId": session_entry.campaign_id,
-        "partyId": session_entry.party_id,
-        "sessionEntityId": se.id,
-        "campaignEntityId": se.campaign_entity_id,
-        "visibleToPlayers": se.visible_to_players,
-        "label": se.label,
-        "currentHp": se.current_hp,
-        "entityName": ce.name if ce else (se.label or "Entity"),
-        "entityCategory": ce.category if ce else None,
-        "maxHp": ce.base_hp if ce else None,
-    }
-    if previous_hp is not None:
-        payload["previousHp"] = previous_hp
-    if hp_delta is not None:
-        payload["hpDelta"] = hp_delta
-    return payload
 
 
 @router.get("/sessions/{session_id}/entities", response_model=list[SessionEntityRead])
@@ -118,15 +29,7 @@ def list_session_entities(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    _require_session_gm(session_entry, user, session)
-    results = session.exec(
-        select(SessionEntity, CampaignEntity)
-        .outerjoin(CampaignEntity, CampaignEntity.id == SessionEntity.campaign_entity_id)
-        .where(SessionEntity.session_id == session_id)
-        .order_by(SessionEntity.created_at.asc())
-    ).all()
-    return [_to_session_entity_read(se, ce) for se, ce in results]
+    return list_session_entities_service(session_id, user, session)
 
 
 @router.post("/sessions/{session_id}/entities", response_model=SessionEntityRead, status_code=201)
@@ -136,48 +39,7 @@ async def add_session_entity(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    gm_member = _require_session_gm(session_entry, user, session)
-    if session_entry.status != SessionStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail="Session is not active")
-    # Validate campaign entity belongs to same campaign
-    ce = session.exec(
-        select(CampaignEntity).where(
-            CampaignEntity.id == payload.campaignEntityId,
-            CampaignEntity.campaign_id == session_entry.campaign_id,
-        )
-    ).first()
-    if not ce:
-        raise HTTPException(status_code=404, detail="Campaign entity not found")
-    se = SessionEntity(
-        id=str(uuid4()),
-        session_id=session_id,
-        campaign_entity_id=payload.campaignEntityId,
-        current_hp=payload.currentHp if payload.currentHp is not None else ce.base_hp,
-        label=payload.label,
-    )
-    session.add(se)
-    session.commit()
-    session.refresh(se)
-    activity_payload = _entity_event_payload(session_entry, se, ce)
-    record_session_activity(
-        session_entry,
-        "session_entity_added",
-        session,
-        member_id=gm_member.id,
-        user_id=user.id,
-        actor_name=gm_member.display_name,
-        payload=activity_payload,
-        created_at=se.created_at,
-    )
-    session.commit()
-    await _publish_entity_event(
-        session_entry,
-        "session_entity_added",
-        activity_payload,
-        se.created_at,
-    )
-    return _to_session_entity_read(se, ce)
+    return await add_session_entity_service(session_id, payload, user, session)
 
 
 @router.put("/sessions/{session_id}/entities/{session_entity_id}", response_model=SessionEntityRead)
@@ -188,77 +50,13 @@ async def update_session_entity(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    gm_member = _require_session_gm(session_entry, user, session)
-    se = session.exec(
-        select(SessionEntity).where(
-            SessionEntity.id == session_entity_id,
-            SessionEntity.session_id == session_id,
-        )
-    ).first()
-    if not se:
-        raise HTTPException(status_code=404, detail="Session entity not found")
-    previous_hp = se.current_hp
-    hp_changed = False
-    visibility_changed = False
-    if payload.visibleToPlayers is not None and payload.visibleToPlayers != se.visible_to_players:
-        visibility_changed = True
-        se.visible_to_players = payload.visibleToPlayers
-        if payload.visibleToPlayers:
-            se.revealed_at = datetime.now(timezone.utc)
-        else:
-            se.revealed_at = None
-    if payload.currentHp is not None and payload.currentHp != se.current_hp:
-        hp_changed = True
-        se.current_hp = payload.currentHp
-    if payload.label is not None:
-        se.label = payload.label
-    if payload.overrides is not None:
-        se.overrides = payload.overrides
-    session.add(se)
-    session.commit()
-    session.refresh(se)
-    ce = session.exec(select(CampaignEntity).where(CampaignEntity.id == se.campaign_entity_id)).first()
-    event_payload = _entity_event_payload(
-        session_entry,
-        se,
-        ce,
-        previous_hp=previous_hp if hp_changed else None,
-        hp_delta=(se.current_hp - previous_hp)
-        if hp_changed and previous_hp is not None and se.current_hp is not None
-        else None,
+    return await update_session_entity_service(
+        session_id,
+        session_entity_id,
+        payload,
+        user,
+        session,
     )
-    if visibility_changed:
-        event_type = "entity_revealed" if se.visible_to_players else "entity_hidden"
-        record_session_activity(
-            session_entry,
-            event_type,
-            session,
-            member_id=gm_member.id,
-            user_id=user.id,
-            actor_name=gm_member.display_name,
-            payload=event_payload,
-            created_at=se.updated_at or se.created_at,
-        )
-    if hp_changed:
-        record_session_activity(
-            session_entry,
-            "entity_hp_updated",
-            session,
-            member_id=gm_member.id,
-            user_id=user.id,
-            actor_name=gm_member.display_name,
-            payload=event_payload,
-            created_at=se.updated_at or se.created_at,
-        )
-    if visibility_changed or hp_changed:
-        session.commit()
-    if visibility_changed:
-        event_type = "entity_revealed" if se.visible_to_players else "entity_hidden"
-        await _publish_entity_event(session_entry, event_type, event_payload, se.updated_at or se.created_at)
-    if hp_changed:
-        await _publish_entity_event(session_entry, "entity_hp_updated", event_payload, se.updated_at or se.created_at)
-    return _to_session_entity_read(se, ce)
 
 
 @router.delete("/sessions/{session_id}/entities/{session_entity_id}", status_code=204)
@@ -268,32 +66,7 @@ async def remove_session_entity(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    gm_member = _require_session_gm(session_entry, user, session)
-    se = session.exec(
-        select(SessionEntity).where(
-            SessionEntity.id == session_entity_id,
-            SessionEntity.session_id == session_id,
-        )
-    ).first()
-    if not se:
-        raise HTTPException(status_code=404, detail="Session entity not found")
-    ce = session.exec(select(CampaignEntity).where(CampaignEntity.id == se.campaign_entity_id)).first()
-    payload = _entity_event_payload(session_entry, se, ce)
-    session.delete(se)
-    session.commit()
-    record_session_activity(
-        session_entry,
-        "session_entity_removed",
-        session,
-        member_id=gm_member.id,
-        user_id=user.id,
-        actor_name=gm_member.display_name,
-        payload=payload,
-    )
-    session.commit()
-    await _publish_entity_event(session_entry, "session_entity_removed", payload)
-    return None
+    await remove_session_entity_service(session_id, session_entity_id, user, session)
 
 
 @router.post("/sessions/{session_id}/entities/{session_entity_id}/reveal", response_model=SessionEntityRead)
@@ -303,41 +76,7 @@ async def reveal_session_entity(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    gm_member = _require_session_gm(session_entry, user, session)
-    se = session.exec(
-        select(SessionEntity).where(
-            SessionEntity.id == session_entity_id,
-            SessionEntity.session_id == session_id,
-        )
-    ).first()
-    if not se:
-        raise HTTPException(status_code=404, detail="Session entity not found")
-    se.visible_to_players = True
-    se.revealed_at = datetime.now(timezone.utc)
-    session.add(se)
-    session.commit()
-    session.refresh(se)
-    ce = session.exec(select(CampaignEntity).where(CampaignEntity.id == se.campaign_entity_id)).first()
-    payload = _entity_event_payload(session_entry, se, ce)
-    record_session_activity(
-        session_entry,
-        "entity_revealed",
-        session,
-        member_id=gm_member.id,
-        user_id=user.id,
-        actor_name=gm_member.display_name,
-        payload=payload,
-        created_at=se.revealed_at,
-    )
-    session.commit()
-    await _publish_entity_event(
-        session_entry,
-        "entity_revealed",
-        payload,
-        se.revealed_at,
-    )
-    return _to_session_entity_read(se, ce)
+    return await reveal_session_entity_service(session_id, session_entity_id, user, session)
 
 
 @router.post("/sessions/{session_id}/entities/{session_entity_id}/hide", response_model=SessionEntityRead)
@@ -347,41 +86,7 @@ async def hide_session_entity(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    gm_member = _require_session_gm(session_entry, user, session)
-    se = session.exec(
-        select(SessionEntity).where(
-            SessionEntity.id == session_entity_id,
-            SessionEntity.session_id == session_id,
-        )
-    ).first()
-    if not se:
-        raise HTTPException(status_code=404, detail="Session entity not found")
-    se.visible_to_players = False
-    se.revealed_at = None
-    session.add(se)
-    session.commit()
-    session.refresh(se)
-    ce = session.exec(select(CampaignEntity).where(CampaignEntity.id == se.campaign_entity_id)).first()
-    payload = _entity_event_payload(session_entry, se, ce)
-    record_session_activity(
-        session_entry,
-        "entity_hidden",
-        session,
-        member_id=gm_member.id,
-        user_id=user.id,
-        actor_name=gm_member.display_name,
-        payload=payload,
-        created_at=se.updated_at or se.created_at,
-    )
-    session.commit()
-    await _publish_entity_event(
-        session_entry,
-        "entity_hidden",
-        payload,
-        se.updated_at or se.created_at,
-    )
-    return _to_session_entity_read(se, ce)
+    return await hide_session_entity_service(session_id, session_entity_id, user, session)
 
 
 @router.get("/sessions/{session_id}/entities/visible", response_model=list[SessionEntityPlayerRead])
@@ -390,15 +95,4 @@ def list_visible_session_entities(
     user: User = Depends(get_current_user),
     session: DbSession = Depends(get_session),
 ):
-    session_entry = _get_session_entry(session_id, session)
-    require_campaign_member(session_entry.campaign_id, user, session)
-    results = session.exec(
-        select(SessionEntity, CampaignEntity)
-        .outerjoin(CampaignEntity, CampaignEntity.id == SessionEntity.campaign_entity_id)
-        .where(
-            SessionEntity.session_id == session_id,
-            SessionEntity.visible_to_players == True,
-        )
-        .order_by(SessionEntity.created_at.asc())
-    ).all()
-    return [_to_session_entity_player_read(se, ce) for se, ce in results]
+    return list_visible_session_entities_service(session_id, user, session)

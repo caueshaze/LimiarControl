@@ -1,7 +1,7 @@
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { CurrencyWallet, InventorySellResult } from "../../../shared/api/inventoryRepo";
-import { formatWallet } from "../utils/shopCurrency";
+import { buildWalletDisplay } from "../utils/shopCurrency";
 import { ShopSellList } from "./ShopSellList";
 
 type HeaderProps = {
@@ -50,25 +50,35 @@ export const ShopPanelInventorySummary = ({
   uniqueLabel,
   wallet,
   walletLabel,
-}: SummaryProps) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Inventario</p>
-    <div className="mt-3 flex flex-wrap gap-3">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{uniqueLabel}</p>
-        <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.unique}</p>
-      </div>
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{totalLabel}</p>
-        <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.total}</p>
-      </div>
-      <div className="min-w-[12rem] rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{walletLabel}</p>
-        <p className="mt-1 text-sm font-semibold text-white">{formatWallet(wallet)}</p>
+}: SummaryProps) => {
+  const walletCoins = buildWalletDisplay(wallet);
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Inventario</p>
+      <div className="mt-3 flex flex-wrap gap-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{uniqueLabel}</p>
+          <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.unique}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{totalLabel}</p>
+          <p className="mt-1 text-lg font-semibold text-white">{inventorySummary.total}</p>
+        </div>
+        <div className="min-w-[15rem] rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{walletLabel}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {walletCoins.map((coin) => (
+              <span key={coin.coin} className={coin.className} title={coin.longLabel}>
+                {coin.amount} {coin.shortLabel}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 type SellSectionProps = {
   description: string;

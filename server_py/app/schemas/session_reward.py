@@ -5,7 +5,7 @@ from app.schemas.inventory import CurrencyRead, InventoryRead
 
 class SessionGrantCurrencyRequest(BaseModel):
     playerUserId: str
-    currency: CurrencyRead
+    copperValue: int = Field(ge=1)
 
 
 class SessionGrantCurrencyRead(BaseModel):

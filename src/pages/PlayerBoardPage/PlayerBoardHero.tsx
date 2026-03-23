@@ -74,14 +74,14 @@ export const PlayerBoardHero = ({
 
   return (
     <header className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.94),rgba(2,6,23,0.98))] px-6 py-6 shadow-[0_24px_80px_rgba(2,6,23,0.34)] sm:px-7">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(99,102,241,0.12),transparent_22%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:auto,auto,42px_42px,42px_42px]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(99,102,241,0.12),transparent_22%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[auto,auto,42px_42px,42px_42px]" />
 
       <div className="relative space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
           >
             <span aria-hidden>←</span>
             {t("playerParty.backHome")}
@@ -137,7 +137,7 @@ export const PlayerBoardHero = ({
                 <button
                   type="button"
                   onClick={onSecondaryAction}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+                  className="rounded-full border border-white/10 bg-white/4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/8"
                 >
                   {secondaryActionLabel}
                 </button>
@@ -149,7 +149,7 @@ export const PlayerBoardHero = ({
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-[24px] border border-white/8 bg-white/[0.05] px-4 py-4 backdrop-blur-xl"
+                className="rounded-3xl border border-white/8 bg-white/5 px-4 py-4 backdrop-blur-xl"
               >
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
                   {stat.label}

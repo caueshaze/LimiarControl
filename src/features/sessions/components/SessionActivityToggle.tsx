@@ -17,21 +17,29 @@ export const SessionActivityToggle = ({
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<ActivityEvent[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const requestIdRef = useRef(0);
+  const loadingRef = useRef(false);
+
+  const updateLoading = useCallback((next: boolean) => {
+    loadingRef.current = next;
+    setLoading(next);
+  }, []);
 
   const refreshActivity = useCallback(
     async ({ showLoader = false }: { showLoader?: boolean } = {}) => {
       if (!sessionId) {
         requestIdRef.current += 1;
         setEvents([]);
-        setLoading(false);
+        updateLoading(false);
         return;
       }
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
-      if (showLoader) {
-        setLoading(true);
+      const shouldClearVisibleLoader = showLoader || loadingRef.current;
+      if (shouldClearVisibleLoader) {
+        updateLoading(true);
       }
       try {
         const nextEvents = await sessionsRepo.getActivity(sessionId);
@@ -39,30 +47,32 @@ export const SessionActivityToggle = ({
           return;
         }
         setEvents(nextEvents);
+        setError(null);
       } catch {
         if (requestIdRef.current !== requestId) {
           return;
         }
-        setEvents([]);
+        setError("Nao foi possivel carregar a atividade agora.");
       } finally {
-        if (showLoader && requestIdRef.current === requestId) {
-          setLoading(false);
+        if (shouldClearVisibleLoader && requestIdRef.current === requestId) {
+          updateLoading(false);
         }
       }
     },
-    [sessionId]
+    [sessionId, t, updateLoading]
   );
 
   useEffect(() => {
     requestIdRef.current += 1;
     setOpen(false);
     setEvents(null);
-    setLoading(false);
+    setError(null);
+    updateLoading(false);
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-  }, [sessionId]);
+  }, [sessionId, updateLoading]);
 
   useEffect(() => {
     if (!open || !sessionId) {
@@ -127,6 +137,19 @@ export const SessionActivityToggle = ({
         <div className="border-t border-white/8 px-6 py-5">
           {loading ? (
             <p className="text-sm text-slate-400">{t("sessionActivity.loading")}</p>
+          ) : error ? (
+            <div className="space-y-3">
+              <div className="rounded-[24px] border border-rose-500/20 bg-rose-500/10 px-4 py-5 text-sm text-rose-200">
+                {error}
+              </div>
+              {orderedEvents.length > 0 ? (
+                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                  {orderedEvents.map((event, index) => (
+                    <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ) : orderedEvents.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
               {t("sessionActivity.empty")}

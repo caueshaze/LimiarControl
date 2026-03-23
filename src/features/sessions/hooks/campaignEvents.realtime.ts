@@ -30,6 +30,7 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "entity_hp_updated",
   "session_entity_added",
   "session_entity_removed",
+  "roll_resolved",
 ]);
 
 export const isSupportedCampaignEventType = (type?: string): boolean =>
@@ -76,6 +77,8 @@ export const getCampaignEventVersionKey = (
     case "session_entity_added":
     case "session_entity_removed":
       return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.sessionEntityId ?? ""}`;
+    case "roll_resolved":
+      return `roll_resolved:${event.payload?.sessionId ?? ""}:${event.payload?.event_id ?? ""}`;
     default:
       return event.type ?? "unknown";
   }

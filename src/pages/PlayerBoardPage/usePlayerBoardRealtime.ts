@@ -1,52 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { NavigateFunction } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import type { ToastState } from "../../shared/ui/Toast";
-import type { LocaleKey } from "../../shared/i18n";
+import { isRollEventKnown } from "../../features/rolls/knownRollEvents";
 import { usePlayerBoardRollRequests } from "./usePlayerBoardRollRequests";
-
-type ActiveSessionLike = {
-  id: string;
-};
-
-type SessionCommandLike = {
-  command: string;
-  data?: Record<string, unknown> | null;
-  issuedAt?: string;
-  issuedBy?: string;
-};
-
-type CampaignEventLike = {
-  type: string;
-  payload: Record<string, unknown>;
-  version?: number;
-};
-
-type Props = {
-  activeSession: ActiveSessionLike | null;
-  clearCommand: () => void;
-  clearSessionEnded: () => void;
-  effectiveCampaignId: string | null;
-  lastCommand: SessionCommandLike | null;
-  lastEvent: CampaignEventLike | null;
-  navigate: NavigateFunction;
-  partyId: string | undefined;
-  refresh: () => Promise<unknown>;
-  refreshInventoryData: () => Promise<void>;
-  roll: (
-    expression: string,
-    label?: string,
-    mode?: "advantage" | "disadvantage" | null,
-  ) => void;
-  selectedCampaignId: string | null;
-  sessionEndedAt: string | null;
-  setSelectedCampaignLocal: (campaignId: string) => void;
-  setSelectedSessionId: (sessionId: string | null) => void;
-  showToast: (toast: ToastState) => void;
-  shopAvailable: boolean;
-  t: (key: LocaleKey) => string;
-  userId?: string | null;
-};
+import type { UsePlayerBoardRealtimeProps } from "./player-board-realtime.types";
 
 export const usePlayerBoardRealtime = ({
   activeSession,
@@ -68,7 +24,7 @@ export const usePlayerBoardRealtime = ({
   shopAvailable,
   t,
   userId = null,
-}: Props) => {
+}: UsePlayerBoardRealtimeProps) => {
   const [shopOpen, setShopOpen] = useState(false);
   const [pendingOpenShop, setPendingOpenShop] = useState(false);
   const [shopSessionTarget, setShopSessionTarget] = useState<string | null>(null);
@@ -288,6 +244,18 @@ export const usePlayerBoardRealtime = ({
       }
       return;
     }
+    if (lastEvent.type === "roll_resolved") {
+      const p = lastEvent.payload;
+      if (!isRollEventKnown(String(p.event_id ?? ""))) {
+        showToast({
+          variant: "info",
+          title: `${String(p.actor_display_name ?? "")}: ${String(p.roll_type ?? "")}`,
+          description: `${String(p.formula ?? "")} = ${String(p.total ?? 0)}${p.success === true ? " ✓" : p.success === false ? " ✗" : ""}`,
+          duration: 4000,
+        });
+      }
+      return;
+    }
     if (lastEvent.type === "session_closed") {
       setShopOpen(false);
       setPendingOpenShop(false);
@@ -367,6 +335,7 @@ export const usePlayerBoardRealtime = ({
   };
 
   return {
+    clearPendingRoll,
     handleManualRoll,
     handleOpenShop,
     handleRoll,

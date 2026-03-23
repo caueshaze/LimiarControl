@@ -12,6 +12,7 @@ from .runtime import router as runtime_router
 from .state import router as state_router
 from .rewards import router as rewards_router
 from .rest import router as rest_router
+from .rolls_resolution import router as rolls_resolution_router
 
 router = APIRouter()
 router.include_router(campaign_sessions_router)
@@ -21,6 +22,7 @@ router.include_router(lifecycle_router)
 router.include_router(shop_router)
 router.include_router(commands_router)
 router.include_router(rolls_router)
+router.include_router(rolls_resolution_router)
 router.include_router(activity_router)
 router.include_router(runtime_router)
 router.include_router(state_router)

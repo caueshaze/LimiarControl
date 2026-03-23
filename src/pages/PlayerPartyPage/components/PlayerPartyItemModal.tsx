@@ -1,4 +1,6 @@
 import { getItemPropertyLabel } from "../../../entities/item";
+import { localizedItemName } from "../../../features/shop/utils/localizedItemName";
+import { formatItemPrice } from "../../../features/shop/utils/shopCurrency";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { PlayerPartySelectedItem } from "../playerParty.types";
 import { getItemTypeLabel } from "../playerParty.utils";
@@ -39,7 +41,7 @@ export const PlayerPartyItemModal = ({ selectedItem, onClose }: Props) => {
               <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-limiar-200">
                 {getItemTypeLabel(item.type, t)}
               </p>
-              <h2 className="mt-1 text-xl font-bold text-white">{item.name}</h2>
+              <h2 className="mt-1 text-xl font-bold text-white">{localizedItemName(item, locale)}</h2>
             </div>
             <button
               type="button"
@@ -76,7 +78,7 @@ export const PlayerPartyItemModal = ({ selectedItem, onClose }: Props) => {
               ) : null}
               {item.price != null ? (
                 <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200">
-                  {item.priceLabel ?? item.price}
+                  {formatItemPrice(item.price, item.priceLabel, item.priceCopperValue)}
                 </span>
               ) : null}
             </div>

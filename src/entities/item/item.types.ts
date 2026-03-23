@@ -23,6 +23,7 @@ export type Item = {
   type: ItemType;
   description: string;
   price?: number | null;
+  priceCopperValue?: number | null;
   priceLabel?: string;
   weight?: number | null;
   damageDice?: string | null;

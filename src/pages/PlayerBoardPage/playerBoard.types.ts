@@ -4,12 +4,22 @@ export type PendingRoll = {
   issuedBy?: string;
   reason?: string;
   mode?: "advantage" | "disadvantage" | null;
+  /** When present, the request uses the authoritative roll flow. */
+  rollType?: "ability" | "save" | "skill" | "initiative" | "attack" | null;
+  /** Ability for ability/save rolls. */
+  ability?: string | null;
+  /** Skill for skill rolls. */
+  skill?: string | null;
+  /** DC set by GM. */
+  dc?: number | null;
 };
 
 export type PlayerBoardStatusSummary = {
   ac: number;
   currentHp: number;
   currentWeapon: PlayerBoardWeaponSummary | null;
+  deathSaveFailures: number;
+  deathSaveSuccesses: number;
   experiencePoints: number;
   hitDiceRemaining: number;
   hitDiceTotal: number;

@@ -2,6 +2,7 @@ import { ITEM_TYPES, resolveItemPropertySlug, type Item } from "../../entities/i
 import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { getModifier, getProficiencyBonus } from "../../features/character-sheet/utils/calculations";
+import { localizedItemName } from "../../features/shop/utils/localizedItemName";
 import type { PlayerBoardWeaponSummary } from "./playerBoard.types";
 
 const DAMAGE_TYPE_LABELS = {
@@ -106,6 +107,24 @@ const isWeaponProficient = (sheet: CharacterSheet, item: Item) => {
   return false;
 };
 
+const findLegacyWeaponProfile = (sheet: CharacterSheet, item: Item) => {
+  const candidates = new Set<string>([
+    normalizeLookup(item.name),
+    normalizeLookup(item.namePtSnapshot ?? null),
+    normalizeLookup(item.nameEnSnapshot ?? null),
+  ]);
+  const canonicalKey = normalizeLookup(item.canonicalKeySnapshot ?? null).replace(/\s+/g, "_");
+  if (canonicalKey) {
+    const aliases = SPECIFIC_WEAPON_PROFICIENCY_ALIASES[canonicalKey];
+    aliases?.forEach((alias) => candidates.add(normalizeLookup(alias)));
+  }
+
+  return sheet.weapons.find((weapon) => {
+    const weaponName = normalizeLookup(weapon.name);
+    return weaponName.length > 0 && candidates.has(weaponName);
+  }) ?? null;
+};
+
 export const buildPlayerBoardWeaponSummary = ({
   inventory,
   itemsById,
@@ -131,11 +150,14 @@ export const buildPlayerBoardWeaponSummary = ({
     return null;
   }
 
-  const proficient = isWeaponProficient(playerSheet, item);
+  const legacyWeapon = findLegacyWeaponProfile(playerSheet, item);
+  const proficient = isWeaponProficient(playerSheet, item) || legacyWeapon?.proficient === true;
   const attackAbility = chooseWeaponAbility(playerSheet, item);
+  const magicBonus = legacyWeapon?.magicBonus ?? 0;
   const attackBonus =
     getModifier(playerSheet.abilities[attackAbility]) +
-    (proficient ? getProficiencyBonus(playerSheet.level) : 0);
+    (proficient ? getProficiencyBonus(playerSheet.level) : 0) +
+    magicBonus;
   const damageTypeLabel = localizeDamageType(item.damageType, locale);
 
   return {
@@ -143,7 +165,7 @@ export const buildPlayerBoardWeaponSummary = ({
     damageLabel: item.damageDice
       ? `${item.damageDice}${damageTypeLabel ? ` ${damageTypeLabel}` : ""}`
       : (damageTypeLabel ?? "—"),
-    name: item.name,
+    name: localizedItemName(item, locale),
     proficient,
   };
 };

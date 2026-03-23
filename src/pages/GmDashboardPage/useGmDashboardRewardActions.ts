@@ -4,6 +4,7 @@ import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { sessionsRepo, type ActiveSession, type SessionGrantItemResult } from "../../shared/api/sessionsRepo";
 import { formatWallet, normalizeWallet } from "../../features/shop/utils/shopCurrency";
+import { toCopper, type CurrencyUnit } from "../../shared/utils/money";
 import type { Item } from "../../entities/item";
 import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
@@ -45,7 +46,7 @@ export const useGmDashboardRewardActions = ({
 
   const handleGrantCurrency = async (userId: string) => {
     if (!activeSession?.id || grantingCurrencyForUserId) return;
-    const draft = currencyDraftByUserId[userId] ?? { amount: "", coin: "gp" as keyof CurrencyWallet };
+    const draft = currencyDraftByUserId[userId] ?? { amount: "", coin: "gp" as CurrencyUnit };
     const amount = Number(draft.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setGrantFeedbackByUserId((current) => ({
@@ -64,7 +65,7 @@ export const useGmDashboardRewardActions = ({
     try {
       const result = await sessionsRepo.grantCurrency(activeSession.id, {
         playerUserId: userId,
-        currency: { [draft.coin]: amount },
+        copperValue: toCopper(amount, draft.coin),
       });
       setWalletByUserId((current) => ({
         ...current,

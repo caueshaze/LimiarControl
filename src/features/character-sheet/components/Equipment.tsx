@@ -5,6 +5,7 @@ import { input, fieldLabel, btnPrimary } from "./styles";
 import { computeTotalWeight, safeParseInt } from "../utils/calculations";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import { buildWalletDisplay } from "../../shop/utils/shopCurrency";
 
 type Props = {
   inventory: CharacterSheet["inventory"];
@@ -21,6 +22,7 @@ export const Equipment = ({ inventory, currency, onAdd, onRemove, onUpdate, read
   const hasCurrency = Boolean(
     currency && Object.values(currency).some((value) => value > 0),
   );
+  const walletCoins = buildWalletDisplay(currency, { includeZeroGp: false });
 
   return (
     <Section title={t("sheet.equipment.title")} color="bg-amber-500">
@@ -45,15 +47,18 @@ export const Equipment = ({ inventory, currency, onAdd, onRemove, onUpdate, read
             <span className="font-semibold text-slate-300">{totalWeight} lb</span>
           </span>
           {readOnly && hasCurrency && (
-            <span className="block text-xs text-slate-500">
-              {t("sheet.equipment.lockedFunds")}:{" "}
-              <span className="font-semibold text-slate-300">
-                {Object.entries(currency ?? {})
-                  .filter(([, value]) => value > 0)
-                  .map(([coin, value]) => `${value} ${coin}`)
-                  .join(", ")}
+            <div className="pt-1">
+              <span className="block text-xs text-slate-500">
+                {t("sheet.equipment.lockedFunds")}:
               </span>
-            </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {walletCoins.map((coin) => (
+                  <span key={coin.coin} className={coin.className} title={coin.longLabel}>
+                    {coin.amount} {coin.shortLabel}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
         {!readOnly && (

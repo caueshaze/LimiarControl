@@ -68,7 +68,7 @@ export const ShopSellList = ({
                   )}
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  {t("shop.sell.refund")} {formatItemPrice(item?.price, item?.priceLabel)}
+                  {t("shop.sell.refund")} {formatItemPrice(item?.price, item?.priceLabel, item?.priceCopperValue)}
                 </p>
               </div>
 

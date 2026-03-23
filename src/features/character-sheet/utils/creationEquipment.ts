@@ -2,6 +2,7 @@ import { ARMOR_PRESETS } from "../constants";
 import { getBackground } from "../data/backgrounds";
 import { getClassCreationConfig } from "../data/classCreation";
 import type { AbilityName, Armor, CharacterSheet, Currency, InventoryItem, Shield, Weapon } from "../model/characterSheet.types";
+import { addMoney, toCopper, type CurrencyUnit } from "../../../shared/utils/money";
 import {
   findCreationItemByCanonicalKey,
   getCreationItemCatalog,
@@ -11,7 +12,7 @@ import {
   type CreationCatalogItem,
 } from "./creationItemCatalog";
 
-const EMPTY_CURRENCY: Currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+const EMPTY_CURRENCY: Currency = { copperValue: 0 };
 
 const ARMOR_ALIASES: Record<string, string[]> = {
   None: [],
@@ -30,7 +31,7 @@ const ARMOR_ALIASES: Record<string, string[]> = {
 };
 
 type ParsedStarterEntry =
-  | { kind: "currency"; coin: keyof Currency; amount: number }
+  | { kind: "currency"; coin: CurrencyUnit; amount: number }
   | { kind: "item"; name: string; quantity: number; canonicalKey?: string | null };
 
 const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
@@ -41,11 +42,11 @@ const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
 const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   const currencyMatch = entry.trim().match(/^(\d+)\s*(cp|sp|ep|gp|pp)$/i);
   if (currencyMatch) {
-    return {
-      kind: "currency",
-      amount: Number(currencyMatch[1]),
-      coin: currencyMatch[2].toLowerCase() as keyof Currency,
-    };
+      return {
+        kind: "currency",
+        amount: Number(currencyMatch[1]),
+        coin: currencyMatch[2].toLowerCase() as CurrencyUnit,
+      };
   }
 
   const literalMatch = SPECIAL_LITERAL_STARTER_ITEMS[toStarterFallbackKey(entry)];
@@ -211,7 +212,8 @@ export const buildCreationLoadout = (
   for (const entry of entries) {
     const parsed = parseStarterEntry(entry);
     if (parsed.kind === "currency") {
-      currency[parsed.coin] += parsed.amount;
+      const nextCurrency = addMoney(currency, toCopper(parsed.amount, parsed.coin));
+      currency.copperValue = nextCurrency.copperValue;
       continue;
     }
 

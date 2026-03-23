@@ -18,6 +18,7 @@ type Props = {
   activeSessionId: string | null;
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
+  locale: "en" | "pt" | string;
   playerSheet: CharacterSheet | null;
   setPlayerSheet: Dispatch<SetStateAction<CharacterSheet | null>>;
   showToast: (toast: ToastState) => void;
@@ -30,6 +31,7 @@ export const usePlayerBoardLoadout = ({
   activeSessionId,
   inventory,
   itemsById,
+  locale,
   playerSheet,
   setPlayerSheet,
   showToast,
@@ -40,12 +42,12 @@ export const usePlayerBoardLoadout = ({
   const clearStatusTimeoutRef = useRef<number | null>(null);
 
   const weaponOptions = useMemo(
-    () => buildWeaponOptions(inventory, itemsById),
-    [inventory, itemsById],
+    () => buildWeaponOptions(inventory, itemsById, locale),
+    [inventory, itemsById, locale],
   );
   const armorOptions = useMemo(
-    () => buildArmorOptions(inventory, itemsById),
-    [inventory, itemsById],
+    () => buildArmorOptions(inventory, itemsById, locale),
+    [inventory, itemsById, locale],
   );
 
   const selectedWeaponId = useMemo(() => {

@@ -17,13 +17,13 @@ export const LandingPage = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#050208] text-slate-100 selection:bg-limiar-400/30 selection:text-white">
+    <div className="min-h-screen overflow-x-hidden bg-void-950 text-slate-100 selection:bg-limiar-400/30 selection:text-white">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(167,139,250,0.16),transparent_28%),radial-gradient(circle_at_15%_25%,rgba(34,211,238,0.14),transparent_18%),radial-gradient(circle_at_85%_18%,rgba(251,191,36,0.08),transparent_18%),linear-gradient(180deg,#050208_0%,#090413_35%,#050208_100%)]" />
-        <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:72px_72px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] bg-size-[72px_72px] opacity-[0.07]" />
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-limiar-500/20 blur-[140px] motion-safe:animate-[landing-drift_16s_ease-in-out_infinite]" />
-        <div className="absolute right-0 top-0 h-[32rem] w-[32rem] rounded-full bg-sky-500/10 blur-[160px] motion-safe:animate-[landing-drift_18s_ease-in-out_infinite_reverse]" />
-        <div className="absolute bottom-[-8rem] left-1/3 h-72 w-72 rounded-full bg-emerald-400/10 blur-[150px] motion-safe:animate-[landing-float_14s_ease-in-out_infinite]" />
+        <div className="absolute right-0 top-0 h-128 w-lg rounded-full bg-sky-500/10 blur-[160px] motion-safe:animate-[landing-drift_18s_ease-in-out_infinite_reverse]" />
+        <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-400/10 blur-[150px] motion-safe:animate-[landing-float_14s_ease-in-out_infinite]" />
       </div>
 
       <header className="relative z-10 border-b border-white/6 bg-slate-950/50 backdrop-blur-xl">
@@ -54,7 +54,7 @@ export const LandingPage = () => {
                 </Link>
                 <Link
                   to={routes.register}
-                  className="rounded-full border border-white/10 bg-white/[0.05] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:border-limiar-300/20 hover:bg-limiar-400/12"
+                  className="rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:border-limiar-300/20 hover:bg-limiar-400/12"
                 >
                   Criar conta
                 </Link>
@@ -86,7 +86,7 @@ export const LandingPage = () => {
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <Link
                   to={user ? routes.home : routes.register}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-limiar-400 px-7 py-4 text-base font-bold text-slate-950 shadow-[0_18px_40px_rgba(167,139,250,0.25)] transition-all hover:translate-y-[-1px] hover:bg-limiar-300"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-limiar-400 px-7 py-4 text-base font-bold text-slate-950 shadow-[0_18px_40px_rgba(167,139,250,0.25)] transition-all hover:-translate-y-px hover:bg-limiar-300"
                 >
                   {user ? "Entrar no painel" : "Comecar gratis"}
                   <ArrowIcon className="h-5 w-5" />
@@ -94,7 +94,7 @@ export const LandingPage = () => {
                 {!user && (
                   <Link
                     to={routes.login}
-                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-7 py-4 text-base font-semibold text-white transition-colors hover:border-white/20 hover:bg-white/[0.08]"
+                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/4 px-7 py-4 text-base font-semibold text-white transition-colors hover:border-white/20 hover:bg-white/8"
                   >
                     Ja tenho uma conta
                   </Link>
@@ -105,7 +105,7 @@ export const LandingPage = () => {
                 {landingEntryPoints.map((entry, index) => (
                   <div
                     key={entry.title}
-                    className="group relative overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.04] p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
+                    className="group relative overflow-hidden rounded-3xl border border-white/8 bg-white/4 p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
                     style={{ animationDelay: `${index * 140}ms` }}
                   >
                     <div className={`absolute inset-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${entry.tone}`} />
@@ -121,7 +121,7 @@ export const LandingPage = () => {
                 {landingSpotlights.map((spotlight, index) => (
                   <div
                     key={spotlight.title}
-                    className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
+                    className="rounded-3xl border border-white/8 bg-white/4 p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
                     style={{ animationDelay: `${index * 140 + 220}ms` }}
                   >
                     <p className="text-sm font-semibold text-white">{spotlight.title}</p>
@@ -142,7 +142,7 @@ export const LandingPage = () => {
             {landingStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.94))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-transform duration-300 hover:translate-y-[-2px] motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
+                className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.94))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-transform duration-300 hover:-translate-y-0.5 motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
                 style={{ animationDelay: `${index * 120}ms` }}
               >
                 <p className="text-3xl font-display font-bold text-white">{stat.value}</p>
@@ -168,12 +168,12 @@ export const LandingPage = () => {
             {landingFeatureCards.map((feature, index) => (
               <article
                 key={feature.title}
-                className="group relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(2,6,23,0.92))] p-7 shadow-[0_24px_70px_rgba(2,6,23,0.28)] transition-transform hover:translate-y-[-2px] motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
+                className="group relative overflow-hidden rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(2,6,23,0.92))] p-7 shadow-[0_24px_70px_rgba(2,6,23,0.28)] transition-transform hover:-translate-y-0.5 motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
                 style={{ animationDelay: `${index * 140}ms` }}
               >
                 <div className={`absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.04),transparent_28%),linear-gradient(135deg,var(--tw-gradient-stops))] ${feature.accent}`} />
                 <div className="relative">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={feature.iconPath} />
                     </svg>
@@ -198,7 +198,7 @@ export const LandingPage = () => {
                     className="flex gap-4 motion-safe:animate-[landing-rise_0.8s_ease-out_both]"
                     style={{ animationDelay: `${index * 140}ms` }}
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] font-display text-lg font-bold text-white">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 font-display text-lg font-bold text-white">
                       {item.step}
                     </div>
                     <div>
@@ -214,11 +214,11 @@ export const LandingPage = () => {
               <div className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,24,39,0.84),rgba(2,6,23,0.92))] p-6">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Player board</p>
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+                  <div className="rounded-3xl border border-white/8 bg-white/3 p-4">
                     <p className="text-sm font-semibold text-white">Ficha pronta para sessao</p>
                     <p className="mt-2 text-sm leading-6 text-slate-400">Criacao, equipamento inicial e continuidade visual com inventario e play sheet.</p>
                   </div>
-                  <div className="rounded-[24px] border border-emerald-300/15 bg-emerald-400/10 p-4">
+                  <div className="rounded-3xl border border-emerald-300/15 bg-emerald-400/10 p-4">
                     <p className="text-sm font-semibold text-emerald-100">Loja liberada pelo mestre</p>
                     <p className="mt-2 text-sm leading-6 text-emerald-50/80">A experiencia fica mais crivel quando a interface mostra o momento do jogo, nao so uma lista de links.</p>
                   </div>
@@ -229,7 +229,7 @@ export const LandingPage = () => {
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">GM dashboard</p>
                 <div className="mt-5 space-y-3">
                   {["Campanhas ativas", "Catalogo da loja", "Inventario por party", "Sessoes em andamento"].map((label) => (
-                    <div key={label} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <div key={label} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/3 px-4 py-3">
                       <span className="text-sm text-slate-200">{label}</span>
                       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-limiar-200">Live</span>
                     </div>
@@ -259,7 +259,7 @@ export const LandingPage = () => {
                 </Link>
                 <Link
                   to={user ? routes.home : routes.login}
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/[0.05] px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   {user ? "Ver dashboard" : "Entrar"}
                 </Link>

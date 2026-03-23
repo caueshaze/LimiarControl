@@ -1,5 +1,6 @@
 import re
 from datetime import date, datetime, timezone
+from typing import Sequence
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -17,7 +18,13 @@ from app.models.session_state import SessionState
 from app.schemas.inventory import InventoryRead
 from app.schemas.item import ItemRead
 from app.schemas.roll_event import RollDice, RollEventRead
-from app.schemas.session import ActiveSessionRead, LobbyStatusRead, SessionRead, SessionRuntimeRead
+from app.schemas.session import (
+    LobbyPlayer,
+    LobbyStatusRead,
+    RestState,
+    SessionRead,
+    SessionRuntimeRead,
+)
 from app.services.session_rest import normalize_rest_state
 
 DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
@@ -45,10 +52,16 @@ def parse_expression(expression: str) -> tuple[int, int, int] | None:
         return None
     return count, sides, modifier
 
+
+def require_identifier(value: str | None, detail: str) -> str:
+    if value is None:
+        raise HTTPException(status_code=500, detail=detail)
+    return value
+
 def to_session_read(entry: Session) -> SessionRead:
     number = entry.sequence_number if entry.sequence_number is not None else entry.number
     return SessionRead(
-        id=entry.id,
+        id=require_identifier(entry.id, "Session is missing an id"),
         campaignId=entry.campaign_id,
         partyId=entry.party_id,
         number=number,
@@ -104,7 +117,7 @@ def require_party_gm(party_id: str, user, session: DbSession) -> Party:
 
 def to_roll_read_local(entry: RollEvent) -> RollEventRead:
     return RollEventRead(
-        id=entry.id,
+        id=require_identifier(entry.id, "Roll event is missing an id"),
         campaignId=entry.campaign_id or "",
         sessionId=entry.session_id,
         userId=entry.user_id,
@@ -120,7 +133,7 @@ def to_roll_read_local(entry: RollEvent) -> RollEventRead:
 
 def to_inventory_read(entry: InventoryItem) -> InventoryRead:
     return InventoryRead(
-        id=entry.id,
+        id=require_identifier(entry.id, "Inventory item is missing an id"),
         campaignId=entry.campaign_id,
         partyId=entry.party_id,
         memberId=entry.member_id,
@@ -133,7 +146,7 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
     )
 
 
-def check_character_sheets(party_id: str, player_members: list, db: DbSession) -> None:
+def check_character_sheets(party_id: str, player_members: Sequence[PartyMember], db: DbSession) -> None:
     """Raises 422 if any joined player is missing a character sheet for this party."""
     from app.models.character_sheet import CharacterSheet as CharacterSheetModel
     from app.models.user import User as UserModel
@@ -163,7 +176,11 @@ def get_or_create_session_runtime(session_id: str, session: DbSession) -> Sessio
     ).first()
     if runtime:
         return runtime
-    runtime = SessionRuntime(session_id=session_id)
+    runtime = SessionRuntime(
+        session_id=session_id,
+        created_at=datetime.now(timezone.utc),
+        updated_at=None,
+    )
     session.add(runtime)
     session.flush()
     return runtime
@@ -189,12 +206,12 @@ def lobby_ready_list(runtime: SessionRuntime | None) -> list[str]:
 
 def serialize_lobby_status(entry: Session, runtime: SessionRuntime | None) -> LobbyStatusRead:
     expected_items = [
-        {"userId": user_id, "displayName": display_name}
+        LobbyPlayer(userId=user_id, displayName=display_name)
         for user_id, display_name in lobby_expected_map(runtime).items()
     ]
     ready_items = lobby_ready_list(runtime)
     return LobbyStatusRead(
-        sessionId=entry.id,
+        sessionId=require_identifier(entry.id, "Session is missing an id"),
         campaignId=entry.campaign_id,
         partyId=entry.party_id,
         expected=expected_items,
@@ -204,7 +221,7 @@ def serialize_lobby_status(entry: Session, runtime: SessionRuntime | None) -> Lo
     )
 
 
-def get_session_rest_state(session_id: str, session: DbSession) -> str:
+def get_session_rest_state(session_id: str, session: DbSession) -> RestState:
     states = session.exec(
         select(SessionState).where(SessionState.session_id == session_id)
     ).all()
@@ -223,13 +240,16 @@ def serialize_session_runtime(
     session: DbSession,
 ) -> SessionRuntimeRead:
     return SessionRuntimeRead(
-        sessionId=entry.id,
+        sessionId=require_identifier(entry.id, "Session is missing an id"),
         campaignId=entry.campaign_id,
         partyId=entry.party_id,
         status=entry.status,
         shopOpen=bool(runtime.shop_open) if runtime else False,
         combatActive=bool(runtime.combat_active) if runtime else False,
-        restState=get_session_rest_state(entry.id, session),
+        restState=get_session_rest_state(
+            require_identifier(entry.id, "Session is missing an id"),
+            session,
+        ),
     )
 
 
@@ -246,7 +266,7 @@ def record_session_activity(
 ) -> SessionCommandEvent:
     entry = SessionCommandEvent(
         id=str(uuid4()),
-        session_id=session_entry.id,
+        session_id=require_identifier(session_entry.id, "Session is missing an id"),
         user_id=user_id,
         member_id=member_id,
         actor_name=actor_name,

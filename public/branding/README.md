@@ -2,11 +2,11 @@ Branding assets expected by the app:
 
 1. Primary logo mark
 Path:
-`/workspace/public/branding/logo-mark.png`
+`/home/caue/LimiarControl/public/branding/logo-mark.png`
 
 Accepted fallback formats:
-`/workspace/public/branding/logo-mark.jpg`
-`/workspace/public/branding/logo-mark.jpeg`
+`/home/caue/LimiarControl/public/branding/logo-mark.jpg`
+`/home/caue/LimiarControl/public/branding/logo-mark.jpeg`
 
 Recommended file:
 - PNG with transparent background
@@ -23,4 +23,4 @@ Notes:
 - JPG works too, but it looks best if the background is already dark and clean.
 
 If you later want a horizontal version with symbol + wordmark, we can also wire:
-`/workspace/public/branding/logo-lockup.png`
+`/home/caue/LimiarControl/public/branding/logo-lockup.png`

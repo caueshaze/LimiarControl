@@ -83,23 +83,32 @@ export const GmDashboardPage = () => {
         hpActionState,
         hpDraftByUserId,
         handleOpenInventory,
+        handleRequestInitiativeRoll,
         inventoryOpenForUserId,
         itemDraftByUserId,
         levelUpActionState,
         missingSheetsPlayers,
+        rollAbility,
         rollAdvantage,
+        rollDc,
         rollExpression,
         rollOptions,
         rollReason,
+        rollSkill,
         rollTargetUserId,
+        rollType,
         setCurrencyDraftByUserId,
         setHpDraftByUserId,
         setItemDraftByUserId,
         setMissingSheetsPlayers,
+        setRollAbility,
         setRollAdvantage,
+        setRollDc,
         setRollExpression,
         setRollReason,
+        setRollSkill,
         setRollTargetUserId,
+        setRollType,
         setShowStartModal,
         setXpDraftByUserId,
         showStartModal,
@@ -155,20 +164,29 @@ export const GmDashboardPage = () => {
                 onlineUsers={onlineUsers}
                 partyPlayers={partyPlayers}
                 restState={restUiState}
+                rollAbility={rollAbility}
                 rollAdvantage={rollAdvantage}
+                rollDc={rollDc}
                 rollExpression={rollExpression}
                 rollOptions={rollOptions}
                 rollReason={rollReason}
+                rollSkill={rollSkill}
                 rollTargetUserId={rollTargetUserId}
+                rollType={rollType}
                 shopUiOpen={shopUiOpen}
                 onActivateClick={handleActivateClick}
                 onCommand={handleCommand}
                 onEndSession={handleEndSession}
                 onForceStart={handleForceStart}
+                onRequestInitiativeRoll={handleRequestInitiativeRoll}
+                setRollAbility={setRollAbility}
                 setRollAdvantage={setRollAdvantage}
+                setRollDc={setRollDc}
                 setRollExpression={setRollExpression}
                 setRollReason={setRollReason}
+                setRollSkill={setRollSkill}
                 setRollTargetUserId={setRollTargetUserId}
+                setRollType={setRollType}
             />
 
             {activeSession?.status === "ACTIVE" && effectiveCampaignId && (

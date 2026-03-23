@@ -135,7 +135,7 @@ export const CampaignHomePage = () => {
               accent="sky"
             />
             <CampaignQuickLinkCard
-              to={routes.npcs}
+              to={routes.bestiary}
               title={t("campaignHome.actionNpcs")}
               description={t("campaignHome.actionNpcsDescription")}
               accent="emerald"

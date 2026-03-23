@@ -4,11 +4,18 @@ import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { LocaleKey } from "../../../shared/i18n";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { buildInventoryGroups, getInventoryItemName } from "./sessionInventoryPanel.utils";
+import {
+  buildInventoryGroupsFromResolved,
+  filterInventoryEntries,
+  getInventoryItemName,
+  resolveInventoryEntries,
+  type SessionInventoryFilterGroup,
+} from "./sessionInventoryPanel.utils";
 
 type Props = {
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
+  locale: "en" | "pt" | string;
   open: boolean;
   selectedArmorId?: string | null;
   selectedWeaponId?: string | null;
@@ -18,12 +25,16 @@ type Props = {
 export const SessionInventoryModal = ({
   inventory,
   itemsById,
+  locale,
   open,
   selectedArmorId = null,
   selectedWeaponId = null,
   onClose,
 }: Props) => {
   const { t } = useLocale();
+  const [search, setSearch] = useState("");
+  const [group, setGroup] = useState<SessionInventoryFilterGroup>("all");
+  const [equippedOnly, setEquippedOnly] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -40,11 +51,24 @@ export const SessionInventoryModal = ({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onClose, open]);
 
+  useEffect(() => {
+    if (!open) return;
+    setSearch("");
+    setGroup("all");
+    setEquippedOnly(false);
+  }, [open]);
+
   if (!open) {
     return null;
   }
 
-  const groups = buildInventoryGroups(inventory, itemsById);
+  const resolvedEntries = resolveInventoryEntries(inventory, itemsById, locale);
+  const filteredEntries = filterInventoryEntries(resolvedEntries, {
+    equippedOnly,
+    group,
+    search,
+  });
+  const groups = buildInventoryGroupsFromResolved(filteredEntries);
 
   return (
     <div
@@ -85,6 +109,49 @@ export const SessionInventoryModal = ({
             <p className="text-sm text-slate-400">{t("inventory.empty")}</p>
           ) : (
             <div className="space-y-5">
+              <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+                <div className="flex flex-col gap-3 lg:flex-row">
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={t("inventory.searchPlaceholder")}
+                    className="flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEquippedOnly((current) => !current)}
+                    className={`rounded-2xl border px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] transition ${
+                      equippedOnly
+                        ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                        : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20"
+                    }`}
+                  >
+                    {t("inventory.equippedOnly")}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(["all", "weapon", "armor", "magic", "consumable", "misc"] as const).map((entryGroup) => (
+                    <button
+                      key={entryGroup}
+                      type="button"
+                      onClick={() => setGroup(entryGroup)}
+                      className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition ${
+                        group === entryGroup
+                          ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                          : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"
+                      }`}
+                    >
+                      {entryGroup === "all" ? t("inventory.filterAll") : getInventoryGroupLabel(entryGroup, t)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredEntries.length === 0 ? (
+                <p className="text-sm text-slate-400">{t("inventory.emptyFiltered")}</p>
+              ) : null}
+
               {groups.map((section) => (
                 <section key={section.group} className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -102,6 +169,7 @@ export const SessionInventoryModal = ({
                         item={resolved.item ?? undefined}
                         isCurrentArmor={resolved.entry.id === selectedArmorId}
                         isCurrentWeapon={resolved.entry.id === selectedWeaponId}
+                        locale={locale}
                       />
                     ))}
                   </div>
@@ -138,13 +206,15 @@ const SessionInventoryModalItem = ({
   item,
   isCurrentArmor,
   isCurrentWeapon,
+  locale,
 }: {
   entry: InventoryItem;
   item?: Item;
   isCurrentArmor: boolean;
   isCurrentWeapon: boolean;
+  locale: "en" | "pt" | string;
 }) => {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
   const propertyLabels = getItemPropertyLabels(item?.properties, locale);
   const hasDetails = Boolean(
@@ -166,7 +236,7 @@ const SessionInventoryModalItem = ({
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">
-            {getInventoryItemName(entry, item)}
+            {getInventoryItemName(entry, item, locale)}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">

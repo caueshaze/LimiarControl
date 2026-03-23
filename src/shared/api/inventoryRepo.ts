@@ -2,11 +2,7 @@ import type { InventoryItem } from "../../entities/inventory";
 import { http } from "./http";
 
 export type CurrencyWallet = {
-  cp: number;
-  sp: number;
-  ep: number;
-  gp: number;
-  pp: number;
+  copperValue: number;
 };
 
 type InventoryUpdatePayload = {

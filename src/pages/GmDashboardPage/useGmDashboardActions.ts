@@ -58,6 +58,10 @@ export const useGmDashboardActions = ({
   const [rollAdvantage, setRollAdvantage] = useState<"normal" | "advantage" | "disadvantage">("normal");
   const [showStartModal, setShowStartModal] = useState(false);
   const [rollTargetUserId, setRollTargetUserId] = useState<string | null>(null);
+  const [rollType, setRollType] = useState<string | null>(null);
+  const [rollAbility, setRollAbility] = useState<string | null>(null);
+  const [rollSkill, setRollSkill] = useState<string | null>(null);
+  const [rollDc, setRollDc] = useState<string>("");
   const [inventoryOpenForUserId, setInventoryOpenForUserId] = useState<string | null>(null);
   const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
   const [forceStarting, setForceStarting] = useState(false);
@@ -133,6 +137,19 @@ export const useGmDashboardActions = ({
     navigate(partyId ? routes.partyDetails.replace(":partyId", partyId) : routes.home);
   };
 
+  const handleRequestInitiativeRoll = async (userId: string) => {
+    if (!activeSession?.id) return;
+    await sessionsRepo.command(activeSession.id, {
+      type: "request_roll",
+      payload: {
+        expression: "d20",
+        targetUserId: userId,
+        rollType: "initiative",
+        reason: t("rolls.initiative" as LocaleKey),
+      },
+    });
+  };
+
   const handleCommand = async (
     type: CommandFeedback["type"],
     payload?: Record<string, unknown>,
@@ -145,6 +162,13 @@ export const useGmDashboardActions = ({
       if (type === "request_roll" && rollTargetUserId) extra.targetUserId = rollTargetUserId;
       if (type === "request_roll" && rollReason.trim()) extra.reason = rollReason.trim();
       if (type === "request_roll" && rollAdvantage !== "normal") extra.mode = rollAdvantage;
+      if (type === "request_roll" && rollType) {
+        extra.rollType = rollType;
+        if (rollAbility) extra.ability = rollAbility;
+        if (rollSkill) extra.skill = rollSkill;
+        const dcNum = Number(rollDc);
+        if (rollDc && !Number.isNaN(dcNum) && dcNum > 0) extra.dc = dcNum;
+      }
       await sessionsRepo.command(activeSession.id, { type, payload: { ...(payload ?? {}), ...extra } });
       if (type === "open_shop") setShopUiOpen(true);
       if (type === "close_shop") setShopUiOpen(false);
@@ -207,18 +231,27 @@ export const useGmDashboardActions = ({
     handleEndSession,
     handleForceStart,
     handleOpenInventory,
+    handleRequestInitiativeRoll,
     inventoryOpenForUserId,
     missingSheetsPlayers,
+    rollAbility,
     rollAdvantage,
+    rollDc,
     rollExpression,
     rollOptions,
     rollReason,
+    rollSkill,
     rollTargetUserId,
+    rollType,
     setMissingSheetsPlayers,
+    setRollAbility,
     setRollAdvantage,
+    setRollDc,
     setRollExpression,
     setRollReason,
+    setRollSkill,
     setRollTargetUserId,
+    setRollType,
     setShowStartModal,
     showStartModal,
     sortedCatalogItems,

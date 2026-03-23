@@ -95,7 +95,7 @@ export const PartyDetailsOverviewStrip = ({
       {cards.map((card) => (
         <article
           key={card.label}
-          className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-4 shadow-[0_16px_36px_rgba(2,6,23,0.22)]"
+          className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-4 shadow-[0_16px_36px_rgba(2,6,23,0.22)]"
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
             {card.label}
@@ -161,7 +161,7 @@ export const PartyDetailsPlayerSheetsCard = ({
             return (
               <article
                 key={player.userId}
-                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+                className="rounded-3xl border border-white/8 bg-white/3 p-4"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -244,7 +244,7 @@ export const PartyDetailsInventoryCard = ({
           players.map((player) => (
             <article
               key={player.userId}
-              className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+              className="rounded-3xl border border-white/8 bg-white/3 p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -257,7 +257,7 @@ export const PartyDetailsInventoryCard = ({
                     {t("gm.party.inventoryEquippedCount").replace("{n}", String(player.equippedCount))}
                   </p>
                 </div>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
                   {player.totalItems > 0 ? "Loaded" : "Empty"}
                 </span>
               </div>

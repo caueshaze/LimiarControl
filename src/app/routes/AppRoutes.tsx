@@ -199,7 +199,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                {renderRoute(<NpcsPage />)}
+                <Navigate to={routes.bestiary} replace />
               </RequireGmRole>
             </RequireAuth>
           }

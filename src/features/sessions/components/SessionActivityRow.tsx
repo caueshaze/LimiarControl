@@ -304,16 +304,71 @@ export const SessionActivityRow = ({ event }: { event: ActivityEvent }) => {
     );
   }
 
+  if (event.type === "roll_resolved") {
+    const rollTypeLabel: Record<string, string> = {
+      ability: t("rolls.abilityCheck"),
+      save: t("rolls.savingThrow"),
+      skill: t("rolls.skillCheck"),
+      initiative: t("rolls.initiative"),
+      attack: t("rolls.attackRoll"),
+    };
+    const label = rollTypeLabel[event.rollType] ?? event.rollType;
+    const context = event.ability ?? event.skill ?? null;
+    const successIcon = event.success === true ? " ✓" : event.success === false ? " ✗" : "";
+
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+        <span className="mt-0.5 text-base">🎯</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">
+            <span className="font-semibold">{event.actorName}</span>
+            {" — "}
+            {label}
+            {context && (
+              <span className="ml-1 text-slate-300">({context})</span>
+            )}
+            {" → "}
+            <span className="font-bold text-limiar-400">{event.total}</span>
+            {successIcon && (
+              <span className={`ml-1 font-semibold ${event.success ? "text-green-400" : "text-red-400"}`}>
+                {successIcon}
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            d20: [{event.rolls.join(", ")}] → {event.selectedRoll} + {event.modifierUsed}
+            {event.dc != null && ` vs DC ${event.dc}`}
+            {event.targetAc != null && ` vs AC ${event.targetAc}`}
+            {event.advantageMode !== "normal" && ` (${event.advantageMode})`}
+            {event.isGmRoll && " (GM)"}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-mono text-slate-500">
+          {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
-      <span className="mt-0.5 text-base">🛒</span>
+      <span className="mt-0.5 text-base">{event.action === "sold" ? "💸" : "🛒"}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white">
           <span className="font-semibold">{actor}</span>
-          {" bought "}
+          {" "}
+          {event.action === "sold"
+            ? t("sessionActivity.soldItem")
+            : t("sessionActivity.boughtItem")}
+          {" "}
           <span className="font-semibold text-amber-300">{event.itemName}</span>
           {event.quantity > 1 && <span className="text-slate-400"> ×{event.quantity}</span>}
         </p>
+        {event.amountLabel && (
+          <p className="mt-0.5 text-xs text-slate-400">
+            {t("sessionActivity.forPrice")} {event.amountLabel}
+          </p>
+        )}
       </div>
       <span className="shrink-0 text-xs font-mono text-slate-500">
         {formatSessionActivityOffset(event.sessionOffsetSeconds)}

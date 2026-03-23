@@ -1,5 +1,6 @@
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
+import { localizedItemName } from "../../../features/shop/utils/localizedItemName";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { PlayerPartySelectedItem } from "../playerParty.types";
 import { getItemTypeLabel } from "../playerParty.utils";
@@ -15,7 +16,7 @@ export const PlayerPartyInventoryCard = ({
   catalogItems,
   onSelectItem,
 }: Props) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
 
   return (
     <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] px-6 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
@@ -64,7 +65,7 @@ export const PlayerPartyInventoryCard = ({
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">
-                    {catalogItem?.name ?? t("inventory.unknownItem")}
+                    {catalogItem ? localizedItemName(catalogItem, locale) : t("inventory.unknownItem")}
                   </p>
                   <p className="truncate text-xs text-slate-500">
                     {getItemTypeLabel(catalogItem?.type, t)}

@@ -296,7 +296,7 @@ export const CharacterInfo = ({
         {raceData ? <RacePreviewCard raceData={raceData} sheet={sheet} /> : null}
 
         {classData && (
-          <div className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="rounded-3xl border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("sheet.basicInfo.classPreview")}</p>
             <p className="mt-3 text-sm font-semibold text-slate-100">{classData.name}</p>
             <p className="mt-1 leading-6">{t("sheet.basicInfo.hitDie")} {classData.hitDice}</p>
@@ -311,7 +311,7 @@ export const CharacterInfo = ({
         )}
 
         {backgroundData && (
-          <div className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="rounded-3xl border border-white/8 bg-slate-950/55 p-4 text-xs text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{t("sheet.basicInfo.bgPreview")}</p>
             <p className="mt-3 text-sm font-semibold text-slate-100">{backgroundData.name}</p>
             <p className="mt-1 leading-6">

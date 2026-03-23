@@ -66,15 +66,30 @@ export const PlayerEntityList = ({ sessionId, combatActive = false, lastEvent }:
       currentHp: typeof payload?.currentHp === "number" ? payload.currentHp : null,
       label: typeof payload?.label === "string" ? payload.label : null,
       revealedAt: null,
-      entity: {
-        id: campaignEntityId,
-        campaignId: typeof payload?.campaignId === "string" ? payload.campaignId : "",
-        name: entityName,
-        category: entityCategory,
-        baseHp: typeof payload?.maxHp === "number" ? payload.maxHp : null,
-        createdAt: "",
-      },
-    };
+        entity: {
+          id: campaignEntityId,
+          campaignId: typeof payload?.campaignId === "string" ? payload.campaignId : "",
+          name: entityName,
+          category: entityCategory,
+          abilities: {
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+          },
+          savingThrows: {},
+          skills: {},
+          damageResistances: [],
+          damageImmunities: [],
+          damageVulnerabilities: [],
+          conditionImmunities: [],
+          combatActions: [],
+          maxHp: typeof payload?.maxHp === "number" ? payload.maxHp : null,
+          createdAt: "",
+        },
+      };
   }, []);
 
   const processEntityEvent = useCallback((message: unknown) => {

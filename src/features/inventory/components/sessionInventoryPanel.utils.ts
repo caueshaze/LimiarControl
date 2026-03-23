@@ -2,6 +2,8 @@ import { ITEM_TYPES, type Item } from "../../../entities/item";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Armor } from "../../character-sheet/model/characterSheet.types";
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
+import { localizedItemName } from "../../shop/utils/localizedItemName";
+import { buildWalletDisplay } from "../../shop/utils/shopCurrency";
 
 export type SessionInventoryResolvedEntry = {
   entry: InventoryItem;
@@ -16,6 +18,14 @@ export type SessionInventorySelectOption = {
   detail: string | null;
 };
 
+export type SessionInventoryFilterGroup = "all" | SessionInventoryResolvedEntry["group"];
+
+export type SessionInventoryFilterState = {
+  equippedOnly: boolean;
+  group: SessionInventoryFilterGroup;
+  search: string;
+};
+
 export const EMPTY_EQUIPPED_ARMOR: Armor = {
   name: "None",
   baseAC: 0,
@@ -25,8 +35,6 @@ export const EMPTY_EQUIPPED_ARMOR: Armor = {
   stealthDisadvantage: false,
   minStrength: null,
 };
-
-const COIN_ORDER = ["pp", "gp", "ep", "sp", "cp"] as const;
 
 const INVENTORY_GROUP_ORDER = ["weapon", "armor", "magic", "consumable", "misc"] as const;
 
@@ -39,12 +47,16 @@ const getInventoryGroup = (item: Item | null): SessionInventoryResolvedEntry["gr
   return "misc";
 };
 
-export const getInventoryItemName = (entry: InventoryItem, item?: Item | null) =>
-  item?.name ?? entry.itemId;
+export const getInventoryItemName = (
+  entry: InventoryItem,
+  item: Item | null | undefined,
+  locale: "en" | "pt" | string,
+) => (item ? localizedItemName(item, locale) : entry.itemId);
 
 export const resolveInventoryEntries = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
+  locale: "en" | "pt" | string,
 ): SessionInventoryResolvedEntry[] =>
   (inventory ?? [])
     .map((entry) => {
@@ -53,7 +65,7 @@ export const resolveInventoryEntries = (
         entry,
         item,
         group: getInventoryGroup(item),
-        name: getInventoryItemName(entry, item),
+        name: getInventoryItemName(entry, item, locale),
       };
     })
     .sort((left, right) => {
@@ -72,9 +84,10 @@ export const resolveInventoryEntries = (
 export const buildInventoryGroups = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
+  locale: "en" | "pt" | string,
 ) => {
   const grouped = new Map<SessionInventoryResolvedEntry["group"], SessionInventoryResolvedEntry[]>();
-  for (const resolved of resolveInventoryEntries(inventory, itemsById)) {
+  for (const resolved of resolveInventoryEntries(inventory, itemsById, locale)) {
     const current = grouped.get(resolved.group) ?? [];
     current.push(resolved);
     grouped.set(resolved.group, current);
@@ -87,11 +100,58 @@ export const buildInventoryGroups = (
     .filter((section) => section.entries.length > 0);
 };
 
+const normalizeSearch = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+export const filterInventoryEntries = (
+  entries: SessionInventoryResolvedEntry[],
+  filters: SessionInventoryFilterState,
+) => {
+  const needle = normalizeSearch(filters.search);
+
+  return entries.filter((resolved) => {
+    if (filters.group !== "all" && resolved.group !== filters.group) {
+      return false;
+    }
+    if (filters.equippedOnly && !resolved.entry.isEquipped) {
+      return false;
+    }
+    if (!needle) {
+      return true;
+    }
+
+    const haystack = normalizeSearch([
+      resolved.name,
+      resolved.item?.description ?? "",
+      ...(resolved.item?.properties ?? []),
+      resolved.entry.notes ?? "",
+      resolved.group,
+    ].join(" "));
+
+    return haystack.includes(needle);
+  });
+};
+
+export const buildInventoryGroupsFromResolved = (
+  entries: SessionInventoryResolvedEntry[],
+) =>
+  INVENTORY_GROUP_ORDER
+    .map((group) => ({
+      group,
+      entries: entries.filter((entry) => entry.group === group),
+    }))
+    .filter((section) => section.entries.length > 0);
+
 export const buildInventorySummary = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
+  locale: "en" | "pt" | string,
 ) => {
-  const resolved = resolveInventoryEntries(inventory, itemsById);
+  const resolved = resolveInventoryEntries(inventory, itemsById, locale);
   return {
     distinctItems: resolved.length,
     equippedCount: resolved.filter((item) => item.entry.isEquipped).length,
@@ -101,11 +161,7 @@ export const buildInventorySummary = (
 };
 
 export const buildWalletCoins = (wallet: CurrencyWallet | null | undefined) => {
-  const current = wallet ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
-  return COIN_ORDER.map((coin) => ({
-    amount: current[coin],
-    coin,
-  })).filter((entry) => entry.amount > 0 || entry.coin === "gp");
+  return buildWalletDisplay(wallet);
 };
 
 const formatDexRule = (rule: string | null | undefined) => {
@@ -118,8 +174,9 @@ const formatDexRule = (rule: string | null | undefined) => {
 export const buildWeaponOptions = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
+  locale: "en" | "pt" | string,
 ): SessionInventorySelectOption[] =>
-  resolveInventoryEntries(inventory, itemsById)
+  resolveInventoryEntries(inventory, itemsById, locale)
     .filter((entry) => entry.group === "weapon")
     .map(({ entry, item, name }) => ({
       value: entry.id,
@@ -132,8 +189,9 @@ export const buildWeaponOptions = (
 export const buildArmorOptions = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
+  locale: "en" | "pt" | string,
 ): SessionInventorySelectOption[] =>
-  resolveInventoryEntries(inventory, itemsById)
+  resolveInventoryEntries(inventory, itemsById, locale)
     .filter((entry) => entry.group === "armor" && !entry.item?.isShield)
     .map(({ entry, item, name }) => ({
       value: entry.id,

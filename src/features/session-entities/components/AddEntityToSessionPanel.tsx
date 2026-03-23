@@ -34,7 +34,7 @@ export const AddEntityToSessionPanel = ({ campaignId, onAdd, onClose }: Props) =
   const handleAdd = async (entity: CampaignEntity) => {
     setAdding(entity.id);
     try {
-      await onAdd(entity.id, null, entity.baseHp);
+      await onAdd(entity.id, null, entity.maxHp);
     } finally {
       setAdding(null);
     }
@@ -75,8 +75,8 @@ export const AddEntityToSessionPanel = ({ campaignId, onAdd, onClose }: Props) =
             >
               <span className="flex-1 truncate font-medium">{entity.name}</span>
               <CategoryBadge category={entity.category} />
-              {entity.baseHp != null && (
-                <span className="text-[10px] text-slate-500">HP {entity.baseHp}</span>
+              {entity.maxHp != null && (
+                <span className="text-[10px] text-slate-500">HP {entity.maxHp}</span>
               )}
             </button>
           ))}

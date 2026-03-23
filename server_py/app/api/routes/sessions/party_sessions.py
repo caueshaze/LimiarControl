@@ -17,6 +17,7 @@ from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
 from app.schemas.session import ActiveSessionRead, SessionCreateByParty, SessionRead
 from app.services.session_rest import ensure_rest_state
+from app.services.session_state_finalize import finalize_session_state_data
 from ._shared import (
     check_character_sheets,
     get_or_create_session_runtime,
@@ -117,6 +118,7 @@ async def _start_session_for_party(
         )
         cloned = ensure_rest_state(cloned)
         cloned["restState"] = "exploration"
+        cloned = finalize_session_state_data(cloned)
         session.add(SessionState(
             id=str(uuid4()), session_id=entry.id, player_user_id=m.user_id, state_json=cloned,
         ))

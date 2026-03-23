@@ -19,7 +19,7 @@ export const SessionEntityRow = ({ entity, onToggleVisibility, onUpdateHp, onRem
   const category = (entity.entity?.category ?? "npc") as EntityCategory;
   const displayName = entity.label ? `${name} (${entity.label})` : name;
   const hp = entity.currentHp;
-  const maxHp = entity.entity?.baseHp ?? null;
+  const maxHp = entity.entity?.maxHp ?? null;
   const adjustments = [-10, -5, -1, 1, 5, 10];
   const isDead = typeof hp === "number" && hp <= 0;
 

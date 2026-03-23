@@ -232,6 +232,7 @@ class ItemRead(BaseModel):
     type: ItemType
     description: str
     price: Optional[float]
+    priceCopperValue: Optional[int] = None
     weight: Optional[float]
     damageDice: Optional[str]
     damageType: Optional[str]

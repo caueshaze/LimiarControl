@@ -94,7 +94,7 @@ export const CatalogItemReadonlyView = ({
               {t("catalog.card.price")}
             </p>
             <p className="mt-3 font-display text-2xl font-bold text-white">
-              {formatItemPrice(item.price, item.priceLabel)}
+              {formatItemPrice(item.price, item.priceLabel, item.priceCopperValue)}
             </p>
           </div>
         </div>

@@ -1,7 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import { useEffect } from "react";
-import { useNpcs, NpcGenerator, NpcList } from "../../features/npc-generator";
+import { useEffect, useState } from "react";
 import {
   CampaignEntityForm,
   CampaignEntityList,
@@ -13,20 +12,10 @@ import { Toast } from "../../shared/ui/Toast";
 import { useCampaigns } from "../../features/campaign-select";
 import { NpcsHero } from "./NpcsHero";
 
+type BestiaryMode = "create" | "library";
+
 export const NpcsPage = () => {
   const { selectedCampaign } = useCampaigns();
-  const location = useLocation();
-  const activeView = location.pathname === routes.bestiary ? "bestiary" : "npcs";
-  const {
-    npcs,
-    rawNpcs,
-    query,
-    setQuery,
-    saveNpc,
-    npcsLoading,
-    npcsError,
-    selectedCampaignId,
-  } = useNpcs(activeView === "npcs");
   const {
     entities,
     rawEntities,
@@ -39,23 +28,14 @@ export const NpcsPage = () => {
     removeEntity,
     loading: entitiesLoading,
     error: entitiesError,
-  } = useCampaignEntities(activeView === "bestiary");
+    selectedCampaignId,
+  } = useCampaignEntities(true);
   const { t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
+  const [mode, setMode] = useState<BestiaryMode>("create");
 
   useEffect(() => {
-    if (!npcsError || activeView !== "npcs") {
-      return;
-    }
-    showToast({
-      variant: "error",
-      title: t("npc.loadErrorTitle"),
-      description: t("npc.loadErrorDescription"),
-    });
-  }, [activeView, npcsError, showToast, t]);
-
-  useEffect(() => {
-    if (!entitiesError || activeView !== "bestiary") {
+    if (!entitiesError) {
       return;
     }
     showToast({
@@ -63,7 +43,7 @@ export const NpcsPage = () => {
       title: t("entity.loadErrorTitle"),
       description: t("entity.loadErrorDescription"),
     });
-  }, [activeView, entitiesError, showToast, t]);
+  }, [entitiesError, showToast, t]);
 
   if (!selectedCampaignId) {
     return (
@@ -72,17 +52,17 @@ export const NpcsPage = () => {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.96))]" />
           <div className="relative max-w-2xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-emerald-100/80">
-              {t("npc.heroEyebrow")}
+              {t("entity.heroEyebrow")}
             </p>
             <h1 className="mt-4 font-display text-4xl font-bold text-white">
-              {t("npc.subtitle")}
+              {t("entity.title")}
             </h1>
-            <p className="mt-4 text-sm leading-7 text-slate-300">{t("npc.noCampaign")}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-300">{t("entity.noCampaign")}</p>
             <Link
               to={routes.home}
               className="mt-6 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
             >
-              {t("npc.goCampaigns")}
+              {t("entity.goCampaigns")}
             </Link>
           </div>
         </section>
@@ -94,139 +74,159 @@ export const NpcsPage = () => {
     ":campaignId",
     selectedCampaignId,
   );
-  const heroTitle =
-    activeView === "bestiary" ? t("entity.title") : t("npc.workspaceTitle");
-  const heroDescription =
-    activeView === "bestiary" ? t("entity.description") : t("npc.workspaceDescription");
-  const heroTotalCount = activeView === "bestiary" ? rawEntities.length : rawNpcs.length;
-  const heroVisibleCount = activeView === "bestiary" ? entities.length : npcs.length;
+  const handleSaveEntity = async (payload: Parameters<typeof saveEntity>[0]) => {
+    await saveEntity(payload);
+    setMode("library");
+  };
 
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
       <NpcsHero
         campaignName={selectedCampaign?.name ?? t("home.activeCampaign")}
-        totalCount={heroTotalCount}
-        visibleCount={heroVisibleCount}
+        totalCount={rawEntities.length}
+        visibleCount={entities.length}
         backTo={campaignPanelRoute}
-        title={heroTitle}
-        description={heroDescription}
+        eyebrow={t("entity.heroEyebrow")}
+        title={t("entity.title")}
+        description={t("entity.description")}
       />
 
-      <section className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-2 shadow-[0_18px_50px_rgba(2,6,23,0.22)]">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Link
-            to={routes.npcs}
-            className={`rounded-[22px] px-5 py-4 transition ${
-              activeView === "npcs"
-                ? "border border-limiar-300/20 bg-limiar-400/10 text-white"
-                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-              {t("npc.tabNpcs")}
+      <section className="rounded-[32px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.26)]">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
+              {t("entity.form.generalSection")}
             </p>
-            <p className="mt-2 text-base font-semibold text-inherit">{t("npc.generatorTitle")}</p>
-            <p className="mt-2 text-sm leading-7 text-slate-300">
-              {t("npc.tabNpcsDescription")}
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {t("entity.pageFeatureOne")}
             </p>
-          </Link>
-          <Link
-            to={routes.bestiary}
-            className={`rounded-[22px] px-5 py-4 transition ${
-              activeView === "bestiary"
-                ? "border border-emerald-300/20 bg-emerald-400/10 text-white"
-                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-              {t("npc.tabBestiary")}
+          </div>
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
+              {t("entity.form.combatActions")}
             </p>
-            <p className="mt-2 text-base font-semibold text-inherit">{t("entity.title")}</p>
-            <p className="mt-2 text-sm leading-7 text-slate-300">
-              {t("npc.tabBestiaryDescription")}
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {t("entity.pageFeatureTwo")}
             </p>
-          </Link>
+          </div>
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
+              {t("entity.form.notesSection")}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {t("entity.pageFeatureThree")}
+            </p>
+          </div>
         </div>
       </section>
 
-      {activeView === "npcs" ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          <NpcGenerator onSave={saveNpc} />
-          {npcsLoading ? (
-            <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                {t("npc.listTitle")}
-              </p>
-              <div className="mt-5 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
-                {t("npc.loading")}
-              </div>
-            </section>
-          ) : (
-            <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <header className="border-b border-white/8 pb-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                  {t("npc.listTitle")}
-                </p>
-                <p className="mt-3 text-sm leading-7 text-slate-300">
-                  {t("npc.listDescription")}
-                </p>
-              </header>
-              <div className="mt-5">
-                <NpcList npcs={npcs} query={query} onQueryChange={setQuery} />
-              </div>
-            </section>
-          )}
+      <section className="rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-3 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setMode("create")}
+            className={`rounded-[24px] px-5 py-5 text-left transition ${
+              mode === "create"
+                ? "border border-emerald-300/20 bg-emerald-400/10 text-white shadow-[0_18px_40px_rgba(16,185,129,0.08)]"
+                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+              {t("entity.switchCreate")}
+            </p>
+            <p className="mt-2 text-lg font-semibold text-inherit">{t("entity.form.title")}</p>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              {t("entity.switchCreateDescription")}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("library")}
+            className={`rounded-[24px] px-5 py-5 text-left transition ${
+              mode === "library"
+                ? "border border-sky-300/20 bg-sky-400/10 text-white shadow-[0_18px_40px_rgba(56,189,248,0.08)]"
+                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+              {t("entity.switchLibrary")}
+            </p>
+            <p className="mt-2 text-lg font-semibold text-inherit">{t("entity.listPanelTitle")}</p>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              {t("entity.switchLibraryDescription")}
+            </p>
+          </button>
         </div>
-      ) : (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-            <header className="border-b border-white/8 pb-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                {t("entity.form.title")}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-slate-300">
-                {t("npc.bestiaryFormDescription")}
-              </p>
-            </header>
-            <div className="mt-5">
-              <CampaignEntityForm onSave={saveEntity} />
-            </div>
-          </section>
+      </section>
 
-          {entitiesLoading ? (
-            <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                {t("npc.bestiaryListTitle")}
-              </p>
-              <div className="mt-5 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
-                {t("entity.loading")}
+      {mode === "create" ? (
+        <section className="mx-auto w-full max-w-[1560px] rounded-[36px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.98))] p-5 sm:p-6 lg:p-8 shadow-[0_28px_80px_rgba(2,6,23,0.3)]">
+          <header className="border-b border-white/8 pb-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-emerald-100/75">
+                  {t("entity.form.title")}
+                </p>
+                <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">
+                  {t("entity.formPanelDescription")}
+                </p>
               </div>
-            </section>
-          ) : (
-            <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <header className="border-b border-white/8 pb-5">
+              <button
+                type="button"
+                onClick={() => setMode("library")}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+              >
+                {t("entity.openLibrary")}
+              </button>
+            </div>
+          </header>
+          <div className="mt-8">
+            <CampaignEntityForm onSave={handleSaveEntity} />
+          </div>
+        </section>
+      ) : entitiesLoading ? (
+        <section className="mx-auto w-full max-w-[1320px] rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+            {t("entity.listPanelTitle")}
+          </p>
+          <div className="mt-5 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
+            {t("entity.loading")}
+          </div>
+        </section>
+      ) : (
+        <section className="mx-auto w-full max-w-[1320px] rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+          <header className="border-b border-white/8 pb-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                  {t("npc.bestiaryListTitle")}
+                  {t("entity.listPanelTitle")}
                 </p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
-                  {t("npc.bestiaryListDescription")}
+                  {t("entity.listPanelDescription")}
                 </p>
-              </header>
-              <div className="mt-5">
-                <CampaignEntityList
-                  entities={entities}
-                  query={entityQuery}
-                  onQueryChange={setEntityQuery}
-                  categoryFilter={categoryFilter}
-                  onCategoryChange={setCategoryFilter}
-                  onUpdate={updateEntity}
-                  onRemove={removeEntity}
-                />
               </div>
-            </section>
-          )}
-        </div>
+              <button
+                type="button"
+                onClick={() => setMode("create")}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+              >
+                {t("entity.openCreate")}
+              </button>
+            </div>
+          </header>
+          <div className="mt-6">
+            <CampaignEntityList
+              entities={entities}
+              query={entityQuery}
+              onQueryChange={setEntityQuery}
+              categoryFilter={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+              onUpdate={updateEntity}
+              onRemove={removeEntity}
+            />
+          </div>
+        </section>
       )}
     </section>
   );

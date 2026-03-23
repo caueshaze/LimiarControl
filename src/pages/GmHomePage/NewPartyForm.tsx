@@ -25,10 +25,10 @@ export const NewPartyForm = ({
   const { t } = useLocale();
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-white/8 bg-[#070712] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+    <section className="relative overflow-hidden rounded-4xl border border-white/8 bg-[#070712] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.16),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,6,23,0.96))]" />
-        <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:42px_42px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] bg-size-[42px_42px] opacity-[0.08]" />
       </div>
 
       <div className="relative space-y-6">
@@ -43,13 +43,13 @@ export const NewPartyForm = ({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.05] p-4 backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-4 backdrop-blur-xl">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
               {t("gm.home.menuCampaigns")}
             </p>
             <p className="mt-3 font-display text-3xl font-bold text-white">{campaigns.length}</p>
           </div>
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.05] p-4 backdrop-blur-xl sm:col-span-2">
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-4 backdrop-blur-xl sm:col-span-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
               {t("home.activeCampaign")}
             </p>

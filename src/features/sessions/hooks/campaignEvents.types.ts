@@ -74,6 +74,10 @@ export type CampaignEvent =
         mode?: "advantage" | "disadvantage" | null;
         partyId?: string | null;
         reason?: string;
+        rollType?: string | null;
+        ability?: string | null;
+        skill?: string | null;
+        dc?: number | null;
         sessionId: string;
         targetUserId?: string | null;
       };
@@ -146,18 +150,10 @@ export type CampaignEvent =
         playerUserId: string;
         sessionId: string;
         currentCurrency?: {
-          cp?: number;
-          sp?: number;
-          ep?: number;
-          gp?: number;
-          pp?: number;
+          copperValue?: number;
         };
         grantedCurrency?: {
-          cp?: number;
-          sp?: number;
-          ep?: number;
-          gp?: number;
-          pp?: number;
+          copperValue?: number;
         };
       };
       version?: number;
@@ -295,6 +291,34 @@ export type CampaignEvent =
         entityName?: string | null;
         entityCategory?: string | null;
         maxHp?: number | null;
+      };
+      version?: number;
+    }
+  | {
+      type: "roll_resolved";
+      payload: {
+        event_id: string;
+        roll_type: string;
+        actor_kind: string;
+        actor_ref_id: string;
+        actor_display_name: string;
+        rolls: number[];
+        selected_roll: number;
+        advantage_mode: string;
+        modifier_used: number;
+        override_used: boolean;
+        formula: string;
+        total: number;
+        ability?: string | null;
+        skill?: string | null;
+        dc?: number | null;
+        target_ac?: number | null;
+        success?: boolean | null;
+        is_gm_roll: boolean;
+        roll_source: string;
+        sessionId: string;
+        campaignId: string;
+        partyId?: string | null;
       };
       version?: number;
     };

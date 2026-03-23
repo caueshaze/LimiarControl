@@ -20,6 +20,7 @@ from app.models.session_command_event import SessionCommandEvent
 from app.models.session_runtime import SessionRuntime
 from app.models.session_state import SessionState
 from app.models.user import User
+from app.models.combat import CombatState
 
 __all__ = [
     "SQLModel",
@@ -45,4 +46,5 @@ __all__ = [
     "SessionRuntime",
     "SessionState",
     "User",
+    "CombatState",
 ]

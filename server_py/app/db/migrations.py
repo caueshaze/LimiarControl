@@ -33,7 +33,7 @@ def _wait_for_database() -> None:
             if attempt >= settings.db_startup_retries:
                 raise RuntimeError(
                     "Database is unavailable during startup. "
-                    "Check DATABASE_URL and the Postgres container."
+                    "Check DATABASE_URL and make sure Postgres is running."
                 ) from exc
             print(
                 "Database not ready during startup "
@@ -69,6 +69,6 @@ def ensure_database_schema() -> None:
             "Database schema is behind the application code. "
             f"Current revisions: {sorted(current_heads)}. "
             f"Target revisions: {sorted(target_heads)}. "
-            "Run `cd /workspace/server_py && . .venv/bin/activate && alembic upgrade head` "
+            "Run `cd server_py && . .venv/bin/activate && alembic upgrade head` "
             "or enable AUTO_MIGRATE=true."
         )

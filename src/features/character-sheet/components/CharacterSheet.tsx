@@ -143,7 +143,7 @@ export const CharacterSheet = ({
         }}
       />
 
-      <div className="relative mx-auto max-w-[88rem] space-y-3 px-4 py-8 lg:px-6">
+      <div className="relative mx-auto max-w-352 space-y-3 px-4 py-8 lg:px-6">
         <CharacterSheetStatusBanners
           isPlay={isPlay}
           isSheetLocked={isSheetLocked}

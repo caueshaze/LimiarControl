@@ -2,14 +2,14 @@
 
 ## Requirements
 - Python 3.11+
-- Docker (for Postgres)
+- Docker (for Postgres and Centrifugo)
 
 ## Run Postgres
 ```bash
-docker compose up -d
+docker compose up -d db centrifugo
 ```
 
-This now starts both Postgres and Centrifugo.
+This starts PostgreSQL on port `5432` and Centrifugo on port `8001`.
 
 ## Install deps
 ```bash
@@ -20,16 +20,13 @@ pip install -e .
 cp .env.example .env
 ```
 
-The default `server_py/.env` is meant for the dev container, so its database host should be `db`:
-
-```env
-DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/limiarcontrol
-```
-
-If you run FastAPI on the host machine instead of inside Docker, change the database host to `localhost` and add these values to `server_py/.env`:
+Use localhost-based values in `server_py/.env`:
 
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+AUTO_MIGRATE=true
+JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
@@ -52,15 +49,15 @@ After the schema is up to date, seed the D&D base catalogs used by character cre
 Dry-run:
 
 ```bash
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py --dry-run
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py --dry-run
+server_py/.venv/bin/python scripts/import_dnd_base_items.py --dry-run
+server_py/.venv/bin/python scripts/import_dnd_base_spells.py --dry-run
 ```
 
 Execute the imports:
 
 ```bash
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_items.py
-/workspace/server_py/.venv/bin/python /workspace/scripts/import_dnd_base_spells.py
+server_py/.venv/bin/python scripts/import_dnd_base_items.py
+server_py/.venv/bin/python scripts/import_dnd_base_spells.py
 ```
 
 Notes:
@@ -82,6 +79,10 @@ Validated local result:
 cd server_py
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
+
+## Combat docs
+
+- Phase 3A spell-combat notes: [docs/combat_spells_phase_3a.md](./docs/combat_spells_phase_3a.md)
 
 ## Curl examples
 ```bash

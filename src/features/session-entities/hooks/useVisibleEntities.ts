@@ -36,6 +36,7 @@ export const useVisibleEntities = (sessionId: string | null | undefined) => {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(() => readCachedEntities(sessionId).length > 0);
   const requestIdRef = useRef(0);
+  const entitiesRef = useRef<SessionEntityPlayer[]>(readCachedEntities(sessionId));
 
   const invalidatePendingRequests = useCallback(() => {
     requestIdRef.current += 1;
@@ -43,9 +44,22 @@ export const useVisibleEntities = (sessionId: string | null | undefined) => {
   }, []);
 
   const replaceEntities = useCallback((nextEntities: SessionEntityPlayer[]) => {
+    entitiesRef.current = nextEntities;
     setEntities(nextEntities);
     writeCachedEntities(sessionId, nextEntities);
   }, [sessionId]);
+
+  const applyEntities = useCallback(
+    (updater: (current: SessionEntityPlayer[]) => SessionEntityPlayer[]) => {
+      setEntities((current) => {
+        const nextEntities = updater(current);
+        entitiesRef.current = nextEntities;
+        writeCachedEntities(sessionId, nextEntities);
+        return nextEntities;
+      });
+    },
+    [sessionId],
+  );
 
   useEffect(() => {
     if (!sessionId) {
@@ -109,43 +123,51 @@ export const useVisibleEntities = (sessionId: string | null | undefined) => {
   }, [refresh, sessionId]);
 
   const updateHp = useCallback((sessionEntityId: string, currentHp: number | null | undefined) => {
-    const entityExists = entities.some((entity) => entity.id === sessionEntityId);
+    const entityExists = entitiesRef.current.some((entity) => entity.id === sessionEntityId);
     invalidatePendingRequests();
-    setEntities((current) => {
-      const nextEntities = current.map((entity) =>
-        entity.id === sessionEntityId ? { ...entity, currentHp: currentHp ?? null } : entity,
-      );
-      writeCachedEntities(sessionId, nextEntities);
-      return nextEntities;
+    setLoaded(true);
+    applyEntities((current) => {
+      const normalizedHp = currentHp ?? null;
+      let changed = false;
+      const nextEntities = current.map((entity) => {
+        if (entity.id !== sessionEntityId) {
+          return entity;
+        }
+        if ((entity.currentHp ?? null) === normalizedHp) {
+          return entity;
+        }
+        changed = true;
+        return { ...entity, currentHp: normalizedHp };
+      });
+      return changed ? nextEntities : current;
     });
     if (!entityExists) {
       refresh();
     }
-  }, [entities, invalidatePendingRequests, refresh, sessionId]);
+  }, [applyEntities, invalidatePendingRequests, refresh]);
 
   const removeEntity = useCallback((sessionEntityId: string) => {
-    const entityExists = entities.some((entity) => entity.id === sessionEntityId);
+    const entityExists = entitiesRef.current.some((entity) => entity.id === sessionEntityId);
     invalidatePendingRequests();
-    setEntities((current) => {
+    setLoaded(true);
+    applyEntities((current) => {
       const nextEntities = current.filter((entity) => entity.id !== sessionEntityId);
-      writeCachedEntities(sessionId, nextEntities);
       return nextEntities;
     });
     if (!entityExists) {
       refresh();
     }
-  }, [entities, invalidatePendingRequests, refresh, sessionId]);
+  }, [applyEntities, invalidatePendingRequests, refresh]);
 
   const upsertEntity = useCallback((entity: SessionEntityPlayer) => {
     invalidatePendingRequests();
-    setEntities((current) => {
+    setLoaded(true);
+    applyEntities((current) => {
       const existing = current.find((entry) => entry.id === entity.id);
       if (!existing) {
-        const nextEntities = [...current, entity];
-        writeCachedEntities(sessionId, nextEntities);
-        return nextEntities;
+        return [...current, entity];
       }
-      const nextEntities = current.map((entry) =>
+      return current.map((entry) =>
         entry.id === entity.id
           ? {
               ...entry,
@@ -154,10 +176,8 @@ export const useVisibleEntities = (sessionId: string | null | undefined) => {
             }
           : entry,
       );
-      writeCachedEntities(sessionId, nextEntities);
-      return nextEntities;
     });
-  }, [invalidatePendingRequests, sessionId]);
+  }, [applyEntities, invalidatePendingRequests]);
 
   return { entities, loading, loaded, refresh, updateHp, removeEntity, upsertEntity };
 };

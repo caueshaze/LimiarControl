@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -10,11 +9,13 @@ import { DiceVisualizer } from "../../features/dice-roller/components/DiceVisual
 import { useToast } from "../../shared/hooks/useToast";
 import { Toast } from "../../shared/ui/Toast";
 import { useAuth } from "../../features/auth";
-import type { InventoryItem } from "../../entities/inventory";
 import { PlayerEntityList } from "../../features/session-entities";
 import { PlayerBoardHero } from "./PlayerBoardHero";
 import { PlayerBoardRestBanner } from "./PlayerBoardRestBanner";
+import { AuthoritativeRollDialog } from "../../features/rolls/components/AuthoritativeRollDialog";
+import type { AbilityName, AdvantageMode, RollType, SkillName } from "../../entities/roll/rollResolution.types";
 import { PlayerBoardRollDialog } from "./PlayerBoardRollDialog";
+import { usePlayerBoardCallbacks } from "./usePlayerBoardCallbacks";
 import { usePlayerBoardRestActions } from "./usePlayerBoardRestActions";
 import { PlayerBoardStatusPanel } from "./PlayerBoardStatusPanel";
 import { usePlayerBoardLoadout } from "./usePlayerBoardLoadout";
@@ -22,9 +23,10 @@ import { usePlayerBoardRestFeedback } from "./usePlayerBoardRestFeedback";
 import { usePlayerBoardRealtime } from "./usePlayerBoardRealtime";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
+import { PlayerCombatDebugPanel } from "./PlayerCombatDebugPanel";
 
 export const PlayerBoardPage = () => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const { user } = useAuth();
   const { partyId } = useParams<{ partyId: string }>();
   const { selectedCampaign, selectedCampaignId, setSelectedCampaignLocal } = useCampaigns();
@@ -61,6 +63,8 @@ export const PlayerBoardPage = () => {
     userId: user?.userId,
   });
   const {
+    clearPendingRoll,
+    handleAuthoritativeRollResolved,
     handleManualRoll,
     handleOpenShop,
     handleRoll,
@@ -126,6 +130,7 @@ export const PlayerBoardPage = () => {
     activeSessionId: activeSession?.id ?? null,
     inventory: myInventory,
     itemsById: catalogItems,
+    locale,
     playerSheet,
     setPlayerSheet,
     showToast,
@@ -145,47 +150,24 @@ export const PlayerBoardPage = () => {
     t,
     userId: user?.userId,
   });
-
-  const handleOpenSheet = useCallback(() => {
-    if (!partyId) {
-      return;
-    }
-    navigate(
-      `${routes.characterSheetParty.replace(":partyId", partyId)}?${new URLSearchParams({
-        mode: "play",
-        returnTo: "board",
-      }).toString()}`,
-    );
-  }, [navigate, partyId]);
-
-  const upsertInventoryEntry = useCallback((nextEntry: InventoryItem) => {
-    setMyInventory((current) => {
-      const source = current ?? [];
-      const existing = source.find((entry) => entry.id === nextEntry.id);
-      if (existing) {
-        return source.map((entry) => (entry.id === nextEntry.id ? nextEntry : entry));
-      }
-      const sameItem = source.find((entry) => entry.itemId === nextEntry.itemId);
-      if (sameItem) {
-        return source.map((entry) =>
-          entry.itemId === nextEntry.itemId
-            ? { ...entry, quantity: nextEntry.quantity, isEquipped: nextEntry.isEquipped, notes: nextEntry.notes }
-            : entry,
-        );
-      }
-      return [nextEntry, ...source];
-    });
-  }, []);
-
-  const applySoldInventoryEntry = useCallback((soldInventoryItemId: string, nextEntry: InventoryItem | null) => {
-    setMyInventory((current) => {
-      const source = current ?? [];
-      if (nextEntry) {
-        return source.map((entry) => (entry.id === soldInventoryItemId ? nextEntry : entry));
-      }
-      return source.filter((entry) => entry.id !== soldInventoryItemId);
-    });
-  }, []);
+  const {
+    applySoldInventoryEntry,
+    createBuySuccessToast,
+    createSellSuccessToast,
+    flashInventory,
+    handleOpenSheet,
+    translateShopErrorMessage,
+    upsertInventoryEntry,
+  } = usePlayerBoardCallbacks({
+    locale,
+    navigate,
+    partyId,
+    setInventoryFlash,
+    setMyInventory,
+    setPlayerWallet,
+    showToast,
+    t,
+  });
 
   return (
     <section className="space-y-6">
@@ -227,12 +209,19 @@ export const PlayerBoardPage = () => {
             pendingRoll={pendingRoll}
             playerStatus={playerStatus}
             restState={restState}
-            shopAvailable={shopAvailable}
-            shopOpen={shopOpen}
             usingHitDie={usingHitDie}
             onUseHitDie={handleUseHitDie}
-            onOpenShop={handleOpenShop}
           />
+          
+          {activeSession?.id && (
+             <PlayerCombatDebugPanel 
+               campaignId={effectiveCampaignId}
+               playerSheet={playerSheet}
+               playerStatus={playerStatus}
+               sessionId={activeSession.id}
+               userId={user?.userId}
+             />
+          )}
 
           {activeSession?.id && (
             <PlayerEntityList
@@ -244,7 +233,7 @@ export const PlayerBoardPage = () => {
 
           {activeSession?.id && (
             <SessionActivityToggle
-              refreshSignal={lastEvent ? `${lastEvent.type}:${lastEvent.version ?? ""}` : null}
+              refreshSignal={lastEvent ? JSON.stringify(lastEvent) : null}
               sessionId={activeSession.id}
             />
           )}
@@ -281,20 +270,14 @@ export const PlayerBoardPage = () => {
                   upsertInventoryEntry(inventoryItem);
                   void refreshInventoryData();
                   void refreshPlayerWallet();
-                  setInventoryOpen(true);
-                  setInventoryFlash(true);
-                  window.setTimeout(() => setInventoryFlash(false), 1800);
-                  showToast({
-                    variant: "success",
-                    title: t("shop.buyTitle"),
-                    description: `${item.name} ${t("shop.buyDescription")}`,
-                  });
+                  flashInventory();
+                  showToast(createBuySuccessToast(item));
                 }}
                 onBuyError={(message) =>
                   showToast({
                     variant: "error",
                     title: t("shop.buyErrorTitle"),
-                    description: message ?? t("shop.buyErrorDescription"),
+                    description: translateShopErrorMessage(message),
                   })
                 }
                 onSell={(item, result) => {
@@ -303,12 +286,7 @@ export const PlayerBoardPage = () => {
                     applySoldInventoryEntry(soldEntry.id, result.inventoryItem);
                   }
                   setPlayerWallet(result.currentCurrency);
-                  setInventoryOpen(true);
-                  showToast({
-                    variant: "success",
-                    title: t("shop.sellSuccessTitle"),
-                    description: `${item.name} ${t("shop.sellSuccessDescription")} ${result.refundLabel}.`,
-                  });
+                  showToast(createSellSuccessToast(item, result.refundLabel));
                 }}
                 onSellError={(message) =>
                   showToast({
@@ -323,7 +301,24 @@ export const PlayerBoardPage = () => {
         </div>
       </div>
 
-      {pendingRoll && (
+      {pendingRoll && pendingRoll.rollType ? (
+        <AuthoritativeRollDialog
+          request={{
+            rollType: pendingRoll.rollType as RollType,
+            ability: (pendingRoll.ability ?? undefined) as AbilityName | undefined,
+            skill: (pendingRoll.skill ?? undefined) as SkillName | undefined,
+            advantageMode: (pendingRoll.mode ?? "normal") as AdvantageMode,
+            dc: pendingRoll.dc,
+            reason: pendingRoll.reason,
+            issuedBy: pendingRoll.issuedBy,
+          }}
+          sessionId={activeSession?.id ?? ""}
+          actorKind="player"
+          actorRefId={user?.userId ?? ""}
+          onClose={clearPendingRoll}
+          onResolved={handleAuthoritativeRollResolved}
+        />
+      ) : pendingRoll ? (
         <PlayerBoardRollDialog
           activeSessionId={activeSession?.id ?? null}
           manualValue={manualValue}
@@ -334,7 +329,7 @@ export const PlayerBoardPage = () => {
           onSubmitManual={handleManualRoll}
           onVirtualRoll={handleRoll}
         />
-      )}
+      ) : null}
       <DiceVisualizer events={rollEvents} />
     </section>
   );

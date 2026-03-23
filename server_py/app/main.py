@@ -26,6 +26,7 @@ from app.api.routes import (
   auth_router,
   me_router,
   users_router,
+  combat_router,
 )
 from app.api.ws import router as ws_router
 from app.core.config import settings
@@ -82,6 +83,7 @@ app.include_router(sessions_router, prefix="/api", tags=["sessions"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
+app.include_router(combat_router, prefix="/api", tags=["combat"])
 app.include_router(centrifugo_router, prefix="/api", tags=["centrifugo"])
 app.include_router(ws_router, prefix="/ws")
 
