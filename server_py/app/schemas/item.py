@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -7,39 +8,35 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.models.base_item import (
     BaseItemArmorCategory,
     BaseItemCostUnit,
+    BaseItemDamageType,
+    BaseItemDexBonusRule,
     BaseItemKind,
     BaseItemWeaponCategory,
     BaseItemWeaponRangeType,
 )
 from app.models.item import ItemType
+from app.services.item_properties import normalize_item_properties
 
 DICE_EXPRESSION_RE = re.compile(
-    r"^\s*(?:(\d*)d(\d+))\s*(?:([+-])\s*(\d+))?\s*$",
+    r"^\s*(?:(\d*)d(\d+)|(\d+))\s*(?:([+-])\s*(\d+))?\s*$",
     re.IGNORECASE,
 )
-ITEM_DAMAGE_TYPE_VALUES = (
-    "acid",
-    "bludgeoning",
-    "cold",
-    "fire",
-    "force",
-    "lightning",
-    "necrotic",
-    "piercing",
-    "poison",
-    "psychic",
-    "radiant",
-    "slashing",
-    "thunder",
-)
-ITEM_DAMAGE_TYPE_MAP = {value.lower(): value for value in ITEM_DAMAGE_TYPE_VALUES}
-ITEM_DEX_BONUS_RULE_MAP = {
-    "full": "full",
-    "unlimited": "full",
-    "max_2": "max_2",
-    "max 2": "max_2",
-    "none": "none",
+ITEM_DAMAGE_TYPE_MAP = {
+    value.value.lower(): value.value for value in BaseItemDamageType
 }
+ITEM_DEX_BONUS_RULE_MAP = {
+    "full": BaseItemDexBonusRule.FULL.value,
+    "unlimited": BaseItemDexBonusRule.FULL.value,
+    "max_2": BaseItemDexBonusRule.MAX_2.value,
+    "max 2": BaseItemDexBonusRule.MAX_2.value,
+    "none": BaseItemDexBonusRule.NONE.value,
+}
+
+
+def _raw_value(value: object) -> str:
+    if isinstance(value, Enum):
+        return str(value.value)
+    return str(value)
 
 
 class ItemCreate(BaseModel):
@@ -49,7 +46,7 @@ class ItemCreate(BaseModel):
     price: Optional[float] = None
     weight: Optional[float] = None
     damageDice: Optional[str] = None
-    damageType: Optional[str] = None
+    damageType: Optional[BaseItemDamageType] = None
     rangeMeters: Optional[float] = None
     rangeLongMeters: Optional[float] = None
     versatileDamage: Optional[str] = None
@@ -57,7 +54,7 @@ class ItemCreate(BaseModel):
     weaponRangeType: Optional[BaseItemWeaponRangeType] = None
     armorCategory: Optional[BaseItemArmorCategory] = None
     armorClassBase: Optional[int] = None
-    dexBonusRule: Optional[str] = None
+    dexBonusRule: Optional[BaseItemDexBonusRule] = None
     strengthRequirement: Optional[int] = None
     stealthDisadvantage: Optional[bool] = None
     isShield: bool = False
@@ -71,12 +68,12 @@ class ItemCreate(BaseModel):
             raise ValueError("Field cannot be blank")
         return normalized
 
-    @field_validator("damageDice", "damageType", "versatileDamage", "dexBonusRule", mode="before")
+    @field_validator("damageDice", "versatileDamage", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: Optional[str]):
         if value is None:
             return None
-        normalized = str(value).strip()
+        normalized = _raw_value(value).strip()
         return normalized or None
 
     @field_validator("price", "weight", "rangeMeters", "rangeLongMeters")
@@ -106,22 +103,26 @@ class ItemCreate(BaseModel):
             raise ValueError("Invalid dice expression")
         return value.lower().replace(" ", "")
 
-    @field_validator("damageType")
+    @field_validator("damageType", mode="before")
     @classmethod
-    def normalize_damage_type(cls, value: Optional[str]):
+    def normalize_damage_type(cls, value: Optional[str | BaseItemDamageType]):
         if value is None:
             return None
-        canonical = ITEM_DAMAGE_TYPE_MAP.get(value.lower())
+        if isinstance(value, BaseItemDamageType):
+            return value
+        canonical = ITEM_DAMAGE_TYPE_MAP.get(_raw_value(value).lower())
         if canonical is None:
             raise ValueError(f"Unknown damage type: {value}")
         return canonical
 
-    @field_validator("dexBonusRule")
+    @field_validator("dexBonusRule", mode="before")
     @classmethod
-    def normalize_dex_bonus_rule(cls, value: Optional[str]):
+    def normalize_dex_bonus_rule(cls, value: Optional[str | BaseItemDexBonusRule]):
         if value is None:
             return None
-        canonical = ITEM_DEX_BONUS_RULE_MAP.get(value.lower())
+        if isinstance(value, BaseItemDexBonusRule):
+            return value
+        canonical = ITEM_DEX_BONUS_RULE_MAP.get(_raw_value(value).lower())
         if canonical is None:
             raise ValueError(f"Unknown dex bonus rule: {value}")
         return canonical
@@ -137,15 +138,10 @@ class ItemCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_structured_fields(self):
-        deduped_properties: list[str] = []
-        seen_properties: set[str] = set()
-        for property_value in self.properties:
-            normalized = str(property_value or "").strip()
-            if not normalized or normalized in seen_properties:
-                continue
-            seen_properties.add(normalized)
-            deduped_properties.append(normalized)
-        self.properties = deduped_properties
+        normalized_properties, invalid_properties = normalize_item_properties(self.properties)
+        if invalid_properties:
+            raise ValueError(f"Invalid item properties: {', '.join(invalid_properties)}")
+        self.properties = normalized_properties
 
         if (
             self.rangeLongMeters is not None
@@ -165,11 +161,19 @@ class ItemCreate(BaseModel):
                 raise ValueError("Weapons must define damage dice and damage type")
             if self.weaponCategory is None or self.weaponRangeType is None:
                 raise ValueError("Weapons must define weapon category and range type")
+            has_ranged_profile = self.weaponRangeType == BaseItemWeaponRangeType.RANGED
+            has_thrown_property = "thrown" in self.properties
+            if self.rangeMeters is None:
+                raise ValueError("Weapons must define range")
             if (
-                self.weaponRangeType == BaseItemWeaponRangeType.RANGED
-                and self.rangeMeters is None
+                self.rangeLongMeters is not None
+                and not has_ranged_profile
+                and not has_thrown_property
+                and self.rangeLongMeters != self.rangeMeters
             ):
-                raise ValueError("Ranged weapons must define range")
+                raise ValueError(
+                    "Long range can only differ from range for ranged weapons or thrown weapons"
+                )
             if self.versatileDamage is not None and "versatile" not in self.properties:
                 raise ValueError("Versatile damage requires the versatile property")
         elif self.type == ItemType.MAGIC:
@@ -201,10 +205,19 @@ class ItemCreate(BaseModel):
                 for value in self.properties
                 if value != "stealth_disadvantage"
             ]
-            if self.stealthDisadvantage:
-                self.properties.append("stealth_disadvantage")
             if self.isShield:
                 self.dexBonusRule = None
+                self.strengthRequirement = None
+                self.stealthDisadvantage = False
+            elif self.stealthDisadvantage:
+                self.properties.append("stealth_disadvantage")
+            if (
+                self.strengthRequirement is not None
+                and self.armorCategory != BaseItemArmorCategory.HEAVY
+            ):
+                raise ValueError(
+                    "strengthRequirement only applies to heavy armor"
+                )
         else:
             self.armorCategory = None
             self.armorClassBase = None
@@ -235,7 +248,7 @@ class ItemRead(BaseModel):
     priceCopperValue: Optional[int] = None
     weight: Optional[float]
     damageDice: Optional[str]
-    damageType: Optional[str]
+    damageType: Optional[BaseItemDamageType]
     rangeMeters: Optional[float]
     rangeLongMeters: Optional[float]
     versatileDamage: Optional[str]
@@ -243,7 +256,7 @@ class ItemRead(BaseModel):
     weaponRangeType: Optional[BaseItemWeaponRangeType] = None
     armorCategory: Optional[BaseItemArmorCategory] = None
     armorClassBase: Optional[int] = None
-    dexBonusRule: Optional[str] = None
+    dexBonusRule: Optional[BaseItemDexBonusRule] = None
     strengthRequirement: Optional[int] = None
     stealthDisadvantage: Optional[bool] = None
     isShield: bool = False

@@ -44,8 +44,8 @@ export const PlayerPartySessionCard = ({
 
   if (activeSession.status === "ACTIVE") {
     return (
-      <section className="group relative overflow-hidden rounded-[32px] border border-emerald-500/25 bg-[linear-gradient(180deg,rgba(8,37,29,0.92),rgba(2,10,14,0.96))] px-6 py-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:auto,42px_42px,42px_42px]" />
+      <section className="group relative overflow-hidden rounded-4xl border border-emerald-500/25 bg-[linear-gradient(180deg,rgba(8,37,29,0.92),rgba(2,10,14,0.96))] px-6 py-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[auto,42px_42px,42px_42px]" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <div className="mt-1 shrink-0">
@@ -60,7 +60,7 @@ export const PlayerPartySessionCard = ({
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300">
                   {t("playerParty.statusActive")}
                 </p>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200">
+                <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200">
                   #{activeSession.number}
                 </span>
               </div>
@@ -87,8 +87,8 @@ export const PlayerPartySessionCard = ({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-amber-500/25 bg-[linear-gradient(180deg,rgba(49,29,7,0.82),rgba(2,6,23,0.95))] px-6 py-6 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:auto,42px_42px,42px_42px]" />
+    <section className="relative overflow-hidden rounded-4xl border border-amber-500/25 bg-[linear-gradient(180deg,rgba(49,29,7,0.82),rgba(2,6,23,0.95))] px-6 py-6 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[auto,42px_42px,42px_42px]" />
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
           <div className="mt-1 shrink-0">
@@ -103,7 +103,7 @@ export const PlayerPartySessionCard = ({
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-300">
                 {t("playerParty.statusLobby")}
               </p>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200">
+              <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200">
                 #{activeSession.number}
               </span>
             </div>
@@ -131,7 +131,7 @@ export const PlayerPartySessionCard = ({
                         className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
                           isReady
                             ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
-                            : "border-white/10 bg-white/[0.04] text-slate-300"
+                            : "border-white/10 bg-white/4 text-slate-300"
                         }`}
                       >
                         {player.displayName}

@@ -21,10 +21,10 @@ export type Race = {
   id: string;
   name: string;
   size: "Pequeno" | "Médio";
-  darkvision: number | null;
+  darkvisionMeters: number | null;
   languages: string[];
   abilityBonuses: Partial<Record<AbilityName, number>>;
-  speed: number;
+  speedMeters: number;
   traits: string[];
   weaponProficiencies?: string[];
   armorProficiencies?: string[];
@@ -208,10 +208,10 @@ export const getRace = (raceId: string, raceConfig: RaceConfig = null): Race | u
     id: base.id,
     name: variantData?.name ?? base.name,
     size: base.size,
-    darkvision: base.darkvision,
+    darkvisionMeters: base.darkvisionMeters,
     languages: base.languages,
     abilityBonuses: mergeAbilityBonuses(base.abilityBonuses, variantAbilityBonuses),
-    speed: base.speed,
+    speedMeters: base.speedMeters,
     traits,
     weaponProficiencies: [...new Set([...(base.weaponProficiencies ?? []), ...variantWeaponProficiencies])],
     armorProficiencies: [...new Set([...(base.armorProficiencies ?? []), ...variantArmorProficiencies])],

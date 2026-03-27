@@ -92,7 +92,7 @@ const SpellChoiceGroup = ({ title, limitReached, selectedNames, names, onToggle 
             className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
               selected
                 ? "border-violet-500/40 bg-violet-500/15 text-violet-200"
-                : "border-white/8 bg-white/[0.02] text-slate-300 hover:border-white/14 hover:text-slate-100"
+                : "border-white/8 bg-white/2 text-slate-300 hover:border-white/14 hover:text-slate-100"
             }`}
           >
             {name}

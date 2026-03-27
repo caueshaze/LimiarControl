@@ -1,23 +1,3 @@
-export type {
-  BaseArmor,
-  BaseArmorCategory,
-  BaseGear,
-  BasePrice,
-  BaseWeapon,
-  BaseWeaponCategory,
-  BaseWeaponKind,
-  CoinType,
-} from "./equipmentCatalog";
-export {
-  BASE_ARMORS,
-  BASE_GEARS,
-  BASE_WEAPONS,
-  findBaseArmor,
-  findBaseGear,
-  findBaseWeapon,
-  getBaseArmors,
-  getBaseWeapons,
-} from "./equipmentCatalog";
 export type { DndItemNormalization } from "./itemCanonicalization";
 export {
   canonicalizeDndItemName,

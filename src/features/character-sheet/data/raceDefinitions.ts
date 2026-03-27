@@ -77,10 +77,10 @@ export type RaceDefinition = {
   selectable?: boolean;
   aliases?: string[];
   size: "Pequeno" | "Médio";
-  darkvision: number | null;
+  darkvisionMeters: number | null;
   languages: string[];
   abilityBonuses: Partial<Record<AbilityName, number>>;
-  speed: number;
+  speedMeters: number;
   traits: string[];
   weaponProficiencies?: string[];
   armorProficiencies?: string[];
@@ -97,25 +97,25 @@ const DRAGONBORN_ANCESTRY_OPTIONS = DRAGONBORN_ANCESTRIES.map((ancestry) => ({
 }));
 
 export const RACE_DEFINITIONS: RaceDefinition[] = [
-  { id: "hill-dwarf", name: "Anão da Colina", size: "Médio", darkvision: 60, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, wisdom: 1 }, speed: 25, traits: ["Resiliência Anã", "Sentido de Pedra", "Robustez Anã", "Sem Penalidade de Armadura Pesada"], weaponProficiencies: ["Machado de batalha", "Machadinha", "Martelo leve", "Martelo de guerra"], toolProficiencyChoices: { count: 1, options: ["Ferramentas de Ferreiro", "Ferramentas de Cervejeiro", "Ferramentas de Pedreiro"], label: "Escolha uma ferramenta de artesão (proficiência racial)" } },
-  { id: "mountain-dwarf", name: "Anão da Montanha", size: "Médio", darkvision: 60, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, strength: 2 }, speed: 25, traits: ["Resiliência Anã", "Sentido de Pedra", "Proficiência em Armadura", "Sem Penalidade de Armadura Pesada"], weaponProficiencies: ["Machado de batalha", "Machadinha", "Martelo leve", "Martelo de guerra"], armorProficiencies: ["Leve", "Média"], toolProficiencyChoices: { count: 1, options: ["Ferramentas de Ferreiro", "Ferramentas de Cervejeiro", "Ferramentas de Pedreiro"], label: "Escolha uma ferramenta de artesão (proficiência racial)" } },
-  { id: "high-elf", name: "Elfo Alto", size: "Médio", darkvision: 60, languages: ["Comum", "Élfico", LANGUAGE_CHOICE_SLOT], abilityBonuses: { dexterity: 2, intelligence: 1 }, speed: 30, traits: ["Ancestralidade Feérica", "Transe", "Truque"], skillProficiencies: ["perception"], weaponProficiencies: ["Espada longa", "Espada curta", "Arco longo", "Arco curto"] },
-  { id: "wood-elf", name: "Elfo da Floresta", size: "Médio", darkvision: 60, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, wisdom: 1 }, speed: 35, traits: ["Ancestralidade Feérica", "Transe", "Pés Velozes", "Máscara da Natureza"], skillProficiencies: ["perception"], weaponProficiencies: ["Espada longa", "Espada curta", "Arco longo", "Arco curto"] },
-  { id: "dark-elf", name: "Elfo Negro (Drow)", size: "Médio", darkvision: 120, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 30, traits: ["Ancestralidade Feérica", "Transe", "Sensibilidade à Luz Solar", "Magia Drow"], skillProficiencies: ["perception"], weaponProficiencies: ["Rapieira", "Espada curta", "Besta de mão"] },
-  { id: "lightfoot-halfling", name: "Halfling Pés-Leves", size: "Pequeno", darkvision: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, charisma: 1 }, speed: 25, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Naturalmente Furtivo"] },
-  { id: "stout-halfling", name: "Halfling Robusto", size: "Pequeno", darkvision: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, constitution: 1 }, speed: 25, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Resiliência Robusta"] },
-  { id: "human", name: "Humano", size: "Médio", darkvision: null, languages: ["Comum", LANGUAGE_CHOICE_SLOT], abilityBonuses: { strength: 1, dexterity: 1, constitution: 1, intelligence: 1, wisdom: 1, charisma: 1 }, speed: 30, traits: [] },
-  { id: "dragonborn", name: "Draconato", size: "Médio", darkvision: null, languages: ["Comum", "Dracônico"], abilityBonuses: { strength: 2, charisma: 1 }, speed: 30, traits: ["Ancestralidade Dracônica", "Sopro de Dragão", "Resistência a Danos"], configFields: [{ key: "dragonbornAncestry", label: "Ancestral dracônico", required: true, options: DRAGONBORN_ANCESTRY_OPTIONS }] },
+  { id: "hill-dwarf", name: "Anão da Colina", size: "Médio", darkvisionMeters: 18, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, wisdom: 1 }, speedMeters: 8, traits: ["Resiliência Anã", "Sentido de Pedra", "Robustez Anã", "Sem Penalidade de Armadura Pesada"], weaponProficiencies: ["Machado de batalha", "Machadinha", "Martelo leve", "Martelo de guerra"], toolProficiencyChoices: { count: 1, options: ["Ferramentas de Ferreiro", "Ferramentas de Cervejeiro", "Ferramentas de Pedreiro"], label: "Escolha uma ferramenta de artesão (proficiência racial)" } },
+  { id: "mountain-dwarf", name: "Anão da Montanha", size: "Médio", darkvisionMeters: 18, languages: ["Comum", "Anão"], abilityBonuses: { constitution: 2, strength: 2 }, speedMeters: 8, traits: ["Resiliência Anã", "Sentido de Pedra", "Proficiência em Armadura", "Sem Penalidade de Armadura Pesada"], weaponProficiencies: ["Machado de batalha", "Machadinha", "Martelo leve", "Martelo de guerra"], armorProficiencies: ["Leve", "Média"], toolProficiencyChoices: { count: 1, options: ["Ferramentas de Ferreiro", "Ferramentas de Cervejeiro", "Ferramentas de Pedreiro"], label: "Escolha uma ferramenta de artesão (proficiência racial)" } },
+  { id: "high-elf", name: "Elfo Alto", size: "Médio", darkvisionMeters: 18, languages: ["Comum", "Élfico", LANGUAGE_CHOICE_SLOT], abilityBonuses: { dexterity: 2, intelligence: 1 }, speedMeters: 9, traits: ["Ancestralidade Feérica", "Transe", "Truque"], skillProficiencies: ["perception"], weaponProficiencies: ["Espada longa", "Espada curta", "Arco longo", "Arco curto"] },
+  { id: "wood-elf", name: "Elfo da Floresta", size: "Médio", darkvisionMeters: 18, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, wisdom: 1 }, speedMeters: 11, traits: ["Ancestralidade Feérica", "Transe", "Pés Velozes", "Máscara da Natureza"], skillProficiencies: ["perception"], weaponProficiencies: ["Espada longa", "Espada curta", "Arco longo", "Arco curto"] },
+  { id: "dark-elf", name: "Elfo Negro (Drow)", size: "Médio", darkvisionMeters: 37, languages: ["Comum", "Élfico"], abilityBonuses: { dexterity: 2, charisma: 1 }, speedMeters: 9, traits: ["Ancestralidade Feérica", "Transe", "Sensibilidade à Luz Solar", "Magia Drow"], skillProficiencies: ["perception"], weaponProficiencies: ["Rapieira", "Espada curta", "Besta de mão"] },
+  { id: "lightfoot-halfling", name: "Halfling Pés-Leves", size: "Pequeno", darkvisionMeters: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, charisma: 1 }, speedMeters: 8, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Naturalmente Furtivo"] },
+  { id: "stout-halfling", name: "Halfling Robusto", size: "Pequeno", darkvisionMeters: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, constitution: 1 }, speedMeters: 8, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Resiliência Robusta"] },
+  { id: "human", name: "Humano", size: "Médio", darkvisionMeters: null, languages: ["Comum", LANGUAGE_CHOICE_SLOT], abilityBonuses: { strength: 1, dexterity: 1, constitution: 1, intelligence: 1, wisdom: 1, charisma: 1 }, speedMeters: 9, traits: [] },
+  { id: "dragonborn", name: "Draconato", size: "Médio", darkvisionMeters: null, languages: ["Comum", "Dracônico"], abilityBonuses: { strength: 2, charisma: 1 }, speedMeters: 9, traits: ["Ancestralidade Dracônica", "Sopro de Dragão", "Resistência a Danos"], configFields: [{ key: "dragonbornAncestry", label: "Ancestral dracônico", required: true, options: DRAGONBORN_ANCESTRY_OPTIONS }] },
   {
     id: "gnome",
     name: "Gnomo",
     selectable: true,
     aliases: ["forest-gnome", "rock-gnome"],
     size: "Pequeno",
-    darkvision: 60,
+    darkvisionMeters: 18,
     languages: ["Comum", "Gnomo"],
     abilityBonuses: { intelligence: 2 },
-    speed: 25,
+    speedMeters: 8,
     traits: ["Astúcia Gnômica"],
     structuredFeatures: [
       {
@@ -190,10 +190,10 @@ export const RACE_DEFINITIONS: RaceDefinition[] = [
     id: "half-elf",
     name: "Meio-Elfo",
     size: "Médio",
-    darkvision: 60,
+    darkvisionMeters: 18,
     languages: ["Comum", "Élfico", LANGUAGE_CHOICE_SLOT],
     abilityBonuses: { charisma: 2 },
-    speed: 30,
+    speedMeters: 9,
     traits: ["Ancestralidade Feérica", "Versatilidade de Perícias"],
     structuredFeatures: [
       {
@@ -232,10 +232,10 @@ export const RACE_DEFINITIONS: RaceDefinition[] = [
     id: "half-orc",
     name: "Meio-Orc",
     size: "Médio",
-    darkvision: 60,
+    darkvisionMeters: 18,
     languages: ["Comum", "Orc"],
     abilityBonuses: { strength: 2, constitution: 1 },
-    speed: 30,
+    speedMeters: 9,
     traits: ["Ameaçador", "Resistência Implacável", "Ataques Selvagens"],
     skillProficiencies: ["intimidation"],
     structuredFeatures: [
@@ -271,10 +271,10 @@ export const RACE_DEFINITIONS: RaceDefinition[] = [
     id: "tiefling",
     name: "Tiefling",
     size: "Médio",
-    darkvision: 60,
+    darkvisionMeters: 18,
     languages: ["Comum", "Infernal"],
     abilityBonuses: { intelligence: 1, charisma: 2 },
-    speed: 30,
+    speedMeters: 9,
     traits: ["Resistência Infernal", "Thaumaturgy", "Hellish Rebuke", "Darkness"],
     structuredFeatures: [
       {

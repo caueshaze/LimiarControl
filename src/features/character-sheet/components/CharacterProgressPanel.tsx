@@ -78,7 +78,7 @@ export const CharacterProgressPanel = ({
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-limiar-500 via-sky-400 to-emerald-400 transition-[width]"
+                  className="h-full rounded-full bg-linear-to-r from-limiar-500 via-sky-400 to-emerald-400 transition-[width]"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>

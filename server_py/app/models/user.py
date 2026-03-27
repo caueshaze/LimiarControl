@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, String, func
+from sqlalchemy import Boolean, Column, DateTime, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
 
@@ -18,6 +18,10 @@ class User(SQLModel, table=True):
     role: RoleMode = Field(
         default=RoleMode.PLAYER,
         sa_column=Column(SAEnum(RoleMode), nullable=False, server_default=RoleMode.PLAYER.value),
+    )
+    is_system_admin: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())

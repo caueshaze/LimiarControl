@@ -29,11 +29,10 @@ export const RollResultCard = ({ result }: { result: RollResult }) => {
         </p>
         {result.advantage_mode !== "normal" && (
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
-              result.advantage_mode === "advantage"
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${result.advantage_mode === "advantage"
                 ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
                 : "border border-red-500/30 bg-red-500/15 text-red-400"
-            }`}
+              }`}
           >
             {result.advantage_mode}
           </span>

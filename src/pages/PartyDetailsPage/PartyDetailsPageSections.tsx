@@ -8,15 +8,19 @@ import { PartyDetailsSessionActivityLog } from "./PartyDetailsSessionActivityLog
 type HeaderProps = {
   party: PartyDetail;
   activeSession: PartyActiveSession | null;
+  deletingParty: boolean;
   onStartSession: () => void;
   onEndSession: () => void;
+  onDeleteParty: () => void;
 };
 
 export const PartyDetailsHeader = ({
   party,
   activeSession,
+  deletingParty,
   onStartSession,
   onEndSession,
+  onDeleteParty,
 }: HeaderProps) => {
   const { t } = useLocale();
 
@@ -37,7 +41,15 @@ export const PartyDetailsHeader = ({
           Manage the roster, inspect sheets, and keep inventory close before the next session goes live.
         </p>
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={onDeleteParty}
+          disabled={deletingParty}
+          className="rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {deletingParty ? "Deleting..." : "Delete Party"}
+        </button>
         {activeSession?.status === "ACTIVE" ? (
           <>
             <button

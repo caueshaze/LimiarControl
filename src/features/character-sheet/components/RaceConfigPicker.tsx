@@ -27,7 +27,7 @@ export const RaceConfigPicker = ({
   const hasError = missingRequiredFields.includes("raceConfig");
 
   return (
-    <div className={`mt-4 rounded-[24px] border bg-slate-950/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${hasError ? "border-red-500/40" : "border-white/8"}`}>
+    <div className={`mt-4 rounded-3xl border bg-slate-950/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${hasError ? "border-red-500/40" : "border-white/8"}`}>
       <div className="mb-3">
         <span className={fieldLabel}>{t("sheet.raceConfig.title")}</span>
         {hasError ? <p className="mt-0.5 text-[10px] text-red-400">{t("sheet.validation.required")}</p> : null}

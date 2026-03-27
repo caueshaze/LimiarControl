@@ -3,12 +3,18 @@ import type { BaseSpell } from "../../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import {
+  localizeDamageType,
+  localizeSaveSuccessOutcome,
+  localizeSpellClass,
+} from "../../../shared/i18n/domainLabels";
 import { SpellCatalogField, SpellCatalogLegacyWarning, SpellCatalogToggleChip } from "./SpellCatalogEditorControls";
 import {
   SPELL_CLASS_OPTIONS,
   SPELL_COMPONENT_OPTIONS,
   SPELL_DAMAGE_TYPE_OPTIONS,
   SPELL_LEVEL_OPTIONS,
+  SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS,
   SPELL_SAVING_THROW_OPTIONS,
   SPELL_SCHOOL_OPTIONS,
   buildSpellUpdatePayload,
@@ -27,7 +33,7 @@ const schoolLabelKey = (school: string): LocaleKey =>
   `catalog.spells.school.${school}` as LocaleKey;
 
 export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [state, setState] = useState(() => createSpellEditorState(spell));
   const [isSaving, setIsSaving] = useState(false);
   const unsupportedValues = getUnsupportedSpellEditorValues(spell);
@@ -64,7 +70,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
             </p>
             <h3 className="mt-2 text-xl font-bold text-white">{spell.nameEn}</h3>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+          <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
             {spell.canonicalKey}
           </span>
         </div>
@@ -133,7 +139,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
               <SpellCatalogToggleChip
                 key={className}
                 active={state.classesJson.includes(className)}
-                label={className}
+                label={localizeSpellClass(className, locale)}
                 onClick={() =>
                   setState((current) => ({
                     ...current,
@@ -145,7 +151,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
           </div>
         </SpellCatalogField>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <SpellCatalogField label={t("catalog.spells.castingTime")}>
             <input
               value={state.castingTime}
@@ -153,7 +159,16 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
               className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-violet-400/60 focus:outline-none"
             />
           </SpellCatalogField>
-          <SpellCatalogField label={t("catalog.spells.range")}>
+          <SpellCatalogField label={`${t("catalog.spells.range")} (m)`}>
+            <input
+              type="number"
+              min={0}
+              value={state.rangeMeters}
+              onChange={(event) => setState((current) => ({ ...current, rangeMeters: event.target.value }))}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-violet-400/60 focus:outline-none"
+            />
+          </SpellCatalogField>
+          <SpellCatalogField label={t("catalog.spells.rangeText")}>
             <input
               value={state.rangeText}
               onChange={(event) => setState((current) => ({ ...current, rangeText: event.target.value }))}
@@ -199,7 +214,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
           </SpellCatalogField>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <SpellCatalogField label={t("catalog.spells.form.damageType")}>
             <select
               value={state.damageType}
@@ -209,7 +224,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
               <option value="">{t("catalog.spells.form.none")}</option>
               {SPELL_DAMAGE_TYPE_OPTIONS.map((damageType) => (
                 <option key={damageType} value={damageType}>
-                  {damageType}
+                  {localizeDamageType(damageType, locale)}
                 </option>
               ))}
             </select>
@@ -224,6 +239,23 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
               {SPELL_SAVING_THROW_OPTIONS.map((savingThrow) => (
                 <option key={savingThrow} value={savingThrow}>
                   {savingThrow}
+                </option>
+              ))}
+            </select>
+          </SpellCatalogField>
+          <SpellCatalogField label={t("catalog.spells.form.saveSuccessOutcome")}>
+            <select
+              value={state.saveSuccessOutcome}
+              onChange={(event) =>
+                setState((current) => ({ ...current, saveSuccessOutcome: event.target.value }))
+              }
+              disabled={!state.savingThrow}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-violet-400/60 focus:outline-none disabled:opacity-50"
+            >
+              <option value="">{t("catalog.spells.form.none")}</option>
+              {SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS.map((outcome) => (
+                <option key={outcome} value={outcome}>
+                  {localizeSaveSuccessOutcome(outcome, locale)}
                 </option>
               ))}
             </select>
@@ -282,7 +314,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-white/20 hover:bg-white/[0.08]"
+            className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-white/20 hover:bg-white/8"
           >
             {t("catalog.cancel")}
           </button>

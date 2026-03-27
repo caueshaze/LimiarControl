@@ -44,28 +44,25 @@ Set `AUTO_MIGRATE=false` if you prefer fail-fast behavior instead of automatic u
 
 ## Seed base catalogs
 
-After the schema is up to date, seed the D&D base catalogs used by character creation, shop flows, and campaign spell setup.
+After the schema is up to date, bootstrap the base item catalog from the repository JSON seed.
 
-Dry-run:
+Import:
 
 ```bash
-server_py/.venv/bin/python scripts/import_dnd_base_items.py --dry-run
-server_py/.venv/bin/python scripts/import_dnd_base_spells.py --dry-run
+server_py/.venv/bin/python scripts/import_base_items_json.py --input Base/base_items.seed.json --replace
 ```
 
-Execute the imports:
+Export:
 
 ```bash
-server_py/.venv/bin/python scripts/import_dnd_base_items.py
-server_py/.venv/bin/python scripts/import_dnd_base_spells.py
+server_py/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
 ```
 
 Notes:
 
-- Items are loaded into `base_item` and `base_item_alias`
-- Spells are loaded into `base_spell` and `base_spell_alias`
-- If `Base/DND5e_Equipamentos.json` is missing, the item importer falls back to synthetic essential gear seeds
-- The importers can be rerun safely because they upsert by canonical identity keys
+- `Base/base_items.seed.json` is the official bootstrap/backup file for base items
+- the runtime source of truth is the database
+- legacy CSV files are no longer part of the main runtime flow
 
 Validated local result:
 

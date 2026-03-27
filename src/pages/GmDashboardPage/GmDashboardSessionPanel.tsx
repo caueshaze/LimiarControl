@@ -4,9 +4,7 @@ import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { SessionEntity } from "../../entities/session-entity/sessionEntity.types";
 import type { CommandFeedback } from "./gmDashboard.types";
 import { GmDashboardRestControlCard } from "./GmDashboardRestControlCard";
-import { GmCombatDebugPanel } from "./GmCombatDebugPanel";
 import { CombatStartModal, type CombatParticipantPreview } from "./CombatStartModal";
-import { AuthoritativeRollDialog } from "../../features/rolls/components/AuthoritativeRollDialog";
 import { useState } from "react";
 import { combatRepo } from "../../shared/api/combatRepo";
 import { sessionEntitiesRepo } from "../../shared/api/sessionEntitiesRepo";
@@ -50,6 +48,8 @@ type Props = {
   onEndSession: () => void;
   onForceStart: () => void;
   onRequestInitiativeRoll: (userId: string) => Promise<void>;
+  onClearGmInitiativeQueue: () => void;
+  onSetGmInitiativeQueue: (participants: CombatParticipantPreview[]) => void;
   setRollAbility: (value: string | null) => void;
   setRollAdvantage: (value: "normal" | "advantage" | "disadvantage") => void;
   setRollDc: (value: string) => void;
@@ -87,6 +87,8 @@ export const GmDashboardSessionPanel = ({
   onEndSession,
   onForceStart,
   onRequestInitiativeRoll,
+  onClearGmInitiativeQueue,
+  onSetGmInitiativeQueue,
   setRollAbility,
   setRollAdvantage,
   setRollDc,
@@ -101,7 +103,6 @@ export const GmDashboardSessionPanel = ({
   const [combatError, setCombatError] = useState<string | null>(null);
   const [combatModalOpen, setCombatModalOpen] = useState(false);
   const [combatModalEntities, setCombatModalEntities] = useState<SessionEntity[]>([]);
-  const [gmInitiativeQueue, setGmInitiativeQueue] = useState<CombatParticipantPreview[]>([]);
 
   const handleOpenCombatModal = async () => {
     if (!activeSession?.id) return;
@@ -151,7 +152,7 @@ export const GmDashboardSessionPanel = ({
       // Request initiative rolls from all included players
       const playerIds = included.filter((p) => p.kind === "player").map((p) => p.id);
       await Promise.allSettled(playerIds.map((userId) => onRequestInitiativeRoll(userId)));
-      setGmInitiativeQueue(included.filter((p) => p.kind === "session_entity"));
+      onSetGmInitiativeQueue(included.filter((p) => p.kind === "session_entity"));
     } catch (err: any) {
       setCombatError(err?.response?.data?.detail || err.message || "Failed to start combat");
     } finally {
@@ -166,7 +167,7 @@ export const GmDashboardSessionPanel = ({
     try {
       await combatRepo.endCombat(activeSession.id);
       onCommand("end_combat");
-      setGmInitiativeQueue([]);
+      onClearGmInitiativeQueue();
       if (rollType === "attack" || rollType === "initiative") setRollType(null);
     } catch (err: any) {
       setCombatError(err?.response?.data?.detail || err.message || "Failed to end combat");
@@ -516,7 +517,7 @@ export const GmDashboardSessionPanel = ({
             )}
           </div>
 
-          <GmDashboardRestControlCard
+      <GmDashboardRestControlCard
             combatUiActive={combatUiActive}
             commandFeedback={commandFeedback}
             commandSending={commandSending}
@@ -524,13 +525,6 @@ export const GmDashboardSessionPanel = ({
             onCommand={onCommand}
           />
         </div>
-      )}
-      {activeSession?.status === "ACTIVE" && combatUiActive && (
-        <GmCombatDebugPanel
-          sessionId={activeSession.id!}
-          campaignId={activeSession.campaignId!}
-          partyPlayers={partyPlayers}
-        />
       )}
     </div>
 
@@ -542,25 +536,6 @@ export const GmDashboardSessionPanel = ({
       onClose={() => setCombatModalOpen(false)}
       onConfirm={(participants) => { void handleConfirmCombatStart(participants); }}
     />
-    {activeSession?.id && gmInitiativeQueue[0] && (
-      <AuthoritativeRollDialog
-        key={`gm-initiative:${gmInitiativeQueue[0].id}`}
-        request={{
-          rollType: "initiative",
-          advantageMode: "normal",
-          reason: gmInitiativeQueue[0].displayName,
-        }}
-        sessionId={activeSession.id}
-        actorKind="session_entity"
-        actorRefId={gmInitiativeQueue[0].id}
-        onResolved={() => {
-          setGmInitiativeQueue((current) => current.slice(1));
-        }}
-        onClose={() => {
-          setGmInitiativeQueue((current) => current.slice(1));
-        }}
-      />
-    )}
   </div>
   );
 };

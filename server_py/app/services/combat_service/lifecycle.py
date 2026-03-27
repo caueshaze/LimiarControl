@@ -68,6 +68,7 @@ class CombatLifecycleMixin:
         state.phase = CombatPhase.active
         state.round = 1
         state.current_turn_index = 0
+        cls._reset_turn_resources(state.participants[0])
         return True
 
     @classmethod
@@ -194,6 +195,18 @@ class CombatLifecycleMixin:
         if not state.participants:
             raise CombatServiceError("No participants")
 
+        # --- Expire turn_end effects for the outgoing participant ---
+        outgoing_p = state.participants[state.current_turn_index]
+        expired_end = await cls._expire_effects_for_participant(
+            session_id, state, outgoing_p["id"], "turn_end"
+        )
+        for exp in expired_end:
+            label = exp.get("condition_type") or exp.get("kind", "effect")
+            await cls._emit_log(session_id, {
+                "message": f"Effect '{label}' expired on {exp['target_display_name']} (end of {outgoing_p['display_name']}'s turn).",
+                "source": "effect_expired",
+            })
+
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
@@ -210,11 +223,26 @@ class CombatLifecycleMixin:
                 continue
             # "dead" and "defeated" are completely skipped silently in terms of explicit turn messages, they just pass.
 
+        # --- Expire turn_start effects for the incoming participant ---
+        incoming_p = state.participants[state.current_turn_index]
+        expired_start = await cls._expire_effects_for_participant(
+            session_id, state, incoming_p["id"], "turn_start"
+        )
+        for exp in expired_start:
+            label = exp.get("condition_type") or exp.get("kind", "effect")
+            await cls._emit_log(session_id, {
+                "message": f"Effect '{label}' expired on {exp['target_display_name']} (start of {incoming_p['display_name']}'s turn).",
+                "source": "effect_expired",
+            })
+
+        # --- Reset turn resources for the incoming participant ---
+        cls._reset_turn_resources(incoming_p)
+
         db.add(state)
         db.commit()
         db.refresh(state)
         await cls._emit_state(session_id, state)
-        
+
         active_p = state.participants[state.current_turn_index]
         active_name = active_p["display_name"]
         

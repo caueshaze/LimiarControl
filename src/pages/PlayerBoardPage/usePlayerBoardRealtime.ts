@@ -32,6 +32,7 @@ export const usePlayerBoardRealtime = ({
   const [inventoryFlash, setInventoryFlash] = useState(false);
   const redirectTimeoutRef = useRef<number | null>(null);
   const prevActiveSessionIdRef = useRef<string | null>(null);
+  const handledLastEventRef = useRef(lastEvent);
   const navigateBackToParty = (replace = false) => {
     navigate(
       partyId
@@ -42,6 +43,7 @@ export const usePlayerBoardRealtime = ({
   };
   const {
     clearPendingRoll,
+    handleAuthoritativeRollResolved,
     handleManualRoll,
     handleRoll,
     manualValue,
@@ -124,6 +126,10 @@ export const usePlayerBoardRealtime = ({
   }, [shopAvailable, lastCommand?.command, pendingOpenShop]);
   useEffect(() => {
     if (!lastEvent) return;
+    if (handledLastEventRef.current === lastEvent) {
+      return;
+    }
+    handledLastEventRef.current = lastEvent;
     const eventPartyId =
       typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
     if (eventPartyId && partyId && eventPartyId !== partyId) {
@@ -336,6 +342,7 @@ export const usePlayerBoardRealtime = ({
 
   return {
     clearPendingRoll,
+    handleAuthoritativeRollResolved,
     handleManualRoll,
     handleOpenShop,
     handleRoll,

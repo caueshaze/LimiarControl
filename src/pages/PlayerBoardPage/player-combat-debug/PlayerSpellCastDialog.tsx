@@ -35,17 +35,32 @@ const parseBonus = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const getSpellRolledTotal = (result: CombatSpellResult) =>
+  Math.max(0, (result.base_effect ?? 0) + (result.effect_bonus ?? 0));
+
 const formatSpellEffectBreakdown = (result: CombatSpellResult) => {
   const rolls = result.effect_rolls ?? [];
   const effectDiceLabel =
     formatDamageDiceExpression(result.effect_dice, Boolean(result.is_critical)) ??
     result.effect_dice;
   const effectTotal = result.effect_kind === "healing" ? result.healing : result.damage;
+  const rolledTotal = getSpellRolledTotal(result);
+  const isHalfDamageSave =
+    result.action_kind === "saving_throw" &&
+    result.is_saved &&
+    result.save_success_outcome === "half_damage" &&
+    result.effect_kind !== "healing";
 
   if (!rolls.length) {
-    return `Base ${result.base_effect ?? 0}${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""} = ${effectTotal}`;
+    const baseText = `Base ${result.base_effect ?? 0}${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
+    return isHalfDamageSave
+      ? `${baseText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
+      : `${baseText} = ${effectTotal}`;
   }
-  return `${effectDiceLabel}: [${rolls.join(", ")}]${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""} = ${effectTotal}`;
+  const rollText = `${effectDiceLabel}: [${rolls.join(", ")}]${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
+  return isHalfDamageSave
+    ? `${rollText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
+    : `${rollText} = ${effectTotal}`;
 };
 
 export const PlayerSpellCastDialog = ({
@@ -164,7 +179,7 @@ export const PlayerSpellCastDialog = ({
           Alvo: <span className="font-semibold text-white">{target.display_name}</span>
         </p>
         <p className="mt-1 text-sm text-slate-400">
-          Fluxo: {spellMode.replaceAll("_", " ")}
+          Fluxo: {spellMode.replace(/_/g, " ")}
           {spellMode !== "heal" && spellDamageType ? ` · ${spellDamageType}` : ""}
           {spellMode === "saving_throw" && spellSaveAbility ? ` · save ${spellSaveAbility}` : ""}
         </p>
@@ -192,7 +207,11 @@ export const PlayerSpellCastDialog = ({
                     : `${result.spell_name} nao acertou ${result.target_display_name}.`
                   : result.action_kind === "saving_throw"
                     ? result.is_saved
-                      ? `${result.target_display_name} passou no save e evitou o efeito desta fase.`
+                      ? result.save_success_outcome === "half_damage"
+                        ? pendingEffect
+                          ? `${result.target_display_name} passou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}; metade sera aplicada.`
+                          : `${result.target_display_name} passou no save e sofreu metade do ${effectKindLabel}: ${result.damage}.`
+                        : `${result.target_display_name} passou no save e evitou o efeito desta fase.`
                       : pendingEffect
                         ? `${result.target_display_name} falhou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}.`
                         : `${result.target_display_name} falhou no save e ${result.effect_kind === "healing" ? `recebeu ${result.healing} HP` : `sofreu ${result.damage} de dano`}.`

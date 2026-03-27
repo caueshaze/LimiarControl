@@ -79,7 +79,6 @@ export const CampaignEntityCombatActionsSection = ({
             key={action.id}
             action={action}
             index={index}
-            abilities={form.abilities}
             catalogWeapons={catalogWeapons}
             catalogSpells={catalogSpells}
             weaponById={weaponById}

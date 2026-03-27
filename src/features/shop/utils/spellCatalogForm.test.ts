@@ -18,7 +18,8 @@ const createSpell = (overrides: Partial<BaseSpell> = {}): BaseSpell => ({
   school: SpellSchool.EVOCATION,
   classesJson: ["Wizard", "Sorcerer"],
   castingTime: "1 action",
-  rangeText: "120 feet",
+  rangeMeters: 36,
+  rangeText: "36 m",
   duration: "Instantaneous",
   componentsJson: ["V", "S", "M"],
   materialComponentText: "A bit of phosphorus.",
@@ -26,7 +27,8 @@ const createSpell = (overrides: Partial<BaseSpell> = {}): BaseSpell => ({
   ritual: false,
   damageType: null,
   savingThrow: null,
-  source: "import",
+  saveSuccessOutcome: null,
+  source: "seed_json_bootstrap",
   sourceRef: null,
   isSrd: true,
   isActive: true,
@@ -40,8 +42,9 @@ describe("spellCatalogForm", () => {
       createSpell({
         classesJson: ["Wizard", "Psion"],
         componentsJson: ["V", "X"],
-        damageType: "Void",
-        savingThrow: "LCK",
+        damageType: "Void" as any,
+        savingThrow: "LCK" as any,
+        saveSuccessOutcome: "quarter_damage" as any,
       }),
     );
 
@@ -49,6 +52,7 @@ describe("spellCatalogForm", () => {
     expect(state.componentsJson).toEqual(["V"]);
     expect(state.damageType).toBe("");
     expect(state.savingThrow).toBe("");
+    expect(state.saveSuccessOutcome).toBe("");
   });
 
   it("reports unsupported legacy values", () => {
@@ -57,10 +61,11 @@ describe("spellCatalogForm", () => {
         createSpell({
           classesJson: ["Wizard", "Psion"],
           componentsJson: ["V", "X"],
-          damageType: "Void",
+          damageType: "Void" as any,
+          saveSuccessOutcome: "quarter_damage" as any,
         }),
       ),
-    ).toEqual(["Psion", "X", "Void"]);
+    ).toEqual(["Psion", "X", "Void", "quarter_damage"]);
   });
 
   it("clears material component text when M is not selected", () => {
@@ -72,5 +77,6 @@ describe("spellCatalogForm", () => {
 
     expect(payload.componentsJson).toEqual(["V", "S"]);
     expect(payload.materialComponentText).toBeNull();
+    expect(payload.rangeMeters).toBe(36);
   });
 });

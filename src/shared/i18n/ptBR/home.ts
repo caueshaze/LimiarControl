@@ -87,10 +87,4 @@ export const homePtBRDictionary = {
   "home.campaigns": "Gerenciar campanhas",
   "home.catalog": "Gerenciar catalogo",
   "home.npcs": "NPCs",
-  "home.dev.title": "Ajudas dev",
-  "home.dev.campaignId": "Campanha ativa id:",
-  "home.dev.none": "nenhuma",
-  "home.dev.resetCampaign": "Resetar campanha",
-  "home.dev.resetDb": "Resetar banco",
-  "home.dev.resetAll": "Resetar tudo",
 } as const;

@@ -5,6 +5,55 @@ export type CombatPhase = "initiative" | "active" | "ended";
 export type CombatParticipantKind = "player" | "session_entity";
 export type CombatSpellMode = "spell_attack" | "saving_throw" | "direct_damage" | "heal";
 
+// --- Active Effects ---
+
+export type ActiveEffectKind =
+  | "condition"
+  | "temp_ac_bonus"
+  | "attack_bonus"
+  | "damage_bonus"
+  | "advantage_on_attacks"
+  | "disadvantage_on_attacks"
+  | "dodging"
+  | "hidden";
+
+export type ActiveEffectConditionType =
+  | "prone"
+  | "poisoned"
+  | "restrained"
+  | "blinded"
+  | "frightened";
+
+export type ActiveEffectDurationType =
+  | "manual"
+  | "rounds"
+  | "until_turn_start"
+  | "until_turn_end";
+
+export type ActiveEffect = {
+  id: string;
+  source_participant_id?: string | null;
+  kind: ActiveEffectKind;
+  condition_type?: ActiveEffectConditionType | null;
+  numeric_value?: number | null;
+  duration_type: ActiveEffectDurationType;
+  remaining_rounds?: number | null;
+  expires_on?: "turn_start" | "turn_end" | null;
+  expires_at_participant_id?: string | null;
+  created_at: string;
+};
+
+export type TurnResources = {
+  action_used: boolean;
+  bonus_action_used: boolean;
+  reaction_used: boolean;
+};
+
+export type ReactionRequestState = {
+  status: "pending" | "approved" | "denied";
+  requested_at: string;
+};
+
 export type CombatParticipant = {
   id: string;
   kind: "player" | "session_entity";
@@ -15,6 +64,9 @@ export type CombatParticipant = {
   team: "players" | "enemies" | "allies" | "neutral";
   visible: boolean;
   actor_user_id: string | null;
+  active_effects?: ActiveEffect[];
+  turn_resources?: TurnResources;
+  reaction_request?: ReactionRequestState;
 };
 
 export type CombatState = {
@@ -54,6 +106,7 @@ export type CombatAttackRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  override_resource_limit?: boolean;
 };
 
 export type CombatAttackResult = {
@@ -101,6 +154,7 @@ export type CombatCastSpellRequest = {
   save_ability?: string | null;
   save_dc?: number | null;
   spell_attack_bonus?: number | null;
+  override_resource_limit?: boolean;
 };
 
 export type CombatSpellResult = {
@@ -122,6 +176,7 @@ export type CombatSpellResult = {
   target_kind: CombatParticipantKind;
   save_ability?: string | null;
   save_dc?: number | null;
+  save_success_outcome?: "none" | "half_damage" | null;
   effect_dice?: string | null;
   effect_bonus?: number | null;
   pending_spell_id?: string | null;
@@ -140,6 +195,7 @@ export type CombatEntityActionRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  override_resource_limit?: boolean;
 };
 
 export type CombatEntityActionResult = {
@@ -155,6 +211,7 @@ export type CombatEntityActionResult = {
   roll?: number | null;
   save_dc?: number | null;
   save_roll?: number | null;
+  save_success_outcome?: "none" | "half_damage" | null;
   roll_result?: RollResult | null;
   target_ac?: number | null;
   target_display_name?: string | null;
@@ -199,6 +256,58 @@ export type CombatDeathSaveRequest = {
   actor_participant_id?: string | null;
 };
 
+export type CombatApplyEffectRequest = {
+  target_participant_id: string;
+  kind: ActiveEffectKind;
+  condition_type?: ActiveEffectConditionType | null;
+  numeric_value?: number | null;
+  duration_type?: ActiveEffectDurationType;
+  remaining_rounds?: number | null;
+  expires_at_participant_id?: string | null;
+  source_participant_id?: string | null;
+};
+
+export type CombatRemoveEffectRequest = {
+  target_participant_id: string;
+  effect_id: string;
+};
+
+export type CombatConsumeReactionRequest = {
+  participant_id: string;
+  override_resource_limit?: boolean;
+};
+
+export type CombatReactionRequestRequest = {
+  actor_participant_id: string;
+};
+
+export type CombatReactionResolveRequest = {
+  actor_participant_id: string;
+  decision: "approve" | "deny";
+  override_resource_limit?: boolean;
+};
+
+export type StandardActionType = "dodge" | "help" | "hide" | "use_object" | "dash" | "disengage";
+
+export type CombatStandardActionRequest = {
+  action: StandardActionType;
+  actor_participant_id?: string | null;
+  target_participant_id?: string | null;
+  description?: string | null;
+  roll_source?: RollSource;
+  manual_roll?: number | null;
+  manual_rolls?: [number, number] | null;
+  override_resource_limit?: boolean;
+};
+
+export type CombatStandardActionResult = {
+  action: StandardActionType;
+  actor_name: string;
+  message: string;
+  roll_result?: RollResult | null;
+  effect_applied: boolean;
+};
+
 export const combatRepo = {
   getState: (sessionId: string) =>
     http.get<CombatState>(`/sessions/${sessionId}/combat`),
@@ -226,4 +335,18 @@ export const combatRepo = {
     http.post<any>(`/sessions/${sessionId}/combat/action/apply-damage`, payload),
   deathSave: (sessionId: string, payload: CombatDeathSaveRequest = {}) =>
     http.post<any>(`/sessions/${sessionId}/combat/action/death-save`, payload),
+  applyEffect: (sessionId: string, payload: CombatApplyEffectRequest) =>
+    http.post<CombatState>(`/sessions/${sessionId}/combat/effects/apply`, payload),
+  removeEffect: (sessionId: string, payload: CombatRemoveEffectRequest) =>
+    http.post<CombatState>(`/sessions/${sessionId}/combat/effects/remove`, payload),
+  standardAction: (sessionId: string, payload: CombatStandardActionRequest) =>
+    http.post<CombatStandardActionResult>(`/sessions/${sessionId}/combat/action/standard`, payload),
+  consumeReaction: (sessionId: string, payload: CombatConsumeReactionRequest) =>
+    http.post<CombatState>(`/sessions/${sessionId}/combat/action/consume-reaction`, payload),
+  requestReaction: (sessionId: string, payload: CombatReactionRequestRequest) =>
+    http.post<CombatState>(`/sessions/${sessionId}/combat/action/reaction/request`, payload),
+  resolveReaction: (sessionId: string, payload: CombatReactionResolveRequest) =>
+    http.post<CombatState>(`/sessions/${sessionId}/combat/action/reaction/resolve`, payload),
+  listEffects: (sessionId: string) =>
+    http.get<ActiveEffect[]>(`/sessions/${sessionId}/combat/effects`),
 };

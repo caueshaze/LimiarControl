@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import type {
   BaseItemArmorCategory,
+  BaseItemDamageType,
+  BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
@@ -27,7 +29,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
   const [price, setPrice] = useState("");
   const [weight, setWeight] = useState("");
   const [damageDice, setDamageDice] = useState("");
-  const [damageType, setDamageType] = useState("");
+  const [damageType, setDamageType] = useState<BaseItemDamageType | "">("");
   const [rangeMeters, setRangeMeters] = useState("");
   const [rangeLongMeters, setRangeLongMeters] = useState("");
   const [versatileDamage, setVersatileDamage] = useState("");
@@ -35,7 +37,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
   const [weaponRangeType, setWeaponRangeType] = useState<BaseItemWeaponRangeType | "">("");
   const [armorCategory, setArmorCategory] = useState<BaseItemArmorCategory | "">("");
   const [armorClassBase, setArmorClassBase] = useState("");
-  const [dexBonusRule, setDexBonusRule] = useState("");
+  const [dexBonusRule, setDexBonusRule] = useState<BaseItemDexBonusRule | "">("");
   const [strengthRequirement, setStrengthRequirement] = useState("");
   const [stealthDisadvantage, setStealthDisadvantage] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<ItemPropertySlug[]>([]);
@@ -84,9 +86,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             ? damageDice.trim()
             : undefined,
         damageType:
-          (type === "WEAPON" || type === "MAGIC") && damageType.trim()
-            ? damageType.trim()
-            : undefined,
+          (type === "WEAPON" || type === "MAGIC") && damageType ? damageType : undefined,
         rangeMeters:
           (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
             ? Number(rangeMeters)
@@ -108,7 +108,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             ? Number(armorClassBase)
             : undefined,
         dexBonusRule:
-          type === "ARMOR" && dexBonusRule.trim() ? dexBonusRule.trim() : undefined,
+          type === "ARMOR" && dexBonusRule ? dexBonusRule : undefined,
         strengthRequirement:
           type === "ARMOR" && strengthRequirement.trim()
             ? Number(strengthRequirement)
@@ -134,7 +134,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
       className="relative overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,12,28,0.94),rgba(2,6,23,0.96))] p-5 shadow-[0_24px_80px_rgba(2,6,23,0.28)] transition-all duration-300"
     >
       <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_28%),linear-gradient(135deg,var(--tw-gradient-stops))] ${meta.panelClass}`} />
-      <div className="pointer-events-none absolute -right-20 top-10 h-40 w-40 rounded-full bg-white/[0.05] blur-3xl transition-all duration-500" />
+      <div className="pointer-events-none absolute -right-20 top-10 h-40 w-40 rounded-full bg-white/5 blur-3xl transition-all duration-500" />
 
       <div className="relative">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,220px)]">
@@ -188,7 +188,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
                 className={`min-w-0 rounded-2xl border px-4 py-3 text-left transition-all duration-300 ${
                   active
                     ? `${itemMeta.chipClass} shadow-[0_14px_32px_rgba(15,23,42,0.22)]`
-                    : "border-white/8 bg-white/[0.03] text-slate-300 hover:border-white/16 hover:bg-white/[0.06]"
+                    : "border-white/8 bg-white/3 text-slate-300 hover:border-white/16 hover:bg-white/6"
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -283,7 +283,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
           <button
             type="submit"
             disabled={!canSubmit || isSubmitting}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-[linear-gradient(120deg,#c4b5fd_0%,#67e8f9_48%,#fde68a_100%)] px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_20px_40px_rgba(103,232,249,0.16)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-[linear-gradient(120deg,#c4b5fd_0%,#67e8f9_48%,#fde68a_100%)] px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_20px_40px_rgba(103,232,249,0.16)] transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? t("catalog.creatingAction") : t("catalog.createAction")}
           </button>

@@ -51,6 +51,19 @@ from .exceptions import CombatServiceError, _parse_dice, _roll_dice_expression
 
 class CombatCoreMixin:
     _PLAYER_SHIELD_BONUS = 2
+    _SAVE_SUCCESS_OUTCOME_VALUES = {"none", "half_damage"}
+    _RESOLUTION_TYPE_TO_SPELL_MODE: dict[str, str] = {
+        "spell_attack": "spell_attack",
+        "saving_throw": "saving_throw",
+        "heal": "heal",
+        "automatic": "direct_damage",
+    }
+
+    @classmethod
+    def _map_resolution_type_to_spell_mode(cls, resolution_type: object) -> str | None:
+        if not isinstance(resolution_type, str):
+            return None
+        return cls._RESOLUTION_TYPE_TO_SPELL_MODE.get(resolution_type)
     _SPECIFIC_WEAPON_PROFICIENCY_ALIASES = {
         "club": ("clava", "clavas", "club", "clubs"),
         "dagger": ("adaga", "adagas", "dagger", "daggers"),
@@ -83,6 +96,28 @@ class CombatCoreMixin:
     @classmethod
     def _safe_optional_int(cls, value: object) -> int | None:
         return value if isinstance(value, int) else None
+
+    @classmethod
+    def _normalize_save_success_outcome(cls, value: object) -> str | None:
+        normalized = cls._normalize_lookup(value).replace(" ", "_")
+        if normalized in cls._SAVE_SUCCESS_OUTCOME_VALUES:
+            return normalized
+        return None
+
+    @classmethod
+    def _resolve_save_damage_amount(
+        cls,
+        rolled_amount: int,
+        *,
+        is_saved: bool,
+        save_success_outcome: object,
+    ) -> int:
+        total = max(0, rolled_amount)
+        if not is_saved:
+            return total
+        if cls._normalize_save_success_outcome(save_success_outcome) == "half_damage":
+            return floor(total / 2)
+        return 0
 
     @classmethod
     def _get_player_ability_score(cls, data: dict, ability_name: str, default: int = 10) -> int:
@@ -589,6 +624,18 @@ class CombatCoreMixin:
             str_val = abilities.get("strength", 10)
             dex_val = abilities.get("dexterity", 10)
             ac = cls.calculate_player_armor_class_from_state(data)
+
+            # Wild Shape: override AC and physical ability scores with beast form
+            wild_shape = cls._as_dict(data.get("wildShape"))
+            if wild_shape.get("active"):
+                from app.services.wild_shape_catalog import get_form
+                form_key = wild_shape.get("formKey")
+                form = get_form(form_key) if isinstance(form_key, str) else None
+                if form is not None:
+                    ac = form.armor_class
+                    str_val = form.str_score
+                    dex_val = form.dex_score
+
             level = data.get("level", 1)
             prof_bonus = floor((level - 1) / 4) + 2
             spell_ability = spellcasting.get("ability")

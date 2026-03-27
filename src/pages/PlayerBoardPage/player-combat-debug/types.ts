@@ -29,4 +29,5 @@ export type CombatSpellOption = {
   suggestedMode: CombatSpellMode | null;
   damageType: string | null;
   savingThrow: string | null;
+  saveSuccessOutcome?: "none" | "half_damage" | null;
 };

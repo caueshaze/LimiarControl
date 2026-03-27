@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
+import { routes } from "../../app/routes/routes";
 import { useLocale } from "../hooks/useLocale";
 import type { RoleMode } from "../types/role";
 import { BrandMark } from "./BrandMark";
 
 type AppLayoutProps = {
   title: string;
-  user?: { displayName?: string | null; username: string; role: RoleMode } | null;
+  user?: {
+    displayName?: string | null;
+    username: string;
+    role: RoleMode;
+    isSystemAdmin: boolean;
+  } | null;
   onLogout?: () => void;
 };
 
@@ -33,10 +39,10 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
   return (
     <div className="min-h-screen text-slate-100">
       <header className="sticky top-0 z-50 border-b border-white/6 bg-[linear-gradient(180deg,rgba(5,2,8,0.92),rgba(5,2,8,0.78))] backdrop-blur-xl">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-limiar-300/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-limiar-300/35 to-transparent" />
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
 
-          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl">
             <BrandMark size="sm" className="shrink-0" />
             <div className="hidden min-w-0 sm:block">
               <p className="bg-linear-to-r from-limiar-100 via-white to-sky-100 bg-clip-text text-base font-bold tracking-tight text-transparent">
@@ -57,7 +63,7 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                 className={`flex items-center gap-3 rounded-full border px-2 py-2 pr-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-all ${
                   open
                     ? "border-limiar-400/30 bg-limiar-950/35"
-                    : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.08]"
+                    : "border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/8"
                 }`}
               >
                 <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-limiar-500/18 text-xs font-bold text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
@@ -81,7 +87,7 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               </button>
 
               {open && (
-                <div className="absolute right-0 top-[calc(100%+10px)] w-56 overflow-hidden rounded-[24px] border border-white/8 bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <div className="absolute right-0 top-[calc(100%+10px)] w-56 overflow-hidden rounded-3xl border border-white/8 bg-void-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
                   <div className="border-b border-white/6 px-4 py-3">
                     <p className="text-sm font-semibold text-white">
                       {user.displayName || user.username}
@@ -104,6 +110,35 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                       {locale === "en" ? "EN" : "PT"}
                     </span>
                   </button>
+
+                  {user.isSystemAdmin && (
+                    <>
+                      <Link
+                        to={routes.systemCatalogAdmin}
+                        onClick={() => setOpen(false)}
+                        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
+                      >
+                        <span className="uppercase tracking-widest text-slate-500">
+                          Admin
+                        </span>
+                        <span className="rounded-full border border-amber-400/30 px-2 py-0.5 font-bold uppercase tracking-widest text-amber-200">
+                          Base items
+                        </span>
+                      </Link>
+                      <Link
+                        to={routes.systemSpellCatalogAdmin}
+                        onClick={() => setOpen(false)}
+                        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
+                      >
+                        <span className="uppercase tracking-widest text-slate-500">
+                          Admin
+                        </span>
+                        <span className="rounded-full border border-violet-400/30 px-2 py-0.5 font-bold uppercase tracking-widest text-violet-200">
+                          Base spells
+                        </span>
+                      </Link>
+                    </>
+                  )}
 
                   <div className="mx-3 border-t border-white/6" />
 

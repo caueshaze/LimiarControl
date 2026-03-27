@@ -10,6 +10,12 @@ from app.models.session import Session as CampaignSession
 from app.models.user import User
 from app.schemas.combat import (
     CombatApplyDamageRequest,
+    CombatApplyEffectRequest,
+    CombatConsumeReactionRequest,
+    CombatReactionRequestRequest,
+    CombatReactionResolveRequest,
+    CombatStandardActionRequest,
+    CombatStandardActionResult,
     CombatApplyHealingRequest,
     CombatAttackRequest,
     CombatAttackResult,
@@ -18,11 +24,13 @@ from app.schemas.combat import (
     CombatEntityActionRequest,
     CombatEntityActionResult,
     CombatNextTurnRequest,
+    CombatRemoveEffectRequest,
     CombatResolveDamageRequest,
     CombatResolveSpellEffectRequest,
     CombatSetInitiativeRequest,
     CombatSpellResult,
     CombatStartRequest,
+    CombatWildShapeAttackRequest,
 )
 from app.services.centrifugo import centrifugo
 from app.services.combat import CombatService, CombatServiceError
@@ -172,6 +180,18 @@ async def action_attack_damage(
     return await CombatService.attack_damage(db, session_id, req, user.id, _is_gm(user))
 
 
+@router.post("/sessions/{session_id}/combat/action/wild-shape-attack", response_model=CombatAttackResult)
+async def action_wild_shape_attack(
+    session_id: str,
+    req: CombatWildShapeAttackRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    result = await CombatService.wild_shape_attack(db, session_id, req, user.id, _is_gm(user))
+    await _publish_roll_result(db, session_id, user, result.get("roll_result"))
+    return result
+
+
 @router.post("/sessions/{session_id}/combat/action/cast", response_model=CombatSpellResult)
 async def action_cast_spell(
     session_id: str,
@@ -250,3 +270,95 @@ async def action_death_save(
         _is_gm(user),
         req.actor_participant_id,
     )
+
+
+# --- Standard Actions ---
+
+
+@router.post("/sessions/{session_id}/combat/action/standard", response_model=CombatStandardActionResult)
+async def action_standard(
+    session_id: str,
+    req: CombatStandardActionRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    result = await CombatService.standard_action(db, session_id, req, user.id, _is_gm(user))
+    if result.get("roll_result"):
+        await _publish_roll_result(db, session_id, user, result["roll_result"])
+    return result
+
+
+# --- Action Economy ---
+
+
+@router.post("/sessions/{session_id}/combat/action/consume-reaction")
+async def action_consume_reaction(
+    session_id: str,
+    req: CombatConsumeReactionRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not _is_gm(user):
+        raise CombatServiceError("Players can only request reactions, not consume directly.", 403)
+    return await CombatService.consume_reaction(db, session_id, req, user.id, _is_gm(user))
+
+
+@router.post("/sessions/{session_id}/combat/action/reaction/request")
+async def action_reaction_request(
+    session_id: str,
+    req: CombatReactionRequestRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return await CombatService.request_reaction(db, session_id, req, user.id)
+
+
+@router.post("/sessions/{session_id}/combat/action/reaction/resolve")
+async def action_reaction_resolve(
+    session_id: str,
+    req: CombatReactionResolveRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not _is_gm(user):
+        raise CombatServiceError("Only GM can resolve reaction requests.", 403)
+    return await CombatService.resolve_reaction(db, session_id, req)
+
+
+# --- Active Effects ---
+
+
+@router.post("/sessions/{session_id}/combat/effects/apply")
+async def apply_effect(
+    session_id: str,
+    req: CombatApplyEffectRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not _is_gm(user):
+        raise CombatServiceError("Only GM can apply effects", 403)
+    return await CombatService.apply_effect(db, session_id, req)
+
+
+@router.post("/sessions/{session_id}/combat/effects/remove")
+async def remove_effect(
+    session_id: str,
+    req: CombatRemoveEffectRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not _is_gm(user):
+        raise CombatServiceError("Only GM can remove effects", 403)
+    return await CombatService.remove_effect(db, session_id, req)
+
+
+@router.get("/sessions/{session_id}/combat/effects")
+def list_effects(
+    session_id: str,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    state = CombatService.get_state(db, session_id)
+    if not state:
+        return []
+    return CombatService.get_all_effects(state)

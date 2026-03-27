@@ -107,7 +107,7 @@ export const entityEnUSDictionary = {
   "entity.form.usesCatalogWeapon": "Campaign weapon",
   "entity.form.weaponAutofillPrefix": "Suggested autofill based on the selected weapon and base ability:",
   "entity.form.usesCatalogSpell": "Base spell",
-  "entity.form.catalogRangeText": "Spell range",
+  "entity.form.catalogRangeText": "Spell range text",
   "entity.form.manualOnlyAction": "Safe manual action: it does not enter hit/damage/heal automation. Use only name and description as GM support.",
   "entity.form.toHitBonus": "To-hit bonus",
   "entity.form.castAtLevel": "Cast at level",

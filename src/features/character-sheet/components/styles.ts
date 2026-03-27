@@ -11,9 +11,9 @@ export const chk =
 export const btnPrimary =
   "rounded-full border border-limiar-500/40 bg-limiar-500/15 px-5 py-2 text-xs font-bold uppercase tracking-[0.24em] text-limiar-200 transition-all hover:border-limiar-400/60 hover:bg-limiar-500/25";
 export const btnOutline =
-  "rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-200";
+  "rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-200";
 export const btnDanger =
-  "rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-rose-500/40 hover:text-rose-300";
+  "rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-rose-500/40 hover:text-rose-300";
 export const statBox =
   "relative flex flex-col rounded-xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.92))] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
 export const tagBadge =

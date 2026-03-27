@@ -9,6 +9,7 @@ VALID_CATEGORIES = {"npc", "enemy", "creature", "ally"}
 
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 CombatActionKind = Literal["weapon_attack", "spell_attack", "saving_throw", "heal", "utility"]
+ActionCost = Literal["action", "bonus_action", "reaction", "free"]
 EntitySize = Literal["tiny", "small", "medium", "large", "huge", "gargantuan"]
 CreatureType = Literal[
     "aberration",

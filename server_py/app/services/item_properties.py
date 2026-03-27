@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from enum import Enum
+
+from app.models.base_item import BaseItemProperty
 
 ITEM_PROPERTY_ALIASES: dict[str, tuple[str, ...]] = {
     "ammunition": ("ammunition", "ammo", "municao"),
@@ -23,7 +26,12 @@ ITEM_PROPERTY_ALIASES: dict[str, tuple[str, ...]] = {
     ),
 }
 
-ITEM_PROPERTY_SLUGS = tuple(ITEM_PROPERTY_ALIASES.keys())
+ITEM_PROPERTY_SLUGS = tuple(member.value for member in BaseItemProperty)
+WEAPON_PROPERTY_SLUGS = tuple(
+    member.value
+    for member in BaseItemProperty
+    if member is not BaseItemProperty.STEALTH_DISADVANTAGE
+)
 
 
 def _normalize_token(value: str) -> str:
@@ -57,7 +65,8 @@ def normalize_item_properties(
     seen: set[str] = set()
 
     for entry in values or []:
-        raw_value = str(entry or "").strip()
+        source_value = entry.value if isinstance(entry, Enum) else entry
+        raw_value = str(source_value or "").strip()
         if not raw_value:
             continue
 

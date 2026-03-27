@@ -107,7 +107,7 @@ export const entityPtBRDictionary = {
   "entity.form.usesCatalogWeapon": "Arma da campanha",
   "entity.form.weaponAutofillPrefix": "Preenchimento automatico sugerido usando a arma selecionada e o atributo base:",
   "entity.form.usesCatalogSpell": "Magia base",
-  "entity.form.catalogRangeText": "Alcance da magia",
+  "entity.form.catalogRangeText": "Texto de alcance da magia",
   "entity.form.manualOnlyAction": "Acao manual segura: ela nao entra na automacao de dano/cura/acerto. Use apenas nome e descricao para apoio do GM.",
   "entity.form.toHitBonus": "Bonus de acerto",
   "entity.form.castAtLevel": "Conjurar no nivel",

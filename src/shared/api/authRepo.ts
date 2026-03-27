@@ -7,6 +7,7 @@ type MeResponse = {
   username: string;
   displayName?: string | null;
   role: RoleMode;
+  isSystemAdmin: boolean;
 };
 
 export const authRepo = {

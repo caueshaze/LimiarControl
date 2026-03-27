@@ -27,6 +27,12 @@ def get_current_user(
     return user
 
 
+def require_system_admin(user: User = Depends(get_current_user)) -> User:
+    if not user.is_system_admin:
+        raise HTTPException(status_code=403, detail="System admin required")
+    return user
+
+
 def require_campaign_member(
     campaign_id: str, user: User, session: Session
 ) -> tuple[Campaign, CampaignMember]:

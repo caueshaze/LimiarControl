@@ -23,7 +23,7 @@ export const AuthField = ({
       <div className="absolute -inset-0.5 rounded-[22px] bg-[linear-gradient(120deg,rgba(125,211,252,0.16),rgba(167,139,250,0.16),rgba(251,191,36,0.12))] opacity-0 blur-sm transition duration-500 group-focus-within:opacity-100" />
       <div className="relative flex items-center gap-3 rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-colors group-focus-within:border-limiar-300/35">
         {icon ? (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-slate-300 transition-colors group-focus-within:text-white">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-white/3 text-slate-300 transition-colors group-focus-within:text-white">
             {icon}
           </span>
         ) : null}

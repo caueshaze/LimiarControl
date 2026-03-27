@@ -244,7 +244,7 @@ class CombatEntityStatsTestsMixin:
             item_kind="weapon",
             damage_dice="1d6",
             damage_type="piercing",
-            range_normal=24,
+            range_normal_meters=24,
             weapon_range_type="ranged",
         )
 
@@ -307,6 +307,8 @@ class CombatEntityStatsTestsMixin:
         mock_get_spell_catalog.return_value = MagicMock(
             saving_throw="dexterity",
             damage_type="fire",
+            range_meters=18,
+            range_text="120 feet",
         )
         npc = CampaignEntity(
             id="ce-1",
@@ -331,3 +333,4 @@ class CombatEntityStatsTestsMixin:
         self.assertEqual(resolved["saveAbility"], "dexterity")
         self.assertEqual(resolved["saveDc"], 14)
         self.assertEqual(resolved["damageType"], "fire")
+        self.assertEqual(resolved["rangeMeters"], 18)

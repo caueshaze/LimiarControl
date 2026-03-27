@@ -35,7 +35,7 @@ export const PlayerBoardCommandCenter = ({
   const { t } = useLocale();
 
   return (
-    <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
+    <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
       <div className="flex flex-col gap-5 border-b border-white/8 pb-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
@@ -58,7 +58,7 @@ export const PlayerBoardCommandCenter = ({
           <button
             type="button"
             onClick={onToggleInventory}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+            className="rounded-full border border-white/10 bg-white/4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/8"
           >
             {t("playerBoard.toggleInventory")}
           </button>
@@ -75,13 +75,13 @@ export const PlayerBoardCommandCenter = ({
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+        <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
             {t("playerBoard.sessionStateLabel")}
           </p>
           <p className="mt-3 text-lg font-semibold text-white">{sessionStatusLabel}</p>
         </div>
-        <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+        <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
             {t("playerBoard.shopStateLabel")}
           </p>
@@ -89,7 +89,7 @@ export const PlayerBoardCommandCenter = ({
             {shopAvailable || shopOpen ? t("playerBoard.shopOpenState") : t("playerBoard.shopClosedState")}
           </p>
         </div>
-        <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+        <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
             {t("playerBoard.combatStateLabel")}
           </p>

@@ -11,6 +11,8 @@ from sqlmodel import Field, SQLModel
 from app.models.base_item import (
     BaseItemArmorCategory,
     BaseItemCostUnit,
+    BaseItemDamageType,
+    BaseItemDexBonusRule,
     BaseItemKind,
     BaseItemWeaponCategory,
     BaseItemWeaponRangeType,
@@ -46,7 +48,18 @@ class Item(SQLModel, table=True):
     price: float | None = None
     weight: float | None = None
     damage_dice: str | None = None
-    damage_type: str | None = None
+    damage_type: Optional[BaseItemDamageType] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemDamageType,
+                name="baseitemdamagetype",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
     range_meters: float | None = None
     range_long_meters: float | None = None
     versatile_damage: str | None = None
@@ -87,7 +100,18 @@ class Item(SQLModel, table=True):
         ),
     )
     armor_class_base: int | None = None
-    dex_bonus_rule: str | None = None
+    dex_bonus_rule: Optional[BaseItemDexBonusRule] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemDexBonusRule,
+                name="baseitemdexbonusrule",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
     strength_requirement: int | None = None
     stealth_disadvantage: bool | None = None
     is_shield: bool = Field(
@@ -103,7 +127,7 @@ class Item(SQLModel, table=True):
         default=None,
         sa_column=Column(
             String,
-            ForeignKey("base_item.id"),
+            ForeignKey("base_item.id", ondelete="SET NULL"),
             nullable=True,
             index=True,
         ),

@@ -23,11 +23,11 @@ export const RacePreviewCard = ({ raceData, sheet }: Props) => {
       <p className="mt-1 leading-6">
         <span className="text-slate-300">{raceData.size}</span>
         <span className="mx-2 text-slate-600">•</span>
-        <span>{t("sheet.basicInfo.speed")} {raceData.speed}ft</span>
-        {raceData.darkvision ? (
+        <span>{t("sheet.basicInfo.speed")} {raceData.speedMeters}m</span>
+        {raceData.darkvisionMeters ? (
           <>
             <span className="mx-2 text-slate-600">•</span>
-            <span>{t("sheet.basicInfo.darkvision")} {raceData.darkvision}ft</span>
+            <span>{t("sheet.basicInfo.darkvision")} {raceData.darkvisionMeters}m</span>
           </>
         ) : null}
       </p>

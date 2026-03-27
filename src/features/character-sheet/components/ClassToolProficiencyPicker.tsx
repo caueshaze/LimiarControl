@@ -62,7 +62,7 @@ export const ClassToolProficiencyPicker = ({
                 isChosen
                   ? "border-limiar-500/40 bg-limiar-500/15 text-limiar-200"
                   : canPick
-                    ? "border-white/8 bg-white/[0.02] text-slate-300 hover:border-slate-400/40 hover:text-slate-100"
+                    ? "border-white/8 bg-white/2 text-slate-300 hover:border-slate-400/40 hover:text-slate-100"
                     : "cursor-not-allowed border-white/5 bg-transparent text-slate-700"
               }`}
             >

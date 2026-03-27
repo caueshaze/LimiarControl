@@ -17,6 +17,8 @@ export const routes = {
   board: "/board/:partyId",
 
   catalog: "/catalog",
+  systemCatalogAdmin: "/admin/base-items",
+  systemSpellCatalogAdmin: "/admin/base-spells",
   npcs: "/npcs",
   bestiary: "/bestiary",
   characterSheet: "/character-sheet",

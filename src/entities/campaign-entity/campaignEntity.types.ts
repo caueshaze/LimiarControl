@@ -110,6 +110,7 @@ export type CombatAction = {
   healDice?: string | null;
   healBonus?: number | null;
   description?: string | null;
+  actionCost?: "action" | "bonus_action" | "reaction" | "free";
 };
 
 export type CampaignEntity = {

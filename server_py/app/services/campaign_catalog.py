@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.models.base_item import BaseItem, BaseItemCostUnit, BaseItemKind
 from app.models.campaign import Campaign, SystemType
 from app.models.item import Item, ItemType
+from app.services.item_properties import normalize_item_properties
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +42,11 @@ def _base_item_price_gp(base_item: BaseItem) -> float | None:
         return base_item.cost_quantity * 10.0
     return base_item.cost_quantity
 
-
-def _feet_to_meters(feet: int | None) -> float | None:
-    if feet is None or feet <= 5:
-        return None
-    return max(1.0, round(feet * 0.3048))
-
-
 def _build_weapon_properties(base_item: BaseItem) -> list[str]:
-    props: list[str] = []
-    if base_item.weapon_properties_json:
-        props.extend(base_item.weapon_properties_json)
-    return props
+    normalized_properties, _invalid_properties = normalize_item_properties(
+        list(base_item.weapon_properties_json or [])
+    )
+    return normalized_properties
 
 
 def _build_armor_properties(base_item: BaseItem) -> list[str]:
@@ -81,8 +75,8 @@ def _base_item_to_campaign_item(
         weight=base_item.weight,
         damage_dice=base_item.damage_dice,
         damage_type=base_item.damage_type,
-        range_meters=_feet_to_meters(base_item.range_normal),
-        range_long_meters=_feet_to_meters(base_item.range_long),
+        range_meters=float(base_item.range_normal_meters) if base_item.range_normal_meters is not None else None,
+        range_long_meters=float(base_item.range_long_meters) if base_item.range_long_meters is not None else None,
         versatile_damage=base_item.versatile_damage,
         weapon_category=base_item.weapon_category,
         weapon_range_type=base_item.weapon_range_type,

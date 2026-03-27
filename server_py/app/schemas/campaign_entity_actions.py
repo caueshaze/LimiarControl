@@ -4,7 +4,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.schemas.campaign_entity_shared import AbilityName, CombatActionKind, DamageType
+from app.schemas.campaign_entity_shared import AbilityName, ActionCost, CombatActionKind, DamageType
 
 _DICE_EXPRESSION_RE = re.compile(r"^\d+d\d+(?:\s*[+-]\s*\d+)?$", re.IGNORECASE)
 
@@ -29,6 +29,7 @@ class CombatAction(BaseModel):
     healDice: str | None = None
     healBonus: int | None = None
     description: str | None = None
+    actionCost: ActionCost = "action"
 
     @field_validator("id", "name")
     @classmethod

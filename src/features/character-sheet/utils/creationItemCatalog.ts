@@ -23,8 +23,8 @@ export type CreationCatalogItem = {
   damageDice: string | null;
   damageType: string | null;
   weaponPropertiesJson: unknown;
-  rangeNormal: number | null;
-  rangeLong: number | null;
+  rangeNormalMeters: number | null;
+  rangeLongMeters: number | null;
   versatileDamage: string | null;
 };
 
@@ -101,8 +101,8 @@ const buildCatalogEntryFromBaseItem = (item: BaseItem): CreationCatalogItem => (
   damageDice: item.damageDice ?? null,
   damageType: item.damageType ?? null,
   weaponPropertiesJson: item.weaponPropertiesJson ?? null,
-  rangeNormal: item.rangeNormal ?? null,
-  rangeLong: item.rangeLong ?? null,
+  rangeNormalMeters: item.rangeNormalMeters ?? null,
+  rangeLongMeters: item.rangeLongMeters ?? null,
   versatileDamage: item.versatileDamage ?? null,
 });
 
@@ -133,8 +133,8 @@ const buildCatalogEntryFromCampaignItem = (item: Item): CreationCatalogItem | nu
     damageDice: item.damageDice ?? null,
     damageType: item.damageType ?? null,
     weaponPropertiesJson: item.properties ?? null,
-    rangeNormal: item.rangeMeters ?? null,
-    rangeLong: item.rangeLongMeters ?? null,
+    rangeNormalMeters: item.rangeMeters ?? null,
+    rangeLongMeters: item.rangeLongMeters ?? null,
     versatileDamage: item.versatileDamage ?? null,
   };
 };

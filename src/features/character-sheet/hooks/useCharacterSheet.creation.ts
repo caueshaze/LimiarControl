@@ -353,7 +353,7 @@ export const normalizeCreationAfterRaceChange = (
     ...sheet,
     race: nextRaceName,
     abilities,
-    speed: race?.speed ?? 0,
+    speedMeters: race?.speedMeters ?? 0,
     maxHP,
     currentHP: cls ? maxHP : sheet.currentHP,
     languages: deriveLanguages(nextRaceName, sheet.background, nextLanguageChoices, nextRaceConfig),

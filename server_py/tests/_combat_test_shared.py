@@ -25,6 +25,32 @@ from app.services.combat import (
 )
 
 
+class TestResolutionTypeMapping(unittest.TestCase):
+    def test_maps_spell_attack(self):
+        self.assertEqual(CombatService._map_resolution_type_to_spell_mode("spell_attack"), "spell_attack")
+
+    def test_maps_saving_throw(self):
+        self.assertEqual(CombatService._map_resolution_type_to_spell_mode("saving_throw"), "saving_throw")
+
+    def test_maps_heal(self):
+        self.assertEqual(CombatService._map_resolution_type_to_spell_mode("heal"), "heal")
+
+    def test_maps_automatic_to_direct_damage(self):
+        self.assertEqual(CombatService._map_resolution_type_to_spell_mode("automatic"), "direct_damage")
+
+    def test_none_resolution_returns_none(self):
+        self.assertIsNone(CombatService._map_resolution_type_to_spell_mode("none"))
+
+    def test_null_returns_none(self):
+        self.assertIsNone(CombatService._map_resolution_type_to_spell_mode(None))
+
+    def test_unknown_string_returns_none(self):
+        self.assertIsNone(CombatService._map_resolution_type_to_spell_mode("unknown"))
+
+    def test_non_string_returns_none(self):
+        self.assertIsNone(CombatService._map_resolution_type_to_spell_mode(42))
+
+
 class TestCombatDiceParser(unittest.TestCase):
     def test_parse_dice(self):
         self.assertEqual(_parse_dice("1d8"), (1, 8, 0))

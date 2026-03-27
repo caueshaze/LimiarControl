@@ -1,6 +1,8 @@
 import type {
   BaseItemArmorCategory,
   BaseItemCostUnit,
+  BaseItemDamageType,
+  BaseItemDexBonusRule,
   BaseItemKind,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
@@ -27,7 +29,7 @@ export type Item = {
   priceLabel?: string;
   weight?: number | null;
   damageDice?: string | null;
-  damageType?: string | null;
+  damageType?: BaseItemDamageType | null;
   rangeMeters?: number | null;
   rangeLongMeters?: number | null;
   versatileDamage?: string | null;
@@ -35,11 +37,11 @@ export type Item = {
   weaponRangeType?: BaseItemWeaponRangeType | null;
   armorCategory?: BaseItemArmorCategory | null;
   armorClassBase?: number | null;
-  dexBonusRule?: string | null;
+  dexBonusRule?: BaseItemDexBonusRule | null;
   strengthRequirement?: number | null;
   stealthDisadvantage?: boolean | null;
   isShield?: boolean;
-  properties?: string[];
+  properties?: ItemPropertySlug[];
   baseItemId?: string | null;
   canonicalKeySnapshot?: string | null;
   nameEnSnapshot?: string | null;
@@ -55,7 +57,7 @@ export type ItemInput = {
   type: ItemType;
   description: string;
   damageDice?: string;
-  damageType?: string;
+  damageType?: BaseItemDamageType | "";
   properties?: ItemPropertySlug[];
   price?: number | string | null;
   weight?: number | string | null;
@@ -66,7 +68,7 @@ export type ItemInput = {
   weaponRangeType?: BaseItemWeaponRangeType | "";
   armorCategory?: BaseItemArmorCategory | "";
   armorClassBase?: number | string | null;
-  dexBonusRule?: string;
+  dexBonusRule?: BaseItemDexBonusRule | "";
   strengthRequirement?: number | string | null;
   stealthDisadvantage?: boolean;
   isShield?: boolean;

@@ -30,7 +30,7 @@ export const SpellCatalogToggleChip = ({
     className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition ${
       active
         ? "border-violet-300/25 bg-violet-400/12 text-violet-100"
-        : "border-white/8 bg-white/[0.04] text-slate-400 hover:border-white/16 hover:bg-white/[0.08]"
+        : "border-white/8 bg-white/4 text-slate-400 hover:border-white/16 hover:bg-white/8"
     }`}
   >
     {label}

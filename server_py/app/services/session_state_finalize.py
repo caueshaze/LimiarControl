@@ -82,5 +82,15 @@ def calculate_player_armor_class_from_state(data: dict | None) -> int:
 
 def finalize_session_state_data(data: dict | None) -> dict:
     next_data = ensure_rest_state(data)
-    next_data["armorClass"] = calculate_player_armor_class_from_state(next_data)
+
+    # Wild Shape: use beast form AC instead of equipment-derived AC
+    wild_shape = next_data.get("wildShape")
+    if isinstance(wild_shape, dict) and wild_shape.get("active"):
+        from app.services.wild_shape_catalog import get_form
+        form_key = wild_shape.get("formKey")
+        form = get_form(form_key) if isinstance(form_key, str) else None
+        next_data["armorClass"] = form.armor_class if form is not None else calculate_player_armor_class_from_state(next_data)
+    else:
+        next_data["armorClass"] = calculate_player_armor_class_from_state(next_data)
+
     return next_data

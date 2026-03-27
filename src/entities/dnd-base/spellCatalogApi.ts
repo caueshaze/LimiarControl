@@ -1,5 +1,5 @@
 /**
- * API-backed spell catalog that replaces the CSV-based spellCatalog.ts.
+ * API-backed spell catalog.
  *
  * Fetches spells from the appropriate API source on first access,
  * caches them in memory by scope, and exposes the same synchronous interface
@@ -9,13 +9,14 @@ import type { BaseSpell as ApiBaseSpell } from "../base-spell/baseSpell.types";
 import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
 import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 
-/** Shape expected by consumers (matches the old CSV-based BaseSpell). */
+/** Shape expected by consumers. */
 export type BaseSpell = {
   canonicalKey: string;
   name: string;
   level: number;
   school: string;
   castingTime: string;
+  // Display-only summary. Mechanical systems must use structured rangeMeters upstream.
   range: string;
   components: string;
   duration: string;
@@ -24,6 +25,7 @@ export type BaseSpell = {
   description: string;
   damageType: string | null;
   savingThrow: string | null;
+  saveSuccessOutcome?: "none" | "half_damage" | null;
   classes: string[];
 };
 
@@ -43,7 +45,7 @@ const adapt = (api: ApiBaseSpell): BaseSpell => ({
   level: api.level,
   school: api.school || "Evocation",
   castingTime: api.castingTime ?? "",
-  range: api.rangeText ?? "",
+  range: typeof api.rangeMeters === "number" ? `${api.rangeMeters} m` : api.rangeText ?? "",
   components: api.componentsJson?.join(", ") ?? "",
   duration: api.duration ?? "",
   concentration: api.concentration,
@@ -51,6 +53,7 @@ const adapt = (api: ApiBaseSpell): BaseSpell => ({
   description: api.descriptionEn,
   damageType: api.damageType ?? null,
   savingThrow: api.savingThrow ?? null,
+  saveSuccessOutcome: api.saveSuccessOutcome ?? null,
   classes: api.classesJson ?? [],
 });
 

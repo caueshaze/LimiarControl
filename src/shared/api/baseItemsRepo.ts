@@ -16,6 +16,15 @@ const toQueryString = (filters?: BaseItemFilters) => {
   if (filters.canonicalKey) {
     params.set("canonical_key", filters.canonicalKey);
   }
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.equipmentCategory) {
+    params.set("equipment_category", filters.equipmentCategory);
+  }
+  if (typeof filters.isActive === "boolean") {
+    params.set("is_active", String(filters.isActive));
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";

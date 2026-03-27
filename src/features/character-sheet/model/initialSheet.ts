@@ -71,7 +71,7 @@ export const INITIAL_SHEET: CharacterSheet = {
   equippedArmor: { name: "None", baseAC: 0, dexCap: null, armorType: "none" },
   equippedShield: null,
   miscACBonus: 0,
-  speed: 0,
+  speedMeters: 0,
 
   maxHP: 0,
   currentHP: 0,

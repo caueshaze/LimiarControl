@@ -3,6 +3,7 @@ export { ItemType as ITEM_TYPES } from "./item.types";
 export type { ItemPropertySlug } from "./itemProperties";
 export {
   ITEM_PROPERTY_SLUGS,
+  WEAPON_PROPERTY_SLUGS,
   getItemPropertyLabel,
   getItemPropertyLabels,
   normalizeItemProperties,

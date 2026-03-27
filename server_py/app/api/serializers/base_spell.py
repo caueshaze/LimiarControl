@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from app.models.base_spell import BaseSpell
+from app.schemas.base_spell import BaseSpellCreate, BaseSpellRead
+
+
+def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
+    return BaseSpellRead(
+        id=spell.id,
+        system=spell.system,
+        canonicalKey=spell.canonical_key,
+        nameEn=spell.name_en,
+        namePt=spell.name_pt,
+        descriptionEn=spell.description_en,
+        descriptionPt=spell.description_pt,
+        level=spell.level,
+        school=spell.school,
+        classesJson=spell.classes_json,
+        castingTimeType=spell.casting_time_type,
+        castingTime=spell.casting_time,
+        rangeMeters=spell.range_meters,
+        rangeText=spell.range_text,
+        targetMode=spell.target_mode,
+        duration=spell.duration,
+        componentsJson=spell.components_json,
+        materialComponentText=spell.material_component_text,
+        concentration=spell.concentration,
+        ritual=spell.ritual,
+        resolutionType=spell.resolution_type,
+        savingThrow=spell.saving_throw,
+        saveSuccessOutcome=spell.save_success_outcome,
+        damageDice=spell.damage_dice,
+        damageType=spell.damage_type,
+        healDice=spell.heal_dice,
+        upcastMode=spell.upcast_mode,
+        upcastValue=spell.upcast_value,
+        source=spell.source,
+        sourceRef=spell.source_ref,
+        isSrd=spell.is_srd,
+        isActive=spell.is_active,
+        aliases=[],
+    )
+
+
+def to_base_spell_seed_entry(spell: BaseSpell) -> BaseSpellCreate:
+    return BaseSpellCreate(
+        system=spell.system,
+        canonicalKey=spell.canonical_key,
+        nameEn=spell.name_en,
+        namePt=spell.name_pt,
+        descriptionEn=spell.description_en,
+        descriptionPt=spell.description_pt,
+        level=spell.level,
+        school=spell.school,
+        classesJson=spell.classes_json,
+        castingTimeType=spell.casting_time_type,
+        castingTime=spell.casting_time,
+        rangeMeters=spell.range_meters,
+        rangeText=spell.range_text,
+        targetMode=spell.target_mode,
+        duration=spell.duration,
+        componentsJson=spell.components_json,
+        materialComponentText=spell.material_component_text,
+        concentration=spell.concentration,
+        ritual=spell.ritual,
+        resolutionType=spell.resolution_type,
+        savingThrow=spell.saving_throw,
+        saveSuccessOutcome=spell.save_success_outcome,
+        damageDice=spell.damage_dice,
+        damageType=spell.damage_type,
+        healDice=spell.heal_dice,
+        upcastMode=spell.upcast_mode,
+        upcastValue=spell.upcast_value,
+        source=spell.source,
+        sourceRef=spell.source_ref,
+        isSrd=spell.is_srd,
+        isActive=spell.is_active,
+    )

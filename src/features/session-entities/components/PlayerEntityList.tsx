@@ -242,11 +242,11 @@ export const PlayerEntityList = ({ sessionId, combatActive = false, lastEvent }:
         )}
       </div>
       {!loaded && loading ? (
-        <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 text-sm text-slate-400">
+        <div className="rounded-[24px] border border-white/8 bg-white/4 px-4 py-4 text-sm text-slate-400">
           {t("entity.loading")}
         </div>
       ) : entities.length === 0 ? (
-        <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
+        <div className="rounded-[24px] border border-dashed border-white/10 bg-white/3 px-4 py-5 text-sm text-slate-400">
           {combatActive ? t("entity.player.waitingReveal") : t("entity.player.waitingRevealIdle")}
         </div>
       ) : (

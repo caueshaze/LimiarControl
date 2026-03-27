@@ -36,7 +36,7 @@ type ParsedStarterEntry =
 
 const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
   "5_sticks_of_incense": { kind: "item", name: "Incense", quantity: 5 },
-  "50_feet_of_silk_rope": { kind: "item", name: "Silk Rope", quantity: 1 },
+  "15_meters_of_silk_rope": { kind: "item", name: "Silk Rope", quantity: 1 },
 };
 
 const parseStarterEntry = (entry: string): ParsedStarterEntry => {
@@ -142,8 +142,8 @@ const formatWeaponProperties = (propsJson: unknown): string => {
 };
 
 const formatWeaponRange = (item: CreationCatalogItem): string => {
-  if (item.rangeNormal && item.rangeLong) return `${item.rangeNormal}/${item.rangeLong}`;
-  if (item.rangeNormal) return `${item.rangeNormal}`;
+  if (item.rangeNormalMeters && item.rangeLongMeters) return `${item.rangeNormalMeters}/${item.rangeLongMeters} m`;
+  if (item.rangeNormalMeters) return `${item.rangeNormalMeters} m`;
   return "";
 };
 

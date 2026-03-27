@@ -135,6 +135,11 @@ export const CampaignEntitySpellActionFields = ({
                 {t("entity.form.catalogRangeText")}: {selectedSpell.rangeText}
               </span>
             )}
+            {typeof selectedSpell.rangeMeters === "number" && (
+              <span>
+                {t("entity.form.rangeMeters")}: {selectedSpell.rangeMeters}m
+              </span>
+            )}
           </div>
         ) : (
           <p className="mt-2 text-xs text-slate-400">

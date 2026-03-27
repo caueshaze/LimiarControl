@@ -92,9 +92,15 @@ export const SpellCatalogCard = ({ spell, onUpdate }: Props) => {
               {spell.castingTime}
             </span>
           )}
-          {spell.rangeText && (
+          {typeof spell.rangeMeters === "number" && (
             <span>
               <span className="font-semibold text-slate-500">{t("catalog.spells.range")}: </span>
+              {spell.rangeMeters} m
+            </span>
+          )}
+          {spell.rangeText && (
+            <span>
+              <span className="font-semibold text-slate-500">{t("catalog.spells.rangeText")}: </span>
               {spell.rangeText}
             </span>
           )}
@@ -118,7 +124,7 @@ export const SpellCatalogCard = ({ spell, onUpdate }: Props) => {
             {spell.classesJson.map((cls) => (
               <span
                 key={cls}
-                className="rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold text-slate-400"
+                className="rounded-full border border-white/8 bg-white/3 px-2 py-0.5 text-[9px] font-semibold text-slate-400"
               >
                 {cls}
               </span>
@@ -148,7 +154,7 @@ export const SpellCatalogCard = ({ spell, onUpdate }: Props) => {
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.09]"
+              className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/9"
             >
               {t("catalog.edit")}
             </button>

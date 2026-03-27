@@ -38,6 +38,7 @@ export const PartyDetailsPage = () => {
 
     const [showStartModal, setShowStartModal] = useState(false);
     const [starting, setStarting] = useState(false);
+    const [deletingParty, setDeletingParty] = useState(false);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [lobbyStatus, setLobbyStatus] = useState<LobbyStatus | null>(null);
@@ -259,6 +260,24 @@ export const PartyDetailsPage = () => {
         }
     };
 
+    const handleDeleteParty = async () => {
+        if (!party || deletingParty) return;
+
+        const confirmed = confirm(
+            `Delete the party "${party.name}" permanently?\n\nThis removes the party, its members, invitations, sessions, sheets, and party inventory.`
+        );
+        if (!confirmed) return;
+
+        setDeletingParty(true);
+        try {
+            await partiesRepo.remove(party.id);
+            navigate(routes.gmHome);
+        } catch (err: any) {
+            alert(err?.message ?? "Failed to delete party");
+            setDeletingParty(false);
+        }
+    };
+
     if (loading) return <section className="space-y-8 p-6"><p className="text-slate-400">Loading party details...</p></section>;
 
     if (!party) {
@@ -278,8 +297,10 @@ export const PartyDetailsPage = () => {
             <PartyDetailsHeader
                 party={party}
                 activeSession={activeSession}
+                deletingParty={deletingParty}
                 onStartSession={() => setShowStartModal(true)}
                 onEndSession={handleEndSession}
+                onDeleteParty={handleDeleteParty}
             />
 
             {activeSession?.status === "LOBBY" && (

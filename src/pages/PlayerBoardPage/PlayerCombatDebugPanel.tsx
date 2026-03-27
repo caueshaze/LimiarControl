@@ -27,6 +27,7 @@ export const PlayerCombatDebugPanel = ({
     handleDeathSave,
     handleEndTurn,
     handleSpellResolved,
+    handleStandardAction,
     lastAttackResult,
     lastSpellResult,
     loading,
@@ -112,6 +113,7 @@ export const PlayerCombatDebugPanel = ({
           onCast={handleCast}
           onDeathSave={handleDeathSave}
           onEndTurn={handleEndTurn}
+          onStandardAction={handleStandardAction}
           selectedSpell={selectedSpell}
           selectedSpellId={selectedSpellId}
           setActiveTab={setActiveTab}

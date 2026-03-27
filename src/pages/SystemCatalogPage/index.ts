@@ -1,0 +1,1 @@
+export { SystemCatalogPage } from "./SystemCatalogPage";

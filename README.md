@@ -175,42 +175,27 @@ uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 python -m py_compile app/api/routes/sessions/*.py
 ```
 
-### Base catalog import
+### Base catalog seed
 
-After running migrations, seed the D&D base catalogs used by character creation, shop flows, and campaign spell setup.
+After running migrations, the runtime uses database + JSON seed as the official base-item catalog flow.
 
-Dry-run both importers first:
-
-```bash
-server_py/.venv/bin/python scripts/import_dnd_base_items.py --dry-run
-server_py/.venv/bin/python scripts/import_dnd_base_spells.py --dry-run
-```
-
-Then execute the real imports:
+Bootstrap or replace the base item catalog with the repository seed:
 
 ```bash
-server_py/.venv/bin/python scripts/import_dnd_base_items.py
-server_py/.venv/bin/python scripts/import_dnd_base_spells.py
+server_py/.venv/bin/python scripts/import_base_items_json.py --input Base/base_items.seed.json --replace
 ```
 
-What each importer does:
+Export the current database catalog back to the repository seed format:
 
-- `import_dnd_base_items.py` loads weapons, armor, and essential gear into `base_item` and `base_item_alias`
-- `import_dnd_base_spells.py` loads spells into `base_spell` and `base_spell_alias`
+```bash
+server_py/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
+```
 
-Item sources used by the importer:
+Notes:
 
-- `Base/DND5e_Armas_Database_Programador.csv`
-- `Base/DND5e_Armaduras_Database.csv`
-- `Base/DND5e_Equipamentos.json` when available
-
-Spell source used by the importer:
-
-- `Base/DND5e_Magias_Completas_API.csv`
-
-If `Base/DND5e_Equipamentos.json` is missing, the item importer falls back to synthetic seeds for essential packs, tools, foci, ammunition, and recurring character-creation items.
-
-The importers are safe to rerun: they upsert by canonical identity keys instead of blindly duplicating rows.
+- `Base/base_items.seed.json` is the official bootstrap/backup file for the base item catalog
+- the database is the source of truth at runtime
+- old CSV files may remain in `Base/` for editorial reference, but they are no longer part of the main runtime flow
 
 Current validated result in the local dev database:
 

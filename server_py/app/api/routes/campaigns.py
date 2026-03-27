@@ -18,6 +18,7 @@ from app.schemas.campaign import (
     CampaignUpdate,
 )
 from app.services.campaign_catalog import snapshot_campaign_catalog
+from app.services.campaign_cleanup import delete_campaign_tree
 from app.services.campaign_spells import snapshot_campaign_spells
 
 router = APIRouter()
@@ -185,6 +186,6 @@ def delete_campaign(
     session: Session = Depends(get_session),
 ):
     campaign, _member = require_gm(campaign_id, user, session)
-    session.delete(campaign)
+    delete_campaign_tree(session, campaign)
     session.commit()
     return None

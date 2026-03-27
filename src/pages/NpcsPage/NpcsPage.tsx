@@ -60,7 +60,7 @@ export const NpcsPage = () => {
             <p className="mt-4 text-sm leading-7 text-slate-300">{t("entity.noCampaign")}</p>
             <Link
               to={routes.home}
-              className="mt-6 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+              className="mt-6 inline-flex rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/8"
             >
               {t("entity.goCampaigns")}
             </Link>
@@ -92,9 +92,9 @@ export const NpcsPage = () => {
         description={t("entity.description")}
       />
 
-      <section className="rounded-[32px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.26)]">
+      <section className="rounded-4xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.26)]">
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+          <div className="rounded-3xl border border-white/8 bg-white/4 p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
               {t("entity.form.generalSection")}
             </p>
@@ -102,7 +102,7 @@ export const NpcsPage = () => {
               {t("entity.pageFeatureOne")}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+          <div className="rounded-3xl border border-white/8 bg-white/4 p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
               {t("entity.form.combatActions")}
             </p>
@@ -110,7 +110,7 @@ export const NpcsPage = () => {
               {t("entity.pageFeatureTwo")}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5">
+          <div className="rounded-3xl border border-white/8 bg-white/4 p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/70">
               {t("entity.form.notesSection")}
             </p>
@@ -126,10 +126,10 @@ export const NpcsPage = () => {
           <button
             type="button"
             onClick={() => setMode("create")}
-            className={`rounded-[24px] px-5 py-5 text-left transition ${
+            className={`rounded-3xl px-5 py-5 text-left transition ${
               mode === "create"
                 ? "border border-emerald-300/20 bg-emerald-400/10 text-white shadow-[0_18px_40px_rgba(16,185,129,0.08)]"
-                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+                : "border border-transparent bg-white/3 text-slate-300 hover:bg-white/6"
             }`}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
@@ -143,10 +143,10 @@ export const NpcsPage = () => {
           <button
             type="button"
             onClick={() => setMode("library")}
-            className={`rounded-[24px] px-5 py-5 text-left transition ${
+            className={`rounded-3xl px-5 py-5 text-left transition ${
               mode === "library"
                 ? "border border-sky-300/20 bg-sky-400/10 text-white shadow-[0_18px_40px_rgba(56,189,248,0.08)]"
-                : "border border-transparent bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+                : "border border-transparent bg-white/3 text-slate-300 hover:bg-white/6"
             }`}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
@@ -161,7 +161,7 @@ export const NpcsPage = () => {
       </section>
 
       {mode === "create" ? (
-        <section className="mx-auto w-full max-w-[1560px] rounded-[36px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.98))] p-5 sm:p-6 lg:p-8 shadow-[0_28px_80px_rgba(2,6,23,0.3)]">
+        <section className="mx-auto w-full max-w-390 rounded-[36px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.98))] p-5 sm:p-6 lg:p-8 shadow-[0_28px_80px_rgba(2,6,23,0.3)]">
           <header className="border-b border-white/8 pb-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
@@ -175,7 +175,7 @@ export const NpcsPage = () => {
               <button
                 type="button"
                 onClick={() => setMode("library")}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+                className="rounded-full border border-white/10 bg-white/3 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/8"
               >
                 {t("entity.openLibrary")}
               </button>
@@ -186,16 +186,16 @@ export const NpcsPage = () => {
           </div>
         </section>
       ) : entitiesLoading ? (
-        <section className="mx-auto w-full max-w-[1320px] rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+        <section className="mx-auto w-full max-w-330 rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
             {t("entity.listPanelTitle")}
           </p>
-          <div className="mt-5 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
+          <div className="mt-5 rounded-3xl border border-white/8 bg-white/3 p-4 text-sm text-slate-300">
             {t("entity.loading")}
           </div>
         </section>
       ) : (
-        <section className="mx-auto w-full max-w-[1320px] rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+        <section className="mx-auto w-full max-w-330 rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
           <header className="border-b border-white/8 pb-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
@@ -209,7 +209,7 @@ export const NpcsPage = () => {
               <button
                 type="button"
                 onClick={() => setMode("create")}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+                className="rounded-full border border-white/10 bg-white/3 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/20 hover:bg-white/8"
               >
                 {t("entity.openCreate")}
               </button>

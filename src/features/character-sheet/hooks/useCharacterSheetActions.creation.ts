@@ -80,7 +80,7 @@ export const createCreationSheetActions = ({
       return {
         ...current,
         race: normalizedRace.raceId,
-        speed: race?.speed ?? 0,
+        speedMeters: race?.speedMeters ?? 0,
         raceConfig: normalizeRaceConfigForRace(normalizedRace.raceId, normalizedRace.raceConfig),
         abilities: applyRaceBonusSwap(
           current.abilities,

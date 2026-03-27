@@ -1,12 +1,9 @@
+import baseItemsSeed from "../../../../Base/base_items.seed.json";
+
+import type { BaseItemWritePayload } from "../../../entities/base-item";
 import type { Item } from "../../../entities/item";
-import { ITEM_TYPES } from "../../../entities/item";
-import {
-  BASE_ARMORS,
-  BASE_GEARS,
-  BASE_WEAPONS,
-  canonicalizeDndItemName,
-  getDndItemCanonicalKey,
-} from "../../../entities/dnd-base";
+import { ITEM_TYPES, normalizeItemProperties, type ItemPropertySlug } from "../../../entities/item";
+import { canonicalizeDndItemName, getDndItemCanonicalKey } from "../../../entities/dnd-base";
 
 const toSlug = (value: string) =>
   value
@@ -16,65 +13,110 @@ const toSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const feetToMeters = (feet: number | null) =>
-  feet && feet > 5 ? Math.max(1, Math.round(feet * 0.3048)) : null;
+type BaseItemSeedDocument = {
+  version: number;
+  items: BaseItemWritePayload[];
+};
+
+const seedDocument = baseItemsSeed as BaseItemSeedDocument;
+
+const toLabelName = (item: BaseItemWritePayload) =>
+  canonicalizeDndItemName(
+    item.nameEn?.trim() ||
+      item.namePt?.trim() ||
+      item.canonicalKey
+        .split("_")
+        .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1))
+        .join(" "),
+  );
+
+const toGpValue = (item: BaseItemWritePayload) => {
+  if (typeof item.costQuantity !== "number") {
+    return null;
+  }
+  switch (item.costUnit) {
+    case "cp":
+      return item.costQuantity / 100;
+    case "sp":
+      return item.costQuantity / 10;
+    case "ep":
+      return item.costQuantity / 2;
+    case "pp":
+      return item.costQuantity * 10;
+    case "gp":
+    default:
+      return item.costQuantity;
+  }
+};
+
+const toPriceLabel = (item: BaseItemWritePayload) =>
+  typeof item.costQuantity === "number" && item.costUnit
+    ? `${item.costQuantity} ${item.costUnit.toUpperCase()}`
+    : undefined;
+
+const toItemType = (item: BaseItemWritePayload): Item["type"] => {
+  if (item.itemKind === "weapon") {
+    return ITEM_TYPES.WEAPON;
+  }
+  if (item.itemKind === "armor") {
+    return ITEM_TYPES.ARMOR;
+  }
+  if (item.itemKind === "consumable") {
+    return ITEM_TYPES.CONSUMABLE;
+  }
+  return ITEM_TYPES.MISC;
+};
+
+const toCatalogProperties = (item: BaseItemWritePayload): ItemPropertySlug[] => {
+  if (item.itemKind === "weapon") {
+    return normalizeItemProperties(item.weaponPropertiesJson ?? []).value;
+  }
+
+  if (item.itemKind === "armor" && item.stealthDisadvantage) {
+    return ["stealth_disadvantage"];
+  }
+
+  return [];
+};
 
 export const BASE_CATALOG_ITEMS: Item[] = [
   ...(() => {
-    const secondaryGearKeys = new Set(
-      [
-        "Holy Symbol",
-        "Arcane Focus",
-        "Druidic Focus",
-        "Crossbow bolt",
-        "Quiver",
-        "Thieves' Tools",
-        "Forgery Kit",
-      ].map(getDndItemCanonicalKey),
-    );
-
-    const rawItems: Item[] = [
-      ...BASE_WEAPONS.map((weapon) => ({
-        id: `base-weapon-${toSlug(canonicalizeDndItemName(weapon.name))}`,
-        name: canonicalizeDndItemName(weapon.name),
-        type: ITEM_TYPES.WEAPON,
-        description: weapon.description,
-        price: weapon.price.gpValue,
-        priceLabel: weapon.price.label,
-        weight: weapon.weightLb,
-        damageDice: weapon.damageDice ?? undefined,
-        rangeMeters: feetToMeters(weapon.normalRangeFt),
-        properties: weapon.properties,
-      })),
-      ...BASE_ARMORS.map((armor) => ({
-        id: `base-armor-${toSlug(canonicalizeDndItemName(armor.name))}`,
-        name: canonicalizeDndItemName(armor.name),
-        type: ITEM_TYPES.ARMOR,
-        description: armor.description,
-        price: armor.price.gpValue,
-        priceLabel: armor.price.label,
-        weight: armor.weightLb,
-        properties: [
-          `CA base ${armor.baseAC}`,
-          armor.category === "shield" ? "Bônus de escudo" : `Tipo ${armor.category === "light" ? "leve" : armor.category === "medium" ? "média" : armor.category === "heavy" ? "pesada" : armor.category}`,
-          ...(armor.dexCap === null ? [] : [`DEX máx ${armor.dexCap}`]),
-          ...(armor.strengthRequirement ? [`FOR ${armor.strengthRequirement}`] : []),
-          ...(armor.stealthDisadvantage ? ["Desvantagem em furtividade"] : []),
-        ],
-      })),
-      ...BASE_GEARS
-        .filter((gear) => secondaryGearKeys.has(getDndItemCanonicalKey(gear.name)))
-        .map((gear) => ({
-          id: `base-gear-${toSlug(canonicalizeDndItemName(gear.name))}`,
-          name: canonicalizeDndItemName(gear.name),
-          type: ITEM_TYPES.MISC,
-          description: gear.description,
-          price: gear.price?.gpValue ?? null,
-          priceLabel: gear.price?.label,
-          weight: gear.weightLb,
-          properties: [],
-        })),
-    ];
+    const rawItems: Item[] = seedDocument.items
+      .filter((item) => item.system === "DND5E" && item.isActive !== false)
+      .map((item) => {
+        const name = toLabelName(item);
+        return {
+          id: `base-item-${toSlug(item.canonicalKey)}`,
+          name,
+          type: toItemType(item),
+          description:
+            item.descriptionPt ??
+            item.descriptionEn ??
+            item.namePt ??
+            item.nameEn ??
+            name,
+          price: toGpValue(item),
+          priceLabel: toPriceLabel(item),
+          weight: item.weight ?? null,
+          damageDice: item.damageDice ?? undefined,
+          damageType: item.damageType ?? undefined,
+          rangeMeters: item.rangeNormalMeters ?? null,
+          rangeLongMeters: item.rangeLongMeters ?? null,
+          versatileDamage: item.versatileDamage ?? undefined,
+          weaponCategory: item.weaponCategory ?? undefined,
+          weaponRangeType: item.weaponRangeType ?? undefined,
+          armorCategory: item.armorCategory ?? undefined,
+          armorClassBase: item.armorClassBase ?? undefined,
+          dexBonusRule: item.dexBonusRule ?? undefined,
+          strengthRequirement: item.strengthRequirement ?? undefined,
+          stealthDisadvantage: item.stealthDisadvantage ?? undefined,
+          isShield: item.isShield ?? false,
+          properties: toCatalogProperties(item),
+          canonicalKeySnapshot: item.canonicalKey,
+          itemKind: item.itemKind,
+          costUnit: item.costUnit ?? undefined,
+        };
+      });
 
     const catalogByKey = new Map<string, Item>();
     for (const item of rawItems) {

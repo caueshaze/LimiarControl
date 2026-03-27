@@ -63,6 +63,32 @@ def get_campaign_member(
     ).first()
 
 
+def _merge_spell_slots_for_sync(
+    sheet_spellcasting: object,
+    session_spellcasting: object,
+) -> dict | None:
+    """Rebuild spellcasting block: max values from sheet, used counts from session."""
+    if not isinstance(sheet_spellcasting, dict):
+        return None
+
+    sheet_slots: dict = sheet_spellcasting.get("slots") or {}
+    session_slots: dict = {}
+    if isinstance(session_spellcasting, dict):
+        session_slots = session_spellcasting.get("slots") or {}
+
+    merged: dict = {}
+    all_keys = set(sheet_slots) | set(session_slots)
+    for key in all_keys:
+        sheet_slot = sheet_slots.get(key)
+        session_slot = session_slots.get(key)
+        new_max = sheet_slot.get("max", 0) if isinstance(sheet_slot, dict) else 0
+        old_used = session_slot.get("used", 0) if isinstance(session_slot, dict) else 0
+        if new_max > 0 or sheet_slot is not None:
+            merged[key] = {"max": new_max, "used": min(int(old_used), new_max)}
+
+    return {**sheet_spellcasting, "slots": merged}
+
+
 def sync_progression_session_state(
     entry: CampaignSession | None,
     *,
@@ -74,12 +100,40 @@ def sync_progression_session_state(
         return None
 
     state = _ensure_player_session_state(entry, player_user_id, session)
-    state.state_json = finalize_session_state_data({
-        **state.state_json,
+    current = state.state_json if isinstance(state.state_json, dict) else {}
+
+    # ── HP: apply the gain delta so damage taken this session is preserved ────
+    new_max_hp = int(sheet_data.get("maxHP", 0))
+    old_session_max_hp = int(current.get("maxHP", new_max_hp))
+    hp_gain = max(0, new_max_hp - old_session_max_hp)
+    new_current_hp = min(int(current.get("currentHP", 0)) + hp_gain, new_max_hp)
+
+    # ── Hit Dice: apply the gain delta so spent dice this session are preserved
+    new_hit_dice_total = int(sheet_data.get("hitDiceTotal", 1))
+    old_session_total = int(current.get("hitDiceTotal", new_hit_dice_total))
+    dice_gain = max(0, new_hit_dice_total - old_session_total)
+    new_remaining = min(int(current.get("hitDiceRemaining", 0)) + dice_gain, new_hit_dice_total)
+
+    # ── Spell slots: max from sheet, used from live session ───────────────────
+    merged_spellcasting = _merge_spell_slots_for_sync(
+        sheet_data.get("spellcasting"),
+        current.get("spellcasting"),
+    )
+
+    updated: dict = {
+        **current,
         "level": int(sheet_data.get("level", 1)),
         "experiencePoints": int(sheet_data.get("experiencePoints", 0)),
         "pendingLevelUp": bool(sheet_data.get("pendingLevelUp", False)),
-    })
+        "maxHP": new_max_hp,
+        "currentHP": new_current_hp,
+        "hitDiceTotal": new_hit_dice_total,
+        "hitDiceRemaining": new_remaining,
+    }
+    if merged_spellcasting is not None:
+        updated["spellcasting"] = merged_spellcasting
+
+    state.state_json = finalize_session_state_data(updated)
     session.add(state)
     return state
 

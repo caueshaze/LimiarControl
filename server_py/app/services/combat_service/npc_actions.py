@@ -72,6 +72,10 @@ class CombatNpcActionMixin:
 
         _, npc, action = cls._get_combat_action_for_entity(db, attacker["ref_id"], req.combat_action_id)
         resolved_action = cls._resolve_entity_combat_action(db, session_id, npc, action)
+        action_cost = resolved_action.get("actionCost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker, action_cost, is_gm=is_gm, override_resource_limit=req.override_resource_limit
+        )
         action_name = resolved_action.get("name") if isinstance(resolved_action.get("name"), str) else "Combat Action"
         action_kind = resolved_action.get("kind") if isinstance(resolved_action.get("kind"), str) else "utility"
         damage_type = resolved_action.get("damageType") if isinstance(resolved_action.get("damageType"), str) else None
@@ -102,20 +106,31 @@ class CombatNpcActionMixin:
         damage_dice = None
         damage_bonus = None
         pending_attack_id = None
+        damage_rolls: list[int] = []
+        base_damage = None
+        damage_roll_source = None
+        save_success_outcome = None
 
         if action_kind in ("weapon_attack", "spell_attack"):
             cls._clear_participant_pending_attack(attacker)
             _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+            target_ac = (target_ac or 10) + cls._sum_numeric_effects(target_p, "temp_ac_bonus")
             attack_bonus = cls._safe_int(
                 resolved_action.get("spellAttackBonus")
                 if action_kind == "spell_attack"
                 else resolved_action.get("toHitBonus"),
                 0,
             )
+            attack_bonus += cls._sum_numeric_effects(attacker, "attack_bonus")
             damage_dice = resolved_action.get("damageDice") if isinstance(resolved_action.get("damageDice"), str) else None
             damage_bonus = cls._safe_int(resolved_action.get("damageBonus"), 0)
-            adv_mode = "advantage" if (req.has_advantage and not req.has_disadvantage) else (
-                "disadvantage" if (req.has_disadvantage and not req.has_advantage) else "normal"
+            has_adv = req.has_advantage or cls._has_effect_kind(attacker, "advantage_on_attacks")
+            has_dis = req.has_disadvantage or cls._has_effect_kind(attacker, "disadvantage_on_attacks") or cls._has_effect_kind(target_p, "dodging")
+            # Consume advantage_on_attacks (Help) after first use
+            if not req.has_advantage and cls._has_effect_kind(attacker, "advantage_on_attacks"):
+                cls._consume_first_effect(attacker, "advantage_on_attacks")
+            adv_mode = "advantage" if (has_adv and not has_dis) else (
+                "disadvantage" if (has_dis and not has_adv) else "normal"
             )
             roll_result = resolve_attack_base(
                 RollActorStats(
@@ -163,6 +178,12 @@ class CombatNpcActionMixin:
         elif action_kind == "saving_throw":
             ability_name = cls._normalize_ability_name(resolved_action.get("saveAbility"))
             save_dc = cls._safe_int(resolved_action.get("saveDc"), 0)
+            damage_dice = resolved_action.get("damageDice") if isinstance(resolved_action.get("damageDice"), str) else None
+            damage_bonus = cls._safe_int(resolved_action.get("damageBonus"), 0)
+            save_success_outcome = (
+                cls._normalize_save_success_outcome(resolved_action.get("saveSuccessOutcome"))
+                or "none"
+            )
             if not ability_name or save_dc <= 0:
                 raise CombatServiceError("Saving throw actions require save ability and save DC.")
             roll_result = resolve_saving_throw(
@@ -179,21 +200,30 @@ class CombatNpcActionMixin:
             roll_result.is_gm_roll = is_gm
             save_roll = roll_result.total
             is_saved = bool(roll_result.success)
-            if not is_saved:
-                damage = max(
-                    0,
-                    _roll_dice_expression(resolved_action.get("damageDice") or "")
-                    + cls._safe_int(resolved_action.get("damageBonus"), 0),
+            damage_rolls, resolved_base_damage = cls._resolve_damage_roll(
+                damage_dice or "",
+                roll_source="system",
+            )
+            base_damage = resolved_base_damage
+            damage_roll_source = "system"
+            rolled_damage_total = max(
+                0,
+                resolved_base_damage + damage_bonus,
+            )
+            damage = cls._resolve_save_damage_amount(
+                rolled_damage_total,
+                is_saved=is_saved,
+                save_success_outcome=save_success_outcome,
+            )
+            if damage > 0:
+                new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(
+                    db,
+                    target_p["ref_id"],
+                    target_p["kind"],
+                    damage,
+                    False,
+                    state,
                 )
-                if damage > 0:
-                    new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(
-                        db,
-                        target_p["ref_id"],
-                        target_p["kind"],
-                        damage,
-                        False,
-                        state,
-                    )
         elif action_kind == "heal":
             healing = max(
                 0,
@@ -246,8 +276,16 @@ class CombatNpcActionMixin:
                 f"{target_text} {save_text} the {resolved_action.get('saveAbility')} save "
                 f"({save_roll} vs DC {save_dc})"
             )
-            if not is_saved and damage > 0:
+            if is_saved and save_success_outcome == "half_damage":
+                rolled_damage_total = max(0, (base_damage or 0) + cls._safe_int(damage_bonus, 0))
+                log_message += (
+                    f" and took half damage: {damage} {damage_type or ''} damage "
+                    f"(rolled {rolled_damage_total})"
+                ).replace("  ", " ")
+            elif not is_saved and damage > 0:
                 log_message += f" and took {damage} {damage_type or ''} damage".replace("  ", " ")
+            elif is_saved:
+                log_message += " and took no damage"
             log_message += effect_msg
         elif action_kind == "heal":
             target_text = target_p["display_name"] if target_p else attacker["display_name"]
@@ -258,10 +296,15 @@ class CombatNpcActionMixin:
             if description:
                 log_message += f" {description}"
 
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+
         await cls._emit_log(session_id, {
             "message": log_message.strip(),
             "actorUserId": actor_user_id,
             "source": "gm_override",
+            "is_override": was_overridden,
+            "overridden_resource": action_cost if was_overridden else None,
         })
 
         return {
@@ -277,6 +320,7 @@ class CombatNpcActionMixin:
             "roll": roll_total,
             "save_dc": save_dc,
             "save_roll": save_roll,
+            "save_success_outcome": save_success_outcome,
             "roll_result": roll_result,
             "target_ac": target_ac,
             "target_display_name": target_p["display_name"] if target_p else None,
@@ -285,6 +329,9 @@ class CombatNpcActionMixin:
             "attack_bonus": attack_bonus,
             "pending_attack_id": pending_attack_id,
             "damage_roll_required": bool(pending_attack_id),
+            "damage_rolls": damage_rolls,
+            "base_damage": base_damage,
+            "damage_roll_source": damage_roll_source,
         }
 
     @classmethod
@@ -323,7 +370,8 @@ class CombatNpcActionMixin:
             manual_rolls=req.manual_rolls,
         )
         damage_bonus = cls._safe_int(pending_attack.get("damage_bonus"), 0)
-        damage = max(0, base_damage + damage_bonus)
+        effect_damage_bonus = cls._sum_numeric_effects(attacker, "damage_bonus")
+        damage = max(0, base_damage + damage_bonus + effect_damage_bonus)
         target_ref_id = pending_attack.get("target_ref_id")
         target_kind = pending_attack.get("target_kind")
         target_display_name = pending_attack.get("target_display_name") or "Target"

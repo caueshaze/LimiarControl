@@ -3,23 +3,8 @@ import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { getModifier, getProficiencyBonus } from "../../features/character-sheet/utils/calculations";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
+import { formatDamageLabel } from "../../shared/i18n/domainLabels";
 import type { PlayerBoardWeaponSummary } from "./playerBoard.types";
-
-const DAMAGE_TYPE_LABELS = {
-  acid: { en: "acid", pt: "ácido" },
-  bludgeoning: { en: "bludgeoning", pt: "esmagamento" },
-  cold: { en: "cold", pt: "frio" },
-  fire: { en: "fire", pt: "fogo" },
-  force: { en: "force", pt: "força" },
-  lightning: { en: "lightning", pt: "elétrico" },
-  necrotic: { en: "necrotic", pt: "necrótico" },
-  piercing: { en: "piercing", pt: "perfurante" },
-  poison: { en: "poison", pt: "veneno" },
-  psychic: { en: "psychic", pt: "psíquico" },
-  radiant: { en: "radiant", pt: "radiante" },
-  slashing: { en: "slashing", pt: "cortante" },
-  thunder: { en: "thunder", pt: "trovejante" },
-} as const;
 
 const SPECIFIC_WEAPON_PROFICIENCY_ALIASES: Record<string, string[]> = {
   club: ["clava", "clavas", "club", "clubs"],
@@ -47,18 +32,6 @@ const normalizeLookup = (value: string | null | undefined) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
-
-const localizeDamageType = (damageType: string | null | undefined, locale: string) => {
-  const normalized = normalizeLookup(damageType);
-  if (!normalized) {
-    return null;
-  }
-  const labels = DAMAGE_TYPE_LABELS[normalized as keyof typeof DAMAGE_TYPE_LABELS];
-  if (labels) {
-    return locale === "pt" ? labels.pt : labels.en;
-  }
-  return damageType?.trim() ?? null;
-};
 
 const chooseWeaponAbility = (sheet: CharacterSheet, item: Item) => {
   const hasFinesse = (item.properties ?? []).some(
@@ -158,13 +131,9 @@ export const buildPlayerBoardWeaponSummary = ({
     getModifier(playerSheet.abilities[attackAbility]) +
     (proficient ? getProficiencyBonus(playerSheet.level) : 0) +
     magicBonus;
-  const damageTypeLabel = localizeDamageType(item.damageType, locale);
-
   return {
     attackBonus,
-    damageLabel: item.damageDice
-      ? `${item.damageDice}${damageTypeLabel ? ` ${damageTypeLabel}` : ""}`
-      : (damageTypeLabel ?? "—"),
+    damageLabel: formatDamageLabel(item.damageDice, item.damageType, locale) ?? "—",
     name: localizedItemName(item, locale),
     proficient,
   };

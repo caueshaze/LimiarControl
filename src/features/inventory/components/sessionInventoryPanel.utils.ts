@@ -2,6 +2,10 @@ import { ITEM_TYPES, type Item } from "../../../entities/item";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Armor } from "../../character-sheet/model/characterSheet.types";
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
+import {
+  formatDamageLabel,
+  localizeBaseItemDexBonusRule,
+} from "../../../shared/i18n/domainLabels";
 import { localizedItemName } from "../../shop/utils/localizedItemName";
 import { buildWalletDisplay } from "../../shop/utils/shopCurrency";
 
@@ -164,13 +168,6 @@ export const buildWalletCoins = (wallet: CurrencyWallet | null | undefined) => {
   return buildWalletDisplay(wallet);
 };
 
-const formatDexRule = (rule: string | null | undefined) => {
-  if (rule === "max_2") return "DEX max +2";
-  if (rule === "none") return "Sem DEX";
-  if (rule === "full") return "DEX completo";
-  return null;
-};
-
 export const buildWeaponOptions = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
@@ -181,9 +178,7 @@ export const buildWeaponOptions = (
     .map(({ entry, item, name }) => ({
       value: entry.id,
       label: name,
-      detail: item?.damageDice
-        ? `${item.damageDice}${item.damageType ? ` ${item.damageType}` : ""}`
-        : null,
+      detail: item?.damageDice ? formatDamageLabel(item.damageDice, item.damageType, locale) : null,
     }));
 
 export const buildArmorOptions = (
@@ -198,7 +193,7 @@ export const buildArmorOptions = (
       label: name,
       detail:
         item?.armorClassBase != null
-          ? `CA ${item.armorClassBase}${formatDexRule(item.dexBonusRule) ? ` · ${formatDexRule(item.dexBonusRule)}` : ""}`
+          ? `CA ${item.armorClassBase}${localizeBaseItemDexBonusRule(item.dexBonusRule, locale) ? ` · ${localizeBaseItemDexBonusRule(item.dexBonusRule, locale)}` : ""}`
           : null,
     }));
 

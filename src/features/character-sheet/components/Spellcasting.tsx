@@ -127,7 +127,7 @@ export const Spellcasting = ({
 
       {readOnly && startingSpellLimits && creationConfig && onToggleCreationSpell && (
         <>
-          <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/[0.03]"}`}>
+          <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/3"}`}>
             <p className="font-semibold text-slate-200">
               {t("sheet.spells.levelSlots").replace("{n}", "1")}: <span className="text-violet-300">{startingSpellLimits.levelOneSlots}</span>
             </p>

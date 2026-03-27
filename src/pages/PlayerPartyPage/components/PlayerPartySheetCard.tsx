@@ -75,7 +75,7 @@ export const PlayerPartySheetCard = ({
         <div className="flex flex-wrap gap-2">
           <Link
             to={routes.characterSheetParty.replace(":partyId", partyId)}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200 transition hover:border-white/20 hover:text-white"
+            className="rounded-full border border-white/10 bg-white/3 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200 transition hover:border-white/20 hover:text-white"
           >
             {t("playerParty.viewSheet")}
           </Link>

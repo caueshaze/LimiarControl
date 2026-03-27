@@ -5,6 +5,7 @@ import {
   type CombatSpellMode,
   type CombatSpellResult,
   type CombatState,
+  type StandardActionType,
 } from "../../../shared/api/combatRepo";
 import { subscribe } from "../../../shared/realtime/centrifugoClient";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
@@ -62,9 +63,9 @@ const buildSpellOptions = (
   return spellcasting.spells
     .filter((spell) => spell.level === 0 || spell.prepared || spellcasting.mode === "known")
     .map((spell) => {
-      const catalogSpell =
-        (spell.canonicalKey && byCanonicalKey.get(spell.canonicalKey.toLowerCase())) ??
-        byName.get(spell.name.toLowerCase());
+      const catalogSpell = spell.canonicalKey
+        ? byCanonicalKey.get(spell.canonicalKey.toLowerCase()) ?? byName.get(spell.name.toLowerCase())
+        : byName.get(spell.name.toLowerCase());
       const suggestedMode: CombatSpellMode | null = catalogSpell?.savingThrow
         ? "saving_throw"
         : catalogSpell?.damageType
@@ -79,6 +80,7 @@ const buildSpellOptions = (
         suggestedMode,
         damageType: catalogSpell?.damageType ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
+        saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
       };
     })
     .sort((left, right) => left.level - right.level || left.name.localeCompare(right.name));
@@ -277,6 +279,22 @@ export const usePlayerCombatDebugState = ({
     });
   };
 
+  const handleStandardAction = async (
+    action: StandardActionType,
+    targetParticipantId?: string,
+    description?: string,
+  ) => {
+    if (!state) return;
+    await withActionState(async () => {
+      await combatRepo.standardAction(sessionId, {
+        action,
+        actor_participant_id: getActorParticipantId(),
+        target_participant_id: targetParticipantId,
+        description,
+      });
+    });
+  };
+
   const handleDeathSave = async () => {
     if (!state) return;
     await withActionState(async () => {
@@ -315,6 +333,7 @@ export const usePlayerCombatDebugState = ({
     handleCast,
     handleDeathSave,
     handleEndTurn,
+    handleStandardAction,
     lastAttackResult,
     lastSpellResult,
     loading,

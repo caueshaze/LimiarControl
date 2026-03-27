@@ -51,7 +51,43 @@ class CombatDamageMixin:
         msg = ""
 
         if kind == "player":
+            from app.services.wild_shape_service import apply_damage_to_form, is_active as ws_is_active
+
             data = cls._as_dict(target_model.state_json)
+
+            # ── Wild Shape HP routing ─────────────────────────────────────────
+            if ws_is_active(data):
+                data, ws_reverted, overflow = apply_damage_to_form(data, amount)
+                if ws_reverted:
+                    msg = " (Wild Shape form destroyed — reverted to humanoid!"
+                    if overflow > 0:
+                        # PHB 5e: excess damage carries over to humanoid form
+                        humanoid_hp = max(0, cls._safe_int(data.get("currentHP"), 0))
+                        new_humanoid_hp = max(0, humanoid_hp - overflow)
+                        data["currentHP"] = new_humanoid_hp
+                        if humanoid_hp == 0 and new_humanoid_hp == 0:
+                            fails = 2 if is_crit else 1
+                            death_saves = cls._as_dict(data.get("deathSaves"))
+                            death_saves["failures"] += fails
+                            data["deathSaves"] = death_saves
+                            msg += f", {overflow} overflow while downed!)"
+                        elif humanoid_hp > 0 and new_humanoid_hp == 0:
+                            cls._reset_death_saves(data)
+                            msg += f", {overflow} overflow → downed!)"
+                        else:
+                            msg += f", {overflow} overflow damage applied)"
+                    else:
+                        msg += ")"
+                target_model.state_json = finalize_session_state_data(data)
+                status = cls._sync_participant_status(db, state, target_ref_id, kind, target_model)
+                flag_modified(target_model, "state_json")
+                db.add(target_model)
+                if state:
+                    flag_modified(state, "participants")
+                    db.add(state)
+                return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), msg, None
+
+            # ── Normal humanoid HP ────────────────────────────────────────────
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
             data["currentHP"] = max(0, current - amount)
 
@@ -101,7 +137,28 @@ class CombatDamageMixin:
         msg = ""
 
         if kind == "player":
+            from app.services.wild_shape_catalog import get_form
+            from app.services.wild_shape_service import apply_healing_to_form, is_active as ws_is_active
+
             data = cls._as_dict(target_model.state_json)
+
+            # ── Wild Shape: heal the beast form's HP ──────────────────────────
+            if ws_is_active(data):
+                form_key = (data.get("wildShape") or {}).get("formKey")
+                form = get_form(form_key) if isinstance(form_key, str) else None
+                if form is not None:
+                    data = apply_healing_to_form(data, amount, form)
+                    target_model.state_json = finalize_session_state_data(data)
+                    status = cls._sync_participant_status(db, state, target_ref_id, kind, target_model)
+                    flag_modified(target_model, "state_json")
+                    db.add(target_model)
+                    if state:
+                        flag_modified(state, "participants")
+                        db.add(state)
+                    form_hp = (data.get("wildShape") or {}).get("formCurrentHP", 0)
+                    return cls._safe_int(form_hp, 0), "", None
+
+            # ── Normal humanoid HP ────────────────────────────────────────────
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
             max_hp = max(0, cls._safe_int(data.get("maxHP"), 0))
             data["currentHP"] = min(max_hp, current + amount)

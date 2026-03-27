@@ -52,6 +52,8 @@ class CampaignSpell(SQLModel, table=True):
     canonical_key: str = Field(
         sa_column=Column(String, nullable=False, index=True)
     )
+
+    # --- Identity (editorial) ---
     name_en: str
     name_pt: Optional[str] = None
     description_en: str = Field(sa_column=Column(Text, nullable=False))
@@ -75,8 +77,12 @@ class CampaignSpell(SQLModel, table=True):
         sa_column=Column(JSONB, nullable=True),
     )
 
+    # --- Casting (mechanical) ---
+    casting_time_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     casting_time: Optional[str] = None
+    range_meters: Optional[int] = None
     range_text: Optional[str] = None
+    target_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     duration: Optional[str] = None
     components_json: Optional[list[str]] = Field(
         default=None,
@@ -85,7 +91,6 @@ class CampaignSpell(SQLModel, table=True):
     material_component_text: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
     )
-
     concentration: bool = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
@@ -95,9 +100,21 @@ class CampaignSpell(SQLModel, table=True):
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
 
-    damage_type: Optional[str] = None
+    # --- Resolution (mechanical) ---
+    resolution_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     saving_throw: Optional[str] = None
+    save_success_outcome: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
 
+    # --- Effect (mechanical) ---
+    damage_dice: Optional[str] = None
+    damage_type: Optional[str] = None
+    heal_dice: Optional[str] = None
+
+    # --- Upcast (mechanical) ---
+    upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    upcast_value: Optional[str] = None
+
+    # --- Metadata ---
     source: Optional[str] = None
     source_ref: Optional[str] = None
     is_srd: bool = Field(

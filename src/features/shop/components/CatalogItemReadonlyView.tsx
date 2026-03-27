@@ -1,20 +1,11 @@
 import type { Item } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import {
+  formatDamageLabel,
+  localizeBaseItemDexBonusRule,
+} from "../../../shared/i18n/domainLabels";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { formatItemPrice } from "../utils/shopCurrency";
-
-const DEX_RULE_LABELS = {
-  full: { en: "Full DEX", pt: "DEX completo" },
-  max_2: { en: "Max +2 DEX", pt: "Máx. +2 DEX" },
-  none: { en: "No DEX bonus", pt: "Sem bônus de DEX" },
-} as const;
-
-const localizeDexRule = (value: string | null | undefined, locale: string) => {
-  if (!value) return null;
-  const labels = DEX_RULE_LABELS[value as keyof typeof DEX_RULE_LABELS];
-  if (!labels) return value;
-  return locale === "pt" ? labels.pt : labels.en;
-};
 
 type Props = {
   item: Item;
@@ -49,7 +40,7 @@ export const CatalogItemReadonlyView = ({
   const { t } = useLocale();
 
   return (
-    <article className="group relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,28,0.92),rgba(3,7,20,0.97))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.24)] transition duration-300 hover:translate-y-[-2px] hover:border-white/12">
+    <article className="group relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,28,0.92),rgba(3,7,20,0.97))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.24)] transition duration-300 hover:-translate-y-0.5 hover:border-white/12">
       <div
         className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_28%),linear-gradient(135deg,var(--tw-gradient-stops))] ${meta.panelClass}`}
       />
@@ -89,7 +80,7 @@ export const CatalogItemReadonlyView = ({
             )}
           </div>
 
-          <div className="min-w-[120px] rounded-[24px] border border-white/8 bg-white/[0.05] px-4 py-3 text-right">
+          <div className="min-w-[120px] rounded-[24px] border border-white/8 bg-white/5 px-4 py-3 text-right">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
               {t("catalog.card.price")}
             </p>
@@ -128,7 +119,7 @@ export const CatalogItemReadonlyView = ({
                   {propertyItems.map((property) => (
                     <span
                       key={property}
-                      className="rounded-full border border-white/8 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200"
+                      className="rounded-full border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-slate-200"
                     >
                       {property}
                     </span>
@@ -145,7 +136,7 @@ export const CatalogItemReadonlyView = ({
               <button
                 type="button"
                 onClick={onEdit}
-                className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.09]"
+                className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100 transition hover:border-white/20 hover:bg-white/9"
               >
                 {t("catalog.edit")}
               </button>
@@ -183,7 +174,7 @@ export const buildCatalogStatItems = (
     item.damageDice
       ? {
           label: labels.damage,
-          value: item.damageType ? `${item.damageDice} ${item.damageType}` : item.damageDice,
+          value: formatDamageLabel(item.damageDice, item.damageType, locale) ?? item.damageDice,
         }
       : null,
     typeof item.rangeMeters === "number"
@@ -204,7 +195,7 @@ export const buildCatalogStatItems = (
     item.dexBonusRule
       ? {
           label: labels.dexBonusRule,
-          value: localizeDexRule(item.dexBonusRule, locale) ?? item.dexBonusRule,
+          value: localizeBaseItemDexBonusRule(item.dexBonusRule, locale) ?? item.dexBonusRule,
         }
       : null,
     typeof item.strengthRequirement === "number"

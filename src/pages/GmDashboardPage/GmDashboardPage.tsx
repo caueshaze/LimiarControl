@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
@@ -15,6 +16,11 @@ import { GmDashboardPartyInventories } from "./GmDashboardPartyInventories";
 import { GmDashboardSessionPanel } from "./GmDashboardSessionPanel";
 import { useGmDashboardActions } from "./useGmDashboardActions";
 import { useGmDashboardData } from "./useGmDashboardData";
+import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
+import { GmCombatModeShell } from "../../features/combat-ui/gm/GmCombatModeShell";
+import { useCombatUiState } from "../../features/combat-ui/useCombatUiState";
+import { AuthoritativeRollDialog } from "../../features/rolls/components/AuthoritativeRollDialog";
+import type { CombatParticipantPreview } from "./CombatStartModal";
 
 export const GmDashboardPage = () => {
     const { campaignId } = useParams<{ campaignId: string }>();
@@ -22,13 +28,20 @@ export const GmDashboardPage = () => {
     const { selectedCampaign, selectedCampaignId, selectCampaign } = useCampaigns();
     const { t } = useLocale();
     const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
-    const { setSelectedSessionId } = useSession();
+    const {
+        combatModeVisible,
+        combatUiExpanded,
+        combatUiActive,
+        setSelectedSessionId,
+        toggleCombatUiExpanded,
+    } = useSession();
+    const [gmInitiativeQueue, setGmInitiativeQueue] = useState<CombatParticipantPreview[]>([]);
     const {
         activate,
         activeSession,
         activityFeed,
         catalogItems,
-        combatUiActive,
+        combatUiActive: gmCombatUiActive,
         endSession,
         lastEvent,
         loading,
@@ -133,12 +146,39 @@ export const GmDashboardPage = () => {
         sortedCatalogItems,
         t,
     });
+    const effectiveCombatUiActive = combatUiActive || gmCombatUiActive;
+    const effectiveCombatModeVisible = effectiveCombatUiActive && !combatUiExpanded;
+    const combatBarState = useCombatUiState({
+        enabled: Boolean(activeSession?.id) && effectiveCombatUiActive && !effectiveCombatModeVisible,
+        sessionId: activeSession?.id ?? "",
+    });
     const dashboardBackHref = activeSession?.partyId
         ? routes.partyDetails.replace(":partyId", activeSession.partyId)
         : routes.home;
 
+    useEffect(() => {
+        if (!effectiveCombatUiActive || activeSession?.status !== "ACTIVE") {
+            setGmInitiativeQueue([]);
+        }
+    }, [activeSession?.status, effectiveCombatUiActive]);
+
+    useEffect(() => {
+        setGmInitiativeQueue([]);
+    }, [activeSession?.id]);
+
     return (
         <section className="space-y-8">
+            {effectiveCombatModeVisible && activeSession?.status === "ACTIVE" && effectiveCampaignId ? (
+                <GmCombatModeShell
+                    campaignId={effectiveCampaignId}
+                    expanded={combatUiExpanded}
+                    onToggleExpanded={toggleCombatUiExpanded}
+                    partyPlayers={partyPlayers}
+                    playerSheetByUserId={playerSheetByUserId}
+                    sessionId={activeSession.id}
+                />
+            ) : (
+                <>
             <GmDashboardHeader
                 backHref={dashboardBackHref}
                 backLabel={t("gm.dashboard.backToParty")}
@@ -147,6 +187,17 @@ export const GmDashboardPage = () => {
                 selectedCampaignName={selectedCampaign?.name}
             />
 
+            {effectiveCombatUiActive && activeSession?.status === "ACTIVE" ? (
+                <CombatModeBar
+                    currentParticipantName={combatBarState.currentParticipant?.display_name ?? null}
+                    expanded={combatUiExpanded}
+                    onToggleExpanded={toggleCombatUiExpanded}
+                    phase={combatBarState.state?.phase ?? null}
+                    round={combatBarState.state?.round ?? null}
+                    turnResources={combatBarState.currentParticipant?.turn_resources ?? null}
+                />
+            ) : null}
+
             <GmDashboardMissingSheetsBanner
                 players={missingSheetsPlayers}
                 onClose={() => setMissingSheetsPlayers([])}
@@ -154,7 +205,7 @@ export const GmDashboardPage = () => {
 
             <GmDashboardSessionPanel
                 activeSession={activeSession}
-                combatUiActive={combatUiActive}
+                combatUiActive={effectiveCombatUiActive}
                 commandFeedback={commandFeedback}
                 commandSending={commandSending}
                 creating={creating}
@@ -179,6 +230,8 @@ export const GmDashboardPage = () => {
                 onEndSession={handleEndSession}
                 onForceStart={handleForceStart}
                 onRequestInitiativeRoll={handleRequestInitiativeRoll}
+                onClearGmInitiativeQueue={() => setGmInitiativeQueue([])}
+                onSetGmInitiativeQueue={setGmInitiativeQueue}
                 setRollAbility={setRollAbility}
                 setRollAdvantage={setRollAdvantage}
                 setRollDc={setRollDc}
@@ -193,7 +246,7 @@ export const GmDashboardPage = () => {
                 <SessionEntityPanel
                     sessionId={activeSession.id}
                     campaignId={effectiveCampaignId}
-                    combatActive={combatUiActive}
+                    combatActive={effectiveCombatUiActive}
                     lastEvent={lastEvent}
                 />
             )}
@@ -237,7 +290,9 @@ export const GmDashboardPage = () => {
                 />
             )}
 
-            {activeSession?.status === "ACTIVE" && <GmDashboardActivityCard activityFeed={activityFeed} />}
+            {activeSession?.status === "ACTIVE" && activeSession?.id ? (
+                <GmDashboardActivityCard activityFeed={activityFeed} sessionId={activeSession.id} />
+            ) : null}
 
             <StartSessionModal
                 isOpen={showStartModal}
@@ -247,6 +302,28 @@ export const GmDashboardPage = () => {
             />
 
             <DiceVisualizer events={rollEvents} />
+                </>
+            )}
+
+            {activeSession?.id && gmInitiativeQueue[0] ? (
+                <AuthoritativeRollDialog
+                    key={`gm-initiative:${gmInitiativeQueue[0].id}`}
+                    request={{
+                        rollType: "initiative",
+                        advantageMode: "normal",
+                        reason: gmInitiativeQueue[0].displayName,
+                    }}
+                    sessionId={activeSession.id}
+                    actorKind="session_entity"
+                    actorRefId={gmInitiativeQueue[0].id}
+                    onResolved={() => {
+                        setGmInitiativeQueue((current) => current.slice(1));
+                    }}
+                    onClose={() => {
+                        setGmInitiativeQueue((current) => current.slice(1));
+                    }}
+                />
+            ) : null}
         </section>
     );
 };

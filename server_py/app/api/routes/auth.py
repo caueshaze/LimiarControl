@@ -24,12 +24,14 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.username == username)).first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already exists")
+    is_first_user = session.exec(select(User.id)).first() is None
     user = User(
         id=str(uuid4()),
         username=username,
         display_name=payload.displayName.strip() if payload.displayName else None,
         pin_hash=hash_pin(payload.pin.strip()),
         role=payload.role,
+        is_system_admin=is_first_user,
     )
     session.add(user)
     session.commit()
@@ -55,4 +57,5 @@ def me(user: User = Depends(get_current_user)):
         username=user.username,
         displayName=user.display_name,
         role=user.role,
+        isSystemAdmin=user.is_system_admin,
     )

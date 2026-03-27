@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.class_progression import apply_level_up_stats
 from app.services.xp_thresholds import MAX_LEVEL, can_level_up, get_xp_for_next_level
 
 
@@ -49,8 +50,10 @@ def approve_level_up(data: dict | None) -> dict:
     if not can_level_up(current_level, current_xp):
         raise CharacterProgressionError("Not enough XP to level up")
 
-    next_data["level"] = current_level + 1
+    new_level = current_level + 1
+    next_data["level"] = new_level
     next_data["pendingLevelUp"] = False
+    next_data = apply_level_up_stats(next_data, new_level)
     return next_data
 
 

@@ -133,7 +133,7 @@ const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreati
       )}
     </div>
 
-    <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/6 bg-white/[0.03] px-2.5 py-2">
+    <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/6 bg-white/3 px-2.5 py-2">
       <div className="text-center">
         <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
           {labelFinal}

@@ -30,7 +30,7 @@ export const PlayerBoardStatusPanel = ({
   const { t } = useLocale();
 
   return (
-    <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
+    <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
       <div className="border-b border-white/8 pb-5">
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
@@ -91,7 +91,7 @@ export const PlayerBoardStatusPanel = ({
               label={t("playerBoard.xpTrackLabel")}
               value={`${playerStatus.xpPercent}%`}
               percent={playerStatus.xpPercent}
-              toneClass="bg-gradient-to-r from-sky-500 via-limiar-500 to-emerald-400"
+              toneClass="bg-linear-to-r from-sky-500 via-limiar-500 to-emerald-400"
             />
           </div>
 

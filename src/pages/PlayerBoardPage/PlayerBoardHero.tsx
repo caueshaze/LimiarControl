@@ -28,7 +28,7 @@ const getStatusToneClass = (tone: SessionStatusTone) => {
   if (tone === "lobby") {
     return "border-amber-300/20 bg-amber-400/10 text-amber-100";
   }
-  return "border-white/10 bg-white/[0.04] text-slate-200";
+  return "border-white/10 bg-white/4 text-slate-200";
 };
 
 export const PlayerBoardHero = ({

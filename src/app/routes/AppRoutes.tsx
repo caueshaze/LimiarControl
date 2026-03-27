@@ -20,6 +20,14 @@ const CatalogPage = lazy(async () => {
   const module = await import("../../pages/CatalogPage");
   return { default: module.CatalogPage };
 });
+const SystemCatalogPage = lazy(async () => {
+  const module = await import("../../pages/SystemCatalogPage");
+  return { default: module.SystemCatalogPage };
+});
+const SystemSpellCatalogPage = lazy(async () => {
+  const module = await import("../../pages/SystemSpellCatalogPage");
+  return { default: module.SystemSpellCatalogPage };
+});
 const GmDashboardPage = lazy(async () => {
   const module = await import("../../pages/GmDashboardPage/GmDashboardPage");
   return { default: module.GmDashboardPage };
@@ -56,6 +64,14 @@ const CharacterSheetPage = lazy(async () => {
 const RequireGmRole = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   if (user?.role !== "GM") {
+    return <Navigate to={routes.home} replace />;
+  }
+  return <>{children}</>;
+};
+
+const RequireSystemAdmin = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
+  if (!user?.isSystemAdmin) {
     return <Navigate to={routes.home} replace />;
   }
   return <>{children}</>;
@@ -181,6 +197,26 @@ export const AppRoutes = () => {
               <RequireGmRole>
                 {renderRoute(<CatalogPage />)}
               </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.systemCatalogAdmin}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<SystemCatalogPage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.systemSpellCatalogAdmin}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<SystemSpellCatalogPage />)}
+              </RequireSystemAdmin>
             </RequireAuth>
           }
         />

@@ -40,4 +40,7 @@ export const sessionActivityEnUSDictionary = {
   "sessionActivity.entityHealed": "recovered",
   "sessionActivity.entityHpSet": "HP set to",
   "sessionActivity.currentHp": "Current HP:",
+  "sessionActivity.combatModuleEyebrow": "Combat module",
+  "sessionActivity.combatModuleTitle": "Combat activity",
+  "sessionActivity.combatEventsCount": "combat events",
 } as const;

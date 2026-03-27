@@ -104,23 +104,23 @@ export const CharacterHeader = ({
           <button
             type="button"
             onClick={handleBack}
-            className="rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300"
+            className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300"
           >
             {backLabel ?? t("sheet.header.backToParty")}
           </button>
         )}
         {showResetImport && (
           <button type="button" onClick={onReset}
-            className="rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-rose-500/40 hover:text-rose-300">
+            className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-rose-500/40 hover:text-rose-300">
             {t("sheet.header.reset")}
           </button>
         )}
         <button type="button" onClick={onExport}
-          className="rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
+          className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
           {t("sheet.header.exportJson")}
         </button>
         {showResetImport && (
-          <label className="cursor-pointer rounded-full border border-white/8 bg-white/[0.02] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
+          <label className="cursor-pointer rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
             {t("sheet.header.importJson")}
             <input ref={importRef} type="file" accept=".json" className="hidden" onChange={onImport} />
           </label>
@@ -259,7 +259,7 @@ const SaveStatus = ({
 };
 
 const StatChip = ({ label, value, className = "text-slate-200" }: { label: string; value: string; className?: string }) => (
-  <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs">
+  <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/3 px-3 py-1.5 text-xs">
     <span className="font-bold uppercase tracking-[0.2em] text-slate-500">{label}</span>
     <span className={className}>{value}</span>
   </div>

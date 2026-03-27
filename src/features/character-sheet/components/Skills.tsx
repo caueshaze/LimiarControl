@@ -67,7 +67,7 @@ const PROF_STYLE: Record<number, string> = {
 const PROF_LABEL: Record<number, string> = { 2: "E", 1: "P", 0.5: "H", 0: "" };
 
 const SkillRow = ({ skill, total, profLevel, abilityShort, onCycleProf, readOnly, cycleProfTitle }: RowProps) => (
-  <div className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/[0.03] px-3 py-1.5 transition-all hover:border-white/10 hover:bg-white/[0.05]">
+  <div className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/3 px-3 py-1.5 transition-all hover:border-white/10 hover:bg-white/5">
     <button
       type="button"
       onClick={() => onCycleProf(skill)}
@@ -79,7 +79,7 @@ const SkillRow = ({ skill, total, profLevel, abilityShort, onCycleProf, readOnly
     </button>
     <span className="inline-flex min-w-10 justify-center rounded-full bg-slate-950/80 px-2.5 py-1 text-sm font-bold text-slate-100">{formatMod(total)}</span>
     <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-slate-300">{SKILL_LABELS[skill]}</span>
-    <span className="shrink-0 rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+    <span className="shrink-0 rounded-full bg-white/4 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
       {abilityShort}
     </span>
   </div>

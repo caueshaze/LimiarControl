@@ -164,7 +164,7 @@ export type CharacterSheet = {
   equippedArmor: Armor;
   equippedShield: Shield | null;
   miscACBonus: number;
-  speed: number;
+  speedMeters: number;
 
   // HP
   maxHP: number;

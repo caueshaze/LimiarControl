@@ -33,7 +33,7 @@ function SessionActivityLog({ sessionId }: { sessionId: string }) {
           return (
             <div
               key={`${event.type}-${index}`}
-              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/3 px-3 py-3"
             >
               <span className="text-sm">🎲</span>
               <p className="flex-1 text-xs leading-6 text-slate-200">
@@ -62,7 +62,7 @@ function SessionActivityLog({ sessionId }: { sessionId: string }) {
           return (
             <div
               key={`${event.type}-${index}`}
-              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/3 px-3 py-3"
             >
               <span className="text-sm">{event.action === "opened" ? "🏪" : "🔒"}</span>
               <p className="flex-1 text-xs leading-6 text-slate-200">
@@ -86,7 +86,7 @@ function SessionActivityLog({ sessionId }: { sessionId: string }) {
         return (
           <div
             key={`${event.type}-${index}`}
-            className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+            className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/3 px-3 py-3"
           >
             <span className="text-sm">🛒</span>
             <p className="flex-1 text-xs leading-6 text-slate-200">
@@ -123,7 +123,7 @@ export const PlayerPartySessionHistoryCard = ({
   const { t, locale } = useLocale();
 
   return (
-    <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] px-6 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
+    <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] px-6 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
       <div className="space-y-1 border-b border-white/8 pb-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
           {t("playerParty.historyTitle")}
@@ -147,12 +147,12 @@ export const PlayerPartySessionHistoryCard = ({
             return (
               <article
                 key={session.id}
-                className="overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.03]"
+                className="overflow-hidden rounded-3xl border border-white/8 bg-white/3"
               >
                 <button
                   type="button"
                   onClick={() => onToggleSession(isExpanded ? null : session.id)}
-                  className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/[0.03]"
+                  className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/3"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -163,7 +163,7 @@ export const PlayerPartySessionHistoryCard = ({
                             ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
                             : session.status === "LOBBY"
                               ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
-                              : "border-white/10 bg-white/[0.04] text-slate-300"
+                              : "border-white/10 bg-white/4 text-slate-300"
                         }`}
                       >
                         {statusLabel}

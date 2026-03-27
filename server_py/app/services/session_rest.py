@@ -49,6 +49,8 @@ def end_rest(data: dict | None) -> tuple[dict, RestState]:
 
     if current_state == "short_rest":
         next_data["restState"] = "exploration"
+        # Wild Shape recharges on short rest
+        next_data = _recharge_wild_shape_inline(next_data)
         return next_data, "short_rest"
 
     return apply_long_rest(next_data), "long_rest"
@@ -95,6 +97,46 @@ def use_hit_die(
     }
 
 
+def _recharge_wild_shape_inline(data: dict) -> dict:
+    """Restore Wild Shape uses. Inlined to avoid circular imports."""
+    wild_shape = data.get("wildShape")
+    if not isinstance(wild_shape, dict):
+        return data
+    try:
+        level = int(data.get("level", 1))
+    except (TypeError, ValueError):
+        level = 1
+    uses_max = wild_shape.get("usesMax")
+    if not isinstance(uses_max, int):
+        uses_max = 99 if level >= 20 else 2
+    return {**data, "wildShape": {**wild_shape, "usesRemaining": uses_max}}
+
+
+def _force_revert_wild_shape_inline(data: dict) -> dict:
+    """Revert beast form and restore humanoid HP. Inlined to avoid circular imports."""
+    wild_shape = data.get("wildShape")
+    if not isinstance(wild_shape, dict) or not wild_shape.get("active"):
+        return data
+    saved_hp = wild_shape.get("savedHumanoidHP")
+    try:
+        saved_hp = int(saved_hp)
+    except (TypeError, ValueError):
+        saved_hp = 0
+    try:
+        max_hp = int(data.get("maxHP", 0))
+    except (TypeError, ValueError):
+        max_hp = 0
+    restored_hp = min(saved_hp, max_hp)
+    new_ws = {
+        **wild_shape,
+        "active": False,
+        "formKey": None,
+        "formCurrentHP": 0,
+        "savedHumanoidHP": None,
+    }
+    return {**data, "wildShape": new_ws, "currentHP": restored_hp}
+
+
 def apply_long_rest(data: dict | None) -> dict:
     next_data = ensure_rest_state(data)
 
@@ -126,6 +168,10 @@ def apply_long_rest(data: dict | None) -> dict:
                 **spellcasting,
                 "slots": next_slots,
             }
+
+    # Wild Shape: force revert if active, then recharge uses
+    next_data = _force_revert_wild_shape_inline(next_data)
+    next_data = _recharge_wild_shape_inline(next_data)
 
     return next_data
 

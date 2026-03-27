@@ -17,6 +17,7 @@ import { entityPtBRDictionary } from "./ptBR/entity";
 import { joinPtBRDictionary } from "./ptBR/join";
 import { rollsPtBRDictionary } from "./ptBR/rolls";
 import { sheetPtBRDictionary } from "./ptBR/sheet";
+import { combatUiPtBRDictionary } from "./ptBR/combatUi";
 
 export const ptBR = {
   ...navPtBRDictionary,
@@ -38,4 +39,5 @@ export const ptBR = {
   ...joinPtBRDictionary,
   ...rollsPtBRDictionary,
   ...sheetPtBRDictionary,
+  ...combatUiPtBRDictionary,
 } as const;

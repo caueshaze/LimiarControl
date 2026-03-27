@@ -2,55 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from app.api.deps import get_current_user
+from app.api.serializers.base_spell import to_base_spell_read
 from app.db.session import get_session
-from app.models.base_spell import BaseSpell, SpellSchool
+from app.models.base_spell import SpellSchool
 from app.models.campaign import SystemType
 from app.models.user import User
-from app.schemas.base_spell import BaseSpellRead, BaseSpellUpdate
+from app.schemas.base_spell import BaseSpellRead
 from app.services.base_spells import (
-    delete_base_spell as delete_base_spell_svc,
     get_base_spell_by_id,
     list_base_spells as list_catalog_base_spells,
-    update_base_spell as update_base_spell_svc,
 )
 
 router = APIRouter()
-BASE_SPELL_WRITE_DISABLED_DETAIL = (
-    "Base spell catalog is read-only via API to preserve campaign isolation"
-)
-
-
-def require_spell_catalog_editor(_user: User) -> None:
-    raise HTTPException(status_code=403, detail=BASE_SPELL_WRITE_DISABLED_DETAIL)
-
-
-def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
-    return BaseSpellRead(
-        id=spell.id,
-        system=spell.system,
-        canonicalKey=spell.canonical_key,
-        nameEn=spell.name_en,
-        namePt=spell.name_pt,
-        descriptionEn=spell.description_en,
-        descriptionPt=spell.description_pt,
-        level=spell.level,
-        school=spell.school,
-        classesJson=spell.classes_json,
-        castingTime=spell.casting_time,
-        rangeText=spell.range_text,
-        duration=spell.duration,
-        componentsJson=spell.components_json,
-        materialComponentText=spell.material_component_text,
-        concentration=spell.concentration,
-        ritual=spell.ritual,
-        damageType=spell.damage_type,
-        savingThrow=spell.saving_throw,
-        source=spell.source,
-        sourceRef=spell.source_ref,
-        isSrd=spell.is_srd,
-        isActive=spell.is_active,
-        aliases=[],
-    )
 
 
 @router.get("", response_model=list[BaseSpellRead])
@@ -85,49 +48,3 @@ def get_base_spell(
         raise HTTPException(status_code=404, detail="Base spell not found")
 
     return to_base_spell_read(spell)
-
-
-@router.put("/{base_spell_id}", response_model=BaseSpellRead)
-def update_base_spell(
-    base_spell_id: str,
-    payload: BaseSpellUpdate,
-    user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    require_spell_catalog_editor(user)
-    # Map camelCase payload fields to snake_case model fields
-    field_map = {
-        "nameEn": "name_en",
-        "namePt": "name_pt",
-        "descriptionEn": "description_en",
-        "descriptionPt": "description_pt",
-        "classesJson": "classes_json",
-        "castingTime": "casting_time",
-        "rangeText": "range_text",
-        "componentsJson": "components_json",
-        "materialComponentText": "material_component_text",
-        "damageType": "damage_type",
-        "savingThrow": "saving_throw",
-    }
-    data = {}
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        db_key = field_map.get(key, key)
-        data[db_key] = value
-
-    spell = update_base_spell_svc(db=session, base_spell_id=base_spell_id, data=data)
-    if not spell:
-        raise HTTPException(status_code=404, detail="Base spell not found")
-
-    return to_base_spell_read(spell)
-
-
-@router.delete("/{base_spell_id}", status_code=204)
-def delete_base_spell(
-    base_spell_id: str,
-    user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    require_spell_catalog_editor(user)
-    deleted = delete_base_spell_svc(db=session, base_spell_id=base_spell_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Base spell not found")

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type {
   BaseItemArmorCategory,
+  BaseItemDamageType,
+  BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
@@ -22,7 +24,7 @@ type Props = {
   price: string;
   weight: string;
   damageDice: string;
-  damageType: string;
+  damageType: BaseItemDamageType | "";
   rangeMeters: string;
   rangeLongMeters: string;
   versatileDamage: string;
@@ -30,7 +32,7 @@ type Props = {
   weaponRangeType: BaseItemWeaponRangeType | "";
   armorCategory: BaseItemArmorCategory | "";
   armorClassBase: string;
-  dexBonusRule: string;
+  dexBonusRule: BaseItemDexBonusRule | "";
   strengthRequirement: string;
   stealthDisadvantage: boolean;
   selectedProperties: ItemPropertySlug[];
@@ -43,7 +45,7 @@ type Props = {
   onPriceChange: (value: string) => void;
   onWeightChange: (value: string) => void;
   onDamageDiceChange: (value: string) => void;
-  onDamageTypeChange: (value: string) => void;
+  onDamageTypeChange: (value: BaseItemDamageType | "") => void;
   onRangeMetersChange: (value: string) => void;
   onRangeLongMetersChange: (value: string) => void;
   onVersatileDamageChange: (value: string) => void;
@@ -51,7 +53,7 @@ type Props = {
   onWeaponRangeTypeChange: (value: BaseItemWeaponRangeType | "") => void;
   onArmorCategoryChange: (value: BaseItemArmorCategory | "") => void;
   onArmorClassBaseChange: (value: string) => void;
-  onDexBonusRuleChange: (value: string) => void;
+  onDexBonusRuleChange: (value: BaseItemDexBonusRule | "") => void;
   onStrengthRequirementChange: (value: string) => void;
   onStealthDisadvantageChange: (value: boolean) => void;
   onPropertiesChange: (value: ItemPropertySlug[]) => void;
@@ -219,14 +221,14 @@ export const CatalogItemEditView = ({
               type="button"
               onClick={onSave}
               disabled={!canSave || isSaving}
-              className="inline-flex items-center rounded-full bg-[linear-gradient(120deg,#c4b5fd_0%,#67e8f9_48%,#fde68a_100%)] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-950 transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center rounded-full bg-[linear-gradient(120deg,#c4b5fd_0%,#67e8f9_48%,#fde68a_100%)] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-950 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? t("catalog.saving") : t("catalog.save")}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+              className="inline-flex items-center rounded-full border border-white/10 bg-white/4 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/8"
             >
               {t("catalog.cancel")}
             </button>

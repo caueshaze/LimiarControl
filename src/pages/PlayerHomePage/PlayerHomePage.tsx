@@ -243,7 +243,7 @@ export const PlayerHomePage = () => {
 
             <div className="mt-5 space-y-3">
               {loading ? (
-                <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-400">
+                <div className="rounded-[24px] border border-white/8 bg-white/3 p-4 text-sm text-slate-400">
                   {t("home.player.loadingParties")}
                 </div>
               ) : parties.length === 0 ? (
@@ -289,7 +289,7 @@ export const PlayerHomePage = () => {
 
             <div className="mt-5 space-y-3">
               {invites.length === 0 ? (
-                <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-slate-400">
+                <div className="rounded-[24px] border border-dashed border-white/10 bg-white/3 p-5 text-sm leading-7 text-slate-400">
                   {t("home.player.emptyInvitesDescription")}
                 </div>
               ) : (

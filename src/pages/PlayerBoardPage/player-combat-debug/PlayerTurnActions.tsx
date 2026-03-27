@@ -1,8 +1,76 @@
+import { useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
-import type { CombatSpellMode } from "../../../shared/api/combatRepo";
+import type { CombatSpellMode, StandardActionType } from "../../../shared/api/combatRepo";
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
 import type { PlayerBoardWeaponSummary } from "../playerBoard.types";
 import type { CombatSpellOption } from "./types";
+
+const STD_BTN = "rounded border px-3 py-2 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed";
+
+const StandardActionButtons = ({
+  actionUsed,
+  loading,
+  participants,
+  myParticipantId,
+  onStandardAction,
+}: {
+  actionUsed: boolean;
+  loading: boolean;
+  participants: CombatParticipant[];
+  myParticipantId: string;
+  onStandardAction: (action: StandardActionType, targetParticipantId?: string, description?: string) => void;
+}) => {
+  const [helpTarget, setHelpTarget] = useState("");
+  const [useObjectDesc, setUseObjectDesc] = useState("");
+  const disabled = actionUsed || loading;
+  const allies = participants.filter((p) => p.id !== myParticipantId);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
+        <button disabled={disabled} onClick={() => onStandardAction("dodge")} className={`${STD_BTN} border-sky-500/40 text-sky-300 hover:bg-sky-500/10`}>Dodge</button>
+        <button disabled={disabled} onClick={() => onStandardAction("dash")} className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}>Dash</button>
+        <button disabled={disabled} onClick={() => onStandardAction("disengage")} className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}>Disengage</button>
+        <button disabled={disabled} onClick={() => onStandardAction("hide")} className={`${STD_BTN} border-violet-500/40 text-violet-300 hover:bg-violet-500/10`}>Hide</button>
+        <button
+          disabled={disabled || !helpTarget}
+          onClick={() => { onStandardAction("help", helpTarget); setHelpTarget(""); }}
+          className={`${STD_BTN} border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10`}
+        >Help</button>
+        <button
+          disabled={disabled}
+          onClick={() => { onStandardAction("use_object", undefined, useObjectDesc || undefined); setUseObjectDesc(""); }}
+          className={`${STD_BTN} border-amber-500/40 text-amber-300 hover:bg-amber-500/10`}
+        >Use Object</button>
+      </div>
+
+      {/* Help target selector */}
+      {!actionUsed && allies.length > 0 && (
+        <select
+          value={helpTarget}
+          onChange={(e) => setHelpTarget(e.target.value)}
+          className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
+        >
+          <option value="">Help target (ally)...</option>
+          {allies.map((p) => (
+            <option key={p.id} value={p.id}>{p.display_name}</option>
+          ))}
+        </select>
+      )}
+
+      {/* Use Object description */}
+      {!actionUsed && (
+        <input
+          type="text"
+          value={useObjectDesc}
+          onChange={(e) => setUseObjectDesc(e.target.value)}
+          placeholder="Object description (optional)"
+          className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
+        />
+      )}
+    </div>
+  );
+};
 
 const DAMAGE_TYPE_OPTIONS = [
   "acid",
@@ -40,6 +108,7 @@ type Props = {
   onCast: () => void;
   onDeathSave: () => void;
   onEndTurn: () => void;
+  onStandardAction: (action: StandardActionType, targetParticipantId?: string, description?: string) => void;
   selectedSpell: CombatSpellOption | null;
   selectedSpellId: string;
   setActiveTab: (value: "attack" | "cast") => void;
@@ -74,6 +143,7 @@ export const PlayerTurnActions = ({
   onCast,
   onDeathSave,
   onEndTurn,
+  onStandardAction,
   selectedSpell,
   selectedSpellId,
   setActiveTab,
@@ -129,6 +199,24 @@ export const PlayerTurnActions = ({
 
       {isActive ? (
         <>
+          {(() => {
+            const tr = myParticipant.turn_resources;
+            if (!tr) return null;
+            return (
+              <div className="mb-3 flex gap-3 text-[10px] font-bold uppercase tracking-wider">
+                <span className={tr.action_used ? "text-slate-600 line-through" : "text-emerald-400"}>
+                  Action: {tr.action_used ? "Used" : "Ready"}
+                </span>
+                <span className={tr.bonus_action_used ? "text-slate-600 line-through" : "text-amber-400"}>
+                  Bonus: {tr.bonus_action_used ? "Used" : "Ready"}
+                </span>
+                <span className={tr.reaction_used ? "text-slate-600 line-through" : "text-sky-400"}>
+                  Reaction: {tr.reaction_used ? "Used" : "Ready"}
+                </span>
+              </div>
+            );
+          })()}
+
           <div className="mb-4 flex gap-2">
             <select
               className="flex-1 rounded border border-slate-700 bg-slate-900 p-2 text-white"
@@ -201,7 +289,7 @@ export const PlayerTurnActions = ({
               </div>
 
               <button
-                disabled={loading || !targetId}
+                disabled={loading || !targetId || !!myParticipant.turn_resources?.action_used}
                 onClick={onAttack}
                 className="w-full rounded bg-rose-600 px-4 py-3 font-bold text-white hover:bg-rose-500 disabled:opacity-50"
               >
@@ -232,7 +320,7 @@ export const PlayerTurnActions = ({
                   </p>
                   <p className="mt-2 text-base font-semibold text-white">{selectedSpell.name}</p>
                   <p className="mt-1 text-xs text-slate-300">
-                    Sugestao do catalogo: {selectedSpell.suggestedMode?.replaceAll("_", " ") ?? "nenhuma"}
+                    Sugestao do catalogo: {selectedSpell.suggestedMode?.replace(/_/g, " ") ?? "nenhuma"}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Tipo de dano: {selectedSpell.damageType ?? "nao estruturado"} · Save: {selectedSpell.savingThrow ?? "nao estruturado"}
@@ -305,7 +393,7 @@ export const PlayerTurnActions = ({
               ) : null}
 
               <button
-                disabled={loading || !canSubmitSpell}
+                disabled={loading || !canSubmitSpell || !!myParticipant.turn_resources?.action_used}
                 onClick={onCast}
                 className="w-full rounded bg-fuchsia-600 px-4 py-3 font-bold text-white hover:bg-fuchsia-500 disabled:opacity-50"
               >
@@ -313,6 +401,23 @@ export const PlayerTurnActions = ({
               </button>
             </div>
           )}
+
+          {/* Standard Actions */}
+          {(() => {
+            const actionUsed = !!myParticipant.turn_resources?.action_used;
+            return (
+              <div className="mt-3 border-t border-slate-700/50 pt-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Standard Actions</p>
+                <StandardActionButtons
+                  actionUsed={actionUsed}
+                  loading={loading}
+                  participants={livingTargets}
+                  myParticipantId={myParticipant.id}
+                  onStandardAction={onStandardAction}
+                />
+              </div>
+            );
+          })()}
 
           <button
             disabled={loading}

@@ -29,7 +29,7 @@ export const PartyListItem = ({
   return (
     <article
       onClick={onClick}
-      className="group cursor-pointer rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-5 shadow-[0_18px_50px_rgba(2,6,23,0.22)] transition hover:translate-y-[-1px] hover:border-white/14 hover:bg-[linear-gradient(180deg,rgba(24,32,54,0.88),rgba(2,6,23,0.94))]"
+      className="group cursor-pointer rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-5 shadow-[0_18px_50px_rgba(2,6,23,0.22)] transition hover:-translate-y-px hover:border-white/14 hover:bg-[linear-gradient(180deg,rgba(24,32,54,0.88),rgba(2,6,23,0.94))]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
@@ -67,7 +67,7 @@ export const PartyListItem = ({
           </div>
         </div>
 
-        <span className="flex-shrink-0 rounded-full border border-white/8 bg-white/[0.04] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 transition group-hover:border-limiar-300/20 group-hover:text-limiar-100">
+        <span className="flex-shrink-0 rounded-full border border-white/8 bg-white/4 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 transition group-hover:border-limiar-300/20 group-hover:text-limiar-100">
           {t("home.player.openParty")} →
         </span>
       </div>

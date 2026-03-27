@@ -58,7 +58,7 @@ export const LandingHeroVisual = () => (
 
     <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] shadow-[0_30px_120px_rgba(2,6,23,0.6)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(56,189,248,0.14),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
-      <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:24px_24px]" />
+      <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[24px_24px]" />
 
       <div className="relative space-y-5 p-5 md:p-6">
         <div className="flex flex-col gap-3 rounded-[24px] border border-white/8 bg-black/20 px-4 py-3 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
@@ -90,7 +90,7 @@ export const LandingHeroVisual = () => (
                           ? "border-limiar-400/40 bg-limiar-400/18"
                           : fogged
                             ? "border-slate-800 bg-slate-900"
-                            : "border-white/6 bg-white/[0.03]"
+                            : "border-white/6 bg-white/3"
                       } ${highlighted ? "motion-safe:animate-[landing-pulse_4.5s_ease-in-out_infinite]" : ""}`}
                     />
                   );
@@ -99,7 +99,7 @@ export const LandingHeroVisual = () => (
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[26px] border border-white/8 bg-white/[0.03] p-4 backdrop-blur-xl">
+              <div className="rounded-[26px] border border-white/8 bg-white/3 p-4 backdrop-blur-xl">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Comandos</p>
                 <div className="mt-4 space-y-3">
                   {commandCards.map((card) => (
@@ -119,7 +119,7 @@ export const LandingHeroVisual = () => (
                 </div>
               </div>
 
-              <div className="rounded-[26px] border border-white/8 bg-white/[0.03] p-4 backdrop-blur-xl">
+              <div className="rounded-[26px] border border-white/8 bg-white/3 p-4 backdrop-blur-xl">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Fluxo</p>
                 <div className="mt-4 space-y-3">
                   {flowItems.map((item) => (
@@ -202,7 +202,7 @@ export const LandingHeroVisual = () => (
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/8 bg-white/[0.03] p-4 backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/8 bg-white/3 p-4 backdrop-blur-xl">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Modulos conectados</p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {modules.map((label) => (

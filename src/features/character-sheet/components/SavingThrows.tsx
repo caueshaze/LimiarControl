@@ -54,11 +54,11 @@ type RowProps = {
 };
 
 const SaveRow = ({ abilityKey, short, total, proficient, onToggle, readOnly, labelProf, labelBase }: RowProps) => (
-  <label className={`flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2 transition-all ${readOnly ? "" : "cursor-pointer hover:border-white/10 hover:bg-white/[0.05]"}`}>
+  <label className={`flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/3 px-3 py-2 transition-all ${readOnly ? "" : "cursor-pointer hover:border-white/10 hover:bg-white/5"}`}>
     <input type="checkbox" checked={proficient} disabled={readOnly} onChange={() => onToggle(abilityKey)} className={chk} />
     <span className="inline-flex min-w-10 justify-center rounded-full bg-slate-950/80 px-2.5 py-1 text-sm font-bold text-slate-100">{formatMod(total)}</span>
     <span className="text-sm font-medium text-slate-300">{short}</span>
-    <span className={`ml-auto rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] ${proficient ? "bg-amber-500/10 text-amber-300" : "bg-white/[0.04] text-slate-500"}`}>
+    <span className={`ml-auto rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] ${proficient ? "bg-amber-500/10 text-amber-300" : "bg-white/4 text-slate-500"}`}>
       {proficient ? labelProf : labelBase}
     </span>
   </label>

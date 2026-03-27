@@ -82,7 +82,7 @@ class CombatEntityActionMixin:
             else (
                 int(campaign_weapon.range_meters)
                 if campaign_weapon and campaign_weapon.range_meters is not None
-                else (catalog_weapon.range_normal if catalog_weapon else None)
+                else (catalog_weapon.range_normal_meters if catalog_weapon else None)
             )
         )
         is_melee = (
@@ -146,7 +146,13 @@ class CombatEntityActionMixin:
             "description": action.description,
             "spellCanonicalKey": action.spellCanonicalKey,
             "castAtLevel": action.castAtLevel,
-            "rangeMeters": action.rangeMeters,
+            # Structured metric range is the only mechanical source for spell automation.
+            # range_text stays descriptive/editorial and must never be parsed here.
+            "rangeMeters": (
+                action.rangeMeters
+                if action.rangeMeters is not None
+                else base_spell.range_meters
+            ),
             "damageType": damage_type,
         }
 
@@ -156,10 +162,8 @@ class CombatEntityActionMixin:
                 attack_bonus = action.toHitBonus
             if attack_bonus is None and isinstance(spellcasting.get("attackBonus"), int):
                 attack_bonus = spellcasting.get("attackBonus")
-            damage_dice = action.damageDice or getattr(base_spell, "damage_dice", None)
+            damage_dice = action.damageDice or base_spell.damage_dice
             damage_bonus = action.damageBonus
-            if damage_bonus is None:
-                damage_bonus = getattr(base_spell, "damage_bonus", None)
             if not isinstance(attack_bonus, int):
                 raise CombatServiceError(
                     "Spell attack is missing an attack bonus. "
@@ -188,10 +192,8 @@ class CombatEntityActionMixin:
             save_dc = action.saveDc
             if save_dc is None and isinstance(spellcasting.get("saveDc"), int):
                 save_dc = spellcasting.get("saveDc")
-            damage_dice = action.damageDice or getattr(base_spell, "damage_dice", None)
+            damage_dice = action.damageDice or base_spell.damage_dice
             damage_bonus = action.damageBonus
-            if damage_bonus is None:
-                damage_bonus = getattr(base_spell, "damage_bonus", None)
             if not save_ability or not isinstance(save_dc, int) or save_dc <= 0:
                 raise CombatServiceError(
                     "Saving throw action is missing saveAbility/saveDc. "
@@ -211,6 +213,10 @@ class CombatEntityActionMixin:
                 {
                     "saveAbility": save_ability,
                     "saveDc": save_dc,
+                    "saveSuccessOutcome": (
+                        cls._normalize_save_success_outcome(base_spell.save_success_outcome)
+                        or "none"
+                    ),
                     "damageDice": damage_dice,
                     "damageBonus": damage_bonus if isinstance(damage_bonus, int) else 0,
                 }
@@ -218,10 +224,8 @@ class CombatEntityActionMixin:
             return resolved
 
         if action.kind == "heal":
-            heal_dice = action.healDice or getattr(base_spell, "heal_dice", None)
+            heal_dice = action.healDice or base_spell.heal_dice
             heal_bonus = action.healBonus
-            if heal_bonus is None:
-                heal_bonus = getattr(base_spell, "heal_bonus", None)
             if not isinstance(heal_dice, str) or not heal_dice.strip():
                 raise CombatServiceError(
                     "Heal spell is missing structured healing dice. "

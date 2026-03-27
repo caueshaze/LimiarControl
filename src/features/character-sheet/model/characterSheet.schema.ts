@@ -193,7 +193,7 @@ export const characterSheetSchema = z.object({
   equippedArmor: armorSchema,
   equippedShield: shieldSchema.nullable(),
   miscACBonus: z.number(),
-  speed: z.number().min(0),
+  speedMeters: z.number().min(0),
 
   maxHP: z.number().min(0),
   currentHP: z.number().min(0),

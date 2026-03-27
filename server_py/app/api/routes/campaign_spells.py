@@ -34,6 +34,7 @@ def to_campaign_spell_read(
         school=spell.school,
         classesJson=spell.classes_json,
         castingTime=spell.casting_time,
+        rangeMeters=spell.range_meters,
         rangeText=spell.range_text,
         duration=spell.duration,
         componentsJson=spell.components_json,
@@ -42,6 +43,7 @@ def to_campaign_spell_read(
         ritual=spell.ritual,
         damageType=spell.damage_type,
         savingThrow=spell.saving_throw,
+        saveSuccessOutcome=spell.save_success_outcome,
         source=spell.source,
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
@@ -106,11 +108,13 @@ def update_spell(
         "descriptionPt": "description_pt",
         "classesJson": "classes_json",
         "castingTime": "casting_time",
+        "rangeMeters": "range_meters",
         "rangeText": "range_text",
         "componentsJson": "components_json",
         "materialComponentText": "material_component_text",
         "damageType": "damage_type",
         "savingThrow": "saving_throw",
+        "saveSuccessOutcome": "save_success_outcome",
     }
     data = {}
     for key, value in payload.model_dump(exclude_unset=True).items():

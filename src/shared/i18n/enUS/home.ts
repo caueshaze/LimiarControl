@@ -87,10 +87,4 @@ export const homeEnUSDictionary = {
   "home.campaigns": "Manage campaigns",
   "home.catalog": "Manage catalog",
   "home.npcs": "NPCs",
-  "home.dev.title": "Dev helpers",
-  "home.dev.campaignId": "Active campaign id:",
-  "home.dev.none": "none",
-  "home.dev.resetCampaign": "Reset campaign storage",
-  "home.dev.resetDb": "Reset database",
-  "home.dev.resetAll": "Reset all storage",
 } as const;

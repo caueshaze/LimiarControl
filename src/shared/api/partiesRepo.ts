@@ -50,6 +50,7 @@ export const partiesRepo = {
   create: (payload: { campaignId: string; name: string; playerIds?: string[] }) =>
     http.post<PartySummary>("/parties", payload),
   get: (partyId: string) => http.get<PartyDetail>(`/parties/${partyId}`),
+  remove: (partyId: string) => http.del<void>(`/parties/${partyId}`),
   addMember: (
     partyId: string,
     payload: { userId: string; role: "GM" | "PLAYER"; status?: "invited" | "joined" | "declined" | "left" }

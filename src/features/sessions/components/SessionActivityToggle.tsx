@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
 import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { SessionActivityRow } from "./SessionActivityRow";
+import { SessionActivityFeed } from "./SessionActivityFeed";
 
 type SessionActivityToggleProps = {
   refreshSignal?: string | number | null;
@@ -143,22 +143,18 @@ export const SessionActivityToggle = ({
                 {error}
               </div>
               {orderedEvents.length > 0 ? (
-                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                  {orderedEvents.map((event, index) => (
-                    <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
-                  ))}
+                <div className="max-h-72 overflow-y-auto pr-1">
+                  <SessionActivityFeed events={events ?? []} sessionId={sessionId} />
                 </div>
               ) : null}
             </div>
           ) : orderedEvents.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
+            <div className="rounded-[24px] border border-dashed border-white/10 bg-white/3 px-4 py-5 text-sm text-slate-400">
               {t("sessionActivity.empty")}
             </div>
           ) : (
-            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-              {orderedEvents.map((event, index) => (
-                <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
-              ))}
+            <div className="max-h-72 overflow-y-auto pr-1">
+              <SessionActivityFeed events={events ?? []} sessionId={sessionId} />
             </div>
           )}
         </div>

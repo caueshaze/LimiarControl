@@ -128,12 +128,12 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
   return (
     <section className="relative h-full overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(9,11,28,0.92),rgba(3,7,18,0.96))] p-6 shadow-[0_30px_120px_rgba(2,6,23,0.5)] sm:p-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.2),transparent_34%),radial-gradient(circle_at_80%_15%,rgba(103,232,249,0.16),transparent_24%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.1),transparent_24%)]" />
-      <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px]" />
+      <div className="absolute inset-0 opacity-[0.18] bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[22px_22px]" />
       <div className="absolute -right-10 top-16 h-32 w-32 rounded-full bg-sky-400/20 blur-3xl motion-safe:animate-[auth-orbit_18s_linear_infinite]" />
       <div className="absolute -left-10 bottom-10 h-36 w-36 rounded-full bg-limiar-500/20 blur-3xl motion-safe:animate-[landing-float_10s_ease-in-out_infinite]" />
 
       <div className="relative">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-200">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-200">
           <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.85)]" />
           {content.badge}
         </div>
@@ -158,7 +158,7 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
           {content.stats.map((stat, index) => (
             <div
               key={stat.label}
-              className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.75s_ease-out_both]"
+              className="rounded-[24px] border border-white/10 bg-white/4 p-4 backdrop-blur-xl motion-safe:animate-[landing-rise_0.75s_ease-out_both]"
               style={{ animationDelay: `${index * 140}ms` }}
             >
               <p className="font-display text-3xl font-bold text-white">{stat.value}</p>
@@ -191,7 +191,7 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
                         ? "border-limiar-300/30 bg-limiar-400/18"
                         : glowing
                           ? "border-sky-300/30 bg-sky-400/14"
-                          : "border-white/6 bg-white/[0.03]"
+                          : "border-white/6 bg-white/3"
                     } ${active || glowing ? "motion-safe:animate-[landing-pulse_4.8s_ease-in-out_infinite]" : ""}`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   />
@@ -203,7 +203,7 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
               {content.timeline.map((item, index) => (
                 <div
                   key={item.label}
-                  className="flex items-center justify-between rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-3 motion-safe:animate-[landing-rise_0.75s_ease-out_both]"
+                  className="flex items-center justify-between rounded-[20px] border border-white/8 bg-white/3 px-4 py-3 motion-safe:animate-[landing-rise_0.75s_ease-out_both]"
                   style={{ animationDelay: `${index * 160 + 180}ms` }}
                 >
                   <span className="text-sm text-slate-200">{item.label}</span>
@@ -232,7 +232,7 @@ export const AuthShowcase = ({ mode }: { mode: AuthMode }) => {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/10 bg-white/4 p-5 backdrop-blur-xl">
               <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">{content.modulesLabel}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {content.modules.map((item) => (

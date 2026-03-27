@@ -72,7 +72,7 @@ export const PlayerPartyItemModal = ({ selectedItem, onClose }: Props) => {
                 </span>
               ) : null}
               {item.weight != null ? (
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-slate-200">
+                <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-xs font-semibold text-slate-200">
                   {item.weight} kg
                 </span>
               ) : null}
@@ -89,7 +89,7 @@ export const PlayerPartyItemModal = ({ selectedItem, onClose }: Props) => {
               {propertyNames.map((property) => (
                 <span
                   key={property}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300"
+                  className="rounded-full border border-white/10 bg-white/4 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300"
                 >
                   {property}
                 </span>
@@ -102,7 +102,7 @@ export const PlayerPartyItemModal = ({ selectedItem, onClose }: Props) => {
           ) : null}
 
           {inv.notes ? (
-            <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+            <div className="mt-4 rounded-2xl border border-white/8 bg-white/3 px-4 py-3">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
                 {t("inventory.notes")}
               </p>

@@ -58,7 +58,7 @@ export const CampaignList = ({
               </button>
             </div>
             {isSelected && (
-              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-limiar-500 to-transparent opacity-50" />
+              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-linear-to-r from-transparent via-limiar-500 to-transparent opacity-50" />
             )}
           </li>
         );

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type {
   BaseItemArmorCategory,
+  BaseItemDamageType,
+  BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
@@ -40,7 +42,7 @@ export const CatalogItemCard = ({
   const [price, setPrice] = useState(item.price?.toString() ?? "");
   const [weight, setWeight] = useState(item.weight?.toString() ?? "");
   const [damageDice, setDamageDice] = useState(item.damageDice ?? "");
-  const [damageType, setDamageType] = useState(item.damageType ?? "");
+  const [damageType, setDamageType] = useState<BaseItemDamageType | "">(item.damageType ?? "");
   const [rangeMeters, setRangeMeters] = useState(item.rangeMeters?.toString() ?? "");
   const [rangeLongMeters, setRangeLongMeters] = useState(item.rangeLongMeters?.toString() ?? "");
   const [versatileDamage, setVersatileDamage] = useState(item.versatileDamage ?? "");
@@ -56,7 +58,7 @@ export const CatalogItemCard = ({
   const [armorClassBase, setArmorClassBase] = useState(
     item.armorClassBase?.toString() ?? "",
   );
-  const [dexBonusRule, setDexBonusRule] = useState(item.dexBonusRule ?? "");
+  const [dexBonusRule, setDexBonusRule] = useState<BaseItemDexBonusRule | "">(item.dexBonusRule ?? "");
   const [strengthRequirement, setStrengthRequirement] = useState(
     item.strengthRequirement?.toString() ?? "",
   );
@@ -119,9 +121,7 @@ export const CatalogItemCard = ({
             ? damageDice.trim()
             : undefined,
         damageType:
-          (type === "WEAPON" || type === "MAGIC") && damageType.trim()
-            ? damageType.trim()
-            : undefined,
+          (type === "WEAPON" || type === "MAGIC") && damageType ? damageType : undefined,
         rangeMeters:
           (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
             ? rangeMeters
@@ -141,7 +141,7 @@ export const CatalogItemCard = ({
         armorClassBase:
           type === "ARMOR" && armorClassBase.trim() ? armorClassBase : undefined,
         dexBonusRule:
-          type === "ARMOR" && dexBonusRule.trim() ? dexBonusRule.trim() : undefined,
+          type === "ARMOR" && dexBonusRule ? dexBonusRule : undefined,
         strengthRequirement:
           type === "ARMOR" && strengthRequirement.trim()
             ? strengthRequirement

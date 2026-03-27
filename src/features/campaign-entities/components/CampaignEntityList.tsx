@@ -43,7 +43,7 @@ export const CampaignEntityList = ({
               className={`rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] transition-colors ${
                 categoryFilter === tab
                   ? "border-emerald-300/30 bg-emerald-400/10 text-white"
-                  : "border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  : "border-white/8 bg-white/3 text-slate-300 hover:bg-white/6 hover:text-white"
               }`}
             >
               {t(`entity.category.${tab}`)}

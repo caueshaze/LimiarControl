@@ -1,4 +1,4 @@
-import type { BaseSpell, BaseSpellFilters } from "../../entities/base-spell";
+import type { BaseSpell, BaseSpellFilters, BaseSpellWritePayload } from "../../entities/base-spell";
 import { http } from "./http";
 
 const toQueryString = (filters?: BaseSpellFilters) => {
@@ -27,24 +27,7 @@ const toQueryString = (filters?: BaseSpellFilters) => {
   return queryString ? `?${queryString}` : "";
 };
 
-export type BaseSpellUpdatePayload = {
-  nameEn?: string;
-  namePt?: string | null;
-  descriptionEn?: string;
-  descriptionPt?: string | null;
-  level?: number;
-  school?: BaseSpell["school"];
-  classesJson?: string[] | null;
-  castingTime?: string | null;
-  rangeText?: string | null;
-  duration?: string | null;
-  componentsJson?: string[] | null;
-  materialComponentText?: string | null;
-  concentration?: boolean;
-  ritual?: boolean;
-  damageType?: string | null;
-  savingThrow?: string | null;
-};
+export type BaseSpellUpdatePayload = BaseSpellWritePayload;
 
 export const baseSpellsRepo = {
   list: (filters?: BaseSpellFilters) =>

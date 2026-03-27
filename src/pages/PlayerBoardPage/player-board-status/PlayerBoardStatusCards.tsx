@@ -15,7 +15,7 @@ export const StatCard = ({
   label,
   value,
 }: StatCardProps) => (
-  <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+  <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{label}</p>
     <p className={`mt-3 text-lg font-semibold ${accent}`}>{value}</p>
     {helper ? <p className="mt-2 text-xs text-slate-400">{helper}</p> : null}
@@ -30,7 +30,7 @@ type ProgressCardProps = {
 };
 
 export const ProgressCard = ({ label, percent, toneClass, value }: ProgressCardProps) => (
-  <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+  <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
     <div className="flex items-center justify-between gap-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{label}</p>
       <span className="text-sm font-semibold text-white">{value}</span>
@@ -98,7 +98,7 @@ export const DeathSaveCard = ({
           : "You are at 0 HP and waiting on death save resolution.";
 
   return (
-    <div className={`mt-5 rounded-[24px] border px-4 py-4 ${toneClass}`}>
+    <div className={`mt-5 rounded-3xl border px-4 py-4 ${toneClass}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-300">
@@ -144,7 +144,7 @@ export const WeaponCard = ({
   const weapon = playerStatus.currentWeapon;
 
   return (
-    <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+    <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
@@ -209,7 +209,7 @@ export const RestCard = ({
         : "border-slate-700 bg-slate-900/40 text-slate-300";
 
   return (
-    <div className={`mt-5 rounded-[24px] border px-4 py-4 ${restTone}`}>
+    <div className={`mt-5 rounded-3xl border px-4 py-4 ${restTone}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">

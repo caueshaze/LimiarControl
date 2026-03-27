@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -23,11 +24,20 @@ import { usePlayerBoardRestFeedback } from "./usePlayerBoardRestFeedback";
 import { usePlayerBoardRealtime } from "./usePlayerBoardRealtime";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
-import { PlayerCombatDebugPanel } from "./PlayerCombatDebugPanel";
+import { useSession } from "../../features/sessions";
+import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
+import { PlayerCombatModeShell } from "../../features/combat-ui/player/PlayerCombatModeShell";
+import { useCombatUiState } from "../../features/combat-ui/useCombatUiState";
 
 export const PlayerBoardPage = () => {
   const { locale, t } = useLocale();
   const { user } = useAuth();
+  const {
+    collapseCombatUi,
+    combatModeVisible,
+    combatUiExpanded,
+    toggleCombatUiExpanded,
+  } = useSession();
   const { partyId } = useParams<{ partyId: string }>();
   const { selectedCampaign, selectedCampaignId, setSelectedCampaignLocal } = useCampaigns();
   const { toast, showToast, clearToast } = useToast();
@@ -117,6 +127,11 @@ export const PlayerBoardPage = () => {
     selectedCampaignName: selectedCampaign?.name,
     t,
   });
+  const combatBarState = useCombatUiState({
+    enabled: Boolean(activeSession?.id) && combatActive && !combatModeVisible,
+    sessionId: activeSession?.id ?? "",
+    userId: user?.userId,
+  });
   const {
     armorOptions,
     handleArmorChange,
@@ -169,9 +184,39 @@ export const PlayerBoardPage = () => {
     t,
   });
 
+  useEffect(() => {
+    if (combatActive && combatUiExpanded && pendingRoll?.rollType === "initiative") {
+      collapseCombatUi();
+    }
+  }, [collapseCombatUi, combatActive, combatUiExpanded, pendingRoll?.rollType]);
+
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
+      {combatModeVisible && activeSession?.id ? (
+        <PlayerCombatModeShell
+          campaignId={effectiveCampaignId}
+          expanded={combatUiExpanded}
+          inventory={myInventory}
+          itemsById={catalogItems}
+          locale={locale}
+          manualValue={manualValue}
+          onAuthoritativeRollResolved={handleAuthoritativeRollResolved}
+          onClearPendingRoll={clearPendingRoll}
+          onManualValueChange={setManualValue}
+          onRollModeChange={setRollMode}
+          onSubmitManualRoll={handleManualRoll}
+          onToggleExpanded={toggleCombatUiExpanded}
+          onVirtualRoll={handleRoll}
+          pendingRoll={pendingRoll}
+          playerSheet={playerSheet}
+          playerStatus={playerStatus}
+          rollMode={rollMode}
+          sessionId={activeSession.id}
+          userId={user?.userId}
+        />
+      ) : (
+        <>
       <PlayerBoardHero
         campaignTitle={campaignTitle}
         sessionTitle={activeSession?.title ?? null}
@@ -200,6 +245,18 @@ export const PlayerBoardPage = () => {
         }
       />
 
+      {combatActive && activeSession?.id ? (
+        <CombatModeBar
+          currentParticipantName={combatBarState.currentParticipant?.display_name ?? null}
+          expanded={combatUiExpanded}
+          onToggleExpanded={toggleCombatUiExpanded}
+          isMyTurn={combatBarState.isMyTurn}
+          phase={combatBarState.state?.phase ?? null}
+          round={combatBarState.state?.round ?? null}
+          turnResources={combatBarState.myParticipant?.turn_resources ?? null}
+        />
+      ) : null}
+
       <PlayerBoardRestBanner restState={restState} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
@@ -212,17 +269,6 @@ export const PlayerBoardPage = () => {
             usingHitDie={usingHitDie}
             onUseHitDie={handleUseHitDie}
           />
-          
-          {activeSession?.id && (
-             <PlayerCombatDebugPanel 
-               campaignId={effectiveCampaignId}
-               playerSheet={playerSheet}
-               playerStatus={playerStatus}
-               sessionId={activeSession.id}
-               userId={user?.userId}
-             />
-          )}
-
           {activeSession?.id && (
             <PlayerEntityList
               sessionId={activeSession.id}
@@ -331,6 +377,8 @@ export const PlayerBoardPage = () => {
         />
       ) : null}
       <DiceVisualizer events={rollEvents} />
+        </>
+      )}
     </section>
   );
 };

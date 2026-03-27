@@ -26,3 +26,4 @@ class MeResponse(BaseModel):
     username: str
     displayName: Optional[str]
     role: RoleMode
+    isSystemAdmin: bool

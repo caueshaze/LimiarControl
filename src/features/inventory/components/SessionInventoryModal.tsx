@@ -4,6 +4,7 @@ import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { LocaleKey } from "../../../shared/i18n";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { formatDamageLabel } from "../../../shared/i18n/domainLabels";
 import {
   buildInventoryGroupsFromResolved,
   filterInventoryEntries,
@@ -109,7 +110,7 @@ export const SessionInventoryModal = ({
             <p className="text-sm text-slate-400">{t("inventory.empty")}</p>
           ) : (
             <div className="space-y-5">
-              <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+              <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/3 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row">
                   <input
                     type="text"
@@ -124,7 +125,7 @@ export const SessionInventoryModal = ({
                     className={`rounded-2xl border px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] transition ${
                       equippedOnly
                         ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-                        : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20"
+                        : "border-white/10 bg-white/4 text-slate-300 hover:border-white/20"
                     }`}
                   >
                     {t("inventory.equippedOnly")}
@@ -139,7 +140,7 @@ export const SessionInventoryModal = ({
                       className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition ${
                         group === entryGroup
                           ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
-                          : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"
+                          : "border-white/10 bg-white/3 text-slate-400 hover:border-white/20"
                       }`}
                     >
                       {entryGroup === "all" ? t("inventory.filterAll") : getInventoryGroupLabel(entryGroup, t)}
@@ -228,11 +229,11 @@ const SessionInventoryModalItem = ({
   );
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.04]">
+    <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/4">
       <button
         type="button"
         onClick={() => hasDetails && setExpanded((current) => !current)}
-        className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left ${hasDetails ? "hover:bg-white/[0.03]" : ""}`}
+        className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left ${hasDetails ? "hover:bg-white/3" : ""}`}
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">
@@ -270,7 +271,10 @@ const SessionInventoryModalItem = ({
           {item?.description && <p className="text-sm leading-6 text-slate-400">{item.description}</p>}
           <div className="grid gap-2 sm:grid-cols-2">
             {item?.damageDice && (
-              <DetailPill label={t("inventory.damage")} value={`${item.damageDice}${item.damageType ? ` ${item.damageType}` : ""}`} />
+              <DetailPill
+                label={t("inventory.damage")}
+                value={formatDamageLabel(item.damageDice, item.damageType, locale) ?? item.damageDice}
+              />
             )}
             {item?.armorClassBase != null && (
               <DetailPill label={t("playerBoard.armorClassLabel")} value={String(item.armorClassBase)} />

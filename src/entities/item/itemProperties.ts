@@ -60,6 +60,10 @@ export const ITEM_PROPERTY_SLUGS = Object.keys(
   ITEM_PROPERTY_CONFIG,
 ) as ItemPropertySlug[];
 
+export const WEAPON_PROPERTY_SLUGS = ITEM_PROPERTY_SLUGS.filter(
+  (slug) => slug !== "stealth_disadvantage",
+) as ItemPropertySlug[];
+
 const normalizePropertyToken = (value: string) =>
   value
     .trim()

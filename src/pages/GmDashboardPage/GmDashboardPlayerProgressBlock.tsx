@@ -74,7 +74,7 @@ export const GmDashboardPlayerProgressBlock = ({
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-sky-500 via-limiar-500 to-emerald-400 transition-[width]"
+              className="h-full rounded-full bg-linear-to-r from-sky-500 via-limiar-500 to-emerald-400 transition-[width]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>

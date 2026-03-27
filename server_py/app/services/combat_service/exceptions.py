@@ -14,6 +14,9 @@ class CombatServiceError(HTTPException):
 def _parse_dice(expression: str) -> tuple[int, int, int]:
     if not expression:
         return 0, 0, 0
+    static_match = re.fullmatch(r"\s*(\d+)\s*", expression.lower())
+    if static_match:
+        return 0, 0, int(static_match.group(1))
     match = re.search(r'(\d+)d(\d+)\s*(?:([+-])\s*(\d+))?', expression.lower())
     if not match:
         return 0, 0, 0

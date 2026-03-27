@@ -19,7 +19,7 @@ export const ClassEquipmentChoices = ({ className, selections, onSelect }: Props
         <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
           Starting Equipment Choices
         </span>
-        <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-300">
+        <span className="rounded-full bg-white/4 px-2.5 py-1 text-[11px] font-semibold text-slate-300">
           {config.equipmentChoices.length} groups
         </span>
       </div>

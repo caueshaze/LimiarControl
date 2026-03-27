@@ -37,7 +37,7 @@ export const buildCreationSetField = (
   campaignId: string | null,
 ) =>
   <K extends keyof CharacterSheet>(sheet: CharacterSheet, key: K, value: CharacterSheet[K]) => {
-    if (mode === "creation" && key === "speed") return sheet;
+    if (mode === "creation" && key === "speedMeters") return sheet;
     if (mode === "creation" && key === "level") {
       const level = Math.max(1, safeParseInt(String(value), 1));
       const cls = getClass(sheet.class);

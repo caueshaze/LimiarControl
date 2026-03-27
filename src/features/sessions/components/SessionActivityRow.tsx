@@ -16,7 +16,7 @@ function formatCurrentHp(event: Extract<ActivityEvent, { type: "entity" }>): str
   return String(event.currentHp);
 }
 
-export const SessionActivityRow = ({ event }: { event: ActivityEvent }) => {
+export const SessionActivityRow = ({ event, isGm = false }: { event: ActivityEvent; isGm?: boolean }) => {
   const { t } = useLocale();
   const actor = event.displayName ?? event.username ?? "Unknown";
 
@@ -289,11 +289,11 @@ export const SessionActivityRow = ({ event }: { event: ActivityEvent }) => {
             {" "}
             {summary}
           </p>
-          {(currentHp || event.entityCategory) && (
+          {(event.entityCategory || (isGm && currentHp)) && (
             <p className="mt-0.5 text-xs text-slate-400">
               {event.entityCategory ? event.entityCategory : ""}
-              {event.entityCategory && currentHp ? " · " : ""}
-              {currentHp ? `${t("sessionActivity.currentHp")} ${currentHp}` : ""}
+              {event.entityCategory && isGm && currentHp ? " · " : ""}
+              {isGm && currentHp ? `${t("sessionActivity.currentHp")} ${currentHp}` : ""}
             </p>
           )}
         </div>

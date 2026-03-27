@@ -26,6 +26,52 @@ class SpellSchool(str, Enum):
     TRANSMUTATION = "transmutation"
 
 
+class CastingTimeType(str, Enum):
+    ACTION = "action"
+    BONUS_ACTION = "bonus_action"
+    REACTION = "reaction"
+    MINUTE_1 = "1_minute"
+    MINUTES_10 = "10_minutes"
+    HOUR_1 = "1_hour"
+    HOURS_8 = "8_hours"
+    HOURS_12 = "12_hours"
+    HOURS_24 = "24_hours"
+    SPECIAL = "special"
+
+
+class TargetMode(str, Enum):
+    SELF = "self"
+    TOUCH = "touch"
+    RANGED = "ranged"
+    CONE = "cone"
+    CUBE = "cube"
+    SPHERE = "sphere"
+    LINE = "line"
+    CYLINDER = "cylinder"
+    SPECIAL = "special"
+
+
+class ResolutionType(str, Enum):
+    NONE = "none"
+    SPELL_ATTACK = "spell_attack"
+    SAVING_THROW = "saving_throw"
+    AUTOMATIC = "automatic"
+    HEAL = "heal"
+
+
+class UpcastMode(str, Enum):
+    NONE = "none"
+    ADD_DICE = "add_dice"
+    ADD_TARGETS = "add_targets"
+    INCREASE_DURATION = "increase_duration"
+    CUSTOM = "custom"
+
+
+class SpellSource(str, Enum):
+    ADMIN_PANEL = "admin_panel"
+    SEED_JSON_BOOTSTRAP = "seed_json_bootstrap"
+
+
 class BaseSpell(SQLModel, table=True):
     __tablename__ = "base_spell"  # type: ignore[assignment]
     __table_args__ = (
@@ -47,6 +93,8 @@ class BaseSpell(SQLModel, table=True):
     canonical_key: str = Field(
         sa_column=Column(String, nullable=False, index=True)
     )
+
+    # --- Identity (editorial) ---
     name_en: str
     name_pt: Optional[str] = None
     description_en: str = Field(sa_column=Column(Text, nullable=False))
@@ -71,9 +119,13 @@ class BaseSpell(SQLModel, table=True):
         sa_column=Column(JSONB, nullable=True),
     )
 
-    casting_time: Optional[str] = None
-    range_text: Optional[str] = None
-    duration: Optional[str] = None
+    # --- Casting (mechanical) ---
+    casting_time_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    casting_time: Optional[str] = None  # editorial text, e.g. "1 action"
+    range_meters: Optional[int] = None
+    range_text: Optional[str] = None  # editorial only
+    target_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    duration: Optional[str] = None  # editorial text
     components_json: Optional[list[str]] = Field(
         default=None,
         sa_column=Column(JSONB, nullable=True),
@@ -81,7 +133,6 @@ class BaseSpell(SQLModel, table=True):
     material_component_text: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
     )
-
     concentration: bool = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
@@ -91,9 +142,21 @@ class BaseSpell(SQLModel, table=True):
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
 
-    damage_type: Optional[str] = None
-    saving_throw: Optional[str] = None
+    # --- Resolution (mechanical) ---
+    resolution_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    saving_throw: Optional[str] = None  # enum: STR/DEX/CON/INT/WIS/CHA
+    save_success_outcome: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
 
+    # --- Effect (mechanical) ---
+    damage_dice: Optional[str] = None  # e.g. "1d8", "2d6+3"
+    damage_type: Optional[str] = None  # enum: Acid/Fire/etc
+    heal_dice: Optional[str] = None  # e.g. "1d8+3"
+
+    # --- Upcast (mechanical) ---
+    upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    upcast_value: Optional[str] = None  # e.g. "1d8" for add_dice
+
+    # --- Metadata ---
     source: Optional[str] = None
     source_ref: Optional[str] = None
     is_srd: bool = Field(

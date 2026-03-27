@@ -16,7 +16,7 @@ export const PlayerPartyMembersCard = ({
   const { t } = useLocale();
 
   return (
-    <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] px-6 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
+    <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] px-6 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
       <div className="flex items-start justify-between gap-4 border-b border-white/8 pb-4">
         <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
@@ -30,7 +30,7 @@ export const PlayerPartyMembersCard = ({
           </p>
         </div>
 
-        <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200">
+        <span className="rounded-full border border-white/8 bg-white/4 px-3 py-1.5 text-xs font-semibold text-slate-200">
           {members.length}
         </span>
       </div>
@@ -46,7 +46,7 @@ export const PlayerPartyMembersCard = ({
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
                 : member.status === "invited"
                   ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
-                  : "border-white/10 bg-white/[0.04] text-slate-300";
+                  : "border-white/10 bg-white/4 text-slate-300";
 
           const name =
             member.displayName || member.username || t("playerParty.memberFallback");
@@ -54,10 +54,10 @@ export const PlayerPartyMembersCard = ({
           return (
             <article
               key={member.userId}
-              className="flex items-center justify-between gap-4 rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4"
+              className="flex items-center justify-between gap-4 rounded-3xl border border-white/8 bg-white/3 px-4 py-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-bold uppercase text-limiar-100">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-bold uppercase text-limiar-100">
                   {name.charAt(0)}
                 </div>
 
@@ -65,7 +65,7 @@ export const PlayerPartyMembersCard = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-sm font-semibold text-white">{name}</p>
                     {member.userId === currentUserId ? (
-                      <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
                         {t("playerParty.memberYou")}
                       </span>
                     ) : null}

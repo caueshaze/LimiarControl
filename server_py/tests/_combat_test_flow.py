@@ -429,6 +429,8 @@ class CombatFlowTestsMixin:
                         "user-1",
                         False,
                     )
+                    # Reset action economy for second cast in same test
+                    self.state.participants[0]["turn_resources"] = {"action_used": False, "bonus_action_used": False, "reaction_used": False}
                     miss_result = await CombatService.cast_spell(
                         self.db,
                         "session-123",
@@ -505,6 +507,7 @@ class CombatFlowTestsMixin:
                     level=0,
                     damage_type="radiant",
                     saving_throw="dexterity",
+                    save_success_outcome="none",
                 ),
             ):
                 with patch(
@@ -531,6 +534,8 @@ class CombatFlowTestsMixin:
                                 "user-1",
                                 False,
                             )
+                        # Reset action economy for second cast in same test
+                        self.state.participants[0]["turn_resources"] = {"action_used": False, "bonus_action_used": False, "reaction_used": False}
                         with patch("random.randint", return_value=18):
                             saved_result = await CombatService.cast_spell(
                                 self.db,
@@ -550,13 +555,134 @@ class CombatFlowTestsMixin:
 
         self.assertFalse(failed_result["is_saved"])
         self.assertEqual(failed_result["save_dc"], 13)
+        self.assertEqual(failed_result["save_success_outcome"], "none")
         self.assertEqual(failed_result["roll_result"].roll_type, "save")
         self.assertTrue(failed_result["effect_roll_required"])
         self.assertIsNotNone(failed_result["pending_spell_id"])
 
         self.assertTrue(saved_result["is_saved"])
+        self.assertEqual(saved_result["save_success_outcome"], "none")
         self.assertFalse(saved_result["effect_roll_required"])
         self.assertIsNone(saved_result["pending_spell_id"])
+
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_player_saving_throw_spell_can_apply_half_damage_on_success(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Raio de Gelo",
+                            "canonicalKey": "ray_of_frost_save",
+                            "level": 0,
+                            "prepared": True,
+                        }
+                    ]
+                }
+            },
+        )
+        target_roll_stats = RollActorStats(
+            display_name="Goblin",
+            abilities={"dexterity": 10},
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            with patch(
+                "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+                return_value=MagicMock(
+                    canonical_key="ray_of_frost_save",
+                    name_en="Raio de Gelo",
+                    name_pt=None,
+                    level=0,
+                    damage_type="cold",
+                    saving_throw="dexterity",
+                    save_success_outcome="half_damage",
+                ),
+            ):
+                with patch(
+                    "app.services.combat.CombatService._get_stats",
+                    return_value=(attacker_state, 12, 10, 10, 2, 3),
+                ):
+                    with patch(
+                        "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+                        return_value=target_roll_stats,
+                    ):
+                        with patch("random.randint", return_value=18):
+                            first_result = await CombatService.cast_spell(
+                                self.db,
+                                "session-123",
+                                CombatCastSpellRequest(
+                                    actor_participant_id="p1",
+                                    target_ref_id="enemy-123",
+                                    spell_canonical_key="ray_of_frost_save",
+                                    spell_mode="saving_throw",
+                                    damage_dice="1d8",
+                                    damage_bonus=1,
+                                    damage_type="cold",
+                                    save_ability="dexterity",
+                                ),
+                                "user-1",
+                                False,
+                            )
+
+                    self.assertTrue(first_result["is_saved"])
+                    self.assertEqual(first_result["save_success_outcome"], "half_damage")
+                    self.assertTrue(first_result["effect_roll_required"])
+                    self.assertIsNotNone(first_result["pending_spell_id"])
+
+                    with patch(
+                        "app.services.combat.CombatService._apply_damage_to_target",
+                        return_value=(5, "", 9),
+                    ) as mock_apply_damage:
+                        with patch("random.randint", return_value=8):
+                            second_result = await CombatService.cast_spell_effect(
+                                self.db,
+                                "session-123",
+                                CombatResolveSpellEffectRequest(
+                                    actor_participant_id="p1",
+                                    pending_spell_id=first_result["pending_spell_id"],
+                                    roll_source="system",
+                                ),
+                                "user-1",
+                                False,
+                            )
+
+        self.assertTrue(second_result["is_saved"])
+        self.assertEqual(second_result["save_success_outcome"], "half_damage")
+        self.assertEqual(second_result["effect_rolls"], [8])
+        self.assertEqual(second_result["base_effect"], 8)
+        self.assertEqual(second_result["effect_bonus"], 1)
+        self.assertEqual(second_result["damage"], 4)
+        self.assertEqual(second_result["effect_roll_source"], "system")
+        self.assertNotIn("pending_attack", self.state.participants[0])
+        mock_apply_damage.assert_called_once_with(
+            self.db,
+            "enemy-123",
+            "session_entity",
+            4,
+            False,
+            self.state,
+        )
+        final_log = mock_emit_log.await_args_list[-1].args[1]["message"]
+        self.assertIn("Dano rolado 9", final_log)
+        self.assertIn("dano aplicado 4", final_log)
+        mock_emit_state.assert_awaited()
 
     @patch("app.services.combat.CombatService._emit_player_state_update")
     @patch("app.services.combat.CombatService._emit_entity_hp_update")

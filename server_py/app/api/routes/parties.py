@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
+from app.api.routes.party_common import get_party_or_404, user_id
 from app.models.user import User
 from app.schemas.party import (
     PartyActiveSession,
@@ -27,6 +28,7 @@ from app.api.routes.party_membership_service import (
     join_party_invite_service,
     leave_party_service,
 )
+from app.services.campaign_cleanup import delete_party_tree
 
 router = APIRouter()
 
@@ -82,6 +84,22 @@ def get_party_details(
     session: Session = Depends(get_session),
 ):
     return get_party_details_service(party_id, user, session)
+
+
+@router.delete("/parties/{party_id}", status_code=204)
+def delete_party(
+    party_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    party = get_party_or_404(party_id, session)
+    require_gm(party.campaign_id, user, session)
+    if party.gm_user_id != user_id(user):
+        raise HTTPException(status_code=403, detail="Only the party GM can delete this party")
+
+    delete_party_tree(session, party)
+    session.commit()
+    return None
 
 
 @router.get("/parties/{party_id}/members/me", response_model=PartyMemberRead)

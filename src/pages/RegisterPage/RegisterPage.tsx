@@ -149,8 +149,8 @@ export const RegisterPage = () => {
                 key={option.value}
                 className={`group relative cursor-pointer overflow-hidden rounded-[24px] border p-4 transition duration-300 ${
                   isSelected
-                    ? "border-limiar-300/25 bg-white/[0.06] shadow-[0_18px_40px_rgba(167,139,250,0.14)]"
-                    : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                    ? "border-limiar-300/25 bg-white/6 shadow-[0_18px_40px_rgba(167,139,250,0.14)]"
+                    : "border-white/10 bg-white/3 hover:border-white/20"
                 } motion-safe:animate-[landing-rise_0.75s_ease-out_both]`}
                 style={{ animationDelay: `${index * 120}ms` }}
               >

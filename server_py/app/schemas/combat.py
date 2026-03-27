@@ -15,6 +15,12 @@ class CombatParticipant(BaseModel):
     team: Literal["players", "enemies", "allies", "neutral"] = "neutral"
     visible: bool = True
     actor_user_id: Optional[str] = None  # Original actor if player
+    active_effects: list[dict] = Field(default_factory=list)
+    turn_resources: dict = Field(default_factory=lambda: {
+        "action_used": False,
+        "bonus_action_used": False,
+        "reaction_used": False,
+    })
 
 
 class CombatStartRequest(BaseModel):
@@ -43,6 +49,7 @@ class CombatAttackRequest(BaseModel):
     roll_source: RollSource = "system"
     manual_roll: int | None = Field(default=None, ge=1, le=20)
     manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
 
 
 class CombatAttackResult(BaseModel):
@@ -90,6 +97,7 @@ class CombatCastSpellRequest(BaseModel):
     save_ability: AbilityName | None = None
     save_dc: int | None = Field(default=None, ge=1)
     spell_attack_bonus: int | None = None
+    override_resource_limit: bool = False
 
 
 class CombatSpellResult(BaseModel):
@@ -111,6 +119,7 @@ class CombatSpellResult(BaseModel):
     target_kind: Literal["player", "session_entity"]
     save_ability: AbilityName | None = None
     save_dc: int | None = None
+    save_success_outcome: Literal["none", "half_damage"] | None = None
     effect_dice: str | None = None
     effect_bonus: int | None = None
     pending_spell_id: str | None = None
@@ -129,6 +138,7 @@ class CombatEntityActionRequest(BaseModel):
     roll_source: RollSource = "system"
     manual_roll: int | None = Field(default=None, ge=1, le=20)
     manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
 
 
 class CombatEntityActionResult(BaseModel):
@@ -144,6 +154,7 @@ class CombatEntityActionResult(BaseModel):
     roll: Optional[int] = None
     save_dc: Optional[int] = None
     save_roll: Optional[int] = None
+    save_success_outcome: Literal["none", "half_damage"] | None = None
     roll_result: RollResult | None = None
     target_ac: int | None = None
     target_display_name: str | None = None
@@ -186,3 +197,112 @@ class CombatApplyHealingRequest(BaseModel):
 
 class CombatDeathSaveRequest(BaseModel):
     actor_participant_id: Optional[str] = None
+
+
+# --- Active Effects ---
+
+ActiveEffectKind = Literal[
+    "condition",
+    "temp_ac_bonus",
+    "attack_bonus",
+    "damage_bonus",
+    "advantage_on_attacks",
+    "disadvantage_on_attacks",
+    "dodging",
+    "hidden",
+]
+
+ActiveEffectConditionType = Literal[
+    "prone",
+    "poisoned",
+    "restrained",
+    "blinded",
+    "frightened",
+]
+
+ActiveEffectDurationType = Literal[
+    "manual",
+    "rounds",
+    "until_turn_start",
+    "until_turn_end",
+]
+
+
+class ActiveEffect(BaseModel):
+    id: str
+    source_participant_id: Optional[str] = None
+    kind: ActiveEffectKind
+    condition_type: Optional[ActiveEffectConditionType] = None
+    numeric_value: Optional[int] = None
+    duration_type: ActiveEffectDurationType = "manual"
+    remaining_rounds: Optional[int] = None
+    expires_on: Optional[Literal["turn_start", "turn_end"]] = None
+    expires_at_participant_id: Optional[str] = None
+    created_at: str
+
+
+class CombatApplyEffectRequest(BaseModel):
+    target_participant_id: str
+    kind: ActiveEffectKind
+    condition_type: Optional[ActiveEffectConditionType] = None
+    numeric_value: Optional[int] = None
+    duration_type: ActiveEffectDurationType = "manual"
+    remaining_rounds: Optional[int] = Field(default=None, ge=1)
+    expires_at_participant_id: Optional[str] = None
+    source_participant_id: Optional[str] = None
+
+
+class CombatRemoveEffectRequest(BaseModel):
+    target_participant_id: str
+    effect_id: str
+
+
+class CombatConsumeReactionRequest(BaseModel):
+    participant_id: str
+    override_resource_limit: bool = False
+
+
+class CombatReactionRequestRequest(BaseModel):
+    actor_participant_id: str
+
+
+class CombatReactionResolveRequest(BaseModel):
+    actor_participant_id: str
+    decision: Literal["approve", "deny"]
+    override_resource_limit: bool = False
+
+
+# --- Standard Actions ---
+
+StandardActionType = Literal["dodge", "help", "hide", "use_object", "dash", "disengage"]
+
+
+class CombatStandardActionRequest(BaseModel):
+    action: StandardActionType
+    actor_participant_id: Optional[str] = None
+    target_participant_id: Optional[str] = None
+    description: Optional[str] = None
+    roll_source: RollSource = "system"
+    manual_roll: int | None = Field(default=None, ge=1, le=20)
+    manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
+
+
+class CombatWildShapeAttackRequest(BaseModel):
+    actor_participant_id: Optional[str] = None
+    target_ref_id: str
+    attack_index: int = 0
+    has_advantage: bool = False
+    has_disadvantage: bool = False
+    roll_source: RollSource = "system"
+    manual_roll: int | None = Field(default=None, ge=1, le=20)
+    manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
+
+
+class CombatStandardActionResult(BaseModel):
+    action: StandardActionType
+    actor_name: str
+    message: str
+    roll_result: RollResult | None = None
+    effect_applied: bool = False

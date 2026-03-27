@@ -50,7 +50,7 @@ export const SpellCatalogFilters = ({
           <button
             type="button"
             onClick={onClear}
-            className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.09]"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/9"
           >
             {t("catalog.clearFilters")}
           </button>
@@ -146,7 +146,7 @@ const FilterChip = ({
     className={`rounded-full border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
       active
         ? activeClass ?? "border-limiar-300/25 bg-limiar-400/12 text-limiar-100"
-        : "border-white/8 bg-white/[0.04] text-slate-400 hover:border-white/16 hover:bg-white/[0.08]"
+        : "border-white/8 bg-white/4 text-slate-400 hover:border-white/16 hover:bg-white/8"
     }`}
   >
     {label}

@@ -39,16 +39,16 @@ export const PlayerPartyHeader = ({
       ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
       : sessionStatus === "LOBBY"
         ? "border-amber-500/25 bg-amber-500/10 text-amber-200"
-        : "border-white/10 bg-white/[0.04] text-slate-200";
+        : "border-white/10 bg-white/4 text-slate-200";
 
   return (
     <header className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.94),rgba(2,6,23,0.98))] px-6 py-6 shadow-[0_24px_80px_rgba(2,6,23,0.34)] sm:px-7">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:auto,auto,42px_42px,42px_42px]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[auto,auto,42px_42px,42px_42px]" />
 
       <div className="relative space-y-6">
         <Link
           to={routes.home}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
         >
           <span aria-hidden>←</span>
           {t("playerParty.backHome")}
@@ -77,20 +77,20 @@ export const PlayerPartyHeader = ({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px] xl:max-w-[420px]">
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-90 xl:max-w-105">
+            <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
                 {t("playerParty.membersStat")}
               </p>
               <p className="mt-2 text-2xl font-semibold text-white">{memberCount}</p>
             </div>
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+            <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
                 {t("playerParty.sessionsStat")}
               </p>
               <p className="mt-2 text-2xl font-semibold text-white">{sessionsCount}</p>
             </div>
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+            <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
                 {t("playerParty.createdStat")}
               </p>
@@ -98,7 +98,7 @@ export const PlayerPartyHeader = ({
                 {formatPartyDate(createdAt, locale)}
               </p>
             </div>
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4">
+            <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
                 {t("playerParty.sheetStat")}
               </p>

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type {
   BaseItemArmorCategory,
+  BaseItemDamageType,
+  BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
@@ -11,7 +13,7 @@ import { ItemPropertiesSelector } from "./ItemPropertiesSelector";
 type ItemAutomationFieldsProps = {
   type: ItemType;
   damageDice: string;
-  damageType: string;
+  damageType: BaseItemDamageType | "";
   rangeMeters: string;
   rangeLongMeters: string;
   versatileDamage: string;
@@ -19,13 +21,13 @@ type ItemAutomationFieldsProps = {
   weaponRangeType: BaseItemWeaponRangeType | "";
   armorCategory: BaseItemArmorCategory | "";
   armorClassBase: string;
-  dexBonusRule: string;
+  dexBonusRule: BaseItemDexBonusRule | "";
   strengthRequirement: string;
   stealthDisadvantage: boolean;
   properties: ItemPropertySlug[];
   legacyUnknownProperties?: string[];
   onDamageDiceChange: (value: string) => void;
-  onDamageTypeChange: (value: string) => void;
+  onDamageTypeChange: (value: BaseItemDamageType | "") => void;
   onRangeMetersChange: (value: string) => void;
   onRangeLongMetersChange: (value: string) => void;
   onVersatileDamageChange: (value: string) => void;
@@ -33,7 +35,7 @@ type ItemAutomationFieldsProps = {
   onWeaponRangeTypeChange: (value: BaseItemWeaponRangeType | "") => void;
   onArmorCategoryChange: (value: BaseItemArmorCategory | "") => void;
   onArmorClassBaseChange: (value: string) => void;
-  onDexBonusRuleChange: (value: string) => void;
+  onDexBonusRuleChange: (value: BaseItemDexBonusRule | "") => void;
   onStrengthRequirementChange: (value: string) => void;
   onStealthDisadvantageChange: (value: boolean) => void;
   onPropertiesChange: (value: ItemPropertySlug[]) => void;
@@ -166,7 +168,7 @@ export const ItemAutomationFields = ({
             <Field label={t("shop.form.damageType")}>
               <select
                 value={damageType}
-                onChange={(event) => onDamageTypeChange(event.target.value)}
+                onChange={(event) => onDamageTypeChange(event.target.value as BaseItemDamageType | "")}
                 className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
               >
                 <option value="">{t("shop.form.optionNone")}</option>
@@ -279,7 +281,7 @@ export const ItemAutomationFields = ({
           <Field label={t("shop.form.dexBonusRule")}>
             <select
               value={dexBonusRule}
-              onChange={(event) => onDexBonusRuleChange(event.target.value)}
+              onChange={(event) => onDexBonusRuleChange(event.target.value as BaseItemDexBonusRule | "")}
               disabled={armorCategory === "shield"}
               className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >

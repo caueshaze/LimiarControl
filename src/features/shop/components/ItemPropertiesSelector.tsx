@@ -6,6 +6,7 @@ import {
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type ItemPropertiesSelectorProps = {
+  available?: ItemPropertySlug[];
   disabled?: boolean;
   legacyUnknown?: string[];
   value: ItemPropertySlug[];
@@ -13,6 +14,7 @@ type ItemPropertiesSelectorProps = {
 };
 
 export const ItemPropertiesSelector = ({
+  available = ITEM_PROPERTY_SLUGS,
   disabled = false,
   legacyUnknown = [],
   value,
@@ -80,7 +82,7 @@ export const ItemPropertiesSelector = ({
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {ITEM_PROPERTY_SLUGS.map((slug) => {
+          {available.map((slug) => {
             const active = value.includes(slug);
             return (
               <button
@@ -91,7 +93,7 @@ export const ItemPropertiesSelector = ({
                 className={`rounded-2xl border px-3 py-2.5 text-left text-sm transition ${
                   active
                     ? "border-limiar-300/18 bg-limiar-400/12 text-limiar-50"
-                    : "border-white/8 bg-white/[0.03] text-slate-300 hover:border-white/16 hover:bg-white/[0.06]"
+                    : "border-white/8 bg-white/3 text-slate-300 hover:border-white/16 hover:bg-white/6"
                 } disabled:cursor-not-allowed disabled:opacity-70`}
               >
                 {getItemPropertyLabel(slug, locale)}

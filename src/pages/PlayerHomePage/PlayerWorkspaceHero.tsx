@@ -49,7 +49,7 @@ export const PlayerWorkspaceHero = ({
     <section className="relative overflow-hidden rounded-[34px] border border-white/8 bg-[#070712] px-6 py-8 shadow-[0_30px_90px_rgba(0,0,0,0.28)] sm:px-8">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_28%),radial-gradient(circle_at_80%_15%,rgba(139,92,246,0.14),transparent_24%),linear-gradient(180deg,rgba(8,18,28,0.9),rgba(2,6,23,0.96))]" />
-        <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] bg-size-[48px_48px]" />
       </div>
       <div className="pointer-events-none absolute -left-24 top-6 h-64 w-64 rounded-full bg-emerald-500/14 blur-[120px] motion-safe:animate-[landing-drift_18s_ease-in-out_infinite]" />
       <div className="pointer-events-none absolute right-0 top-10 h-72 w-72 rounded-full bg-limiar-400/12 blur-[130px] motion-safe:animate-[landing-float_15s_ease-in-out_infinite]" />
@@ -81,7 +81,7 @@ export const PlayerWorkspaceHero = ({
           </p>
 
           {focusPartyName && (
-            <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-slate-100">
+            <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-100">
               <span className="uppercase tracking-[0.22em] text-slate-400">
                 {t("home.player.yourParties")}
               </span>
@@ -103,7 +103,7 @@ export const PlayerWorkspaceHero = ({
               <button
                 type="button"
                 onClick={onOpenInvites}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
+                className="rounded-full border border-white/10 bg-white/4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/8"
               >
                 {t("home.player.pendingInvites")}
               </button>
@@ -115,7 +115,7 @@ export const PlayerWorkspaceHero = ({
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-[28px] border border-white/8 bg-white/[0.05] p-5 backdrop-blur-xl"
+              className="rounded-[28px] border border-white/8 bg-white/5 p-5 backdrop-blur-xl"
             >
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
                 {stat.label}

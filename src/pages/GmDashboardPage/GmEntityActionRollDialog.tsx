@@ -10,6 +10,7 @@ import {
   getDamageRollCount,
   getDamageRollSides,
 } from "../../shared/utils/diceExpression";
+import { GmActionOverrideDialog } from "../../features/combat-ui/gm/GmActionOverrideDialog";
 
 type Props = {
   actionDescription?: string | null;
@@ -56,6 +57,13 @@ export const GmEntityActionRollDialog = ({
   const [damageMode, setDamageMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [manualDamageRolls, setManualDamageRolls] = useState<number[]>([]);
   const [result, setResult] = useState<CombatEntityActionResult | null>(null);
+  
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [overrideResourceName, setOverrideResourceName] = useState("");
+  const [pendingOverridePayload, setPendingOverridePayload] = useState<{
+    manual_roll?: number;
+    roll_source: "manual" | "system";
+  } | null>(null);
 
   const pendingDamage = Boolean(result?.damage_roll_required && result?.pending_attack_id);
   const damageRollCount = getDamageRollCount(result?.damage_dice, Boolean(result?.is_critical));
@@ -69,6 +77,7 @@ export const GmEntityActionRollDialog = ({
   const submitAction = async (payload: {
     manual_roll?: number;
     roll_source: "manual" | "system";
+    override_resource_limit?: boolean;
   }) => {
     setLoading(true);
     setError(null);
@@ -80,6 +89,7 @@ export const GmEntityActionRollDialog = ({
         target_ref_id: target.ref_id,
         roll_source: payload.roll_source,
         manual_roll: payload.manual_roll ?? null,
+        override_resource_limit: payload.override_resource_limit,
       });
       setResult(resolved);
       setManualDamageRolls([]);
@@ -88,9 +98,15 @@ export const GmEntityActionRollDialog = ({
         await onResolved?.(resolved);
       }
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Falha ao resolver a acao");
+      if (err?.status === 409 && err?.data?.resource_limit_exceeded) {
+        setOverrideResourceName(err.data.resource || "Ação");
+        setPendingOverridePayload(payload);
+        setOverrideDialogOpen(true);
+      } else {
+        setError(err?.data?.detail || err?.message || "Falha ao resolver a acao");
+      }
     } finally {
-      setLoading(false);
+      if (!overrideDialogOpen) setLoading(false);
     }
   };
 
@@ -315,20 +331,29 @@ export const GmEntityActionRollDialog = ({
         ) : null}
 
         {!result && attackMode === "choose" ? (
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAttackMode("virtual")}
+                className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500"
+              >
+                Virtual
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttackMode("manual")}
+                className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
+              >
+                Manual
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setAttackMode("virtual")}
-              className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500"
+              onClick={onClose}
+              className="w-full rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-rose-200 hover:bg-rose-500/20"
             >
-              Virtual
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttackMode("manual")}
-              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
-            >
-              Manual
+              Cancelar
             </button>
           </div>
         ) : null}
@@ -385,6 +410,24 @@ export const GmEntityActionRollDialog = ({
           </div>
         ) : null}
       </div>
+
+      <GmActionOverrideDialog
+        isOpen={overrideDialogOpen}
+        onClose={() => {
+          setOverrideDialogOpen(false);
+          setPendingOverridePayload(null);
+          setLoading(false);
+        }}
+        onConfirm={() => {
+          if (pendingOverridePayload) {
+            void submitAction({ ...pendingOverridePayload, override_resource_limit: true });
+          }
+          setOverrideDialogOpen(false);
+          setPendingOverridePayload(null);
+        }}
+        resourceName={overrideResourceName}
+        isSubmitting={loading}
+      />
     </div>
   );
 };

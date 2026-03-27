@@ -4,34 +4,41 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from sqlmodel import Session
 
 from app.api.routes import (
-  base_items_router,
-  base_spells_router,
-  campaign_catalog_router,
-  campaign_spells_router,
-  campaigns_router,
-  centrifugo_router,
-  character_sheets_router,
-  dev_router,
-  inventory_router,
-  items_router,
-  members_router,
-  parties_router,
-  campaign_entities_router,
-  session_entities_router,
-  preferences_router,
-  role_mode_router,
-  sessions_router,
-  auth_router,
-  me_router,
-  users_router,
-  combat_router,
+    admin_base_items_router,
+    admin_base_spells_router,
+    auth_router,
+    base_items_router,
+    base_spells_router,
+    campaign_catalog_router,
+    campaign_entities_router,
+    campaign_spells_router,
+    campaigns_router,
+    centrifugo_router,
+    character_sheets_router,
+    combat_router,
+    wild_shape_router,
+    dev_router,
+    inventory_router,
+    items_router,
+    me_router,
+    members_router,
+    parties_router,
+    preferences_router,
+    role_mode_router,
+    session_entities_router,
+    sessions_router,
+    users_router,
 )
 from app.api.ws import router as ws_router
 from app.core.config import settings
 from app.core.logging import RequestLoggingMiddleware
 from app.db.migrations import ensure_database_schema
+from app.db.session import engine
+from app.services.base_item_seeds import bootstrap_base_items_if_empty
+from app.services.base_spell_seeds import bootstrap_base_spells_if_empty
 from app.services.centrifugo import centrifugo
 
 app = FastAPI()
@@ -65,6 +72,8 @@ async def validation_exception_handler(
 
 
 app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
+app.include_router(admin_base_items_router, prefix="/api/admin", tags=["admin-base-items"])
+app.include_router(admin_base_spells_router, prefix="/api/admin", tags=["admin-base-spells"])
 app.include_router(base_items_router, prefix="/api/base-items", tags=["base-items"])
 app.include_router(base_spells_router, prefix="/api/base-spells", tags=["base-spells"])
 app.include_router(role_mode_router, prefix="/api/campaigns", tags=["role-mode"])
@@ -84,6 +93,7 @@ app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(combat_router, prefix="/api", tags=["combat"])
+app.include_router(wild_shape_router, prefix="/api", tags=["wild-shape"])
 app.include_router(centrifugo_router, prefix="/api", tags=["centrifugo"])
 app.include_router(ws_router, prefix="/ws")
 
@@ -96,6 +106,9 @@ def health():
 @app.on_event("startup")
 def startup_event() -> None:
     ensure_database_schema()
+    with Session(engine) as session:
+        bootstrap_base_items_if_empty(session)
+        bootstrap_base_spells_if_empty(session)
 
 
 @app.on_event("shutdown")

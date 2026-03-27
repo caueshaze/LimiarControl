@@ -46,7 +46,7 @@ export const ClassSkillPicker = ({ sheet, pickClassSkill, missingRequiredFields 
               <span
                 key={skill}
                 title={t("sheet.skillPicker.fromBg")}
-                className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-500 line-through"
+                className="rounded-full border border-white/8 bg-white/3 px-3 py-1.5 text-[11px] text-slate-500 line-through"
               >
                 {SKILL_LABELS[skill]}
               </span>
@@ -63,7 +63,7 @@ export const ClassSkillPicker = ({ sheet, pickClassSkill, missingRequiredFields 
                 isChosen
                   ? "border-limiar-500/40 bg-limiar-500/15 text-limiar-200"
                   : canPick
-                    ? "border-white/8 bg-white/[0.02] text-slate-300 hover:border-slate-400/40 hover:text-slate-100"
+                    ? "border-white/8 bg-white/2 text-slate-300 hover:border-slate-400/40 hover:text-slate-100"
                     : "cursor-not-allowed border-white/5 bg-transparent text-slate-700"
               }`}
             >

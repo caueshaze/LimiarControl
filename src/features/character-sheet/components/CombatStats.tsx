@@ -34,8 +34,8 @@ export const CombatStats = ({ sheet, ac, initiative, acBreakdown, set, selectArm
             />
             <CombatPreviewCard
               label="Speed"
-              value={sheet.speed > 0 ? `${sheet.speed}` : "-"}
-              note={sheet.speed > 0 ? t("sheet.combat.baseSpeed") : t("sheet.combat.selectRace")}
+              value={sheet.speedMeters > 0 ? `${sheet.speedMeters}m` : "-"}
+              note={sheet.speedMeters > 0 ? t("sheet.combat.baseSpeed") : t("sheet.combat.selectRace")}
             />
           </div>
 

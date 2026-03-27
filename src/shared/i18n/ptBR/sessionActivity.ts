@@ -40,4 +40,7 @@ export const sessionActivityPtBRDictionary = {
   "sessionActivity.entityHealed": "recuperou",
   "sessionActivity.entityHpSet": "PV ajustado para",
   "sessionActivity.currentHp": "PV atual:",
+  "sessionActivity.combatModuleEyebrow": "Modulo de combate",
+  "sessionActivity.combatModuleTitle": "Atividade de combate",
+  "sessionActivity.combatEventsCount": "eventos de combate",
 } as const;

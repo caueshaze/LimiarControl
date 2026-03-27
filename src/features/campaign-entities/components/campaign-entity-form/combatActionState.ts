@@ -126,15 +126,14 @@ export const createWeaponCatalogActionSelector =
             weaponCanonicalKey: null,
           };
         }
+        const selectedDamageType = selectedWeapon.damageType;
         return {
           ...action,
           campaignItemId: campaignItemId || null,
           weaponCanonicalKey: selectedWeapon.canonicalKeySnapshot ?? null,
           name: action.name.trim() || weaponLabel(selectedWeapon),
           damageDice: selectedWeapon.damageDice ?? "",
-          damageType: isDamageType(selectedWeapon.damageType?.toLowerCase())
-            ? selectedWeapon.damageType.toLowerCase()
-            : null,
+          damageType: selectedDamageType && isDamageType(selectedDamageType) ? selectedDamageType : null,
           rangeMeters: typeof selectedWeapon.rangeMeters === "number" ? selectedWeapon.rangeMeters : null,
           isMelee:
             selectedWeapon.weaponRangeType === "melee"

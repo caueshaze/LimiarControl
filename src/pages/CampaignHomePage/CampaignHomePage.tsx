@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
@@ -10,7 +10,14 @@ import { CampaignQuickLinkCard } from "./CampaignQuickLinkCard";
 
 export const CampaignHomePage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const { selectedCampaign, selectedCampaignId, selectCampaign } = useCampaigns();
+  const {
+    selectedCampaign,
+    selectedCampaignId,
+    selectCampaign,
+    refreshCampaigns,
+    clearSelectedCampaign,
+  } = useCampaigns();
+  const navigate = useNavigate();
   const { t } = useLocale();
   const { user } = useAuth();
   const role = user?.role ?? "PLAYER";
@@ -18,6 +25,7 @@ export const CampaignHomePage = () => {
   const [overviewName, setOverviewName] = useState<string | null>(null);
   const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [deletingCampaign, setDeletingCampaign] = useState(false);
   const isGm = role === "GM";
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
 
@@ -61,9 +69,38 @@ export const CampaignHomePage = () => {
       ? getCampaignSystemLabel(overviewSystem)
       : null;
 
+  const handleDeleteCampaign = async () => {
+    if (!effectiveCampaignId || deletingCampaign) {
+      return;
+    }
+
+    const label = campaignName ?? "this campaign";
+    const confirmed = confirm(
+      `Delete "${label}" permanently?\n\nThis removes the campaign, parties, sessions, sheets, inventory, NPCs, and campaign snapshots.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCampaign(true);
+    try {
+      await campaignsRepo.remove(effectiveCampaignId);
+      try {
+        await refreshCampaigns();
+      } catch {
+        // ignore refresh failures after a successful delete
+      }
+      clearSelectedCampaign();
+      navigate(routes.gmHome);
+    } catch (error: any) {
+      alert(error?.message ?? "Failed to delete campaign");
+      setDeletingCampaign(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-void-950 via-slate-950/80 to-limiar-900/20 p-6">
+      <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/20 p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">
           {t("campaignHome.title")}
         </p>
@@ -74,11 +111,11 @@ export const CampaignHomePage = () => {
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {campaignName ? (
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white">
+                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white">
                   {campaignName}
                 </span>
               ) : (
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white">
+                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white">
                   {t("campaignHome.none")}
                 </span>
               )}
@@ -141,6 +178,29 @@ export const CampaignHomePage = () => {
               accent="emerald"
             />
           </div>
+
+          {effectiveCampaignId && (
+            <div className="mt-6 rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-300">
+                    Danger Zone
+                  </p>
+                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                    Delete the campaign and all of its parties, sessions, inventories, sheets, and current snapshot data.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteCampaign}
+                  disabled={deletingCampaign}
+                  className="rounded-full border border-red-500/30 bg-red-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingCampaign ? "Deleting..." : "Delete Campaign"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
