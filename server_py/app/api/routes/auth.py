@@ -31,7 +31,7 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
         username=username,
         display_name=payload.displayName.strip() if payload.displayName else None,
         pin_hash=hash_pin(payload.pin.strip()),
-        role=RoleMode.PLAYER,
+        role=payload.role,
         is_system_admin=is_first_user,
     )
     session.add(user)
