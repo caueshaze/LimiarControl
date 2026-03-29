@@ -8,6 +8,7 @@ COPY server_py/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=appuser:appuser server_py/ .
+COPY --chown=appuser:appuser Base/ /Base/
 
 USER appuser
 
