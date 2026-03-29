@@ -89,34 +89,48 @@ class TestMemberSelfUpdateSecurity(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestRegistrationSecurity(unittest.TestCase):
-    def test_register_request_has_no_role_field(self):
-        """RegisterRequest schema should not accept a role field."""
-        self.assertFalse("role" in RegisterRequest.model_fields)
+    def test_register_request_has_role_field(self):
+        """RegisterRequest schema should accept a role field."""
+        self.assertIn("role", RegisterRequest.model_fields)
 
-    def test_register_ignores_role_in_payload(self):
-        """Extra fields in payload should not create a role attribute."""
+    def test_register_accepts_role_in_payload(self):
+        """Passing role=GM in payload should set req.role to GM."""
         req = RegisterRequest.model_validate({
             "username": "test",
             "pin": "1234",
             "role": "GM",
         })
-        self.assertFalse(hasattr(req, "role") and "role" in req.model_fields)
+        self.assertEqual(req.role, RoleMode.GM)
 
-    def test_register_handler_hardcodes_player_role(self):
-        """The register handler should always set role=PLAYER."""
+    def test_register_handler_respects_role(self):
+        """The register handler should use the role from the payload."""
         from app.api.routes.auth import register
 
         session_mock = MagicMock()
-        # No existing users
         session_mock.exec.return_value.first.side_effect = [None, None]
 
-        payload = RegisterRequest(username="newuser", pin="5678")
+        payload_gm = RegisterRequest(username="gmuser", pin="5678", role=RoleMode.GM)
 
         with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
              patch("app.api.routes.auth.build_access_token", return_value="tok"):
-            result = register(payload, session_mock)
+            register(payload_gm, session_mock)
 
-        # Verify the User was created with PLAYER role
+        created_user = session_mock.add.call_args[0][0]
+        self.assertEqual(created_user.role, RoleMode.GM)
+
+    def test_register_handler_defaults_to_player_when_no_role(self):
+        """When no role is provided, the register handler should default to PLAYER."""
+        from app.api.routes.auth import register
+
+        session_mock = MagicMock()
+        session_mock.exec.return_value.first.side_effect = [None, None]
+
+        payload_player = RegisterRequest(username="playeruser", pin="5678")
+
+        with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
+             patch("app.api.routes.auth.build_access_token", return_value="tok"):
+            register(payload_player, session_mock)
+
         created_user = session_mock.add.call_args[0][0]
         self.assertEqual(created_user.role, RoleMode.PLAYER)
 

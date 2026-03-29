@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=100)
     pin: str = Field(min_length=4, max_length=20)
     displayName: Optional[str] = Field(default=None, max_length=255)
+    role: RoleMode = Field(default=RoleMode.PLAYER)
 
 
 class LoginRequest(BaseModel):
