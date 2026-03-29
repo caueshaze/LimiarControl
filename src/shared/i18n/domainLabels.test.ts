@@ -30,6 +30,7 @@ describe("domainLabels", () => {
   it("localizes spell admin values", () => {
     expect(localizeSpellSchool("transmutation", "pt")).toBe("Transmutação");
     expect(localizeSpellAdminValue("saving_throw", "en")).toBe("Saving throw");
+    expect(localizeSpellAdminValue("saving_throw", "pt")).toBe("Teste de resistência");
     expect(localizeSaveSuccessOutcome("half_damage", "pt")).toBe("Metade do dano");
   });
 

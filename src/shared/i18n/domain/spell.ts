@@ -66,6 +66,10 @@ const SAVE_SUCCESS_OUTCOME_LABELS: Record<SaveSuccessOutcome, LabelEntry> = {
   half_damage: label("Half damage", "Metade do dano"),
 };
 
+const SPELL_ADMIN_VALUE_LABELS: Record<string, LabelEntry> = {
+  saving_throw: label("Saving throw", "Teste de resistência"),
+};
+
 const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {
   extra_damage_dice: label("Extra damage dice", "Dados de dano extras"),
   extra_heal_dice: label("Extra heal dice", "Dados de cura extras"),
@@ -121,6 +125,7 @@ export const localizeSpellClass = (value: string, locale: LocaleLike) =>
 export const localizeSpellAdminValue = (value: string, locale: LocaleLike) => {
   const normalized = normalizeLookup(value).replace(/\s+/g, "_");
   const maps: Record<string, LabelEntry>[] = [
+    SPELL_ADMIN_VALUE_LABELS,
     SPELL_SCHOOL_LABELS as Record<string, LabelEntry>,
     CASTING_TIME_TYPE_LABELS as Record<string, LabelEntry>,
     TARGET_MODE_LABELS as Record<string, LabelEntry>,
