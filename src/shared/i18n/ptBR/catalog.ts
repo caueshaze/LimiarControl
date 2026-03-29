@@ -66,6 +66,7 @@ export const catalogPtBRDictionary = {
   "catalog.validation.armorClass": "Classe de armadura inválida",
   "catalog.validation.properties": "Use apenas propriedades conhecidas:",
   "catalog.validation.strengthRequirement": "Força mínima inválida",
+  "catalog.validation.healBonus": "Bonus de cura invalido",
   "catalog.validation.weaponFields": "Armas precisam de dano, tipo de dano, categoria e alcance previsíveis",
   "catalog.validation.armorFields": "Armaduras precisam de categoria, CA base e regra de DEX",
   "catalog.validation.magicDamageType": "Itens mágicos com dano precisam de tipo de dano",

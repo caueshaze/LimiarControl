@@ -1,6 +1,8 @@
 import { z } from "zod/v4";
 import { normalizeSubclassId } from "../data/classes";
+import { applyCanonicalClassState } from "../data/classFeatures";
 import { normalizeBackgroundId } from "../data/backgrounds";
+import { normalizeSubclassConfig } from "../data/draconicAncestry";
 import { getRaceFixedToolProficiencies, normalizeRaceState } from "../data/races";
 import type { CharacterSheet } from "./characterSheet.types";
 
@@ -83,6 +85,7 @@ const weaponSchema = z.object({
   magicBonus: z.number(),
   properties: z.string(),
   range: z.string(),
+  rangeType: z.enum(["melee", "ranged"]).nullable().optional(),
 });
 
 const inventoryItemSchema = z.object({
@@ -139,13 +142,30 @@ const spellcastingSchema = z.object({
   spells: z.array(spellSchema),
 });
 
+const characterClassFeatureSchema = z.object({
+  id: z.string(),
+  source: z.enum(["class", "subclass"]),
+  levelGranted: z.number().min(1).max(20),
+  label: z.string(),
+  description: z.string(),
+  kind: z.enum(["passive", "spellcasting", "subclass", "fighting_style", "asi"]),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+const characterResourcePoolSchema = z.object({
+  usesMax: z.number().min(0),
+  usesRemaining: z.number().min(0),
+});
+
 const deathSavesSchema = z.object({
   successes: z.number().min(0).max(3),
   failures: z.number().min(0).max(3),
 });
 const restStateSchema = z.enum(["exploration", "short_rest", "long_rest"]);
 const raceConfigSchema = z.object({
+  draconicAncestry: z.string().nullable().optional(),
   dragonbornAncestry: z.string().nullable().optional(),
+  dragonAncestor: z.string().nullable().optional(),
   gnomeSubrace: z.string().nullable().optional(),
   halfElfAbilityChoices: z.array(abilityNameSchema).max(2).optional(),
   halfElfSkillChoices: z.array(skillNameSchema).max(2).optional(),
@@ -227,6 +247,8 @@ export const characterSheetSchema = z.object({
   subclassConfig: z.record(z.string(), z.string()).nullable().default(null),
   fightingStyle: z.string().nullable().default(null),
   expertiseChoices: z.array(skillNameSchema).default([]),
+  classFeatures: z.array(characterClassFeatureSchema).default([]),
+  classResources: z.record(z.string(), characterResourcePoolSchema).nullable().default(null),
 
   featuresAndTraits: z.string(),
   notes: z.string(),
@@ -247,14 +269,15 @@ export function parseCharacterSheet(raw: unknown): CharacterSheet {
     normalizedRace.raceId,
     normalizedRace.raceConfig,
   );
-  return {
+  return applyCanonicalClassState({
     ...result.data,
     background: normalizeBackgroundId(result.data.background),
     race: normalizedRace.raceId,
     raceConfig: normalizedRace.raceConfig,
     toolProficiencies: [...new Set([...(result.data.toolProficiencies ?? []), ...fixedRaceTools])],
     subclass: normalizeSubclassId(result.data.class, result.data.subclass),
-  } as CharacterSheet;
+    subclassConfig: normalizeSubclassConfig(result.data.subclass, result.data.subclassConfig),
+  } as CharacterSheet);
 }
 
 /**
@@ -273,14 +296,15 @@ export function validateSheet(
     );
     return {
       ok: true,
-      sheet: {
+      sheet: applyCanonicalClassState({
         ...result.data,
         background: normalizeBackgroundId(result.data.background),
         race: normalizedRace.raceId,
         raceConfig: normalizedRace.raceConfig,
         toolProficiencies: [...new Set([...(result.data.toolProficiencies ?? []), ...fixedRaceTools])],
         subclass: normalizeSubclassId(result.data.class, result.data.subclass),
-      } as CharacterSheet,
+        subclassConfig: normalizeSubclassConfig(result.data.subclass, result.data.subclassConfig),
+      } as CharacterSheet),
     };
   }
   return { ok: false, error: z.prettifyError(result.error) };

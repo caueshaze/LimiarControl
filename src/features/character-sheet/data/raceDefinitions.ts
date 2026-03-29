@@ -9,7 +9,7 @@ export type RaceToolProficiencyChoice = {
 };
 
 export type RaceConfigField = {
-  key: "dragonbornAncestry" | "gnomeSubrace" | "halfElfAbilityChoices" | "halfElfSkillChoices";
+  key: "draconicAncestry" | "gnomeSubrace" | "halfElfAbilityChoices" | "halfElfSkillChoices";
   label: string;
   required: boolean;
 } & (
@@ -105,7 +105,7 @@ export const RACE_DEFINITIONS: RaceDefinition[] = [
   { id: "lightfoot-halfling", name: "Halfling Pés-Leves", size: "Pequeno", darkvisionMeters: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, charisma: 1 }, speedMeters: 8, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Naturalmente Furtivo"] },
   { id: "stout-halfling", name: "Halfling Robusto", size: "Pequeno", darkvisionMeters: null, languages: ["Comum", "Halfling"], abilityBonuses: { dexterity: 2, constitution: 1 }, speedMeters: 8, traits: ["Sortudo", "Corajoso", "Agilidade Halfling", "Resiliência Robusta"] },
   { id: "human", name: "Humano", size: "Médio", darkvisionMeters: null, languages: ["Comum", LANGUAGE_CHOICE_SLOT], abilityBonuses: { strength: 1, dexterity: 1, constitution: 1, intelligence: 1, wisdom: 1, charisma: 1 }, speedMeters: 9, traits: [] },
-  { id: "dragonborn", name: "Draconato", size: "Médio", darkvisionMeters: null, languages: ["Comum", "Dracônico"], abilityBonuses: { strength: 2, charisma: 1 }, speedMeters: 9, traits: ["Ancestralidade Dracônica", "Sopro de Dragão", "Resistência a Danos"], configFields: [{ key: "dragonbornAncestry", label: "Ancestral dracônico", required: true, options: DRAGONBORN_ANCESTRY_OPTIONS }] },
+  { id: "dragonborn", name: "Draconato", size: "Médio", darkvisionMeters: null, languages: ["Comum", "Dracônico"], abilityBonuses: { strength: 2, charisma: 1 }, speedMeters: 9, traits: ["Ancestralidade Dracônica", "Sopro de Dragão", "Resistência a Danos"], configFields: [{ key: "draconicAncestry", label: "Ancestral dracônico", required: true, options: DRAGONBORN_ANCESTRY_OPTIONS }] },
   {
     id: "gnome",
     name: "Gnomo",

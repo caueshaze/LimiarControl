@@ -26,6 +26,22 @@ describe("races model", () => {
     });
   });
 
+  it("normalizes legacy dragonborn ancestry config into draconicAncestry", () => {
+    expect(normalizeRaceState("dragonborn", { dragonbornAncestry: "red" })).toEqual({
+      raceId: "dragonborn",
+      raceConfig: { draconicAncestry: "red" },
+    });
+  });
+
+  it("derives dragonborn ancestry mechanics from raceConfig", () => {
+    const race = getRace("dragonborn", { draconicAncestry: "silver" });
+
+    expect(race?.name).toBe("Draconato (Prata)");
+    expect(race?.traits).toContain("Ancestralidade Dracônica: Prata");
+    expect(race?.traits).toContain("Resistência: Frio");
+    expect(race?.traits).toContain("Sopro de Dragão: Frio, cone 4.5m, teste Constituição");
+  });
+
   it("derives half-elf bonuses and skill versatility from raceConfig", () => {
     const race = getRace("half-elf", {
       halfElfAbilityChoices: ["constitution", "wisdom"],

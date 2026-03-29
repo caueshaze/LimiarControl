@@ -69,6 +69,7 @@ def seed_campaign_spells(
                 heal_dice=base_spell.heal_dice,
                 saving_throw=base_spell.saving_throw,
                 save_success_outcome=base_spell.save_success_outcome,
+                upcast_json=base_spell.upcast_json,
                 upcast_mode=base_spell.upcast_mode,
                 upcast_value=base_spell.upcast_value,
                 source=base_spell.source,

@@ -20,6 +20,7 @@ export const PlayerCombatDebugPanel = ({
     closeAttackDialog,
     closeSpellDialog,
     deathSaveFeedback,
+    dragonbornBreathWeaponAction,
     error,
     handleAttack,
     handleAttackResolved,
@@ -104,6 +105,7 @@ export const PlayerCombatDebugPanel = ({
           currentWeapon={playerStatus?.currentWeapon ?? null}
           deathSaveVisible={myParticipant?.status === "downed"}
           defeatedTargets={defeatedTargets}
+          dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
           isActive={isActive}
           isMyTurn={isMyTurn}
           loading={loading}

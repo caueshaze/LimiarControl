@@ -14,5 +14,7 @@ export type {
   BaseItem,
   BaseItemAlias,
   BaseItemFilters,
+  MagicItemCastSpellEffect,
+  MagicItemRechargeType,
   BaseItemWritePayload,
 } from "./baseItem.types";

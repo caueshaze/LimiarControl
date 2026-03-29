@@ -35,6 +35,7 @@ export const PlayerPartyPage = () => {
     joiningLobby,
     hasJoinedLobby,
     hasCharacterSheet,
+    characterSheetStatus,
     wasLobbyRef,
     prevActiveSessionIdRef,
     notifiedLobbySessionIdRef,
@@ -198,6 +199,7 @@ export const PlayerPartyPage = () => {
           sessionsCount={sessions.length}
           createdAt={party.createdAt}
           hasCharacterSheet={hasCharacterSheet}
+          characterSheetStatus={characterSheetStatus}
           sessionStatus={activeSession?.status ?? null}
         />
 
@@ -216,6 +218,7 @@ export const PlayerPartyPage = () => {
           partyId={partyId ?? ""}
           isPlayer={isPlayer}
           hasCharacterSheet={hasCharacterSheet}
+          characterSheetStatus={characterSheetStatus}
           isSessionActive={activeSession?.status === "ACTIVE"}
         />
 

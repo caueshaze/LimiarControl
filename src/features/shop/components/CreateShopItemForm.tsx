@@ -30,6 +30,8 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
   const [weight, setWeight] = useState("");
   const [damageDice, setDamageDice] = useState("");
   const [damageType, setDamageType] = useState<BaseItemDamageType | "">("");
+  const [healDice, setHealDice] = useState("");
+  const [healBonus, setHealBonus] = useState("");
   const [rangeMeters, setRangeMeters] = useState("");
   const [rangeLongMeters, setRangeLongMeters] = useState("");
   const [versatileDamage, setVersatileDamage] = useState("");
@@ -54,6 +56,8 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
     setWeight("");
     setDamageDice("");
     setDamageType("");
+    setHealDice("");
+    setHealBonus("");
     setRangeMeters("");
     setRangeLongMeters("");
     setVersatileDamage("");
@@ -87,6 +91,14 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             : undefined,
         damageType:
           (type === "WEAPON" || type === "MAGIC") && damageType ? damageType : undefined,
+        healDice:
+          type === "CONSUMABLE" && healDice.trim()
+            ? healDice.trim()
+            : undefined,
+        healBonus:
+          type === "CONSUMABLE" && healBonus.trim()
+            ? Number(healBonus)
+            : undefined,
         rangeMeters:
           (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
             ? Number(rangeMeters)
@@ -254,6 +266,8 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             type={type}
             damageDice={damageDice}
             damageType={damageType}
+            healDice={healDice}
+            healBonus={healBonus}
             rangeMeters={rangeMeters}
             rangeLongMeters={rangeLongMeters}
             versatileDamage={versatileDamage}
@@ -267,6 +281,8 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             properties={selectedProperties}
             onDamageDiceChange={setDamageDice}
             onDamageTypeChange={setDamageType}
+            onHealDiceChange={setHealDice}
+            onHealBonusChange={setHealBonus}
             onRangeMetersChange={setRangeMeters}
             onRangeLongMetersChange={setRangeLongMeters}
             onVersatileDamageChange={setVersatileDamage}

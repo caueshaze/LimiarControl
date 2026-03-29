@@ -7,10 +7,13 @@ import { ABILITIES, DAMAGE_TYPES } from "../constants";
 import { computeWeaponAttack, computeWeaponDamage, formatMod, safeParseInt } from "../utils/calculations";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import { WEAPON_PROPERTY_SLUGS, getItemPropertyLabel, resolveItemPropertySlug } from "../../../entities/item";
+import { AUTOMATION_DICE_OPTIONS, buildAutomationSelectOptions } from "../../../shared/lib/itemAutomationOptions";
 
 type Props = {
   weapons: CharacterSheet["weapons"];
   abilities: CharacterSheet["abilities"];
+  fightingStyle: CharacterSheet["fightingStyle"];
   level: number;
   readOnly?: boolean;
   onAdd: SheetActions["addWeapon"];
@@ -18,8 +21,8 @@ type Props = {
   onUpdate: SheetActions["updateWeapon"];
 };
 
-export const Weapons = ({ weapons, abilities, level, readOnly = false, onAdd, onRemove, onUpdate }: Props) => {
-  const { t } = useLocale();
+export const Weapons = ({ weapons, abilities, fightingStyle, level, readOnly = false, onAdd, onRemove, onUpdate }: Props) => {
+  const { t, locale } = useLocale();
 
   return (
     <Section title={t("sheet.weapons.title")} color="bg-orange-500">
@@ -37,10 +40,12 @@ export const Weapons = ({ weapons, abilities, level, readOnly = false, onAdd, on
             key={weapon.id}
             weapon={weapon}
             abilities={abilities}
+            fightingStyle={fightingStyle}
             level={level}
             readOnly={readOnly}
             onRemove={onRemove}
             onUpdate={onUpdate}
+            locale={locale}
             t={t}
           />
         ))}
@@ -57,16 +62,56 @@ export const Weapons = ({ weapons, abilities, level, readOnly = false, onAdd, on
 type RowProps = {
   weapon: Weapon;
   abilities: CharacterSheet["abilities"];
+  fightingStyle: CharacterSheet["fightingStyle"];
   level: number;
   readOnly: boolean;
   onRemove: SheetActions["removeWeapon"];
   onUpdate: SheetActions["updateWeapon"];
+  locale: string;
   t: (key: LocaleKey) => string;
 };
 
-const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate, t }: RowProps) => {
-  const atkBonus = computeWeaponAttack(weapon, abilities, level);
+const normalizeWeaponProperties = (value: string) => {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .forEach((entry) => {
+      const normalizedEntry = resolveItemPropertySlug(entry) ?? entry;
+      if (seen.has(normalizedEntry)) {
+        return;
+      }
+      seen.add(normalizedEntry);
+      normalized.push(normalizedEntry);
+    });
+
+  return normalized;
+};
+
+const buildWeaponPropertyOptions = (value: string) => {
+  const selected = normalizeWeaponProperties(value);
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  [...selected, ...WEAPON_PROPERTY_SLUGS].forEach((entry) => {
+    if (seen.has(entry)) {
+      return;
+    }
+    seen.add(entry);
+    options.push(entry);
+  });
+
+  return options;
+};
+
+const WeaponRow = ({ weapon, abilities, fightingStyle, level, readOnly, onRemove, onUpdate, locale, t }: RowProps) => {
+  const atkBonus = computeWeaponAttack(weapon, abilities, level, fightingStyle);
   const dmg = computeWeaponDamage(weapon, abilities);
+  const selectedProperties = normalizeWeaponProperties(weapon.properties);
+  const propertyOptions = buildWeaponPropertyOptions(weapon.properties);
 
   return (
     <div className="rounded-xl border border-slate-800/60 bg-void-950/40 p-4">
@@ -95,7 +140,18 @@ const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate, t }
         </div>
         <div>
           <label className={fieldLabel}>{t("sheet.weapons.damageDice")}</label>
-          <input type="text" placeholder="1d8" value={weapon.damageDice} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "damageDice", e.target.value)} className={input} />
+          <select
+            value={weapon.damageDice}
+            disabled={readOnly}
+            onChange={(e) => onUpdate(weapon.id, "damageDice", e.target.value)}
+            className={input}
+          >
+            {buildAutomationSelectOptions(weapon.damageDice, AUTOMATION_DICE_OPTIONS).map((option) => (
+              <option key={option || "none"} value={option}>
+                {option || "-"}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={fieldLabel}>{t("sheet.weapons.damageType")}</label>
@@ -112,7 +168,22 @@ const WeaponRow = ({ weapon, abilities, level, readOnly, onRemove, onUpdate, t }
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
           <label className={fieldLabel}>{t("sheet.weapons.properties")}</label>
-          <input type="text" placeholder={t("sheet.weapons.propertiesPlaceholder")} value={weapon.properties} disabled={readOnly} onChange={(e) => onUpdate(weapon.id, "properties", e.target.value)} className={input} />
+          <select
+            multiple
+            value={selectedProperties}
+            disabled={readOnly}
+            onChange={(e) => {
+              const values = Array.from(e.target.selectedOptions, (option) => option.value);
+              onUpdate(weapon.id, "properties", values.join(", "));
+            }}
+            className={`${input} min-h-[7rem]`}
+          >
+            {propertyOptions.map((property) => (
+              <option key={property} value={property}>
+                {getItemPropertyLabel(property, locale)}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={fieldLabel}>{t("sheet.weapons.range")}</label>

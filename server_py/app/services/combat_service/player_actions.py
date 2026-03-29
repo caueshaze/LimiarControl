@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.models.base_item import BaseItemKind, BaseItemWeaponRangeType
 from app.models.campaign import Campaign, SystemType
+from app.models.campaign_member import CampaignMember
 from app.models.combat import CombatPhase, CombatState
 from app.models.session import Session as CampaignSession
 from app.models.session_entity import SessionEntity
@@ -38,6 +39,13 @@ from app.schemas.campaign_entity import (
 from app.services.base_items import get_base_item_by_canonical_key
 from app.services.base_spells import get_base_spell_by_canonical_key
 from app.services.centrifugo import centrifugo
+from app.services.draconic_ancestry import resolve_elemental_affinity
+from app.services.magic_item_effects import (
+    consume_inventory_item_charge,
+    get_magic_item_effect,
+    get_inventory_item_charges_current,
+    get_magic_item_spell_key,
+)
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
@@ -47,6 +55,80 @@ from .exceptions import CombatServiceError, _parse_dice
 
 
 class CombatPlayerActionMixin:
+
+    @classmethod
+    def _resolve_player_inventory_spell_item(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        player_user_id: str,
+        inventory_item_id: str,
+    ) -> tuple[InventoryItem, Item, dict]:
+        session_entry = db.exec(
+            select(CampaignSession).where(CampaignSession.id == session_id)
+        ).first()
+        if not session_entry:
+            raise CombatServiceError("Session not found.", 404)
+
+        member = db.exec(
+            select(CampaignMember).where(
+                CampaignMember.campaign_id == session_entry.campaign_id,
+                CampaignMember.user_id == player_user_id,
+            )
+        ).first()
+        if not member or not member.id:
+            raise CombatServiceError("Campaign member not found for this player.", 400)
+
+        inventory_entry = db.exec(
+            select(InventoryItem).where(
+                InventoryItem.id == inventory_item_id,
+                InventoryItem.campaign_id == session_entry.campaign_id,
+                InventoryItem.member_id == member.id,
+            )
+        ).first()
+        if not inventory_entry:
+            raise CombatServiceError("Magic item not found in the player's inventory.", 404)
+        if session_entry.party_id is not None and inventory_entry.party_id not in (None, session_entry.party_id):
+            raise CombatServiceError("Magic item is not available in this session party.", 400)
+
+        item = db.exec(
+            select(Item).where(
+                Item.id == inventory_entry.item_id,
+                Item.campaign_id == session_entry.campaign_id,
+            )
+        ).first()
+        if not item:
+            raise CombatServiceError("Catalog item for the magic item was not found.", 404)
+
+        effect = get_magic_item_effect(item)
+        if not effect or effect.get("type") != "cast_spell":
+            raise CombatServiceError("This item cannot cast a spell.", 400)
+
+        return inventory_entry, item, effect
+
+    @classmethod
+    def _get_target_hp_snapshot(
+        cls,
+        db: Session,
+        session_id: str,
+        target_ref_id: str,
+        target_kind: str,
+    ) -> tuple[int | None, int | None]:
+        target_model, *_ = cls._get_stats(db, target_ref_id, target_kind, session_id)
+        if target_kind == "player":
+            data = cls._as_dict(target_model.state_json)
+            return (
+                cls._safe_int(data.get("currentHP"), 0),
+                cls._safe_int(data.get("maxHP"), 0),
+            )
+
+        npc = db.exec(
+            select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)
+        ).first()
+        max_hp = npc.max_hp if npc and npc.max_hp is not None else 0
+        current_hp = target_model.current_hp if target_model.current_hp is not None else max_hp
+        return current_hp, max_hp
 
     @classmethod
     async def attack(
@@ -93,6 +175,11 @@ class CombatPlayerActionMixin:
         target_p = next((p for p in state.participants if p["ref_id"] == req.target_ref_id), None)
         if not target_p:
             raise CombatServiceError("Target not found in combat")
+        cls._assert_hostile_action_allowed(
+            attacker,
+            target_p,
+            action_label="an attack",
+        )
 
         _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
         target_ac = target_ac or 10
@@ -144,6 +231,8 @@ class CombatPlayerActionMixin:
                     "damage_bonus": attack_context["damage_bonus"],
                     "attack_bonus": attack_context["attack_bonus"],
                     "damage_type": attack_context.get("damage_type"),
+                    "inventory_item_id": attack_context.get("inventory_item_id"),
+                    "is_weapon_attack": attack_context.get("inventory_item_id") != "unarmed",
                     "is_critical": is_crit,
                     "roll_result": roll_result.model_dump(mode="json"),
                     "roll": atk_roll,
@@ -238,18 +327,74 @@ class CombatPlayerActionMixin:
         target_display_name = pending_attack.get("target_display_name") or "Target"
         if not isinstance(target_ref_id, str) or not isinstance(target_kind, str):
             raise CombatServiceError("Pending damage roll is missing target information.", 400)
+        target_participant = cls._get_participant_by_ref(state, target_ref_id)
+
+        attacker_model, *_ = cls._get_stats(db, attacker["ref_id"], attacker["kind"], session_id)
+        attacker_data = cls._as_dict(attacker_model.state_json)
+        target_current_hp, target_max_hp = cls._get_target_hp_snapshot(
+            db,
+            session_id,
+            target_ref_id,
+            target_kind,
+        )
+        extra_damage = 0
+        extra_damage_rolls: list[int] = []
+        extra_damage_label = ""
+        turn_resources = cls._get_turn_resources(attacker)
+        is_weapon_attack = pending_attack.get("is_weapon_attack") is True
+
+        hunters_mark_effect = (
+            cls._get_hunters_mark_effect_for_target(
+                attacker,
+                target_participant_id=target_participant.get("id", "") if target_participant else "",
+            )
+            if is_weapon_attack
+            else None
+        )
+        if hunters_mark_effect is not None:
+            hm_rolls, hm_damage = cls._resolve_damage_roll(
+                "1d6",
+                roll_source="system",
+            )
+            extra_damage += hm_damage
+            extra_damage_rolls.extend(hm_rolls)
+            extra_damage_label += " Hunter's Mark: +1d6."
+
+        can_use_colossus_slayer = (
+            cls._player_has_colossus_slayer(attacker_data)
+            and target_current_hp is not None
+            and target_max_hp is not None
+            and target_current_hp < target_max_hp
+            and not turn_resources.get("colossus_slayer_used")
+        )
+        if can_use_colossus_slayer:
+            colossus_rolls, colossus_damage = cls._resolve_damage_roll(
+                "1d8",
+                roll_source="system",
+            )
+            extra_damage_rolls.extend(colossus_rolls)
+            extra_damage += colossus_damage
+            turn_resources["colossus_slayer_used"] = True
+            attacker["turn_resources"] = turn_resources
+            extra_damage_label += " Assassino de Colossos: +1d8."
 
         new_hp = None
         effect_msg = ""
         previous_hp = None
+        concentration_check = None
         if damage > 0:
-            new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(
+            new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
                 db,
                 target_ref_id,
                 target_kind,
-                damage,
-                bool(pending_attack.get("is_critical")),
-                state,
+                damage + extra_damage,
+                damage_type=pending_attack.get("damage_type"),
+                is_crit=bool(pending_attack.get("is_critical")),
+                state=state,
+                **cls._build_concentration_roll_kwargs(
+                    req.concentration_roll_source,
+                    req.concentration_manual_roll,
+                ),
             )
 
         roll_result_data = pending_attack.get("roll_result")
@@ -269,10 +414,17 @@ class CombatPlayerActionMixin:
         await cls._emit_state(session_id, state)
 
         source = "gm_override" if is_gm else "player_turn"
+        concentration_summary = (
+            f" {concentration_check['summary_text']}"
+            if isinstance(concentration_check, dict)
+            and isinstance(concentration_check.get("summary_text"), str)
+            else ""
+        )
         await cls._emit_log(session_id, {
             "message": (
                 f"{attacker['display_name']} rolled damage with {pending_attack.get('weapon_name') or 'Attack'} "
-                f"against {target_display_name}: {damage} damage.{effect_msg}"
+                f"against {target_display_name}: {damage + extra_damage} damage.{extra_damage_label}{effect_msg}"
+                f"{concentration_summary}"
             ),
             "actorUserId": actor_user_id,
             "source": source,
@@ -281,7 +433,7 @@ class CombatPlayerActionMixin:
         return {
             "roll": cls._safe_int(pending_attack.get("roll"), 0),
             "is_hit": True,
-            "damage": damage,
+            "damage": damage + extra_damage,
             "is_critical": bool(pending_attack.get("is_critical")),
             "new_hp": new_hp,
             "roll_result": roll_result,
@@ -297,7 +449,10 @@ class CombatPlayerActionMixin:
             "damage_roll_required": False,
             "damage_rolls": damage_rolls,
             "base_damage": base_damage,
+            "extra_damage_rolls": extra_damage_rolls,
+            "extra_damage": extra_damage,
             "damage_roll_source": req.roll_source,
+            "concentration_check": concentration_check,
         }
 
     @classmethod
@@ -491,39 +646,79 @@ class CombatPlayerActionMixin:
         req: CombatCastSpellRequest,
     ) -> dict:
         attacker_data = cls._as_dict(attacker_model.state_json)
-        requested_canonical_key = (
-            req.spell_canonical_key.strip()
-            if isinstance(req.spell_canonical_key, str) and req.spell_canonical_key.strip()
-            else (
-                req.spell_id.strip()
-                if isinstance(req.spell_id, str) and req.spell_id.strip()
-                else None
+        inventory_item = None
+        source_item = None
+        source_kind = "spellcasting"
+        source_item_name = None
+        ignore_components = False
+        no_free_hand_required = False
+
+        if isinstance(req.inventory_item_id, str) and req.inventory_item_id.strip():
+            source_kind = "magic_item"
+            inventory_item, source_item, magic_effect = cls._resolve_player_inventory_spell_item(
+                db,
+                session_id,
+                player_user_id=str(attacker.get("actor_user_id") or attacker.get("ref_id") or "").strip(),
+                inventory_item_id=req.inventory_item_id.strip(),
             )
-        )
+            requested_canonical_key = get_magic_item_spell_key(source_item)
+            if (
+                isinstance(req.spell_canonical_key, str)
+                and req.spell_canonical_key.strip()
+                and requested_canonical_key
+                and req.spell_canonical_key.strip().lower() != requested_canonical_key
+            ):
+                raise CombatServiceError("Selected spell does not match the magic item.", 400)
+            source_item_name = source_item.name
+            ignore_components = bool(magic_effect.get("ignoreComponents"))
+            no_free_hand_required = bool(magic_effect.get("noFreeHandRequired"))
+        else:
+            requested_canonical_key = (
+                req.spell_canonical_key.strip()
+                if isinstance(req.spell_canonical_key, str) and req.spell_canonical_key.strip()
+                else (
+                    req.spell_id.strip()
+                    if isinstance(req.spell_id, str) and req.spell_id.strip()
+                    else None
+                )
+            )
         if not requested_canonical_key:
             raise CombatServiceError("Spell canonical key is required.", 400)
 
         catalog_spell = cls._get_spell_catalog_entry_for_session(db, session_id, requested_canonical_key)
         spell_name = catalog_spell.name_pt or catalog_spell.name_en or requested_canonical_key
-        player_spell = cls._resolve_player_spell_entry(
-            attacker_data,
-            spell_canonical_key=catalog_spell.canonical_key or requested_canonical_key,
-            spell_name=spell_name,
-        )
+        if source_kind == "magic_item":
+            player_spell = None
+            spell_level = cls._safe_int(
+                cls._as_dict(source_item.magic_effect_json).get("castLevel"),
+                catalog_spell.level,
+            )
+        else:
+            player_spell = cls._resolve_player_spell_entry(
+                attacker_data,
+                spell_canonical_key=catalog_spell.canonical_key or requested_canonical_key,
+                spell_name=spell_name,
+            )
 
-        spell_level = cls._safe_int(player_spell.get("level"), catalog_spell.level)
-        if spell_level > 0 and player_spell.get("prepared") is False:
-            raise CombatServiceError("Spell is not prepared.", 400)
+            spell_level = cls._safe_int(player_spell.get("level"), catalog_spell.level)
+            if spell_level > 0 and player_spell.get("prepared") is False:
+                raise CombatServiceError("Spell is not prepared.", 400)
 
         _, _, _, _, prof_bonus, spell_mod = cls._get_stats(db, attacker["ref_id"], attacker["kind"], session_id)
         catalog_resolution = getattr(catalog_spell, "resolution_type", None)
         catalog_spell_mode = cls._map_resolution_type_to_spell_mode(catalog_resolution)
+        automation_default_mode = cls._spell_default_mode_override(
+            catalog_spell.canonical_key or requested_canonical_key
+        )
+        requires_effect_payload = cls._spell_requires_effect_payload(
+            catalog_spell.canonical_key or requested_canonical_key
+        )
         catalog_save_ability = cls._normalize_ability_name(catalog_spell.saving_throw)
         legacy_mode = "heal" if req.is_heal else ("spell_attack" if req.is_attack else None)
-        spell_mode = req.spell_mode or catalog_spell_mode or legacy_mode or (
+        spell_mode = req.spell_mode or automation_default_mode or catalog_spell_mode or legacy_mode or (
             "saving_throw" if catalog_save_ability else None
         )
-        if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal"):
+        if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal", "utility"):
             raise CombatServiceError("Spell cast mode is required for this spell.", 400)
         if spell_mode == "direct_damage" and catalog_save_ability:
             raise CombatServiceError(
@@ -534,9 +729,15 @@ class CombatPlayerActionMixin:
 
         slot_level = None
         if spell_level > 0:
-            slot_level = req.slot_level or spell_level
-            if slot_level < spell_level:
-                raise CombatServiceError("Spell slot level cannot be lower than the spell level.", 400)
+            if source_kind == "magic_item":
+                slot_level = spell_level
+            else:
+                slot_level = req.slot_level or spell_level
+                if slot_level < spell_level:
+                    raise CombatServiceError("Spell slot level cannot be lower than the spell level.", 400)
+        action_cost = cls._resolve_spell_action_cost(
+            getattr(catalog_spell, "casting_time_type", None)
+        )
 
         legacy_expression = (
             req.dice_expression.strip()
@@ -544,7 +745,7 @@ class CombatPlayerActionMixin:
             else None
         )
 
-        effect_kind = "healing" if spell_mode == "heal" else "damage"
+        effect_kind = None if spell_mode == "utility" else ("healing" if spell_mode == "heal" else "damage")
         effect_dice = None
         effect_bonus = 0
         damage_type = None
@@ -559,16 +760,19 @@ class CombatPlayerActionMixin:
                 effect_dice = req.heal_dice or (legacy_expression if req.is_heal else None)
             # heal_bonus is derived from the caster, not the spell catalog
             effect_bonus = req.heal_bonus if isinstance(req.heal_bonus, int) else 0
-        else:
+        elif spell_mode != "utility":
             effect_dice = catalog_spell.damage_dice
             if not isinstance(effect_dice, str) or not effect_dice.strip():
                 effect_dice = req.damage_dice or (legacy_expression if not req.is_heal else None)
             # damage_bonus is derived from the caster, not the spell catalog
             effect_bonus = req.damage_bonus if isinstance(req.damage_bonus, int) else 0
+            should_require_damage_type = bool(
+                requires_effect_payload or effect_dice or effect_bonus > 0
+            )
             damage_type = cls._normalize_damage_type(
                 catalog_spell.damage_type or req.damage_type
             )
-            if not damage_type:
+            if should_require_damage_type and not damage_type:
                 raise CombatServiceError("Spell damage type is missing a structured value.", 400)
 
         if isinstance(effect_dice, str):
@@ -577,7 +781,7 @@ class CombatPlayerActionMixin:
             count, sides, _ = _parse_dice(effect_dice)
             if count <= 0 or sides <= 0:
                 raise CombatServiceError("Spell effect dice must use a valid dice expression.", 400)
-        elif effect_bonus <= 0:
+        elif spell_mode != "utility" and requires_effect_payload and effect_bonus <= 0:
             raise CombatServiceError("Spell effect is missing structured dice or a fixed bonus.", 400)
 
         if spell_mode == "spell_attack":
@@ -600,6 +804,24 @@ class CombatPlayerActionMixin:
             if not save_ability or save_dc <= 0:
                 raise CombatServiceError("Saving throw spells require save ability and save DC.", 400)
 
+        structured_upcast = cls._get_structured_spell_upcast(
+            getattr(catalog_spell, "upcast_json", None)
+        )
+        upcast_result = cls._apply_structured_spell_upcast(
+            spell_level=spell_level,
+            slot_level=slot_level,
+            effect_kind=effect_kind,
+            effect_dice=effect_dice,
+            effect_bonus=effect_bonus,
+            upcast=structured_upcast,
+        )
+        effect_dice = upcast_result["effect_dice"] if isinstance(upcast_result.get("effect_dice"), str) or upcast_result.get("effect_dice") is None else effect_dice
+        effect_bonus = cls._safe_int(upcast_result.get("effect_bonus"), effect_bonus)
+        elemental_affinity = resolve_elemental_affinity(
+            attacker_data,
+            damage_type,
+        )
+
         return {
             "spell_name": spell_name,
             "spell_canonical_key": catalog_spell.canonical_key or requested_canonical_key,
@@ -613,6 +835,20 @@ class CombatPlayerActionMixin:
             "save_success_outcome": save_success_outcome,
             "attack_bonus": attack_bonus,
             "slot_level": slot_level,
+            "action_cost": action_cost,
+            "upcast": structured_upcast,
+            "upcast_applied": bool(upcast_result.get("upcast_applied")),
+            "upcast_levels": cls._safe_int(upcast_result.get("upcast_levels"), 0),
+            "elemental_affinity_eligible": bool(elemental_affinity.get("eligible")),
+            "elemental_affinity_damage_type": elemental_affinity.get("damageType"),
+            "elemental_affinity_bonus": elemental_affinity.get("bonus"),
+            "source_kind": source_kind,
+            "source_item_name": source_item_name,
+            "inventory_item": inventory_item,
+            "inventory_item_id": getattr(inventory_item, "id", None),
+            "ignore_components": ignore_components,
+            "no_free_hand_required": no_free_hand_required,
+            "source_item": source_item,
         }
 
     @classmethod
@@ -625,13 +861,35 @@ class CombatPlayerActionMixin:
         effect_kind: str,
         amount: int,
         *,
+        damage_type: str | None = None,
         is_critical: bool = False,
-    ) -> tuple[int | None, str, int | None]:
+        concentration_roll_source: str = "system",
+        concentration_manual_roll: int | None = None,
+    ) -> tuple[int | None, str, int | None, dict | None]:
         if amount <= 0:
-            return None, "", None
+            return None, "", None, None
         if effect_kind == "healing":
-            return cls._apply_healing_to_target(db, target_ref_id, target_kind, amount, state)
-        return cls._apply_damage_to_target(db, target_ref_id, target_kind, amount, is_critical, state)
+            new_hp, effect_msg, previous_hp = cls._apply_healing_to_target(
+                db,
+                target_ref_id,
+                target_kind,
+                amount,
+                state,
+            )
+            return new_hp, effect_msg, previous_hp, None
+        return cls._apply_damage_to_target(
+            db,
+            target_ref_id,
+            target_kind,
+            amount,
+            damage_type=damage_type,
+            is_crit=is_critical,
+            state=state,
+            **cls._build_concentration_roll_kwargs(
+                concentration_roll_source,
+                concentration_manual_roll,
+            ),
+        )
 
     @classmethod
     async def cast_spell(cls, db: Session, session_id: str, req: CombatCastSpellRequest, actor_user_id: str, is_gm: bool):
@@ -654,10 +912,6 @@ class CombatPlayerActionMixin:
         if ws_check.get("active"):
             raise CombatServiceError("Cannot cast spells while in Wild Shape.", 400)
 
-        was_overridden = cls._consume_turn_resource(
-            attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit
-        )
-
         had_pending = isinstance(attacker.get("pending_attack"), dict)
         cls._clear_participant_pending_attack(attacker)
         if had_pending:
@@ -675,9 +929,51 @@ class CombatPlayerActionMixin:
         target_p = next((p for p in state.participants if p["ref_id"] == req.target_ref_id), None)
         if not target_p:
             raise CombatServiceError("Target not found in combat")
+        is_hostile_spell = spell_context["spell_mode"] in (
+            "spell_attack",
+            "saving_throw",
+            "direct_damage",
+        ) or spell_context["spell_canonical_key"] == "hunters_mark"
+        if is_hostile_spell:
+            cls._assert_hostile_action_allowed(
+                attacker,
+                target_p,
+                action_label="a hostile spell",
+            )
+        cls._validate_spell_automation_target(
+            db,
+            session_id,
+            spell_canonical_key=spell_context["spell_canonical_key"],
+            target_participant=target_p,
+        )
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            remaining_charges = get_inventory_item_charges_current(inventory_item, source_item)
+            if isinstance(remaining_charges, int) and remaining_charges <= 0:
+                raise CombatServiceError("This item has no charges remaining.", 400)
+        action_cost = spell_context.get("action_cost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
 
         slot_spent = False
-        if isinstance(spell_context.get("slot_level"), int):
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            try:
+                consume_inventory_item_charge(inventory_item, source_item)
+            except ValueError as exc:
+                raise CombatServiceError(str(exc), 400) from exc
+            db.add(inventory_item)
+        elif isinstance(spell_context.get("slot_level"), int):
             cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
             db.add(attacker_model)
             slot_spent = True
@@ -702,8 +998,44 @@ class CombatPlayerActionMixin:
         effect_bonus = cls._safe_int(spell_context.get("effect_bonus"), 0)
         save_success_outcome = spell_context.get("save_success_outcome")
         rolled_effect_total = None
+        summary_text = None
+        inventory_refresh_required = spell_context.get("source_kind") == "magic_item"
+        custom_log_message = None
+        concentration_check = None
 
-        if spell_mode == "spell_attack":
+        automation_result = await cls._cast_spell_via_automation(
+            db,
+            session_id,
+            attacker=attacker,
+            attacker_model=attacker_model,
+            actor_user_id=actor_user_id,
+            is_gm=is_gm,
+            req=req,
+            state=state,
+            spell_context=spell_context,
+            target_participant=target_p,
+        )
+        if automation_result is not None:
+            spell_mode = automation_result["action_kind"]
+            effect_kind = automation_result["effect_kind"]
+            damage = automation_result["damage"]
+            healing = automation_result["healing"]
+            roll_result = automation_result["roll_result"]
+            roll_total = automation_result["roll"]
+            target_ac = automation_result["target_ac"]
+            is_critical = automation_result["is_critical"]
+            is_hit = automation_result["is_hit"]
+            is_saved = automation_result["is_saved"]
+            new_hp = automation_result["new_hp"]
+            pending_spell_id = automation_result["pending_spell_id"]
+            effect_roll_required = automation_result["effect_roll_required"]
+            summary_text = automation_result.get("summary_text")
+            inventory_refresh_required = inventory_refresh_required or bool(
+                automation_result.get("inventory_refresh_required")
+            )
+            custom_log_message = automation_result.get("__log_message")
+            automation_player_state_ids = automation_result.get("__player_state_ids_to_emit") or set()
+        elif spell_mode == "spell_attack":
             _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
             adv_mode = "advantage" if (req.has_advantage and not req.has_disadvantage) else (
                 "disadvantage" if (req.has_disadvantage and not req.has_advantage) else "normal"
@@ -739,6 +1071,9 @@ class CombatPlayerActionMixin:
                         "effect_dice": spell_context["effect_dice"],
                         "effect_bonus": effect_bonus,
                         "damage_type": spell_context.get("damage_type"),
+                        "elemental_affinity_eligible": spell_context.get("elemental_affinity_eligible"),
+                        "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                        "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
                         "target_ref_id": target_p["ref_id"],
                         "target_kind": target_p["kind"],
                         "target_display_name": target_p["display_name"],
@@ -752,14 +1087,17 @@ class CombatPlayerActionMixin:
                 )
             elif is_hit:
                 amount = max(0, effect_bonus)
-                new_hp, effect_msg, previous_hp = cls._apply_spell_effect(
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_spell_effect(
                     db,
                     state,
                     target_p["ref_id"],
                     target_p["kind"],
                     effect_kind,
                     amount,
+                    damage_type=spell_context.get("damage_type"),
                     is_critical=is_critical,
+                    concentration_roll_source=req.concentration_roll_source,
+                    concentration_manual_roll=req.concentration_manual_roll,
                 )
                 if effect_kind == "healing":
                     healing = amount
@@ -794,6 +1132,9 @@ class CombatPlayerActionMixin:
                         "effect_dice": spell_context["effect_dice"],
                         "effect_bonus": effect_bonus,
                         "damage_type": spell_context.get("damage_type"),
+                        "elemental_affinity_eligible": spell_context.get("elemental_affinity_eligible"),
+                        "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                        "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
                         "target_ref_id": target_p["ref_id"],
                         "target_kind": target_p["kind"],
                         "target_display_name": target_p["display_name"],
@@ -813,13 +1154,16 @@ class CombatPlayerActionMixin:
                     is_saved=is_saved,
                     save_success_outcome=save_success_outcome,
                 )
-                new_hp, effect_msg, previous_hp = cls._apply_spell_effect(
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_spell_effect(
                     db,
                     state,
                     target_p["ref_id"],
                     target_p["kind"],
                     effect_kind,
                     amount,
+                    damage_type=spell_context.get("damage_type"),
+                    concentration_roll_source=req.concentration_roll_source,
+                    concentration_manual_roll=req.concentration_manual_roll,
                 )
                 if effect_kind == "healing":
                     healing = amount
@@ -840,6 +1184,9 @@ class CombatPlayerActionMixin:
                         "effect_dice": spell_context["effect_dice"],
                         "effect_bonus": effect_bonus,
                         "damage_type": spell_context.get("damage_type"),
+                        "elemental_affinity_eligible": spell_context.get("elemental_affinity_eligible"),
+                        "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                        "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
                         "target_ref_id": target_p["ref_id"],
                         "target_kind": target_p["kind"],
                         "target_display_name": target_p["display_name"],
@@ -852,13 +1199,16 @@ class CombatPlayerActionMixin:
                 )
             else:
                 amount = max(0, effect_bonus)
-                new_hp, effect_msg, previous_hp = cls._apply_spell_effect(
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_spell_effect(
                     db,
                     state,
                     target_p["ref_id"],
                     target_p["kind"],
                     effect_kind,
                     amount,
+                    damage_type=spell_context.get("damage_type"),
+                    concentration_roll_source=req.concentration_roll_source,
+                    concentration_manual_roll=req.concentration_manual_roll,
                 )
                 if effect_kind == "healing":
                     healing = amount
@@ -869,7 +1219,7 @@ class CombatPlayerActionMixin:
         db.commit()
         db.refresh(state)
 
-        player_state_ids_to_emit = set()
+        player_state_ids_to_emit = set(automation_player_state_ids) if automation_result is not None else set()
         if slot_spent:
             player_state_ids_to_emit.add(attacker["ref_id"])
         if (damage > 0 or healing > 0) and target_p["kind"] == "player":
@@ -937,15 +1287,20 @@ class CombatPlayerActionMixin:
             else:
                 log_message += f" {damage} de dano de {spell_context.get('damage_type') or 'energia'}{effect_msg}"
 
+        if isinstance(custom_log_message, str) and custom_log_message.strip():
+            log_message = custom_log_message.strip()
+        if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str):
+            log_message = f"{log_message} {concentration_check['summary_text']}".strip()
+
         if was_overridden:
-            log_message = f"[OVERRIDE: Action limit ignored] {log_message}"
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
 
         await cls._emit_log(session_id, {
             "message": log_message,
             "actorUserId": actor_user_id,
             "source": source,
             "is_override": was_overridden,
-            "overridden_resource": "action" if was_overridden else None,
+            "overridden_resource": action_cost if was_overridden else None,
         })
         return {
             "spell_name": spell_context["spell_name"],
@@ -954,7 +1309,11 @@ class CombatPlayerActionMixin:
             "effect_kind": effect_kind,
             "damage": damage,
             "healing": healing,
-            "damage_type": spell_context.get("damage_type"),
+            "damage_type": (
+                automation_result.get("damage_type")
+                if automation_result is not None
+                else spell_context.get("damage_type")
+            ),
             "is_critical": is_critical,
             "is_hit": is_hit,
             "is_saved": is_saved,
@@ -962,16 +1321,43 @@ class CombatPlayerActionMixin:
             "roll": roll_total,
             "roll_result": roll_result,
             "target_ac": target_ac,
-            "target_display_name": target_p["display_name"],
-            "target_kind": target_p["kind"],
+            "target_display_name": (
+                automation_result.get("target_display_name")
+                if automation_result is not None
+                else target_p["display_name"]
+            ),
+            "target_kind": (
+                automation_result.get("target_kind")
+                if automation_result is not None
+                else target_p["kind"]
+            ),
             "save_ability": spell_context.get("save_ability"),
             "save_dc": spell_context.get("save_dc"),
             "save_success_outcome": save_success_outcome,
-            "effect_dice": spell_context.get("effect_dice"),
-            "effect_bonus": effect_bonus,
+            "effect_dice": (
+                automation_result.get("effect_dice")
+                if automation_result is not None
+                else spell_context.get("effect_dice")
+            ),
+            "effect_bonus": (
+                automation_result.get("effect_bonus")
+                if automation_result is not None
+                else effect_bonus
+            ),
             "pending_spell_id": pending_spell_id,
             "effect_roll_required": bool(pending_spell_id),
-            "base_effect": None if spell_context.get("effect_dice") else 0,
+            "base_effect": (
+                automation_result.get("base_effect")
+                if automation_result is not None
+                else (None if spell_context.get("effect_dice") else 0)
+            ),
+            "action_cost": action_cost,
+            "summary_text": summary_text,
+            "inventory_refresh_required": inventory_refresh_required,
+            "concentration_check": concentration_check,
+            "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
         }
 
     @classmethod
@@ -1039,15 +1425,19 @@ class CombatPlayerActionMixin:
         new_hp = None
         effect_msg = ""
         previous_hp = None
+        concentration_check = None
         if amount > 0:
-            new_hp, effect_msg, previous_hp = cls._apply_spell_effect(
+            new_hp, effect_msg, previous_hp, concentration_check = cls._apply_spell_effect(
                 db,
                 state,
                 target_ref_id,
                 target_kind,
                 effect_kind,
                 amount,
+                damage_type=pending_spell.get("damage_type"),
                 is_critical=bool(pending_spell.get("is_critical")),
+                concentration_roll_source=req.concentration_roll_source,
+                concentration_manual_roll=req.concentration_manual_roll,
             )
 
         cls._clear_participant_pending_attack(attacker)
@@ -1096,7 +1486,12 @@ class CombatPlayerActionMixin:
                 f"{target_display_name}: {amount} {amount_label}{effect_msg}"
             )
         await cls._emit_log(session_id, {
-            "message": log_text,
+            "message": (
+                f"{log_text} {concentration_check['summary_text']}".strip()
+                if isinstance(concentration_check, dict)
+                and isinstance(concentration_check.get("summary_text"), str)
+                else log_text
+            ),
             "actorUserId": actor_user_id,
             "source": "gm_override" if is_gm else "player_turn",
         })
@@ -1128,4 +1523,8 @@ class CombatPlayerActionMixin:
             "effect_rolls": effect_rolls,
             "base_effect": base_effect,
             "effect_roll_source": req.roll_source,
+            "concentration_check": concentration_check,
+            "elemental_affinity_eligible": bool(pending_spell.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": pending_spell.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": pending_spell.get("elemental_affinity_bonus"),
         }

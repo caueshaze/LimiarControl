@@ -142,6 +142,7 @@ class CombatActionEconomyTestsMixin:
             ):
                 with patch("app.services.combat.CombatService._get_stats", side_effect=[
                     (attacker_state, 10, 16, 14, 2, 0),
+                    (attacker_state, 10, 16, 14, 2, 0),
                     (MagicMock(), 12, 10, 10, 2, 0),
                 ]):
                     with patch("random.randint", return_value=10):
@@ -159,6 +160,110 @@ class CombatActionEconomyTestsMixin:
 
         self.assertTrue(self.state.participants[0]["turn_resources"]["action_used"])
 
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_hunters_mark_consumes_bonus_action_only(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self._make_active_state()
+
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "spellcasting": {
+                    "spells": [{"name": "Hunter's Mark", "canonicalKey": "hunters_mark", "level": 1, "prepared": True}],
+                    "slots": {"1": {"used": 0, "max": 2}},
+                }
+            },
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="hunters_mark",
+                name_en="Hunter's Mark",
+                name_pt="Marca do Caçador",
+                level=1,
+                resolution_type="automatic",
+                saving_throw=None,
+                damage_type=None,
+                casting_time_type="bonus_action",
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 10, 16, 14, 2, 3),
+        ):
+            result = await CombatService.cast_spell(
+                self.db,
+                "session-123",
+                CombatCastSpellRequest(
+                    target_ref_id="enemy-123",
+                    spell_canonical_key="hunters_mark",
+                ),
+                "user-1",
+                False,
+            )
+
+        self.assertEqual(result["action_cost"], "bonus_action")
+        self.assertTrue(self.state.participants[0]["turn_resources"]["bonus_action_used"])
+        self.assertFalse(self.state.participants[0]["turn_resources"]["action_used"])
+
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_hunters_mark_fails_when_bonus_action_is_spent(self, mock_emit_log, mock_emit_state):
+        self._make_active_state()
+        self.state.participants[0]["turn_resources"]["bonus_action_used"] = True
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "spellcasting": {
+                    "spells": [{"name": "Hunter's Mark", "canonicalKey": "hunters_mark", "level": 1, "prepared": True}],
+                    "slots": {"1": {"used": 0, "max": 2}},
+                }
+            },
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="hunters_mark",
+                name_en="Hunter's Mark",
+                name_pt="Marca do Caçador",
+                level=1,
+                resolution_type="automatic",
+                saving_throw=None,
+                damage_type=None,
+                casting_time_type="bonus_action",
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 10, 16, 14, 2, 3),
+        ):
+            with self.assertRaises(CombatServiceError) as ctx:
+                await CombatService.cast_spell(
+                    self.db,
+                    "session-123",
+                    CombatCastSpellRequest(
+                        target_ref_id="enemy-123",
+                        spell_canonical_key="hunters_mark",
+                    ),
+                    "user-1",
+                    False,
+                )
+
+        self.assertIn("bonus action", str(ctx.exception).lower())
+        self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["1"]["used"], 0)
+
     # ---- cannot cast twice ----
 
     @patch("app.services.combat.CombatService._emit_state")
@@ -166,8 +271,35 @@ class CombatActionEconomyTestsMixin:
     async def test_cannot_cast_twice_in_same_turn(self, mock_emit_log, mock_emit_state):
         self._make_active_state()
         self.state.participants[0]["turn_resources"]["action_used"] = True
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "spellcasting": {
+                    "spells": [{"name": "Fire Bolt", "canonicalKey": "fire_bolt", "level": 0, "prepared": True}],
+                }
+            },
+        )
 
-        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="fire_bolt",
+                name_en="Fire Bolt",
+                name_pt=None,
+                level=0,
+                damage_type="fire",
+                saving_throw=None,
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            side_effect=[
+                (attacker_state, 10, 16, 14, 2, 0),
+                (attacker_state, 10, 16, 14, 2, 0),
+                (MagicMock(), 12, 10, 10, 2, 0),
+            ],
+        ):
             with self.assertRaises(CombatServiceError) as ctx:
                 await CombatService.cast_spell(
                     self.db, "session-123",
@@ -200,7 +332,10 @@ class CombatActionEconomyTestsMixin:
                     # GM can attack even with action used
                     res = await CombatService.attack(
                         self.db, "session-123",
-                        CombatAttackRequest(target_ref_id="enemy-123"),
+                        CombatAttackRequest(
+                            target_ref_id="enemy-123",
+                            override_resource_limit=True,
+                        ),
                         "user-1", True,
                     )
                     self.assertIn("roll", res)

@@ -5,6 +5,11 @@ import re
 from math import floor
 from typing import Callable, Literal
 
+from app.services.dragonborn_breath_weapon import (
+    DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY,
+    compute_dragonborn_breath_weapon_uses_max,
+)
+
 
 RestState = Literal["exploration", "short_rest", "long_rest"]
 
@@ -51,6 +56,7 @@ def end_rest(data: dict | None) -> tuple[dict, RestState]:
         next_data["restState"] = "exploration"
         # Wild Shape recharges on short rest
         next_data = _recharge_wild_shape_inline(next_data)
+        next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
         return next_data, "short_rest"
 
     return apply_long_rest(next_data), "long_rest"
@@ -110,6 +116,31 @@ def _recharge_wild_shape_inline(data: dict) -> dict:
     if not isinstance(uses_max, int):
         uses_max = 99 if level >= 20 else 2
     return {**data, "wildShape": {**wild_shape, "usesRemaining": uses_max}}
+
+
+def _recharge_dragonborn_breath_weapon_inline(data: dict) -> dict:
+    class_resources = data.get("classResources")
+    if not isinstance(class_resources, dict):
+        return data
+    breath_weapon = class_resources.get(DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY)
+    if not isinstance(breath_weapon, dict):
+        return data
+
+    uses_max = breath_weapon.get("usesMax")
+    if not isinstance(uses_max, int):
+        uses_max = compute_dragonborn_breath_weapon_uses_max(_safe_int(data.get("level"), 1))
+
+    return {
+        **data,
+        "classResources": {
+            **class_resources,
+            DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY: {
+                **breath_weapon,
+                "usesMax": uses_max,
+                "usesRemaining": uses_max,
+            },
+        },
+    }
 
 
 def _force_revert_wild_shape_inline(data: dict) -> dict:
@@ -172,7 +203,7 @@ def apply_long_rest(data: dict | None) -> dict:
     # Wild Shape: force revert if active, then recharge uses
     next_data = _force_revert_wild_shape_inline(next_data)
     next_data = _recharge_wild_shape_inline(next_data)
-
+    next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
     return next_data
 
 

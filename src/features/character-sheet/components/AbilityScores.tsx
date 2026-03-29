@@ -10,6 +10,7 @@ import {
   safeParseInt,
 } from "../utils/calculations";
 import { getRace } from "../data/races";
+import { stripClassLevelAbilityBonuses } from "../data/classFeatures";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
@@ -17,16 +18,32 @@ type Props = {
   abilities: CharacterSheet["abilities"];
   race: CharacterSheet["race"];
   raceConfig?: CharacterSheet["raceConfig"];
+  level: number;
   mode: CharacterSheetMode;
   readOnly?: boolean;
+  allowFreeformCreationEditing?: boolean;
   setAbility: SheetActions["setAbility"];
 };
 
-export const AbilityScores = ({ className, abilities, race, raceConfig = null, mode, readOnly = false, setAbility }: Props) => {
+export const AbilityScores = ({
+  className,
+  abilities,
+  race,
+  raceConfig = null,
+  level,
+  mode,
+  readOnly = false,
+  allowFreeformCreationEditing = false,
+  setAbility,
+}: Props) => {
   const { t } = useLocale();
   const isCreation = mode === "creation";
   const raceData = getRace(race, raceConfig);
-  const baseAbilities = { ...abilities };
+  const baseAbilities = stripClassLevelAbilityBonuses(
+    { ...abilities },
+    className ?? "",
+    level,
+  );
   if (isCreation && raceData) {
     for (const [key, bonus] of Object.entries(raceData.abilityBonuses)) {
       const abilityKey = key as AbilityName;
@@ -67,6 +84,7 @@ export const AbilityScores = ({ className, abilities, race, raceConfig = null, m
               bonus={abilities[key] - baseValue}
               mod={mod}
               isCreation={isCreation}
+              allowFreeformCreationEditing={allowFreeformCreationEditing}
               readOnly={readOnly}
               onChange={setAbility}
               labelFinal={t("sheet.abilities.final")}
@@ -87,13 +105,27 @@ type CardProps = {
   bonus: number;
   mod: number;
   isCreation: boolean;
+  allowFreeformCreationEditing: boolean;
   readOnly: boolean;
   onChange: (ability: AbilityName, value: number) => void;
   labelFinal: string;
   labelMod: string;
 };
 
-const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreation, readOnly, onChange, labelFinal, labelMod }: CardProps) => (
+const AbilityCard = ({
+  abilityKey,
+  short,
+  baseValue,
+  value,
+  bonus,
+  mod,
+  isCreation,
+  allowFreeformCreationEditing,
+  readOnly,
+  onChange,
+  labelFinal,
+  labelMod,
+}: CardProps) => (
   <div className={`${statBox} min-h-[130px] items-stretch justify-between gap-2`}>
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -105,21 +137,33 @@ const AbilityCard = ({ abilityKey, short, baseValue, value, bonus, mod, isCreati
         )}
       </div>
       {isCreation ? (
-        <select
-          value={baseValue}
-          disabled={readOnly}
-          onChange={(e) => onChange(abilityKey, safeParseInt(e.target.value, 0))}
-          className={`${inputSm} h-10 text-lg ${readOnly ? "opacity-70" : ""}`}
-        >
-          {!STANDARD_ARRAY.includes(baseValue as (typeof STANDARD_ARRAY)[number]) && (
-            <option value={baseValue}>{baseValue}</option>
-          )}
-          {STANDARD_ARRAY.map((score) => (
-            <option key={score} value={score}>
-              {score}
-            </option>
-          ))}
-        </select>
+        allowFreeformCreationEditing ? (
+          <input
+            type="number"
+            min={0}
+            max={30}
+            value={baseValue}
+            disabled={readOnly}
+            onChange={(e) => onChange(abilityKey, safeParseInt(e.target.value, 0))}
+            className={`${inputSm} h-10 text-lg ${readOnly ? "opacity-70" : ""}`}
+          />
+        ) : (
+          <select
+            value={baseValue}
+            disabled={readOnly}
+            onChange={(e) => onChange(abilityKey, safeParseInt(e.target.value, 0))}
+            className={`${inputSm} h-10 text-lg ${readOnly ? "opacity-70" : ""}`}
+          >
+            {!STANDARD_ARRAY.includes(baseValue as (typeof STANDARD_ARRAY)[number]) && (
+              <option value={baseValue}>{baseValue}</option>
+            )}
+            {STANDARD_ARRAY.map((score) => (
+              <option key={score} value={score}>
+                {score}
+              </option>
+            ))}
+          </select>
+        )
       ) : (
         <input
           type="number"

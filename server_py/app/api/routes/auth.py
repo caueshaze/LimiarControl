@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from app.api.deps import get_current_user
 from app.core.auth import build_access_token, hash_pin, verify_pin
 from app.db.session import get_session
+from app.models.campaign import RoleMode
 from app.models.user import User
 from app.schemas.auth import AuthResponse, LoginRequest, MeResponse, RegisterRequest
 
@@ -30,7 +31,7 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
         username=username,
         display_name=payload.displayName.strip() if payload.displayName else None,
         pin_hash=hash_pin(payload.pin.strip()),
-        role=payload.role,
+        role=RoleMode.PLAYER,
         is_system_admin=is_first_user,
     )
     session.add(user)

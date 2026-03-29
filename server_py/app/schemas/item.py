@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -39,6 +39,31 @@ def _raw_value(value: object) -> str:
     return str(value)
 
 
+def _normalize_slug(value: str) -> str:
+    text = value.strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return re.sub(r"_+", "_", text).strip("_")
+
+
+MagicItemRechargeType = Literal["none", "short_rest", "long_rest", "dawn", "custom"]
+
+
+class MagicItemCastSpellEffect(BaseModel):
+    type: Literal["cast_spell"]
+    spellCanonicalKey: str
+    castLevel: int = Field(default=1, ge=0, le=9)
+    ignoreComponents: bool = False
+    noFreeHandRequired: bool = False
+
+    @field_validator("spellCanonicalKey", mode="before")
+    @classmethod
+    def normalize_spell_canonical_key(cls, value: object):
+        normalized = _normalize_slug(_raw_value(value))
+        if not normalized:
+            raise ValueError("spellCanonicalKey cannot be blank")
+        return normalized
+
+
 class ItemCreate(BaseModel):
     name: str
     type: ItemType
@@ -47,6 +72,11 @@ class ItemCreate(BaseModel):
     weight: Optional[float] = None
     damageDice: Optional[str] = None
     damageType: Optional[BaseItemDamageType] = None
+    healDice: Optional[str] = None
+    healBonus: Optional[int] = None
+    chargesMax: Optional[int] = Field(default=None, ge=0)
+    rechargeType: Optional[MagicItemRechargeType] = None
+    magicEffect: Optional[MagicItemCastSpellEffect] = None
     rangeMeters: Optional[float] = None
     rangeLongMeters: Optional[float] = None
     versatileDamage: Optional[str] = None
@@ -68,7 +98,7 @@ class ItemCreate(BaseModel):
             raise ValueError("Field cannot be blank")
         return normalized
 
-    @field_validator("damageDice", "versatileDamage", mode="before")
+    @field_validator("damageDice", "healDice", "versatileDamage", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: Optional[str]):
         if value is None:
@@ -85,7 +115,7 @@ class ItemCreate(BaseModel):
             raise ValueError("Value cannot be negative")
         return value
 
-    @field_validator("armorClassBase", "strengthRequirement")
+    @field_validator("armorClassBase", "strengthRequirement", "healBonus")
     @classmethod
     def validate_non_negative_ints(cls, value: Optional[int]):
         if value is None:
@@ -94,7 +124,7 @@ class ItemCreate(BaseModel):
             raise ValueError("Value cannot be negative")
         return value
 
-    @field_validator("damageDice", "versatileDamage")
+    @field_validator("damageDice", "healDice", "versatileDamage")
     @classmethod
     def validate_dice_expression(cls, value: Optional[str]):
         if value is None:
@@ -191,6 +221,24 @@ class ItemCreate(BaseModel):
             self.weaponCategory = None
             self.weaponRangeType = None
 
+        if self.type == ItemType.CONSUMABLE:
+            pass
+        elif self.healDice is not None or self.healBonus is not None:
+            raise ValueError("Only consumables can define healDice or healBonus")
+        else:
+            self.healDice = None
+            self.healBonus = None
+
+        if self.chargesMax is None:
+            self.rechargeType = None
+        elif self.rechargeType is None:
+            raise ValueError("rechargeType is required when chargesMax is provided")
+
+        if self.magicEffect is not None and self.chargesMax is None:
+            raise ValueError("chargesMax is required when magicEffect is provided")
+        if self.magicEffect is not None and self.type != ItemType.MAGIC:
+            raise ValueError("magicEffect requires item type MAGIC")
+
         if self.type == ItemType.ARMOR:
             if self.armorCategory is None or self.armorClassBase is None:
                 raise ValueError("Armor must define category and armor class")
@@ -249,6 +297,11 @@ class ItemRead(BaseModel):
     weight: Optional[float]
     damageDice: Optional[str]
     damageType: Optional[BaseItemDamageType]
+    healDice: Optional[str]
+    healBonus: Optional[int]
+    chargesMax: Optional[int] = None
+    rechargeType: Optional[MagicItemRechargeType] = None
+    magicEffect: Optional[MagicItemCastSpellEffect] = None
     rangeMeters: Optional[float]
     rangeLongMeters: Optional[float]
     versatileDamage: Optional[str]

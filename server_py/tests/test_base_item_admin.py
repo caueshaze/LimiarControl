@@ -13,6 +13,7 @@ from app.api.routes.admin_base_items import (
     admin_create_base_item,
     admin_delete_base_item,
     admin_list_base_items,
+    admin_sync_base_items_seed,
     admin_update_base_item,
 )
 from app.models.base_item import (
@@ -232,6 +233,82 @@ class BaseItemSchemaTests(unittest.TestCase):
                 strengthRequirement=13,
             )
 
+    def test_accepts_structured_healing_consumable(self):
+        payload = BaseItemCreate(
+            canonicalKey="potion_healing",
+            nameEn="Healing Potion",
+            itemKind=BaseItemKind.CONSUMABLE,
+            equipmentCategory=BaseItemEquipmentCategory.CONSUMABLE_SUPPLY,
+            healDice="2d4",
+            healBonus=2,
+        )
+
+        self.assertEqual(payload.healDice, "2d4")
+        self.assertEqual(payload.healBonus, 2)
+
+    def test_accepts_magic_item_spell_effect_shape(self):
+        payload = BaseItemCreate(
+            canonicalKey="phantyr_bracelet_magic_missile",
+            nameEn="Phantyr Bracelet of Magic Missile",
+            itemKind=BaseItemKind.GEAR,
+            equipmentCategory=BaseItemEquipmentCategory.JEWELRY,
+            chargesMax=1,
+            rechargeType="none",
+            magicEffect={
+                "type": "cast_spell",
+                "spellCanonicalKey": "magic_missile",
+                "castLevel": 1,
+                "ignoreComponents": True,
+                "noFreeHandRequired": True,
+            },
+        )
+
+        self.assertEqual(payload.chargesMax, 1)
+        self.assertEqual(payload.rechargeType, "none")
+        self.assertEqual(payload.magicEffect.spellCanonicalKey, "magic_missile")
+
+    def test_rejects_healing_fields_for_non_consumable_base_item(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "Only consumables can define healDice or healBonus",
+        ):
+            BaseItemCreate(
+                canonicalKey="blessed_armor",
+                nameEn="Blessed Armor",
+                itemKind=BaseItemKind.ARMOR,
+                armorCategory=BaseItemArmorCategory.HEAVY,
+                armorClassBase=16,
+                dexBonusRule="none",
+                healDice="2d4",
+                healBonus=2,
+            )
+
+    @patch("app.services.magic_item_effects.get_base_spell_by_canonical_key")
+    def test_create_base_item_rejects_missing_magic_effect_spell_reference(self, mock_get_spell):
+        mock_get_spell.return_value = None
+        payload = BaseItemCreate(
+            canonicalKey="phantyr_bracelet_magic_missile",
+            nameEn="Phantyr Bracelet of Magic Missile",
+            itemKind=BaseItemKind.GEAR,
+            equipmentCategory=BaseItemEquipmentCategory.JEWELRY,
+            chargesMax=1,
+            rechargeType="none",
+            magicEffect={
+                "type": "cast_spell",
+                "spellCanonicalKey": "magic_missile",
+                "castLevel": 1,
+                "ignoreComponents": True,
+                "noFreeHandRequired": True,
+            },
+        )
+
+        db = MagicMock()
+        db.exec.return_value.first.return_value = None
+        with self.assertRaises(HTTPException) as ctx:
+            create_base_item(db=db, payload=payload)
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("magicEffect.spellCanonicalKey", ctx.exception.detail)
+
     def test_seed_document_rejects_duplicate_entries(self):
         item = BaseItemCreate(
             canonicalKey="dagger",
@@ -291,17 +368,45 @@ class BaseItemSeedTests(unittest.TestCase):
             damageType="piercing",
             rangeNormalMeters=5,
         )
+        item_c = BaseItemCreate(
+            canonicalKey="potion_healing",
+            nameEn="Healing Potion",
+            itemKind=BaseItemKind.CONSUMABLE,
+            equipmentCategory=BaseItemEquipmentCategory.CONSUMABLE_SUPPLY,
+            healDice="2d4",
+            healBonus=2,
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "base_items.seed.json"
             write_base_item_seed_document(
-                BaseItemSeedDocument(version=1, items=[item_b, item_a]),
+                BaseItemSeedDocument(version=1, items=[item_b, item_c, item_a]),
                 path,
             )
             document = read_base_item_seed_document(path)
 
         self.assertEqual(document.version, 1)
-        self.assertEqual([item.canonicalKey for item in document.items], ["club", "dagger"])
+        self.assertEqual(
+            [item.canonicalKey for item in document.items],
+            ["potion_healing", "club", "dagger"],
+        )
+        potion = next(item for item in document.items if item.canonicalKey == "potion_healing")
+        self.assertEqual(potion.healDice, "2d4")
+        self.assertEqual(potion.healBonus, 2)
+
+    def test_default_seed_contains_structured_healing_potions(self):
+        document = read_base_item_seed_document()
+        by_key = {item.canonicalKey: item for item in document.items}
+
+        self.assertEqual(by_key["goodberry"].healBonus, 1)
+        self.assertEqual(by_key["potion_healing"].healDice, "2d4")
+        self.assertEqual(by_key["potion_healing"].healBonus, 2)
+        self.assertEqual(by_key["potion_healing_greater"].healDice, "4d4")
+        self.assertEqual(by_key["potion_healing_greater"].healBonus, 4)
+        self.assertEqual(by_key["potion_healing_superior"].healDice, "8d4")
+        self.assertEqual(by_key["potion_healing_superior"].healBonus, 8)
+        self.assertEqual(by_key["potion_healing_supreme"].healDice, "10d4")
+        self.assertEqual(by_key["potion_healing_supreme"].healBonus, 20)
 
     def test_serializer_normalizes_legacy_weapon_property_aliases(self):
         item = make_base_item(weapon_properties_json=["heavy", "two-handed"])
@@ -391,6 +496,17 @@ class AdminBaseItemRouteTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].canonicalKey, "dagger")
 
+    @patch("app.api.routes.admin_base_items.import_base_item_seed_file")
+    def test_admin_sync_seed_route_returns_sync_result(self, mock_import):
+        mock_import.return_value = {"inserted": 4, "updated": 121, "total": 125}
+
+        result = admin_sync_base_items_seed(_user=self.admin_user, session=MagicMock())
+
+        self.assertEqual(result.inserted, 4)
+        self.assertEqual(result.updated, 121)
+        self.assertEqual(result.total, 125)
+        mock_import.assert_called_once()
+
     @patch("app.api.routes.admin_base_items.create_base_item")
     def test_admin_create_route_returns_created_item(self, mock_create):
         mock_create.return_value = make_base_item()
@@ -478,6 +594,36 @@ class ItemSchemaTests(unittest.TestCase):
         )
 
         self.assertEqual(payload.properties, ["finesse", "light", "thrown"])
+
+    def test_accepts_structured_healing_consumable_item(self):
+        payload = ItemCreate(
+            name="Healing Potion",
+            type=ItemType.CONSUMABLE,
+            description="Restores HP",
+            healDice="2d4",
+            healBonus=2,
+        )
+
+        self.assertEqual(payload.healDice, "2d4")
+        self.assertEqual(payload.healBonus, 2)
+
+    def test_rejects_healing_fields_for_non_consumable_campaign_item(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "Only consumables can define healDice or healBonus",
+        ):
+            ItemCreate(
+                name="Blessed Sword",
+                type=ItemType.WEAPON,
+                description="Incorrect data",
+                damageDice="1d8",
+                damageType="slashing",
+                weaponCategory=BaseItemWeaponCategory.MARTIAL,
+                weaponRangeType=BaseItemWeaponRangeType.MELEE,
+                rangeMeters=5,
+                healDice="2d4",
+                healBonus=2,
+            )
 
 
 if __name__ == "__main__":

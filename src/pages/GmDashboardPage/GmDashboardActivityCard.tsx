@@ -17,7 +17,7 @@ export const GmDashboardActivityCard = ({ activityFeed, sessionId }: Props) => {
         <p className="text-sm text-slate-500">{t("sessionActivity.empty")}</p>
       ) : (
         <div className="max-h-96 overflow-y-auto pr-1">
-          <SessionActivityFeed events={activityFeed} sessionId={sessionId} />
+          <SessionActivityFeed events={activityFeed} isGm sessionId={sessionId} />
         </div>
       )}
     </div>

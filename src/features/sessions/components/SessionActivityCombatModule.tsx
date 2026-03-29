@@ -8,12 +8,14 @@ import { formatSessionActivityOffset } from "./sessionActivity.utils";
 
 type Props = {
   events: ActivityEvent[];
+  isGm?: boolean;
   isLatest: boolean;
   sessionId: string;
 };
 
 export const SessionActivityCombatModule = ({
   events,
+  isGm = false,
   isLatest,
   sessionId,
 }: Props) => {
@@ -69,7 +71,7 @@ export const SessionActivityCombatModule = ({
           ) : fallbackEvents.length > 0 ? (
             <div className="space-y-2">
               {fallbackEvents.map((event, index) => (
-                <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} />
+                <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} isGm={isGm} />
               ))}
             </div>
           ) : (

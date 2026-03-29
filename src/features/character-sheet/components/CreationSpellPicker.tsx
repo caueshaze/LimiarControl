@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { loadSpellCatalog, isSpellCatalogLoaded } from "../../../entities/dnd-base";
-import { getAvailableStartingSpells } from "../utils/creationSpells";
+import { getAvailableStartingSpells, getFixedStartingSpells } from "../utils/creationSpells";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 
 type Props = {
   campaignId?: string | null;
   className: string;
+  level: number;
   availableCantrips: number;
   availableLeveled: number;
   selectedSpells: NonNullable<CharacterSheet["spellcasting"]>["spells"];
@@ -16,6 +17,7 @@ type Props = {
 export const CreationSpellPicker = ({
   campaignId = null,
   className,
+  level,
   availableCantrips,
   availableLeveled,
   selectedSpells,
@@ -45,6 +47,9 @@ export const CreationSpellPicker = ({
   }
 
   const options = getAvailableStartingSpells(className, campaignId);
+  const fixedSpellNames = new Set(
+    getFixedStartingSpells(className, level, campaignId).map((spell) => spell.name.toLowerCase()),
+  );
   const selectedNames = new Set(selectedSpells.map((spell) => spell.name.toLowerCase()));
 
   return (
@@ -54,6 +59,7 @@ export const CreationSpellPicker = ({
         limitReached={selectedSpells.filter((spell) => spell.level === 0).length >= availableCantrips}
         selectedNames={selectedNames}
         names={options.cantrips.map((spell) => spell.name)}
+        fixedNames={fixedSpellNames}
         onToggle={onToggle}
       />
       <SpellChoiceGroup
@@ -61,6 +67,7 @@ export const CreationSpellPicker = ({
         limitReached={selectedSpells.filter((spell) => spell.level === 1).length >= availableLeveled}
         selectedNames={selectedNames}
         names={options.leveled.map((spell) => spell.name)}
+        fixedNames={fixedSpellNames}
         onToggle={onToggle}
       />
     </div>
@@ -71,11 +78,12 @@ type SpellChoiceGroupProps = {
   title: string;
   limitReached: boolean;
   selectedNames: Set<string>;
+  fixedNames: Set<string>;
   names: string[];
   onToggle: SheetActions["toggleCreationSpellSelection"];
 };
 
-const SpellChoiceGroup = ({ title, limitReached, selectedNames, names, onToggle }: SpellChoiceGroupProps) => (
+const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, names, onToggle }: SpellChoiceGroupProps) => (
   <div>
     <div className="mb-2 flex items-center justify-between">
       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
@@ -84,16 +92,20 @@ const SpellChoiceGroup = ({ title, limitReached, selectedNames, names, onToggle 
     <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto pr-1">
       {names.map((name) => {
         const selected = selectedNames.has(name.toLowerCase());
+        const fixed = fixedNames.has(name.toLowerCase());
         return (
           <button
             key={name}
             type="button"
-            onClick={() => onToggle(name)}
+            onClick={() => {
+              if (!fixed) onToggle(name);
+            }}
+            disabled={fixed}
             className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
               selected
                 ? "border-violet-500/40 bg-violet-500/15 text-violet-200"
                 : "border-white/8 bg-white/2 text-slate-300 hover:border-white/14 hover:text-slate-100"
-            }`}
+            } ${fixed ? "cursor-default opacity-80" : ""}`}
           >
             {name}
           </button>

@@ -3,13 +3,19 @@ import type { PartyActiveSession, PartyDetail, PartyMemberSummary } from "../../
 import { membersRepo } from "../../shared/api/membersRepo";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
+import { characterSheetDraftsRepo } from "../../shared/api/characterSheetDraftsRepo";
 import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
+import type {
+  CharacterSheetRecord,
+  PartyCharacterSheetDraftRecord,
+} from "../../entities/character";
 import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
 import {
   buildInventorySummary,
   resolveInventoryEntries,
+  type SessionInventoryResolvedEntry,
 } from "../../features/inventory/components/sessionInventoryPanel.utils";
 
 const isJoinedPlayer = (member: PartyMemberSummary) =>
@@ -24,16 +30,13 @@ export type PartyDetailsPlayerResource = {
   username?: string | null;
   hasSheet: boolean;
   sheet: CharacterSheet | null;
+  sheetRecord: CharacterSheetRecord | null;
+  sheetStatus: "missing" | "pending_acceptance" | "accepted";
   inventory: InventoryItem[];
   totalItems: number;
   distinctItems: number;
   equippedCount: number;
-  previewItems: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    isEquipped: boolean;
-  }>;
+  resolvedInventory: SessionInventoryResolvedEntry[];
 };
 
 type Props = {
@@ -45,6 +48,7 @@ type Props = {
 export const usePartyDetailsResources = ({ activeSession, locale, party }: Props) => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<PartyCharacterSheetDraftRecord[]>([]);
   const [playerResources, setPlayerResources] = useState<PartyDetailsPlayerResource[]>([]);
 
   const joinedPlayers = useMemo(
@@ -52,104 +56,97 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
     [party?.members],
   );
 
-  useEffect(() => {
+  const loadResources = async () => {
     if (!party?.id || !party.campaignId) {
       setPlayerResources([]);
+      setDrafts([]);
       setLoadError(null);
       setLoading(false);
       return;
     }
 
-    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
 
-    const loadResources = async () => {
-      setLoading(true);
-      setLoadError(null);
+    try {
+      const [campaignMembers, catalogItems, draftRecords] = await Promise.all([
+        membersRepo.list(party.campaignId),
+        itemsRepo.list(party.campaignId),
+        characterSheetDraftsRepo.list(party.id).catch(() => []),
+      ]);
 
-      try {
-        const [campaignMembers, catalogItems] = await Promise.all([
-          membersRepo.list(party.campaignId),
-          itemsRepo.list(party.campaignId),
-        ]);
+      const memberIdByUserId = Object.fromEntries(
+        campaignMembers.map((member) => [member.userId, member.id]),
+      );
+      const itemsById = Object.fromEntries(catalogItems.map((item) => [item.id, item]));
 
-        if (cancelled) {
-          return;
-        }
+      const resources = await Promise.all(
+        joinedPlayers.map(async (player) => {
+          const memberId = memberIdByUserId[player.userId];
+          const [inventory, sheetRecord] = await Promise.all([
+            memberId
+              ? inventoryRepo.list(party.campaignId, memberId, party.id).catch(() => [])
+              : Promise.resolve([]),
+            characterSheetsRepo
+              .getForPlayer(party.id, player.userId)
+              .then((record) => record)
+              .catch((error: { status?: number }) => {
+                if (error?.status === 404) {
+                  return null;
+                }
+                throw error;
+              }),
+          ]);
 
-        const memberIdByUserId = Object.fromEntries(
-          campaignMembers.map((member) => [member.userId, member.id]),
-        );
-        const itemsById = Object.fromEntries(catalogItems.map((item) => [item.id, item]));
+          let sheet: CharacterSheet | null = null;
+          if (sheetRecord) {
+            try {
+              sheet = parseCharacterSheet(sheetRecord.data);
+            } catch {
+              sheet = null;
+            }
+          }
 
-        const resources = await Promise.all(
-          joinedPlayers.map(async (player) => {
-            const memberId = memberIdByUserId[player.userId];
-            const [inventory, sheet] = await Promise.all([
-              memberId
-                ? inventoryRepo.list(party.campaignId, memberId, party.id).catch(() => [])
-                : Promise.resolve([]),
-              characterSheetsRepo
-                .getForPlayer(party.id, player.userId)
-                .then((record) => {
-                  try {
-                    return parseCharacterSheet(record.data);
-                  } catch {
-                    return null;
-                  }
-                })
-                .catch((error: { status?: number }) => {
-                  if (error?.status === 404) {
-                    return null;
-                  }
-                  throw error;
-                }),
-            ]);
+          const summary = buildInventorySummary(inventory, itemsById, locale);
+          const resolvedInventory = resolveInventoryEntries(inventory, itemsById, locale);
+          const hasSheet = sheetRecord !== null;
+          const sheetStatus =
+            !sheetRecord
+              ? "missing"
+              : sheetRecord.acceptedAt
+                ? "accepted"
+                : "pending_acceptance";
 
-            const summary = buildInventorySummary(inventory, itemsById, locale);
-            const previewItems = resolveInventoryEntries(inventory, itemsById, locale)
-              .slice(0, 3)
-              .map(({ entry, name }) => ({
-                id: entry.id,
-                isEquipped: entry.isEquipped,
-                name,
-                quantity: entry.quantity,
-              }));
+          return {
+            userId: player.userId,
+            displayName: getPlayerDisplayName(player),
+            username: player.username ?? null,
+            hasSheet,
+            sheet,
+            sheetRecord,
+            sheetStatus,
+            inventory,
+            totalItems: summary.totalItems,
+            distinctItems: summary.distinctItems,
+            equippedCount: summary.equippedCount,
+            resolvedInventory,
+          } satisfies PartyDetailsPlayerResource;
+        }),
+      );
 
-            return {
-              userId: player.userId,
-              displayName: getPlayerDisplayName(player),
-              username: player.username ?? null,
-              hasSheet: sheet !== null,
-              sheet,
-              inventory,
-              totalItems: summary.totalItems,
-              distinctItems: summary.distinctItems,
-              equippedCount: summary.equippedCount,
-              previewItems,
-            } satisfies PartyDetailsPlayerResource;
-          }),
-        );
+      setDrafts(draftRecords);
+      setPlayerResources(resources);
+    } catch (error) {
+      setDrafts([]);
+      setPlayerResources([]);
+      setLoadError((error as { message?: string })?.message ?? "Could not load party resources.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (!cancelled) {
-          setPlayerResources(resources);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setPlayerResources([]);
-          setLoadError((error as { message?: string })?.message ?? "Could not load party resources.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
+  useEffect(() => {
     void loadResources();
-
-    return () => {
-      cancelled = true;
-    };
   }, [joinedPlayers, locale, party?.campaignId, party?.id]);
 
   const summary = useMemo(() => {
@@ -170,7 +167,9 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
   return {
     loadError,
     loading,
+    drafts,
     playerResources,
+    reloadResources: loadResources,
     summary,
   };
 };

@@ -28,6 +28,7 @@ from app.schemas.base_spell import (
     BaseSpellCreate,
     BaseSpellSeedDocument,
     BaseSpellUpdate,
+    SpellUpcastConfig,
 )
 from app.services.base_spell_seeds import (
     bootstrap_base_spells_if_empty,
@@ -60,13 +61,14 @@ def make_base_spell(**overrides):
         "material_component_text": "a tiny ball of bat guano and sulfur",
         "concentration": False,
         "ritual": False,
-        "resolution_type": ResolutionType.SAVING_THROW.value,
+        "resolution_type": ResolutionType.DAMAGE.value,
         "saving_throw": "DEX",
         "save_success_outcome": "half_damage",
         "damage_dice": "8d6",
         "damage_type": "Fire",
         "heal_dice": None,
-        "upcast_mode": UpcastMode.ADD_DICE.value,
+        "upcast_json": {"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
+        "upcast_mode": UpcastMode.EXTRA_DAMAGE_DICE.value,
         "upcast_value": "1d6",
         "source": SpellSource.SEED_JSON_BOOTSTRAP.value,
         "source_ref": None,
@@ -89,7 +91,7 @@ class BaseSpellSchemaTests(unittest.TestCase):
             "descriptionEn": "Explosion of flame.",
             "level": 3,
             "school": SpellSchool.EVOCATION,
-            "resolutionType": "saving_throw",
+            "resolutionType": "damage",
             "savingThrow": "DEX",
             "saveSuccessOutcome": "half_damage",
             "damageDice": "8d6",
@@ -168,6 +170,39 @@ class BaseSpellSchemaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._make_create(upcastMode="double")
 
+    def test_accepts_structured_upcast(self):
+        spell = self._make_create(
+            resolutionType="heal",
+            savingThrow=None,
+            saveSuccessOutcome=None,
+            damageDice=None,
+            damageType=None,
+            healDice="1d8",
+            upcast={
+                "mode": "extra_heal_dice",
+                "dice": "1d8",
+                "perLevel": 1,
+            },
+        )
+        self.assertIsNotNone(spell.upcast)
+        self.assertEqual(spell.upcast.mode, "extra_heal_dice")
+        self.assertEqual(spell.upcast.dice, "1d8")
+
+    def test_legacy_upcast_fields_are_normalized_to_structured_upcast(self):
+        spell = self._make_create(
+            resolutionType="heal",
+            savingThrow=None,
+            saveSuccessOutcome=None,
+            damageDice=None,
+            damageType=None,
+            healDice="1d8",
+            upcastMode="add_dice",
+            upcastValue="1d8",
+        )
+        self.assertIsNotNone(spell.upcast)
+        self.assertEqual(spell.upcast.mode, "extra_heal_dice")
+        self.assertEqual(spell.upcast.dice, "1d8")
+
     def test_rejects_unknown_source(self):
         with self.assertRaises(ValueError):
             self._make_create(source="manual_note")
@@ -180,13 +215,38 @@ class BaseSpellSchemaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._make_create(damageDice="lots of damage")
 
-    def test_saving_throw_requires_ability_when_resolution_type_saving_throw(self):
-        with self.assertRaises(ValueError):
-            self._make_create(
-                resolutionType="saving_throw",
-                savingThrow=None,
-                saveSuccessOutcome=None,
-            )
+    def test_damage_can_have_saving_throw(self):
+        spell = self._make_create(
+            resolutionType="damage",
+            savingThrow="DEX",
+            saveSuccessOutcome="half_damage",
+            damageDice="8d6",
+            damageType="Fire",
+        )
+        self.assertEqual(spell.savingThrow, "DEX")
+        self.assertEqual(spell.saveSuccessOutcome, "half_damage")
+
+    def test_control_can_have_saving_throw(self):
+        spell = self._make_create(
+            resolutionType="control",
+            savingThrow="WIS",
+            saveSuccessOutcome=None,
+            damageDice=None,
+            damageType=None,
+        )
+        self.assertEqual(spell.savingThrow, "WIS")
+        self.assertIsNone(spell.saveSuccessOutcome)
+
+    def test_buff_clears_damage_fields(self):
+        spell = self._make_create(
+            resolutionType="buff",
+            savingThrow=None,
+            saveSuccessOutcome=None,
+            damageDice="2d6",
+            damageType="Fire",
+        )
+        self.assertIsNone(spell.damageDice)
+        self.assertIsNone(spell.damageType)
 
     def test_heal_requires_heal_dice(self):
         with self.assertRaises(ValueError):
@@ -199,11 +259,24 @@ class BaseSpellSchemaTests(unittest.TestCase):
                 healDice=None,
             )
 
-    def test_clears_saving_throw_for_non_saving_throw_resolution(self):
+    def test_clears_saving_throw_for_buff_resolution(self):
         spell = self._make_create(
-            resolutionType="spell_attack",
+            resolutionType="buff",
             savingThrow="DEX",
-            saveSuccessOutcome="half_damage",
+            saveSuccessOutcome=None,
+            damageDice=None,
+            damageType=None,
+        )
+        self.assertIsNone(spell.savingThrow)
+        self.assertIsNone(spell.saveSuccessOutcome)
+
+    def test_clears_saving_throw_for_utility_resolution(self):
+        spell = self._make_create(
+            resolutionType="utility",
+            savingThrow="DEX",
+            saveSuccessOutcome=None,
+            damageDice=None,
+            damageType=None,
         )
         self.assertIsNone(spell.savingThrow)
         self.assertIsNone(spell.saveSuccessOutcome)
@@ -281,13 +354,16 @@ class BaseSpellSerializerTests(unittest.TestCase):
         read = to_base_spell_read(spell)
         self.assertEqual(read.canonicalKey, "fireball")
         self.assertEqual(read.castingTimeType, "action")
-        self.assertEqual(read.resolutionType, "saving_throw")
+        self.assertEqual(read.resolutionType, "damage")
         self.assertEqual(read.savingThrow, "DEX")
         self.assertEqual(read.saveSuccessOutcome, "half_damage")
         self.assertEqual(read.damageDice, "8d6")
         self.assertEqual(read.damageType, "Fire")
         self.assertEqual(read.targetMode, "sphere")
-        self.assertEqual(read.upcastMode, "add_dice")
+        self.assertIsNotNone(read.upcast)
+        self.assertEqual(read.upcast.mode, "extra_damage_dice")
+        self.assertEqual(read.upcast.dice, "1d6")
+        self.assertEqual(read.upcastMode, "extra_damage_dice")
         self.assertEqual(read.upcastValue, "1d6")
         self.assertEqual(read.rangeMeters, 45)
         self.assertEqual(read.rangeText, "150 ft")
@@ -298,8 +374,9 @@ class BaseSpellSerializerTests(unittest.TestCase):
         spell = make_base_spell()
         entry = to_base_spell_seed_entry(spell)
         self.assertEqual(entry.canonicalKey, "fireball")
-        self.assertEqual(entry.resolutionType, "saving_throw")
-        self.assertEqual(entry.upcastMode, "add_dice")
+        self.assertEqual(entry.resolutionType, "damage")
+        self.assertIsNotNone(entry.upcast)
+        self.assertEqual(entry.upcast.mode, "extra_damage_dice")
 
 
 # ---------------------------------------------------------------------------
@@ -421,7 +498,7 @@ class AdminBaseSpellRouteTests(unittest.TestCase):
         result = admin_list_base_spells(_user=self.admin_user, session=MagicMock())
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].canonicalKey, "fireball")
-        self.assertEqual(result[0].resolutionType, "saving_throw")
+        self.assertEqual(result[0].resolutionType, "damage")
 
     @patch("app.api.routes.admin_base_spells.create_base_spell")
     def test_admin_create_route_returns_created_spell(self, mock_create):
@@ -432,9 +509,11 @@ class AdminBaseSpellRouteTests(unittest.TestCase):
             descriptionEn="Explosion of flame.",
             level=3,
             school=SpellSchool.EVOCATION,
-            resolutionType="saving_throw",
+            resolutionType="damage",
             savingThrow="DEX",
             saveSuccessOutcome="half_damage",
+            damageDice="8d6",
+            damageType="Fire",
         )
         result = admin_create_base_spell(payload, _user=self.admin_user, session=MagicMock())
         self.assertEqual(result.canonicalKey, "fireball")
@@ -488,6 +567,160 @@ class SeedJsonFileTests(unittest.TestCase):
             self.assertTrue(spell.descriptionEn)
             self.assertGreaterEqual(spell.level, 0)
             self.assertLessEqual(spell.level, 9)
+
+
+# ---------------------------------------------------------------------------
+# Upcast validation tests
+# ---------------------------------------------------------------------------
+
+class SpellUpcastValidationTests(unittest.TestCase):
+    def _make_damage_spell(self, **overrides):
+        defaults = {
+            "canonicalKey": "fire_bolt",
+            "nameEn": "Fire Bolt",
+            "descriptionEn": "Hurls fire.",
+            "level": 0,
+            "school": SpellSchool.EVOCATION,
+            "resolutionType": "damage",
+            "damageDice": "1d10",
+            "damageType": "Fire",
+        }
+        defaults.update(overrides)
+        return BaseSpellCreate(**defaults)
+
+    def _make_heal_spell(self, **overrides):
+        defaults = {
+            "canonicalKey": "cure_wounds",
+            "nameEn": "Cure Wounds",
+            "descriptionEn": "Heals a creature.",
+            "level": 1,
+            "school": SpellSchool.EVOCATION,
+            "resolutionType": "heal",
+            "healDice": "1d8",
+        }
+        defaults.update(overrides)
+        return BaseSpellCreate(**defaults)
+
+    def test_extra_damage_dice_requires_dice_or_flat(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(mode="extra_damage_dice", perLevel=1)
+
+    def test_extra_heal_dice_requires_dice_or_flat(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(mode="extra_heal_dice", perLevel=1)
+
+    def test_flat_bonus_requires_flat_value(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(mode="flat_bonus", perLevel=1)
+
+    def test_additional_targets_needs_no_dice(self):
+        config = SpellUpcastConfig(mode="additional_targets", perLevel=1)
+        self.assertEqual(config.mode, "additional_targets")
+
+    def test_duration_scaling_needs_no_dice(self):
+        config = SpellUpcastConfig(mode="duration_scaling", perLevel=1)
+        self.assertEqual(config.mode, "duration_scaling")
+
+    def test_extra_damage_dice_rejected_for_heal_spell(self):
+        with self.assertRaises(ValueError):
+            self._make_heal_spell(
+                upcast={"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
+            )
+
+    def test_extra_heal_dice_rejected_for_damage_spell(self):
+        with self.assertRaises(ValueError):
+            self._make_damage_spell(
+                upcast={"mode": "extra_heal_dice", "dice": "1d6", "perLevel": 1},
+            )
+
+    def test_buff_clears_damage_dice(self):
+        spell = BaseSpellCreate(
+            canonicalKey="shield",
+            nameEn="Shield",
+            descriptionEn="Protects you.",
+            level=1,
+            school=SpellSchool.ABJURATION,
+            resolutionType="buff",
+            damageDice="2d6",
+            damageType="Fire",
+        )
+        self.assertIsNone(spell.damageDice)
+        self.assertIsNone(spell.damageType)
+
+    def test_effect_scaling_requires_scaling_key(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(
+                mode="effect_scaling",
+                scalingSummary="something scales",
+                perLevel=1,
+            )
+
+    def test_effect_scaling_requires_scaling_summary(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(
+                mode="effect_scaling",
+                scalingKey="some_key",
+                perLevel=1,
+            )
+
+    def test_effect_scaling_valid_with_required_fields(self):
+        config = SpellUpcastConfig(
+            mode="effect_scaling",
+            scalingKey="armor_class_bonus",
+            scalingSummary="+1 AC per slot level",
+            perLevel=1,
+        )
+        self.assertEqual(config.mode, "effect_scaling")
+        self.assertEqual(config.scalingKey, "armor_class_bonus")
+
+    def test_effect_scaling_accepts_optional_editorial(self):
+        config = SpellUpcastConfig(
+            mode="effect_scaling",
+            scalingKey="armor_class_bonus",
+            scalingSummary="+1 AC per slot level",
+            scalingEditorial="Cap at +5.",
+            perLevel=1,
+        )
+        self.assertEqual(config.scalingEditorial, "Cap at +5.")
+
+    def test_extra_effect_requires_unlock_key(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(
+                mode="extra_effect",
+                unlockSummary="Something is unlocked",
+                perLevel=1,
+            )
+
+    def test_extra_effect_requires_unlock_summary(self):
+        with self.assertRaises(ValueError):
+            SpellUpcastConfig(
+                mode="extra_effect",
+                unlockKey="additional_beam",
+                perLevel=1,
+            )
+
+    def test_extra_effect_valid_with_required_fields(self):
+        config = SpellUpcastConfig(
+            mode="extra_effect",
+            unlockKey="additional_beam",
+            unlockSummary="One extra beam per slot level above 5th",
+            perLevel=1,
+        )
+        self.assertEqual(config.mode, "extra_effect")
+        self.assertEqual(config.unlockKey, "additional_beam")
+
+    def test_hunters_mark_classified_as_buff(self):
+        """Hunter's Mark is an offensive caster buff, not a debuff."""
+        spell = BaseSpellCreate(
+            canonicalKey="hunters_mark",
+            nameEn="Hunter's Mark",
+            descriptionEn="You mark a creature and deal extra damage when you hit it.",
+            level=1,
+            school=SpellSchool.DIVINATION,
+            resolutionType="buff",
+        )
+        self.assertEqual(spell.resolutionType, "buff")
+        self.assertIsNone(spell.savingThrow)
 
 
 if __name__ == "__main__":

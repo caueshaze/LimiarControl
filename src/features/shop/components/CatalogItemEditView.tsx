@@ -25,6 +25,8 @@ type Props = {
   weight: string;
   damageDice: string;
   damageType: BaseItemDamageType | "";
+  healDice: string;
+  healBonus: string;
   rangeMeters: string;
   rangeLongMeters: string;
   versatileDamage: string;
@@ -46,6 +48,8 @@ type Props = {
   onWeightChange: (value: string) => void;
   onDamageDiceChange: (value: string) => void;
   onDamageTypeChange: (value: BaseItemDamageType | "") => void;
+  onHealDiceChange: (value: string) => void;
+  onHealBonusChange: (value: string) => void;
   onRangeMetersChange: (value: string) => void;
   onRangeLongMetersChange: (value: string) => void;
   onVersatileDamageChange: (value: string) => void;
@@ -72,6 +76,8 @@ export const CatalogItemEditView = ({
   weight,
   damageDice,
   damageType,
+  healDice,
+  healBonus,
   rangeMeters,
   rangeLongMeters,
   versatileDamage,
@@ -93,6 +99,8 @@ export const CatalogItemEditView = ({
   onWeightChange,
   onDamageDiceChange,
   onDamageTypeChange,
+  onHealDiceChange,
+  onHealBonusChange,
   onRangeMetersChange,
   onRangeLongMetersChange,
   onVersatileDamageChange,
@@ -189,6 +197,8 @@ export const CatalogItemEditView = ({
             type={type}
             damageDice={damageDice}
             damageType={damageType}
+            healDice={healDice}
+            healBonus={healBonus}
             rangeMeters={rangeMeters}
             rangeLongMeters={rangeLongMeters}
             versatileDamage={versatileDamage}
@@ -203,6 +213,8 @@ export const CatalogItemEditView = ({
             legacyUnknownProperties={legacyUnknownProperties}
             onDamageDiceChange={onDamageDiceChange}
             onDamageTypeChange={onDamageTypeChange}
+            onHealDiceChange={onHealDiceChange}
+            onHealBonusChange={onHealBonusChange}
             onRangeMetersChange={onRangeMetersChange}
             onRangeLongMetersChange={onRangeLongMetersChange}
             onVersatileDamageChange={onVersatileDamageChange}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { AbilityName, CharacterSheet, Spell } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import type { RequiredField } from "../utils/creationValidation";
@@ -6,10 +7,15 @@ import { input, fieldLabel, btnPrimary, btnDanger, chk } from "./styles";
 import { ABILITIES, SPELL_SCHOOLS } from "../constants";
 import { computeSpellAttack, computeSpellSaveDC, formatMod, safeParseInt } from "../utils/calculations";
 import { getClassCreationConfig } from "../data/classCreation";
-import { getStartingSpellLimits } from "../utils/creationSpells";
+import {
+  getCatalogSpellOptions,
+  getStartingSpellLimits,
+} from "../utils/creationSpells";
 import { CreationSpellPicker } from "./CreationSpellPicker";
+import { getAbilityLabel } from "../utils/abilityLabels";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import { isSpellCatalogLoaded, loadSpellCatalog } from "../../../entities/dnd-base";
 
 type Props = {
   campaignId?: string | null;
@@ -24,9 +30,11 @@ type Props = {
   onSetAbility: SheetActions["setSpellAbility"];
   onSetSlot: SheetActions["setSpellSlot"];
   onAddSpell: SheetActions["addSpell"];
+  onSelectCatalogSpell?: SheetActions["selectCatalogSpell"];
   onRemoveSpell: SheetActions["removeSpell"];
   onUpdateSpell: SheetActions["updateSpell"];
   onToggleCreationSpell?: SheetActions["toggleCreationSpellSelection"];
+  catalogBackedSelection?: boolean;
 };
 
 export const Spellcasting = ({
@@ -36,22 +44,50 @@ export const Spellcasting = ({
   readOnly = false,
   missingRequiredFields = [],
   onEnable, onDisable, onSetAbility,
-  onSetSlot, onAddSpell, onRemoveSpell, onUpdateSpell,
+  onSetSlot, onAddSpell, onSelectCatalogSpell, onRemoveSpell, onUpdateSpell,
   onToggleCreationSpell,
+  catalogBackedSelection = false,
 }: Props) => {
   const { t } = useLocale();
   const creationConfig = className ? getClassCreationConfig(className)?.startingSpells : null;
+  const creationSpellLimits = className ? getStartingSpellLimits(className, abilities, level) : null;
   const hasSpellError = missingRequiredFields.includes("cantrips") || missingRequiredFields.includes("leveledSpells");
+  const shouldUseCatalogBackedEditing =
+    catalogBackedSelection && !readOnly && !creationConfig;
+  const [catalogReady, setCatalogReady] = useState(
+    !shouldUseCatalogBackedEditing || isSpellCatalogLoaded(campaignId),
+  );
 
-  // In creation mode, hide the section entirely if the class has no spellcasting config.
-  // The spellcasting data is auto-created by normalizeCreationAfterClassChange when the class has startingSpells.
+  useEffect(() => {
+    setCatalogReady(!shouldUseCatalogBackedEditing || isSpellCatalogLoaded(campaignId));
+  }, [campaignId, shouldUseCatalogBackedEditing]);
+
+  useEffect(() => {
+    if (!shouldUseCatalogBackedEditing || catalogReady) return;
+    let cancelled = false;
+    loadSpellCatalog(campaignId).then(() => {
+      if (!cancelled) setCatalogReady(true);
+    }).catch(() => {
+      if (!cancelled) setCatalogReady(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId, catalogReady, shouldUseCatalogBackedEditing]);
+
+  const catalogSpellOptions =
+    shouldUseCatalogBackedEditing && catalogReady
+      ? getCatalogSpellOptions(className, campaignId)
+      : [];
+
   if (!spellcasting) {
+    if (creationConfig && !creationSpellLimits) {
+      return null;
+    }
     if (readOnly && !creationConfig) {
-      // Creation mode, non-caster class — don't show anything
       return null;
     }
     if (readOnly) {
-      // Creation mode, caster class but spellcasting somehow null — shouldn't happen, but show loading
       return (
         <Section title={t("sheet.spells.title")} color="bg-violet-500">
           <p className="py-4 text-xs text-slate-500">{t("sheet.spells.noSpellsCreation")}</p>
@@ -80,7 +116,7 @@ export const Spellcasting = ({
   const abilityScore = abilities[spellcasting.ability];
   const saveDC = computeSpellSaveDC(level, abilityScore);
   const atkBonus = computeSpellAttack(level, abilityScore);
-  const startingSpellLimits = className ? getStartingSpellLimits(className, abilities, level) : null;
+  const startingSpellLimits = creationSpellLimits;
 
   return (
     <Section title={t("sheet.spells.title")} color="bg-violet-500">
@@ -90,7 +126,7 @@ export const Spellcasting = ({
           {readOnly ? (
             <input
               type="text"
-              value={spellcasting.ability.toUpperCase()}
+              value={getAbilityLabel(spellcasting.ability, t)}
               disabled
               className={`${input} opacity-70`}
               style={{ width: "auto" }}
@@ -103,7 +139,7 @@ export const Spellcasting = ({
               style={{ width: "auto" }}
             >
               {ABILITIES.map((a) => (
-                <option key={a.key} value={a.key}>{a.label}</option>
+                <option key={a.key} value={a.key}>{getAbilityLabel(a.key, t)}</option>
               ))}
             </select>
           )}
@@ -125,7 +161,7 @@ export const Spellcasting = ({
         )}
       </div>
 
-      {readOnly && startingSpellLimits && creationConfig && onToggleCreationSpell && (
+      {startingSpellLimits && creationConfig && onToggleCreationSpell && (
         <>
           <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/3"}`}>
             <p className="font-semibold text-slate-200">
@@ -142,6 +178,7 @@ export const Spellcasting = ({
           <CreationSpellPicker
             campaignId={campaignId}
             className={className}
+            level={level}
             availableCantrips={startingSpellLimits.cantrips}
             availableLeveled={startingSpellLimits.leveledSpells}
             selectedSpells={spellcasting.spells}
@@ -150,7 +187,7 @@ export const Spellcasting = ({
         </>
       )}
 
-      {!readOnly && <div className="mt-4">
+      {!readOnly && !creationConfig && <div className="mt-4">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.slotsTitle")}</div>
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 9 }, (_, i) => i + 1).map((lvl) => {
@@ -188,17 +225,34 @@ export const Spellcasting = ({
         </div>
       </div>}
 
-      {!readOnly && <div className="mt-4">
+      {!readOnly && !creationConfig && <div className="mt-4">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.knownTitle")}</div>
+        {shouldUseCatalogBackedEditing && !catalogReady ? (
+          <p className="pb-2 text-xs text-slate-500">Loading spells...</p>
+        ) : null}
         <div className="space-y-2">
           {spellcasting.spells.map((spell) => (
-            <SpellRow key={spell.id} spell={spell} onRemove={onRemoveSpell} onUpdate={onUpdateSpell} t={t} />
+            <SpellRow
+              key={spell.id}
+              spell={spell}
+              catalogBackedSelection={shouldUseCatalogBackedEditing}
+              catalogSpellOptions={catalogSpellOptions}
+              onRemove={onRemoveSpell}
+              onSelectCatalogSpell={onSelectCatalogSpell}
+              onUpdate={onUpdateSpell}
+              t={t}
+            />
           ))}
           {spellcasting.spells.length === 0 && (
             <p className="py-2 text-center text-xs text-slate-600">{t("sheet.spells.emptySpells")}</p>
           )}
         </div>
-        <button type="button" onClick={onAddSpell} className={`mt-3 ${btnPrimary}`}>
+        <button
+          type="button"
+          onClick={onAddSpell}
+          disabled={shouldUseCatalogBackedEditing && (!catalogReady || catalogSpellOptions.length === 0)}
+          className={`mt-3 ${btnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}
+        >
           {t("sheet.spells.addSpell")}
         </button>
       </div>}
@@ -233,36 +287,85 @@ const SlotPip = ({ level, slot, onSetSlot }: SlotPipProps) => (
 
 type SpellRowProps = {
   spell: Spell;
+  catalogBackedSelection: boolean;
+  catalogSpellOptions: Array<{
+    canonicalKey: string;
+    name: string;
+    level: number;
+    school: string;
+  }>;
   onRemove: SheetActions["removeSpell"];
+  onSelectCatalogSpell?: SheetActions["selectCatalogSpell"];
   onUpdate: SheetActions["updateSpell"];
   t: (key: LocaleKey) => string;
 };
 
-const SpellRow = ({ spell, onRemove, onUpdate, t }: SpellRowProps) => (
+const SpellRow = ({
+  spell,
+  catalogBackedSelection,
+  catalogSpellOptions,
+  onRemove,
+  onSelectCatalogSpell,
+  onUpdate,
+  t,
+}: SpellRowProps) => (
   <div className="flex items-start gap-2 rounded-xl border border-slate-800/60 bg-void-950/40 p-3">
     <div className="flex-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <div className="sm:col-span-2">
         <label className={fieldLabel}>{t("sheet.spells.spellName")}</label>
-        <input
-          type="text" placeholder={t("sheet.spells.namePlaceholder")} value={spell.name}
-          onChange={(e) => onUpdate(spell.id, "name", e.target.value)}
-          className={input}
-        />
+        {catalogBackedSelection && onSelectCatalogSpell ? (
+          <select
+            value={spell.canonicalKey ?? ""}
+            onChange={(e) => onSelectCatalogSpell(spell.id, e.target.value)}
+            className={input}
+          >
+            <option value="">Select a spell</option>
+            {catalogSpellOptions.map((option) => (
+              <option key={option.canonicalKey} value={option.canonicalKey}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text" placeholder={t("sheet.spells.namePlaceholder")} value={spell.name}
+            onChange={(e) => onUpdate(spell.id, "name", e.target.value)}
+            className={input}
+          />
+        )}
       </div>
       <div>
         <label className={fieldLabel}>{t("sheet.spells.level")}</label>
-        <select value={spell.level} onChange={(e) => onUpdate(spell.id, "level", safeParseInt(e.target.value))} className={input}>
-          <option value={0}>{t("sheet.spells.cantrip")}</option>
-          {Array.from({ length: 9 }, (_, i) => i + 1).map((l) => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
+        {catalogBackedSelection ? (
+          <input
+            type="text"
+            value={spell.level === 0 ? t("sheet.spells.cantrip") : String(spell.level)}
+            disabled
+            className={`${input} opacity-70`}
+          />
+        ) : (
+          <select value={spell.level} onChange={(e) => onUpdate(spell.id, "level", safeParseInt(e.target.value))} className={input}>
+            <option value={0}>{t("sheet.spells.cantrip")}</option>
+            {Array.from({ length: 9 }, (_, i) => i + 1).map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        )}
       </div>
       <div>
         <label className={fieldLabel}>{t("sheet.spells.school")}</label>
-        <select value={spell.school} onChange={(e) => onUpdate(spell.id, "school", e.target.value)} className={input}>
-          {SPELL_SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        {catalogBackedSelection ? (
+          <input
+            type="text"
+            value={spell.school}
+            disabled
+            className={`${input} opacity-70`}
+          />
+        ) : (
+          <select value={spell.school} onChange={(e) => onUpdate(spell.id, "school", e.target.value)} className={input}>
+            {SPELL_SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
       </div>
       <div className="sm:col-span-3">
         <label className={fieldLabel}>{t("sheet.equipment.notes")}</label>

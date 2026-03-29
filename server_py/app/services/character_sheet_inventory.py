@@ -13,6 +13,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.item import Item, ItemType
 from app.models.party import Party
+from app.services.magic_item_effects import initialize_inventory_item_charges
 
 logger = logging.getLogger(__name__)
 
@@ -112,18 +113,19 @@ def sync_character_sheet_inventory(
         if not item_key or item_key in existing_inventory_keys:
             continue
 
-        db.add(
-            InventoryItem(  # type: ignore[call-arg]
-                id=str(uuid4()),
-                campaign_id=party.campaign_id,
-                party_id=party.id,
-                member_id=campaign_member.id,
-                item_id=catalog_item.id,
-                quantity=sheet_item.quantity,
-                is_equipped=False,
-                notes=sheet_item.notes or "Equipamento inicial",
-            )
+        inventory_entry = InventoryItem(  # type: ignore[call-arg]
+            id=str(uuid4()),
+            campaign_id=party.campaign_id,
+            party_id=party.id,
+            member_id=campaign_member.id,
+            item_id=catalog_item.id,
+            quantity=sheet_item.quantity,
+            charges_current=catalog_item.charges_max if isinstance(catalog_item.charges_max, int) and catalog_item.charges_max > 0 else None,
+            is_equipped=False,
+            notes=sheet_item.notes or "Equipamento inicial",
         )
+        initialize_inventory_item_charges(inventory_entry, catalog_item)
+        db.add(inventory_entry)
         existing_inventory_keys.add(item_key)
 
 

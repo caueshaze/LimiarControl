@@ -9,7 +9,6 @@ import { Skills } from "./Skills";
 import { CombatStats } from "./CombatStats";
 import { HitPoints } from "./HitPoints";
 import { HitDiceSection } from "./HitDiceSection";
-import { Weapons } from "./Weapons";
 import { Equipment } from "./Equipment";
 import { Currency } from "./Currency";
 import { Spellcasting } from "./Spellcasting";
@@ -17,9 +16,16 @@ import { Proficiencies } from "./Proficiencies";
 import { Conditions } from "./Conditions";
 import { FeaturesTraits } from "./FeaturesTraits";
 import { CharacterSheetCreationConfirmDialog } from "./CharacterSheetCreationConfirmDialog";
+import { CharacterSheetInventoryResetConfirmDialog } from "./CharacterSheetInventoryResetConfirmDialog";
 import { CharacterSheetStateScreen } from "./CharacterSheetStateScreen";
 import { CharacterSheetStatusBanners } from "./CharacterSheetStatusBanners";
 import { validateCreationSheet } from "../utils/creationValidation";
+import { hasCustomCreationInventoryItems } from "../utils/creationEquipment";
+import {
+  getDraftArmorProficiencyOptions,
+  getDraftToolProficiencyOptions,
+  getDraftWeaponProficiencyOptions,
+} from "../utils/proficiencyCatalog";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCharacterSheetDerived } from "../hooks/useCharacterSheetDerived";
 
@@ -29,6 +35,7 @@ type Props = {
   mode?: CharacterSheetMode;
   playPlayerUserId?: string | null;
   creationPlayerUserId?: string | null;
+  creationDraftId?: string | null;
   canEditPlay?: boolean;
   backHref?: string | null;
   backLabel?: string | null;
@@ -41,6 +48,7 @@ export const CharacterSheet = ({
   mode = "play",
   playPlayerUserId = null,
   creationPlayerUserId = null,
+  creationDraftId = null,
   canEditPlay = false,
   backHref = null,
   backLabel = null,
@@ -49,6 +57,7 @@ export const CharacterSheet = ({
   const actions = useCharacterSheet(partyId, mode, {
     playPlayerUserId,
     creationPlayerUserId,
+    creationDraftId,
     canEditPlay,
     campaignId,
   });
@@ -59,15 +68,97 @@ export const CharacterSheet = ({
   const isGmPlayView = isPlay && canEditPlay;
   const isRuntimeReadOnly = isPlay && !canEditPlay;
   const isPlayReadOnly = isPlay;
-
-  // Sheet is locked for players after the first save; only GM can edit afterwards
-  const isSheetLocked = isCreation && !!actions.remoteId && !canEditPlay;
+  const isDraftEditor = isCreation && !!creationDraftId;
+  const isOwnCreationSheet = isCreation && !creationPlayerUserId && !creationDraftId;
+  const isPendingAcceptance =
+    isOwnCreationSheet &&
+    !!actions.characterRecord?.sourceDraftId &&
+    !actions.characterRecord?.acceptedAt;
+  const canEditExistingCreation =
+    isDraftEditor
+      ? actions.draftRecord?.status === "active"
+      : isOwnCreationSheet
+        ? !actions.characterRecord || actions.characterRecord.acceptedAt == null
+        : false;
+  const isSheetLocked = isCreation && !!actions.remoteId && !canEditExistingCreation;
+  const canSaveCreation = isCreation && (!actions.remoteId || canEditExistingCreation);
+  const isDraftArchived = isDraftEditor && actions.draftRecord?.status === "archived";
+  const isEditableCreationDraft = isDraftEditor && !isSheetLocked;
+  const showAcceptPendingSheetAction = isPendingAcceptance && isOwnCreationSheet;
+  const canAcceptPendingSheet =
+    showAcceptPendingSheetAction && !actions.isDirty && !actions.saving;
+  const shouldValidateCreationProgress =
+    isCreation &&
+    !creationDraftId &&
+    !actions.characterRecord?.sourceDraftId;
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const creationValidation = isCreation ? validateCreationSheet(sheet) : null;
+  const [pendingInventoryResetChange, setPendingInventoryResetChange] = useState<{
+    field: "class" | "background" | "race";
+    value: string;
+  } | null>(null);
+  const creationValidation = shouldValidateCreationProgress ? validateCreationSheet(sheet) : null;
   const saveBlockedReason = creationValidation && !creationValidation.isValid
     ? t("sheet.creation.saveBlocked")
     : null;
+  const shouldConfirmInventoryReset = isCreation && hasCustomCreationInventoryItems(sheet.inventory);
+  const draftProficiencyCatalogOptions = isEditableCreationDraft
+    ? {
+        toolProficiencies: getDraftToolProficiencyOptions(),
+        weaponProficiencies: getDraftWeaponProficiencyOptions(),
+        armorProficiencies: getDraftArmorProficiencyOptions(),
+      }
+    : undefined;
+
+  const requestCreationIdentityChange = (
+    field: "class" | "background" | "race",
+    currentValue: string,
+    nextValue: string,
+  ) => {
+    if (nextValue === currentValue) {
+      return;
+    }
+
+    if (!shouldConfirmInventoryReset) {
+      if (field === "class") {
+        actions.selectClass(nextValue);
+        return;
+      }
+      if (field === "background") {
+        actions.selectBackground(nextValue);
+        return;
+      }
+      actions.selectRace(nextValue);
+      return;
+    }
+
+    setPendingInventoryResetChange({ field, value: nextValue });
+  };
+
+  const applyPendingInventoryResetChange = () => {
+    if (!pendingInventoryResetChange) {
+      return;
+    }
+
+    if (pendingInventoryResetChange.field === "class") {
+      actions.selectClass(pendingInventoryResetChange.value);
+    } else if (pendingInventoryResetChange.field === "background") {
+      actions.selectBackground(pendingInventoryResetChange.value);
+    } else {
+      actions.selectRace(pendingInventoryResetChange.value, { resetInventory: true });
+    }
+
+    setPendingInventoryResetChange(null);
+  };
+
+  const pendingInventoryResetFieldLabel =
+    pendingInventoryResetChange?.field === "class"
+      ? t("sheet.basicInfo.class")
+      : pendingInventoryResetChange?.field === "background"
+        ? t("sheet.basicInfo.background")
+        : pendingInventoryResetChange?.field === "race"
+          ? t("sheet.basicInfo.race")
+          : "";
 
   const handleSave = () => {
     if (saveBlockedReason) return;
@@ -106,8 +197,8 @@ export const CharacterSheet = ({
       <CharacterHeader
         sheet={sheet}
         mode={mode}
-        canSave={(isCreation && !isSheetLocked) || canEditPlay}
-        showResetImport={isCreation && !isSheetLocked}
+        canSave={canSaveCreation || canEditPlay}
+        showResetImport={isCreation && (!actions.remoteId || canEditExistingCreation)}
         ac={ac}
         initiative={initiative}
         profBonus={profBonus}
@@ -143,10 +234,24 @@ export const CharacterSheet = ({
         }}
       />
 
+      <CharacterSheetInventoryResetConfirmDialog
+        open={!!pendingInventoryResetChange}
+        fieldLabel={pendingInventoryResetFieldLabel}
+        onCancel={() => setPendingInventoryResetChange(null)}
+        onConfirm={applyPendingInventoryResetChange}
+      />
+
       <div className="relative mx-auto max-w-352 space-y-3 px-4 py-8 lg:px-6">
         <CharacterSheetStatusBanners
           isPlay={isPlay}
           isSheetLocked={isSheetLocked}
+          isDraftArchived={isDraftArchived}
+          isPendingAcceptance={isPendingAcceptance}
+          showAcceptPendingSheetAction={showAcceptPendingSheetAction}
+          canAcceptPendingSheet={canAcceptPendingSheet}
+          acceptingPendingSheet={actions.acceptingSheet}
+          acceptPendingSheetError={actions.acceptSheetError}
+          onAcceptPendingSheet={() => void actions.acceptPendingSheet()}
           playContextLabel={playContextLabel}
         />
 
@@ -154,17 +259,18 @@ export const CharacterSheet = ({
           sheet={sheet}
           mode={mode}
           readOnly={isPlayReadOnly || isSheetLocked}
+          allowLevelEditing={isEditableCreationDraft}
           missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
           set={actions.set}
-          selectClass={actions.selectClass}
+          selectClass={(value) => requestCreationIdentityChange("class", sheet.class, value)}
           selectSubclass={actions.selectSubclass}
           canRequestLevelUp={isPlay && !canEditPlay && !!partyId}
           requestingLevelUp={actions.requestingLevelUp}
           requestLevelUpError={actions.requestLevelUpError}
           onRequestLevelUp={actions.requestLevelUp}
           showProgressPanel={!isGmPlayView}
-          selectBackground={actions.selectBackground}
-          selectRace={actions.selectRace}
+          selectBackground={(value) => requestCreationIdentityChange("background", sheet.background, value)}
+          selectRace={(value) => requestCreationIdentityChange("race", sheet.race, value)}
           selectClassEquipment={actions.selectClassEquipment}
           pickClassSkill={actions.pickClassSkill}
           pickExpertise={actions.pickExpertise}
@@ -179,11 +285,14 @@ export const CharacterSheet = ({
           <div className="space-y-3 xl:col-span-8">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.95fr)] lg:items-start">
               <AbilityScores
+                className={sheet.class}
                 abilities={sheet.abilities}
                 race={sheet.race}
                 raceConfig={sheet.raceConfig}
+                level={sheet.level}
                 mode={mode}
                 readOnly={isPlayReadOnly || isSheetLocked}
+                allowFreeformCreationEditing={isEditableCreationDraft}
                 setAbility={actions.setAbility}
               />
               <SavingThrows
@@ -191,7 +300,7 @@ export const CharacterSheet = ({
                 savingThrowProficiencies={sheet.savingThrowProficiencies}
                 level={sheet.level}
                 onToggle={actions.toggleSaveProf}
-                readOnly={isCreation || isPlayReadOnly || isSheetLocked}
+                readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
               />
             </div>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
@@ -203,7 +312,8 @@ export const CharacterSheet = ({
                 set={actions.set}
                 selectArmor={actions.selectArmor}
                 toggleShield={actions.toggleShield}
-                readOnly={isCreation || isPlayReadOnly || isSheetLocked}
+                inventoryBackedArmorSelection={isCreation}
+                readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
               />
               <div className="space-y-3">
                 {!isGmPlayView ? (
@@ -232,34 +342,58 @@ export const CharacterSheet = ({
               </div>
             </div>
             {isCreation && (
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
-                <Proficiencies
-                  languages={sheet.languages}
-                  toolProficiencies={sheet.toolProficiencies}
-                  weaponProficiencies={sheet.weaponProficiencies}
-                  armorProficiencies={sheet.armorProficiencies}
-                  onAddTag={actions.addTag}
-                  onRemoveTag={actions.removeTag}
-                  readOnly
-                />
-                <Spellcasting
-                  campaignId={campaignId}
-                  className={sheet.class}
-                  spellcasting={sheet.spellcasting}
-                  abilities={sheet.abilities}
-                  level={sheet.level}
-                  readOnly
-                  missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
-                  onEnable={actions.enableSpellcasting}
-                  onDisable={actions.disableSpellcasting}
-                  onSetAbility={actions.setSpellAbility}
-                  onSetSlot={actions.setSpellSlot}
-                  onAddSpell={actions.addSpell}
-                  onRemoveSpell={actions.removeSpell}
-                  onUpdateSpell={actions.updateSpell}
-                  onToggleCreationSpell={actions.toggleCreationSpellSelection}
-                />
-              </div>
+              <>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
+                  <Proficiencies
+                    languages={sheet.languages}
+                    toolProficiencies={sheet.toolProficiencies}
+                    weaponProficiencies={sheet.weaponProficiencies}
+                    armorProficiencies={sheet.armorProficiencies}
+                    onAddTag={actions.addTag}
+                    onRemoveTag={actions.removeTag}
+                    readOnly={!isEditableCreationDraft}
+                    catalogOptions={draftProficiencyCatalogOptions}
+                  />
+                  <Spellcasting
+                    campaignId={campaignId}
+                    className={sheet.class}
+                    spellcasting={sheet.spellcasting}
+                    abilities={sheet.abilities}
+                    level={sheet.level}
+                    readOnly={!isEditableCreationDraft}
+                    missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
+                    onEnable={actions.enableSpellcasting}
+                    onDisable={actions.disableSpellcasting}
+                    onSetAbility={actions.setSpellAbility}
+                    onSetSlot={actions.setSpellSlot}
+                    onAddSpell={actions.addSpell}
+                    onSelectCatalogSpell={actions.selectCatalogSpell}
+                    onRemoveSpell={actions.removeSpell}
+                    onUpdateSpell={actions.updateSpell}
+                    onToggleCreationSpell={actions.toggleCreationSpellSelection}
+                    catalogBackedSelection={isEditableCreationDraft}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Equipment
+                    inventory={sheet.inventory}
+                    currency={sheet.currency}
+                    onAdd={actions.addItem}
+                    onRemove={actions.removeItem}
+                    onUpdate={actions.updateItem}
+                    onSelectCatalogItem={actions.selectInventoryCatalogItem}
+                    creationCatalogBacked
+                    readOnly={!isEditableCreationDraft}
+                  />
+                  {isEditableCreationDraft ? (
+                    <Currency
+                      currency={sheet.currency}
+                      setCurrency={actions.setCurrency}
+                      readOnly={false}
+                    />
+                  ) : null}
+                </div>
+              </>
             )}
           </div>
           <div className="space-y-3 xl:col-span-4">
@@ -268,32 +402,10 @@ export const CharacterSheet = ({
                 skillProficiencies={sheet.skillProficiencies}
                 level={sheet.level}
                 onCycleProf={actions.cycleSkillProf}
-                readOnly={isCreation || isPlayReadOnly || isSheetLocked}
+                readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
               />
-            {isCreation && (
-              <Equipment
-                inventory={sheet.inventory}
-                currency={sheet.currency}
-                onAdd={actions.addItem}
-                onRemove={actions.removeItem}
-                onUpdate={actions.updateItem}
-                readOnly={true}
-              />
-            )}
           </div>
         </div>
-
-        {!isCreation && (
-          <Weapons
-            weapons={sheet.weapons}
-            abilities={sheet.abilities}
-            level={sheet.level}
-            readOnly={isPlayReadOnly}
-            onAdd={actions.addWeapon}
-            onRemove={actions.removeWeapon}
-            onUpdate={actions.updateWeapon}
-          />
-        )}
 
         {!isCreation && (
           <div className="grid gap-3 lg:grid-cols-3">
@@ -304,6 +416,7 @@ export const CharacterSheet = ({
                 onAdd={actions.addItem}
                 onRemove={actions.removeItem}
                 onUpdate={actions.updateItem}
+                onSelectCatalogItem={actions.selectInventoryCatalogItem}
                 readOnly={isPlayReadOnly || isSheetLocked}
               />
             </div>
@@ -329,6 +442,7 @@ export const CharacterSheet = ({
               onSetAbility={actions.setSpellAbility}
               onSetSlot={actions.setSpellSlot}
               onAddSpell={actions.addSpell}
+              onSelectCatalogSpell={actions.selectCatalogSpell}
               onRemoveSpell={actions.removeSpell}
               onUpdateSpell={actions.updateSpell}
               onToggleCreationSpell={actions.toggleCreationSpellSelection}
@@ -355,6 +469,7 @@ export const CharacterSheet = ({
         )}
 
         <FeaturesTraits
+          classFeatures={sheet.classFeatures}
           featuresAndTraits={sheet.featuresAndTraits}
           notes={sheet.notes}
           set={actions.set}

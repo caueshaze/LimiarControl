@@ -4,6 +4,7 @@ import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
 import { sessionsRepo, type LobbyStatus } from "../../shared/api/sessionsRepo";
 import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
+import type { CharacterSheetRecord } from "../../entities/character";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { PlayerPartySelectedItem } from "./playerParty.types";
@@ -25,9 +26,39 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
   const [joiningLobby, setJoiningLobby] = useState(false);
   const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
   const [hasCharacterSheet, setHasCharacterSheet] = useState<boolean | null>(null);
+  const [characterSheetRecord, setCharacterSheetRecord] = useState<CharacterSheetRecord | null>(null);
+  const [characterSheetStatus, setCharacterSheetStatus] = useState<
+    "missing" | "pending_acceptance" | "accepted" | null
+  >(null);
   const wasLobbyRef = useRef(false);
   const prevActiveSessionIdRef = useRef<string | null>(null);
   const notifiedLobbySessionIdRef = useRef<string | null>(null);
+
+  const refreshCharacterSheetStatus = useCallback(async () => {
+    if (!partyId) {
+      setHasCharacterSheet(null);
+      setCharacterSheetRecord(null);
+      setCharacterSheetStatus(null);
+      return;
+    }
+
+    try {
+      const record = await characterSheetsRepo.getByParty(partyId);
+      setHasCharacterSheet(true);
+      setCharacterSheetRecord(record);
+      setCharacterSheetStatus(record.acceptedAt ? "accepted" : "pending_acceptance");
+    } catch (error) {
+      if ((error as { status?: number })?.status === 404) {
+        setHasCharacterSheet(false);
+        setCharacterSheetRecord(null);
+        setCharacterSheetStatus("missing");
+        return;
+      }
+      setHasCharacterSheet(null);
+      setCharacterSheetRecord(null);
+      setCharacterSheetStatus(null);
+    }
+  }, [partyId]);
 
   const loadData = useCallback(async () => {
     if (!partyId) return;
@@ -39,12 +70,13 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
       ]);
       setParty(partyData);
       setSessions(sessionsData);
+      await refreshCharacterSheetStatus();
     } catch {
       setParty(null);
     } finally {
       setLoading(false);
     }
-  }, [partyId]);
+  }, [partyId, refreshCharacterSheetStatus]);
 
   const refreshSessions = useCallback(async () => {
     if (!partyId) return [];
@@ -118,14 +150,8 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
   }, [partyId, refreshSessions]);
 
   useEffect(() => {
-    if (!partyId) return;
-    characterSheetsRepo
-      .getByParty(partyId)
-      .then(() => setHasCharacterSheet(true))
-      .catch((error: { status?: number }) =>
-        setHasCharacterSheet(error?.status === 404 ? false : null),
-      );
-  }, [partyId]);
+    void refreshCharacterSheetStatus();
+  }, [refreshCharacterSheetStatus]);
 
   useEffect(() => {
     if (!party?.campaignId) return;
@@ -225,6 +251,8 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
     joiningLobby,
     hasJoinedLobby,
     hasCharacterSheet,
+    characterSheetRecord,
+    characterSheetStatus,
     wasLobbyRef,
     prevActiveSessionIdRef,
     notifiedLobbySessionIdRef,

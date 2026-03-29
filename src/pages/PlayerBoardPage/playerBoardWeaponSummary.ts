@@ -2,6 +2,7 @@ import { ITEM_TYPES, resolveItemPropertySlug, type Item } from "../../entities/i
 import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { getModifier, getProficiencyBonus } from "../../features/character-sheet/utils/calculations";
+import { getFightingStyleAttackBonus } from "../../features/character-sheet/data/classFeatures";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
 import { formatDamageLabel } from "../../shared/i18n/domainLabels";
 import type { PlayerBoardWeaponSummary } from "./playerBoard.types";
@@ -127,10 +128,16 @@ export const buildPlayerBoardWeaponSummary = ({
   const proficient = isWeaponProficient(playerSheet, item) || legacyWeapon?.proficient === true;
   const attackAbility = chooseWeaponAbility(playerSheet, item);
   const magicBonus = legacyWeapon?.magicBonus ?? 0;
+  const fightingStyleBonus = getFightingStyleAttackBonus({
+    fightingStyle: playerSheet.fightingStyle,
+    rangeType: item.weaponRangeType,
+    properties: (item.properties ?? []).join(", "),
+  });
   const attackBonus =
     getModifier(playerSheet.abilities[attackAbility]) +
     (proficient ? getProficiencyBonus(playerSheet.level) : 0) +
-    magicBonus;
+    magicBonus +
+    fightingStyleBonus;
   return {
     attackBonus,
     damageLabel: formatDamageLabel(item.damageDice, item.damageType, locale) ?? "—",

@@ -173,6 +173,26 @@ class HitDiceActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class ConsumableActivityEvent(BaseModel):
+    type: Literal["consumable"] = "consumable"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    itemName: str
+    targetUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    targetKind: Literal["player", "session_entity"]
+    healingApplied: int
+    newHp: Optional[int] = None
+    maxHp: Optional[int] = None
+    remainingQuantity: Optional[int] = None
+    effectDice: Optional[str] = None
+    effectRolls: List[int]
+    effectRollSource: Optional[Literal["system", "manual"]] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 class PlayerHpActivityEvent(BaseModel):
     type: Literal["player_hp"] = "player_hp"
     userId: Optional[str] = None
@@ -239,6 +259,7 @@ ActivityEvent = Union[
     RewardActivityEvent,
     LevelUpActivityEvent,
     HitDiceActivityEvent,
+    ConsumableActivityEvent,
     PlayerHpActivityEvent,
     EntityActivityEvent,
     RollResolvedActivityEvent,

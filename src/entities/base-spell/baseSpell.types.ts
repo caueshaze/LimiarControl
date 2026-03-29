@@ -44,25 +44,42 @@ export const TargetMode = {
 export type TargetMode = (typeof TargetMode)[keyof typeof TargetMode];
 
 export const ResolutionType = {
-  NONE: "none",
-  SPELL_ATTACK: "spell_attack",
-  SAVING_THROW: "saving_throw",
-  AUTOMATIC: "automatic",
+  DAMAGE: "damage",
   HEAL: "heal",
+  BUFF: "buff",
+  DEBUFF: "debuff",
+  CONTROL: "control",
+  UTILITY: "utility",
 } as const;
 
 export type ResolutionType =
   (typeof ResolutionType)[keyof typeof ResolutionType];
 
 export const UpcastMode = {
-  NONE: "none",
-  ADD_DICE: "add_dice",
-  ADD_TARGETS: "add_targets",
-  INCREASE_DURATION: "increase_duration",
-  CUSTOM: "custom",
+  EXTRA_DAMAGE_DICE: "extra_damage_dice",
+  EXTRA_HEAL_DICE: "extra_heal_dice",
+  FLAT_BONUS: "flat_bonus",
+  ADDITIONAL_TARGETS: "additional_targets",
+  DURATION_SCALING: "duration_scaling",
+  EFFECT_SCALING: "effect_scaling",
+  EXTRA_EFFECT: "extra_effect",
 } as const;
 
 export type UpcastMode = (typeof UpcastMode)[keyof typeof UpcastMode];
+
+export type SpellUpcast = {
+  mode: UpcastMode;
+  dice?: string | null;
+  flat?: number | null;
+  perLevel?: number | null;
+  maxLevel?: number | null;
+  scalingKey?: string | null;
+  scalingSummary?: string | null;
+  scalingEditorial?: string | null;
+  unlockKey?: string | null;
+  unlockSummary?: string | null;
+  unlockEditorial?: string | null;
+};
 
 export const SpellSource = {
   ADMIN_PANEL: "admin_panel",
@@ -152,8 +169,7 @@ export type BaseSpell = {
   healDice?: string | null;
 
   // Upcast
-  upcastMode?: UpcastMode | null;
-  upcastValue?: string | null;
+  upcast?: SpellUpcast | null;
 
   // Metadata
   source?: SpellSource | null;
@@ -199,8 +215,7 @@ export type BaseSpellWritePayload = {
   damageDice?: string | null;
   damageType?: SpellDamageType | null;
   healDice?: string | null;
-  upcastMode?: UpcastMode | null;
-  upcastValue?: string | null;
+  upcast?: SpellUpcast | null;
   source?: SpellSource | null;
   sourceRef?: string | null;
   isSrd?: boolean;

@@ -6,11 +6,13 @@ import { buildSessionActivityDisplayItems } from "./sessionActivity.utils";
 
 type Props = {
   events: ActivityEvent[];
+  isGm?: boolean;
   sessionId: string;
 };
 
 export const SessionActivityFeed = ({
   events,
+  isGm = false,
   sessionId,
 }: Props) => {
   const displayItems = useMemo(() => buildSessionActivityDisplayItems(events), [events]);
@@ -21,12 +23,13 @@ export const SessionActivityFeed = ({
         item.type === "combat-module" ? (
           <SessionActivityCombatModule
             events={item.events}
+            isGm={isGm}
             isLatest={item.isLatest}
             key={item.key}
             sessionId={sessionId}
           />
         ) : (
-          <SessionActivityRow event={item.event} key={item.key} />
+          <SessionActivityRow event={item.event} isGm={isGm} key={item.key} />
         ),
       )}
     </div>

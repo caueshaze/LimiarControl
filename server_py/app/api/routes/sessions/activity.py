@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.session import (
     ActivityEvent,
     CombatActivityEvent,
+    ConsumableActivityEvent,
     EntityActivityEvent,
     HitDiceActivityEvent,
     LevelUpActivityEvent,
@@ -236,6 +237,27 @@ def get_session_activity(
                 hitDiceRemaining=int(payload.get("hitDiceRemaining", 0) or 0),
                 hitDiceTotal=int(payload.get("hitDiceTotal", 0) or 0),
                 hitDieType=str(payload.get("hitDieType") or ""),
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "use_consumable":
+            target_kind = payload.get("targetKind")
+            events.append(ConsumableActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                itemName=payload.get("itemName") if isinstance(payload.get("itemName"), str) else "Consumable",
+                targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
+                targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                targetKind=target_kind if target_kind in {"player", "session_entity"} else "player",
+                healingApplied=int(payload.get("healingApplied", 0) or 0),
+                newHp=payload.get("newHp") if isinstance(payload.get("newHp"), int) else None,
+                maxHp=payload.get("maxHp") if isinstance(payload.get("maxHp"), int) else None,
+                remainingQuantity=payload.get("remainingQuantity") if isinstance(payload.get("remainingQuantity"), int) else None,
+                effectDice=payload.get("effectDice") if isinstance(payload.get("effectDice"), str) else None,
+                effectRolls=payload.get("effectRolls") if isinstance(payload.get("effectRolls"), list) else [],
+                effectRollSource=payload.get("effectRollSource") if payload.get("effectRollSource") in {"system", "manual"} else None,
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

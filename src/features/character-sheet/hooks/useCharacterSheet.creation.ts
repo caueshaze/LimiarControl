@@ -1,209 +1,35 @@
-import {
-  computeMaxHpAtLevel,
-} from "../utils/calculations";
-import {
-  getStartingSpellLimits,
-  normalizeCreationSpellSelection,
-} from "../utils/creationSpells";
+import { computeMaxHpAtLevel } from "../utils/calculations";
 import { getClass } from "../data/classes";
 import { getBackground } from "../data/backgrounds";
-import { getClassCreationConfig } from "../data/classCreation";
+import { getRace, getRaceFixedToolProficiencies, normalizeRaceState } from "../data/races";
 import {
-  getRace,
-  getRaceFixedToolProficiencies,
-  normalizeRaceState,
-} from "../data/races";
-import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
+  applyClassLevelAbilityBonuses,
+  buildClassFeatures,
+  getFixedFightingStyleForClassLevel,
+  getFixedSubclassForClassLevel,
+  swapClassLevelAbilityBonuses,
+} from "../data/classFeatures";
+import { buildCreationLoadout, getInitialClassEquipmentSelections } from "../utils/creationEquipment";
+import type { CharacterSheet } from "../model/characterSheet.types";
+
+export { createEmptySpellcasting, applyRaceBonusesToAbilities, stripRaceBonusesFromAbilities, applyRaceBonusSwap, ABILITY_ORDER, EMPTY_SAVES } from "./creationAbilities";
+export {
+  buildCreationSkillProficiencies,
+  deriveLanguages,
+  mergeToolProficiencies,
+} from "./creationProficiencies";
+
+import { EMPTY_SAVES, applyRaceBonusSwap } from "./creationAbilities";
 import {
-  buildCreationLoadout,
-  getInitialClassEquipmentSelections,
-} from "../utils/creationEquipment";
-import type {
-  AbilityName,
-  CharacterSheet,
-  SkillName,
-  SpellcastingData,
-} from "../model/characterSheet.types";
-
-const clampAbilityScore = (value: number) => Math.max(0, Math.min(30, value));
-
-const ABILITY_ORDER: AbilityName[] = [
-  "strength",
-  "dexterity",
-  "constitution",
-  "intelligence",
-  "wisdom",
-  "charisma",
-];
-
-const EMPTY_SAVES: CharacterSheet["savingThrowProficiencies"] = {
-  strength: false,
-  dexterity: false,
-  constitution: false,
-  intelligence: false,
-  wisdom: false,
-  charisma: false,
-};
-
-export const createEmptySpellcasting = (
-  ability: AbilityName = "intelligence",
-  mode: SpellcastingData["mode"] = "known",
-): SpellcastingData => ({
-  ability,
-  mode,
-  slots: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1, { max: 0, used: 0 }])),
-  spells: [],
-});
-
-export const applyRaceBonusesToAbilities = (
-  abilities: CharacterSheet["abilities"],
-  raceName: string,
-  raceConfig: CharacterSheet["raceConfig"] = null,
-) => {
-  const race = getRace(raceName, raceConfig);
-  if (!race) return { ...abilities };
-  const next = { ...abilities };
-  for (const [key, bonus] of Object.entries(race.abilityBonuses)) {
-    const abilityKey = key as AbilityName;
-    next[abilityKey] = clampAbilityScore((next[abilityKey] ?? 0) + (bonus ?? 0));
-  }
-  return next;
-};
-
-export const stripRaceBonusesFromAbilities = (
-  abilities: CharacterSheet["abilities"],
-  raceName: string,
-  raceConfig: CharacterSheet["raceConfig"] = null,
-) => {
-  const race = getRace(raceName, raceConfig);
-  if (!race) return { ...abilities };
-  const next = { ...abilities };
-  for (const [key, bonus] of Object.entries(race.abilityBonuses)) {
-    const abilityKey = key as AbilityName;
-    next[abilityKey] = clampAbilityScore((next[abilityKey] ?? 0) - (bonus ?? 0));
-  }
-  return next;
-};
-
-export const applyRaceBonusSwap = (
-  abilities: CharacterSheet["abilities"],
-  previousRaceName: string,
-  nextRaceName: string,
-  previousRaceConfig: CharacterSheet["raceConfig"] = null,
-  nextRaceConfig: CharacterSheet["raceConfig"] = null,
-) =>
-  applyRaceBonusesToAbilities(
-    stripRaceBonusesFromAbilities(abilities, previousRaceName, previousRaceConfig),
-    nextRaceName,
-    nextRaceConfig,
-  );
-
-export const buildCreationSkillProficiencies = (
-  current: CharacterSheet["skillProficiencies"],
-  backgroundName: string,
-  classChoices: SkillName[],
-  expertiseChoices: SkillName[] = [],
-  raceFixedSkills: SkillName[] = [],
-) => {
-  const next = { ...current };
-  for (const key of Object.keys(next) as SkillName[]) next[key] = 0;
-  const bg = getBackground(backgroundName);
-  bg?.skillProficiencies.forEach((skill) => { next[skill] = 1; });
-  raceFixedSkills.forEach((skill) => { if (next[skill] === 0) next[skill] = 1; });
-  classChoices.forEach((skill) => { if (next[skill] === 0) next[skill] = 1; });
-  // Expertise only applies to already-proficient skills
-  expertiseChoices.forEach((skill) => { if (next[skill] === 1) next[skill] = 2; });
-  return next;
-};
-
-const buildWeaponProficiencies = (
-  raceName: string,
-  className: string,
-  raceConfig: CharacterSheet["raceConfig"] = null,
-): string[] => {
-  const derivedRace = getRace(raceName, raceConfig);
-  const cls = getClass(className);
-  return [...new Set([...(derivedRace?.weaponProficiencies ?? []), ...(cls?.weaponProficiencies ?? [])])];
-};
-
-const buildArmorProficiencies = (
-  raceName: string,
-  className: string,
-  raceConfig: CharacterSheet["raceConfig"] = null,
-): string[] => {
-  const race = getRace(raceName, raceConfig);
-  const cls = getClass(className);
-  return [...new Set([...(race?.armorProficiencies ?? []), ...(cls?.armorProficiencies ?? [])])];
-};
-
-export const deriveLanguages = (
-  raceName: string,
-  backgroundName: string,
-  languageChoices: string[] = [],
-  raceConfig: CharacterSheet["raceConfig"] = null,
-): string[] => {
-  const race = getRace(raceName, raceConfig);
-  const background = getBackground(backgroundName);
-  const allEntries = [...(race?.languages ?? []), ...(background?.languages ?? [])];
-
-  const fixed: string[] = [];
-  let choiceSlotIndex = 0;
-  for (const entry of allEntries) {
-    if (entry === LANGUAGE_CHOICE_SLOT) {
-      const chosen = languageChoices[choiceSlotIndex];
-      if (chosen) fixed.push(chosen);
-      choiceSlotIndex++;
-    } else {
-      fixed.push(entry);
-    }
-  }
-
-  return [...new Set(fixed)];
-};
-
-const countLanguageChoiceSlots = (
-  raceName: string,
-  backgroundName: string,
-  raceConfig: CharacterSheet["raceConfig"] = null,
-): number => {
-  const race = getRace(raceName, raceConfig);
-  const background = getBackground(backgroundName);
-  return [...(race?.languages ?? []), ...(background?.languages ?? [])]
-    .filter((entry) => entry === LANGUAGE_CHOICE_SLOT).length;
-};
-
-const buildCreationSpellcasting = (
-  className: string,
-  spellcastingAbility: AbilityName | null,
-  abilities: CharacterSheet["abilities"],
-  level: number,
-  existing: SpellcastingData | null,
-  campaignId?: string | null,
-) => {
-  const limits = getStartingSpellLimits(className, abilities, level);
-  if (!limits || !spellcastingAbility) return null;
-  const creationConfig = getClassCreationConfig(className);
-  return normalizeCreationSpellSelection(
-    existing ?? createEmptySpellcasting(
-      spellcastingAbility,
-      creationConfig?.startingSpells?.leveledMode ?? "known",
-    ),
-    className,
-    abilities,
-    level,
-    campaignId,
-  );
-};
-
-export const mergeToolProficiencies = (bgTools: string[], classTools: string[], raceTools: string[] = []): string[] => {
-  const unique = new Set([...bgTools, ...raceTools, ...classTools]);
-  return [...unique];
-};
-
-const normalizeRaceConfigForRace = (
-  raceName: string,
-  raceConfig: CharacterSheet["raceConfig"],
-): CharacterSheet["raceConfig"] => normalizeRaceState(raceName, raceConfig).raceConfig;
+  buildCreationSkillProficiencies,
+  buildWeaponProficiencies,
+  buildArmorProficiencies,
+  deriveLanguages,
+  countLanguageChoiceSlots,
+  buildCreationSpellcasting,
+  mergeToolProficiencies,
+  normalizeRaceConfigForRace,
+} from "./creationProficiencies";
 
 export const normalizeCreationAfterClassChange = (
   sheet: CharacterSheet,
@@ -211,12 +37,20 @@ export const normalizeCreationAfterClassChange = (
   campaignId?: string | null,
 ): CharacterSheet => {
   const cls = getClass(className);
+  const abilities = swapClassLevelAbilityBonuses(
+    sheet.abilities,
+    sheet.class,
+    sheet.level,
+    className,
+    sheet.level,
+  );
   const classEquipmentSelections = getInitialClassEquipmentSelections(className);
   const loadout = buildCreationLoadout(className, sheet.background, classEquipmentSelections);
   if (!cls) {
     return {
       ...sheet,
       class: className,
+      abilities,
       classSkillChoices: [],
       expertiseChoices: [],
       classEquipmentSelections,
@@ -229,10 +63,12 @@ export const normalizeCreationAfterClassChange = (
       hitDiceRemaining: sheet.level,
       maxHP: 0,
       currentHP: 0,
+      classFeatures: [],
       spellcasting: null,
       inventory: loadout.inventory,
       currency: loadout.currency,
       equippedArmor: loadout.equippedArmor,
+      equippedArmorItemId: loadout.equippedArmorItemId,
       equippedShield: loadout.equippedShield,
       weapons: loadout.weapons,
     };
@@ -244,15 +80,20 @@ export const normalizeCreationAfterClassChange = (
   cls.savingThrows.forEach((ability) => { savingThrowProficiencies[ability] = true; });
   const raceFixedSkills = getRace(sheet.race, sheet.raceConfig)?.skillProficiencies ?? [];
   const skillProficiencies = buildCreationSkillProficiencies(sheet.skillProficiencies, sheet.background, trimmedChoices, [], raceFixedSkills);
-  const maxHP = computeMaxHpAtLevel(cls.hitDice, sheet.level, sheet.abilities.constitution);
+  const maxHP = computeMaxHpAtLevel(cls.hitDice, sheet.level, abilities.constitution);
+  const subclass = getFixedSubclassForClassLevel(className, sheet.level);
+  const fightingStyle = getFixedFightingStyleForClassLevel(className, sheet.level);
+  const classFeatures = buildClassFeatures(className, sheet.level, subclass, null);
 
   return {
     ...sheet,
     class: className,
-    subclass: null,
+    abilities,
+    subclass,
     subclassConfig: null,
-    fightingStyle: null,
+    fightingStyle,
     expertiseChoices: [],
+    classFeatures,
     classSkillChoices: trimmedChoices,
     classEquipmentSelections,
     skillProficiencies,
@@ -273,7 +114,7 @@ export const normalizeCreationAfterClassChange = (
     spellcasting: buildCreationSpellcasting(
       className,
       cls.spellcastingAbility,
-      sheet.abilities,
+      abilities,
       sheet.level,
       null,
       campaignId,
@@ -281,6 +122,7 @@ export const normalizeCreationAfterClassChange = (
     inventory: loadout.inventory,
     currency: loadout.currency,
     equippedArmor: loadout.equippedArmor,
+    equippedArmorItemId: loadout.equippedArmorItemId,
     equippedShield: loadout.equippedShield,
     weapons: loadout.weapons,
   };
@@ -316,6 +158,7 @@ export const normalizeCreationAfterBackgroundChange = (
     inventory: loadout.inventory,
     currency: loadout.currency,
     equippedArmor: loadout.equippedArmor,
+    equippedArmorItemId: loadout.equippedArmorItemId,
     equippedShield: loadout.equippedShield,
     weapons: loadout.weapons,
   };
@@ -330,7 +173,13 @@ export const normalizeCreationAfterRaceChange = (
   const nextRaceName = normalizedRace.raceId;
   const nextRaceConfig = normalizeRaceConfigForRace(nextRaceName, normalizedRace.raceConfig);
   const race = getRace(nextRaceName, nextRaceConfig);
-  const abilities = applyRaceBonusSwap(sheet.abilities, sheet.race, nextRaceName, sheet.raceConfig, nextRaceConfig);
+  const abilities = applyRaceBonusSwap(
+    sheet.abilities,
+    sheet.race,
+    nextRaceName,
+    sheet.raceConfig,
+    nextRaceConfig,
+  );
   const cls = getClass(sheet.class);
   const maxHP = cls ? computeMaxHpAtLevel(cls.hitDice, sheet.level, abilities.constitution) : sheet.maxHP;
   const totalLanguageSlots = countLanguageChoiceSlots(nextRaceName, sheet.background, nextRaceConfig);
@@ -368,11 +217,12 @@ export const normalizeCreationAfterRaceChange = (
       sheet.classToolProficiencyChoices,
       [...getRaceFixedToolProficiencies(nextRaceName, nextRaceConfig), ...nextRaceToolChoices],
     ),
-    spellcasting: normalizeCreationSpellSelection(
-      sheet.spellcasting,
+    spellcasting: buildCreationSpellcasting(
       sheet.class,
+      cls?.spellcastingAbility ?? null,
       abilities,
       sheet.level,
+      sheet.spellcasting,
       campaignId,
     ),
   };
@@ -421,11 +271,12 @@ export const normalizeCreationAfterRaceConfigChange = (
       sheet.classToolProficiencyChoices,
       [...getRaceFixedToolProficiencies(sheet.race, normalizedRaceConfig), ...sheet.raceToolProficiencyChoices],
     ),
-    spellcasting: normalizeCreationSpellSelection(
-      sheet.spellcasting,
+    spellcasting: buildCreationSpellcasting(
       sheet.class,
+      cls?.spellcastingAbility ?? null,
       abilities,
       sheet.level,
+      sheet.spellcasting,
       campaignId,
     ),
   };

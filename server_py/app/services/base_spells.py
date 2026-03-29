@@ -38,6 +38,7 @@ _FIELD_MAP: dict[str, str] = {
     "damageDice": "damage_dice",
     "damageType": "damage_type",
     "healDice": "heal_dice",
+    "upcast": "upcast_json",
     "upcastMode": "upcast_mode",
     "upcastValue": "upcast_value",
     "sourceRef": "source_ref",

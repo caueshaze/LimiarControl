@@ -40,7 +40,7 @@ class CombatStatusTestsMixin:
         )
 
         with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
-            new_hp, _, previous_hp = CombatService._apply_damage_to_target(
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
                 self.db,
                 "player-123",
                 "player",
@@ -51,6 +51,7 @@ class CombatStatusTestsMixin:
 
         self.assertEqual(previous_hp, 4)
         self.assertEqual(new_hp, 0)
+        self.assertIsNone(concentration_check)
         self.assertEqual(session_state.state_json["currentHP"], 0)
         self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 0})
         self.assertEqual(self.state.participants[0]["status"], "downed")
@@ -82,6 +83,296 @@ class CombatStatusTestsMixin:
         self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 0})
         self.assertEqual(self.state.participants[0]["status"], "active")
 
+    def test_apply_damage_to_draconic_bloodline_player_applies_resistance_at_level_6(self):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "level": 6,
+                "subclassConfig": {"draconicAncestry": "red"},
+                "abilities": {"charisma": 18},
+                "currentHP": 24,
+                "maxHP": 24,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, effect_msg, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                11,
+                False,
+                self.state,
+                damage_type="fire",
+            )
+
+        self.assertEqual(previous_hp, 24)
+        self.assertEqual(new_hp, 19)
+        self.assertIsNone(concentration_check)
+        self.assertIn("Resistência a fire: 11 -> 5", effect_msg)
+
+    def test_apply_damage_to_dragonborn_player_applies_racial_resistance(self):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "race": "dragonborn",
+                "raceConfig": {"draconicAncestry": "silver"},
+                "currentHP": 24,
+                "maxHP": 24,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, effect_msg, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                9,
+                False,
+                self.state,
+                damage_type="cold",
+            )
+
+        self.assertEqual(previous_hp, 24)
+        self.assertEqual(new_hp, 20)
+        self.assertIsNone(concentration_check)
+        self.assertIn("Resistência a cold: 9 -> 4", effect_msg)
+
+    @patch("app.services.combat_service.spell_automation.resolve_saving_throw")
+    @patch("app.services.combat.CombatService._build_roll_actor_stats_for_save")
+    def test_apply_damage_to_concentrating_player_breaks_concentration_on_failed_save(
+        self,
+        mock_build_roll_stats,
+        mock_resolve_saving_throw,
+    ):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 20,
+                "maxHP": 20,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "id": "hm-self",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "duration_type": "manual",
+                "created_at": "2026-03-28T00:00:00Z",
+                "display_label": "Hunter's Mark",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "conc-1",
+                    "source_spell_key": "hunters_mark",
+                    "marked_target_participant_id": "e1",
+                },
+            }
+        ]
+        self.state.participants[1]["active_effects"] = [
+            {
+                "id": "hm-target",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "duration_type": "manual",
+                "created_at": "2026-03-28T00:00:00Z",
+                "display_label": "Hunter's Mark",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "conc-1",
+                    "source_spell_key": "hunters_mark",
+                    "mark_owner_participant_id": "p1",
+                },
+            }
+        ]
+        mock_resolve_saving_throw.return_value = MagicMock(total=7, success=False)
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                8,
+                False,
+                self.state,
+            )
+
+        self.assertEqual(previous_hp, 20)
+        self.assertEqual(new_hp, 12)
+        self.assertIsNotNone(concentration_check)
+        self.assertEqual(concentration_check["dc"], 10)
+        self.assertFalse(concentration_check["success"])
+        self.assertEqual(self.state.participants[0]["active_effects"], [])
+        self.assertEqual(self.state.participants[1]["active_effects"], [])
+        self.assertIn("hunters_mark", concentration_check["source_spell_keys"])
+        mock_build_roll_stats.assert_called_once()
+
+    @patch("app.services.combat_service.spell_automation.resolve_saving_throw")
+    @patch("app.services.combat.CombatService._build_roll_actor_stats_for_save")
+    def test_apply_damage_to_concentrating_player_keeps_concentration_on_success(
+        self,
+        mock_build_roll_stats,
+        mock_resolve_saving_throw,
+    ):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 40,
+                "maxHP": 40,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "id": "hm-self",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "duration_type": "manual",
+                "created_at": "2026-03-28T00:00:00Z",
+                "display_label": "Hunter's Mark",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "conc-1",
+                    "source_spell_key": "hunters_mark",
+                    "marked_target_participant_id": "e1",
+                },
+            }
+        ]
+        mock_resolve_saving_throw.return_value = MagicMock(total=16, success=True)
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                28,
+                False,
+                self.state,
+            )
+
+        self.assertEqual(previous_hp, 40)
+        self.assertEqual(new_hp, 12)
+        self.assertIsNotNone(concentration_check)
+        self.assertEqual(concentration_check["dc"], 14)
+        self.assertTrue(concentration_check["success"])
+        self.assertEqual(len(self.state.participants[0]["active_effects"]), 1)
+        self.assertIn("manteve a concentração", concentration_check["summary_text"])
+        mock_build_roll_stats.assert_called_once()
+
+    @patch("app.services.combat_service.spell_automation.resolve_saving_throw")
+    @patch("app.services.combat.CombatService._build_roll_actor_stats_for_save")
+    def test_apply_damage_to_concentrating_player_accepts_manual_concentration_roll(
+        self,
+        mock_build_roll_stats,
+        mock_resolve_saving_throw,
+    ):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 20,
+                "maxHP": 20,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "id": "hm-self",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "duration_type": "manual",
+                "created_at": "2026-03-28T00:00:00Z",
+                "display_label": "Hunter's Mark",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "conc-1",
+                    "source_spell_key": "hunters_mark",
+                    "marked_target_participant_id": "e1",
+                },
+            }
+        ]
+        mock_resolve_saving_throw.return_value = MagicMock(total=12, success=True)
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                8,
+                False,
+                self.state,
+                concentration_roll_source="manual",
+                concentration_manual_roll=13,
+            )
+
+        self.assertEqual(previous_hp, 20)
+        self.assertEqual(new_hp, 12)
+        self.assertIsNotNone(concentration_check)
+        mock_build_roll_stats.assert_called_once()
+        mock_resolve_saving_throw.assert_called_once_with(
+            mock_build_roll_stats.return_value,
+            ability="constitution",
+            dc=10,
+            roll_source="manual",
+            manual_roll=13,
+        )
+
+    @patch("app.services.combat_service.spell_automation.resolve_saving_throw")
+    def test_zero_damage_does_not_trigger_concentration_check(self, mock_resolve_saving_throw):
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 20,
+                "maxHP": 20,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "id": "hm-self",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "duration_type": "manual",
+                "created_at": "2026-03-28T00:00:00Z",
+                "display_label": "Hunter's Mark",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "conc-1",
+                    "source_spell_key": "hunters_mark",
+                },
+            }
+        ]
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                0,
+                False,
+                self.state,
+            )
+
+        self.assertEqual(previous_hp, 20)
+        self.assertEqual(new_hp, 20)
+        self.assertIsNone(concentration_check)
+        mock_resolve_saving_throw.assert_not_called()
+
     def test_apply_damage_to_npc_sets_defeated_at_zero_hp(self):
         self.state.current_turn_index = 1
         session_entity = SessionEntity(
@@ -95,7 +386,7 @@ class CombatStatusTestsMixin:
         self.db.exec.return_value = npc_result
 
         with patch("app.services.combat.CombatService._get_stats", return_value=(session_entity, 12, 10, 10, 2, 0)):
-            new_hp, _, previous_hp = CombatService._apply_damage_to_target(
+            new_hp, _, previous_hp, concentration_check = CombatService._apply_damage_to_target(
                 self.db,
                 "enemy-123",
                 "session_entity",
@@ -106,6 +397,7 @@ class CombatStatusTestsMixin:
 
         self.assertEqual(previous_hp, 6)
         self.assertEqual(new_hp, 0)
+        self.assertIsNone(concentration_check)
         self.assertEqual(session_entity.current_hp, 0)
         self.assertEqual(self.state.participants[1]["status"], "defeated")
 

@@ -5,6 +5,7 @@ from app.api.routes.base_spells import router as base_spells_router
 from app.api.routes.campaign_catalog import router as campaign_catalog_router
 from app.api.routes.campaign_spells import router as campaign_spells_router
 from app.api.routes.campaigns import router as campaigns_router
+from app.api.routes.character_sheet_drafts import router as character_sheet_drafts_router
 from app.api.routes.character_sheets import router as character_sheets_router
 from app.api.routes.dev import router as dev_router
 from app.api.routes.inventory import router as inventory_router
@@ -22,6 +23,7 @@ from app.api.routes.users import router as users_router
 from app.api.routes.centrifugo import router as centrifugo_router
 from app.api.routes.combat import router as combat_router
 from app.api.routes.wild_shape import router as wild_shape_router
+from app.api.routes.uploads import router as uploads_router
 
 __all__ = [
     "campaigns_router",
@@ -32,6 +34,7 @@ __all__ = [
     "campaign_catalog_router",
     "campaign_spells_router",
     "centrifugo_router",
+    "character_sheet_drafts_router",
     "character_sheets_router",
     "items_router",
     "role_mode_router",
@@ -48,4 +51,5 @@ __all__ = [
     "users_router",
     "combat_router",
     "wild_shape_router",
+    "uploads_router",
 ]

@@ -105,6 +105,8 @@ export const INITIAL_SHEET: CharacterSheet = {
   subclassConfig: null,
   fightingStyle: null,
   expertiseChoices: [],
+  classFeatures: [],
+  classResources: null,
   featuresAndTraits: "",
   notes: "",
 };

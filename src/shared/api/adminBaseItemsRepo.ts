@@ -5,6 +5,12 @@ import type {
 } from "../../entities/base-item";
 import { http } from "./http";
 
+export type BaseItemSeedSyncResult = {
+  inserted: number;
+  updated: number;
+  total: number;
+};
+
 const toQueryString = (filters?: BaseItemFilters) => {
   if (!filters) {
     return "";
@@ -37,6 +43,8 @@ const toQueryString = (filters?: BaseItemFilters) => {
 export const adminBaseItemsRepo = {
   list: (filters?: BaseItemFilters) =>
     http.get<BaseItem[]>(`/admin/base-items${toQueryString(filters)}`),
+  syncSeed: () =>
+    http.post<BaseItemSeedSyncResult>("/admin/base-items/sync-seed", {}),
   get: (baseItemId: string) =>
     http.get<BaseItem>(`/admin/base-items/${baseItemId}`),
   create: (payload: BaseItemWritePayload) =>

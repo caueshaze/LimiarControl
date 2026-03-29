@@ -100,6 +100,8 @@ export const BASE_CATALOG_ITEMS: Item[] = [
           weight: item.weight ?? null,
           damageDice: item.damageDice ?? undefined,
           damageType: item.damageType ?? undefined,
+          healDice: item.healDice ?? undefined,
+          healBonus: item.healBonus ?? undefined,
           rangeMeters: item.rangeNormalMeters ?? null,
           rangeLongMeters: item.rangeLongMeters ?? null,
           versatileDamage: item.versatileDamage ?? undefined,

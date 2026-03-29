@@ -132,6 +132,20 @@ export type CampaignEvent =
       version?: number;
     }
   | {
+      type: "character_sheet_updated";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        playerUserId: string;
+        characterSheetId: string;
+        sourceDraftId?: string | null;
+        deliveredAt?: string | null;
+        acceptedAt?: string | null;
+        updateKind: "created" | "updated" | "delivered" | "accepted";
+      };
+      version?: number;
+    }
+  | {
       type: "session_state_updated";
       payload: {
         campaignId: string;
@@ -226,6 +240,35 @@ export type CampaignEvent =
         hitDiceRemaining: number;
         hitDiceTotal: number;
         hitDieType: string;
+      };
+      version?: number;
+    }
+  | {
+      type: "consumable_used";
+      payload: {
+        campaignId: string;
+        partyId?: string | null;
+        sessionId: string;
+        actorUserId?: string | null;
+        actorDisplayName?: string | null;
+        inventoryItemId?: string | null;
+        itemId?: string | null;
+        itemName: string;
+        consumedQuantity: number;
+        remainingQuantity: number;
+        targetKind: "player" | "session_entity";
+        targetRefId: string;
+        targetUserId?: string | null;
+        targetDisplayName?: string | null;
+        healingApplied: number;
+        newHp: number;
+        previousHp?: number | null;
+        maxHp?: number | null;
+        effectDice?: string | null;
+        effectBonus?: number | null;
+        effectRolls?: number[];
+        effectRollSource?: "system" | "manual" | null;
+        issuedAt?: string;
       };
       version?: number;
     }

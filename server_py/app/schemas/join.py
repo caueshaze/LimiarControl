@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 from app.models.campaign import RoleMode
 
@@ -21,4 +23,8 @@ class MemberRoleUpdate(BaseModel):
 
 
 class MemberUpdate(BaseModel):
-    role: RoleMode
+    displayName: Optional[str] = Field(default=None, min_length=1, max_length=255)
+
+
+class MemberRoleAssign(BaseModel):
+    roleMode: RoleMode

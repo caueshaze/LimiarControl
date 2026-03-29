@@ -158,6 +158,29 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
       { id: "ranger-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Explorador", "Explorer's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
   },
+  guardian: {
+    fixedEquipment: ["Breastplate", "Longbow", "Quiver", "Arrow x20", "Shortsword x2"],
+    equipmentChoices: [],
+    startingSpells: {
+      minimumLevel: 2,
+      cantrips: 0,
+      leveledSpells: 2,
+      leveledMode: "known",
+      levelOneSlots: 2,
+      fixedLeveledSpellCanonicalKeys: ["hunters_mark"],
+      byLevel: {
+        2:  { leveledSpells: 2,  levelOneSlots: 2 },
+        3:  { leveledSpells: 3,  levelOneSlots: 3 },
+        4:  { leveledSpells: 3,  levelOneSlots: 3 },
+        5:  { leveledSpells: 4,  levelOneSlots: 4 },
+        6:  { leveledSpells: 4,  levelOneSlots: 4 },
+        7:  { leveledSpells: 5,  levelOneSlots: 4 },
+        8:  { leveledSpells: 5,  levelOneSlots: 4 },
+        9:  { leveledSpells: 6,  levelOneSlots: 4 },
+        10: { leveledSpells: 6,  levelOneSlots: 4 },
+      },
+    },
+  },
   rogue: {
     fixedEquipment: ["Leather", "Dagger x2", "Thieves' Tools"],
     equipmentChoices: [

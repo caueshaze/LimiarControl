@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, text
 
+from app.api.deps import require_system_admin
 from app.core.config import settings
 from app.db.session import get_session
+from app.models.user import User
 
 router = APIRouter()
 
@@ -42,7 +44,10 @@ def truncate_all_application_tables(session: Session) -> list[str]:
     return tables
 
 @router.post("/reset")
-def reset_database(session: Session = Depends(get_session)):
+def reset_database(
+    session: Session = Depends(get_session),
+    admin: User = Depends(require_system_admin),
+):
     if settings.app_env != "development":
         raise HTTPException(status_code=403, detail="Forbidden")
     tables = truncate_all_application_tables(session)

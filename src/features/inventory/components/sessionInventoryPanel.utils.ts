@@ -131,6 +131,7 @@ export const filterInventoryEntries = (
     const haystack = normalizeSearch([
       resolved.name,
       resolved.item?.description ?? "",
+      resolved.item?.magicEffect?.spellCanonicalKey ?? "",
       ...(resolved.item?.properties ?? []),
       resolved.entry.notes ?? "",
       resolved.group,
@@ -233,3 +234,6 @@ export const hasInventoryEntry = (
   inventory: InventoryItem[] | null,
   inventoryItemId: string | null | undefined,
 ) => Boolean(inventoryItemId && (inventory ?? []).some((entry) => entry.id === inventoryItemId));
+
+export const isHealingConsumable = (item: Item) =>
+  item.type === "CONSUMABLE" && Boolean(item.healDice || typeof item.healBonus === "number");

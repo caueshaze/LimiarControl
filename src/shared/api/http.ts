@@ -1,5 +1,5 @@
-import { env } from "../../app/config";
 import { getToken } from "../auth/tokenStore";
+import { buildApiUrl, getApiBaseUrl } from "./apiBaseUrl";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
@@ -44,7 +44,7 @@ const formatDetailMessage = (detail: unknown) => {
 };
 
 const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
-  const baseUrl = env.VITE_API_BASE_URL;
+  const baseUrl = getApiBaseUrl();
   if (!baseUrl) {
     throw { status: 0, message: "Missing API base URL" } satisfies HttpError;
   }
@@ -54,11 +54,23 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    const err = new Error(
+      baseUrl === "/api"
+        ? "Unable to reach the API. Make sure the backend is running on http://localhost:3000."
+        : `Unable to reach the API at ${baseUrl}.`,
+    ) as Error & HttpError;
+    err.status = 0;
+    err.data = error;
+    throw err;
+  }
 
   if (!response.ok) {
     let message = response.statusText;

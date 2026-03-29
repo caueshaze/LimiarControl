@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
+import { ConcentrationSaveControl } from "../../../features/combat-ui/components/ConcentrationSaveControl";
+import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import { markRollEventKnown } from "../../../features/rolls/knownRollEvents";
 import type {
   CombatAttackResult,
@@ -51,7 +53,10 @@ export const PlayerAttackRollDialog = ({
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [damageMode, setDamageMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [manualDamageRolls, setManualDamageRolls] = useState<number[]>([]);
+  const [concentrationRollMode, setConcentrationRollMode] = useState<"system" | "manual">("system");
+  const [concentrationManualRoll, setConcentrationManualRoll] = useState("");
   const [result, setResult] = useState<CombatAttackResult | null>(null);
+  const targetHasConcentration = participantHasActiveConcentration(target);
 
   const pendingDamage = Boolean(result?.damage_roll_required && result?.pending_attack_id);
   const damageRollCount = getDamageRollCount(result?.damage_dice, Boolean(result?.is_critical));
@@ -106,6 +111,11 @@ export const PlayerAttackRollDialog = ({
         pending_attack_id: result.pending_attack_id,
         roll_source: payload.roll_source,
         manual_rolls: payload.manual_rolls ?? null,
+        concentration_roll_source: concentrationRollMode,
+        concentration_manual_roll:
+          targetHasConcentration && concentrationRollMode === "manual"
+            ? Number.parseInt(concentrationManualRoll, 10) || null
+            : null,
       });
       setResult(resolved);
       await onResolved?.(resolved);
@@ -164,6 +174,11 @@ export const PlayerAttackRollDialog = ({
               {result.is_hit && !pendingDamage ? (
                 <p className="mt-2 text-xs text-slate-300">{formatDamageBreakdown(result)}</p>
               ) : null}
+              {result.is_hit && !pendingDamage && result.concentration_check?.summary_text ? (
+                <p className="mt-2 text-xs text-amber-100">
+                  {result.concentration_check.summary_text}
+                </p>
+              ) : null}
               {result.is_hit && result.new_hp != null && !pendingDamage ? (
                 <p className="mt-2 text-xs text-slate-400">
                   PV restantes do alvo: {result.new_hp}
@@ -174,6 +189,15 @@ export const PlayerAttackRollDialog = ({
             {pendingDamage && damageMode === "choose" ? (
               damageRollCount > 0 ? (
                 <div className="space-y-3">
+                  {targetHasConcentration ? (
+                    <ConcentrationSaveControl
+                      disabled={loading}
+                      manualValue={concentrationManualRoll}
+                      mode={concentrationRollMode}
+                      onManualValueChange={setConcentrationManualRoll}
+                      onModeChange={setConcentrationRollMode}
+                    />
+                  ) : null}
                   <p className="text-xs text-slate-400">
                     {result.is_critical
                       ? `Critico confirmado. Escolha como rolar o dano de ${effectiveDamageDiceLabel}.`
@@ -198,6 +222,15 @@ export const PlayerAttackRollDialog = ({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {targetHasConcentration ? (
+                    <ConcentrationSaveControl
+                      disabled={loading}
+                      manualValue={concentrationManualRoll}
+                      mode={concentrationRollMode}
+                      onManualValueChange={setConcentrationManualRoll}
+                      onModeChange={setConcentrationRollMode}
+                    />
+                  ) : null}
                   <p className="text-xs text-slate-400">
                     Esse ataque nao usa dado de dano. Aplique o dano fixo para concluir.
                   </p>
@@ -216,29 +249,49 @@ export const PlayerAttackRollDialog = ({
             ) : null}
 
             {pendingDamage && damageMode === "virtual" ? (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    void submitDamage({ roll_source: "system" });
-                  }}
-                  className="flex-1 rounded-full bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-                >
-                  {loading ? "..." : "Rolar dano"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDamageMode("choose")}
-                  className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                >
-                  Voltar
-                </button>
+              <div className="space-y-3">
+                {targetHasConcentration ? (
+                  <ConcentrationSaveControl
+                    disabled={loading}
+                    manualValue={concentrationManualRoll}
+                    mode={concentrationRollMode}
+                    onManualValueChange={setConcentrationManualRoll}
+                    onModeChange={setConcentrationRollMode}
+                  />
+                ) : null}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      void submitDamage({ roll_source: "system" });
+                    }}
+                    className="flex-1 rounded-full bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
+                  >
+                    {loading ? "..." : "Rolar dano"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDamageMode("choose")}
+                    className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
+                  >
+                    Voltar
+                  </button>
+                </div>
               </div>
             ) : null}
 
             {pendingDamage && damageMode === "manual" ? (
               <div className="space-y-3">
+                {targetHasConcentration ? (
+                  <ConcentrationSaveControl
+                    disabled={loading}
+                    manualValue={concentrationManualRoll}
+                    mode={concentrationRollMode}
+                    onManualValueChange={setConcentrationManualRoll}
+                    onModeChange={setConcentrationRollMode}
+                  />
+                ) : null}
                 <p className="text-xs text-slate-400">
                   Escolha cada dado manualmente ({manualDamageRolls.length}/{damageRollCount}).
                 </p>

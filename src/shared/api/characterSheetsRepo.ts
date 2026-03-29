@@ -19,6 +19,10 @@ export const characterSheetsRepo = {
   update: (partyId: string, data: CharacterSheet) =>
     http.put<CharacterSheetRecord>(`/parties/${partyId}/character-sheet/me`, { data }),
 
+  /** POST /parties/:partyId/character-sheet/me/accept */
+  accept: (partyId: string) =>
+    http.post<CharacterSheetRecord>(`/parties/${partyId}/character-sheet/me/accept`, {}),
+
   /** DELETE /parties/:partyId/character-sheet/me */
   delete: (partyId: string) =>
     http.del<void>(`/parties/${partyId}/character-sheet/me`),

@@ -9,6 +9,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.campaign_entity import CampaignEntity
 from app.models.character_sheet import CharacterSheet
+from app.models.party_character_sheet_draft import PartyCharacterSheetDraft
 from app.models.session_entity import SessionEntity
 from app.models.party import Party
 from app.models.party_member import PartyMember
@@ -35,6 +36,7 @@ __all__ = [
     "InventoryItem",
     "CampaignEntity",
     "CharacterSheet",
+    "PartyCharacterSheetDraft",
     "SessionEntity",
     "Party",
     "PartyMember",

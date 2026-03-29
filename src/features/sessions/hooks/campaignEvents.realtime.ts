@@ -15,6 +15,7 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "shop_purchase_created",
   "shop_sale_created",
   "party_member_updated",
+  "character_sheet_updated",
   "session_state_updated",
   "gm_granted_currency",
   "gm_granted_item",
@@ -43,6 +44,8 @@ export const getCampaignEventVersionKey = (
   switch (event.type) {
     case "party_member_updated":
       return `${event.type}:${event.payload?.partyId ?? ""}:${event.payload?.userId ?? ""}`;
+    case "character_sheet_updated":
+      return `${event.type}:${event.payload?.partyId ?? ""}:${event.payload?.playerUserId ?? ""}`;
     case "session_state_updated":
       return `${event.type}:${event.payload?.sessionId ?? ""}:${event.payload?.playerUserId ?? ""}`;
     case "gm_granted_currency":

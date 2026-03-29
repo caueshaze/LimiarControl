@@ -7,8 +7,10 @@ import unittest
 from app.services.character_progression import approve_level_up
 from app.services.class_progression import (
     apply_level_up_stats,
+    compute_max_hp_for_level,
     get_hp_gain_per_level,
     get_spell_slots_for_class_level,
+    recompute_hit_points,
 )
 
 
@@ -31,6 +33,9 @@ class HpGainTests(unittest.TestCase):
     def test_fighter_d10_gains_6(self):
         self.assertEqual(get_hp_gain_per_level("fighter"), 6)
 
+    def test_guardian_d10_gains_6(self):
+        self.assertEqual(get_hp_gain_per_level("guardian"), 6)
+
     def test_barbarian_d12_gains_7(self):
         self.assertEqual(get_hp_gain_per_level("barbarian"), 7)
 
@@ -42,6 +47,49 @@ class HpGainTests(unittest.TestCase):
 
     def test_class_name_is_case_insensitive(self):
         self.assertEqual(get_hp_gain_per_level("Wizard"), get_hp_gain_per_level("wizard"))
+
+    def test_hit_point_gain_includes_positive_constitution_modifier(self):
+        self.assertEqual(get_hp_gain_per_level("guardian", 14), 8)
+
+    def test_hit_point_gain_includes_negative_constitution_modifier(self):
+        self.assertEqual(get_hp_gain_per_level("wizard", 8), 3)
+
+
+class CanonicalMaxHpTests(unittest.TestCase):
+    def test_guardian_with_con_plus_two_matches_expected_progression(self):
+        self.assertEqual(compute_max_hp_for_level("guardian", 1, 14), 12)
+        self.assertEqual(compute_max_hp_for_level("guardian", 2, 14), 20)
+        self.assertEqual(compute_max_hp_for_level("guardian", 3, 14), 28)
+
+    def test_incremental_level_up_matches_direct_canonical_formula(self):
+        data = {
+            "class": "guardian",
+            "level": 1,
+            "maxHP": 12,
+            "currentHP": 12,
+            "hitDiceTotal": 1,
+            "hitDiceRemaining": 1,
+            "abilities": {"constitution": 14},
+        }
+
+        data["level"] = 2
+        data = apply_level_up_stats(data, 2)
+        data["level"] = 3
+        data = apply_level_up_stats(data, 3)
+
+        self.assertEqual(data["maxHP"], compute_max_hp_for_level("guardian", 3, 14))
+
+    def test_recompute_hit_points_uses_canonical_formula_and_preserves_damage(self):
+        data = recompute_hit_points({
+            "class": "guardian",
+            "level": 3,
+            "maxHP": 28,
+            "currentHP": 20,
+            "abilities": {"constitution": 16},
+        })
+
+        self.assertEqual(data["maxHP"], 31)
+        self.assertEqual(data["currentHP"], 23)
 
 
 # ── Spell slot tables ──────────────────────────────────────────────────────────
@@ -93,6 +141,13 @@ class SpellSlotTableTests(unittest.TestCase):
                 get_spell_slots_for_class_level("paladin", level),
             )
 
+    def test_guardian_matches_ranger_table(self):
+        for level in range(1, 21):
+            self.assertEqual(
+                get_spell_slots_for_class_level("guardian", level),
+                get_spell_slots_for_class_level("ranger", level),
+            )
+
     # Warlock pact magic
     def test_warlock_level_1_has_one_first_level_slot(self):
         slots = get_spell_slots_for_class_level("warlock", 1)
@@ -139,6 +194,7 @@ class ApplyLevelUpStatsTests(unittest.TestCase):
             "currentHP": 10,
             "hitDiceTotal": 2,
             "hitDiceRemaining": 2,
+            "abilities": {"constitution": 10},
             "spellcasting": {
                 "slots": {
                     "1": {"max": 3, "used": 1},
@@ -211,6 +267,7 @@ class ApplyLevelUpStatsTests(unittest.TestCase):
             "currentHP": 38,
             "hitDiceTotal": 4,
             "hitDiceRemaining": 3,
+            "abilities": {"constitution": 10},
         }
         data = apply_level_up_stats(base, 5)
         self.assertEqual(data["maxHP"], 47)   # 40 + 7 (d12 average)
@@ -246,10 +303,39 @@ class ApplyLevelUpStatsTests(unittest.TestCase):
             "currentHP": 10,
             "hitDiceTotal": 1,
             "hitDiceRemaining": 1,
+            "abilities": {"constitution": 10},
         }
         data = apply_level_up_stats(base, 2)
         slots = data["spellcasting"]["slots"]
         self.assertEqual(slots["1"]["max"], 2)
+
+    def test_level_up_adds_constitution_modifier_to_hp_gain(self):
+        base = {
+            "class": "guardian",
+            "level": 1,
+            "maxHP": 12,
+            "currentHP": 12,
+            "hitDiceTotal": 1,
+            "hitDiceRemaining": 1,
+            "abilities": {"constitution": 14},
+        }
+        data = apply_level_up_stats(base, 2)
+        self.assertEqual(data["maxHP"], 20)
+        self.assertEqual(data["currentHP"], 20)
+
+    def test_level_up_preserves_damage_after_constitution_adjusted_hp_gain(self):
+        base = {
+            "class": "guardian",
+            "level": 2,
+            "maxHP": 20,
+            "currentHP": 10,
+            "hitDiceTotal": 2,
+            "hitDiceRemaining": 1,
+            "abilities": {"constitution": 14},
+        }
+        data = apply_level_up_stats(base, 3)
+        self.assertEqual(data["maxHP"], 28)
+        self.assertEqual(data["currentHP"], 18)
 
     def test_original_data_is_not_mutated(self):
         base = self._base_wizard()

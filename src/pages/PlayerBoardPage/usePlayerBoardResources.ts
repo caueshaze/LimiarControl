@@ -205,6 +205,12 @@ export const usePlayerBoardResources = ({
         lastEvent.type === "rest_ended" ||
         isOwnPlayerEvent)
     ) {
+      if (
+        lastEvent.type === "rest_ended"
+        && lastEvent.payload.restType === "long_rest"
+      ) {
+        void refreshInventoryData();
+      }
       void refreshPlayerState();
       return;
     }
@@ -221,6 +227,17 @@ export const usePlayerBoardResources = ({
     ) {
       void refreshInventoryData();
       void refreshPlayerState();
+      return;
+    }
+
+    if (lastEvent.type === "consumable_used") {
+      const actorUserId =
+        typeof lastEvent.payload.actorUserId === "string"
+          ? lastEvent.payload.actorUserId
+          : null;
+      if (actorUserId && actorUserId === userId) {
+        void refreshInventoryData();
+      }
     }
   }, [
     activeSession?.id,

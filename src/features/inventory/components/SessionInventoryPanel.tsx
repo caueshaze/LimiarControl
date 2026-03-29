@@ -1,6 +1,7 @@
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
+import type { SessionUseConsumableResult } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { SessionInventoryModal } from "./SessionInventoryModal";
 import {
@@ -11,6 +12,8 @@ import {
 } from "./sessionInventoryPanel.utils";
 
 type SessionInventoryPanelProps = {
+  activeSessionId?: string | null;
+  combatActive?: boolean;
   flash?: boolean;
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
@@ -23,11 +26,15 @@ type SessionInventoryPanelProps = {
   isSavingLoadout?: boolean;
   loadoutStatus?: string | null;
   onArmorChange?: (inventoryItemId: string | null) => void;
+  onConsumableUsed?: (result: SessionUseConsumableResult) => void | Promise<void>;
+  onConsumableUseError?: (message: string) => void;
   onToggleOpen: () => void;
   onWeaponChange?: (inventoryItemId: string | null) => void;
 };
 
 export const SessionInventoryPanel = ({
+  activeSessionId = null,
+  combatActive = false,
   flash = false,
   inventory,
   itemsById,
@@ -40,6 +47,8 @@ export const SessionInventoryPanel = ({
   isSavingLoadout = false,
   loadoutStatus = null,
   onArmorChange,
+  onConsumableUsed,
+  onConsumableUseError,
   onToggleOpen,
   onWeaponChange,
 }: SessionInventoryPanelProps) => {
@@ -137,12 +146,16 @@ export const SessionInventoryPanel = ({
       </div>
 
       <SessionInventoryModal
+        activeSessionId={activeSessionId}
+        combatActive={combatActive}
         open={open}
         inventory={inventory}
         itemsById={itemsById}
         selectedArmorId={selectedArmorId}
         selectedWeaponId={selectedWeaponId}
         locale={locale}
+        onConsumableUsed={onConsumableUsed}
+        onConsumableUseError={onConsumableUseError}
         onClose={onToggleOpen}
       />
     </>

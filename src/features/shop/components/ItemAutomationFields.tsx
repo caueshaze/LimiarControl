@@ -8,12 +8,22 @@ import type {
 } from "../../../entities/base-item";
 import type { ItemPropertySlug, ItemType } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import {
+  AUTOMATION_ARMOR_CLASS_OPTIONS,
+  AUTOMATION_DICE_OPTIONS,
+  AUTOMATION_HEAL_BONUS_OPTIONS,
+  AUTOMATION_RANGE_OPTIONS,
+  AUTOMATION_STRENGTH_REQUIREMENT_OPTIONS,
+  buildAutomationSelectOptions,
+} from "../../../shared/lib/itemAutomationOptions";
 import { ItemPropertiesSelector } from "./ItemPropertiesSelector";
 
 type ItemAutomationFieldsProps = {
   type: ItemType;
   damageDice: string;
   damageType: BaseItemDamageType | "";
+  healDice: string;
+  healBonus: string;
   rangeMeters: string;
   rangeLongMeters: string;
   versatileDamage: string;
@@ -28,6 +38,8 @@ type ItemAutomationFieldsProps = {
   legacyUnknownProperties?: string[];
   onDamageDiceChange: (value: string) => void;
   onDamageTypeChange: (value: BaseItemDamageType | "") => void;
+  onHealDiceChange: (value: string) => void;
+  onHealBonusChange: (value: string) => void;
   onRangeMetersChange: (value: string) => void;
   onRangeLongMetersChange: (value: string) => void;
   onVersatileDamageChange: (value: string) => void;
@@ -40,8 +52,6 @@ type ItemAutomationFieldsProps = {
   onStealthDisadvantageChange: (value: boolean) => void;
   onPropertiesChange: (value: ItemPropertySlug[]) => void;
 };
-
-const DAMAGE_OPTIONS = ["", "1d4", "1d6", "1d8", "1d10", "1d12", "2d4", "2d6"];
 
 const DAMAGE_TYPE_OPTIONS = [
   { value: "acid", labels: { en: "Acid", pt: "Ácido" } },
@@ -87,11 +97,6 @@ const getLocalizedLabel = (
   labels: { en: string; pt: string },
 ) => (locale === "pt" ? labels.pt : labels.en);
 
-const buildDiceOptions = (value: string) =>
-  value && !DAMAGE_OPTIONS.includes(value)
-    ? ["", value, ...DAMAGE_OPTIONS.slice(1)]
-    : DAMAGE_OPTIONS;
-
 const Field = ({
   label,
   children,
@@ -111,6 +116,8 @@ export const ItemAutomationFields = ({
   type,
   damageDice,
   damageType,
+  healDice,
+  healBonus,
   rangeMeters,
   rangeLongMeters,
   versatileDamage,
@@ -125,6 +132,8 @@ export const ItemAutomationFields = ({
   legacyUnknownProperties = [],
   onDamageDiceChange,
   onDamageTypeChange,
+  onHealDiceChange,
+  onHealBonusChange,
   onRangeMetersChange,
   onRangeLongMetersChange,
   onVersatileDamageChange,
@@ -141,8 +150,9 @@ export const ItemAutomationFields = ({
   const supportsCombatFields = type === "WEAPON" || type === "MAGIC";
   const supportsWeaponFields = type === "WEAPON";
   const supportsArmorFields = type === "ARMOR";
+  const supportsConsumableFields = type === "CONSUMABLE";
 
-  if (!supportsCombatFields && !supportsArmorFields && type !== "MISC" && type !== "CONSUMABLE") {
+  if (!supportsCombatFields && !supportsArmorFields && !supportsConsumableFields && type !== "MISC") {
     return null;
   }
 
@@ -157,7 +167,7 @@ export const ItemAutomationFields = ({
                 onChange={(event) => onDamageDiceChange(event.target.value)}
                 className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
               >
-                {buildDiceOptions(damageDice).map((option) => (
+                {buildAutomationSelectOptions(damageDice, AUTOMATION_DICE_OPTIONS).map((option) => (
                   <option key={option || "none"} value={option}>
                     {option || t("shop.form.damageNone")}
                   </option>
@@ -181,23 +191,31 @@ export const ItemAutomationFields = ({
             </Field>
 
             <Field label={t("shop.form.range")}>
-              <input
+              <select
                 value={rangeMeters}
                 onChange={(event) => onRangeMetersChange(event.target.value)}
-                className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-                inputMode="decimal"
-                placeholder={t("shop.form.rangePlaceholder")}
-              />
+                className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+              >
+                {buildAutomationSelectOptions(rangeMeters, AUTOMATION_RANGE_OPTIONS).map((option) => (
+                  <option key={option || "none"} value={option}>
+                    {option || t("shop.form.optionNone")}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             <Field label={t("shop.form.longRange")}>
-              <input
+              <select
                 value={rangeLongMeters}
                 onChange={(event) => onRangeLongMetersChange(event.target.value)}
-                className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-                inputMode="decimal"
-                placeholder={t("shop.form.longRangePlaceholder")}
-              />
+                className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+              >
+                {buildAutomationSelectOptions(rangeLongMeters, AUTOMATION_RANGE_OPTIONS).map((option) => (
+                  <option key={option || "none"} value={option}>
+                    {option || t("shop.form.optionNone")}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -239,7 +257,7 @@ export const ItemAutomationFields = ({
                   onChange={(event) => onVersatileDamageChange(event.target.value)}
                   className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
                 >
-                  {buildDiceOptions(versatileDamage).map((option) => (
+                  {buildAutomationSelectOptions(versatileDamage, AUTOMATION_DICE_OPTIONS).map((option) => (
                     <option key={option || "none"} value={option}>
                       {option || t("shop.form.optionNone")}
                     </option>
@@ -269,13 +287,17 @@ export const ItemAutomationFields = ({
           </Field>
 
           <Field label={t("shop.form.armorClassBase")}>
-            <input
+            <select
               value={armorClassBase}
               onChange={(event) => onArmorClassBaseChange(event.target.value)}
-              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-              inputMode="numeric"
-              placeholder={t("shop.form.armorClassBasePlaceholder")}
-            />
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+            >
+              {buildAutomationSelectOptions(armorClassBase, AUTOMATION_ARMOR_CLASS_OPTIONS).map((option) => (
+                <option key={option || "none"} value={option}>
+                  {option || t("shop.form.optionNone")}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field label={t("shop.form.dexBonusRule")}>
@@ -295,13 +317,18 @@ export const ItemAutomationFields = ({
           </Field>
 
           <Field label={t("shop.form.strengthRequirement")}>
-            <input
+            <select
               value={strengthRequirement}
               onChange={(event) => onStrengthRequirementChange(event.target.value)}
-              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-limiar-400/60 focus:outline-none"
-              inputMode="numeric"
-              placeholder={t("shop.form.strengthRequirementPlaceholder")}
-            />
+              disabled={armorCategory === "shield"}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {buildAutomationSelectOptions(strengthRequirement, AUTOMATION_STRENGTH_REQUIREMENT_OPTIONS).map((option) => (
+                <option key={option || "none"} value={option}>
+                  {option || t("shop.form.optionNone")}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <label className="flex items-center gap-3 rounded-2xl border border-white/8 bg-slate-950/45 px-4 py-3 text-sm text-slate-200 sm:col-span-2 xl:col-span-4">
@@ -313,6 +340,38 @@ export const ItemAutomationFields = ({
             />
             <span>{t("shop.form.stealthDisadvantage")}</span>
           </label>
+        </div>
+      )}
+
+      {supportsConsumableFields && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("shop.form.healDice")}>
+            <select
+              value={healDice}
+              onChange={(event) => onHealDiceChange(event.target.value)}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+            >
+              {buildAutomationSelectOptions(healDice, AUTOMATION_DICE_OPTIONS).map((option) => (
+                <option key={option || "none"} value={option}>
+                  {option || t("shop.form.optionNone")}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label={t("shop.form.healBonus")}>
+            <select
+              value={healBonus}
+              onChange={(event) => onHealBonusChange(event.target.value)}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+            >
+              {buildAutomationSelectOptions(healBonus, AUTOMATION_HEAL_BONUS_OPTIONS).map((option) => (
+                <option key={option || "none"} value={option}>
+                  {option || t("shop.form.optionNone")}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
       )}
 

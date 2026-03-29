@@ -23,6 +23,7 @@ const EFFECT_KIND_LABELS: Record<Exclude<ActiveEffect["kind"], "condition">, Loc
   disadvantage_on_attacks: "combatUi.effect.disadvantage_on_attacks",
   dodging: "combatUi.effect.dodging",
   hidden: "combatUi.effect.hidden",
+  spell_effect: "combatUi.effect.spell_effect",
 };
 
 const CONDITION_LABELS: Record<NonNullable<ActiveEffect["condition_type"]>, LocaleKey> = {
@@ -31,6 +32,7 @@ const CONDITION_LABELS: Record<NonNullable<ActiveEffect["condition_type"]>, Loca
   restrained: "combatUi.condition.restrained",
   blinded: "combatUi.condition.blinded",
   frightened: "combatUi.condition.frightened",
+  charmed: "combatUi.condition.charmed",
 };
 
 type BuildCombatParticipantViewsOptions = {
@@ -106,6 +108,13 @@ export const getCombatEffectLabel = (
   t: (key: LocaleKey) => string,
   effect: ActiveEffect,
 ) => {
+  if (effect.display_label?.trim()) {
+    const label = effect.display_label.trim();
+    if (effect.remaining_rounds != null) {
+      return `${label} · ${effect.remaining_rounds}r`;
+    }
+    return label;
+  }
   const labelKey =
     effect.kind === "condition"
       ? effect.condition_type
@@ -135,3 +144,15 @@ export const getTurnResourceLabel = (
         : t("combatUi.turnResource.reaction");
   return `${prefix} ${used ? "X" : "✓"}`;
 };
+
+export const participantHasActiveConcentration = (
+  participant: CombatParticipant | null | undefined,
+) =>
+  Boolean(
+    participant?.active_effects?.some(
+      (effect) =>
+        effect.metadata &&
+        typeof effect.metadata === "object" &&
+        effect.metadata.concentration === true,
+    ),
+  );

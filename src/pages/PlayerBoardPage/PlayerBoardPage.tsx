@@ -203,6 +203,9 @@ export const PlayerBoardPage = () => {
           manualValue={manualValue}
           onAuthoritativeRollResolved={handleAuthoritativeRollResolved}
           onClearPendingRoll={clearPendingRoll}
+          onInventoryChanged={() => {
+            void refreshInventoryData();
+          }}
           onManualValueChange={setManualValue}
           onRollModeChange={setRollMode}
           onSubmitManualRoll={handleManualRoll}
@@ -287,6 +290,8 @@ export const PlayerBoardPage = () => {
 
         <div className="space-y-6">
           <SessionInventoryPanel
+            activeSessionId={activeSession?.id ?? null}
+            combatActive={combatActive}
             flash={inventoryFlash}
             inventory={myInventory}
             itemsById={catalogItems}
@@ -299,6 +304,32 @@ export const PlayerBoardPage = () => {
             wallet={playerWallet}
             open={inventoryOpen}
             onArmorChange={handleArmorChange}
+            onConsumableUsed={(result) => {
+              void refreshInventoryData();
+              flashInventory();
+              if (result.targetPlayerUserId === user?.userId) {
+                setPlayerSheet((current) =>
+                  current
+                    ? {
+                        ...current,
+                        currentHP: result.newHp,
+                      }
+                    : current,
+                );
+              }
+              showToast({
+                variant: "success",
+                title: t("playerBoard.useConsumableTitle"),
+                description: `${result.itemName} restored ${result.healingApplied} HP to ${result.targetDisplayName}.`,
+              });
+            }}
+            onConsumableUseError={(message) =>
+              showToast({
+                variant: "error",
+                title: t("playerBoard.consumableUseErrorTitle"),
+                description: message ?? t("playerBoard.consumableUseErrorDescription"),
+              })
+            }
             onToggleOpen={() => setInventoryOpen((value) => !value)}
             onWeaponChange={handleWeaponChange}
           />

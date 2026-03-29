@@ -45,6 +45,24 @@ class SessionRestTests(unittest.TestCase):
         self.assertEqual(ended_rest, "short_rest")
         self.assertEqual(next_data["restState"], "exploration")
 
+    def test_end_short_rest_recharges_dragonborn_breath_weapon(self):
+        next_data, ended_rest = end_rest(
+            {
+                "restState": "short_rest",
+                "level": 4,
+                "classResources": {
+                    "dragonbornBreathWeapon": {"usesMax": 1, "usesRemaining": 0},
+                },
+            }
+        )
+
+        self.assertEqual(ended_rest, "short_rest")
+        self.assertEqual(next_data["restState"], "exploration")
+        self.assertEqual(
+            next_data["classResources"]["dragonbornBreathWeapon"],
+            {"usesMax": 1, "usesRemaining": 1},
+        )
+
     def test_long_rest_restores_core_resources(self):
         next_data = apply_long_rest(
             {
@@ -74,6 +92,27 @@ class SessionRestTests(unittest.TestCase):
         self.assertEqual(next_data["deathSaves"], {"successes": 0, "failures": 0})
         self.assertEqual(next_data["spellcasting"]["slots"][1]["used"], 0)
         self.assertEqual(next_data["spellcasting"]["slots"][2]["used"], 0)
+
+    def test_long_rest_keeps_goodberry_until_temporal_expiration(self):
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "inventory": [
+                    {"id": "inv-1", "name": "Bom Fruto", "canonicalKey": "goodberry", "quantity": 7},
+                    {"id": "inv-2", "name": "Poção de Cura", "canonicalKey": "potion_healing", "quantity": 1},
+                ],
+            }
+        )
+
+        self.assertEqual(
+            next_data["inventory"],
+            [
+                {"id": "inv-1", "name": "Bom Fruto", "canonicalKey": "goodberry", "quantity": 7},
+                {"id": "inv-2", "name": "Poção de Cura", "canonicalKey": "potion_healing", "quantity": 1},
+            ],
+        )
 
 
 if __name__ == "__main__":

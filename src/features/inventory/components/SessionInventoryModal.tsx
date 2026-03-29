@@ -1,41 +1,65 @@
 import { useEffect, useState } from "react";
-import { getItemPropertyLabels } from "../../../entities/item";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
+import {
+  sessionsRepo,
+  type SessionHealingConsumableTarget,
+  type SessionUseConsumableResult,
+} from "../../../shared/api/sessionsRepo";
 import type { LocaleKey } from "../../../shared/i18n";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { formatDamageLabel } from "../../../shared/i18n/domainLabels";
 import {
   buildInventoryGroupsFromResolved,
   filterInventoryEntries,
   getInventoryItemName,
+  isHealingConsumable,
   resolveInventoryEntries,
   type SessionInventoryFilterGroup,
 } from "./sessionInventoryPanel.utils";
+import { SessionInventoryModalItem } from "./SessionInventoryModalItem";
+import { HealingConsumableDialog } from "./HealingConsumableDialog";
 
 type Props = {
+  activeSessionId?: string | null;
+  combatActive?: boolean;
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
   locale: "en" | "pt" | string;
   open: boolean;
   selectedArmorId?: string | null;
   selectedWeaponId?: string | null;
+  onConsumableUsed?: (result: SessionUseConsumableResult) => void | Promise<void>;
+  onConsumableUseError?: (message: string) => void;
   onClose: () => void;
 };
 
 export const SessionInventoryModal = ({
+  activeSessionId = null,
+  combatActive = false,
   inventory,
   itemsById,
   locale,
   open,
   selectedArmorId = null,
   selectedWeaponId = null,
+  onConsumableUsed,
+  onConsumableUseError,
   onClose,
 }: Props) => {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState<SessionInventoryFilterGroup>("all");
   const [equippedOnly, setEquippedOnly] = useState(false);
+  const [healingTargets, setHealingTargets] = useState<SessionHealingConsumableTarget[]>([]);
+  const [loadingTargets, setLoadingTargets] = useState(false);
+  const [consumableCandidate, setConsumableCandidate] = useState<{
+    entry: InventoryItem;
+    item: Item;
+  } | null>(null);
+  const [selectedTargetUserId, setSelectedTargetUserId] = useState("");
+  const [rollMode, setRollMode] = useState<"system" | "manual">("system");
+  const [manualRolls, setManualRolls] = useState<number[]>([]);
+  const [submittingConsumable, setSubmittingConsumable] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -57,7 +81,57 @@ export const SessionInventoryModal = ({
     setSearch("");
     setGroup("all");
     setEquippedOnly(false);
+    setConsumableCandidate(null);
+    setSelectedTargetUserId("");
+    setRollMode("system");
+    setManualRolls([]);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !activeSessionId || combatActive) {
+      setHealingTargets([]);
+      setLoadingTargets(false);
+      return;
+    }
+
+    let active = true;
+    setLoadingTargets(true);
+    sessionsRepo
+      .listHealingConsumableTargets(activeSessionId)
+      .then((targets) => {
+        if (!active) return;
+        setHealingTargets(targets);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setHealingTargets([]);
+        onConsumableUseError?.(
+          (error as { message?: string })?.message ??
+            t("playerBoard.consumableUseErrorDescription"),
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingTargets(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeSessionId, combatActive, onConsumableUseError, open, t]);
+
+  useEffect(() => {
+    if (!consumableCandidate) {
+      return;
+    }
+    if (selectedTargetUserId) {
+      return;
+    }
+    const selfTarget = healingTargets.find((target) => target.isSelf);
+    const fallbackTarget = selfTarget ?? healingTargets[0];
+    setSelectedTargetUserId(fallbackTarget?.playerUserId ?? "");
+  }, [consumableCandidate, healingTargets, selectedTargetUserId]);
 
   if (!open) {
     return null;
@@ -77,7 +151,7 @@ export const SessionInventoryModal = ({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,14,30,0.98),rgba(3,7,20,0.98))] shadow-2xl sm:rounded-[32px]"
+        className="relative flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-4xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,14,30,0.98),rgba(3,7,20,0.98))] shadow-2xl sm:rounded-4xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-white/8 px-6 pb-5 pt-5">
@@ -110,7 +184,7 @@ export const SessionInventoryModal = ({
             <p className="text-sm text-slate-400">{t("inventory.empty")}</p>
           ) : (
             <div className="space-y-5">
-              <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/3 p-4">
+              <div className="space-y-3 rounded-3xl border border-white/8 bg-white/3 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row">
                   <input
                     type="text"
@@ -163,22 +237,100 @@ export const SessionInventoryModal = ({
                     <span className="h-px flex-1 bg-white/8" />
                   </div>
                   <div className="space-y-3">
-                    {section.entries.map((resolved) => (
-                      <SessionInventoryModalItem
-                        key={resolved.entry.id}
-                        entry={resolved.entry}
-                        item={resolved.item ?? undefined}
-                        isCurrentArmor={resolved.entry.id === selectedArmorId}
-                        isCurrentWeapon={resolved.entry.id === selectedWeaponId}
-                        locale={locale}
-                      />
-                    ))}
+                    {section.entries.map((resolved) => {
+                      const handleUseHealingConsumable =
+                        resolved.item && isHealingConsumable(resolved.item)
+                          ? (() => {
+                              const item = resolved.item;
+                              return () => {
+                                setConsumableCandidate({
+                                  entry: resolved.entry,
+                                  item,
+                                });
+                                setSelectedTargetUserId("");
+                                setRollMode("system");
+                                setManualRolls([]);
+                              };
+                            })()
+                          : undefined;
+                      const canUseHealingConsumable =
+                        Boolean(activeSessionId) && !combatActive && Boolean(handleUseHealingConsumable);
+
+                      return (
+                        <SessionInventoryModalItem
+                          key={resolved.entry.id}
+                          canUseHealingConsumable={canUseHealingConsumable}
+                          entry={resolved.entry}
+                          item={resolved.item ?? undefined}
+                          isCurrentArmor={resolved.entry.id === selectedArmorId}
+                          isCurrentWeapon={resolved.entry.id === selectedWeaponId}
+                          locale={locale}
+                          onUseHealingConsumable={
+                            canUseHealingConsumable ? handleUseHealingConsumable : undefined
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 </section>
               ))}
             </div>
           )}
         </div>
+
+        {consumableCandidate && (
+          <HealingConsumableDialog
+            activeSessionId={activeSessionId}
+            item={consumableCandidate.item}
+            targets={healingTargets}
+            loadingTargets={loadingTargets}
+            manualRolls={manualRolls}
+            rollMode={rollMode}
+            selectedTargetUserId={selectedTargetUserId}
+            submitting={submittingConsumable}
+            combatActive={combatActive}
+            onClose={() => {
+              setConsumableCandidate(null);
+              setSelectedTargetUserId("");
+              setRollMode("system");
+              setManualRolls([]);
+            }}
+            onManualRollSelect={(value) => setManualRolls((current) => [...current, value])}
+            onManualRollsClear={() => setManualRolls([])}
+            onRollModeChange={(value) => {
+              setRollMode(value);
+              setManualRolls([]);
+            }}
+            onTargetChange={setSelectedTargetUserId}
+            onSubmit={async (payload) => {
+              if (!activeSessionId) {
+                onConsumableUseError?.(t("playerBoard.consumableUseErrorDescription"));
+                return;
+              }
+              setSubmittingConsumable(true);
+              try {
+                const result = await sessionsRepo.useConsumable(activeSessionId, {
+                  inventoryItemId: consumableCandidate.entry.id,
+                  targetPlayerUserId: selectedTargetUserId || null,
+                  rollSource: payload.rollSource,
+                  manualRolls: payload.manualRolls,
+                });
+                await onConsumableUsed?.(result);
+                setConsumableCandidate(null);
+                setSelectedTargetUserId("");
+                setRollMode("system");
+                setManualRolls([]);
+              } catch (error) {
+                onConsumableUseError?.(
+                  (error as { message?: string })?.message ??
+                    t("playerBoard.consumableUseErrorDescription"),
+                );
+              } finally {
+                setSubmittingConsumable(false);
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -201,105 +353,3 @@ const getInventoryGroupLabel = (
       return t("playerParty.itemTypeMisc");
   }
 };
-
-const SessionInventoryModalItem = ({
-  entry,
-  item,
-  isCurrentArmor,
-  isCurrentWeapon,
-  locale,
-}: {
-  entry: InventoryItem;
-  item?: Item;
-  isCurrentArmor: boolean;
-  isCurrentWeapon: boolean;
-  locale: "en" | "pt" | string;
-}) => {
-  const { t } = useLocale();
-  const [expanded, setExpanded] = useState(false);
-  const propertyLabels = getItemPropertyLabels(item?.properties, locale);
-  const hasDetails = Boolean(
-    item?.description ||
-      item?.damageDice ||
-      item?.armorClassBase != null ||
-      item?.rangeMeters != null ||
-      item?.weight != null ||
-      propertyLabels.length > 0 ||
-      entry.notes,
-  );
-
-  return (
-    <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/4">
-      <button
-        type="button"
-        onClick={() => hasDetails && setExpanded((current) => !current)}
-        className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left ${hasDetails ? "hover:bg-white/3" : ""}`}
-      >
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">
-            {getInventoryItemName(entry, item, locale)}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <span className="rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-              x{entry.quantity}
-            </span>
-            {entry.isEquipped && (
-              <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                {t("inventory.equipped")}
-              </span>
-            )}
-            {isCurrentWeapon && (
-              <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
-                {t("playerBoard.currentWeaponBadge")}
-              </span>
-            )}
-            {isCurrentArmor && (
-              <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
-                {t("playerBoard.currentArmorBadge")}
-              </span>
-            )}
-          </div>
-        </div>
-        {hasDetails && (
-          <span className={`pt-1 text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
-            ▼
-          </span>
-        )}
-      </button>
-      {expanded && hasDetails && (
-        <div className="space-y-3 border-t border-white/8 px-4 py-4 text-xs text-slate-300">
-          {item?.description && <p className="text-sm leading-6 text-slate-400">{item.description}</p>}
-          <div className="grid gap-2 sm:grid-cols-2">
-            {item?.damageDice && (
-              <DetailPill
-                label={t("inventory.damage")}
-                value={formatDamageLabel(item.damageDice, item.damageType, locale) ?? item.damageDice}
-              />
-            )}
-            {item?.armorClassBase != null && (
-              <DetailPill label={t("playerBoard.armorClassLabel")} value={String(item.armorClassBase)} />
-            )}
-            {item?.rangeMeters != null && (
-              <DetailPill label={t("inventory.range")} value={`${item.rangeMeters}m`} />
-            )}
-            {item?.weight != null && (
-              <DetailPill label={t("inventory.weight")} value={String(item.weight)} />
-            )}
-            {propertyLabels.length > 0 && (
-              <DetailPill label={t("inventory.properties")} value={propertyLabels.join(", ")} />
-            )}
-            {entry.notes && (
-              <DetailPill label={t("inventory.notes")} value={entry.notes} />
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const DetailPill = ({ label, value }: { label: string; value: string }) => (
-  <p className="rounded-xl bg-slate-950/50 px-3 py-2">
-    <span className="text-slate-500">{label}</span> {value}
-  </p>
-);

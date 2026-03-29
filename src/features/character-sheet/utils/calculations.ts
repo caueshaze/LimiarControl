@@ -6,6 +6,7 @@ import type {
   Weapon,
 } from "../model/characterSheet.types";
 import { SKILL_ABILITY_MAP, STANDARD_ARRAY } from "../constants";
+import { getFightingStyleAttackBonus } from "../data/classFeatures";
 
 // ── Core Math ───────────────────────────────────────────────────────────────
 
@@ -104,10 +105,16 @@ export const computeWeaponAttack = (
   weapon: Weapon,
   abilities: Record<AbilityName, number>,
   level: number,
+  fightingStyle: string | null = null,
 ): number => {
   const abilityMod = getModifier(abilities[weapon.ability]);
   const profBonus = weapon.proficient ? getProficiencyBonus(level) : 0;
-  return abilityMod + profBonus + weapon.magicBonus;
+  const fightingStyleBonus = getFightingStyleAttackBonus({
+    fightingStyle,
+    rangeType: weapon.rangeType,
+    properties: weapon.properties,
+  });
+  return abilityMod + profBonus + weapon.magicBonus + fightingStyleBonus;
 };
 
 export const computeWeaponDamage = (

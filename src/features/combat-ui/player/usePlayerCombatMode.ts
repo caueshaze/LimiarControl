@@ -1,122 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
-import { getBaseSpells, loadSpellCatalog } from "../../../entities/dnd-base";
-import type { InventoryItem } from "../../../entities/inventory";
-import type { Item } from "../../../entities/item";
-import { ITEM_TYPES } from "../../../entities/item";
-import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
-import { localizedItemName } from "../../../features/shop/utils/localizedItemName";
 import {
   combatRepo,
   type CombatAttackResult,
-  type CombatParticipant,
   type CombatSpellMode,
   type CombatSpellResult,
+  type CombatStandardActionResult,
   type StandardActionType,
 } from "../../../shared/api/combatRepo";
-import type { Locale } from "../../../shared/i18n";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import { useCombatUiState } from "../useCombatUiState";
+import {
+  buildSpellOptions,
+  loadSpellCatalog,
+  normalizeSavingThrow,
+  withActionState,
+} from "./usePlayerCombatModeHelpers";
+import { buildDragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
+import { useConsumables } from "./useConsumables";
+import type {
+  CombatSpellOption,
+  DeathSaveFeedback,
+  UsePlayerCombatModeProps,
+} from "./usePlayerCombatMode.types";
 
-const normalizeSavingThrow = (value?: string | null): AbilityName | "" => {
-  const normalized = value?.trim().toLowerCase();
-  switch (normalized) {
-    case "str":
-    case "strength":
-      return "strength";
-    case "dex":
-    case "dexterity":
-      return "dexterity";
-    case "con":
-    case "constitution":
-      return "constitution";
-    case "int":
-    case "intelligence":
-      return "intelligence";
-    case "wis":
-    case "wisdom":
-      return "wisdom";
-    case "cha":
-    case "charisma":
-      return "charisma";
-    default:
-      return "";
-  }
-};
-
-export type CombatSpellOption = {
-  canonicalKey: string | null;
-  damageType: string | null;
-  id: string;
-  level: number;
-  name: string;
-  prepared: boolean;
-  range: string;
-  saveSuccessOutcome?: "none" | "half_damage" | null;
-  savingThrow: string | null;
-  suggestedMode: CombatSpellMode | null;
-};
-
-type Props = {
-  campaignId?: string | null;
-  inventory: InventoryItem[] | null;
-  itemsById: Record<string, Item>;
-  locale: Locale;
-  playerSheet?: CharacterSheet | null;
-  playerStatus?: PlayerBoardStatusSummary | null;
-  sessionId: string;
-  userId?: string | null;
-};
-
-const buildSpellOptions = (
-  playerSheet?: CharacterSheet | null,
-  campaignId?: string | null,
-): CombatSpellOption[] => {
-  const spellcasting = playerSheet?.spellcasting;
-  if (!spellcasting) return [];
-
-  const catalog = getBaseSpells(campaignId);
-  const byCanonicalKey = new Map(
-    catalog.map((spell) => [spell.canonicalKey.toLowerCase(), spell] as const),
-  );
-  const byName = new Map(catalog.map((spell) => [spell.name.toLowerCase(), spell] as const));
-
-  return spellcasting.spells
-    .filter((spell) => spell.level === 0 || spell.prepared || spellcasting.mode === "known")
-    .map((spell) => {
-      const catalogSpell = spell.canonicalKey
-        ? byCanonicalKey.get(spell.canonicalKey.toLowerCase()) ?? byName.get(spell.name.toLowerCase())
-        : byName.get(spell.name.toLowerCase());
-      const suggestedMode: CombatSpellMode | null = catalogSpell?.savingThrow
-        ? "saving_throw"
-        : catalogSpell?.damageType
-          ? "spell_attack"
-          : null;
-      return {
-        canonicalKey: spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null,
-        damageType: catalogSpell?.damageType ?? null,
-        id: spell.id,
-        level: spell.level,
-        name: spell.name,
-        prepared: spell.prepared,
-        range: catalogSpell?.range ?? "",
-        saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
-        savingThrow: catalogSpell?.savingThrow ?? null,
-        suggestedMode,
-      };
-    })
-    .sort((left, right) => left.level - right.level || left.name.localeCompare(right.name));
-};
-
-type DeathSaveFeedback = {
-  death_saves?: {
-    failures?: number;
-    successes?: number;
-  };
-  message?: string;
-  roll?: number;
-  status?: string;
-};
+export type { CombatSpellOption, CombatConsumableOption } from "./usePlayerCombatMode.types";
 
 export const usePlayerCombatMode = ({
   campaignId,
@@ -127,12 +35,15 @@ export const usePlayerCombatMode = ({
   playerStatus,
   sessionId,
   userId = null,
-}: Props) => {
+}: UsePlayerCombatModeProps) => {
   const combat = useCombatUiState({ sessionId, userId });
   const [attackDialogOpen, setAttackDialogOpen] = useState(false);
   const [spellDialogOpen, setSpellDialogOpen] = useState(false);
   const [lastAttackResult, setLastAttackResult] = useState<CombatAttackResult | null>(null);
   const [lastSpellResult, setLastSpellResult] = useState<CombatSpellResult | null>(null);
+  const [lastUseObjectResult, setLastUseObjectResult] = useState<CombatStandardActionResult | null>(
+    null,
+  );
   const [deathSaveFeedback, setDeathSaveFeedback] = useState<DeathSaveFeedback | null>(null);
   const [spellOptions, setSpellOptions] = useState<CombatSpellOption[]>([]);
   const [selectedSpellId, setSelectedSpellId] = useState("");
@@ -142,21 +53,25 @@ export const usePlayerCombatMode = ({
   const [spellDamageType, setSpellDamageType] = useState("");
   const [spellSaveAbility, setSpellSaveAbility] = useState<AbilityName | "">("");
   const [targetId, setTargetId] = useState("");
-  const [consumableItemId, setConsumableItemId] = useState("");
-  const [useObjectNote, setUseObjectNote] = useState("");
   const previousPlayerStatusRef = useRef<
     Pick<PlayerBoardStatusSummary, "currentHp" | "deathSaveFailures" | "deathSaveSuccesses"> | null
   >(null);
+
+  // ── Spell catalog loading ──────────────────────────────────────────────────
 
   useEffect(() => {
     let active = true;
     const rebuild = () => {
       if (active) {
-        setSpellOptions(buildSpellOptions(playerSheet, campaignId));
+        setSpellOptions(buildSpellOptions(playerSheet, campaignId, inventory, itemsById));
       }
     };
     rebuild();
-    if (!playerSheet?.spellcasting) {
+    const hasMagicItemSpells = (inventory ?? []).some((entry) => {
+      const item = itemsById[entry.itemId];
+      return item?.magicEffect?.type === "cast_spell";
+    });
+    if (!playerSheet?.spellcasting && !hasMagicItemSpells) {
       return () => {
         active = false;
       };
@@ -169,7 +84,7 @@ export const usePlayerCombatMode = ({
     return () => {
       active = false;
     };
-  }, [campaignId, playerSheet]);
+  }, [campaignId, inventory, itemsById, playerSheet]);
 
   useEffect(() => {
     if (!spellOptions.length) {
@@ -201,6 +116,8 @@ export const usePlayerCombatMode = ({
     setSpellEffectDice("");
     setSpellEffectBonus("0");
   }, [selectedSpell]);
+
+  // ── Death save tracking ────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!playerStatus) {
@@ -239,49 +156,43 @@ export const usePlayerCombatMode = ({
     previousPlayerStatusRef.current = nextSnapshot;
   }, [playerStatus]);
 
+  // ── Derived state ──────────────────────────────────────────────────────────
+
   const selectedTarget = useMemo(() => {
     const allParticipants = [...combat.livingParticipants, ...combat.defeatedParticipants];
-    return (
-      allParticipants.find((participant) => participant.ref_id === targetId) ?? null
-    );
+    return allParticipants.find((participant) => participant.ref_id === targetId) ?? null;
   }, [combat.defeatedParticipants, combat.livingParticipants, targetId]);
+  const dragonbornBreathWeaponAction = useMemo(
+    () => buildDragonbornBreathWeaponAction(playerSheet),
+    [playerSheet],
+  );
 
-  const withActionState = async (callback: () => Promise<void>) => {
-    try {
-      await callback();
-    } catch (err: any) {
-      throw new Error(err?.data?.detail || err?.message || "Combat action failed");
-    }
-  };
+  const actorParticipant = combat.myParticipant ?? combat.currentParticipant ?? null;
+  const actorParticipantId = actorParticipant?.id ?? null;
 
-  const actorParticipantId = combat.myParticipant?.id ?? combat.currentParticipant?.id ?? null;
+  const visibleParticipants = useMemo(
+    () =>
+      (combat.state?.participants ?? []).filter(
+        (participant) =>
+          participant.kind === "player" ||
+          participant.actor_user_id === userId ||
+          participant.visible !== false,
+      ),
+    [combat.state?.participants, userId],
+  );
 
-  const consumableOptions = useMemo(() => {
-    return (inventory ?? [])
-      .map((entry) => ({
-        entry,
-        item: itemsById[entry.itemId] ?? null,
-      }))
-      .filter((candidate) => candidate.item?.type === ITEM_TYPES.CONSUMABLE && candidate.entry.quantity > 0)
-      .map((candidate) => ({
-        id: candidate.entry.id,
-        label: candidate.item
-          ? `${localizedItemName(candidate.item, locale)} x${candidate.entry.quantity}`
-          : `Item x${candidate.entry.quantity}`,
-      }));
-  }, [inventory, itemsById, locale]);
+  // ── Consumables ────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!consumableOptions.length) {
-      setConsumableItemId("");
-      return;
-    }
-    setConsumableItemId((current) =>
-      current && consumableOptions.some((option) => option.id === current)
-        ? current
-        : consumableOptions[0]!.id,
-    );
-  }, [consumableOptions]);
+  const consumables = useConsumables({
+    actorParticipant,
+    actorParticipantId,
+    inventory,
+    itemsById,
+    locale,
+    participants: combat.state?.participants ?? [],
+  });
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAttack = async () => {
     if (!targetId || !combat.state) return;
@@ -325,15 +236,53 @@ export const usePlayerCombatMode = ({
   };
 
   const handleUseObject = async () => {
-    const selectedConsumable = consumableOptions.find((option) => option.id === consumableItemId);
-    const description = [
-      selectedConsumable?.label,
-      useObjectNote.trim() || null,
-    ]
+    const { selectedConsumable, useObjectNote, useObjectTargetParticipantId, useObjectRollMode, useObjectManualRolls } = consumables;
+    const description = [selectedConsumable?.label, useObjectNote.trim() || null]
       .filter(Boolean)
       .join(" · ");
-    await handleStandardAction("use_object", undefined, description || undefined);
-    setUseObjectNote("");
+    if (!actorParticipantId) return;
+    setLastUseObjectResult(null);
+
+    if (!selectedConsumable?.isHealingConsumable) {
+      await withActionState(async () => {
+        const result = await combatRepo.standardAction(sessionId, {
+          action: "use_object",
+          actor_participant_id: actorParticipantId,
+          description: description || undefined,
+        });
+        setLastUseObjectResult(result);
+        await combat.refreshState();
+      });
+      consumables.setUseObjectNote("");
+      return;
+    }
+
+    await withActionState(async () => {
+      const result = await combatRepo.standardAction(sessionId, {
+        action: "use_object",
+        actor_participant_id: actorParticipantId,
+        inventory_item_id: selectedConsumable.id,
+        target_participant_id: useObjectTargetParticipantId || actorParticipantId,
+        roll_source: useObjectRollMode,
+        manual_rolls: useObjectRollMode === "manual" ? useObjectManualRolls : null,
+      });
+      setLastUseObjectResult(result);
+      await combat.refreshState();
+    });
+    consumables.setUseObjectManualRolls([]);
+    consumables.setUseObjectNote("");
+  };
+
+  const handleDragonbornBreathWeapon = async () => {
+    if (!actorParticipantId || !selectedTarget?.id) return;
+    await withActionState(async () => {
+      await combatRepo.standardAction(sessionId, {
+        action: "dragonborn_breath_weapon",
+        actor_participant_id: actorParticipantId,
+        target_participant_id: selectedTarget.id,
+      });
+      await combat.refreshState();
+    });
   };
 
   const handleDeathSave = async () => {
@@ -372,26 +321,15 @@ export const usePlayerCombatMode = ({
     });
   };
 
-  const visibleParticipants = useMemo(
-    () =>
-      (combat.state?.participants ?? []).filter(
-        (participant) =>
-          participant.kind === "player" ||
-          participant.actor_user_id === userId ||
-          participant.visible !== false,
-      ),
-    [combat.state?.participants, userId],
-  );
-
   return {
     attackDialogOpen,
     closeAttackDialog: () => setAttackDialogOpen(false),
     closeSpellDialog: () => setSpellDialogOpen(false),
     combat,
-    consumableItemId,
-    consumableOptions,
     deathSaveFeedback,
+    dragonbornBreathWeaponAction,
     handleAttack,
+    handleDragonbornBreathWeapon,
     handleRequestReaction,
     handleDeathSave,
     handleEndTurn,
@@ -400,12 +338,13 @@ export const usePlayerCombatMode = ({
     handleCast,
     lastAttackResult,
     lastSpellResult,
+    lastUseObjectResult,
     selectedSpell,
     selectedSpellId,
     selectedTarget,
-    setConsumableItemId,
     setLastAttackResult,
     setLastSpellResult,
+    setLastUseObjectResult,
     setSelectedSpellId,
     setSpellDamageType,
     setSpellEffectBonus,
@@ -413,7 +352,6 @@ export const usePlayerCombatMode = ({
     setSpellMode,
     setSpellSaveAbility,
     setTargetId,
-    setUseObjectNote,
     spellDamageType,
     spellDialogOpen,
     spellEffectBonus,
@@ -422,7 +360,8 @@ export const usePlayerCombatMode = ({
     spellOptions,
     spellSaveAbility,
     targetId,
-    useObjectNote,
     visibleParticipants,
+    // consumables (spread para manter a mesma superfície pública)
+    ...consumables,
   };
 };

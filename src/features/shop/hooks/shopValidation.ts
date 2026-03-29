@@ -9,12 +9,14 @@ const mapFieldError = (
     | "rangeMeters"
     | "rangeLongMeters"
     | "armorClassBase"
-    | "strengthRequirement",
+    | "strengthRequirement"
+    | "healBonus",
 ) => {
   if (field === "price") return "catalog.validation.price";
   if (field === "weight") return "catalog.validation.weight";
   if (field === "armorClassBase") return "catalog.validation.armorClass";
   if (field === "strengthRequirement") return "catalog.validation.strengthRequirement";
+  if (field === "healBonus") return "catalog.validation.healBonus";
   return "catalog.validation.range";
 };
 
@@ -126,6 +128,11 @@ export const validateCatalogItemPayload = (payload: ItemInput) => {
     return { ok: false as const, message: strengthRequirement.error };
   }
 
+  const healBonus = parseNullableInt(payload.healBonus, mapFieldError("healBonus"));
+  if (!healBonus.ok) {
+    return { ok: false as const, message: healBonus.error };
+  }
+
   const properties = normalizeItemProperties(payload.properties);
   if (!properties.ok) {
     return { ok: false as const, message: "catalog.validation.properties" as const };
@@ -137,6 +144,7 @@ export const validateCatalogItemPayload = (payload: ItemInput) => {
     rangeLongMeters: rangeLongMeters.value,
     armorClassBase: armorClassBase.value,
     strengthRequirement: strengthRequirement.value,
+    healBonus: healBonus.value,
     properties: properties.value,
   });
   if (structuredValidationError) {
@@ -153,6 +161,7 @@ export const validateCatalogItemPayload = (payload: ItemInput) => {
       rangeLongMeters: rangeLongMeters.value,
       armorClassBase: armorClassBase.value,
       strengthRequirement: strengthRequirement.value,
+      healBonus: healBonus.value,
       properties: properties.value,
     },
   };

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -87,6 +87,25 @@ class BaseItemAliasRead(BaseModel):
     aliasType: Optional[str] = None
 
 
+MagicItemRechargeType = Literal["none", "short_rest", "long_rest", "dawn", "custom"]
+
+
+class MagicItemCastSpellEffect(BaseModel):
+    type: Literal["cast_spell"]
+    spellCanonicalKey: str
+    castLevel: int = Field(default=1, ge=0, le=9)
+    ignoreComponents: bool = False
+    noFreeHandRequired: bool = False
+
+    @field_validator("spellCanonicalKey", mode="before")
+    @classmethod
+    def normalize_spell_canonical_key(cls, value: object):
+        normalized = _normalize_slug(_raw_value(value))
+        if not normalized:
+            raise ValueError("spellCanonicalKey cannot be blank")
+        return normalized
+
+
 class BaseItemWrite(BaseModel):
     system: SystemType = SystemType.DND5E
     canonicalKey: str
@@ -103,6 +122,11 @@ class BaseItemWrite(BaseModel):
     weaponRangeType: Optional[BaseItemWeaponRangeType] = None
     damageDice: Optional[str] = None
     damageType: Optional[BaseItemDamageType] = None
+    healDice: Optional[str] = None
+    healBonus: Optional[int] = None
+    chargesMax: Optional[int] = Field(default=None, ge=0)
+    rechargeType: Optional[MagicItemRechargeType] = None
+    magicEffect: Optional[MagicItemCastSpellEffect] = None
     rangeNormalMeters: Optional[int] = None
     rangeLongMeters: Optional[int] = None
     versatileDamage: Optional[str] = None
@@ -153,7 +177,7 @@ class BaseItemWrite(BaseModel):
             raise ValueError("Value cannot be negative")
         return value
 
-    @field_validator("rangeNormalMeters", "rangeLongMeters", "armorClassBase")
+    @field_validator("rangeNormalMeters", "rangeLongMeters", "armorClassBase", "healBonus")
     @classmethod
     def validate_non_negative_ints(cls, value: Optional[int]):
         if value is None:
@@ -171,7 +195,7 @@ class BaseItemWrite(BaseModel):
             raise ValueError("Value cannot be negative")
         return value
 
-    @field_validator("damageDice", "versatileDamage")
+    @field_validator("damageDice", "healDice", "versatileDamage")
     @classmethod
     def validate_damage_expression(cls, value: Optional[str]):
         if value is None:
@@ -342,6 +366,22 @@ class BaseItemWrite(BaseModel):
             self.stealthDisadvantage = False
             self.isShield = False
 
+        if self.itemKind == BaseItemKind.CONSUMABLE:
+            pass
+        elif self.healDice is not None or self.healBonus is not None:
+            raise ValueError("Only consumables can define healDice or healBonus")
+        else:
+            self.healDice = None
+            self.healBonus = None
+
+        if self.chargesMax is None:
+            self.rechargeType = None
+        elif self.rechargeType is None:
+            raise ValueError("rechargeType is required when chargesMax is provided")
+
+        if self.magicEffect is not None and self.chargesMax is None:
+            raise ValueError("chargesMax is required when magicEffect is provided")
+
         return self
 
 
@@ -370,6 +410,11 @@ class BaseItemRead(BaseModel):
     weaponRangeType: Optional[BaseItemWeaponRangeType] = None
     damageDice: Optional[str] = None
     damageType: Optional[BaseItemDamageType] = None
+    healDice: Optional[str] = None
+    healBonus: Optional[int] = None
+    chargesMax: Optional[int] = None
+    rechargeType: Optional[MagicItemRechargeType] = None
+    magicEffect: Optional[MagicItemCastSpellEffect] = None
     rangeNormalMeters: Optional[int] = None
     rangeLongMeters: Optional[int] = None
     versatileDamage: Optional[str] = None

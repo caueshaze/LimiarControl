@@ -4,6 +4,8 @@ import type {
   BaseItemDamageType,
   BaseItemDexBonusRule,
   BaseItemKind,
+  MagicItemCastSpellEffect,
+  MagicItemRechargeType,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../base-item";
@@ -30,6 +32,11 @@ export type Item = {
   weight?: number | null;
   damageDice?: string | null;
   damageType?: BaseItemDamageType | null;
+  healDice?: string | null;
+  healBonus?: number | null;
+  chargesMax?: number | null;
+  rechargeType?: MagicItemRechargeType | null;
+  magicEffect?: MagicItemCastSpellEffect | null;
   rangeMeters?: number | null;
   rangeLongMeters?: number | null;
   versatileDamage?: string | null;
@@ -58,6 +65,11 @@ export type ItemInput = {
   description: string;
   damageDice?: string;
   damageType?: BaseItemDamageType | "";
+  healDice?: string;
+  healBonus?: number | string | null;
+  chargesMax?: number | string | null;
+  rechargeType?: MagicItemRechargeType | "";
+  magicEffect?: MagicItemCastSpellEffect | null;
   properties?: ItemPropertySlug[];
   price?: number | string | null;
   weight?: number | string | null;

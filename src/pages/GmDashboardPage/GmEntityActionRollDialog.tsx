@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ConcentrationSaveControl } from "../../features/combat-ui/components/ConcentrationSaveControl";
+import { participantHasActiveConcentration } from "../../features/combat-ui/combatUi.helpers";
 import { RollResultCard } from "../../features/rolls/components/RollResultCard";
 import type {
   CombatEntityActionResult,
@@ -6,11 +8,13 @@ import type {
 } from "../../shared/api/combatRepo";
 import { combatRepo } from "../../shared/api/combatRepo";
 import {
-  formatDamageDiceExpression,
   getDamageRollCount,
   getDamageRollSides,
+  formatDamageDiceExpression,
 } from "../../shared/utils/diceExpression";
 import { GmActionOverrideDialog } from "../../features/combat-ui/gm/GmActionOverrideDialog";
+import { D20_VALUES, formatSigned, formatDamageBreakdown } from "./gmEntityActionRollHelpers";
+import { GmDamageRollSection } from "./GmDamageRollSection";
 
 type Props = {
   actionDescription?: string | null;
@@ -22,22 +26,6 @@ type Props = {
   onResolved?: (result: CombatEntityActionResult) => void | Promise<void>;
   sessionId: string;
   target: CombatParticipant;
-};
-
-const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
-
-const formatSigned = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
-
-const formatDamageBreakdown = (result: CombatEntityActionResult) => {
-  const rolls = result.damage_rolls ?? [];
-  const damageDiceLabel =
-    formatDamageDiceExpression(result.damage_dice, Boolean(result.is_critical)) ??
-    result.damage_dice;
-  if (!rolls.length) {
-    return `Base ${result.base_damage ?? 0}${result.damage_bonus ? ` ${result.damage_bonus >= 0 ? "+" : "-"} ${Math.abs(result.damage_bonus)}` : ""} = ${result.damage}`;
-  }
-  const rollText = rolls.join(", ");
-  return `${damageDiceLabel}: [${rollText}]${result.damage_bonus ? ` ${result.damage_bonus >= 0 ? "+" : "-"} ${Math.abs(result.damage_bonus)}` : ""} = ${result.damage}`;
 };
 
 export const GmEntityActionRollDialog = ({
@@ -56,8 +44,11 @@ export const GmEntityActionRollDialog = ({
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [damageMode, setDamageMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [manualDamageRolls, setManualDamageRolls] = useState<number[]>([]);
+  const [concentrationRollMode, setConcentrationRollMode] = useState<"system" | "manual">("system");
+  const [concentrationManualRoll, setConcentrationManualRoll] = useState("");
   const [result, setResult] = useState<CombatEntityActionResult | null>(null);
-  
+  const targetHasConcentration = participantHasActiveConcentration(target);
+
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideResourceName, setOverrideResourceName] = useState("");
   const [pendingOverridePayload, setPendingOverridePayload] = useState<{
@@ -89,6 +80,11 @@ export const GmEntityActionRollDialog = ({
         target_ref_id: target.ref_id,
         roll_source: payload.roll_source,
         manual_roll: payload.manual_roll ?? null,
+        concentration_roll_source: concentrationRollMode,
+        concentration_manual_roll:
+          targetHasConcentration && concentrationRollMode === "manual"
+            ? Number.parseInt(concentrationManualRoll, 10) || null
+            : null,
         override_resource_limit: payload.override_resource_limit,
       });
       setResult(resolved);
@@ -124,6 +120,11 @@ export const GmEntityActionRollDialog = ({
         pending_attack_id: result.pending_attack_id,
         roll_source: payload.roll_source,
         manual_rolls: payload.manual_rolls ?? null,
+        concentration_roll_source: concentrationRollMode,
+        concentration_manual_roll:
+          targetHasConcentration && concentrationRollMode === "manual"
+            ? Number.parseInt(concentrationManualRoll, 10) || null
+            : null,
       });
       setResult(resolved);
       await onResolved?.(resolved);
@@ -132,6 +133,16 @@ export const GmEntityActionRollDialog = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectManualDamageRoll = (value: number) => {
+    const nextRolls = [...manualDamageRolls, value];
+    if (nextRolls.length >= damageRollCount) {
+      setManualDamageRolls([]);
+      void submitDamage({ roll_source: "manual", manual_rolls: nextRolls });
+      return;
+    }
+    setManualDamageRolls(nextRolls);
   };
 
   const attackBonusText =
@@ -193,128 +204,31 @@ export const GmEntityActionRollDialog = ({
               ) : null}
             </div>
 
-            {pendingDamage && damageMode === "choose" ? (
-              damageRollCount > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-400">
-                    {result.is_critical
-                      ? `Critico confirmado. Escolha como rolar o dano de ${effectiveDamageDiceLabel}.`
-                      : `Escolha como rolar o dano de ${effectiveDamageDiceLabel}.`}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDamageMode("virtual")}
-                      className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500"
-                    >
-                      Virtual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDamageMode("manual")}
-                      className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
-                    >
-                      Manual
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-400">
-                    Essa acao nao usa dado de dano. Aplique o dano fixo para concluir.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => {
-                      void submitDamage({ roll_source: "system" });
-                    }}
-                    className="w-full rounded-full bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-                  >
-                    {loading ? "..." : "Aplicar dano"}
-                  </button>
-                </div>
-              )
-            ) : null}
-
-            {pendingDamage && damageMode === "virtual" ? (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    void submitDamage({ roll_source: "system" });
-                  }}
-                  className="flex-1 rounded-full bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-                >
-                  {loading ? "..." : "Rolar dano"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDamageMode("choose")}
-                  className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                >
-                  Voltar
-                </button>
-              </div>
-            ) : null}
-
-            {pendingDamage && damageMode === "manual" ? (
+            {pendingDamage ? (
               <div className="space-y-3">
-                <p className="text-xs text-slate-400">
-                  Escolha cada dado manualmente ({manualDamageRolls.length}/{damageRollCount}).
-                </p>
-
-                {manualDamageRolls.length > 0 ? (
-                  <div className="rounded-2xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
-                    Dados escolhidos: {manualDamageRolls.join(", ")}
-                  </div>
+                {targetHasConcentration ? (
+                  <ConcentrationSaveControl
+                    disabled={loading}
+                    manualValue={concentrationManualRoll}
+                    mode={concentrationRollMode}
+                    onManualValueChange={setConcentrationManualRoll}
+                    onModeChange={setConcentrationRollMode}
+                  />
                 ) : null}
-
-                <div className="grid grid-cols-5 gap-2">
-                  {damageRollValues.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => {
-                        const nextRolls = [...manualDamageRolls, value];
-                        if (nextRolls.length >= damageRollCount) {
-                          setManualDamageRolls([]);
-                          void submitDamage({
-                            roll_source: "manual",
-                            manual_rolls: nextRolls,
-                          });
-                          return;
-                        }
-                        setManualDamageRolls(nextRolls);
-                      }}
-                      className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-3 text-center text-lg font-bold text-white transition-colors hover:border-rose-500/50 hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setManualDamageRolls([])}
-                    className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                  >
-                    Limpar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setManualDamageRolls([]);
-                      setDamageMode("choose");
-                    }}
-                    className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                  >
-                    Voltar
-                  </button>
-                </div>
+                <GmDamageRollSection
+                  damageMode={damageMode}
+                  damageRollCount={damageRollCount}
+                  damageRollValues={damageRollValues}
+                  effectiveDamageDiceLabel={effectiveDamageDiceLabel}
+                  isCritical={Boolean(result.is_critical)}
+                  loading={loading}
+                  manualDamageRolls={manualDamageRolls}
+                  onBack={() => setDamageMode("choose")}
+                  onClearManualRolls={() => setManualDamageRolls([])}
+                  onSelectManualRoll={handleSelectManualDamageRoll}
+                  onSetDamageMode={setDamageMode}
+                  onSubmitDamage={(payload) => void submitDamage(payload)}
+                />
               </div>
             ) : null}
 
@@ -363,9 +277,7 @@ export const GmEntityActionRollDialog = ({
             <button
               type="button"
               disabled={loading}
-              onClick={() => {
-                void submitAction({ roll_source: "system" });
-              }}
+              onClick={() => void submitAction({ roll_source: "system" })}
               className="flex-1 rounded-full bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
             >
               {loading ? "..." : "Rolar ataque"}
@@ -390,9 +302,7 @@ export const GmEntityActionRollDialog = ({
                   key={value}
                   type="button"
                   disabled={loading}
-                  onClick={() => {
-                    void submitAction({ roll_source: "manual", manual_roll: value });
-                  }}
+                  onClick={() => void submitAction({ roll_source: "manual", manual_roll: value })}
                   className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-3 text-center text-lg font-bold text-white transition-colors hover:border-rose-500/50 hover:bg-slate-800 disabled:opacity-50"
                 >
                   {value}

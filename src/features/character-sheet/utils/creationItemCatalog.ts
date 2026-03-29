@@ -1,5 +1,7 @@
 import type { BaseItem } from "../../../entities/base-item";
 import type {
+  BaseItemArmorCategory,
+  BaseItemDexBonusRule,
   BaseItemKind,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
@@ -14,9 +16,14 @@ export type CreationCatalogItem = {
   canonicalKey: string;
   name: string;
   namePt: string;
+  description: string;
+  descriptionPt: string;
+  properties: string[];
   weight: number;
   armorPresetName: string | null;
+  armorCategory: BaseItemArmorCategory | null;
   isShield: boolean;
+  stealthDisadvantage: boolean;
   itemKind: BaseItemKind;
   weaponCategory: BaseItemWeaponCategory | null;
   weaponRangeType: BaseItemWeaponRangeType | null;
@@ -26,6 +33,9 @@ export type CreationCatalogItem = {
   rangeNormalMeters: number | null;
   rangeLongMeters: number | null;
   versatileDamage: string | null;
+  armorClassBase: number | null;
+  dexBonusRule: BaseItemDexBonusRule | null;
+  strengthRequirement: number | null;
 };
 
 export type CreationItemCatalog = {
@@ -85,6 +95,20 @@ const toArmorPresetName = (itemKind: BaseItemKind, isShield: boolean, nameEn: st
   return nameEn;
 };
 
+const buildCatalogProperties = ({
+  properties,
+  stealthDisadvantage,
+}: {
+  properties?: readonly string[] | null;
+  stealthDisadvantage?: boolean | null;
+}) => {
+  const next = [...(properties ?? [])];
+  if (stealthDisadvantage && !next.includes("stealth_disadvantage")) {
+    next.push("stealth_disadvantage");
+  }
+  return next;
+};
+
 const buildCatalogEntryFromBaseItem = (item: BaseItem): CreationCatalogItem => ({
   id: item.id,
   campaignItemId: null,
@@ -92,9 +116,17 @@ const buildCatalogEntryFromBaseItem = (item: BaseItem): CreationCatalogItem => (
   canonicalKey: item.canonicalKey,
   name: item.nameEn,
   namePt: item.namePt,
+  description: item.descriptionEn ?? item.descriptionPt ?? "",
+  descriptionPt: item.descriptionPt ?? item.descriptionEn ?? "",
+  properties: buildCatalogProperties({
+    properties: item.weaponPropertiesJson,
+    stealthDisadvantage: item.stealthDisadvantage,
+  }),
   weight: item.weight ?? 0,
   armorPresetName: toArmorPresetName(item.itemKind, item.isShield, item.nameEn),
+  armorCategory: item.armorCategory ?? null,
   isShield: item.isShield,
+  stealthDisadvantage: item.stealthDisadvantage ?? false,
   itemKind: item.itemKind,
   weaponCategory: item.weaponCategory ?? null,
   weaponRangeType: item.weaponRangeType ?? null,
@@ -104,6 +136,9 @@ const buildCatalogEntryFromBaseItem = (item: BaseItem): CreationCatalogItem => (
   rangeNormalMeters: item.rangeNormalMeters ?? null,
   rangeLongMeters: item.rangeLongMeters ?? null,
   versatileDamage: item.versatileDamage ?? null,
+  armorClassBase: item.armorClassBase ?? null,
+  dexBonusRule: item.dexBonusRule ?? null,
+  strengthRequirement: item.strengthRequirement ?? null,
 });
 
 const buildCatalogEntryFromCampaignItem = (item: Item): CreationCatalogItem | null => {
@@ -123,10 +158,18 @@ const buildCatalogEntryFromCampaignItem = (item: Item): CreationCatalogItem | nu
     baseItemId: item.baseItemId ?? null,
     canonicalKey,
     name: displayName,
-    namePt: displayName,
+    namePt: stableNamePt,
+    description: item.description ?? "",
+    descriptionPt: item.description ?? "",
+    properties: buildCatalogProperties({
+      properties: item.properties ?? null,
+      stealthDisadvantage: item.stealthDisadvantage ?? false,
+    }),
     weight: item.weight ?? 0,
     armorPresetName: toArmorPresetName(itemKind, item.isShield ?? false, stableName),
+    armorCategory: item.armorCategory ?? null,
     isShield: item.isShield ?? false,
+    stealthDisadvantage: item.stealthDisadvantage ?? false,
     itemKind,
     weaponCategory: item.weaponCategory ?? null,
     weaponRangeType: item.weaponRangeType ?? null,
@@ -136,6 +179,9 @@ const buildCatalogEntryFromCampaignItem = (item: Item): CreationCatalogItem | nu
     rangeNormalMeters: item.rangeMeters ?? null,
     rangeLongMeters: item.rangeLongMeters ?? null,
     versatileDamage: item.versatileDamage ?? null,
+    armorClassBase: item.armorClassBase ?? null,
+    dexBonusRule: item.dexBonusRule ?? null,
+    strengthRequirement: item.strengthRequirement ?? null,
   };
 };
 
@@ -221,6 +267,13 @@ const loadingCatalogPromises = new Map<string, Promise<CreationItemCatalog>>();
 
 export const getCreationItemCatalog = () => cachedCatalog;
 
+export const getCreationCatalogItemsSorted = (
+  catalog: CreationItemCatalog = cachedCatalog,
+) =>
+  [...catalog.itemsByCanonicalKey.values()].sort((a, b) =>
+    a.namePt.localeCompare(b.namePt, "pt-BR"),
+  );
+
 export const findCreationItemByCanonicalKey = (
   canonicalKey: string | null | undefined,
   catalog: CreationItemCatalog = cachedCatalog,
@@ -281,6 +334,29 @@ export const loadCreationItemCatalog = async (campaignId?: string | null) => {
 
 export const seedCreationItemCatalogForTests = (items: BaseItem[]) => {
   cachedCatalog = buildCreationItemCatalog(items);
+  cachedCatalogKey = "tests";
+  loadingCatalogPromises.set("tests", Promise.resolve(cachedCatalog));
+  return cachedCatalog;
+};
+
+export const seedCreationCatalogItemsForTests = (items: CreationCatalogItem[]) => {
+  const itemsByCanonicalKey = new Map<string, CreationCatalogItem>();
+  const itemsByLookup = new Map<string, CreationCatalogItem>();
+
+  for (const item of items) {
+    itemsByCanonicalKey.set(item.canonicalKey, item);
+    registerLookups(
+      item,
+      [
+        item.canonicalKey,
+        item.name,
+        item.namePt,
+      ],
+      itemsByLookup,
+    );
+  }
+
+  cachedCatalog = { itemsByCanonicalKey, itemsByLookup };
   cachedCatalogKey = "tests";
   loadingCatalogPromises.set("tests", Promise.resolve(cachedCatalog));
   return cachedCatalog;

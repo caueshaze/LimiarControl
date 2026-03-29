@@ -155,6 +155,9 @@ class CombatEntityActionMixin:
             ),
             "damageType": damage_type,
         }
+        structured_upcast = cls._get_structured_spell_upcast(
+            getattr(base_spell, "upcast_json", None)
+        )
 
         if action.kind == "spell_attack":
             attack_bonus = action.spellAttackBonus
@@ -179,11 +182,22 @@ class CombatEntityActionMixin:
                     "Spell attack is missing damageType. "
                     "Provide it in the catalog or override it on the action."
                 )
+            upcast_result = cls._apply_structured_spell_upcast(
+                spell_level=base_spell.level,
+                slot_level=action.castAtLevel,
+                effect_kind="damage",
+                effect_dice=damage_dice,
+                effect_bonus=damage_bonus if isinstance(damage_bonus, int) else 0,
+                upcast=structured_upcast,
+            )
             resolved.update(
                 {
                     "spellAttackBonus": attack_bonus,
-                    "damageDice": damage_dice,
-                    "damageBonus": damage_bonus if isinstance(damage_bonus, int) else 0,
+                    "damageDice": upcast_result.get("effect_dice"),
+                    "damageBonus": cls._safe_int(
+                        upcast_result.get("effect_bonus"),
+                        damage_bonus if isinstance(damage_bonus, int) else 0,
+                    ),
                 }
             )
             return resolved
@@ -209,6 +223,14 @@ class CombatEntityActionMixin:
                     "Saving throw action is missing damageType. "
                     "Provide it in the catalog or override it on the action."
                 )
+            upcast_result = cls._apply_structured_spell_upcast(
+                spell_level=base_spell.level,
+                slot_level=action.castAtLevel,
+                effect_kind="damage",
+                effect_dice=damage_dice,
+                effect_bonus=damage_bonus if isinstance(damage_bonus, int) else 0,
+                upcast=structured_upcast,
+            )
             resolved.update(
                 {
                     "saveAbility": save_ability,
@@ -217,8 +239,11 @@ class CombatEntityActionMixin:
                         cls._normalize_save_success_outcome(base_spell.save_success_outcome)
                         or "none"
                     ),
-                    "damageDice": damage_dice,
-                    "damageBonus": damage_bonus if isinstance(damage_bonus, int) else 0,
+                    "damageDice": upcast_result.get("effect_dice"),
+                    "damageBonus": cls._safe_int(
+                        upcast_result.get("effect_bonus"),
+                        damage_bonus if isinstance(damage_bonus, int) else 0,
+                    ),
                 }
             )
             return resolved
@@ -231,10 +256,21 @@ class CombatEntityActionMixin:
                     "Heal spell is missing structured healing dice. "
                     "Provide healDice on the action or in the spell catalog."
                 )
+            upcast_result = cls._apply_structured_spell_upcast(
+                spell_level=base_spell.level,
+                slot_level=action.castAtLevel,
+                effect_kind="healing",
+                effect_dice=heal_dice,
+                effect_bonus=heal_bonus if isinstance(heal_bonus, int) else 0,
+                upcast=structured_upcast,
+            )
             resolved.update(
                 {
-                    "healDice": heal_dice,
-                    "healBonus": heal_bonus if isinstance(heal_bonus, int) else 0,
+                    "healDice": upcast_result.get("effect_dice"),
+                    "healBonus": cls._safe_int(
+                        upcast_result.get("effect_bonus"),
+                        heal_bonus if isinstance(heal_bonus, int) else 0,
+                    ),
                 }
             )
             return resolved

@@ -125,6 +125,26 @@ export type HitDiceActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type ConsumableActivityEvent = {
+  type: "consumable";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  itemName: string;
+  targetUserId?: string | null;
+  targetDisplayName?: string | null;
+  targetKind: "player" | "session_entity";
+  healingApplied: number;
+  newHp?: number | null;
+  maxHp?: number | null;
+  remainingQuantity?: number | null;
+  effectDice?: string | null;
+  effectRolls: number[];
+  effectRollSource?: "system" | "manual" | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type PlayerHpActivityEvent = {
   type: "player_hp";
   userId?: string | null;
@@ -202,6 +222,34 @@ export type SessionUseHitDieResult = {
   constitutionModifier: number;
 };
 
+export type SessionHealingConsumableTarget = {
+  playerUserId: string;
+  displayName: string;
+  currentHp: number;
+  maxHp: number;
+  isSelf: boolean;
+};
+
+export type SessionUseConsumableResult = {
+  sessionId: string;
+  campaignId: string;
+  partyId?: string | null;
+  actorUserId: string;
+  targetPlayerUserId: string;
+  inventoryItemId?: string | null;
+  itemId?: string | null;
+  itemName: string;
+  targetDisplayName: string;
+  healingApplied: number;
+  newHp: number;
+  maxHp: number;
+  remainingQuantity: number;
+  effectDice?: string | null;
+  effectBonus: number;
+  effectRolls: number[];
+  effectRollSource: "system" | "manual";
+};
+
 export type RollResolvedActivityEvent = {
   type: "roll_resolved";
   userId?: string | null;
@@ -235,6 +283,7 @@ export type ActivityEvent =
   | RewardActivityEvent
   | LevelUpActivityEvent
   | HitDiceActivityEvent
+  | ConsumableActivityEvent
   | PlayerHpActivityEvent
   | EntityActivityEvent
   | RollResolvedActivityEvent;
@@ -315,6 +364,19 @@ export const sessionsRepo = {
     http.get<LobbyStatus>(`/sessions/${sessionId}/lobby`),
   getRuntime: (sessionId: string) =>
     http.get<SessionRuntime>(`/sessions/${sessionId}/runtime`),
+  listHealingConsumableTargets: (sessionId: string) =>
+    http.get<SessionHealingConsumableTarget[]>(
+      `/sessions/${sessionId}/consumables/healing-targets`,
+    ),
+  useConsumable: (
+    sessionId: string,
+    payload: {
+      inventoryItemId: string;
+      targetPlayerUserId?: string | null;
+      rollSource?: "system" | "manual";
+      manualRolls?: number[] | null;
+    },
+  ) => http.post<SessionUseConsumableResult>(`/sessions/${sessionId}/consumables/use`, payload),
   joinLobby: (sessionId: string) =>
     http.post<{ ok: boolean }>(`/sessions/${sessionId}/lobby/join`, {}),
   forceStartLobby: (sessionId: string) =>

@@ -38,8 +38,21 @@ from app.services.realtime import build_event, campaign_channel, event_version, 
 
 router = APIRouter()
 
-def _is_gm(user: User) -> bool:
-    return user.role == RoleMode.GM
+
+def _is_session_gm(db: Session, session_id: str, user: User) -> bool:
+    """Check if user is GM in the campaign that owns this session."""
+    session_entry = db.exec(
+        select(CampaignSession).where(CampaignSession.id == session_id)
+    ).first()
+    if not session_entry:
+        return False
+    member = db.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == session_entry.campaign_id,
+            CampaignMember.user_id == user.id,
+        )
+    ).first()
+    return member is not None and member.role_mode == RoleMode.GM
 
 
 async def _publish_roll_result(
@@ -115,8 +128,7 @@ async def start_combat(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    # Only GM starts combat
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can start combat", 403)
     return await CombatService.start_combat(db, session_id, req)
 
@@ -128,7 +140,7 @@ async def set_initiative(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can set initiative", 403)
     return await CombatService.set_initiative(db, session_id, req)
 
@@ -144,7 +156,7 @@ async def next_turn(
         db,
         session_id,
         user.id,
-        _is_gm(user),
+        _is_session_gm(db, session_id, user),
         req.actor_participant_id,
     )
 
@@ -155,7 +167,7 @@ async def end_combat(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.end_combat(db, session_id, _is_gm(user))
+    return await CombatService.end_combat(db, session_id, _is_session_gm(db, session_id, user))
 
 
 @router.post("/sessions/{session_id}/combat/action/attack", response_model=CombatAttackResult)
@@ -165,7 +177,7 @@ async def action_attack(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    result = await CombatService.attack(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.attack(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
     await _publish_roll_result(db, session_id, user, result.get("roll_result"))
     return result
 
@@ -177,7 +189,14 @@ async def action_attack_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.attack_damage(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.attack_damage(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
+    return result
 
 
 @router.post("/sessions/{session_id}/combat/action/wild-shape-attack", response_model=CombatAttackResult)
@@ -187,7 +206,7 @@ async def action_wild_shape_attack(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    result = await CombatService.wild_shape_attack(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.wild_shape_attack(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
     await _publish_roll_result(db, session_id, user, result.get("roll_result"))
     return result
 
@@ -199,8 +218,14 @@ async def action_cast_spell(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    result = await CombatService.cast_spell(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.cast_spell(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
     await _publish_roll_result(db, session_id, user, result.get("roll_result"))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
     return result
 
 
@@ -211,7 +236,14 @@ async def action_cast_spell_effect(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.cast_spell_effect(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.cast_spell_effect(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
+    return result
 
 
 @router.post("/sessions/{session_id}/combat/action/entity", response_model=CombatEntityActionResult)
@@ -221,8 +253,14 @@ async def action_entity(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    result = await CombatService.entity_action(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.entity_action(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
     await _publish_roll_result(db, session_id, user, result.get("roll_result"))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
     return result
 
 
@@ -233,7 +271,14 @@ async def action_entity_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.entity_action_damage(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.entity_action_damage(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
+    return result
 
 
 @router.post("/sessions/{session_id}/combat/action/apply-damage")
@@ -243,7 +288,14 @@ async def action_apply_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.apply_damage(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.apply_damage(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
+    return result
 
 
 @router.post("/sessions/{session_id}/combat/action/apply-healing")
@@ -253,7 +305,7 @@ async def action_apply_healing(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return await CombatService.apply_healing(db, session_id, req, user.id, _is_gm(user))
+    return await CombatService.apply_healing(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
 
 
 @router.post("/sessions/{session_id}/combat/action/death-save")
@@ -267,7 +319,7 @@ async def action_death_save(
         db,
         session_id,
         user.id,
-        _is_gm(user),
+        _is_session_gm(db, session_id, user),
         req.actor_participant_id,
     )
 
@@ -282,7 +334,7 @@ async def action_standard(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    result = await CombatService.standard_action(db, session_id, req, user.id, _is_gm(user))
+    result = await CombatService.standard_action(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
     if result.get("roll_result"):
         await _publish_roll_result(db, session_id, user, result["roll_result"])
     return result
@@ -298,9 +350,9 @@ async def action_consume_reaction(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Players can only request reactions, not consume directly.", 403)
-    return await CombatService.consume_reaction(db, session_id, req, user.id, _is_gm(user))
+    return await CombatService.consume_reaction(db, session_id, req, user.id, _is_session_gm(db, session_id, user))
 
 
 @router.post("/sessions/{session_id}/combat/action/reaction/request")
@@ -320,7 +372,7 @@ async def action_reaction_resolve(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can resolve reaction requests.", 403)
     return await CombatService.resolve_reaction(db, session_id, req)
 
@@ -335,7 +387,7 @@ async def apply_effect(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can apply effects", 403)
     return await CombatService.apply_effect(db, session_id, req)
 
@@ -347,7 +399,7 @@ async def remove_effect(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    if not _is_gm(user):
+    if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can remove effects", 403)
     return await CombatService.remove_effect(db, session_id, req)
 

@@ -60,6 +60,10 @@ const CharacterSheetPage = lazy(async () => {
   const module = await import("../../features/character-sheet");
   return { default: module.CharacterSheetPage };
 });
+const CharacterSheetDraftPage = lazy(async () => {
+  const module = await import("../../features/character-sheet");
+  return { default: module.CharacterSheetDraftPage };
+});
 
 const RequireGmRole = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -153,6 +157,16 @@ export const AppRoutes = () => {
             <RequireAuth>
               <RequireGmRole>
                 {renderRoute(<PartyDetailsPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.gmPartyCharacterSheetDraft}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CharacterSheetDraftPage />)}
               </RequireGmRole>
             </RequireAuth>
           }

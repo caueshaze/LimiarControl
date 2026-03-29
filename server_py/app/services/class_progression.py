@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import floor
+
 # ── Hit Dice by class ──────────────────────────────────────────────────────────
 
 CLASS_HIT_DICE: dict[str, int] = {
@@ -115,6 +117,10 @@ _CLASS_SLOT_TABLES: dict[str, dict[int, dict[int, int]]] = {
     "warlock":  _WARLOCK_SLOTS,
 }
 
+_CLASS_MECHANICS_FAMILIES: dict[str, str] = {
+    "guardian": "ranger",
+}
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 
@@ -131,17 +137,58 @@ def get_spell_slots_for_class_level(class_id: str, level: int) -> dict[int, int]
     return dict(table.get(max(1, min(level, 20)), {}))
 
 
-def get_hp_gain_per_level(class_id: str) -> int:
-    """Average HP gained per level-up (PHB: floor(die/2) + 1). Defaults to d8 (5)."""
+def get_hp_gain_per_level(class_id: str, constitution_score: int = 10) -> int:
+    """HP gained on level-up using fixed average hit die + Constitution modifier."""
     sides = CLASS_HIT_DICE.get(_normalize_class(class_id), 8)
-    return _HP_AVERAGE_BY_DIE.get(sides, 5)
+    return _HP_AVERAGE_BY_DIE.get(sides, 5) + _ability_modifier(constitution_score)
+
+
+def compute_max_hp_for_level(
+    class_id: str,
+    level: int,
+    constitution_score: int = 10,
+) -> int:
+    """Compute canonical max HP for a single-class character at a given level."""
+    normalized_class = _normalize_class(class_id)
+    sides = CLASS_HIT_DICE.get(normalized_class, 8)
+    level = max(0, int(level))
+    if level <= 0:
+        return 0
+
+    constitution_modifier = _ability_modifier(constitution_score)
+    average_per_level = _HP_AVERAGE_BY_DIE.get(sides, 5)
+    extra_levels = max(0, level - 1)
+    total = sides + constitution_modifier + (extra_levels * (average_per_level + constitution_modifier))
+    return max(1, total)
+
+
+def recompute_hit_points(data: dict, *, preserve_damage: bool = True) -> dict:
+    """Recompute HP from class, level and Constitution using the canonical formula."""
+    next_data = dict(data)
+    current_max_hp = int(next_data.get("maxHP") or 0)
+    current_hp = int(next_data.get("currentHP") or 0)
+    new_max_hp = compute_max_hp_for_level(
+        next_data.get("class", ""),
+        int(next_data.get("level", 1) or 1),
+        _get_constitution_score(next_data),
+    )
+
+    if preserve_damage:
+        damage_taken = max(0, current_max_hp - current_hp)
+        next_current_hp = max(0, min(new_max_hp, new_max_hp - damage_taken))
+    else:
+        next_current_hp = new_max_hp
+
+    next_data["maxHP"] = new_max_hp
+    next_data["currentHP"] = next_current_hp
+    return next_data
 
 
 def apply_level_up_stats(data: dict, new_level: int) -> dict:
     """Apply all stat changes for a level-up to *new_level*.
 
     Updates in-place on a shallow copy:
-    - maxHP and currentHP (both gain the HP from the new level)
+    - maxHP and currentHP (both gain the HP from the new level, including CON)
     - hitDiceTotal (= new_level) and hitDiceRemaining (+1, capped at total)
     - spellcasting.slots (max values from PHB table, used counts preserved)
 
@@ -151,9 +198,11 @@ def apply_level_up_stats(data: dict, new_level: int) -> dict:
     class_id = _normalize_class(next_data.get("class"))
 
     # ── HP ────────────────────────────────────────────────────────────────────
-    hp_gain = get_hp_gain_per_level(class_id)
-    next_data["maxHP"] = int(next_data.get("maxHP") or 0) + hp_gain
-    next_data["currentHP"] = int(next_data.get("currentHP") or 0) + hp_gain
+    hp_gain = get_hp_gain_per_level(class_id, _get_constitution_score(next_data))
+    current_max_hp = int(next_data.get("maxHP") or 0)
+    current_hp = int(next_data.get("currentHP") or 0)
+    next_data["maxHP"] = max(0, current_max_hp + hp_gain)
+    next_data["currentHP"] = max(0, min(next_data["maxHP"], current_hp + hp_gain))
 
     # ── Hit Dice ──────────────────────────────────────────────────────────────
     old_remaining = int(next_data.get("hitDiceRemaining") or 0)
@@ -177,7 +226,20 @@ def apply_level_up_stats(data: dict, new_level: int) -> dict:
 
 
 def _normalize_class(value: object) -> str:
-    return str(value or "").strip().lower()
+    normalized = str(value or "").strip().lower()
+    return _CLASS_MECHANICS_FAMILIES.get(normalized, normalized)
+
+
+def _get_constitution_score(data: dict) -> int:
+    abilities = data.get("abilities")
+    if not isinstance(abilities, dict):
+        return 10
+    value = abilities.get("constitution", 10)
+    return int(value) if isinstance(value, int) else 10
+
+
+def _ability_modifier(score: int) -> int:
+    return floor((score - 10) / 2)
 
 
 def _apply_spell_slots(data: dict, new_slots: dict[int, int]) -> dict:

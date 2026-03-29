@@ -1,8 +1,14 @@
 import { getRace, getRaceConfigFields } from "../data/races";
+import {
+  DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY,
+  resolveDragonbornLineageState,
+} from "../data/dragonbornAncestries";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import type { RequiredField } from "../utils/creationValidation";
 import { ABILITIES, SKILL_LABELS, SKILL_NAMES } from "../constants";
+import { getBlockedRaceConfigSkills } from "../utils/raceConfigSkills";
+import { getAbilityLabel } from "../utils/abilityLabels";
 import { chk, fieldLabel, input } from "./styles";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
@@ -21,10 +27,19 @@ export const RaceConfigPicker = ({
 }: Props) => {
   const { t } = useLocale();
   const race = getRace(sheet.race, sheet.raceConfig);
+  const dragonbornLineage = resolveDragonbornLineageState({
+    raceId: sheet.race,
+    raceConfig: sheet.raceConfig,
+  });
   const configFields = getRaceConfigFields(sheet.race);
   if (!race || configFields.length === 0) return null;
 
   const hasError = missingRequiredFields.includes("raceConfig");
+  const formatBreathShape = (shape: string | null) => {
+    if (shape === "line") return "linha";
+    if (shape === "cone") return "cone";
+    return shape ?? "-";
+  };
 
   return (
     <div className={`mt-4 rounded-3xl border bg-slate-950/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${hasError ? "border-red-500/40" : "border-white/8"}`}>
@@ -82,6 +97,10 @@ export const RaceConfigPicker = ({
 
           if (field.kind === "skill_multi") {
             const selected = new Set(sheet.raceConfig?.[field.key] ?? []);
+            const blockedSkills = getBlockedRaceConfigSkills(
+              sheet,
+              field.key as "halfElfSkillChoices",
+            );
             const hasFieldError = hasError && selected.size < field.count;
             return (
               <div key={field.key} className="md:col-span-2">
@@ -95,7 +114,7 @@ export const RaceConfigPicker = ({
                 <div className={`grid gap-2 sm:grid-cols-2 lg:grid-cols-3 ${hasFieldError ? "rounded-2xl border border-red-500/30 p-2" : ""}`}>
                   {SKILL_NAMES.map((skill) => {
                     const checked = selected.has(skill);
-                    const disabled = readOnly || (!checked && selected.size >= field.count);
+                    const disabled = readOnly || (!checked && (selected.size >= field.count || blockedSkills.has(skill)));
                     return (
                       <label
                         key={skill}
@@ -139,6 +158,44 @@ export const RaceConfigPicker = ({
                   <option key={option.id} value={option.id}>{option.name}</option>
                 ))}
               </select>
+              {field.key === DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY && (
+                dragonbornLineage.ancestryLabel ? (
+                  <>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      {t("sheet.dragonborn.ancestry")}: <span className="font-semibold text-slate-200">{dragonbornLineage.ancestryLabel}</span>
+                      {dragonbornLineage.resistanceType && (
+                        <>
+                          {" "}· {t("sheet.dragonborn.resistance")}: <span className="font-semibold text-slate-200">{dragonbornLineage.resistanceType}</span>
+                        </>
+                      )}
+                      {dragonbornLineage.damageType && dragonbornLineage.breathWeaponShape && dragonbornLineage.breathWeaponAreaSize && (
+                        <>
+                          {" "}· {t("sheet.dragonborn.breathWeapon")}: <span className="font-semibold text-slate-200">{dragonbornLineage.damageType}, {formatBreathShape(dragonbornLineage.breathWeaponShape)} {dragonbornLineage.breathWeaponAreaSize}</span>
+                        </>
+                      )}
+                      {dragonbornLineage.breathWeaponSaveType && (
+                        <>
+                          {" "}· {t("sheet.dragonborn.save")}: <span className="font-semibold text-slate-200">{getAbilityLabel(dragonbornLineage.breathWeaponSaveType, t)}</span>
+                        </>
+                      )}
+                    </p>
+                    <details className="mt-2 rounded-xl border border-white/8 bg-void-900/40 px-3 py-2 text-[11px] text-slate-300">
+                      <summary className="cursor-pointer font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        {t("sheet.dragonborn.debugTitle")}
+                      </summary>
+                      <div className="mt-2 grid gap-1 font-mono text-[11px] text-slate-300/90">
+                        <div>{t("sheet.dragonborn.debugAncestry")}: {dragonbornLineage.ancestry ?? "-"}</div>
+                        <div>{t("sheet.dragonborn.debugDamageType")}: {dragonbornLineage.damageType ?? "-"}</div>
+                        <div>{t("sheet.dragonborn.debugResistanceType")}: {dragonbornLineage.resistanceType ?? "-"}</div>
+                        <div>{t("sheet.dragonborn.debugBreathShape")}: {dragonbornLineage.breathWeaponShape ?? "-"}</div>
+                        <div>{t("sheet.dragonborn.debugBreathSaveType")}: {dragonbornLineage.breathWeaponSaveType ?? "-"}</div>
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[11px] text-amber-300/90">{t("sheet.dragonborn.pending")}</p>
+                )
+              )}
             </div>
           );
         })}

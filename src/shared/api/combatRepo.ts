@@ -3,7 +3,8 @@ import { http } from "./http";
 
 export type CombatPhase = "initiative" | "active" | "ended";
 export type CombatParticipantKind = "player" | "session_entity";
-export type CombatSpellMode = "spell_attack" | "saving_throw" | "direct_damage" | "heal";
+export type CombatSpellMode = "spell_attack" | "saving_throw" | "direct_damage" | "heal" | "utility";
+export type CombatActionCost = "action" | "bonus_action" | "reaction" | "free";
 
 // --- Active Effects ---
 
@@ -15,14 +16,16 @@ export type ActiveEffectKind =
   | "advantage_on_attacks"
   | "disadvantage_on_attacks"
   | "dodging"
-  | "hidden";
+  | "hidden"
+  | "spell_effect";
 
 export type ActiveEffectConditionType =
   | "prone"
   | "poisoned"
   | "restrained"
   | "blinded"
-  | "frightened";
+  | "frightened"
+  | "charmed";
 
 export type ActiveEffectDurationType =
   | "manual"
@@ -41,6 +44,8 @@ export type ActiveEffect = {
   expires_on?: "turn_start" | "turn_end" | null;
   expires_at_participant_id?: string | null;
   created_at: string;
+  metadata?: Record<string, unknown> | null;
+  display_label?: string | null;
 };
 
 export type TurnResources = {
@@ -129,11 +134,13 @@ export type CombatAttackResult = {
   damage_rolls?: number[];
   base_damage?: number | null;
   damage_roll_source?: RollSource | null;
+  concentration_check?: CombatConcentrationCheckResult | null;
 };
 
 export type CombatCastSpellRequest = {
   actor_participant_id?: string | null;
   target_ref_id: string;
+  inventory_item_id?: string | null;
   spell_id?: string | null;
   spell_canonical_key?: string | null;
   spell_mode?: CombatSpellMode | null;
@@ -154,6 +161,8 @@ export type CombatCastSpellRequest = {
   save_ability?: string | null;
   save_dc?: number | null;
   spell_attack_bonus?: number | null;
+  concentration_roll_source?: RollSource;
+  concentration_manual_roll?: number | null;
   override_resource_limit?: boolean;
 };
 
@@ -184,6 +193,13 @@ export type CombatSpellResult = {
   effect_rolls?: number[];
   base_effect?: number | null;
   effect_roll_source?: RollSource | null;
+  action_cost?: CombatActionCost | null;
+  summary_text?: string | null;
+  inventory_refresh_required?: boolean;
+  concentration_check?: CombatConcentrationCheckResult | null;
+  elemental_affinity_eligible?: boolean;
+  elemental_affinity_damage_type?: string | null;
+  elemental_affinity_bonus?: number | null;
 };
 
 export type CombatEntityActionRequest = {
@@ -195,6 +211,8 @@ export type CombatEntityActionRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  concentration_roll_source?: RollSource;
+  concentration_manual_roll?: number | null;
   override_resource_limit?: boolean;
 };
 
@@ -223,6 +241,19 @@ export type CombatEntityActionResult = {
   damage_rolls?: number[];
   base_damage?: number | null;
   damage_roll_source?: RollSource | null;
+  concentration_check?: CombatConcentrationCheckResult | null;
+};
+
+export type CombatConcentrationCheckResult = {
+  actor_participant_id?: string | null;
+  actor_display_name: string;
+  damage_taken: number;
+  dc: number;
+  success: boolean;
+  roll_result: RollResult;
+  broken_effect_labels?: string[];
+  source_spell_keys?: string[];
+  summary_text: string;
 };
 
 export type CombatResolveDamageRequest = {
@@ -230,6 +261,8 @@ export type CombatResolveDamageRequest = {
   pending_attack_id: string;
   roll_source?: RollSource;
   manual_rolls?: number[] | null;
+  concentration_roll_source?: RollSource;
+  concentration_manual_roll?: number | null;
 };
 
 export type CombatResolveSpellEffectRequest = {
@@ -237,6 +270,8 @@ export type CombatResolveSpellEffectRequest = {
   pending_spell_id: string;
   roll_source?: RollSource;
   manual_rolls?: number[] | null;
+  concentration_roll_source?: RollSource;
+  concentration_manual_roll?: number | null;
 };
 
 export type CombatApplyDamageRequest = {
@@ -244,6 +279,8 @@ export type CombatApplyDamageRequest = {
   amount: number;
   kind: CombatParticipantKind;
   type_override?: string | null;
+  concentration_roll_source?: RollSource;
+  concentration_manual_roll?: number | null;
 };
 
 export type CombatApplyHealingRequest = {
@@ -265,6 +302,8 @@ export type CombatApplyEffectRequest = {
   remaining_rounds?: number | null;
   expires_at_participant_id?: string | null;
   source_participant_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  display_label?: string | null;
 };
 
 export type CombatRemoveEffectRequest = {
@@ -287,16 +326,24 @@ export type CombatReactionResolveRequest = {
   override_resource_limit?: boolean;
 };
 
-export type StandardActionType = "dodge" | "help" | "hide" | "use_object" | "dash" | "disengage";
+export type StandardActionType =
+  | "dodge"
+  | "help"
+  | "hide"
+  | "use_object"
+  | "dash"
+  | "disengage"
+  | "dragonborn_breath_weapon";
 
 export type CombatStandardActionRequest = {
   action: StandardActionType;
   actor_participant_id?: string | null;
   target_participant_id?: string | null;
+  inventory_item_id?: string | null;
   description?: string | null;
   roll_source?: RollSource;
   manual_roll?: number | null;
-  manual_rolls?: [number, number] | null;
+  manual_rolls?: number[] | null;
   override_resource_limit?: boolean;
 };
 
@@ -306,6 +353,21 @@ export type CombatStandardActionResult = {
   message: string;
   roll_result?: RollResult | null;
   effect_applied: boolean;
+  target_display_name?: string | null;
+  target_kind?: CombatParticipantKind | null;
+  healing?: number | null;
+  damage?: number | null;
+  damage_type?: string | null;
+  new_hp?: number | null;
+  save_ability?: string | null;
+  save_dc?: number | null;
+  is_saved?: boolean | null;
+  save_success_outcome?: "none" | "half_damage" | null;
+  effect_dice?: string | null;
+  effect_rolls?: number[];
+  effect_roll_source?: RollSource | null;
+  uses_remaining?: number | null;
+  concentration_check?: CombatConcentrationCheckResult | null;
 };
 
 export const combatRepo = {

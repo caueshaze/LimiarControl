@@ -10,6 +10,7 @@ export const routes = {
   campaigns: "/gm/campaigns",
   campaignEdit: "/gm/campaigns/:campaignId",
   partyDetails: "/gm/parties/:partyId",
+  gmPartyCharacterSheetDraft: "/gm/parties/:partyId/character-sheet-drafts/:draftId",
   campaignDashboard: "/gm/campaigns/:campaignId/dashboard",
 
   // Game/Runtime Board

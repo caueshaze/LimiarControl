@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, Enum as SAEnum, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Enum as SAEnum, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -208,6 +208,20 @@ class BaseItem(SQLModel, table=True):
             ),
             nullable=True,
         ),
+    )
+    heal_dice: Optional[str] = None
+    heal_bonus: Optional[int] = None
+    charges_max: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, nullable=True),
+    )
+    recharge_type: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String, nullable=True),
+    )
+    magic_effect_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
     )
     range_normal_meters: Optional[int] = None
     range_long_meters: Optional[int] = None

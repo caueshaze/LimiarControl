@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
 
@@ -59,6 +60,14 @@ class Item(SQLModel, table=True):
             ),
             nullable=True,
         ),
+    )
+    heal_dice: str | None = None
+    heal_bonus: int | None = None
+    charges_max: int | None = None
+    recharge_type: str | None = None
+    magic_effect_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
     )
     range_meters: float | None = None
     range_long_meters: float | None = None

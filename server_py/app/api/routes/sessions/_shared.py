@@ -139,8 +139,11 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
         memberId=entry.member_id,
         itemId=entry.item_id,
         quantity=entry.quantity,
+        chargesCurrent=entry.charges_current,
         isEquipped=entry.is_equipped,
         notes=entry.notes,
+        sourceSpellCanonicalKey=entry.source_spell_canonical_key,
+        expiresAt=entry.expires_at,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
     )

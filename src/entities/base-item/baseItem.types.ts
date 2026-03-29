@@ -116,6 +116,21 @@ export const BaseItemSource = {
 export type BaseItemSource =
   (typeof BaseItemSource)[keyof typeof BaseItemSource];
 
+export type MagicItemRechargeType =
+  | "none"
+  | "short_rest"
+  | "long_rest"
+  | "dawn"
+  | "custom";
+
+export type MagicItemCastSpellEffect = {
+  type: "cast_spell";
+  spellCanonicalKey: string;
+  castLevel: number;
+  ignoreComponents: boolean;
+  noFreeHandRequired: boolean;
+};
+
 export type BaseItemAlias = {
   id: string;
   alias: string;
@@ -140,6 +155,11 @@ export type BaseItem = {
   weaponRangeType?: BaseItemWeaponRangeType | null;
   damageDice?: string | null;
   damageType?: BaseItemDamageType | null;
+  healDice?: string | null;
+  healBonus?: number | null;
+  chargesMax?: number | null;
+  rechargeType?: MagicItemRechargeType | null;
+  magicEffect?: MagicItemCastSpellEffect | null;
   rangeNormalMeters?: number | null;
   rangeLongMeters?: number | null;
   versatileDamage?: string | null;
@@ -182,6 +202,11 @@ export type BaseItemWritePayload = {
   weaponRangeType?: BaseItemWeaponRangeType | null;
   damageDice?: string | null;
   damageType?: BaseItemDamageType | null;
+  healDice?: string | null;
+  healBonus?: number | null;
+  chargesMax?: number | null;
+  rechargeType?: MagicItemRechargeType | null;
+  magicEffect?: MagicItemCastSpellEffect | null;
   rangeNormalMeters?: number | null;
   rangeLongMeters?: number | null;
   versatileDamage?: string | null;

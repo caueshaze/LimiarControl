@@ -162,6 +162,7 @@ export const buildCatalogStatItems = (
   locale: string,
   labels: {
     damage: string;
+    healing: string;
     range: string;
     versatileDamage: string;
     armorClassBase: string;
@@ -177,6 +178,17 @@ export const buildCatalogStatItems = (
           value: formatDamageLabel(item.damageDice, item.damageType, locale) ?? item.damageDice,
         }
       : null,
+    item.healDice
+      ? {
+          label: labels.healing,
+          value: `${item.healDice}${typeof item.healBonus === "number" && item.healBonus !== 0 ? ` + ${item.healBonus}` : ""}`,
+        }
+      : typeof item.healBonus === "number"
+        ? {
+            label: labels.healing,
+            value: `${item.healBonus}`,
+          }
+        : null,
     typeof item.rangeMeters === "number"
       ? {
           label: labels.range,

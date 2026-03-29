@@ -15,6 +15,7 @@ from app.models.session import Session, SessionStatus
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from ._shared import require_identifier, to_inventory_read
+from app.services.magic_item_effects import initialize_inventory_item_charges
 
 
 def get_active_party_session_for_gm(
@@ -148,18 +149,21 @@ def create_inventory_entry(
     quantity: int,
     notes: str | None,
 ) -> InventoryItem:
-    return InventoryItem(
+    inventory_entry = InventoryItem(
         id=str(uuid4()),
         campaign_id=entry.campaign_id,
         party_id=entry.party_id,
         member_id=require_identifier(target_member.id, "Campaign member is missing an id"),
         item_id=require_identifier(item.id, "Item is missing an id"),
         quantity=quantity,
+        charges_current=item.charges_max if isinstance(item.charges_max, int) and item.charges_max > 0 else None,
         is_equipped=False,
         notes=notes or "Granted by GM",
         created_at=datetime.now(),
         updated_at=None,
     )
+    initialize_inventory_item_charges(inventory_entry, item)
+    return inventory_entry
 
 
 def progression_int(value: int | bool | None, fallback: int = 0) -> int:

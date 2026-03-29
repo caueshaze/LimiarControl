@@ -11,6 +11,20 @@ import type {
 } from "../model/characterSheet.types";
 import { ARMOR_PRESETS } from "../constants";
 import { clampHP } from "../utils/calculations";
+import {
+  buildCreationArmorOptions,
+  hasCreationShieldInInventory,
+  syncCreationInventoryLoadoutState,
+} from "../utils/creationEquipment";
+import {
+  findCreationItemByCanonicalKey,
+  getCreationCatalogItemsSorted,
+  getCreationItemCatalog,
+} from "../utils/creationItemCatalog";
+import {
+  getCatalogSpellOptions,
+  selectCatalogSpellForSheet,
+} from "../utils/creationSpells";
 import { createEmptySpellcasting } from "./useCharacterSheet.creation";
 import { fromCopper, toCopper } from "../../../shared/utils/money";
 
@@ -21,7 +35,14 @@ export const createBaseSheetActions = (
   guardedUpdate: GuardedUpdate,
   set: SetField,
   mode: "creation" | "play",
+  options: {
+    allowCreationEditing?: boolean;
+    campaignId?: string | null;
+  } = {},
 ) => {
+  const allowCreationEditing = options.allowCreationEditing ?? false;
+  const campaignId = options.campaignId ?? null;
+
   const setCurrentHP = (value: number) =>
     guardedUpdate((sheet) => ({ ...sheet, currentHP: clampHP(value, sheet.maxHP) }));
 
@@ -34,7 +55,7 @@ export const createBaseSheetActions = (
     guardedUpdate((sheet) => ({ ...sheet, currentHP: clampHP(sheet.currentHP + delta, sheet.maxHP) }));
 
   const toggleSaveProf = (ability: AbilityName) =>
-    guardedUpdate((sheet) => mode === "creation"
+    guardedUpdate((sheet) => mode === "creation" && !allowCreationEditing
       ? sheet
       : ({
           ...sheet,
@@ -46,7 +67,7 @@ export const createBaseSheetActions = (
 
   const cycleSkillProf = (skill: SkillName) =>
     guardedUpdate((sheet) => {
-      if (mode === "creation") return sheet;
+      if (mode === "creation" && !allowCreationEditing) return sheet;
       const order: ProficiencyLevel[] = [0, 0.5, 1, 2];
       const next = order[(order.indexOf(sheet.skillProficiencies[skill]) + 1) % order.length];
       return {
@@ -76,16 +97,36 @@ export const createBaseSheetActions = (
   const longRest = () =>
     guardedUpdate((sheet) => ({ ...sheet, hitDiceRemaining: sheet.hitDiceTotal, currentHP: sheet.maxHP }));
 
-  const selectArmor = (name: string) => {
-    const preset = ARMOR_PRESETS.find((entry) => entry.name === name);
+  const selectArmor = (value: string) => {
+    if (mode === "creation") {
+      guardedUpdate((sheet) => {
+        const armorOptions = buildCreationArmorOptions(sheet.inventory);
+        const selectedArmor = armorOptions.find((option) => option.value === value) ?? null;
+        return {
+          ...sheet,
+          equippedArmorItemId: selectedArmor?.value ?? null,
+          equippedArmor:
+            selectedArmor?.armor ??
+            ({ ...ARMOR_PRESETS.find((entry) => entry.name === "None")! }),
+        };
+      });
+      return;
+    }
+
+    const preset = ARMOR_PRESETS.find((entry) => entry.name === value);
     if (preset) set("equippedArmor", { ...preset });
   };
 
   const toggleShield = () =>
-    guardedUpdate((sheet) => ({
-      ...sheet,
-      equippedShield: sheet.equippedShield ? null : { name: "Shield", bonus: 2 },
-    }));
+    guardedUpdate((sheet) => {
+      if (mode === "creation" && !hasCreationShieldInInventory(sheet.inventory)) {
+        return sheet;
+      }
+      return {
+        ...sheet,
+        equippedShield: sheet.equippedShield ? null : { name: "Shield", bonus: 2 },
+      };
+    });
 
   const addWeapon = () =>
     guardedUpdate((sheet) => ({
@@ -102,6 +143,7 @@ export const createBaseSheetActions = (
           magicBonus: 0,
           properties: "",
           range: "",
+          rangeType: null,
         },
       ],
     }));
@@ -116,22 +158,70 @@ export const createBaseSheetActions = (
     }));
 
   const addItem = () =>
-    guardedUpdate((sheet) => ({
-      ...sheet,
-      inventory: [
-        ...sheet.inventory,
-        { id: nanoid(), name: "", quantity: 1, weight: 0, notes: "" },
-      ],
-    }));
+    guardedUpdate((sheet) => {
+      const firstCatalogItem =
+        mode === "creation" ? getCreationCatalogItemsSorted(getCreationItemCatalog())[0] ?? null : null;
+      const nextSheet = {
+        ...sheet,
+        inventory: [
+          ...sheet.inventory,
+          {
+            id: nanoid(),
+            name: firstCatalogItem?.name ?? "",
+            quantity: 1,
+            weight: firstCatalogItem?.weight ?? 0,
+            notes: "",
+            canonicalKey: firstCatalogItem?.canonicalKey ?? null,
+            campaignItemId: firstCatalogItem?.campaignItemId ?? null,
+            baseItemId: firstCatalogItem?.baseItemId ?? null,
+          },
+        ],
+      };
+      return mode === "creation" ? syncCreationInventoryLoadoutState(nextSheet) : nextSheet;
+    });
 
   const removeItem = (id: string) =>
-    guardedUpdate((sheet) => ({ ...sheet, inventory: sheet.inventory.filter((item) => item.id !== id) }));
+    guardedUpdate((sheet) => {
+      const nextSheet = {
+        ...sheet,
+        inventory: sheet.inventory.filter((item) => item.id !== id),
+      };
+      return mode === "creation" ? syncCreationInventoryLoadoutState(nextSheet) : nextSheet;
+    });
 
   const updateItem = <K extends keyof InventoryItem>(id: string, key: K, value: InventoryItem[K]) =>
-    guardedUpdate((sheet) => ({
-      ...sheet,
-      inventory: sheet.inventory.map((item) => (item.id === id ? { ...item, [key]: value } : item)),
-    }));
+    guardedUpdate((sheet) => {
+      const nextSheet = {
+        ...sheet,
+        inventory: sheet.inventory.map((item) => (item.id === id ? { ...item, [key]: value } : item)),
+      };
+      return mode === "creation" ? syncCreationInventoryLoadoutState(nextSheet) : nextSheet;
+    });
+
+  const selectInventoryCatalogItem = (id: string, canonicalKey: string) =>
+    guardedUpdate((sheet) => {
+      const catalogItem = findCreationItemByCanonicalKey(canonicalKey, getCreationItemCatalog());
+      if (!catalogItem) {
+        return sheet;
+      }
+
+      const nextSheet = {
+        ...sheet,
+        inventory: sheet.inventory.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                name: catalogItem.name,
+                weight: catalogItem.weight,
+                canonicalKey: catalogItem.canonicalKey,
+                campaignItemId: catalogItem.campaignItemId,
+                baseItemId: catalogItem.baseItemId,
+              }
+            : item,
+        ),
+      };
+      return mode === "creation" ? syncCreationInventoryLoadoutState(nextSheet) : nextSheet;
+    });
 
   const setCurrency = (coin: "cp" | "sp" | "ep" | "gp" | "pp", value: number) =>
     guardedUpdate((sheet) => {
@@ -179,6 +269,24 @@ export const createBaseSheetActions = (
   const addSpell = () =>
     guardedUpdate((sheet) => {
       if (!sheet.spellcasting) return sheet;
+      if (mode === "creation") {
+        const firstCatalogSpell = getCatalogSpellOptions(sheet.class, campaignId)[0];
+        if (!firstCatalogSpell) return sheet;
+        const nextSpell = selectCatalogSpellForSheet(
+          firstCatalogSpell.canonicalKey,
+          sheet.class,
+          sheet.spellcasting.mode,
+          campaignId,
+        );
+        if (!nextSpell) return sheet;
+        return {
+          ...sheet,
+          spellcasting: {
+            ...sheet.spellcasting,
+            spells: [...sheet.spellcasting.spells, nextSpell],
+          },
+        };
+      }
       return {
         ...sheet,
         spellcasting: {
@@ -187,6 +295,32 @@ export const createBaseSheetActions = (
             ...sheet.spellcasting.spells,
             { id: nanoid(), name: "", level: 0, school: "Evocation", prepared: false, notes: "" },
           ],
+        },
+      };
+    });
+
+  const selectCatalogSpell = (id: string, canonicalKey: string) =>
+    guardedUpdate((sheet) => {
+      if (!sheet.spellcasting) return sheet;
+      const existingSpell = sheet.spellcasting.spells.find((spell) => spell.id === id);
+      if (!existingSpell) return sheet;
+
+      const nextSpell = selectCatalogSpellForSheet(
+        canonicalKey,
+        sheet.class,
+        sheet.spellcasting.mode,
+        campaignId,
+        existingSpell,
+      );
+      if (!nextSpell) return sheet;
+
+      return {
+        ...sheet,
+        spellcasting: {
+          ...sheet.spellcasting,
+          spells: sheet.spellcasting.spells.map((spell) =>
+            spell.id === id ? nextSpell : spell,
+          ),
         },
       };
     });
@@ -244,12 +378,14 @@ export const createBaseSheetActions = (
     addItem,
     removeItem,
     updateItem,
+    selectInventoryCatalogItem,
     setCurrency,
     enableSpellcasting,
     disableSpellcasting,
     setSpellAbility,
     setSpellSlot,
     addSpell,
+    selectCatalogSpell,
     removeSpell,
     updateSpell,
     addTag,

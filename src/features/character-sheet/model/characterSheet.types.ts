@@ -61,6 +61,7 @@ export type Weapon = {
   magicBonus: number;
   properties: string;
   range: string;
+  rangeType?: "melee" | "ranged" | null;
 };
 
 // ── Inventory ───────────────────────────────────────────────────────────────
@@ -134,6 +135,25 @@ export type DeathSaves = {
 export type CharacterSheetMode = "creation" | "play";
 export type RestState = "exploration" | "short_rest" | "long_rest";
 
+export type CharacterClassFeature = {
+  id: string;
+  source: "class" | "subclass";
+  levelGranted: number;
+  label: string;
+  description: string;
+  kind: "passive" | "spellcasting" | "subclass" | "fighting_style" | "asi";
+  metadata?: Record<string, unknown> | null;
+};
+
+export type CharacterSubclassConfig = Record<string, string> & {
+  draconicAncestry?: string;
+};
+
+export type CharacterResourcePool = {
+  usesMax: number;
+  usesRemaining: number;
+};
+
 // ── Character Sheet ─────────────────────────────────────────────────────────
 
 export type CharacterSheet = {
@@ -206,17 +226,20 @@ export type CharacterSheet = {
   languageChoices: string[];
   /** Race-specific configuration choices (e.g. dragonborn ancestry). */
   raceConfig: {
-    dragonbornAncestry?: string | null;
+    draconicAncestry?: string | null;
     gnomeSubrace?: string | null;
     halfElfAbilityChoices?: AbilityName[];
     halfElfSkillChoices?: SkillName[];
   } | null;
   /** Subclass-specific configuration choices (e.g. dragon ancestor for Draconic Bloodline). */
-  subclassConfig: Record<string, string> | null;
+  subclassConfig: CharacterSubclassConfig | null;
   /** Fighting Style chosen at creation (Fighter lv1, Paladin/Ranger lv2). */
   fightingStyle: string | null;
   /** Skills chosen for Expertise (proficiency × 2) at creation (Rogue lv1, Bard lv3). */
   expertiseChoices: SkillName[];
+  /** Structured class/subclass features persisted canonically for automation and display. */
+  classFeatures: CharacterClassFeature[];
+  classResources: Record<string, CharacterResourcePool> | null;
 
   // Text fields
   featuresAndTraits: string;

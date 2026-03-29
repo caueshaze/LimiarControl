@@ -17,6 +17,7 @@ from app.schemas.session_reward import (
     SessionGrantXpRequest,
 )
 from app.services.character_progression import build_progression_snapshot, grant_experience
+from app.services.magic_item_effects import inventory_item_supports_stacking
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
 from ._shared import record_session_activity, require_identifier
@@ -159,7 +160,7 @@ async def grant_session_item_service(
             InventoryItem.item_id == require_identifier(item.id, "Item is missing an id"),
         )
     ).first()
-    if inventory_entry:
+    if inventory_entry and inventory_item_supports_stacking(item):
         inventory_entry.quantity += payload.quantity
         if payload.notes and not (inventory_entry.notes or "").strip():
             inventory_entry.notes = payload.notes

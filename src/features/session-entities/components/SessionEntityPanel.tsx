@@ -78,7 +78,6 @@ export const SessionEntityPanel = ({
               key={se.id}
               entity={se}
               onToggleVisibility={toggleVisibility}
-              onUpdateHp={updateHp}
               onRemove={removeEntity}
             />
           ))}

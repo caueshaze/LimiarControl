@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 from app.schemas.campaign_entity_shared import AbilityName
 from app.schemas.roll import RollResult, RollSource
 
+CombatActionCost = Literal["action", "bonus_action", "reaction", "free"]
+
 
 class CombatParticipant(BaseModel):
     id: str
@@ -72,14 +74,16 @@ class CombatAttackResult(BaseModel):
     damage_rolls: list[int] = Field(default_factory=list)
     base_damage: int | None = None
     damage_roll_source: RollSource | None = None
+    concentration_check: "CombatConcentrationCheckResult | None" = None
 
 
 class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str
+    inventory_item_id: str | None = None
     spell_id: str | None = None
     spell_canonical_key: str | None = None
-    spell_mode: Literal["spell_attack", "saving_throw", "direct_damage", "heal"] | None = None
+    spell_mode: Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"] | None = None
     slot_level: Optional[int] = None
     has_advantage: bool = False
     has_disadvantage: bool = False
@@ -97,13 +101,15 @@ class CombatCastSpellRequest(BaseModel):
     save_ability: AbilityName | None = None
     save_dc: int | None = Field(default=None, ge=1)
     spell_attack_bonus: int | None = None
+    concentration_roll_source: RollSource = "system"
+    concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
     override_resource_limit: bool = False
 
 
 class CombatSpellResult(BaseModel):
     spell_name: str
     spell_canonical_key: str | None = None
-    action_kind: Literal["spell_attack", "saving_throw", "direct_damage", "heal"]
+    action_kind: Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
     effect_kind: Literal["damage", "healing"] | None = None
     damage: int = 0
     healing: int = 0
@@ -127,6 +133,13 @@ class CombatSpellResult(BaseModel):
     effect_rolls: list[int] = Field(default_factory=list)
     base_effect: int | None = None
     effect_roll_source: RollSource | None = None
+    action_cost: CombatActionCost | None = None
+    summary_text: str | None = None
+    inventory_refresh_required: bool = False
+    concentration_check: "CombatConcentrationCheckResult | None" = None
+    elemental_affinity_eligible: bool = False
+    elemental_affinity_damage_type: str | None = None
+    elemental_affinity_bonus: int | None = None
 
 
 class CombatEntityActionRequest(BaseModel):
@@ -138,6 +151,8 @@ class CombatEntityActionRequest(BaseModel):
     roll_source: RollSource = "system"
     manual_roll: int | None = Field(default=None, ge=1, le=20)
     manual_rolls: list[int] | None = None
+    concentration_roll_source: RollSource = "system"
+    concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
     override_resource_limit: bool = False
 
 
@@ -166,6 +181,19 @@ class CombatEntityActionResult(BaseModel):
     damage_rolls: list[int] = Field(default_factory=list)
     base_damage: int | None = None
     damage_roll_source: RollSource | None = None
+    concentration_check: "CombatConcentrationCheckResult | None" = None
+
+
+class CombatConcentrationCheckResult(BaseModel):
+    actor_participant_id: str | None = None
+    actor_display_name: str
+    damage_taken: int
+    dc: int
+    success: bool
+    roll_result: RollResult
+    broken_effect_labels: list[str] = Field(default_factory=list)
+    source_spell_keys: list[str] = Field(default_factory=list)
+    summary_text: str
 
 
 class CombatResolveDamageRequest(BaseModel):
@@ -173,6 +201,8 @@ class CombatResolveDamageRequest(BaseModel):
     pending_attack_id: str
     roll_source: RollSource = "system"
     manual_rolls: list[int] | None = None
+    concentration_roll_source: RollSource = "system"
+    concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
 
 
 class CombatResolveSpellEffectRequest(BaseModel):
@@ -180,6 +210,8 @@ class CombatResolveSpellEffectRequest(BaseModel):
     pending_spell_id: str
     roll_source: RollSource = "system"
     manual_rolls: list[int] | None = None
+    concentration_roll_source: RollSource = "system"
+    concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
 
 
 class CombatApplyDamageRequest(BaseModel):
@@ -187,6 +219,8 @@ class CombatApplyDamageRequest(BaseModel):
     amount: int
     kind: Literal["player", "session_entity"]
     type_override: Optional[str] = None
+    concentration_roll_source: RollSource = "system"
+    concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
 
 
 class CombatApplyHealingRequest(BaseModel):
@@ -210,6 +244,7 @@ ActiveEffectKind = Literal[
     "disadvantage_on_attacks",
     "dodging",
     "hidden",
+    "spell_effect",
 ]
 
 ActiveEffectConditionType = Literal[
@@ -218,6 +253,7 @@ ActiveEffectConditionType = Literal[
     "restrained",
     "blinded",
     "frightened",
+    "charmed",
 ]
 
 ActiveEffectDurationType = Literal[
@@ -239,6 +275,8 @@ class ActiveEffect(BaseModel):
     expires_on: Optional[Literal["turn_start", "turn_end"]] = None
     expires_at_participant_id: Optional[str] = None
     created_at: str
+    metadata: dict | None = None
+    display_label: str | None = None
 
 
 class CombatApplyEffectRequest(BaseModel):
@@ -250,6 +288,8 @@ class CombatApplyEffectRequest(BaseModel):
     remaining_rounds: Optional[int] = Field(default=None, ge=1)
     expires_at_participant_id: Optional[str] = None
     source_participant_id: Optional[str] = None
+    metadata: dict | None = None
+    display_label: str | None = None
 
 
 class CombatRemoveEffectRequest(BaseModel):
@@ -274,13 +314,22 @@ class CombatReactionResolveRequest(BaseModel):
 
 # --- Standard Actions ---
 
-StandardActionType = Literal["dodge", "help", "hide", "use_object", "dash", "disengage"]
+StandardActionType = Literal[
+    "dodge",
+    "help",
+    "hide",
+    "use_object",
+    "dash",
+    "disengage",
+    "dragonborn_breath_weapon",
+]
 
 
 class CombatStandardActionRequest(BaseModel):
     action: StandardActionType
     actor_participant_id: Optional[str] = None
     target_participant_id: Optional[str] = None
+    inventory_item_id: Optional[str] = None
     description: Optional[str] = None
     roll_source: RollSource = "system"
     manual_roll: int | None = Field(default=None, ge=1, le=20)
@@ -306,3 +355,18 @@ class CombatStandardActionResult(BaseModel):
     message: str
     roll_result: RollResult | None = None
     effect_applied: bool = False
+    target_display_name: str | None = None
+    target_kind: Literal["player", "session_entity"] | None = None
+    healing: int | None = None
+    damage: int | None = None
+    damage_type: str | None = None
+    new_hp: int | None = None
+    save_ability: AbilityName | None = None
+    save_dc: int | None = None
+    is_saved: bool | None = None
+    save_success_outcome: Literal["none", "half_damage"] | None = None
+    effect_dice: str | None = None
+    effect_rolls: list[int] = Field(default_factory=list)
+    effect_roll_source: RollSource | None = None
+    uses_remaining: int | None = None
+    concentration_check: CombatConcentrationCheckResult | None = None

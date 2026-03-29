@@ -1,12 +1,7 @@
-import type { ReactNode } from "react";
 import {
-  ENTITY_ABILITIES,
   ENTITY_CONDITIONS,
   ENTITY_DAMAGE_TYPES,
-  getCampaignEntityAbilityModifier,
-  getCampaignEntityExplicitSkillEntries,
   getCampaignEntityInitiativeBonus,
-  getCampaignEntitySavingThrowEntries,
   withSignedBonus,
   type EntityCategory,
 } from "../../../entities/campaign-entity";
@@ -19,24 +14,6 @@ type Props = {
   entity: SessionEntityPlayer;
 };
 
-const StatPill = ({
-  children,
-  tone = "default",
-}: {
-  children: ReactNode;
-  tone?: "default" | "override";
-}) => (
-  <span
-    className={`rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase ${
-      tone === "override"
-        ? "border border-emerald-500/30 bg-emerald-500/12 text-emerald-200"
-        : "bg-slate-800 text-slate-300"
-    }`}
-  >
-    {children}
-  </span>
-);
-
 export const PlayerEntityCard = ({ entity }: Props) => {
   const { t } = useLocale();
   const ce = entity.entity;
@@ -46,8 +23,6 @@ export const PlayerEntityCard = ({ entity }: Props) => {
   const category = (ce.category ?? "npc") as EntityCategory;
   const isDead = typeof entity.currentHp === "number" && entity.currentHp <= 0;
   const initiativeBonus = getCampaignEntityInitiativeBonus(ce);
-  const saveEntries = getCampaignEntitySavingThrowEntries(ce);
-  const skillEntries = getCampaignEntityExplicitSkillEntries(ce);
   const damageTypeLabels = new Map(ENTITY_DAMAGE_TYPES.map((entry) => [entry.key, entry.label]));
   const conditionLabels = new Map(ENTITY_CONDITIONS.map((entry) => [entry.key, entry.label]));
 
@@ -63,17 +38,11 @@ export const PlayerEntityCard = ({ entity }: Props) => {
         )}
       </div>
 
+      {ce.description && (
+        <p className="mt-2 text-xs text-slate-400">{ce.description}</p>
+      )}
+
       <div className="mt-1 flex flex-wrap gap-3 text-xs">
-        {entity.currentHp != null && (
-          <span className="rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-0.5 font-bold text-red-300">
-            HP {ce.maxHp != null ? `${entity.currentHp}/${ce.maxHp}` : entity.currentHp}
-          </span>
-        )}
-        {ce.armorClass != null && (
-          <span className="rounded-lg border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 font-bold text-sky-300">
-            AC {ce.armorClass}
-          </span>
-        )}
         {ce.speedMeters != null && (
           <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-bold text-emerald-300">
             {ce.speedMeters}m
@@ -83,53 +52,6 @@ export const PlayerEntityCard = ({ entity }: Props) => {
           {t("entity.card.initiativeShort")} {withSignedBonus(initiativeBonus)}
         </span>
       </div>
-
-      {ce.description && (
-        <p className="mt-2 text-xs text-slate-400">{ce.description}</p>
-      )}
-
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {ENTITY_ABILITIES.map((ability) => (
-          <StatPill key={ability.key}>
-            {ability.short} {ce.abilities[ability.key]} ({withSignedBonus(getCampaignEntityAbilityModifier(ce.abilities[ability.key]))})
-          </StatPill>
-        ))}
-      </div>
-
-      <div className="mt-2 text-xs text-slate-300">
-        <span className="text-slate-500">{t("entity.form.savingThrows")}: </span>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {saveEntries.map((ability) => (
-            <StatPill key={ability.key} tone={ability.isOverride ? "override" : "default"}>
-              {ability.short} {withSignedBonus(ability.bonus)}
-            </StatPill>
-          ))}
-        </div>
-      </div>
-
-      {skillEntries.length > 0 && (
-        <div className="mt-2 text-xs text-slate-300">
-          <span className="text-slate-500">{t("entity.form.skills")}: </span>
-          {skillEntries
-            .map((skill) => `${skill.label} ${withSignedBonus(skill.bonus)}`)
-            .join(", ")}
-        </div>
-      )}
-
-      {ce.senses && (
-        <div className="mt-2 text-xs text-slate-300">
-          <span className="text-slate-500">{t("entity.form.senses")}: </span>
-          {[
-            ce.senses.darkvisionMeters != null ? `Darkvision ${ce.senses.darkvisionMeters}m` : null,
-            ce.senses.blindsightMeters != null ? `Blindsight ${ce.senses.blindsightMeters}m` : null,
-            ce.senses.tremorsenseMeters != null ? `Tremorsense ${ce.senses.tremorsenseMeters}m` : null,
-            ce.senses.truesightMeters != null ? `Truesight ${ce.senses.truesightMeters}m` : null,
-            ce.senses.passivePerception != null ? `PP ${ce.senses.passivePerception}` : null,
-          ]
-            .filter(Boolean)
-            .join(", ")}
-        </div>
-      )}
 
       {(ce.damageResistances.length > 0 ||
         ce.damageImmunities.length > 0 ||
@@ -200,7 +122,7 @@ export const PlayerEntityCard = ({ entity }: Props) => {
         <img
           src={ce.imageUrl}
           alt={ce.name}
-          className="mt-2 h-20 w-20 rounded-xl border border-slate-700 object-cover"
+          className="mt-3 w-full rounded-xl border border-slate-700 object-contain"
         />
       )}
     </div>

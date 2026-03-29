@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 from app.models.base_item import BaseItem, BaseItemEquipmentCategory, BaseItemKind
 from app.models.campaign import SystemType
 from app.schemas.base_item import BaseItemCreate, BaseItemUpdate
+from app.services.magic_item_effects import validate_base_magic_item_effect_reference
 
 
 def _normalize_lookup(value: str) -> str:
@@ -86,6 +87,15 @@ def _apply_payload(item: BaseItem, payload: BaseItemCreate | BaseItemUpdate) -> 
     item.weapon_range_type = payload.weaponRangeType
     item.damage_dice = payload.damageDice
     item.damage_type = payload.damageType
+    item.heal_dice = payload.healDice
+    item.heal_bonus = payload.healBonus
+    item.charges_max = payload.chargesMax
+    item.recharge_type = payload.rechargeType
+    item.magic_effect_json = (
+        payload.magicEffect.model_dump(mode="json")
+        if payload.magicEffect is not None
+        else None
+    )
     item.range_normal_meters = payload.rangeNormalMeters
     item.range_long_meters = payload.rangeLongMeters
     item.versatile_damage = payload.versatileDamage
@@ -112,6 +122,11 @@ def create_base_item(*, db: Session, payload: BaseItemCreate) -> BaseItem:
     )
     if existing:
         raise HTTPException(status_code=409, detail="canonicalKey already exists")
+    validate_base_magic_item_effect_reference(
+        db,
+        system=payload.system,
+        magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
+    )
 
     item = BaseItem(id=str(uuid4()))
     _apply_payload(item, payload)
@@ -134,6 +149,11 @@ def update_base_item(
     )
     if existing and existing.id != item.id:
         raise HTTPException(status_code=409, detail="canonicalKey already exists")
+    validate_base_magic_item_effect_reference(
+        db,
+        system=payload.system,
+        magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
+    )
 
     _apply_payload(item, payload)
     db.add(item)

@@ -55,7 +55,7 @@ export const SKILL_ABILITY_MAP: Record<SkillName, AbilityName> = {
 
 export const SKILL_LABELS: Record<SkillName, string> = {
   acrobatics: "Acrobacia",
-  animalHandling: "Adestramento",
+  animalHandling: "Lidar com Animais",
   arcana: "Arcanismo",
   athletics: "Atletismo",
   deception: "Enganação",

@@ -88,6 +88,12 @@ class CombatNpcActionMixin:
 
         if action_kind != "utility" and not target_p:
             raise CombatServiceError("This combat action requires a target")
+        if action_kind in ("weapon_attack", "spell_attack", "saving_throw"):
+            cls._assert_hostile_action_allowed(
+                attacker,
+                target_p,
+                action_label="a hostile action",
+            )
 
         roll_total = None
         save_roll = None
@@ -100,6 +106,7 @@ class CombatNpcActionMixin:
         new_hp = None
         previous_hp = None
         effect_msg = ""
+        concentration_check = None
         roll_result = None
         target_ac = None
         attack_bonus = None
@@ -216,13 +223,18 @@ class CombatNpcActionMixin:
                 save_success_outcome=save_success_outcome,
             )
             if damage > 0:
-                new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
                     db,
                     target_p["ref_id"],
                     target_p["kind"],
                     damage,
-                    False,
-                    state,
+                    damage_type=damage_type,
+                    is_crit=False,
+                    state=state,
+                    **cls._build_concentration_roll_kwargs(
+                        req.concentration_roll_source,
+                        req.concentration_manual_roll,
+                    ),
                 )
         elif action_kind == "heal":
             healing = max(
@@ -298,6 +310,8 @@ class CombatNpcActionMixin:
 
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+        if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str):
+            log_message = f"{log_message} {concentration_check['summary_text']}".strip()
 
         await cls._emit_log(session_id, {
             "message": log_message.strip(),
@@ -332,6 +346,7 @@ class CombatNpcActionMixin:
             "damage_rolls": damage_rolls,
             "base_damage": base_damage,
             "damage_roll_source": damage_roll_source,
+            "concentration_check": concentration_check,
         }
 
     @classmethod
@@ -381,14 +396,20 @@ class CombatNpcActionMixin:
         new_hp = None
         previous_hp = None
         effect_msg = ""
+        concentration_check = None
         if damage > 0:
-            new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(
+            new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
                 db,
                 target_ref_id,
                 target_kind,
                 damage,
-                bool(pending_attack.get("is_critical")),
-                state,
+                damage_type=pending_attack.get("damage_type"),
+                is_crit=bool(pending_attack.get("is_critical")),
+                state=state,
+                **cls._build_concentration_roll_kwargs(
+                    req.concentration_roll_source,
+                    req.concentration_manual_roll,
+                ),
             )
 
         roll_result_data = pending_attack.get("roll_result")
@@ -407,10 +428,17 @@ class CombatNpcActionMixin:
             await cls._emit_entity_hp_update(db, session_id, target_ref_id, previous_hp)
         await cls._emit_state(session_id, state)
 
+        concentration_summary = (
+            f" {concentration_check['summary_text']}"
+            if isinstance(concentration_check, dict)
+            and isinstance(concentration_check.get("summary_text"), str)
+            else ""
+        )
         await cls._emit_log(session_id, {
             "message": (
                 f"{attacker['display_name']} used {pending_attack.get('action_name') or 'Combat Action'} on "
                 f"{target_display_name} and dealt {damage} damage.{effect_msg}"
+                f"{concentration_summary}"
             ),
             "actorUserId": actor_user_id,
             "source": "gm_override",
@@ -440,6 +468,7 @@ class CombatNpcActionMixin:
             "damage_rolls": damage_rolls,
             "base_damage": base_damage,
             "damage_roll_source": req.roll_source,
+            "concentration_check": concentration_check,
         }
 
     @classmethod

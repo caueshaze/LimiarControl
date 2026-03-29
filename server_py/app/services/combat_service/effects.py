@@ -65,6 +65,7 @@ class CombatEffectsMixin:
         "action_used": False,
         "bonus_action_used": False,
         "reaction_used": False,
+        "colossus_slayer_used": False,
     }
 
     @classmethod
@@ -150,6 +151,8 @@ class CombatEffectsMixin:
             "expires_on": expires_on,
             "expires_at_participant_id": expires_at,
             "created_at": now,
+            "metadata": req.metadata,
+            "display_label": req.display_label,
         }
 
         effects = cls._get_participant_effects(target_p)
@@ -199,6 +202,15 @@ class CombatEffectsMixin:
             raise CombatServiceError("Effect not found on this participant", 404)
 
         cls._set_participant_effects(target_p, new_effects)
+        removed_metadata = cls._get_effect_metadata(removed)
+        if removed_metadata.get("concentration") is True and isinstance(
+            removed_metadata.get("concentration_group"),
+            str,
+        ):
+            cls._remove_effect_group(
+                state,
+                concentration_group=removed_metadata["concentration_group"],
+            )
         flag_modified(state, "participants")
 
         db.add(state)
@@ -414,6 +426,9 @@ class CombatEffectsMixin:
 
     @classmethod
     def _effect_label(cls, effect: dict) -> str:
+        display_label = effect.get("display_label")
+        if isinstance(display_label, str) and display_label.strip():
+            return display_label.strip()
         kind = effect.get("kind", "effect")
         if kind == "condition":
             return effect.get("condition_type") or "condition"

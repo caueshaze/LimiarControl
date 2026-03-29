@@ -15,8 +15,11 @@ class InventoryRead(BaseModel):
     memberId: str
     itemId: str
     quantity: int
+    chargesCurrent: Optional[int] = None
     isEquipped: bool
     notes: Optional[str]
+    sourceSpellCanonicalKey: Optional[str] = None
+    expiresAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: Optional[datetime]
 

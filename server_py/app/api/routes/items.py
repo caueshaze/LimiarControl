@@ -14,6 +14,7 @@ from app.models.item import ItemType
 from app.models.user import User
 from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
 from app.services.item_properties import normalize_item_properties
+from app.services.magic_item_effects import validate_campaign_magic_item_effect_reference
 
 router = APIRouter()
 
@@ -35,6 +36,15 @@ def _apply_item_payload(item: Item, payload: ItemCreate | ItemUpdate) -> None:
     item.weight = payload.weight
     item.damage_dice = payload.damageDice
     item.damage_type = payload.damageType
+    item.heal_dice = payload.healDice
+    item.heal_bonus = payload.healBonus
+    item.charges_max = payload.chargesMax
+    item.recharge_type = payload.rechargeType
+    item.magic_effect_json = (
+        payload.magicEffect.model_dump(mode="json")
+        if payload.magicEffect is not None
+        else None
+    )
     item.range_meters = payload.rangeMeters
     item.range_long_meters = payload.rangeLongMeters
     item.versatile_damage = payload.versatileDamage
@@ -84,6 +94,11 @@ def create_item(
             detail=f"Invalid item properties: {', '.join(invalid_properties)}",
         )
     payload.properties = normalized_properties
+    validate_campaign_magic_item_effect_reference(
+        session,
+        campaign_id=campaign_id,
+        magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
+    )
     item = Item(
         id=str(uuid4()),
         campaign_id=campaign_id,
@@ -119,6 +134,11 @@ def update_item(
             detail=f"Invalid item properties: {', '.join(invalid_properties)}",
         )
     payload.properties = normalized_properties
+    validate_campaign_magic_item_effect_reference(
+        session,
+        campaign_id=campaign_id,
+        magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
+    )
     _apply_item_payload(item, payload)
     session.add(item)
     session.commit()

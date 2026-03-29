@@ -120,6 +120,9 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
       // Only clear if campaigns loaded and non-empty (avoid clearing when list is still populating)
       if (campaigns.length > 0) {
         setSelectedCampaignId(null);
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(storageKeys.selectedCampaignId);
+        }
         // Do NOT call preferencesRepo here — this fires when the campaign is a player-only campaign
         // (not in /me/campaigns), which would cause an infinite PUT loop with PlayerBoardPage.
       }
@@ -159,12 +162,21 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
     if (!campaignId || campaignId === "undefined" || selectedCampaignId === campaignId) {
       return;
     }
+
+    const existsInLoadedCampaigns =
+      campaigns.length > 0 && campaigns.some((campaign) => campaign.id === campaignId);
+    if (campaignsLoaded && campaigns.length > 0 && !existsInLoadedCampaigns) {
+      // Prevent route->selection loops after campaign deletion. Once the campaign list
+      // is loaded, unknown ids should not be persisted to preferences.
+      return;
+    }
+
     setSelectedCampaignId(campaignId);
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(storageKeys.selectedCampaignId, campaignId);
     }
     preferencesRepo.update({ selectedCampaignId: campaignId }).catch(() => { });
-  }, [selectedCampaignId]);
+  }, [campaigns, campaignsLoaded, selectedCampaignId]);
 
   const updateCampaign = useCallback(
     async (campaignId: string, name: string, systemType: CampaignSystemType) => {

@@ -10,7 +10,9 @@ from sqlmodel import Session, select
 from app.models.base_item import BaseItem, BaseItemCostUnit, BaseItemKind
 from app.models.campaign import Campaign, SystemType
 from app.models.item import Item, ItemType
+from app.services.base_items import get_base_item_by_canonical_key
 from app.services.item_properties import normalize_item_properties
+from app.services.magic_item_effects import has_cast_spell_magic_effect
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,11 @@ def _base_item_to_campaign_item(
     base_item: BaseItem,
     campaign_id: str,
 ) -> Item:
-    item_type = ITEM_KIND_TO_ITEM_TYPE.get(base_item.item_kind, ItemType.MISC)
+    item_type = (
+        ItemType.MAGIC
+        if has_cast_spell_magic_effect(base_item)
+        else ITEM_KIND_TO_ITEM_TYPE.get(base_item.item_kind, ItemType.MISC)
+    )
 
     properties: list[str] = []
     if base_item.item_kind == BaseItemKind.WEAPON:
@@ -75,6 +81,11 @@ def _base_item_to_campaign_item(
         weight=base_item.weight,
         damage_dice=base_item.damage_dice,
         damage_type=base_item.damage_type,
+        heal_dice=base_item.heal_dice,
+        heal_bonus=base_item.heal_bonus,
+        charges_max=base_item.charges_max,
+        recharge_type=base_item.recharge_type,
+        magic_effect_json=base_item.magic_effect_json,
         range_meters=float(base_item.range_normal_meters) if base_item.range_normal_meters is not None else None,
         range_long_meters=float(base_item.range_long_meters) if base_item.range_long_meters is not None else None,
         versatile_damage=base_item.versatile_damage,
@@ -96,6 +107,41 @@ def _base_item_to_campaign_item(
         is_custom=False,
         is_enabled=True,
     )
+
+
+def ensure_campaign_catalog_item_for_base_canonical_key(
+    *,
+    db: Session,
+    campaign_id: str,
+    system: SystemType,
+    canonical_key: str,
+    commit: bool = False,
+) -> Item:
+    base_item = get_base_item_by_canonical_key(
+        db=db,
+        system=system,
+        canonical_key=canonical_key,
+    )
+    if not base_item:
+        raise ValueError(f"Base item '{canonical_key}' was not found in the catalog.")
+
+    existing = db.exec(
+        select(Item).where(
+            Item.campaign_id == campaign_id,
+            Item.base_item_id == base_item.id,
+        )
+    ).first()
+    if existing:
+        return existing
+
+    campaign_item = _base_item_to_campaign_item(base_item, campaign_id)
+    db.add(campaign_item)
+    if commit:
+        db.commit()
+        db.refresh(campaign_item)
+    else:
+        db.flush()
+    return campaign_item
 
 
 def seed_campaign_catalog(

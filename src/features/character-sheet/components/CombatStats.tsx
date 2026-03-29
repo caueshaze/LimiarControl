@@ -4,6 +4,10 @@ import { Section } from "./Section";
 import { input, fieldLabel, chk, statBox } from "./styles";
 import { ARMOR_PRESETS } from "../constants";
 import { formatMod, safeParseInt } from "../utils/calculations";
+import {
+  buildCreationArmorOptions,
+  hasCreationShieldInInventory,
+} from "../utils/creationEquipment";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
@@ -14,11 +18,39 @@ type Props = {
   set: SheetActions["set"];
   selectArmor: SheetActions["selectArmor"];
   toggleShield: SheetActions["toggleShield"];
+  inventoryBackedArmorSelection?: boolean;
   readOnly?: boolean;
 };
 
-export const CombatStats = ({ sheet, ac, initiative, acBreakdown, set, selectArmor, toggleShield, readOnly = false }: Props) => {
+export const CombatStats = ({
+  sheet,
+  ac,
+  initiative,
+  acBreakdown,
+  set,
+  selectArmor,
+  toggleShield,
+  inventoryBackedArmorSelection = false,
+  readOnly = false,
+}: Props) => {
   const { t } = useLocale();
+  const creationArmorOptions = inventoryBackedArmorSelection
+    ? buildCreationArmorOptions(sheet.inventory)
+    : [];
+  const selectedCreationArmorValue =
+    inventoryBackedArmorSelection
+      ? (
+          (sheet.equippedArmorItemId &&
+            creationArmorOptions.some((option) => option.value === sheet.equippedArmorItemId)
+              ? sheet.equippedArmorItemId
+              : null) ??
+          creationArmorOptions.find((option) => option.armor.name === sheet.equippedArmor.name)?.value ??
+          ""
+        )
+      : sheet.equippedArmor.name;
+  const shieldAvailable = inventoryBackedArmorSelection
+    ? hasCreationShieldInInventory(sheet.inventory)
+    : true;
 
   return (
     <Section title={t("sheet.combat.title")} color="bg-rose-500">
@@ -60,8 +92,17 @@ export const CombatStats = ({ sheet, ac, initiative, acBreakdown, set, selectArm
           <div className="space-y-3">
             <div>
               <label className={fieldLabel}>{t("sheet.combat.armor")}</label>
-              <select value={sheet.equippedArmor.name} onChange={(e) => selectArmor(e.target.value)} className={input}>
-                {ARMOR_PRESETS.map((a) => (
+              <select value={selectedCreationArmorValue} onChange={(e) => selectArmor(e.target.value)} className={input}>
+                {inventoryBackedArmorSelection ? (
+                  <>
+                    <option value="">{t("sheet.combat.noArmor")}</option>
+                    {creationArmorOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}{option.detail ? ` (${option.detail})` : ""}
+                      </option>
+                    ))}
+                  </>
+                ) : ARMOR_PRESETS.map((a) => (
                   <option key={a.name} value={a.name}>
                     {a.name}{a.armorType !== "none" ? ` (${a.armorType}, AC ${a.baseAC})` : ""}
                   </option>
@@ -69,7 +110,13 @@ export const CombatStats = ({ sheet, ac, initiative, acBreakdown, set, selectArm
               </select>
             </div>
             <label className="flex items-center gap-3">
-              <input type="checkbox" checked={!!sheet.equippedShield} onChange={toggleShield} className={chk} />
+              <input
+                type="checkbox"
+                checked={!!sheet.equippedShield}
+                onChange={toggleShield}
+                disabled={!shieldAvailable}
+                className={chk}
+              />
               <span className="text-sm text-slate-300">
                 {t("sheet.combat.shield")}{sheet.equippedShield ? ` (+${sheet.equippedShield.bonus})` : ""}
               </span>

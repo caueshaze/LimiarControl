@@ -179,6 +179,11 @@ const localizeKnownEnglishMessage = (message: string, locale: Locale) => {
     return `${match[1]} tenta se esconder (Furtividade: ${match[2]}).`;
   }
 
+  match = message.match(/^(.+?) uses (.+?) on (.+?) and restores (\d+) HP(.*)$/i);
+  if (match) {
+    return `${match[1]} usa ${match[2]} em ${match[3]} e restaura ${match[4]} PV${normalizeCombatTail(match[5], "pt")}`;
+  }
+
   match = message.match(/^(.+?) uses (.+?)\.$/i);
   if (match) {
     const description = match[2].toLowerCase() === "an object" ? "um objeto" : match[2];
@@ -325,6 +330,11 @@ const localizeKnownPortugueseMessage = (message: string, locale: Locale) => {
   match = message.match(/^(.+?) tenta se esconder \(Furtividade: (\d+)\)\.$/i);
   if (match) {
     return `${match[1]} attempts to hide (Stealth: ${match[2]}).`;
+  }
+
+  match = message.match(/^(.+?) usa (.+?) em (.+?) e restaura (\d+) PV(.*)$/i);
+  if (match) {
+    return `${match[1]} uses ${match[2]} on ${match[3]} and restores ${match[4]} HP${normalizeCombatTail(match[5], "en")}`;
   }
 
   match = message.match(/^(.+?) usa (.+?)\.$/i);

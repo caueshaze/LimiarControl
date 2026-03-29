@@ -66,6 +66,7 @@ export const catalogEnUSDictionary = {
   "catalog.validation.armorClass": "Invalid armor class",
   "catalog.validation.properties": "Use only known properties:",
   "catalog.validation.strengthRequirement": "Invalid strength requirement",
+  "catalog.validation.healBonus": "Invalid healing bonus",
   "catalog.validation.weaponFields": "Weapons need predictable damage, damage type, category, and range data",
   "catalog.validation.armorFields": "Armor needs category, base AC, and DEX rule",
   "catalog.validation.magicDamageType": "Magic items with damage need a damage type",

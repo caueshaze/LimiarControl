@@ -1,42 +1,139 @@
-export type DragonbornAncestryId =
-  | "black"
-  | "blue"
-  | "brass"
-  | "bronze"
-  | "copper"
-  | "gold"
-  | "green"
-  | "red"
-  | "silver"
-  | "white";
+import {
+  DRACONIC_ANCESTRIES,
+  getDraconicAncestry,
+  getDraconicDamageType,
+  getDraconicResistanceType,
+  getDraconicBreathWeaponAreaSize,
+  getDraconicBreathWeaponSaveType,
+  getDraconicBreathWeaponShape,
+  type DraconicAncestry,
+  type DraconicAncestryId,
+  type DraconicBreathWeaponSaveType,
+  type DraconicBreathWeaponShape,
+  type DraconicDamageType,
+  type DraconicResistanceType,
+} from "./draconicAncestry";
+import { getModifier, getProficiencyBonus } from "../utils/calculations";
 
-export type DragonbornAncestry = {
-  id: DragonbornAncestryId;
-  label: string;
-  damageType: string;
-  resistanceType: string;
-  area: {
-    shape: "line" | "cone";
-    size: string;
-  };
-  saveAbility: "DEX" | "CON";
+export type DragonbornAncestry = DraconicAncestry;
+export type DragonbornAncestryId = DraconicAncestryId;
+export type DragonbornDamageType = DraconicDamageType;
+export type DragonbornResistanceType = DraconicResistanceType;
+export type DragonbornBreathWeaponShape = DraconicBreathWeaponShape;
+export type DragonbornBreathWeaponSaveType = DraconicBreathWeaponSaveType;
+
+type DragonbornRaceConfig = {
+  draconicAncestry?: string | null;
+  dragonbornAncestry?: string | null;
+  dragonAncestor?: string | null;
+} | null | undefined;
+
+export type DragonbornLineageState = {
+  ancestry: DragonbornAncestryId | null;
+  ancestryLabel: string | null;
+  damageType: DragonbornDamageType | null;
+  resistanceType: DragonbornResistanceType | null;
+  breathWeaponShape: DragonbornBreathWeaponShape | null;
+  breathWeaponSaveType: DragonbornBreathWeaponSaveType | null;
+  breathWeaponAreaSize: string | null;
+  resistances: DragonbornResistanceType[];
 };
 
-export const DRAGONBORN_ANCESTRIES: DragonbornAncestry[] = [
-  { id: "black", label: "Black", damageType: "acid", resistanceType: "acid", area: { shape: "line", size: "1.5m x 9m" }, saveAbility: "DEX" },
-  { id: "blue", label: "Blue", damageType: "lightning", resistanceType: "lightning", area: { shape: "line", size: "1.5m x 9m" }, saveAbility: "DEX" },
-  { id: "brass", label: "Brass", damageType: "fire", resistanceType: "fire", area: { shape: "line", size: "1.5m x 9m" }, saveAbility: "DEX" },
-  { id: "bronze", label: "Bronze", damageType: "lightning", resistanceType: "lightning", area: { shape: "line", size: "1.5m x 9m" }, saveAbility: "DEX" },
-  { id: "copper", label: "Copper", damageType: "acid", resistanceType: "acid", area: { shape: "line", size: "1.5m x 9m" }, saveAbility: "DEX" },
-  { id: "gold", label: "Gold", damageType: "fire", resistanceType: "fire", area: { shape: "cone", size: "4.5m" }, saveAbility: "DEX" },
-  { id: "green", label: "Green", damageType: "poison", resistanceType: "poison", area: { shape: "cone", size: "4.5m" }, saveAbility: "CON" },
-  { id: "red", label: "Red", damageType: "fire", resistanceType: "fire", area: { shape: "cone", size: "4.5m" }, saveAbility: "DEX" },
-  { id: "silver", label: "Silver", damageType: "cold", resistanceType: "cold", area: { shape: "cone", size: "4.5m" }, saveAbility: "CON" },
-  { id: "white", label: "White", damageType: "cold", resistanceType: "cold", area: { shape: "cone", size: "4.5m" }, saveAbility: "CON" },
-];
+export const DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY = "draconicAncestry";
+export const LEGACY_DRAGONBORN_ANCESTRY_RACE_CONFIG_KEY = "dragonbornAncestry";
+export const LEGACY_DRAGONBORN_DRAGON_ANCESTOR_RACE_CONFIG_KEY = "dragonAncestor";
+
+export const DRAGONBORN_ANCESTRIES = DRACONIC_ANCESTRIES;
 
 export const getDragonbornAncestry = (id: string | null | undefined): DragonbornAncestry | undefined =>
-  DRAGONBORN_ANCESTRIES.find((ancestry) => ancestry.id === id);
+  getDraconicAncestry(id) ?? undefined;
 
 export const isDragonbornAncestryId = (id: string | null | undefined): id is DragonbornAncestryId =>
-  !!id && DRAGONBORN_ANCESTRIES.some((ancestry) => ancestry.id === id);
+  !!getDragonbornAncestry(id);
+
+export const getDragonbornDamageType = (
+  ancestry: string | null | undefined,
+): DragonbornDamageType | null => getDraconicDamageType(ancestry);
+
+export const getDragonbornResistanceType = (
+  ancestry: string | null | undefined,
+): DragonbornResistanceType | null => getDraconicResistanceType(ancestry);
+
+export const getDragonbornBreathWeaponShape = (
+  ancestry: string | null | undefined,
+): DragonbornBreathWeaponShape | null => getDraconicBreathWeaponShape(ancestry);
+
+export const getDragonbornBreathWeaponSaveType = (
+  ancestry: string | null | undefined,
+): DragonbornBreathWeaponSaveType | null => getDraconicBreathWeaponSaveType(ancestry);
+
+export const getDragonbornBreathWeaponAreaSize = (
+  ancestry: string | null | undefined,
+): string | null => getDraconicBreathWeaponAreaSize(ancestry);
+
+export const getDragonbornBreathWeaponDamageDice = (level: number): string => {
+  const normalizedLevel = Math.max(1, Math.trunc(level || 1));
+  if (normalizedLevel >= 17) return "5d6";
+  if (normalizedLevel >= 11) return "4d6";
+  if (normalizedLevel >= 5) return "3d6";
+  return "2d6";
+};
+
+export const getDragonbornBreathWeaponDC = (character: {
+  level: number;
+  abilities?: Partial<Record<"constitution", number>> | null;
+}): number => {
+  const constitutionScore = character.abilities?.constitution ?? 10;
+  return 8 + getProficiencyBonus(character.level) + getModifier(constitutionScore);
+};
+
+export const normalizeDragonbornRaceConfig = (
+  raceConfig: DragonbornRaceConfig,
+): { draconicAncestry: DragonbornAncestryId | null } | null => {
+  if (!raceConfig) {
+    return { draconicAncestry: null };
+  }
+
+  const rawAncestry =
+    raceConfig[DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY]
+    ?? raceConfig[LEGACY_DRAGONBORN_ANCESTRY_RACE_CONFIG_KEY]
+    ?? raceConfig[LEGACY_DRAGONBORN_DRAGON_ANCESTOR_RACE_CONFIG_KEY];
+  const ancestry = isDragonbornAncestryId(rawAncestry) ? rawAncestry : null;
+
+  return { draconicAncestry: ancestry };
+};
+
+export const resolveDragonbornLineageState = ({
+  raceId,
+  raceConfig,
+}: {
+  raceId?: string | null | undefined;
+  raceConfig?: DragonbornRaceConfig;
+}): DragonbornLineageState => {
+  if (String(raceId ?? "").trim().toLowerCase() !== "dragonborn") {
+    return {
+      ancestry: null,
+      ancestryLabel: null,
+      damageType: null,
+      resistanceType: null,
+      breathWeaponShape: null,
+      breathWeaponSaveType: null,
+      breathWeaponAreaSize: null,
+      resistances: [],
+    };
+  }
+
+  const ancestry = normalizeDragonbornRaceConfig(raceConfig)?.draconicAncestry ?? null;
+  const ancestryData = ancestry ? getDragonbornAncestry(ancestry) : undefined;
+
+  return {
+    ancestry,
+    ancestryLabel: ancestryData?.label ?? null,
+    damageType: ancestryData?.damageType ?? null,
+    resistanceType: ancestryData?.resistanceType ?? null,
+    breathWeaponShape: ancestryData?.breathWeaponShape ?? null,
+    breathWeaponSaveType: ancestryData?.breathWeaponSaveType ?? null,
+    breathWeaponAreaSize: ancestryData?.breathWeaponAreaSize ?? null,
+    resistances: ancestryData?.resistanceType ? [ancestryData.resistanceType] : [],
+  };
+};

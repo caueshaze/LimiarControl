@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.api.deps import require_system_admin
@@ -10,6 +11,7 @@ from app.models.base_item import BaseItemEquipmentCategory, BaseItemKind
 from app.models.campaign import SystemType
 from app.models.user import User
 from app.schemas.base_item import BaseItemCreate, BaseItemRead, BaseItemUpdate
+from app.services.base_item_seeds import import_base_item_seed_file
 from app.services.base_items import (
     create_base_item,
     delete_base_item,
@@ -19,6 +21,12 @@ from app.services.base_items import (
 )
 
 router = APIRouter()
+
+
+class BaseItemSeedSyncResult(BaseModel):
+    inserted: int
+    updated: int
+    total: int
 
 
 @router.get("/base-items", response_model=list[BaseItemRead])
@@ -42,6 +50,15 @@ def admin_list_base_items(
         is_active=is_active,
     )
     return [to_base_item_read(item) for item in items]
+
+
+@router.post("/base-items/sync-seed", response_model=BaseItemSeedSyncResult)
+def admin_sync_base_items_seed(
+    _user: User = Depends(require_system_admin),
+    session: Session = Depends(get_session),
+):
+    result = import_base_item_seed_file(session, replace=False)
+    return BaseItemSeedSyncResult(**result)
 
 
 @router.get("/base-items/{base_item_id}", response_model=BaseItemRead)

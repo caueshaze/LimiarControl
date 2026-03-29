@@ -1,6 +1,8 @@
 import {
   BaseItemArmorCategory,
   BaseItemKind,
+  BaseItemWeaponCategory,
+  BaseItemWeaponRangeType,
   type BaseItem,
 } from "../../../entities/base-item";
 import { CampaignSystemType } from "../../../entities/campaign";
@@ -80,12 +82,16 @@ export const TEST_CREATION_BASE_ITEMS: BaseItem[] = [
   makeBaseItem({ id: "base-scale-mail", canonicalKey: "scale_mail", nameEn: "Scale Mail", namePt: "Brunea", itemKind: BaseItemKind.ARMOR, armorCategory: BaseItemArmorCategory.MEDIUM, armorClassBase: 14, dexBonusRule: "max_2", weight: 45 }),
   makeBaseItem({ id: "base-chain-mail", canonicalKey: "chain_mail", nameEn: "Chain Mail", namePt: "Cota de Malha", itemKind: BaseItemKind.ARMOR, armorCategory: BaseItemArmorCategory.HEAVY, armorClassBase: 16, dexBonusRule: "none", weight: 55 }),
   makeBaseItem({ id: "base-leather", canonicalKey: "leather", nameEn: "Leather", namePt: "Couro", itemKind: BaseItemKind.ARMOR, armorCategory: BaseItemArmorCategory.LIGHT, armorClassBase: 11, weight: 10 }),
+  makeBaseItem({ id: "base-breastplate", canonicalKey: "breastplate", nameEn: "Breastplate", namePt: "Peitoral", itemKind: BaseItemKind.ARMOR, armorCategory: BaseItemArmorCategory.MEDIUM, armorClassBase: 14, dexBonusRule: "max_2", weight: 20 }),
   makeBaseItem({ id: "base-light-crossbow", canonicalKey: "light_crossbow", nameEn: "Light Crossbow", namePt: "Besta Leve", itemKind: BaseItemKind.WEAPON, weight: 5 }),
   makeBaseItem({ id: "base-crossbow-bolt", canonicalKey: "crossbow_bolt", nameEn: "Crossbow bolt", namePt: "Virote", itemKind: BaseItemKind.AMMO, weight: 0.075 }),
+  makeBaseItem({ id: "base-longbow", canonicalKey: "longbow", nameEn: "Longbow", namePt: "Arco Longo", itemKind: BaseItemKind.WEAPON, weaponCategory: BaseItemWeaponCategory.MARTIAL, weaponRangeType: BaseItemWeaponRangeType.RANGED, damageDice: "1d8", damageType: "piercing", rangeNormalMeters: 45, rangeLongMeters: 180, weaponPropertiesJson: ["ammunition", "heavy", "two_handed"], weight: 2 }),
+  makeBaseItem({ id: "base-arrow", canonicalKey: "arrow", nameEn: "Arrow", namePt: "Flecha", itemKind: BaseItemKind.AMMO, weight: 0.025 }),
+  makeBaseItem({ id: "base-quiver", canonicalKey: "quiver", nameEn: "Quiver", namePt: "Aljava", itemKind: BaseItemKind.GEAR, weight: 1 }),
   makeBaseItem({ id: "base-priests-pack", canonicalKey: "priests_pack", nameEn: "Priest's Pack", namePt: "Mochila do Sacerdote", itemKind: BaseItemKind.PACK }),
   makeBaseItem({ id: "base-druidic-focus", canonicalKey: "druidic_focus", nameEn: "Druidic Focus", namePt: "Foco Druídico", itemKind: BaseItemKind.FOCUS }),
   makeBaseItem({ id: "base-scimitar", canonicalKey: "scimitar", nameEn: "Scimitar", namePt: "Cimitarra", itemKind: BaseItemKind.WEAPON, weight: 3 }),
-  makeBaseItem({ id: "base-shortsword", canonicalKey: "shortsword", nameEn: "Shortsword", namePt: "Espada Curta", itemKind: BaseItemKind.WEAPON, weight: 2 }),
+  makeBaseItem({ id: "base-shortsword", canonicalKey: "shortsword", nameEn: "Shortsword", namePt: "Espada Curta", itemKind: BaseItemKind.WEAPON, weaponCategory: BaseItemWeaponCategory.MARTIAL, weaponRangeType: BaseItemWeaponRangeType.MELEE, damageDice: "1d6", damageType: "piercing", weaponPropertiesJson: ["finesse", "light"], weight: 2 }),
   makeBaseItem({ id: "base-forgery-kit", canonicalKey: "forgery_kit", nameEn: "Forgery Kit", namePt: "Kit de Falsificação", itemKind: BaseItemKind.TOOL }),
   makeBaseItem({ id: "base-disguise-kit", canonicalKey: "disguise_kit", nameEn: "Disguise Kit", namePt: "Kit de Disfarce", itemKind: BaseItemKind.TOOL }),
   makeBaseItem({ id: "base-musical-instrument", canonicalKey: "musical_instrument", nameEn: "Musical Instrument", namePt: "Instrumento Musical", itemKind: BaseItemKind.TOOL }),

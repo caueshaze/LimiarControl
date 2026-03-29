@@ -7,5 +7,11 @@ export default defineConfig({
   server: {
     host: true, // Isso expõe o projeto para a rede local (0.0.0.0)
     port: 5173, // Opcional: garante que sempre use essa porta
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
   },
 });

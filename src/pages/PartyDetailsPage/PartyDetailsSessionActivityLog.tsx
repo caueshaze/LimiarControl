@@ -15,7 +15,7 @@ export const PartyDetailsSessionActivityLog = ({ sessionId }: { sessionId: strin
   return (
     <div className="mt-3 space-y-1.5">
       {events.map((event, index) => (
-        <SessionActivityRow key={`${event.type}-${index}`} event={event} />
+        <SessionActivityRow key={`${event.type}-${index}`} event={event} isGm />
       ))}
     </div>
   );

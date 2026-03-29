@@ -13,6 +13,7 @@ type Props = {
   sessionsCount: number;
   createdAt: string;
   hasCharacterSheet: boolean | null;
+  characterSheetStatus: "missing" | "pending_acceptance" | "accepted" | null;
   sessionStatus: PartyActiveSession["status"] | null;
 };
 
@@ -22,15 +23,18 @@ export const PlayerPartyHeader = ({
   sessionsCount,
   createdAt,
   hasCharacterSheet,
+  characterSheetStatus,
   sessionStatus,
 }: Props) => {
   const { t, locale } = useLocale();
 
   const sessionStatusLabel = t(getPlayerPartyStatusKey(sessionStatus));
   const sheetValue =
-    hasCharacterSheet === true
+    characterSheetStatus === "accepted"
       ? t("playerParty.sheetStatReady")
-      : hasCharacterSheet === false
+      : characterSheetStatus === "pending_acceptance"
+        ? t("playerParty.sheetStatPendingAcceptance")
+        : hasCharacterSheet === false
         ? t("playerParty.sheetStatMissing")
         : "--";
 

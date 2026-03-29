@@ -19,7 +19,7 @@ export const ENTITY_ABILITIES: { key: AbilityName; label: string; short: string 
 
 export const ENTITY_SKILLS: { key: SkillName; label: string; ability: AbilityName }[] = [
   { key: "acrobatics", label: "Acrobacia", ability: "dexterity" },
-  { key: "animalHandling", label: "Adestramento", ability: "wisdom" },
+  { key: "animalHandling", label: "Lidar com Animais", ability: "wisdom" },
   { key: "arcana", label: "Arcanismo", ability: "intelligence" },
   { key: "athletics", label: "Atletismo", ability: "strength" },
   { key: "deception", label: "Enganacao", ability: "charisma" },

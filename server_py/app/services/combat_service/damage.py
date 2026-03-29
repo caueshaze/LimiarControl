@@ -35,7 +35,9 @@ from app.schemas.campaign_entity import (
 )
 from app.services.base_items import get_base_item_by_canonical_key
 from app.services.base_spells import get_base_spell_by_canonical_key
+from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
 from app.services.centrifugo import centrifugo
+from app.services.draconic_ancestry import resolve_draconic_lineage_state
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.services.session_state_finalize import finalize_session_state_data
 
@@ -45,15 +47,46 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 class CombatDamageMixin:
 
     @classmethod
-    def _apply_damage_to_target(cls, db: Session, target_ref_id: str, kind: str, amount: int, is_crit: bool = False, state: CombatState | None = None) -> tuple[int, str, int | None]:
-        """Returns new_hp, status_effect_message, previous_hp."""
+    def _build_concentration_roll_kwargs(
+        cls,
+        roll_source: str = "system",
+        manual_roll: int | None = None,
+    ) -> dict:
+        if roll_source == "system" and manual_roll is None:
+            return {}
+        return {
+            "concentration_roll_source": roll_source,
+            "concentration_manual_roll": manual_roll,
+        }
+
+    @classmethod
+    def _apply_damage_to_target(
+        cls,
+        db: Session,
+        target_ref_id: str,
+        kind: str,
+        amount: int,
+        is_crit: bool = False,
+        state: CombatState | None = None,
+        *,
+        damage_type: str | None = None,
+        concentration_roll_source: str = "system",
+        concentration_manual_roll: int | None = None,
+    ) -> tuple[int, str, int | None, dict | None]:
+        """Returns new_hp, status_effect_message, previous_hp, concentration_check."""
         target_model, *_ = cls._get_stats(db, target_ref_id, kind, state.session_id if state else "")
         msg = ""
+        target_participant = cls._get_participant_by_ref(state, target_ref_id) if state else None
 
         if kind == "player":
             from app.services.wild_shape_service import apply_damage_to_form, is_active as ws_is_active
 
             data = cls._as_dict(target_model.state_json)
+            amount, resistance_msg = cls._apply_player_damage_resistances(
+                data,
+                amount,
+                damage_type,
+            )
 
             # ── Wild Shape HP routing ─────────────────────────────────────────
             if ws_is_active(data):
@@ -82,10 +115,28 @@ class CombatDamageMixin:
                 status = cls._sync_participant_status(db, state, target_ref_id, kind, target_model)
                 flag_modified(target_model, "state_json")
                 db.add(target_model)
+                concentration_check = cls._resolve_concentration_check_after_damage(
+                    db,
+                    state.session_id if state else "",
+                    state=state,
+                    target_participant=target_participant,
+                    target_ref_id=target_ref_id,
+                    target_kind=kind,
+                    damage_taken=amount,
+                    roll_source=concentration_roll_source,
+                    manual_roll=concentration_manual_roll,
+                )
                 if state:
                     flag_modified(state, "participants")
                     db.add(state)
-                return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), msg, None
+                if resistance_msg:
+                    msg = f"{msg} {resistance_msg}".strip()
+                return (
+                    cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
+                    msg,
+                    None,
+                    concentration_check,
+                )
 
             # ── Normal humanoid HP ────────────────────────────────────────────
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
@@ -111,12 +162,30 @@ class CombatDamageMixin:
                 )
             elif current > 0 and data["currentHP"] == 0 and status == "downed":
                 msg = " (Fell unconscious!)"
+            if resistance_msg:
+                msg = f"{msg} {resistance_msg}".strip()
             flag_modified(target_model, "state_json")
             db.add(target_model)
+            concentration_check = cls._resolve_concentration_check_after_damage(
+                db,
+                state.session_id if state else "",
+                state=state,
+                target_participant=target_participant,
+                target_ref_id=target_ref_id,
+                target_kind=kind,
+                damage_taken=amount,
+                roll_source=concentration_roll_source,
+                manual_roll=concentration_manual_roll,
+            )
             if state:
                 flag_modified(state, "participants")
                 db.add(state)
-            return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), msg, current
+            return (
+                cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
+                msg,
+                current,
+                concentration_check,
+            )
         else:
             npc = db.exec(select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)).first()
             base_hp = npc.max_hp if npc else 0
@@ -126,10 +195,48 @@ class CombatDamageMixin:
             if current > 0 and target_model.current_hp == 0 and status == "defeated":
                 msg = " (DEFEATED!)"
             db.add(target_model)
+            concentration_check = cls._resolve_concentration_check_after_damage(
+                db,
+                state.session_id if state else "",
+                state=state,
+                target_participant=target_participant,
+                target_ref_id=target_ref_id,
+                target_kind=kind,
+                damage_taken=amount,
+                roll_source=concentration_roll_source,
+                manual_roll=concentration_manual_roll,
+            )
             if state:
                 flag_modified(state, "participants")
                 db.add(state)
-            return target_model.current_hp, msg, current
+            return target_model.current_hp, msg, current, concentration_check
+
+    @classmethod
+    def _apply_player_damage_resistances(
+        cls,
+        data: dict,
+        amount: int,
+        damage_type: str | None,
+    ) -> tuple[int, str]:
+        normalized_damage_type = cls._normalize_damage_type(damage_type)
+        if amount <= 0 or not normalized_damage_type:
+            return amount, ""
+
+        draconic_lineage = resolve_draconic_lineage_state(data)
+        dragonborn_lineage = resolve_dragonborn_lineage_state(data)
+        resistances = {
+            str(value).strip().lower()
+            for value in [
+                *draconic_lineage.get("resistances", []),
+                *dragonborn_lineage.get("resistances", []),
+            ]
+            if isinstance(value, str) and value.strip()
+        }
+        if normalized_damage_type not in resistances:
+            return amount, ""
+
+        reduced = max(0, amount // 2)
+        return reduced, f"(Resistência a {normalized_damage_type}: {amount} -> {reduced})"
 
     @classmethod
     def _apply_healing_to_target(cls, db: Session, target_ref_id: str, kind: str, amount: int, state: CombatState | None = None) -> tuple[int, str, int | None]:
@@ -194,7 +301,19 @@ class CombatDamageMixin:
             raise CombatServiceError("Only GM can arbitrarily apply damage directly", 403)
             
         state = cls.get_state(db, session_id)
-        new_hp, effect_msg, previous_hp = cls._apply_damage_to_target(db, req.target_ref_id, req.kind, req.amount, False, state)
+        new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+            db,
+            req.target_ref_id,
+            req.kind,
+            req.amount,
+            damage_type=req.type_override,
+            is_crit=False,
+            state=state,
+            **cls._build_concentration_roll_kwargs(
+                req.concentration_roll_source,
+                req.concentration_manual_roll,
+            ),
+        )
         db.commit()
         if req.kind == "player":
             target_state, *_ = cls._get_stats(db, req.target_ref_id, req.kind, session_id)
@@ -204,12 +323,18 @@ class CombatDamageMixin:
         if state:
             await cls._emit_state(session_id, state)
         
+        concentration_summary = (
+            f" {concentration_check['summary_text']}"
+            if isinstance(concentration_check, dict)
+            and isinstance(concentration_check.get("summary_text"), str)
+            else ""
+        )
         await cls._emit_log(session_id, {
-            "message": f"GM applied {req.amount} damage.{effect_msg}",
+            "message": f"GM applied {req.amount} damage.{effect_msg}{concentration_summary}",
             "source": "gm_override",
             "actorUserId": actor_user_id
         })
-        return {"new_hp": new_hp}
+        return {"new_hp": new_hp, "concentration_check": concentration_check}
 
     @classmethod
     async def apply_healing(cls, db: Session, session_id: str, req: CombatApplyHealingRequest, actor_user_id: str, is_gm: bool):

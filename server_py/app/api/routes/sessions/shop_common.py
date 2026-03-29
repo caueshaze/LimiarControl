@@ -19,6 +19,7 @@ from app.services.money import format_money, normalize_money, to_copper
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
+from app.services.magic_item_effects import initialize_inventory_item_charges
 from ._shared import get_or_create_session_runtime, require_identifier, to_inventory_read, to_item_read
 
 
@@ -151,21 +152,24 @@ def create_inventory_entry(
     *,
     entry: Session,
     member: CampaignMember,
-    item_id: str,
+    item: Item,
     quantity: int,
 ) -> InventoryItem:
-    return InventoryItem(
+    inventory_entry = InventoryItem(
         id=str(uuid4()),
         campaign_id=entry.campaign_id,
         party_id=entry.party_id,
         member_id=require_identifier(member.id, "Campaign member is missing an id"),
-        item_id=item_id,
+        item_id=require_identifier(item.id, "Item is missing an id"),
         quantity=quantity,
+        charges_current=item.charges_max if isinstance(item.charges_max, int) and item.charges_max > 0 else None,
         is_equipped=False,
         notes=None,
         created_at=datetime.now(timezone.utc),
         updated_at=None,
     )
+    initialize_inventory_item_charges(inventory_entry, item)
+    return inventory_entry
 
 
 async def publish_purchase_realtime(

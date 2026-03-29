@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { CharacterSheet, CharacterSheetMode } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
@@ -5,6 +6,7 @@ import { input, fieldLabel, chk } from "./styles";
 import { ALIGNMENTS } from "../data/alignments";
 import { RACES, getRace } from "../data/races";
 import { CLASSES, FIGHTING_STYLES, getClass, getSubclassConfigFields, hasFightingStyleAtCreation, isSubclassUnlocked } from "../data/classes";
+import { getFixedFightingStyleForClassLevel, getFixedSubclassForClassLevel } from "../data/classFeatures";
 import { BACKGROUNDS, getBackground } from "../data/backgrounds";
 import { ClassSkillPicker } from "./ClassSkillPicker";
 import { ClassToolProficiencyPicker } from "./ClassToolProficiencyPicker";
@@ -15,14 +17,22 @@ import { LanguageChoicePicker } from "./LanguageChoicePicker";
 import { CharacterProgressPanel } from "./CharacterProgressPanel";
 import { RaceConfigPicker } from "./RaceConfigPicker";
 import { RacePreviewCard } from "./RacePreviewCard";
+import { getAbilityLabel } from "../utils/abilityLabels";
+import { safeParseInt } from "../utils/calculations";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { RequiredField } from "../utils/creationValidation";
 import { canonicalizeStarterItemName } from "../utils/creationEquipment";
+import {
+  DRACONIC_ANCESTRY_SUBCLASS_CONFIG_KEY,
+  getDraconicLineageState,
+  resolveElementalAffinityEligibility,
+} from "../data/draconicAncestry";
 
 type Props = {
   sheet: CharacterSheet;
   mode: CharacterSheetMode;
   readOnly?: boolean;
+  allowLevelEditing?: boolean;
   missingRequiredFields?: RequiredField[];
   set: SheetActions["set"];
   selectClass: SheetActions["selectClass"];
@@ -48,6 +58,7 @@ export const CharacterInfo = ({
   sheet,
   mode,
   readOnly = false,
+  allowLevelEditing = false,
   missingRequiredFields = [],
   set,
   selectClass,
@@ -74,13 +85,49 @@ export const CharacterInfo = ({
   const classData = getClass(sheet.class);
   const backgroundData = getBackground(sheet.background);
   const unlockedClassData = classData && isSubclassUnlocked(classData, sheet.level) ? classData : null;
+  const fixedSubclass = getFixedSubclassForClassLevel(sheet.class, sheet.level);
+  const fixedFightingStyle = getFixedFightingStyleForClassLevel(sheet.class, sheet.level);
   const subclassConfigFields = getSubclassConfigFields(sheet.class, sheet.subclass);
   const showFightingStyle = !!classData && hasFightingStyleAtCreation(classData, sheet.level);
+  const fixedSubclassName = unlockedClassData?.subclasses.find((subclass) => subclass.id === fixedSubclass)?.name ?? fixedSubclass;
+  const fixedFightingStyleName = FIGHTING_STYLES.find((style) => style.id === fixedFightingStyle)?.name ?? fixedFightingStyle;
+  const draconicLineage = getDraconicLineageState({
+    classId: sheet.class,
+    subclass: sheet.subclass,
+    level: sheet.level,
+    subclassConfig: sheet.subclassConfig,
+  });
+  const elementalAffinity = resolveElementalAffinityEligibility({
+    classId: sheet.class,
+    subclass: sheet.subclass,
+    level: sheet.level,
+    subclassConfig: sheet.subclassConfig,
+    spellDamageType: draconicLineage.damageType,
+    charismaScore: sheet.abilities.charisma,
+  });
 
   const missing = new Set(missingRequiredFields);
   const hasAttempted = missingRequiredFields.length > 0;
 
   const errorInput = (field: RequiredField) => (hasAttempted && missing.has(field) ? "ring-1 ring-red-500/60 border-red-500/40" : "");
+  const [levelInput, setLevelInput] = useState(() => String(sheet.level));
+
+  useEffect(() => {
+    setLevelInput(String(sheet.level));
+  }, [sheet.level]);
+
+  const commitLevelInput = (rawValue: string) => {
+    const trimmedValue = rawValue.trim();
+    if (!trimmedValue) {
+      setLevelInput(String(sheet.level));
+      return;
+    }
+    const nextLevel = Math.max(1, Math.min(20, safeParseInt(trimmedValue, sheet.level))) as CharacterSheet["level"];
+    setLevelInput(String(nextLevel));
+    if (nextLevel !== sheet.level) {
+      set("level", nextLevel);
+    }
+  };
 
   const requiredMark = (field: RequiredField) =>
     isCreation && (
@@ -144,17 +191,23 @@ export const CharacterInfo = ({
             <label className={fieldLabel}>
               {unlockedClassData.subclassLabel}{requiredMark("subclass")}
             </label>
-            <select
-              value={sheet.subclass ?? ""}
-              disabled={readOnly}
-              onChange={(e) => selectSubclass(e.target.value)}
-              className={`${input} ${errorInput("subclass")}`}
-            >
-              <option value="">{t("sheet.basicInfo.selectSubclass")}</option>
-              {unlockedClassData.subclasses.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            {fixedSubclass ? (
+              <div className={`${input} flex min-h-11 items-center opacity-70`}>
+                {fixedSubclassName}
+              </div>
+            ) : (
+              <select
+                value={sheet.subclass ?? ""}
+                disabled={readOnly}
+                onChange={(e) => selectSubclass(e.target.value)}
+                className={`${input} ${errorInput("subclass")}`}
+              >
+                <option value="">{t("sheet.basicInfo.selectSubclass")}</option>
+                {unlockedClassData.subclasses.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            )}
             {fieldError("subclass")}
           </div>
         ) : null}
@@ -176,6 +229,40 @@ export const CharacterInfo = ({
               ))}
             </select>
             {fieldError("subclassConfig")}
+            {field.key === DRACONIC_ANCESTRY_SUBCLASS_CONFIG_KEY && draconicLineage.ancestryLabel && (
+              <>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  {t("sheet.basicInfo.draconicLineage")}: <span className="font-semibold text-slate-200">{draconicLineage.ancestryLabel}</span>
+                  {draconicLineage.damageType && (
+                    <>
+                      {" "}· {t("sheet.basicInfo.draconicDamageType")}: <span className="font-semibold text-slate-200">{draconicLineage.damageType}</span>
+                    </>
+                  )}
+                  {draconicLineage.resistanceType && (
+                    <>
+                      {" "}· {t("sheet.basicInfo.draconicFutureResistance")}: <span className="font-semibold text-slate-200">{draconicLineage.resistanceType}</span>
+                    </>
+                  )}
+                  {draconicLineage.hasElementalAffinity && elementalAffinity.bonus !== null && (
+                    <>
+                      {" "}· {t("sheet.basicInfo.draconicElementalAffinity")}: <span className="font-semibold text-slate-200">+{elementalAffinity.bonus} {draconicLineage.damageType}</span>
+                    </>
+                  )}
+                </p>
+                <details className="mt-2 rounded-xl border border-white/8 bg-void-900/40 px-3 py-2 text-[11px] text-slate-300">
+                  <summary className="cursor-pointer font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    {t("sheet.basicInfo.draconicDebugTitle")}
+                  </summary>
+                  <div className="mt-2 grid gap-1 font-mono text-[11px] text-slate-300/90">
+                    <div>{t("sheet.basicInfo.draconicDebugOrigin")}: {sheet.subclass ?? "-"}</div>
+                    <div>{t("sheet.basicInfo.draconicDebugAncestry")}: {draconicLineage.ancestry ?? "-"}</div>
+                    <div>{t("sheet.basicInfo.draconicDebugDamageType")}: {draconicLineage.damageType ?? "-"}</div>
+                    <div>{t("sheet.basicInfo.draconicDebugResistanceType")}: {draconicLineage.resistanceType ?? "-"}</div>
+                    <div>{t("sheet.basicInfo.draconicDebugElementalAffinity")}: {draconicLineage.hasElementalAffinity ? "true" : "false"}</div>
+                  </div>
+                </details>
+              </>
+            )}
           </div>
         ))}
 
@@ -184,17 +271,23 @@ export const CharacterInfo = ({
             <label className={fieldLabel}>
               {t("sheet.basicInfo.fightingStyle")}{requiredMark("fightingStyle")}
             </label>
-            <select
-              value={sheet.fightingStyle ?? ""}
-              disabled={readOnly}
-              onChange={(e) => set("fightingStyle", e.target.value || null)}
-              className={`${input} ${errorInput("fightingStyle")}`}
-            >
-              <option value="">{t("sheet.basicInfo.selectFightingStyle")}</option>
-              {FIGHTING_STYLES.filter((s) => classData?.fightingStyleOptions.includes(s.id)).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            {fixedFightingStyle ? (
+              <div className={`${input} flex min-h-11 items-center opacity-70`}>
+                {fixedFightingStyleName}
+              </div>
+            ) : (
+              <select
+                value={sheet.fightingStyle ?? ""}
+                disabled={readOnly}
+                onChange={(e) => set("fightingStyle", e.target.value || null)}
+                className={`${input} ${errorInput("fightingStyle")}`}
+              >
+                <option value="">{t("sheet.basicInfo.selectFightingStyle")}</option>
+                {FIGHTING_STYLES.filter((s) => classData?.fightingStyleOptions.includes(s.id)).map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            )}
             {fieldError("fightingStyle")}
           </div>
         )}
@@ -271,10 +364,24 @@ export const CharacterInfo = ({
             type="number"
             min={1}
             max={20}
-            value={sheet.level}
-            disabled
-            readOnly
-            className={`${input} opacity-70`}
+            value={allowLevelEditing ? levelInput : String(sheet.level)}
+            disabled={readOnly || !allowLevelEditing}
+            readOnly={!allowLevelEditing}
+            onChange={(e) => {
+              const rawValue = e.target.value;
+              setLevelInput(rawValue);
+              if (/^\d+$/.test(rawValue)) {
+                commitLevelInput(rawValue);
+              }
+            }}
+            onBlur={() => commitLevelInput(levelInput)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitLevelInput(levelInput);
+                e.currentTarget.blur();
+              }
+            }}
+            className={`${input} ${readOnly || !allowLevelEditing ? "opacity-70" : ""}`}
           />
         </div>
 
@@ -304,7 +411,7 @@ export const CharacterInfo = ({
             <p className="leading-6">{t("sheet.basicInfo.chooseSkills").replace("{n}", String(classData.skillCount))}</p>
             {classData.spellcastingAbility && (
               <p className="mt-2 font-semibold text-violet-300">
-                {t("sheet.basicInfo.spellcasting")}: {classData.spellcastingAbility.toUpperCase()}
+                {t("sheet.basicInfo.spellcasting")}: {getAbilityLabel(classData.spellcastingAbility, t)}
               </p>
             )}
           </div>

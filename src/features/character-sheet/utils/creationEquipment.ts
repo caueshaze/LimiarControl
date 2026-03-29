@@ -13,22 +13,7 @@ import {
 } from "./creationItemCatalog";
 
 const EMPTY_CURRENCY: Currency = { copperValue: 0 };
-
-const ARMOR_ALIASES: Record<string, string[]> = {
-  None: [],
-  Padded: ["Acolchoada", "Padded"],
-  Leather: ["Couro", "Leather"],
-  "Studded Leather": ["Couro Batido", "Studded Leather"],
-  Hide: ["Gibão de Peles", "Hide"],
-  "Chain Shirt": ["Camisão de Malha", "Chain Shirt"],
-  "Scale Mail": ["Brunea", "Scale Mail"],
-  Breastplate: ["Peitoral", "Breastplate"],
-  "Half Plate": ["Meia-Armadura", "Half Plate"],
-  "Ring Mail": ["Cota de Anéis", "Ring Mail"],
-  "Chain Mail": ["Cota de Malha", "Chain Mail"],
-  Splint: ["Cota de Talas", "Splint"],
-  Plate: ["Placas", "Plate"],
-};
+const EMPTY_ARMOR = ARMOR_PRESETS.find((preset) => preset.name === "None")!;
 
 type ParsedStarterEntry =
   | { kind: "currency"; coin: CurrencyUnit; amount: number }
@@ -42,11 +27,11 @@ const SPECIAL_LITERAL_STARTER_ITEMS: Record<string, ParsedStarterEntry> = {
 const parseStarterEntry = (entry: string): ParsedStarterEntry => {
   const currencyMatch = entry.trim().match(/^(\d+)\s*(cp|sp|ep|gp|pp)$/i);
   if (currencyMatch) {
-      return {
-        kind: "currency",
-        amount: Number(currencyMatch[1]),
-        coin: currencyMatch[2].toLowerCase() as CurrencyUnit,
-      };
+    return {
+      kind: "currency",
+      amount: Number(currencyMatch[1]),
+      coin: currencyMatch[2].toLowerCase() as CurrencyUnit,
+    };
   }
 
   const literalMatch = SPECIAL_LITERAL_STARTER_ITEMS[toStarterFallbackKey(entry)];
@@ -90,21 +75,155 @@ const resolveStarterItem = (entry: ParsedStarterEntry | string) => {
   return resolveCreationItem(entry.name, getCreationItemCatalog());
 };
 
+const resolveInventoryCatalogItem = (item: InventoryItem) =>
+  findCreationItemByCanonicalKey(item.canonicalKey, getCreationItemCatalog()) ??
+  resolveCreationItem(item.name, getCreationItemCatalog());
+
 const starterStableKey = (name: string, canonicalKey?: string | null) =>
   (canonicalKey ?? toStarterFallbackKey(name)).replace(/_/g, "-");
 
-const matchesArmorPreset = (item: InventoryItem, presetName: string) => {
-  const catalogItem = findCreationItemByCanonicalKey(item.canonicalKey, getCreationItemCatalog());
-  if (catalogItem?.armorPresetName) {
-    return catalogItem.armorPresetName === presetName;
-  }
-
-  const aliases = ARMOR_ALIASES[presetName] ?? [presetName];
-  return aliases.some((alias) => item.name.toLowerCase().includes(alias.toLowerCase()));
-};
-
 export const canonicalizeStarterItemName = (name: string) =>
   resolveStarterItem(parseStarterEntry(name))?.name ?? name.trim();
+
+const getArmorPresetByName = (presetName: string | null | undefined) =>
+  presetName ? ARMOR_PRESETS.find((preset) => preset.name === presetName) ?? null : null;
+
+const toArmorDexCap = (dexBonusRule: CreationCatalogItem["dexBonusRule"]) => {
+  if (dexBonusRule === "max_2") {
+    return 2;
+  }
+  if (dexBonusRule === "none") {
+    return 0;
+  }
+  return null;
+};
+
+const toArmorFromCreationCatalogItem = (item: CreationCatalogItem | null): Armor | null => {
+  if (!item || item.itemKind !== "armor" || item.isShield) {
+    return null;
+  }
+
+  if (item.armorCategory && item.armorCategory !== "shield" && item.armorClassBase != null) {
+    return {
+      name: item.name,
+      baseAC: item.armorClassBase,
+      dexCap: toArmorDexCap(item.dexBonusRule),
+      armorType: item.armorCategory,
+      allowsDex: item.dexBonusRule !== "none",
+      stealthDisadvantage:
+        item.stealthDisadvantage || item.properties.includes("stealth_disadvantage"),
+      minStrength: item.strengthRequirement ?? null,
+    };
+  }
+
+  const preset = getArmorPresetByName(item.armorPresetName);
+  return preset ? { ...preset, name: item.name } : null;
+};
+
+export type CreationArmorOption = {
+  value: string;
+  label: string;
+  detail: string | null;
+  armor: Armor;
+};
+
+export const buildCreationArmorOptions = (
+  inventory: CharacterSheet["inventory"],
+): CreationArmorOption[] =>
+  inventory
+    .filter((entry) => entry.quantity > 0)
+    .flatMap((entry) => {
+      const resolved = resolveInventoryCatalogItem(entry);
+      if (!resolved || resolved.itemKind !== "armor" || resolved.isShield) {
+        return [];
+      }
+      const armor = toArmorFromCreationCatalogItem(resolved);
+      if (!armor) {
+        return [];
+      }
+      return [{
+        value: entry.id,
+        label: entry.name,
+        detail: armor.armorType !== "none" ? `AC ${armor.baseAC}` : null,
+        armor,
+      }];
+    });
+
+export const hasCreationShieldInInventory = (inventory: CharacterSheet["inventory"]) =>
+  inventory.some((entry) => {
+    if (entry.quantity <= 0) return false;
+    const resolved = resolveInventoryCatalogItem(entry);
+    return resolved?.isShield ?? false;
+  });
+
+export const canonicalizeCreationInventory = (
+  inventory: CharacterSheet["inventory"],
+): CharacterSheet["inventory"] =>
+  inventory.map((entry) => {
+    const resolved = resolveInventoryCatalogItem(entry);
+    if (!resolved) {
+      return {
+        ...entry,
+        canonicalKey: null,
+        campaignItemId: null,
+        baseItemId: null,
+      };
+    }
+    return {
+      ...entry,
+      canonicalKey: resolved.canonicalKey,
+      campaignItemId: resolved.campaignItemId,
+      baseItemId: resolved.baseItemId,
+      weight: entry.weight > 0 ? entry.weight : resolved.weight,
+    };
+  });
+
+export const hasCustomCreationInventoryItems = (
+  inventory: CharacterSheet["inventory"],
+) => inventory.some((entry) => entry.quantity > 0 && !entry.id.startsWith("starter:"));
+
+export const hasUnresolvedCreationInventoryItems = (
+  inventory: CharacterSheet["inventory"],
+) => inventory.some((entry) => entry.quantity > 0 && !entry.canonicalKey);
+
+export const syncCreationInventoryLoadoutState = (
+  sheet: CharacterSheet,
+): CharacterSheet => {
+  const inventory = canonicalizeCreationInventory(sheet.inventory);
+  const armorOptions = buildCreationArmorOptions(inventory);
+
+  const resolveSelectedArmor = () => {
+    if (sheet.equippedArmorItemId) {
+      const selectedById = armorOptions.find((option) => option.value === sheet.equippedArmorItemId);
+      if (selectedById) {
+        return selectedById;
+      }
+    }
+
+    if (sheet.equippedArmor.name !== EMPTY_ARMOR.name) {
+      const selectedByName = armorOptions.find((option) => option.armor.name === sheet.equippedArmor.name);
+      if (selectedByName) {
+        return selectedByName;
+      }
+
+      if (armorOptions.length === 1) {
+        return armorOptions[0] ?? null;
+      }
+    }
+
+    return null;
+  };
+
+  const selectedArmor = resolveSelectedArmor();
+
+  return {
+    ...sheet,
+    inventory,
+    equippedArmorItemId: selectedArmor?.value ?? null,
+    equippedArmor: selectedArmor?.armor ?? { ...EMPTY_ARMOR },
+    equippedShield: hasCreationShieldInInventory(inventory) ? sheet.equippedShield : null,
+  };
+};
 
 export const getInitialClassEquipmentSelections = (className: string) => {
   const config = getClassCreationConfig(className);
@@ -170,6 +289,7 @@ const catalogItemToWeapon = (
   magicBonus: 0,
   properties: formatWeaponProperties(item.weaponPropertiesJson),
   range: formatWeaponRange(item),
+  rangeType: item.weaponRangeType ?? null,
 });
 
 const buildWeaponsFromInventory = (
@@ -199,6 +319,7 @@ export const buildCreationLoadout = (
   inventory: InventoryItem[];
   currency: Currency;
   equippedArmor: Armor;
+  equippedArmorItemId: string | null;
   equippedShield: Shield | null;
   weapons: Weapon[];
 } => {
@@ -234,8 +355,8 @@ export const buildCreationLoadout = (
 
   const weapons = buildWeaponsFromInventory(inventoryMap);
   const inventory = [...inventoryMap.values()];
-  const { equippedArmor, equippedShield } = deriveLoadoutFromInventory(inventory);
-  return { inventory, currency, equippedArmor, equippedShield, weapons };
+  const { equippedArmor, equippedArmorItemId, equippedShield } = deriveLoadoutFromInventory(inventory);
+  return { inventory, currency, equippedArmor, equippedArmorItemId, equippedShield, weapons };
 };
 
 export const applyCreationLoadoutToSheet = (sheet: CharacterSheet): CharacterSheet => {
@@ -249,22 +370,24 @@ export const applyCreationLoadoutToSheet = (sheet: CharacterSheet): CharacterShe
     inventory: loadout.inventory,
     currency: loadout.currency,
     equippedArmor: loadout.equippedArmor,
+    equippedArmorItemId: loadout.equippedArmorItemId,
     equippedShield: loadout.equippedShield,
     weapons: loadout.weapons,
   };
 };
 
 export const deriveLoadoutFromInventory = (inventory: CharacterSheet["inventory"]) => {
-  const equippedArmor = ARMOR_PRESETS.find((preset) =>
-    inventory.some((item) => matchesArmorPreset(item, preset.name)),
-  ) ?? ARMOR_PRESETS.find((preset) => preset.name === "None")!;
+  const armorOption = buildCreationArmorOptions(inventory)[0] ?? null;
+  const equippedArmor = armorOption?.armor ?? { ...EMPTY_ARMOR };
+  const equippedArmorItemId = armorOption?.value ?? null;
 
   const equippedShield = inventory.some((item) => {
-    const catalogItem = findCreationItemByCanonicalKey(item.canonicalKey, getCreationItemCatalog());
+    if (item.quantity <= 0) return false;
+    const catalogItem = resolveInventoryCatalogItem(item);
     return catalogItem?.isShield ?? ["shield", "escudo"].some((label) => item.name.toLowerCase().includes(label));
   })
     ? { name: "Shield", bonus: 2 }
     : null;
 
-  return { equippedArmor, equippedShield };
+  return { equippedArmor, equippedArmorItemId, equippedShield };
 };

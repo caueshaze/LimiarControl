@@ -53,11 +53,12 @@ const TARGET_MODE_LABELS: Record<TargetMode, LabelEntry> = {
 };
 
 const RESOLUTION_TYPE_LABELS: Record<ResolutionType, LabelEntry> = {
-  none: label("None", "Nenhum"),
-  spell_attack: label("Spell attack", "Ataque de magia"),
-  saving_throw: label("Saving throw", "Teste de resistência"),
-  automatic: label("Automatic", "Automático"),
+  damage: label("Damage", "Dano"),
   heal: label("Healing", "Cura"),
+  buff: label("Buff", "Benefício"),
+  debuff: label("Debuff", "Penalidade"),
+  control: label("Control", "Controle"),
+  utility: label("Utility", "Utilidade"),
 };
 
 const SAVE_SUCCESS_OUTCOME_LABELS: Record<SaveSuccessOutcome, LabelEntry> = {
@@ -66,11 +67,13 @@ const SAVE_SUCCESS_OUTCOME_LABELS: Record<SaveSuccessOutcome, LabelEntry> = {
 };
 
 const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {
-  none: label("None", "Nenhum"),
-  add_dice: label("Add dice", "Adicionar dados"),
-  add_targets: label("Add targets", "Adicionar alvos"),
-  increase_duration: label("Increase duration", "Aumentar duração"),
-  custom: label("Custom", "Personalizado"),
+  extra_damage_dice: label("Extra damage dice", "Dados de dano extras"),
+  extra_heal_dice: label("Extra heal dice", "Dados de cura extras"),
+  flat_bonus: label("Flat bonus", "Bônus fixo"),
+  additional_targets: label("Additional targets", "Alvos adicionais"),
+  duration_scaling: label("Duration scaling", "Escalada de duração"),
+  effect_scaling: label("Effect scaling", "Escalada de efeito"),
+  extra_effect: label("Extra effect", "Efeito extra"),
 };
 
 const SPELL_SOURCE_LABELS: Record<SpellSource, LabelEntry> = {

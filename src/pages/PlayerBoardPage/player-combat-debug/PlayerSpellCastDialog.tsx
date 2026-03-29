@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
+import { useEffect, useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
+import { ConcentrationSaveControl } from "../../../features/combat-ui/components/ConcentrationSaveControl";
+import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import type {
   CombatParticipant,
   CombatSpellMode,
@@ -8,10 +9,12 @@ import type {
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import {
-  formatDamageDiceExpression,
   getDamageRollCount,
   getDamageRollSides,
+  formatDamageDiceExpression,
 } from "../../../shared/utils/diceExpression";
+import { D20_VALUES, parseBonus } from "./spellCastHelpers";
+import { SpellCastResultPanel } from "./SpellCastResultPanel";
 import type { CombatSpellOption } from "./types";
 
 type Props = {
@@ -26,41 +29,6 @@ type Props = {
   spellMode: CombatSpellMode;
   spellSaveAbility: AbilityName | "";
   target: CombatParticipant;
-};
-
-const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
-
-const parseBonus = (value: string) => {
-  const parsed = Number.parseInt(value.trim(), 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const getSpellRolledTotal = (result: CombatSpellResult) =>
-  Math.max(0, (result.base_effect ?? 0) + (result.effect_bonus ?? 0));
-
-const formatSpellEffectBreakdown = (result: CombatSpellResult) => {
-  const rolls = result.effect_rolls ?? [];
-  const effectDiceLabel =
-    formatDamageDiceExpression(result.effect_dice, Boolean(result.is_critical)) ??
-    result.effect_dice;
-  const effectTotal = result.effect_kind === "healing" ? result.healing : result.damage;
-  const rolledTotal = getSpellRolledTotal(result);
-  const isHalfDamageSave =
-    result.action_kind === "saving_throw" &&
-    result.is_saved &&
-    result.save_success_outcome === "half_damage" &&
-    result.effect_kind !== "healing";
-
-  if (!rolls.length) {
-    const baseText = `Base ${result.base_effect ?? 0}${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
-    return isHalfDamageSave
-      ? `${baseText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
-      : `${baseText} = ${effectTotal}`;
-  }
-  const rollText = `${effectDiceLabel}: [${rolls.join(", ")}]${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
-  return isHalfDamageSave
-    ? `${rollText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
-    : `${rollText} = ${effectTotal}`;
 };
 
 export const PlayerSpellCastDialog = ({
@@ -81,9 +49,20 @@ export const PlayerSpellCastDialog = ({
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [effectMode, setEffectMode] = useState<"choose" | "manual" | "virtual">("choose");
   const [manualEffectRolls, setManualEffectRolls] = useState<number[]>([]);
+  const [concentrationRollMode, setConcentrationRollMode] = useState<"system" | "manual">("system");
+  const [concentrationManualRoll, setConcentrationManualRoll] = useState("");
+  const [selectedSlotLevel, setSelectedSlotLevel] = useState<number | null>(
+    spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null),
+  );
   const [result, setResult] = useState<CombatSpellResult | null>(null);
+  const targetHasConcentration = participantHasActiveConcentration(target);
+  const shouldShowConcentrationControl = targetHasConcentration && spellMode !== "heal" && spellMode !== "utility";
+  const slotOptions = spell.availableSlotLevels.length > 0 ? spell.availableSlotLevels : (spell.level > 0 ? [spell.level] : []);
 
-  const pendingEffect = Boolean(result?.effect_roll_required && result?.pending_spell_id);
+  useEffect(() => {
+    setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
+  }, [spell.fixedCastLevel, spell.id, spell.level]);
+
   const effectDiceLabel =
     formatDamageDiceExpression(result?.effect_dice ?? spellEffectDice, Boolean(result?.is_critical)) ??
     result?.effect_dice ??
@@ -91,8 +70,21 @@ export const PlayerSpellCastDialog = ({
   const effectRollCount = getDamageRollCount(result?.effect_dice ?? spellEffectDice, Boolean(result?.is_critical));
   const effectRollSides = getDamageRollSides(result?.effect_dice ?? spellEffectDice);
   const effectRollValues = Array.from({ length: effectRollSides }, (_, i) => i + 1);
-  const effectKindLabel = result?.effect_kind === "healing" || spellMode === "heal" ? "cura" : "dano";
+  const effectKindLabel =
+    result?.effect_kind === "healing" || spellMode === "heal"
+      ? "cura"
+      : spellMode === "utility"
+        ? "efeito"
+        : "dano";
   const parsedBonus = parseBonus(spellEffectBonus);
+  const actionCostLabel =
+    spell.actionCost === "bonus_action"
+      ? "Bonus Action"
+      : spell.actionCost === "reaction"
+        ? "Reaction"
+        : spell.actionCost === "free"
+          ? "Free"
+          : "Action";
 
   const submitCast = async (payload?: {
     manual_roll?: number;
@@ -108,7 +100,13 @@ export const PlayerSpellCastDialog = ({
         spell_canonical_key: spell.canonicalKey,
         spell_id: spell.canonicalKey,
         spell_mode: spellMode,
-        slot_level: spell.level > 0 ? spell.level : null,
+        slot_level:
+          spell.sourceType === "magic_item"
+            ? spell.fixedCastLevel ?? spell.level ?? null
+            : spell.level > 0
+              ? selectedSlotLevel ?? spell.level
+              : null,
+        inventory_item_id: spell.sourceType === "magic_item" ? spell.inventoryItemId ?? null : null,
         roll_source: payload?.roll_source ?? "system",
         manual_roll: payload?.manual_roll ?? null,
         damage_dice: spellMode === "heal" ? null : spellEffectDice || null,
@@ -117,6 +115,11 @@ export const PlayerSpellCastDialog = ({
         heal_bonus: spellMode === "heal" ? parsedBonus : null,
         damage_type: spellMode === "heal" ? null : spellDamageType || null,
         save_ability: spellMode === "saving_throw" ? spellSaveAbility || null : null,
+        concentration_roll_source: concentrationRollMode,
+        concentration_manual_roll:
+          shouldShowConcentrationControl && concentrationRollMode === "manual"
+            ? Number.parseInt(concentrationManualRoll, 10) || null
+            : null,
       });
       setResult(resolved);
       setManualEffectRolls([]);
@@ -145,6 +148,11 @@ export const PlayerSpellCastDialog = ({
         pending_spell_id: result.pending_spell_id,
         roll_source: payload.roll_source,
         manual_rolls: payload.manual_rolls ?? null,
+        concentration_roll_source: concentrationRollMode,
+        concentration_manual_roll:
+          shouldShowConcentrationControl && concentrationRollMode === "manual"
+            ? Number.parseInt(concentrationManualRoll, 10) || null
+            : null,
       });
       setResult(resolved);
       await onResolved?.(resolved);
@@ -155,21 +163,6 @@ export const PlayerSpellCastDialog = ({
     }
   };
 
-  const outcomeLabel =
-    result?.action_kind === "saving_throw"
-      ? result.is_saved
-        ? "Save bem-sucedido"
-        : "Save falhou"
-      : result?.is_critical
-        ? "Acerto critico"
-        : result?.is_hit
-          ? "Acerto"
-          : result?.action_kind === "spell_attack"
-            ? "Errou"
-            : result?.effect_kind === "healing"
-              ? "Cura"
-              : "Resultado";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
       <div className="w-full max-w-md rounded-3xl border border-fuchsia-400/30 bg-void-950 p-6 text-slate-100 shadow-2xl shadow-fuchsia-950/30">
@@ -178,11 +171,56 @@ export const PlayerSpellCastDialog = ({
         <p className="mt-2 text-sm text-slate-300">
           Alvo: <span className="font-semibold text-white">{target.display_name}</span>
         </p>
+        {spell.sourceType === "magic_item" && spell.sourceItemName ? (
+          <p className="mt-1 text-sm text-slate-400">
+            Item: <span className="font-semibold text-white">{spell.sourceItemName}</span>
+            {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
+              ? ` · ${spell.chargesCurrent}/${spell.chargesMax}`
+              : ""}
+          </p>
+        ) : null}
         <p className="mt-1 text-sm text-slate-400">
           Fluxo: {spellMode.replace(/_/g, " ")}
-          {spellMode !== "heal" && spellDamageType ? ` · ${spellDamageType}` : ""}
+          {spellMode !== "heal" && spellMode !== "utility" && spellDamageType ? ` · ${spellDamageType}` : ""}
           {spellMode === "saving_throw" && spellSaveAbility ? ` · save ${spellSaveAbility}` : ""}
         </p>
+        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">
+          {actionCostLabel}
+        </p>
+        {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
+          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">
+            Item cast level: {spell.fixedCastLevel}
+          </p>
+        ) : null}
+        {spell.level > 0 && spell.sourceType !== "magic_item" ? (
+          <label className="mt-4 block">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Slot level
+            </span>
+            <select
+              value={selectedSlotLevel ?? spell.level}
+              onChange={(event) => setSelectedSlotLevel(Number.parseInt(event.target.value, 10))}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400"
+            >
+              {slotOptions.map((slotLevel) => (
+                <option key={slotLevel} value={slotLevel}>
+                  {slotLevel}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {shouldShowConcentrationControl ? (
+          <div className="mt-4">
+            <ConcentrationSaveControl
+              disabled={loading}
+              manualValue={concentrationManualRoll}
+              mode={concentrationRollMode}
+              onManualValueChange={setConcentrationManualRoll}
+              onModeChange={setConcentrationRollMode}
+            />
+          </div>
+        ) : null}
 
         {error && (
           <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
@@ -191,175 +229,20 @@ export const PlayerSpellCastDialog = ({
         )}
 
         {result ? (
-          <div className="mt-5 space-y-4">
-            {result.roll_result ? <RollResultCard result={result.roll_result} /> : null}
-
-            <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/30 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-fuchsia-300">
-                {pendingEffect ? "Efeito confirmado" : outcomeLabel}
-              </p>
-              <p className="mt-2 text-sm text-slate-100">
-                {result.action_kind === "spell_attack"
-                  ? result.is_hit
-                    ? pendingEffect
-                      ? `${result.spell_name} acertou ${result.target_display_name}. Agora role o ${effectKindLabel}${result.is_critical ? ` critico (${effectDiceLabel})` : ""}.`
-                      : `${result.spell_name} acertou ${result.target_display_name} e ${result.effect_kind === "healing" ? `curou ${result.healing}` : `causou ${result.damage} de dano`}.`
-                    : `${result.spell_name} nao acertou ${result.target_display_name}.`
-                  : result.action_kind === "saving_throw"
-                    ? result.is_saved
-                      ? result.save_success_outcome === "half_damage"
-                        ? pendingEffect
-                          ? `${result.target_display_name} passou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}; metade sera aplicada.`
-                          : `${result.target_display_name} passou no save e sofreu metade do ${effectKindLabel}: ${result.damage}.`
-                        : `${result.target_display_name} passou no save e evitou o efeito desta fase.`
-                      : pendingEffect
-                        ? `${result.target_display_name} falhou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}.`
-                        : `${result.target_display_name} falhou no save e ${result.effect_kind === "healing" ? `recebeu ${result.healing} HP` : `sofreu ${result.damage} de dano`}.`
-                    : pendingEffect
-                      ? `${result.spell_name} foi conjurada. Agora role o ${effectKindLabel} de ${effectDiceLabel}.`
-                      : result.effect_kind === "healing"
-                        ? `${result.spell_name} restaurou ${result.healing} HP em ${result.target_display_name}.`
-                        : `${result.spell_name} causou ${result.damage} de dano em ${result.target_display_name}.`}
-              </p>
-
-              {!pendingEffect && (result.damage > 0 || result.healing > 0) ? (
-                <p className="mt-2 text-xs text-slate-300">{formatSpellEffectBreakdown(result)}</p>
-              ) : null}
-              {!pendingEffect && result.new_hp != null ? (
-                <p className="mt-2 text-xs text-slate-400">
-                  PV atuais do alvo: {result.new_hp}
-                </p>
-              ) : null}
-            </div>
-
-            {pendingEffect && effectMode === "choose" ? (
-              effectRollCount > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-400">
-                    Escolha como rolar o {effectKindLabel} de {effectDiceLabel}.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setEffectMode("virtual")}
-                      className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500"
-                    >
-                      Virtual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEffectMode("manual")}
-                      className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
-                    >
-                      Manual
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    void submitEffect({ roll_source: "system" });
-                  }}
-                  className="w-full rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-                >
-                  {loading ? "..." : `Aplicar ${effectKindLabel}`}
-                </button>
-              )
-            ) : null}
-
-            {pendingEffect && effectMode === "virtual" ? (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    void submitEffect({ roll_source: "system" });
-                  }}
-                  className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-                >
-                  {loading ? "..." : `Rolar ${effectKindLabel}`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEffectMode("choose")}
-                  className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                >
-                  Voltar
-                </button>
-              </div>
-            ) : null}
-
-            {pendingEffect && effectMode === "manual" ? (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-400">
-                  Escolha cada dado manualmente ({manualEffectRolls.length}/{effectRollCount}).
-                </p>
-
-                {manualEffectRolls.length > 0 ? (
-                  <div className="rounded-2xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
-                    Dados escolhidos: {manualEffectRolls.join(", ")}
-                  </div>
-                ) : null}
-
-                <div className="grid grid-cols-5 gap-2">
-                  {effectRollValues.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => {
-                        const nextRolls = [...manualEffectRolls, value];
-                        if (nextRolls.length >= effectRollCount) {
-                          setManualEffectRolls([]);
-                          void submitEffect({
-                            roll_source: "manual",
-                            manual_rolls: nextRolls,
-                          });
-                          return;
-                        }
-                        setManualEffectRolls(nextRolls);
-                      }}
-                      className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-3 text-center text-lg font-bold text-white transition-colors hover:border-fuchsia-500/50 hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setManualEffectRolls([])}
-                    className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                  >
-                    Limpar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setManualEffectRolls([]);
-                      setEffectMode("choose");
-                    }}
-                    className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-                  >
-                    Voltar
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {!pendingEffect ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
-              >
-                Fechar
-              </button>
-            ) : null}
-          </div>
+          <SpellCastResultPanel
+            effectDiceLabel={effectDiceLabel}
+            effectKindLabel={effectKindLabel}
+            effectMode={effectMode}
+            effectRollCount={effectRollCount}
+            effectRollValues={effectRollValues}
+            loading={loading}
+            manualEffectRolls={manualEffectRolls}
+            onClose={onClose}
+            onEffectModeChange={setEffectMode}
+            onManualEffectRollsChange={setManualEffectRolls}
+            onSubmitEffect={(payload) => { void submitEffect(payload); }}
+            result={result}
+          />
         ) : null}
 
         {!result && spellMode === "spell_attack" && attackMode === "choose" ? (
@@ -386,9 +269,7 @@ export const PlayerSpellCastDialog = ({
             <button
               type="button"
               disabled={loading}
-              onClick={() => {
-                void submitCast({ roll_source: "system" });
-              }}
+              onClick={() => { void submitCast({ roll_source: "system" }); }}
               className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
             >
               {loading ? "..." : "Rolar ataque magico"}
@@ -413,9 +294,7 @@ export const PlayerSpellCastDialog = ({
                   key={value}
                   type="button"
                   disabled={loading}
-                  onClick={() => {
-                    void submitCast({ roll_source: "manual", manual_roll: value });
-                  }}
+                  onClick={() => { void submitCast({ roll_source: "manual", manual_roll: value }); }}
                   className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-3 text-center text-lg font-bold text-white transition-colors hover:border-fuchsia-500/50 hover:bg-slate-800 disabled:opacity-50"
                 >
                   {value}
@@ -438,9 +317,7 @@ export const PlayerSpellCastDialog = ({
             <button
               type="button"
               disabled={loading}
-              onClick={() => {
-                void submitCast();
-              }}
+              onClick={() => { void submitCast(); }}
               className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
             >
               {loading ? "..." : "Conjurar"}

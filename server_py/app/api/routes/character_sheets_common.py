@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.models.campaign import RoleMode
 from app.models.character_sheet import CharacterSheet
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
@@ -16,7 +17,16 @@ from app.schemas.character_sheet import (
     CharacterSheetUpdate,
 )
 from app.services.character_sheet_inventory import sync_character_sheet_inventory
+from app.services.centrifugo import centrifugo
+from app.services.dragonborn_breath_weapon import apply_dragonborn_breath_weapon_canonical_state
+from app.services.draconic_ancestry import (
+    normalize_subclass_config,
+    validate_draconic_subclass_state,
+)
+from app.services.guardian_progression import apply_guardian_canonical_state
+from app.services.realtime import build_event, campaign_channel, event_version
 from app.services.race_config import normalize_race_state, validate_race_state
+from app.services.sorcerer_progression import apply_sorcerer_canonical_state
 
 
 def utcnow() -> datetime:
@@ -85,6 +95,7 @@ def require_joined_player(
         select(PartyMember).where(
             PartyMember.party_id == party_id_value,
             PartyMember.user_id == player_user_id,
+            PartyMember.role == RoleMode.PLAYER,
             PartyMember.status == PartyMemberStatus.JOINED,
         )
     ).first()
@@ -122,8 +133,37 @@ def to_character_sheet_read(entry: CharacterSheet) -> CharacterSheetRead:
         partyId=entry.party_id,
         playerId=entry.player_user_id,
         data=entry.data,
+        sourceDraftId=entry.source_draft_id,
+        deliveredByUserId=entry.delivered_by_user_id,
+        deliveredAt=entry.delivered_at,
+        acceptedAt=entry.accepted_at,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
+    )
+
+
+async def publish_character_sheet_realtime(
+    campaign_id: str,
+    party_id_value: str,
+    record: CharacterSheetRead,
+    update_kind: str,
+) -> None:
+    await centrifugo.publish(
+        campaign_channel(campaign_id),
+        build_event(
+            "character_sheet_updated",
+            {
+                "campaignId": campaign_id,
+                "partyId": party_id_value,
+                "playerUserId": record.playerId,
+                "characterSheetId": record.id,
+                "sourceDraftId": record.sourceDraftId,
+                "deliveredAt": record.deliveredAt,
+                "acceptedAt": record.acceptedAt,
+                "updateKind": update_kind,
+            },
+            version=event_version(),
+        ),
     )
 
 
@@ -133,17 +173,26 @@ def validate_character_sheet_payload(data: object) -> None:
     ok, error = validate_race_state(data)
     if not ok:
         raise HTTPException(status_code=422, detail=error)
+    ok, error = validate_draconic_subclass_state(data)
+    if not ok:
+        raise HTTPException(status_code=422, detail=error)
 
 
 def normalize_character_sheet_payload(data: object) -> dict:
     if not isinstance(data, dict):
         raise HTTPException(status_code=422, detail="Character sheet payload must be an object")
     normalized = normalize_race_state(data.get("race"), data.get("raceConfig"))
-    return {
+    subclass = data.get("subclass")
+    next_data = {
         **data,
         "race": normalized["race"],
         "raceConfig": normalized["raceConfig"],
+        "subclassConfig": normalize_subclass_config(subclass, data.get("subclassConfig")),
     }
+    next_data = apply_guardian_canonical_state(next_data)
+    next_data = apply_sorcerer_canonical_state(next_data)
+    next_data = apply_dragonborn_breath_weapon_canonical_state(next_data)
+    return next_data
 
 
 def get_my_character_sheet_service(
@@ -186,6 +235,10 @@ def create_character_sheet_service(
         party_id=party_id_value,
         player_user_id=current_user_id,
         data=normalized_payload,
+        source_draft_id=None,
+        delivered_by_user_id=None,
+        delivered_at=None,
+        accepted_at=utcnow(),
         created_at=utcnow(),
         updated_at=None,
     )
@@ -210,6 +263,8 @@ def update_character_sheet_service(
     party = require_party_member(party_id_value, user, session)
     current_user_id = user_id(user)
     entry = get_character_sheet_or_404(party_id_value, current_user_id, session)
+    if entry.accepted_at is not None:
+        raise HTTPException(status_code=409, detail="Character sheet is already accepted")
     validate_character_sheet_payload(payload.data)
     normalized_payload = normalize_character_sheet_payload(payload.data)
     entry.data = normalized_payload
@@ -235,3 +290,18 @@ def delete_character_sheet_service(
     entry = get_character_sheet_or_404(party_id_value, user_id(user), session)
     session.delete(entry)
     session.commit()
+
+
+def accept_my_character_sheet_service(
+    party_id_value: str,
+    user: User,
+    session: Session,
+) -> CharacterSheetRead:
+    require_party_member(party_id_value, user, session)
+    entry = get_character_sheet_or_404(party_id_value, user_id(user), session)
+    if entry.accepted_at is None:
+        entry.accepted_at = utcnow()
+        session.add(entry)
+        session.commit()
+        session.refresh(entry)
+    return to_character_sheet_read(entry)

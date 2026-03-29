@@ -52,19 +52,23 @@ class TargetMode(str, Enum):
 
 
 class ResolutionType(str, Enum):
-    NONE = "none"
-    SPELL_ATTACK = "spell_attack"
-    SAVING_THROW = "saving_throw"
-    AUTOMATIC = "automatic"
+    DAMAGE = "damage"
     HEAL = "heal"
+    BUFF = "buff"
+    DEBUFF = "debuff"
+    CONTROL = "control"
+    UTILITY = "utility"
 
 
 class UpcastMode(str, Enum):
-    NONE = "none"
-    ADD_DICE = "add_dice"
-    ADD_TARGETS = "add_targets"
-    INCREASE_DURATION = "increase_duration"
-    CUSTOM = "custom"
+    EXTRA_DAMAGE_DICE = "extra_damage_dice"
+    EXTRA_HEAL_DICE = "extra_heal_dice"
+    FLAT_BONUS = "flat_bonus"
+    ADDITIONAL_TARGETS = "additional_targets"
+    DURATION_SCALING = "duration_scaling"
+    EFFECT_SCALING = "effect_scaling"
+    EXTRA_EFFECT = "extra_effect"
+    NONE = "none"  # legacy sentinel only
 
 
 class SpellSource(str, Enum):
@@ -153,6 +157,10 @@ class BaseSpell(SQLModel, table=True):
     heal_dice: Optional[str] = None  # e.g. "1d8+3"
 
     # --- Upcast (mechanical) ---
+    upcast_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
     upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     upcast_value: Optional[str] = None  # e.g. "1d8" for add_dice
 

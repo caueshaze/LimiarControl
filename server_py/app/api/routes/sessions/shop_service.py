@@ -33,6 +33,7 @@ from .shop_common import (
     to_item_read,
 )
 from app.models.inventory import InventoryItem
+from app.services.magic_item_effects import inventory_item_supports_stacking
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
 
@@ -157,7 +158,7 @@ async def buy_session_shop_item_service(
         )
     ).first()
 
-    if existing:
+    if existing and inventory_item_supports_stacking(item):
         existing.quantity += payload.quantity
         session.add(existing)
         session.commit()
@@ -176,7 +177,7 @@ async def buy_session_shop_item_service(
     new_entry = create_inventory_entry(
         entry=entry,
         member=member,
-        item_id=item_id,
+        item=item,
         quantity=payload.quantity,
     )
     session.add(new_entry)

@@ -6,6 +6,7 @@ type Props = {
   partyId: string;
   isPlayer: boolean;
   hasCharacterSheet: boolean | null;
+  characterSheetStatus: "missing" | "pending_acceptance" | "accepted" | null;
   isSessionActive: boolean;
 };
 
@@ -13,6 +14,7 @@ export const PlayerPartySheetCard = ({
   partyId,
   isPlayer,
   hasCharacterSheet,
+  characterSheetStatus,
   isSessionActive,
 }: Props) => {
   const { t } = useLocale();
@@ -52,6 +54,43 @@ export const PlayerPartySheetCard = ({
           >
             {t("playerParty.createSheet")} →
           </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (characterSheetStatus === "pending_acceptance") {
+    return (
+      <section className="rounded-[30px] border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(6,44,34,0.72),rgba(2,6,23,0.95))] px-5 py-5 shadow-[0_18px_60px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
+              {t("playerParty.sheetPendingEyebrow")}
+            </p>
+            <h3 className="text-lg font-semibold text-white">
+              {t("playerParty.sheetPendingTitle")}
+            </h3>
+            <p className="text-sm leading-7 text-slate-300">
+              {t("playerParty.sheetPendingBody")}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={routes.characterSheetParty.replace(":partyId", partyId)}
+              className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-50 transition hover:border-emerald-300/30 hover:bg-emerald-300/15"
+            >
+              {t("playerParty.reviewSheet")}
+            </Link>
+            {isSessionActive ? (
+              <Link
+                to={`${routes.characterSheetParty.replace(":partyId", partyId)}?mode=play`}
+                className="rounded-full border border-limiar-300/20 bg-limiar-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-limiar-100 transition hover:border-limiar-300/30 hover:bg-limiar-300/15"
+              >
+                {t("playerParty.playSheet")}
+              </Link>
+            ) : null}
+          </div>
         </div>
       </section>
     );

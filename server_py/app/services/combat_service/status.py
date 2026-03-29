@@ -54,6 +54,7 @@ class CombatStatusMixin:
         target_model,
     ) -> str:
         participant = cls._get_participant_by_ref(state, target_ref_id)
+        previous_status = participant.get("status") if isinstance(participant, dict) else None
 
         if kind == "player":
             data = cls._as_dict(target_model.state_json)
@@ -80,6 +81,11 @@ class CombatStatusMixin:
 
             if participant:
                 participant["status"] = status
+                if status != "active" and previous_status != status:
+                    cls._clear_concentration_for_participant_status(
+                        state,
+                        source_participant_id=participant.get("id"),
+                    )
 
             return status
 
@@ -96,6 +102,11 @@ class CombatStatusMixin:
 
         if participant:
             participant["status"] = status
+            if status != "active" and previous_status != status:
+                cls._clear_concentration_for_participant_status(
+                    state,
+                    source_participant_id=participant.get("id"),
+                )
 
         return status
 

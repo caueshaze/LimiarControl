@@ -12,6 +12,11 @@ import {
   getArmorClassBreakdownRows,
 } from "../utils/armorClass";
 import type { CharacterSheet } from "../model/characterSheet.types";
+import {
+  getDraconicLineageState,
+  resolveElementalAffinityEligibility,
+} from "../data/draconicAncestry";
+import { resolveDragonbornLineageState } from "../data/dragonbornAncestries";
 
 export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
   const acResult = calculateArmorClass(buildCharacterAcStateFromSheet(sheet));
@@ -27,6 +32,28 @@ export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
     : sheet.abilities.intelligence;
   const spellSaveDC = sheet.spellcasting ? computeSpellSaveDC(sheet.level, spellAbilityScore) : null;
   const spellAttack = sheet.spellcasting ? computeSpellAttack(sheet.level, spellAbilityScore) : null;
+  const draconicLineage = getDraconicLineageState({
+    classId: sheet.class,
+    subclass: sheet.subclass,
+    level: sheet.level,
+    subclassConfig: sheet.subclassConfig,
+  });
+  const elementalAffinity = resolveElementalAffinityEligibility({
+    classId: sheet.class,
+    subclass: sheet.subclass,
+    level: sheet.level,
+    subclassConfig: sheet.subclassConfig,
+    spellDamageType: draconicLineage.damageType,
+    charismaScore: sheet.abilities.charisma,
+  });
+  const dragonbornLineage = resolveDragonbornLineageState({
+    raceId: sheet.race,
+    raceConfig: sheet.raceConfig,
+  });
+  const resistances = [...new Set([
+    ...dragonbornLineage.resistances,
+    ...draconicLineage.resistances,
+  ])];
 
   const hpPercent = sheet.maxHP > 0 ? (sheet.currentHP / sheet.maxHP) * 100 : 0;
   const hpColor =
@@ -43,6 +70,21 @@ export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
     initiative,
     passivePerception,
     profBonus,
+    dragonbornAncestry: dragonbornLineage.ancestry,
+    dragonbornAncestryLabel: dragonbornLineage.ancestryLabel,
+    dragonbornDamageType: dragonbornLineage.damageType,
+    dragonbornResistanceType: dragonbornLineage.resistanceType,
+    dragonbornBreathWeaponShape: dragonbornLineage.breathWeaponShape,
+    dragonbornBreathWeaponSaveType: dragonbornLineage.breathWeaponSaveType,
+    dragonbornBreathWeaponAreaSize: dragonbornLineage.breathWeaponAreaSize,
+    draconicAncestry: draconicLineage.ancestry,
+    draconicAncestryLabel: draconicLineage.ancestryLabel,
+    draconicDamageType: draconicLineage.damageType,
+    draconicResistanceType: draconicLineage.resistanceType,
+    hasElementalAffinity: draconicLineage.hasElementalAffinity,
+    elementalAffinityDamageType: elementalAffinity.damageType,
+    elementalAffinityBonus: elementalAffinity.bonus,
+    resistances,
     spellAttack,
     spellSaveDC,
   };

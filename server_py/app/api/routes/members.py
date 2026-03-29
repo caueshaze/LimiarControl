@@ -8,7 +8,7 @@ from app.api.deprecation import log_deprecated_route
 from app.db.session import get_session
 from app.models.campaign_member import CampaignMember
 from app.models.user import User
-from app.schemas.join import MemberRead, MemberRoleUpdate, MemberSummary, MemberUpdate
+from app.schemas.join import MemberRead, MemberRoleAssign, MemberRoleUpdate, MemberSummary, MemberUpdate
 
 router = APIRouter()
 DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
@@ -50,7 +50,36 @@ def update_member(
     ).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
-    member.role_mode = payload.role
+    if payload.displayName is not None:
+        member.display_name = payload.displayName.strip()
+    session.add(member)
+    session.commit()
+    session.refresh(member)
+    return MemberRead(
+        campaignId=campaign_id,
+        displayName=member.display_name,
+        roleMode=member.role_mode,
+    )
+
+
+@router.put("/{campaign_id}/members/{member_id}/role", response_model=MemberRead)
+def assign_member_role(
+    campaign_id: str,
+    member_id: str,
+    payload: MemberRoleAssign,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    require_gm(campaign_id, user, session)
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.id == member_id,
+            CampaignMember.campaign_id == campaign_id,
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    member.role_mode = payload.roleMode
     session.add(member)
     session.commit()
     session.refresh(member)
@@ -73,20 +102,15 @@ def update_member_role_deprecated(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Deprecated. Remove after 2026-06-01. Use PATCH /api/campaigns/{campaign_id}/members/me."""
+    """Deprecated. Remove after 2026-06-01. Role changes now require GM via PUT /members/{member_id}/role."""
     log_deprecated_route(
         request,
         old_path="/api/campaigns/{campaign_id}/members/me/role",
-        new_path="/api/campaigns/{campaign_id}/members/me",
+        new_path="/api/campaigns/{campaign_id}/members/{member_id}/role",
         removal_date=DEPRECATION_REMOVAL_DATE,
         extra={"campaign_id": campaign_id, "user_id": getattr(user, "id", None)},
     )
-    return update_member(
-        campaign_id,
-        MemberUpdate(role=payload.roleMode),
-        user,
-        session,
-    )
+    raise HTTPException(status_code=403, detail="Self role change is no longer allowed. A GM must assign roles.")
 
 
 @router.get("/{campaign_id}/members", response_model=list[MemberSummary])

@@ -4,6 +4,7 @@ import type {
 } from "../../../../entities/campaign-entity";
 import { CATEGORIES, fieldClass, sectionClass } from "./constants";
 import type { SetCampaignEntityField, Translate } from "./types";
+import { ImageUploadInput } from "./ImageUploadInput";
 
 type Props = {
   form: CampaignEntityPayload;
@@ -46,11 +47,11 @@ export const CampaignEntityGeneralSection = ({ form, hasInitialValue, setField, 
       className={`${fieldClass} mt-2`}
     />
 
-    <input
+    <ImageUploadInput
       value={form.imageUrl ?? ""}
-      onChange={(event) => setField("imageUrl", event.target.value)}
-      placeholder={t("entity.form.imageUrl")}
-      className={`${fieldClass} mt-2`}
+      onChange={(url) => setField("imageUrl", url)}
+      label={t("entity.form.imageUrl")}
+      required
     />
 
     <div className="mt-4 rounded-3xl border border-emerald-300/12 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-4 sm:p-5">

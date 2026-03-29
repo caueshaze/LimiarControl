@@ -1,7 +1,18 @@
 import { useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
+import type { DragonbornBreathWeaponAction } from "../../../features/combat-ui/player/dragonbornBreathWeapon";
+import {
+  isCombatSpellActionCostAvailable,
+  resolveCombatSpellActionCost,
+  spellModeNeedsDamageType,
+  spellModeNeedsEffectInputs,
+  spellModeNeedsSaveAbility,
+} from "../../../features/combat-ui/spellAutomation";
+import { getAbilityLabel } from "../../../features/character-sheet/utils/abilityLabels";
 import type { CombatSpellMode, StandardActionType } from "../../../shared/api/combatRepo";
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import { localizeDamageType } from "../../../shared/i18n/domainLabels";
 import type { PlayerBoardWeaponSummary } from "../playerBoard.types";
 import type { CombatSpellOption } from "./types";
 
@@ -9,29 +20,94 @@ const STD_BTN = "rounded border px-3 py-2 text-xs font-bold disabled:opacity-40 
 
 const StandardActionButtons = ({
   actionUsed,
+  dragonbornBreathWeaponAction,
   loading,
   participants,
   myParticipantId,
   onStandardAction,
+  targetParticipantId,
 }: {
   actionUsed: boolean;
+  dragonbornBreathWeaponAction: DragonbornBreathWeaponAction | null;
   loading: boolean;
   participants: CombatParticipant[];
   myParticipantId: string;
   onStandardAction: (action: StandardActionType, targetParticipantId?: string, description?: string) => void;
+  targetParticipantId?: string | null;
 }) => {
+  const { locale, t } = useLocale();
   const [helpTarget, setHelpTarget] = useState("");
   const [useObjectDesc, setUseObjectDesc] = useState("");
   const disabled = actionUsed || loading;
   const allies = participants.filter((p) => p.id !== myParticipantId);
+  const dragonbornDamageLabel = localizeDamageType(
+    dragonbornBreathWeaponAction?.damageType ?? null,
+    locale,
+  );
 
   return (
     <div className="space-y-2">
+      {dragonbornBreathWeaponAction ? (
+        <div className="rounded border border-emerald-500/40 bg-emerald-500/10 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-200">
+                {t("combatUi.dragonbornBreathWeapon")}
+                {dragonbornDamageLabel ? ` (${dragonbornDamageLabel})` : ""}
+              </p>
+              <p className="mt-1 text-xs text-slate-200">
+                {dragonbornBreathWeaponAction.damageDice} · {t("combatUi.saveDcShort")}{" "}
+                {dragonbornBreathWeaponAction.dc} ·{" "}
+                {getAbilityLabel(dragonbornBreathWeaponAction.saveAbility, t)}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-300">
+                {t("combatUi.usesRemaining")}: {dragonbornBreathWeaponAction.usesRemaining}/
+                {dragonbornBreathWeaponAction.usesMax}
+              </p>
+            </div>
+            <button
+              disabled={
+                disabled
+                || !targetParticipantId
+                || dragonbornBreathWeaponAction.usesRemaining <= 0
+              }
+              onClick={() => onStandardAction("dragonborn_breath_weapon", targetParticipantId ?? undefined)}
+              className={`${STD_BTN} border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/10`}
+            >
+              {t("combatUi.useDragonbornBreathWeapon")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="grid grid-cols-3 gap-2">
-        <button disabled={disabled} onClick={() => onStandardAction("dodge")} className={`${STD_BTN} border-sky-500/40 text-sky-300 hover:bg-sky-500/10`}>Dodge</button>
-        <button disabled={disabled} onClick={() => onStandardAction("dash")} className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}>Dash</button>
-        <button disabled={disabled} onClick={() => onStandardAction("disengage")} className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}>Disengage</button>
-        <button disabled={disabled} onClick={() => onStandardAction("hide")} className={`${STD_BTN} border-violet-500/40 text-violet-300 hover:bg-violet-500/10`}>Hide</button>
+        <button
+          disabled={disabled}
+          onClick={() => onStandardAction("dodge")}
+          className={`${STD_BTN} border-sky-500/40 text-sky-300 hover:bg-sky-500/10`}
+        >
+          Dodge
+        </button>
+        <button
+          disabled={disabled}
+          onClick={() => onStandardAction("dash")}
+          className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}
+        >
+          Dash
+        </button>
+        <button
+          disabled={disabled}
+          onClick={() => onStandardAction("disengage")}
+          className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}
+        >
+          Disengage
+        </button>
+        <button
+          disabled={disabled}
+          onClick={() => onStandardAction("hide")}
+          className={`${STD_BTN} border-violet-500/40 text-violet-300 hover:bg-violet-500/10`}
+        >
+          Hide
+        </button>
         <button
           disabled={disabled || !helpTarget}
           onClick={() => { onStandardAction("help", helpTarget); setHelpTarget(""); }}
@@ -99,6 +175,7 @@ type Props = {
   currentWeapon: PlayerBoardWeaponSummary | null;
   deathSaveVisible: boolean;
   defeatedTargets: CombatParticipant[];
+  dragonbornBreathWeaponAction: DragonbornBreathWeaponAction | null;
   isActive: boolean;
   isMyTurn: boolean;
   loading: boolean;
@@ -134,6 +211,7 @@ export const PlayerTurnActions = ({
   currentWeapon,
   deathSaveVisible,
   defeatedTargets,
+  dragonbornBreathWeaponAction,
   isActive,
   isMyTurn,
   loading,
@@ -162,12 +240,27 @@ export const PlayerTurnActions = ({
   spellSaveAbility,
   targetId,
 }: Props) => {
+  const selectedSpellActionCost =
+    selectedSpell?.actionCost ?? resolveCombatSpellActionCost("action");
+  const canSpendSpellActionCost = isCombatSpellActionCostAvailable(
+    selectedSpellActionCost,
+    myParticipant?.turn_resources,
+  );
+  const spellActionCostLabel =
+    selectedSpellActionCost === "bonus_action"
+      ? "Bonus Action"
+      : selectedSpellActionCost === "reaction"
+        ? "Reaction"
+        : "Action";
   const canSubmitSpell =
     Boolean(targetId) &&
     Boolean(selectedSpell?.canonicalKey) &&
-    (spellMode === "heal" || Boolean(spellDamageType)) &&
-    (spellMode !== "saving_throw" || Boolean(spellSaveAbility)) &&
-    (spellEffectDice.trim().length > 0 || parseEffectBonus(spellEffectBonus) > 0);
+    canSpendSpellActionCost &&
+    (!spellModeNeedsDamageType(spellMode) || Boolean(spellDamageType)) &&
+    (!spellModeNeedsSaveAbility(spellMode) || Boolean(spellSaveAbility)) &&
+    (!spellModeNeedsEffectInputs(spellMode)
+      || spellEffectDice.trim().length > 0
+      || parseEffectBonus(spellEffectBonus) > 0);
 
   if (deathSaveVisible) {
     return (
@@ -322,9 +415,17 @@ export const PlayerTurnActions = ({
                   <p className="mt-1 text-xs text-slate-300">
                     Sugestao do catalogo: {selectedSpell.suggestedMode?.replace(/_/g, " ") ?? "nenhuma"}
                   </p>
+                  <p className="mt-1 text-xs text-slate-300">
+                    Action cost: {spellActionCostLabel}
+                  </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Tipo de dano: {selectedSpell.damageType ?? "nao estruturado"} · Save: {selectedSpell.savingThrow ?? "nao estruturado"}
                   </p>
+                  {!canSpendSpellActionCost ? (
+                    <p className="mt-1 text-xs text-rose-200">
+                      Esse custo de ação já foi gasto neste turno.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -337,6 +438,7 @@ export const PlayerTurnActions = ({
                 <option value="saving_throw">Saving Throw</option>
                 <option value="direct_damage">Direct Damage (override)</option>
                 <option value="heal">Direct Heal</option>
+                <option value="utility">Utility</option>
               </select>
 
               {spellMode === "direct_damage" ? (
@@ -345,23 +447,27 @@ export const PlayerTurnActions = ({
                 </p>
               ) : null}
 
-              <input
-                type="text"
-                value={spellEffectDice}
-                onChange={(e) => setSpellEffectDice(e.target.value)}
-                placeholder={spellMode === "heal" ? "Heal Dice (ex: 1d4)" : "Damage Dice (ex: 2d6)"}
-                className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
-              />
+              {spellModeNeedsEffectInputs(spellMode) ? (
+                <>
+                  <input
+                    type="text"
+                    value={spellEffectDice}
+                    onChange={(e) => setSpellEffectDice(e.target.value)}
+                    placeholder={spellMode === "heal" ? "Heal Dice (ex: 1d4)" : "Damage Dice (ex: 2d6)"}
+                    className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
+                  />
 
-              <input
-                type="number"
-                value={spellEffectBonus}
-                onChange={(e) => setSpellEffectBonus(e.target.value)}
-                placeholder="Bonus"
-                className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
-              />
+                  <input
+                    type="number"
+                    value={spellEffectBonus}
+                    onChange={(e) => setSpellEffectBonus(e.target.value)}
+                    placeholder="Bonus"
+                    className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
+                  />
+                </>
+              ) : null}
 
-              {spellMode !== "heal" ? (
+              {spellModeNeedsDamageType(spellMode) ? (
                 <select
                   value={spellDamageType}
                   onChange={(e) => setSpellDamageType(e.target.value)}
@@ -376,7 +482,7 @@ export const PlayerTurnActions = ({
                 </select>
               ) : null}
 
-              {spellMode === "saving_throw" ? (
+              {spellModeNeedsSaveAbility(spellMode) ? (
                 <select
                   value={spellSaveAbility}
                   onChange={(e) => setSpellSaveAbility(e.target.value as AbilityName | "")}
@@ -393,7 +499,7 @@ export const PlayerTurnActions = ({
               ) : null}
 
               <button
-                disabled={loading || !canSubmitSpell || !!myParticipant.turn_resources?.action_used}
+                disabled={loading || !canSubmitSpell}
                 onClick={onCast}
                 className="w-full rounded bg-fuchsia-600 px-4 py-3 font-bold text-white hover:bg-fuchsia-500 disabled:opacity-50"
               >
@@ -410,10 +516,15 @@ export const PlayerTurnActions = ({
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Standard Actions</p>
                 <StandardActionButtons
                   actionUsed={actionUsed}
+                  dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
                   loading={loading}
                   participants={livingTargets}
                   myParticipantId={myParticipant.id}
                   onStandardAction={onStandardAction}
+                  targetParticipantId={
+                    [...livingTargets, ...defeatedTargets].find((participant) => participant.ref_id === targetId)?.id
+                    ?? null
+                  }
                 />
               </div>
             );

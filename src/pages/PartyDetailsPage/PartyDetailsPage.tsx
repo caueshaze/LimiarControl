@@ -15,6 +15,7 @@ import {
 } from "./PartyDetailsPageSections";
 import {
     PartyDetailsActiveSessionBanner,
+    PartyDetailsCharacterSheetDraftsCard,
     PartyDetailsInventoryCard,
     PartyDetailsMissingSheetsBanner,
     PartyDetailsOverviewStrip,
@@ -88,7 +89,14 @@ export const PartyDetailsPage = () => {
     }, [loadData]);
 
     const { lastEvent, onlineUsers } = useCampaignEvents(partyCampaignId);
-    const { loadError: resourcesError, loading: loadingResources, playerResources, summary: resourceSummary } = usePartyDetailsResources({
+    const {
+        drafts,
+        loadError: resourcesError,
+        loading: loadingResources,
+        playerResources,
+        reloadResources,
+        summary: resourceSummary,
+    } = usePartyDetailsResources({
         activeSession,
         locale,
         party,
@@ -332,11 +340,20 @@ export const PartyDetailsPage = () => {
                     partyId={party.id}
                     players={playerResources}
                 />
-                <PartyDetailsInventoryCard
-                    loadError={resourcesError}
-                    loading={loadingResources}
-                    players={playerResources}
-                />
+                <div className="space-y-6">
+                    <PartyDetailsCharacterSheetDraftsCard
+                        drafts={drafts}
+                        loading={loadingResources}
+                        partyId={party.id}
+                        players={playerResources}
+                        onChanged={reloadResources}
+                    />
+                    <PartyDetailsInventoryCard
+                        loadError={resourcesError}
+                        loading={loadingResources}
+                        players={playerResources}
+                    />
+                </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">

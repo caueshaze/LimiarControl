@@ -7,6 +7,7 @@ from .events import CombatEventsMixin
 from .lifecycle import CombatLifecycleMixin
 from .npc_actions import CombatNpcActionMixin
 from .player_actions import CombatPlayerActionMixin
+from .spell_automation import CombatSpellAutomationMixin
 from .standard_actions import CombatStandardActionMixin
 from .status import CombatStatusMixin
 
@@ -19,6 +20,7 @@ class CombatService(
     CombatStatusMixin,
     CombatLifecycleMixin,
     CombatDamageMixin,
+    CombatSpellAutomationMixin,
     CombatPlayerActionMixin,
     CombatNpcActionMixin,
     CombatEffectsMixin,

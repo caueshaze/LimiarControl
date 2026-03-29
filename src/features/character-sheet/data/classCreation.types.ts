@@ -16,11 +16,21 @@ export type ClassEquipmentChoiceGroup = {
 export type StartingSpellMode = SpellcastingMode;
 
 export type StartingSpellConfig = {
+  minimumLevel?: number;
   cantrips: number;
   leveledSpells: number;
   leveledMode: SpellcastingMode;
   preparationAbility?: AbilityName;
   levelOneSlots?: number;
+  fixedCantripCanonicalKeys?: string[];
+  fixedLeveledSpellCanonicalKeys?: string[];
+  byLevel?: Partial<Record<number, {
+    cantrips?: number;
+    leveledSpells?: number;
+    levelOneSlots?: number;
+    fixedCantripCanonicalKeys?: string[];
+    fixedLeveledSpellCanonicalKeys?: string[];
+  }>>;
 };
 
 export type ToolProficiencyChoiceConfig = {

@@ -43,6 +43,8 @@ export const CatalogItemCard = ({
   const [weight, setWeight] = useState(item.weight?.toString() ?? "");
   const [damageDice, setDamageDice] = useState(item.damageDice ?? "");
   const [damageType, setDamageType] = useState<BaseItemDamageType | "">(item.damageType ?? "");
+  const [healDice, setHealDice] = useState(item.healDice ?? "");
+  const [healBonus, setHealBonus] = useState(item.healBonus?.toString() ?? "");
   const [rangeMeters, setRangeMeters] = useState(item.rangeMeters?.toString() ?? "");
   const [rangeLongMeters, setRangeLongMeters] = useState(item.rangeLongMeters?.toString() ?? "");
   const [versatileDamage, setVersatileDamage] = useState(item.versatileDamage ?? "");
@@ -86,6 +88,7 @@ export const CatalogItemCard = ({
 
   const statItems = buildCatalogStatItems(item, locale, {
     damage: t("catalog.card.damage"),
+    healing: t("catalog.admin.table.healDice"),
     range: t("catalog.card.range"),
     versatileDamage: t("catalog.card.versatileDamage"),
     armorClassBase: t("catalog.card.armorClassBase"),
@@ -122,6 +125,14 @@ export const CatalogItemCard = ({
             : undefined,
         damageType:
           (type === "WEAPON" || type === "MAGIC") && damageType ? damageType : undefined,
+        healDice:
+          type === "CONSUMABLE" && healDice.trim()
+            ? healDice.trim()
+            : undefined,
+        healBonus:
+          type === "CONSUMABLE" && healBonus.trim()
+            ? healBonus
+            : undefined,
         rangeMeters:
           (type === "WEAPON" || type === "MAGIC") && rangeMeters.trim()
             ? rangeMeters
@@ -191,6 +202,8 @@ export const CatalogItemCard = ({
       weight={weight}
       damageDice={damageDice}
       damageType={damageType}
+      healDice={healDice}
+      healBonus={healBonus}
       rangeMeters={rangeMeters}
       rangeLongMeters={rangeLongMeters}
       versatileDamage={versatileDamage}
@@ -212,6 +225,8 @@ export const CatalogItemCard = ({
       onWeightChange={setWeight}
       onDamageDiceChange={setDamageDice}
       onDamageTypeChange={setDamageType}
+      onHealDiceChange={setHealDice}
+      onHealBonusChange={setHealBonus}
       onRangeMetersChange={setRangeMeters}
       onRangeLongMetersChange={setRangeLongMeters}
       onVersatileDamageChange={setVersatileDamage}

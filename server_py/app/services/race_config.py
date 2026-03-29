@@ -1,4 +1,10 @@
-from app.services.dragonborn_ancestry import is_valid_dragonborn_ancestry
+from app.services.dragonborn_ancestry import (
+    DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY,
+    LEGACY_DRAGONBORN_ANCESTRY_RACE_CONFIG_KEY,
+    LEGACY_DRAGONBORN_DRAGON_ANCESTOR_RACE_CONFIG_KEY,
+    is_valid_dragonborn_ancestry,
+    normalize_dragonborn_race_config,
+)
 
 GNOME_SUBRACES = {"forest", "rock"}
 HALF_ELF_ABILITY_CHOICES = {
@@ -60,12 +66,9 @@ def normalize_race_state(race: object, race_config: object):
         normalized_config = {**normalized_config, **legacy["raceConfig"]}
 
     if normalized_race == "dragonborn":
-        ancestry = normalized_config.get("dragonbornAncestry")
         return {
             "race": normalized_race,
-            "raceConfig": {
-                "dragonbornAncestry": ancestry if is_valid_dragonborn_ancestry(ancestry) else None,
-            },
+            "raceConfig": normalize_dragonborn_race_config(normalized_config),
         }
 
     if normalized_race == "gnome":
@@ -105,8 +108,20 @@ def validate_race_state(data: object) -> tuple[bool, str | None]:
     race = normalized["race"]
     race_config = normalized["raceConfig"] or {}
 
-    if race == "dragonborn" and not is_valid_dragonborn_ancestry(race_config.get("dragonbornAncestry")):
-        return False, "Dragonborn characters require a valid dragonborn ancestry"
+    if race == "dragonborn":
+        raw_race_config = data.get("raceConfig") if isinstance(data.get("raceConfig"), dict) else {}
+        raw_ancestry = (
+            raw_race_config.get(DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY)
+            or raw_race_config.get(LEGACY_DRAGONBORN_ANCESTRY_RACE_CONFIG_KEY)
+            or raw_race_config.get(LEGACY_DRAGONBORN_DRAGON_ANCESTOR_RACE_CONFIG_KEY)
+        )
+        ancestry = race_config.get(DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY)
+        if raw_ancestry is None:
+            return False, "draconicAncestry is required for dragonborn"
+        if not is_valid_dragonborn_ancestry(raw_ancestry):
+            return False, "draconicAncestry is invalid for dragonborn"
+        if ancestry is None:
+            return False, "draconicAncestry is required for dragonborn"
 
     if race == "gnome":
         subrace = race_config.get("gnomeSubrace")

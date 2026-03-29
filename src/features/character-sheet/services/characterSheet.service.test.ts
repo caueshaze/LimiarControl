@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { INITIAL_SHEET } from "../model/initialSheet";
 import { prepareCharacterSheetForSave } from "./characterSheet.service";
+import { applyCreationLoadoutToSheet } from "../utils/creationEquipment";
 import {
   resetCreationItemCatalogForTests,
   seedCreationItemCatalogForTests,
@@ -17,37 +18,72 @@ describe("prepareCharacterSheetForSave", () => {
     resetCreationItemCatalogForTests();
   });
 
-  it("serializes creation sheets with the derived starter inventory", () => {
+  it("preserves existing creation inventory instead of rebuilding it on save", () => {
+    const sheet = applyCreationLoadoutToSheet({
+      ...INITIAL_SHEET,
+      class: "cleric",
+      background: "",
+      classEquipmentSelections: {
+        "cleric-weapon": "martelo-de-guerra",
+        "cleric-armor": "cota-de-malha",
+        "cleric-ranged": "besta-leve-20-virotes",
+        "cleric-pack": "priest-s-pack",
+      },
+    });
+
     const prepared = prepareCharacterSheetForSave(
       {
-        ...INITIAL_SHEET,
-        class: "cleric",
-        background: "",
-        classEquipmentSelections: {
-          "cleric-weapon": "martelo-de-guerra",
-          "cleric-armor": "cota-de-malha",
-          "cleric-ranged": "besta-leve-20-virotes",
-          "cleric-pack": "priest-s-pack",
-        },
+        ...sheet,
+        inventory: [
+          ...sheet.inventory,
+          {
+            id: "custom:rope",
+            name: "Silk Rope",
+            quantity: 1,
+            weight: 0,
+            notes: "GM custom item",
+            canonicalKey: null,
+            campaignItemId: null,
+            baseItemId: null,
+          },
+        ],
       },
       "creation",
     );
 
-    expect(prepared.inventory.map((item) => ({ name: item.name, quantity: item.quantity }))).toEqual([
-      { name: "Shield", quantity: 1 },
-      { name: "Holy Symbol", quantity: 1 },
-      { name: "Warhammer", quantity: 1 },
-      { name: "Chain Mail", quantity: 1 },
-      { name: "Light Crossbow", quantity: 1 },
-      { name: "Crossbow bolt", quantity: 20 },
-      { name: "Priest's Pack", quantity: 1 },
+    expect(prepared.inventory.map((item) => ({ id: item.id, name: item.name }))).toContainEqual({
+      id: "custom:rope",
+      name: "Silk Rope",
+    });
+    expect(prepared.inventory.find((item) => item.id === "custom:rope")?.canonicalKey).toBe("silk_rope");
+  });
+
+  it("serializes guardian starter inventory with canonical links for loadout/combat", () => {
+    const prepared = applyCreationLoadoutToSheet(
+      {
+        ...INITIAL_SHEET,
+        class: "guardian",
+        background: "",
+      },
+    );
+
+    expect(prepared.inventory.map((item) => ({
+      name: item.name,
+      canonicalKey: item.canonicalKey,
+      baseItemId: item.baseItemId,
+      quantity: item.quantity,
+    }))).toEqual([
+      { name: "Breastplate", canonicalKey: "breastplate", baseItemId: "base-breastplate", quantity: 1 },
+      { name: "Longbow", canonicalKey: "longbow", baseItemId: "base-longbow", quantity: 1 },
+      { name: "Quiver", canonicalKey: "quiver", baseItemId: "base-quiver", quantity: 1 },
+      { name: "Arrow", canonicalKey: "arrow", baseItemId: "base-arrow", quantity: 20 },
+      { name: "Shortsword", canonicalKey: "shortsword", baseItemId: "base-shortsword", quantity: 2 },
     ]);
-    expect(prepared.inventory[0]?.canonicalKey).toBe("shield");
-    expect(prepared.inventory[0]?.baseItemId).toBe("base-shield");
+    expect(prepared.equippedArmorItemId).toBe("starter:breastplate");
   });
 
   it("does not rebuild play sheets", () => {
     const prepared = prepareCharacterSheetForSave(INITIAL_SHEET, "play");
-    expect(prepared).toBe(INITIAL_SHEET);
+    expect(prepared).toStrictEqual(INITIAL_SHEET);
   });
 });

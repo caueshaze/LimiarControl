@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from sqlmodel import Session
 
+from app.core.rate_limit import RateLimitMiddleware
 from app.api.routes import (
     admin_base_items_router,
     admin_base_spells_router,
@@ -16,6 +17,7 @@ from app.api.routes import (
     campaign_entities_router,
     campaign_spells_router,
     campaigns_router,
+    character_sheet_drafts_router,
     centrifugo_router,
     character_sheets_router,
     combat_router,
@@ -30,6 +32,7 @@ from app.api.routes import (
     role_mode_router,
     session_entities_router,
     sessions_router,
+    uploads_router,
     users_router,
 )
 from app.api.ws import router as ws_router
@@ -41,20 +44,27 @@ from app.services.base_item_seeds import bootstrap_base_items_if_empty
 from app.services.base_spell_seeds import bootstrap_base_spells_if_empty
 from app.services.centrifugo import centrifugo
 
-app = FastAPI()
+_is_production = settings.app_env != "development"
+
+app = FastAPI(
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST_DIR = REPO_ROOT / "dist"
 FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
 FRONTEND_RESERVED_PREFIXES = {"api", "health", "ws"}
 
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -85,15 +95,18 @@ app.include_router(campaign_entities_router, prefix="/api/campaigns", tags=["cam
 app.include_router(session_entities_router, prefix="/api", tags=["session-entities"])
 app.include_router(members_router, prefix="/api/campaigns", tags=["members"])
 app.include_router(parties_router, prefix="/api", tags=["parties"])
+app.include_router(character_sheet_drafts_router, prefix="/api", tags=["character-sheet-drafts"])
 app.include_router(character_sheets_router, prefix="/api", tags=["character-sheets"])
 app.include_router(preferences_router, prefix="/api", tags=["preferences"])
-app.include_router(dev_router, prefix="/api/dev", tags=["dev"])
+if settings.app_env == "development":
+    app.include_router(dev_router, prefix="/api/dev", tags=["dev"])
 app.include_router(sessions_router, prefix="/api", tags=["sessions"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(combat_router, prefix="/api", tags=["combat"])
 app.include_router(wild_shape_router, prefix="/api", tags=["wild-shape"])
+app.include_router(uploads_router, prefix="/api", tags=["uploads"])
 app.include_router(centrifugo_router, prefix="/api", tags=["centrifugo"])
 app.include_router(ws_router, prefix="/ws")
 

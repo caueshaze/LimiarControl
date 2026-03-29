@@ -1,6 +1,10 @@
 import type { AbilityName, SkillName } from "../model/characterSheet.types";
 import { SKILL_NAMES } from "../constants";
-import { getDragonbornAncestry, isDragonbornAncestryId } from "./dragonbornAncestries";
+import {
+  getDragonbornAncestry,
+  normalizeDragonbornRaceConfig,
+  resolveDragonbornLineageState,
+} from "./dragonbornAncestries";
 import {
   RACE_DEFINITIONS,
   type RaceConfigField,
@@ -11,7 +15,9 @@ import {
 } from "./raceDefinitions";
 
 type RaceConfig = {
+  draconicAncestry?: string | null;
   dragonbornAncestry?: string | null;
+  dragonAncestor?: string | null;
   gnomeSubrace?: string | null;
   halfElfAbilityChoices?: AbilityName[];
   halfElfSkillChoices?: SkillName[];
@@ -46,6 +52,18 @@ const LEGACY_RACE_ALIASES: Record<string, { raceId: string; raceConfig: NonNulla
 const TOOL_LABELS_BY_CANONICAL_KEY: Record<string, string> = {
   tinkers_tools: "Ferramentas de Engenhoqueiro",
 };
+const ABILITY_LABELS: Record<AbilityName, string> = {
+  strength: "Força",
+  dexterity: "Destreza",
+  constitution: "Constituição",
+  intelligence: "Inteligência",
+  wisdom: "Sabedoria",
+  charisma: "Carisma",
+};
+const BREATH_SHAPE_LABELS = {
+  line: "linha",
+  cone: "cone",
+} as const;
 
 const mergeAbilityBonuses = (
   base: Partial<Record<AbilityName, number>>,
@@ -111,11 +129,7 @@ export const normalizeRaceState = (
   if (normalizedRaceId === "dragonborn") {
     return {
       raceId: normalizedRaceId,
-      raceConfig: {
-        dragonbornAncestry: isDragonbornAncestryId(mergedConfig?.dragonbornAncestry)
-          ? mergedConfig?.dragonbornAncestry
-          : null,
-      },
+      raceConfig: normalizeDragonbornRaceConfig(mergedConfig),
     };
   }
 
@@ -143,19 +157,38 @@ export const normalizeRaceState = (
 
 const getVariantData = (raceId: string, raceConfig: RaceConfig) => {
   if (raceId === "dragonborn") {
-    const ancestry = getDragonbornAncestry(raceConfig?.dragonbornAncestry);
-    if (!ancestry) return null;
+    const lineage = resolveDragonbornLineageState({ raceId, raceConfig });
+    const ancestry = lineage.ancestry ? getDragonbornAncestry(lineage.ancestry) : undefined;
+    if (!ancestry || !lineage.damageType || !lineage.resistanceType || !lineage.breathWeaponShape || !lineage.breathWeaponSaveType || !lineage.breathWeaponAreaSize) return null;
+    const damageLabel = ancestry.damageLabel;
+    const breathShapeLabel = BREATH_SHAPE_LABELS[lineage.breathWeaponShape];
+    const breathSaveLabel = ABILITY_LABELS[lineage.breathWeaponSaveType];
     return {
-      name: `Draconato (${ancestry.label})`,
+      name: `Draconato (${lineage.ancestryLabel ?? ancestry.label})`,
       traits: [
-        `Ancestralidade Dracônica: ${ancestry.label}`,
-        `Resistência: ${ancestry.resistanceType}`,
-        `Sopro de Dragão: ${ancestry.damageType}, ${ancestry.area.shape} ${ancestry.area.size}, teste ${ancestry.saveAbility}`,
+        `Ancestralidade Dracônica: ${lineage.ancestryLabel ?? ancestry.label}`,
+        `Resistência: ${damageLabel}`,
+        `Sopro de Dragão: ${damageLabel}, ${breathShapeLabel} ${lineage.breathWeaponAreaSize}, teste ${breathSaveLabel}`,
       ],
       structuredFeatures: [
-        { id: "dragonborn-ancestry", label: `Ancestralidade Dracônica: ${ancestry.label}`, kind: "passive" as const },
-        { id: "dragonborn-resistance", label: `Resistência: ${ancestry.resistanceType}`, kind: "passive" as const },
-        { id: "dragonborn-breath", label: `Sopro de Dragão: ${ancestry.damageType}, ${ancestry.area.shape} ${ancestry.area.size}, teste ${ancestry.saveAbility}`, kind: "passive" as const },
+        {
+          id: "dragonborn-ancestry",
+          label: `Ancestralidade Dracônica: ${lineage.ancestryLabel ?? ancestry.label}`,
+          kind: "passive" as const,
+          description: `Tipo de dano derivado: ${damageLabel}.`,
+        },
+        {
+          id: "dragonborn-resistance",
+          label: `Resistência: ${damageLabel}`,
+          kind: "passive" as const,
+          description: `Você tem resistência racial a ${damageLabel}.`,
+        },
+        {
+          id: "dragonborn-breath",
+          label: `Sopro de Dragão: ${damageLabel}, ${breathShapeLabel} ${lineage.breathWeaponAreaSize}, teste ${breathSaveLabel}`,
+          kind: "passive" as const,
+          description: "O tipo de dano, a área e o teste do sopro são derivados do ancestral dracônico.",
+        },
       ],
     };
   }

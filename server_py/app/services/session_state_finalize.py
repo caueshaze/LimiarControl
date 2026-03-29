@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unicodedata
 
+from app.services.dragonborn_breath_weapon import apply_dragonborn_breath_weapon_canonical_state
 from app.services.session_rest import ensure_rest_state
 
 
@@ -82,6 +83,7 @@ def calculate_player_armor_class_from_state(data: dict | None) -> int:
 
 def finalize_session_state_data(data: dict | None) -> dict:
     next_data = ensure_rest_state(data)
+    next_data = apply_dragonborn_breath_weapon_canonical_state(next_data)
 
     # Wild Shape: use beast form AC instead of equipment-derived AC
     wild_shape = next_data.get("wildShape")

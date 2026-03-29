@@ -6,6 +6,7 @@ import type { SheetActions } from "../hooks/useCharacterSheet";
 import type { RequiredField } from "../utils/creationValidation";
 import { formatMod } from "../utils/calculations";
 import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
+import { formatClassDisplayName } from "../data/classes";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 
@@ -156,7 +157,7 @@ export const CharacterHeader = ({
               )}
               {sheet.name || t("sheet.header.unnamed")}
               <span className="font-normal text-slate-500">
-                — {sheet.class || "?"} Lv{sheet.level}
+                — {sheet.class ? formatClassDisplayName(sheet.class, sheet.subclass, sheet.subclassConfig) : "?"} Lv{sheet.level}
               </span>
             </span>
             <StatChip

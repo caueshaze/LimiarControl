@@ -15,4 +15,5 @@ export type {
   BaseSpellAlias,
   BaseSpellFilters,
   BaseSpellWritePayload,
+  SpellUpcast,
 } from "./baseSpell.types";

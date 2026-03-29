@@ -15,6 +15,8 @@ from app.models.party import Party
 from app.models.session import Session as CampaignSession, SessionStatus
 from app.models.user import User
 from app.schemas.inventory import InventoryBuy, InventoryRead, InventoryUpdate
+from app.services.inventory_expiration import purge_expired_inventory_items
+from app.services.magic_item_effects import initialize_inventory_item_charges, inventory_item_supports_stacking
 
 router = APIRouter()
 DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
@@ -28,8 +30,11 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
         memberId=entry.member_id,
         itemId=entry.item_id,
         quantity=entry.quantity,
+        chargesCurrent=entry.charges_current,
         isEquipped=entry.is_equipped,
         notes=entry.notes,
+        sourceSpellCanonicalKey=entry.source_spell_canonical_key,
+        expiresAt=entry.expires_at,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
     )
@@ -74,6 +79,15 @@ def list_inventory(
     target_member_id = member.id
     if member.role_mode == RoleMode.GM and memberId:
         target_member_id = memberId
+    removed_ids = purge_expired_inventory_items(
+        session,
+        campaign_id=campaign_id,
+        member_id=target_member_id,
+        party_id=partyId,
+        flush=False,
+    )
+    if removed_ids:
+        session.commit()
     filters = [
         InventoryItem.campaign_id == campaign_id,
         InventoryItem.member_id == target_member_id,
@@ -150,7 +164,11 @@ def buy_item(
         )
     ).first()
     if existing:
-        existing.quantity += payload.quantity
+        if inventory_item_supports_stacking(item):
+            existing.quantity += payload.quantity
+        else:
+            existing = None
+    if existing:
         session.add(existing)
         session.commit()
         session.refresh(existing)
@@ -162,9 +180,11 @@ def buy_item(
         member_id=member.id,
         item_id=payload.itemId,
         quantity=payload.quantity,
+        charges_current=item.charges_max if isinstance(item.charges_max, int) and item.charges_max > 0 else None,
         is_equipped=False,
         notes=None,
     )
+    initialize_inventory_item_charges(entry, item)
     session.add(entry)
     session.commit()
     session.refresh(entry)

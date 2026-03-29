@@ -257,7 +257,7 @@ class CombatStructuredActionTestsMixin:
         with patch("app.services.combat.CombatService.get_state", return_value=self.state):
             with patch(
                 "app.services.combat.CombatService._apply_damage_to_target",
-                return_value=(5, "", 8),
+                return_value=(5, "", 8, None),
             ) as mock_apply_damage:
                 with patch(
                     "app.services.combat.CombatService._get_stats",
@@ -286,8 +286,9 @@ class CombatStructuredActionTestsMixin:
             "player-123",
             "player",
             3,
-            False,
-            self.state,
+            damage_type="piercing",
+            is_crit=False,
+            state=self.state,
         )
 
     @patch("app.services.combat.CombatService._emit_player_state_update")
@@ -345,7 +346,7 @@ class CombatStructuredActionTestsMixin:
                             ):
                                 with patch(
                                     "app.services.combat.CombatService._apply_damage_to_target",
-                                    return_value=(1, "", 9),
+                                    return_value=(1, "", 9, None),
                                 ):
                                     result = await CombatService.entity_action(
                                         self.db,
@@ -423,7 +424,7 @@ class CombatStructuredActionTestsMixin:
                             ):
                                 with patch(
                                     "app.services.combat.CombatService._apply_damage_to_target",
-                                    return_value=(2, "", 9),
+                                    return_value=(2, "", 9, None),
                                 ):
                                     result = await CombatService.entity_action(
                                         self.db,
@@ -497,7 +498,7 @@ class CombatStructuredActionTestsMixin:
                             ):
                                 with patch(
                                     "app.services.combat.CombatService._apply_damage_to_target",
-                                    return_value=(5, "", 9),
+                                    return_value=(5, "", 9, None),
                                 ) as mock_apply_damage:
                                     result = await CombatService.entity_action(
                                         self.db,
@@ -523,8 +524,9 @@ class CombatStructuredActionTestsMixin:
             "player-123",
             "player",
             5,
-            False,
-            self.state,
+            damage_type="cold",
+            is_crit=False,
+            state=self.state,
         )
         final_log = mock_emit_log.await_args_list[-1].args[1]["message"]
         self.assertIn("half damage: 5", final_log)

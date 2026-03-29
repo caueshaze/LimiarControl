@@ -5,7 +5,7 @@
  * caches them in memory by scope, and exposes the same synchronous interface
  * that creationSpells.ts expects.
  */
-import type { BaseSpell as ApiBaseSpell } from "../base-spell/baseSpell.types";
+import type { BaseSpell as ApiBaseSpell, ResolutionType } from "../base-spell/baseSpell.types";
 import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
 import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 
@@ -15,6 +15,7 @@ export type BaseSpell = {
   name: string;
   level: number;
   school: string;
+  castingTimeType?: string | null;
   castingTime: string;
   // Display-only summary. Mechanical systems must use structured rangeMeters upstream.
   range: string;
@@ -23,16 +24,27 @@ export type BaseSpell = {
   concentration: boolean;
   ritual: boolean;
   description: string;
+  resolutionType?: ResolutionType | null;
+  healDice?: string | null;
   damageType: string | null;
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
+  upcast?: ApiBaseSpell["upcast"];
   classes: string[];
 };
 
 const BASE_SCOPE_KEY = "__base__";
+const SPELL_CLASS_ALIASES: Record<string, string> = {
+  guardian: "ranger",
+};
 
 const getScopeKey = (campaignId?: string | null) =>
   campaignId?.trim() ? campaignId : BASE_SCOPE_KEY;
+
+const normalizeClassLookup = (className: string) => {
+  const normalized = className.trim().toLowerCase();
+  return SPELL_CLASS_ALIASES[normalized] ?? normalized;
+};
 
 // ---- Module-level cache ----
 let activeScopeKey = BASE_SCOPE_KEY;
@@ -44,6 +56,7 @@ const adapt = (api: ApiBaseSpell): BaseSpell => ({
   name: api.nameEn,
   level: api.level,
   school: api.school || "Evocation",
+  castingTimeType: api.castingTimeType ?? null,
   castingTime: api.castingTime ?? "",
   range: typeof api.rangeMeters === "number" ? `${api.rangeMeters} m` : api.rangeText ?? "",
   components: api.componentsJson?.join(", ") ?? "",
@@ -51,9 +64,12 @@ const adapt = (api: ApiBaseSpell): BaseSpell => ({
   concentration: api.concentration,
   ritual: api.ritual,
   description: api.descriptionEn,
+  resolutionType: api.resolutionType ?? null,
+  healDice: api.healDice ?? null,
   damageType: api.damageType ?? null,
   savingThrow: api.savingThrow ?? null,
   saveSuccessOutcome: api.saveSuccessOutcome ?? null,
+  upcast: api.upcast ?? null,
   classes: api.classesJson ?? [],
 });
 
@@ -108,16 +124,22 @@ export const getBaseSpellsForClass = (
   campaignId?: string | null,
 ): BaseSpell[] => {
   const source = getBaseSpells(campaignId);
+  const lookupClass = normalizeClassLookup(className);
   return source.filter(
     (spell) =>
       spell.level <= maxLevel &&
-      spell.classes.some((c) => c.toLowerCase() === className.trim().toLowerCase()),
+      spell.classes.some((c) => c.toLowerCase() === lookupClass),
   );
 };
 
 export const findBaseSpell = (name: string, campaignId?: string | null): BaseSpell | undefined => {
   const source = getBaseSpells(campaignId);
-  return source.find((spell) => spell.name.toLowerCase() === name.trim().toLowerCase());
+  const lookup = name.trim().toLowerCase();
+  return source.find(
+    (spell) =>
+      spell.canonicalKey.toLowerCase() === lookup ||
+      spell.name.toLowerCase() === lookup,
+  );
 };
 
 /**

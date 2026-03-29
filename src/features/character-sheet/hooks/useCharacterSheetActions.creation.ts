@@ -2,9 +2,10 @@ import type { CharacterSheet, SkillName } from "../model/characterSheet.types";
 import type { CharacterSheetHookAction } from "./useCharacterSheet.state";
 import { getClass, getSubclassLanguageGrants, hasExpertiseAtCreation } from "../data/classes";
 import { getBackground } from "../data/backgrounds";
+import { buildClassFeatures } from "../data/classFeatures";
 import { getRace, normalizeRaceState } from "../data/races";
 import { getClassCreationConfig } from "../data/classCreation";
-import { buildCreationLoadout } from "../utils/creationEquipment";
+import { applyCreationLoadoutToSheet, buildCreationLoadout } from "../utils/creationEquipment";
 import { toggleStartingSpell } from "../utils/creationSpells";
 import { validateSheet } from "../model/characterSheet.schema";
 import {
@@ -22,6 +23,9 @@ type GuardedUpdate = (updater: (sheet: CharacterSheet) => CharacterSheet) => voi
 type Update = (updater: (sheet: CharacterSheet) => CharacterSheet) => void;
 type SetField = <K extends keyof CharacterSheet>(key: K, value: CharacterSheet[K]) => void;
 type Dispatch = (action: CharacterSheetHookAction) => void;
+type SelectionChangeOptions = {
+  resetInventory?: boolean;
+};
 
 type Props = {
   mode: "creation" | "play";
@@ -49,7 +53,7 @@ export const createCreationSheetActions = ({
     raceConfig: CharacterSheet["raceConfig"],
   ): CharacterSheet["raceConfig"] => normalizeRaceState(raceName, raceConfig).raceConfig;
 
-  const selectClass = (name: string) => {
+  const selectClass = (name: string, _options: SelectionChangeOptions = {}) => {
     if (mode === "creation") {
       update((current) => normalizeCreationAfterClassChange(current, name, campaignId));
       return;
@@ -62,7 +66,7 @@ export const createCreationSheetActions = ({
     guardedUpdate((current) => ({ ...current, class: name, subclass: null, hitDiceType: cls.hitDice }));
   };
 
-  const selectBackground = (name: string) => {
+  const selectBackground = (name: string, _options: SelectionChangeOptions = {}) => {
     if (mode === "creation") {
       update((current) => normalizeCreationAfterBackgroundChange(current, name));
       return;
@@ -72,9 +76,12 @@ export const createCreationSheetActions = ({
     guardedUpdate((current) => ({ ...current, background: background.id }));
   };
 
-  const selectRace = (name: string) => {
+  const selectRace = (name: string, options: SelectionChangeOptions = {}) => {
     guardedUpdate((current) => {
-      if (mode === "creation") return normalizeCreationAfterRaceChange(current, name, campaignId);
+      if (mode === "creation") {
+        const nextSheet = normalizeCreationAfterRaceChange(current, name, campaignId);
+        return options.resetInventory ? applyCreationLoadoutToSheet(nextSheet) : nextSheet;
+      }
       const normalizedRace = normalizeRaceState(name, current.raceConfig);
       const race = getRace(normalizedRace.raceId, normalizedRace.raceConfig);
       return {
@@ -105,14 +112,36 @@ export const createCreationSheetActions = ({
       );
       // Add new subclass language grants (deduplicated)
       const languages = [...new Set([...withoutOld, ...nextGrants])];
-      return { ...current, subclass: id || null, subclassConfig: null, languages };
+      const nextSubclass = id || null;
+      return {
+        ...current,
+        subclass: nextSubclass,
+        subclassConfig: null,
+        classFeatures: buildClassFeatures(current.class, current.level, nextSubclass, null),
+        languages,
+      };
     });
 
   const selectSubclassConfig = (key: string, value: string) =>
-    guardedUpdate((current) => ({
-      ...current,
-      subclassConfig: { ...(current.subclassConfig ?? {}), [key]: value },
-    }));
+    guardedUpdate((current) => {
+      const nextConfig = { ...(current.subclassConfig ?? {}) };
+      const trimmedValue = value.trim();
+      if (trimmedValue) {
+        nextConfig[key] = trimmedValue;
+      } else {
+        delete nextConfig[key];
+      }
+      return {
+        ...current,
+        subclassConfig: Object.keys(nextConfig).length > 0 ? nextConfig : null,
+        classFeatures: buildClassFeatures(
+          current.class,
+          current.level,
+          current.subclass,
+          Object.keys(nextConfig).length > 0 ? nextConfig : null,
+        ),
+      };
+    });
 
   const selectRaceConfig = (key: string, value: string | string[]) =>
     guardedUpdate((current) => {
@@ -145,6 +174,7 @@ export const createCreationSheetActions = ({
         inventory: loadout.inventory,
         currency: loadout.currency,
         equippedArmor: loadout.equippedArmor,
+        equippedArmorItemId: loadout.equippedArmorItemId,
         equippedShield: loadout.equippedShield,
       };
     });

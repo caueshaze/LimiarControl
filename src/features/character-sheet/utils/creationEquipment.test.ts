@@ -6,11 +6,16 @@ import { BACKGROUNDS } from "../data/backgrounds";
 import {
   applyCreationLoadoutToSheet,
   buildCreationLoadout,
+  buildCreationArmorOptions,
   canonicalizeStarterItemName,
   getInitialClassEquipmentSelections,
+  hasCustomCreationInventoryItems,
+  hasUnresolvedCreationInventoryItems,
+  syncCreationInventoryLoadoutState,
 } from "./creationEquipment";
 import {
   resetCreationItemCatalogForTests,
+  seedCreationCatalogItemsForTests,
   seedCreationItemCatalogForTests,
 } from "./creationItemCatalog";
 import { TEST_CREATION_BASE_ITEMS } from "./creationItemCatalog.testData";
@@ -104,6 +109,139 @@ describe("creationEquipment", () => {
     ]);
     expect(sheet.inventory[0]?.canonicalKey).toBe("shield");
     expect(sheet.inventory[0]?.baseItemId).toBe("base-shield");
+    expect(sheet.equippedArmorItemId).toBe("starter:scale-mail");
+  });
+
+  it("builds creation armor options from canonical inventory entries", () => {
+    const loadout = buildCreationLoadout("guardian", "", getInitialClassEquipmentSelections("guardian"));
+
+    expect(buildCreationArmorOptions(loadout.inventory)).toEqual([
+      {
+        value: "starter:breastplate",
+        label: "Breastplate",
+        detail: "AC 14",
+        armor: expect.objectContaining({ name: "Breastplate", baseAC: 14 }),
+      },
+    ]);
+  });
+
+  it("keeps campaign-localized armor items equipable in the combat card", () => {
+    seedCreationCatalogItemsForTests([
+      {
+        id: "base-breastplate",
+        campaignItemId: "campaign-breastplate",
+        baseItemId: "base-breastplate",
+        canonicalKey: "breastplate",
+        name: "Peitoral",
+        namePt: "Peitoral",
+        description: "Armadura média.",
+        descriptionPt: "Armadura média.",
+        properties: [],
+        weight: 20,
+        armorPresetName: "Peitoral",
+        armorCategory: "medium",
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "armor",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: 14,
+        dexBonusRule: "max_2",
+        strengthRequirement: null,
+      },
+    ]);
+
+    expect(buildCreationArmorOptions([
+      {
+        id: "starter:breastplate",
+        name: "Peitoral",
+        quantity: 1,
+        weight: 20,
+        notes: "Equipamento inicial",
+        canonicalKey: "breastplate",
+        campaignItemId: "campaign-breastplate",
+        baseItemId: "base-breastplate",
+      },
+    ])).toEqual([
+      {
+        value: "starter:breastplate",
+        label: "Peitoral",
+        detail: "AC 14",
+        armor: expect.objectContaining({
+          name: "Peitoral",
+          armorType: "medium",
+          baseAC: 14,
+          dexCap: 2,
+        }),
+      },
+    ]);
+  });
+
+  it("canonicalizes manually added creation items by name and keeps them equipable", () => {
+    const sheet = syncCreationInventoryLoadoutState({
+      ...INITIAL_SHEET,
+      inventory: [
+        {
+          id: "custom:breastplate",
+          name: "Peitoral",
+          quantity: 1,
+          weight: 0,
+          notes: "",
+          canonicalKey: null,
+          baseItemId: null,
+          campaignItemId: null,
+        },
+      ],
+      equippedArmor: { ...INITIAL_SHEET.equippedArmor, name: "Breastplate", baseAC: 14, armorType: "medium", dexCap: 2 },
+    });
+
+    expect(sheet.inventory[0]?.canonicalKey).toBe("breastplate");
+    expect(sheet.inventory[0]?.baseItemId).toBe("base-breastplate");
+    expect(sheet.equippedArmorItemId).toBe("custom:breastplate");
+    expect(sheet.equippedArmor.name).toBe("Breastplate");
+  });
+
+  it("detects only custom creation inventory items for reset confirmations", () => {
+    const starterOnlyLoadout = buildCreationLoadout("guardian", "", getInitialClassEquipmentSelections("guardian"));
+
+    expect(hasCustomCreationInventoryItems(starterOnlyLoadout.inventory)).toBe(false);
+    expect(hasCustomCreationInventoryItems([
+      ...starterOnlyLoadout.inventory,
+      {
+        id: "custom:rope",
+        name: "Silk Rope",
+        quantity: 1,
+        weight: 0,
+        notes: "",
+        canonicalKey: null,
+        campaignItemId: null,
+        baseItemId: null,
+      },
+    ])).toBe(true);
+  });
+
+  it("flags unresolved creation inventory items that are outside the catalog", () => {
+    expect(hasUnresolvedCreationInventoryItems([
+      {
+        id: "custom:unknown",
+        name: "Item Inventado",
+        quantity: 1,
+        weight: 0,
+        notes: "",
+        canonicalKey: null,
+        campaignItemId: null,
+        baseItemId: null,
+      },
+    ])).toBe(true);
+
+    const starterOnlyLoadout = buildCreationLoadout("guardian", "", getInitialClassEquipmentSelections("guardian"));
+    expect(hasUnresolvedCreationInventoryItems(starterOnlyLoadout.inventory)).toBe(false);
   });
 
   it("normalizes literal background bundle entries into persisted base items", () => {

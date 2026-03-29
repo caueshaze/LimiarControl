@@ -111,6 +111,10 @@ class CampaignSpell(SQLModel, table=True):
     heal_dice: Optional[str] = None
 
     # --- Upcast (mechanical) ---
+    upcast_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
     upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     upcast_value: Optional[str] = None
 

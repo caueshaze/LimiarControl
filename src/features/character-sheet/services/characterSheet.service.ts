@@ -1,11 +1,20 @@
+import type {
+  CharacterSheetRecord,
+  PartyCharacterSheetDraftRecord,
+} from "../../../entities/character";
 import { characterSheetsRepo } from "../../../shared/api/characterSheetsRepo";
+import { characterSheetDraftsRepo } from "../../../shared/api/characterSheetDraftsRepo";
 import { sessionStatesRepo } from "../../../shared/api/sessionStatesRepo";
 import { partiesRepo } from "../../../shared/api/partiesRepo";
 import { parseCharacterSheet } from "../model/characterSheet.schema";
 import { INITIAL_SHEET } from "../model/initialSheet";
 import type { CharacterSheet } from "../model/characterSheet.types";
+import { applyCanonicalClassState } from "../data/classFeatures";
 import { normalizeRaceState } from "../data/races";
-import { applyCreationLoadoutToSheet } from "../utils/creationEquipment";
+import {
+  applyCreationLoadoutToSheet,
+  syncCreationInventoryLoadoutState,
+} from "../utils/creationEquipment";
 import { loadCreationItemCatalog } from "../utils/creationItemCatalog";
 import { loadSpellCatalog } from "../../../entities/dnd-base";
 
@@ -19,7 +28,7 @@ export async function loadCharacterSheet(
   partyId: string,
   mode: "creation" | "play" = "creation",
   campaignId?: string | null,
-): Promise<{ id: string | null; sheet: CharacterSheet }> {
+): Promise<{ id: string | null; sheet: CharacterSheet; record: CharacterSheetRecord | null }> {
   if (mode === "creation") {
     await Promise.all([
       loadCreationItemCatalog(campaignId),
@@ -32,12 +41,13 @@ export async function loadCharacterSheet(
     const sheet = parseCharacterSheet(record.data); // unknown → CharacterSheet (valida ou lança)
     return {
       id: record.id,
-      sheet: mode === "creation" ? applyCreationLoadoutToSheet(sheet) : sheet,
+      sheet: mode === "creation" ? syncCreationInventoryLoadoutState(sheet) : sheet,
+      record,
     };
   } catch (err: unknown) {
     if ((err as { status?: number })?.status === 404) {
       const sheet = mode === "creation" ? applyCreationLoadoutToSheet(INITIAL_SHEET) : INITIAL_SHEET;
-      return { id: null, sheet };
+      return { id: null, sheet, record: null };
     }
     throw err;
   }
@@ -47,7 +57,7 @@ export async function loadCharacterSheetForPlayer(
   partyId: string,
   playerUserId: string,
   campaignId?: string | null,
-): Promise<{ id: string | null; sheet: CharacterSheet }> {
+): Promise<{ id: string | null; sheet: CharacterSheet; record: CharacterSheetRecord }> {
   await Promise.all([
     loadCreationItemCatalog(campaignId),
     loadSpellCatalog(campaignId),
@@ -56,17 +66,36 @@ export async function loadCharacterSheetForPlayer(
   const record = await characterSheetsRepo.getForPlayer(partyId, playerUserId);
   return {
     id: record.id,
-    sheet: applyCreationLoadoutToSheet(parseCharacterSheet(record.data)),
+    sheet: syncCreationInventoryLoadoutState(parseCharacterSheet(record.data)),
+    record,
+  };
+}
+
+export async function loadCharacterSheetDraft(
+  partyId: string,
+  draftId: string,
+  campaignId?: string | null,
+): Promise<{ id: string; sheet: CharacterSheet; draft: PartyCharacterSheetDraftRecord }> {
+  await Promise.all([
+    loadCreationItemCatalog(campaignId),
+    loadSpellCatalog(campaignId),
+  ]);
+
+  const draft = await characterSheetDraftsRepo.get(partyId, draftId);
+  return {
+    id: draft.id,
+    sheet: syncCreationInventoryLoadoutState(parseCharacterSheet(draft.data)),
+    draft,
   };
 }
 
 const normalizeCharacterSheetForPersistence = (sheet: CharacterSheet): CharacterSheet => {
   const normalizedRace = normalizeRaceState(sheet.race, sheet.raceConfig);
-  return {
+  return applyCanonicalClassState({
     ...sheet,
     race: normalizedRace.raceId,
     raceConfig: normalizedRace.raceConfig,
-  };
+  });
 };
 
 export const prepareCharacterSheetForSave = (
@@ -74,7 +103,7 @@ export const prepareCharacterSheetForSave = (
   mode: "creation" | "play",
 ): CharacterSheet =>
   mode === "creation"
-    ? applyCreationLoadoutToSheet(normalizeCharacterSheetForPersistence(sheet))
+    ? syncCreationInventoryLoadoutState(normalizeCharacterSheetForPersistence(sheet))
     : normalizeCharacterSheetForPersistence(sheet);
 
 /**
@@ -85,13 +114,29 @@ export async function saveCharacterSheet(
   partyId: string,
   sheet: CharacterSheet,
   remoteId?: string,
-): Promise<string> {
+): Promise<CharacterSheetRecord> {
   if (remoteId) {
-    await characterSheetsRepo.update(partyId, sheet);
-    return remoteId;
+    return characterSheetsRepo.update(partyId, sheet);
   }
-  const record = await characterSheetsRepo.create(partyId, sheet);
-  return record.id;
+  return characterSheetsRepo.create(partyId, sheet);
+}
+
+export async function saveCharacterSheetDraft(
+  partyId: string,
+  draftId: string,
+  draftName: string,
+  sheet: CharacterSheet,
+): Promise<PartyCharacterSheetDraftRecord> {
+  return characterSheetDraftsRepo.update(partyId, draftId, {
+    name: draftName,
+    data: sheet,
+  });
+}
+
+export async function acceptCharacterSheet(
+  partyId: string,
+): Promise<CharacterSheetRecord> {
+  return characterSheetsRepo.accept(partyId);
 }
 
 export async function loadPlayCharacterSheet(

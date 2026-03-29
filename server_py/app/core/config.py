@@ -29,6 +29,9 @@ DEFAULT_APP_ENV = os.getenv("APP_ENV", "development")
 DEFAULT_AUTO_MIGRATE = DEFAULT_APP_ENV == "development"
 
 
+_INSECURE_DEFAULTS = frozenset({"dev-secret-change-me", "dev-api-key", ""})
+
+
 class Settings:
     database_url: str = os.getenv(
         "DATABASE_URL",
@@ -59,6 +62,27 @@ class Settings:
         "CENTRIFUGO_TOKEN_SECRET",
         jwt_secret,
     )
+    cloudinary_cloud_name: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    cloudinary_api_key: str = os.getenv("CLOUDINARY_API_KEY", "")
+    cloudinary_api_secret: str = os.getenv("CLOUDINARY_API_SECRET", "")
+
+    def validate_production_secrets(self) -> None:
+        if self.app_env == "development":
+            return
+        errors: list[str] = []
+        if self.jwt_secret in _INSECURE_DEFAULTS:
+            errors.append("JWT_SECRET must be set to a strong value in production")
+        if self.centrifugo_api_key in _INSECURE_DEFAULTS:
+            errors.append("CENTRIFUGO_API_KEY must be set to a strong value in production")
+        if self.centrifugo_token_secret in _INSECURE_DEFAULTS:
+            errors.append("CENTRIFUGO_TOKEN_SECRET must be set to a strong value in production")
+        if "postgres:postgres@" in self.database_url:
+            errors.append("DATABASE_URL must use strong credentials in production")
+        if errors:
+            raise RuntimeError(
+                "Insecure configuration detected:\n  - " + "\n  - ".join(errors)
+            )
 
 
 settings = Settings()
+settings.validate_production_secrets()

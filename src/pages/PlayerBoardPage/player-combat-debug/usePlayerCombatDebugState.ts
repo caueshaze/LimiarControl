@@ -11,6 +11,11 @@ import { subscribe } from "../../../shared/realtime/centrifugoClient";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
 import { getBaseSpells, loadSpellCatalog } from "../../../entities/dnd-base";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
+import {
+  getCombatSpellAutomation,
+  resolveCombatSpellActionCost,
+} from "../../../features/combat-ui/spellAutomation";
+import { buildDragonbornBreathWeaponAction } from "../../../features/combat-ui/player/dragonbornBreathWeapon";
 import type { PlayerBoardStatusSummary } from "../playerBoard.types";
 import type { CombatSpellOption, DeathSaveFeedback } from "./types";
 
@@ -59,6 +64,11 @@ const buildSpellOptions = (
     catalog.map((spell) => [spell.canonicalKey.toLowerCase(), spell] as const),
   );
   const byName = new Map(catalog.map((spell) => [spell.name.toLowerCase(), spell] as const));
+  const availableSlotLevels = Object.entries(spellcasting.slots ?? {})
+    .map(([level, slot]) => ({ level: Number(level), slot }))
+    .filter(({ level, slot }) => Number.isInteger(level) && level > 0 && Boolean(slot?.max))
+    .map(({ level }) => level)
+    .sort((left, right) => left - right);
 
   return spellcasting.spells
     .filter((spell) => spell.level === 0 || spell.prepared || spellcasting.mode === "known")
@@ -66,21 +76,30 @@ const buildSpellOptions = (
       const catalogSpell = spell.canonicalKey
         ? byCanonicalKey.get(spell.canonicalKey.toLowerCase()) ?? byName.get(spell.name.toLowerCase())
         : byName.get(spell.name.toLowerCase());
-      const suggestedMode: CombatSpellMode | null = catalogSpell?.savingThrow
-        ? "saving_throw"
-        : catalogSpell?.damageType
-          ? "spell_attack"
-          : null;
+      const automation = getCombatSpellAutomation(
+        spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null,
+      );
+      const suggestedMode: CombatSpellMode | null = automation?.defaultMode
+        ?? (catalogSpell?.savingThrow
+          ? "saving_throw"
+          : catalogSpell?.damageType
+            ? "spell_attack"
+            : null);
       return {
         id: spell.id,
         name: spell.name,
         canonicalKey: spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null,
         level: spell.level,
         prepared: spell.prepared,
+        actionCost: resolveCombatSpellActionCost(catalogSpell?.castingTimeType ?? null),
         suggestedMode,
         damageType: catalogSpell?.damageType ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
         saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
+        availableSlotLevels: spell.level > 0
+          ? availableSlotLevels.filter((slotLevel) => slotLevel >= spell.level)
+          : [],
+        upcast: catalogSpell?.upcast ?? null,
       };
     })
     .sort((left, right) => left.level - right.level || left.name.localeCompare(right.name));
@@ -182,6 +201,10 @@ export const usePlayerCombatDebugState = ({
   const selectedSpell = useMemo(
     () => spellOptions.find((spell) => spell.id === selectedSpellId) ?? null,
     [selectedSpellId, spellOptions],
+  );
+  const dragonbornBreathWeaponAction = useMemo(
+    () => buildDragonbornBreathWeaponAction(playerSheet),
+    [playerSheet],
   );
 
   useEffect(() => {
@@ -325,6 +348,7 @@ export const usePlayerCombatDebugState = ({
     closeAttackDialog: () => setAttackDialogOpen(false),
     closeSpellDialog: () => setSpellDialogOpen(false),
     deathSaveFeedback,
+    dragonbornBreathWeaponAction,
     error,
     handleAttack,
     handleAttackResolved: (result: CombatAttackResult) => {
