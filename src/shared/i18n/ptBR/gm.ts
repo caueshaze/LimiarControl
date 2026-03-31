@@ -40,6 +40,8 @@ export const gmPtBRDictionary = {
   "gm.home.partyMinimumPlayers": "Adicione pelo menos 2 jogadores para criar a party.",
   "gm.home.partyCreate": "Criar party",
   "gm.home.partyCreating": "Criando party...",
+  "gm.home.partyCreateError": "Falha ao criar party.",
+  "gm.home.partyDuplicateName": "Voce ja possui uma party com esse nome.",
   "gm.home.partyPanelTitle": "Menu de parties",
   "gm.home.partyPanelDescription": "Abra um grupo existente para convidar mais jogadores e iniciar a sessao.",
   "gm.home.partyLoading": "Carregando parties...",

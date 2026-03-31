@@ -1,4 +1,4 @@
-import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
+import type { ActivityEvent, RollResolvedActivityEvent } from "../../../shared/api/sessionsRepo";
 import type { LocaleKey } from "../../../shared/i18n";
 
 export const ROLL_MODE_KEYS: Record<string, LocaleKey> = {
@@ -86,4 +86,23 @@ export function formatSignedModifier(value: number): string {
     return `- ${Math.abs(value)}`;
   }
   return `+ ${value}`;
+}
+
+export function formatResolvedRollBreakdown(
+  event: RollResolvedActivityEvent,
+  rollDetailLabel: string,
+): string {
+  const displayRolls =
+    event.advantageMode === "normal"
+      ? [event.selectedRoll]
+      : event.rolls.length > 0
+        ? event.rolls
+        : [event.selectedRoll];
+
+  const rollsText =
+    event.advantageMode === "normal"
+      ? String(displayRolls[0] ?? event.selectedRoll)
+      : `[${displayRolls.join(", ")}] → ${event.selectedRoll}`;
+
+  return `${rollDetailLabel} ${rollsText} ${formatSignedModifier(event.modifierUsed)}`;
 }

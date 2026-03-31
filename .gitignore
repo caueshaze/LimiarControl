@@ -20,6 +20,7 @@ __pycache__/
 .env.production.local
 server_py/.env
 server_py/.env.local
+server_py/.env.*.local
 
 # ======================
 # Node / Frontend
@@ -48,4 +49,3 @@ Thumbs.db
 .coverage
 coverage/
 htmlcov/
-

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -16,6 +17,8 @@ from app.schemas.session import ActiveSessionRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version
 from app.models.campaign import RoleMode
+
+logger = logging.getLogger("app.parties")
 
 
 def utcnow() -> datetime:
@@ -101,6 +104,34 @@ async def broadcast_party_member_updated(
             version=event_version(),
         ),
     )
+
+
+async def broadcast_party_member_updated_safe(
+    campaign_id: str,
+    party_id_value: str,
+    member_user_id: str,
+    role: RoleMode,
+    status: PartyMemberStatus,
+) -> None:
+    try:
+        await broadcast_party_member_updated(
+            campaign_id,
+            party_id_value,
+            member_user_id,
+            role,
+            status,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to publish party_member_updated",
+            extra={
+                "campaign_id": campaign_id,
+                "party_id": party_id_value,
+                "user_id": member_user_id,
+                "role": role.value,
+                "status": status.value,
+            },
+        )
 
 
 def ensure_campaign_player_member(

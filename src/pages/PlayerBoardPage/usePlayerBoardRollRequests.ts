@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   sessionsRepo,
-  type ActivityEvent,
   type RollRequestActivityEvent,
-  type RollResolvedActivityEvent,
 } from "../../shared/api/sessionsRepo";
 import type { LocaleKey } from "../../shared/i18n";
 import type { ToastState } from "../../shared/ui/Toast";
@@ -13,6 +11,12 @@ import {
   readHandledRollRequestKey,
   writeHandledRollRequestKey,
 } from "./playerBoard.types";
+import {
+  buildActivityRollRequestKey,
+  findLatestPendingRollRequest,
+  findMatchingRollRequestByKey,
+  isActivityRequestAlreadyResolved,
+} from "./playerBoard.rollRequests";
 
 type SessionCommandLike = {
   command: string;
@@ -62,11 +66,21 @@ export const usePlayerBoardRollRequests = ({
     shownRollRequestKeyRef.current = null;
   }, [activeSessionId]);
 
-  const markRequestHandled = useCallback((requestKey: string) => {
+  const rememberHandledRequest = useCallback((requestKey: string) => {
     handledRollRequestKeyRef.current = requestKey;
     writeHandledRollRequestKey(activeSessionId, requestKey);
+  }, [activeSessionId]);
+
+  const markRequestHandled = useCallback((requestKey: string) => {
+    rememberHandledRequest(requestKey);
     clearCommand();
-  }, [activeSessionId, clearCommand]);
+  }, [clearCommand, rememberHandledRequest]);
+
+  const resetPromptState = useCallback(() => {
+    setPendingRoll(null);
+    setRollMode(null);
+    setManualValue("");
+  }, []);
 
   const showRollPrompt = useCallback((nextRoll: PendingRoll) => {
     shownRollRequestKeyRef.current = nextRoll.requestKey;
@@ -81,45 +95,36 @@ export const usePlayerBoardRollRequests = ({
     setManualValue("");
   }, [showToast, t]);
 
-  const matchesResolvedRoll = useCallback((
-    request: RollRequestActivityEvent,
-    resolved: RollResolvedActivityEvent,
+  const reconcileAndShowRollPrompt = useCallback(async (
+    nextRoll: PendingRoll,
+    requestActivity: RollRequestActivityEvent,
   ) => {
-    if (request.rollType && resolved.rollType !== request.rollType) {
-      return false;
-    }
-    if ((request.ability ?? null) !== (resolved.ability ?? null)) {
-      return false;
-    }
-    if ((request.skill ?? null) !== (resolved.skill ?? null)) {
-      return false;
-    }
-    const requestTime = Date.parse(request.timestamp);
-    const resolvedTime = Date.parse(resolved.timestamp);
-    if (Number.isFinite(requestTime) && Number.isFinite(resolvedTime) && resolvedTime < requestTime) {
-      return false;
-    }
-    if (userId && resolved.userId !== userId) {
-      return false;
-    }
-    return true;
-  }, [userId]);
-
-  const isActivityRequestAlreadyResolved = useCallback((
-    activity: ActivityEvent[],
-    request: RollRequestActivityEvent,
-  ) => {
-    if (!request.rollType) {
-      return false;
+    if (nextRoll.requestKey === handledRollRequestKeyRef.current || nextRoll.requestKey === shownRollRequestKeyRef.current) {
+      return;
     }
 
-    return activity.some((entry): boolean => {
-      if (entry.type !== "roll_resolved") {
-        return false;
+    // Wait for the active session to hydrate before showing restored prompts.
+    // This avoids a flash/toast on reload for requests that activity already resolved.
+    if (!activeSessionId) {
+      return;
+    }
+
+    try {
+      const activity = await sessionsRepo.getActivity(activeSessionId);
+      if (isActivityRequestAlreadyResolved(activity, requestActivity, userId)) {
+        rememberHandledRequest(nextRoll.requestKey);
+        return;
       }
-      return matchesResolvedRoll(request, entry);
-    });
-  }, [matchesResolvedRoll]);
+    } catch {
+      // Ignore reconciliation errors and fall back to realtime/UI state.
+    }
+
+    if (nextRoll.requestKey === handledRollRequestKeyRef.current || nextRoll.requestKey === shownRollRequestKeyRef.current) {
+      return;
+    }
+
+    showRollPrompt(nextRoll);
+  }, [activeSessionId, rememberHandledRequest, showRollPrompt, userId]);
 
   useEffect(() => {
     if (!lastCommand || lastCommand.command !== "request_roll") {
@@ -148,7 +153,20 @@ export const usePlayerBoardRollRequests = ({
     const ability = (lastCommand.data?.ability as string | undefined) ?? null;
     const skill = (lastCommand.data?.skill as string | undefined) ?? null;
     const dc = typeof lastCommand.data?.dc === "number" ? lastCommand.data.dc : null;
-    showRollPrompt({
+    const requestActivity: RollRequestActivityEvent = {
+      type: "roll_request",
+      expression,
+      reason,
+      mode,
+      rollType,
+      ability,
+      skill,
+      dc,
+      targetUserId: targetUserId ?? null,
+      timestamp: String(lastCommand.issuedAt ?? new Date().toISOString()),
+      sessionOffsetSeconds: 0,
+    };
+    void reconcileAndShowRollPrompt({
       requestKey,
       expression,
       issuedBy: lastCommand.issuedBy,
@@ -158,8 +176,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
-    });
-  }, [activeSessionId, lastCommand, showRollPrompt, userId]);
+    }, requestActivity);
+  }, [activeSessionId, lastCommand, reconcileAndShowRollPrompt, userId]);
 
   useEffect(() => {
     if (!lastEvent || lastEvent.type !== "roll_requested") {
@@ -193,7 +211,20 @@ export const usePlayerBoardRollRequests = ({
     const ability = (typeof lastEvent.payload.ability === "string" ? lastEvent.payload.ability : null);
     const skill = (typeof lastEvent.payload.skill === "string" ? lastEvent.payload.skill : null);
     const dc = typeof lastEvent.payload.dc === "number" ? lastEvent.payload.dc : null;
-    showRollPrompt({
+    const requestActivity: RollRequestActivityEvent = {
+      type: "roll_request",
+      expression,
+      reason,
+      mode,
+      rollType,
+      ability,
+      skill,
+      dc,
+      targetUserId,
+      timestamp: String(lastEvent.payload.issuedAt ?? ""),
+      sessionOffsetSeconds: 0,
+    };
+    void reconcileAndShowRollPrompt({
       requestKey,
       expression,
       issuedBy: typeof lastEvent.payload.issuedBy === "string" ? lastEvent.payload.issuedBy : undefined,
@@ -203,8 +234,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
-    });
-  }, [activeSessionId, lastEvent, showRollPrompt, userId]);
+    }, requestActivity);
+  }, [activeSessionId, lastEvent, reconcileAndShowRollPrompt, userId]);
 
   const syncLatestRollRequest = useCallback(async () => {
     if (!activeSessionId) {
@@ -213,30 +244,29 @@ export const usePlayerBoardRollRequests = ({
 
     try {
       const activity = await sessionsRepo.getActivity(activeSessionId);
-      const latestRequest = [...activity]
-        .reverse()
-        .find((entry): entry is RollRequestActivityEvent => {
-          if (entry.type !== "roll_request") {
-            return false;
-          }
-          if (entry.targetUserId && entry.targetUserId !== userId) {
-            return false;
-          }
-          return !isActivityRequestAlreadyResolved(activity, entry);
-        });
+      if (pendingRoll) {
+        const matchingRequest = findMatchingRollRequestByKey(
+          activity,
+          activeSessionId,
+          pendingRoll.requestKey,
+          userId,
+        );
+        if (
+          matchingRequest
+          && isActivityRequestAlreadyResolved(activity, matchingRequest, userId)
+        ) {
+          rememberHandledRequest(pendingRoll.requestKey);
+          resetPromptState();
+        }
+      }
+
+      const latestRequest = findLatestPendingRollRequest(activity, userId);
 
       if (!latestRequest) {
         return;
       }
 
-      const requestKey = buildRollRequestKey({
-        expression: latestRequest.expression,
-        mode: latestRequest.mode ?? null,
-        reason: latestRequest.reason ?? undefined,
-        sessionId: activeSessionId,
-        targetUserId: latestRequest.targetUserId ?? null,
-        timestamp: latestRequest.timestamp,
-      });
+      const requestKey = buildActivityRollRequestKey(latestRequest, activeSessionId);
 
       if (requestKey === handledRollRequestKeyRef.current || requestKey === shownRollRequestKeyRef.current) {
         return;
@@ -256,7 +286,7 @@ export const usePlayerBoardRollRequests = ({
     } catch {
       // Ignore fallback polling errors; realtime remains the primary path.
     }
-  }, [activeSessionId, isActivityRequestAlreadyResolved, showRollPrompt, userId]);
+  }, [activeSessionId, pendingRoll, rememberHandledRequest, resetPromptState, showRollPrompt, userId]);
 
   useEffect(() => {
     if (!activeSessionId || !userId) {
@@ -305,10 +335,8 @@ export const usePlayerBoardRollRequests = ({
   }, [markRequestHandled, pendingRoll]);
 
   const clearPendingRoll = useCallback(() => {
-    setPendingRoll(null);
-    setRollMode(null);
-    setManualValue("");
-  }, []);
+    resetPromptState();
+  }, [resetPromptState]);
 
   return {
     clearPendingRoll,

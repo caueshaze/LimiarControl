@@ -43,4 +43,35 @@ describe("sessionActivity.utils", () => {
     expect(items[0]?.type === "combat-module" ? items[0].events : []).toHaveLength(3);
     expect(items[1]?.type).toBe("event");
   });
+
+  it("filters entity added records out of session activity", () => {
+    const events: ActivityEvent[] = [
+      {
+        action: "added",
+        displayName: "GM",
+        entityName: "Zumbi",
+        sessionOffsetSeconds: 10,
+        timestamp: "2026-03-24T10:00:10Z",
+        type: "entity",
+      },
+      {
+        action: "revealed",
+        displayName: "GM",
+        entityName: "Zumbi",
+        sessionOffsetSeconds: 15,
+        timestamp: "2026-03-24T10:00:15Z",
+        type: "entity",
+      },
+    ];
+
+    const items = buildSessionActivityDisplayItems(events);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("event");
+    expect(
+      items[0]?.type === "event" && items[0].event.type === "entity"
+        ? items[0].event.action
+        : null,
+    ).toBe("revealed");
+  });
 });

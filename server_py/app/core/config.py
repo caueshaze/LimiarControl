@@ -1,4 +1,5 @@
 import os
+from collections.abc import MutableMapping
 from pathlib import Path
 
 
@@ -12,8 +13,12 @@ def parse_bool(raw: str | None, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def load_env() -> None:
-    env_path = Path(__file__).resolve().parents[2] / ".env"
+def load_env_file(
+    env_path: Path,
+    locked_keys: set[str],
+    environ: MutableMapping[str, str] | None = None,
+) -> None:
+    environ = environ if environ is not None else os.environ
     if not env_path.exists():
         return
     for line in env_path.read_text().splitlines():
@@ -21,7 +26,50 @@ def load_env() -> None:
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key, value = stripped.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip())
+        key = key.strip()
+        if key in locked_keys:
+            continue
+        environ[key] = value.strip()
+
+
+def resolve_env_path(env_dir: Path, raw_path: str) -> Path:
+    env_path = Path(raw_path)
+    if env_path.is_absolute():
+        return env_path
+    return env_dir / env_path
+
+
+def load_env(
+    env_dir: Path | None = None,
+    environ: MutableMapping[str, str] | None = None,
+) -> None:
+    environ = environ if environ is not None else os.environ
+    env_dir = env_dir if env_dir is not None else Path(__file__).resolve().parents[2]
+    locked_keys = set(environ.keys())
+
+    explicit_env_file = environ.get("APP_ENV_FILE")
+    if explicit_env_file:
+        load_env_file(
+            resolve_env_path(env_dir, explicit_env_file),
+            locked_keys=locked_keys,
+            environ=environ,
+        )
+        return
+
+    app_env = environ.get("APP_ENV", "development")
+    load_env_file(env_dir / ".env", locked_keys=locked_keys, environ=environ)
+    load_env_file(env_dir / ".env.local", locked_keys=locked_keys, environ=environ)
+
+    load_env_file(
+        env_dir / f".env.{app_env}",
+        locked_keys=locked_keys,
+        environ=environ,
+    )
+    load_env_file(
+        env_dir / f".env.{app_env}.local",
+        locked_keys=locked_keys,
+        environ=environ,
+    )
 
 
 load_env()

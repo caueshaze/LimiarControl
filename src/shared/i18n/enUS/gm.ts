@@ -40,6 +40,8 @@ export const gmEnUSDictionary = {
   "gm.home.partyMinimumPlayers": "Add at least 2 players before creating the party.",
   "gm.home.partyCreate": "Create party",
   "gm.home.partyCreating": "Creating party...",
+  "gm.home.partyCreateError": "Failed to create party.",
+  "gm.home.partyDuplicateName": "You already have a party with this name.",
   "gm.home.partyPanelTitle": "Party menu",
   "gm.home.partyPanelDescription": "Open an existing group to invite more players and start the session.",
   "gm.home.partyLoading": "Loading parties...",

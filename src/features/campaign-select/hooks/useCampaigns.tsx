@@ -11,6 +11,7 @@ import { CampaignSystemType } from "../../../entities/campaign";
 import type { Campaign } from "../../../entities/campaign";
 import { campaignsRepo } from "../../../shared/api/campaignsRepo";
 import { preferencesRepo } from "../../../shared/api/preferencesRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { storageKeys } from "../../../shared/lib/storage";
 import { useAuth } from "../../auth";
 
@@ -59,8 +60,20 @@ const readStoredCampaignId = () => {
   return window.sessionStorage.getItem(storageKeys.selectedCampaignId);
 };
 
+const buildCampaignMutationErrorMessage = (
+  error: { status?: number; message?: string } | null | undefined,
+  fallbackMessage: string,
+  duplicateNameMessage: string,
+) => {
+  if (error?.status === 409) {
+    return duplicateNameMessage;
+  }
+  return error?.message ?? fallbackMessage;
+};
+
 export const CampaignProvider = ({ children }: { children: ReactNode }) => {
   const { token } = useAuth();
+  const { t } = useLocale();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
@@ -150,12 +163,16 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
           preferencesRepo.update({ selectedCampaignId: campaign.id }).catch(() => {});
           return { ok: true, campaignId: campaign.id };
         })
-        .catch((error: { message?: string }) => ({
+        .catch((error: { status?: number; message?: string }) => ({
           ok: false,
-          message: error?.message ?? "Failed to create campaign",
+          message: buildCampaignMutationErrorMessage(
+            error,
+            t("campaign.form.error"),
+            t("campaign.form.duplicateName"),
+          ),
         }));
     },
-    []
+    [t]
   );
 
   const selectCampaign = useCallback((campaignId: string) => {
@@ -192,12 +209,16 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
           );
           return { ok: true, campaign };
         })
-        .catch((error: { message?: string }) => ({
+        .catch((error: { status?: number; message?: string }) => ({
           ok: false,
-          message: error?.message ?? "Failed to update campaign",
+          message: buildCampaignMutationErrorMessage(
+            error,
+            t("campaign.form.error"),
+            t("campaign.form.duplicateName"),
+          ),
         }));
     },
-    []
+    [t]
   );
 
   const setSelectedCampaignLocal = useCallback((campaignId: string | null) => {

@@ -43,6 +43,9 @@ export type PlayerBoardWeaponSummary = {
   proficient: boolean;
 };
 
+const normalizeTimestamp = (ts: string): string =>
+  ts.replace(/\+00:00$/, "Z");
+
 export const buildRollRequestKey = (payload: {
   expression: string;
   mode?: "advantage" | "disadvantage" | null;
@@ -53,7 +56,7 @@ export const buildRollRequestKey = (payload: {
 }) =>
   [
     payload.sessionId,
-    payload.timestamp,
+    normalizeTimestamp(payload.timestamp),
     payload.expression.trim(),
     payload.reason?.trim() ?? "",
     payload.mode ?? "",

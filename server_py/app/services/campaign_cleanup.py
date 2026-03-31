@@ -111,8 +111,8 @@ def delete_party_tree(db: Session, party: Party) -> None:
     existing_tables = _existing_tables(db)
 
     _delete_session_tree(db, session_ids, existing_tables)
-    _delete_where(db, PartyCharacterSheetDraft, PartyCharacterSheetDraft.party_id == party_id, existing_tables)
     _delete_where(db, CharacterSheet, CharacterSheet.party_id == party_id, existing_tables)
+    _delete_where(db, PartyCharacterSheetDraft, PartyCharacterSheetDraft.party_id == party_id, existing_tables)
     _delete_where(db, InventoryItem, InventoryItem.party_id == party_id, existing_tables)
     _delete_where(db, PartyMember, PartyMember.party_id == party_id, existing_tables)
     _delete_where(db, Party, Party.id == party_id, existing_tables)
@@ -128,13 +128,13 @@ def delete_campaign_tree(db: Session, campaign: Campaign) -> None:
     _delete_where(db, InventoryItem, InventoryItem.campaign_id == campaign_id, existing_tables)
 
     if party_ids:
+        _delete_where(db, CharacterSheet, CharacterSheet.party_id.in_(party_ids), existing_tables)
         _delete_where(
             db,
             PartyCharacterSheetDraft,
             PartyCharacterSheetDraft.party_id.in_(party_ids),
             existing_tables,
         )
-        _delete_where(db, CharacterSheet, CharacterSheet.party_id.in_(party_ids), existing_tables)
         _delete_where(db, PartyMember, PartyMember.party_id.in_(party_ids), existing_tables)
         _delete_where(db, Party, Party.id.in_(party_ids), existing_tables)
 

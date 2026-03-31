@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Campaign } from "../../../entities/campaign";
 import { useAuth } from "../../auth";
 import { partiesRepo, type PartySummary } from "../../../shared/api/partiesRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type CreatePartyResult = {
   ok: boolean;
@@ -9,8 +10,20 @@ type CreatePartyResult = {
   message?: string;
 };
 
+const buildPartyMutationErrorMessage = (
+  error: { status?: number; message?: string } | null | undefined,
+  fallbackMessage: string,
+  duplicateNameMessage: string,
+) => {
+  if (error?.status === 409) {
+    return duplicateNameMessage;
+  }
+  return error?.message ?? fallbackMessage;
+};
+
 export const usePartyManagement = (campaigns: Campaign[]) => {
   const { user } = useAuth();
+  const { t } = useLocale();
   const [parties, setParties] = useState<PartySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,13 +78,17 @@ export const usePartyManagement = (campaigns: Campaign[]) => {
       await refreshParties();
       return { ok: true, party };
     } catch (saveError: any) {
-      const message = saveError?.message ?? "Failed to create party";
+      const message = buildPartyMutationErrorMessage(
+        saveError,
+        t("gm.home.partyCreateError"),
+        t("gm.home.partyDuplicateName"),
+      );
       setError(message);
       return { ok: false, message };
     } finally {
       setSaving(false);
     }
-  }, [campaignId, partyName, refreshParties]);
+  }, [campaignId, partyName, refreshParties, t]);
 
   return {
     parties,

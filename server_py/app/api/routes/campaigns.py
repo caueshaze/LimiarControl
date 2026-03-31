@@ -4,6 +4,7 @@ from typing import List
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_gm
@@ -28,6 +29,37 @@ ENABLED_CAMPAIGN_SYSTEMS = {SystemType.DND5E}
 def _ensure_supported_system(system: SystemType) -> None:
     if system not in ENABLED_CAMPAIGN_SYSTEMS:
         raise HTTPException(status_code=400, detail="Campaign system is not enabled")
+
+
+def _ensure_unique_campaign_name_for_gm(
+    name: str,
+    gm_user_id: str,
+    session: Session,
+    *,
+    exclude_campaign_id: str | None = None,
+) -> None:
+    normalized_name = name.strip()
+    if not normalized_name:
+        return
+
+    statement = (
+        select(Campaign.id)
+        .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
+        .where(
+            CampaignMember.user_id == gm_user_id,
+            CampaignMember.role_mode == RoleMode.GM,
+            func.lower(Campaign.name) == normalized_name.lower(),
+        )
+    )
+    if exclude_campaign_id is not None:
+        statement = statement.where(Campaign.id != exclude_campaign_id)
+
+    existing_campaign_id = session.exec(statement).first()
+    if existing_campaign_id:
+        raise HTTPException(
+            status_code=409,
+            detail="You already have a campaign with this name",
+        )
 
 
 @router.get("", response_model=List[CampaignRead])
@@ -121,10 +153,12 @@ def create_campaign(
 ):
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Invalid payload")
+    campaign_name = payload.name.strip()
     _ensure_supported_system(payload.system)
+    _ensure_unique_campaign_name_for_gm(campaign_name, user.id, session)
     campaign = Campaign(
         id=str(uuid4()),
-        name=payload.name.strip(),
+        name=campaign_name,
         system=payload.system,
     )
     member = CampaignMember(
@@ -162,7 +196,14 @@ def update_campaign(
     if payload.name is not None:
         if not payload.name.strip():
             raise HTTPException(status_code=400, detail="Invalid payload")
-        campaign.name = payload.name.strip()
+        campaign_name = payload.name.strip()
+        _ensure_unique_campaign_name_for_gm(
+            campaign_name,
+            user.id,
+            session,
+            exclude_campaign_id=campaign.id,
+        )
+        campaign.name = campaign_name
     if payload.system is not None:
         _ensure_supported_system(payload.system)
         campaign.system = payload.system

@@ -16,7 +16,7 @@ from app.api.routes.character_sheets_common import (
     get_my_character_sheet_service,
     get_party_or_404,
     get_party_character_sheet_service,
-    publish_character_sheet_realtime,
+    publish_character_sheet_realtime_safe,
     update_character_sheet_service,
 )
 from app.api.routes.character_sheets_progression import (
@@ -63,7 +63,7 @@ async def create_character_sheet(
 ):
     record = create_character_sheet_service(party_id, payload, user, session)
     party = get_party_or_404(party_id, session)
-    await publish_character_sheet_realtime(
+    await publish_character_sheet_realtime_safe(
         party.campaign_id,
         party_id,
         record,
@@ -81,7 +81,7 @@ async def update_character_sheet(
 ):
     record = update_character_sheet_service(party_id, payload, user, session)
     party = get_party_or_404(party_id, session)
-    await publish_character_sheet_realtime(
+    await publish_character_sheet_realtime_safe(
         party.campaign_id,
         party_id,
         record,
@@ -98,7 +98,7 @@ async def accept_my_character_sheet(
 ):
     record = accept_my_character_sheet_service(party_id, user, session)
     party = get_party_or_404(party_id, session)
-    await publish_character_sheet_realtime(
+    await publish_character_sheet_realtime_safe(
         party.campaign_id,
         party_id,
         record,

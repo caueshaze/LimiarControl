@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PartyActiveSession, PartyDetail, PartyMemberSummary } from "../../shared/api/partiesRepo";
 import { membersRepo } from "../../shared/api/membersRepo";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
@@ -56,7 +56,20 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
     [party?.members],
   );
 
-  const loadResources = async () => {
+  const joinedPlayersSignature = useMemo(
+    () =>
+      joinedPlayers
+        .map((player) => [player.userId, player.displayName ?? "", player.username ?? ""].join(":"))
+        .join("|"),
+    [joinedPlayers],
+  );
+
+  const stableJoinedPlayers = useMemo(
+    () => joinedPlayers,
+    [joinedPlayersSignature],
+  );
+
+  const loadResources = useCallback(async () => {
     if (!party?.id || !party.campaignId) {
       setPlayerResources([]);
       setDrafts([]);
@@ -81,7 +94,7 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
       const itemsById = Object.fromEntries(catalogItems.map((item) => [item.id, item]));
 
       const resources = await Promise.all(
-        joinedPlayers.map(async (player) => {
+        stableJoinedPlayers.map(async (player) => {
           const memberId = memberIdByUserId[player.userId];
           const [inventory, sheetRecord] = await Promise.all([
             memberId
@@ -143,11 +156,11 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
     } finally {
       setLoading(false);
     }
-  };
+  }, [locale, party?.campaignId, party?.id, stableJoinedPlayers]);
 
   useEffect(() => {
     void loadResources();
-  }, [joinedPlayers, locale, party?.campaignId, party?.id]);
+  }, [loadResources]);
 
   const summary = useMemo(() => {
     const invitedPlayers = party?.members.filter(

@@ -61,6 +61,16 @@ const COMPATIBILITY_CANONICAL_KEYS: Record<string, string> = {
   "crossbow light": "light_crossbow",
   bolt: "crossbow_bolt",
   "con tools": "forgery_kit",
+  "adventurer s pack": "adventurers_pack",
+  "artisan s tools": "artisans_tools",
+  "burglar s pack": "burglars_pack",
+  "diplomat s pack": "diplomats_pack",
+  "dungeoneer s pack": "dungeoneers_pack",
+  "entertainer s pack": "entertainers_pack",
+  "explorer s pack": "explorers_pack",
+  "priest s pack": "priests_pack",
+  "scholar s pack": "scholars_pack",
+  "traveler s clothes": "travelers_clothes",
 };
 
 const normalizeLookup = (value: string) =>

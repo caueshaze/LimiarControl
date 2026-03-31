@@ -158,7 +158,7 @@ export const PlayerAttackRollDialog = ({
 
         {result ? (
           <div className="mt-5 space-y-4">
-            <RollResultCard result={result.roll_result} />
+            <RollResultCard result={result.roll_result} hideDc />
 
             <div className="rounded-2xl border border-sky-500/20 bg-sky-950/30 px-4 py-3">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">

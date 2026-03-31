@@ -19,9 +19,9 @@ services:
     command: centrifugo -c /centrifugo/config.json
     volumes:
       - ./centrifugo/config.json:/centrifugo/config.json:ro,Z
+    env_file:
+      - ./server_py/.env
     environment:
-      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: "${CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}"
-      CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:-dev-api-key}"
       CENTRIFUGO_ALLOWED_ORIGINS: "${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:5173}"
 
 volumes:

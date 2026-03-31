@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -27,6 +28,8 @@ from app.services.guardian_progression import apply_guardian_canonical_state
 from app.services.realtime import build_event, campaign_channel, event_version
 from app.services.race_config import normalize_race_state, validate_race_state
 from app.services.sorcerer_progression import apply_sorcerer_canonical_state
+
+logger = logging.getLogger(__name__)
 
 
 def utcnow() -> datetime:
@@ -158,13 +161,34 @@ async def publish_character_sheet_realtime(
                 "playerUserId": record.playerId,
                 "characterSheetId": record.id,
                 "sourceDraftId": record.sourceDraftId,
-                "deliveredAt": record.deliveredAt,
-                "acceptedAt": record.acceptedAt,
+                "deliveredAt": record.deliveredAt.isoformat() if record.deliveredAt else None,
+                "acceptedAt": record.acceptedAt.isoformat() if record.acceptedAt else None,
                 "updateKind": update_kind,
             },
             version=event_version(),
         ),
     )
+
+
+async def publish_character_sheet_realtime_safe(
+    campaign_id: str,
+    party_id_value: str,
+    record: CharacterSheetRead,
+    update_kind: str,
+) -> None:
+    try:
+        await publish_character_sheet_realtime(campaign_id, party_id_value, record, update_kind)
+    except Exception:
+        logger.exception(
+            "Failed to publish character sheet realtime event",
+            extra={
+                "campaign_id": campaign_id,
+                "party_id": party_id_value,
+                "player_user_id": record.playerId,
+                "character_sheet_id": record.id,
+                "update_kind": update_kind,
+            },
+        )
 
 
 def validate_character_sheet_payload(data: object) -> None:

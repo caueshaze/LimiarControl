@@ -33,6 +33,16 @@ CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
 CENTRIFUGO_API_KEY=dev-api-key
 ```
 
+If `server_py/.env` is reserved for production, keep your local database and
+Centrifugo config in `server_py/.env.development.local`. The backend now
+prefers that file automatically in development, so local runs stay on the dev
+services by default:
+
+```bash
+cd server_py
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+```
+
 ## Run migrations
 ```bash
 cd server_py
@@ -75,6 +85,7 @@ Validated local result:
 ```bash
 cd server_py
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+APP_ENV_FILE=.env.development.local uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 ## Combat docs

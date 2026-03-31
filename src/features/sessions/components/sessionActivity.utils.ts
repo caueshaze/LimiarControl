@@ -23,13 +23,20 @@ export type SessionActivityDisplayItem =
       type: "combat-module";
     };
 
+const shouldDisplaySessionActivityEvent = (event: ActivityEvent) => {
+  if (event.type === "entity" && event.action === "added") {
+    return false;
+  }
+  return true;
+};
+
 export const buildSessionActivityDisplayItems = (
   events: ActivityEvent[],
 ): SessionActivityDisplayItem[] => {
   const items: SessionActivityDisplayItem[] = [];
   let combatWindow: ActivityEvent[] | null = null;
 
-  for (const [index, event] of events.entries()) {
+  for (const [index, event] of events.filter(shouldDisplaySessionActivityEvent).entries()) {
     const eventKey = `${event.type}-${event.timestamp}-${index}`;
 
     if (event.type === "combat" && event.action === "started") {

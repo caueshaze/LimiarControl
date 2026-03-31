@@ -87,6 +87,10 @@ export const CharacterSheet = ({
   const showAcceptPendingSheetAction = isPendingAcceptance && isOwnCreationSheet;
   const canAcceptPendingSheet =
     showAcceptPendingSheetAction && !actions.isDirty && !actions.saving;
+  const canUseCreationResetImport =
+    isCreation &&
+    !isPendingAcceptance &&
+    (!actions.remoteId || canEditExistingCreation);
   const shouldValidateCreationProgress =
     isCreation &&
     !creationDraftId &&
@@ -198,7 +202,7 @@ export const CharacterSheet = ({
         sheet={sheet}
         mode={mode}
         canSave={canSaveCreation || canEditPlay}
-        showResetImport={isCreation && (!actions.remoteId || canEditExistingCreation)}
+        showResetImport={canUseCreationResetImport}
         ac={ac}
         initiative={initiative}
         profBonus={profBonus}

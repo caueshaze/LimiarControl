@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.api.routes.party_common import (
@@ -18,7 +19,7 @@ from app.api.routes.party_common import (
     to_active_session_read,
     user_id,
     utcnow,
-    broadcast_party_member_updated,
+    broadcast_party_member_updated_safe,
 )
 from app.models.campaign import Campaign, RoleMode
 from app.models.party import Party
@@ -36,6 +37,32 @@ from app.schemas.party import (
 )
 
 
+def ensure_unique_party_name_for_gm(
+    name: str,
+    gm_user_id: str,
+    session: Session,
+    *,
+    exclude_party_id: str | None = None,
+) -> None:
+    normalized_name = name.strip()
+    if not normalized_name:
+        return
+
+    statement = select(Party.id).where(
+        Party.gm_user_id == gm_user_id,
+        func.lower(Party.name) == normalized_name.lower(),
+    )
+    if exclude_party_id is not None:
+        statement = statement.where(Party.id != exclude_party_id)
+
+    existing_party_id = session.exec(statement).first()
+    if existing_party_id:
+        raise HTTPException(
+            status_code=409,
+            detail="You already have a party with this name",
+        )
+
+
 def create_party_service(payload: PartyCreate, user: User, session: Session) -> PartyRead:
     current_user_id = user_id(user)
     campaign = session.get(Campaign, payload.campaignId)
@@ -45,6 +72,7 @@ def create_party_service(payload: PartyCreate, user: User, session: Session) -> 
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Invalid name")
+    ensure_unique_party_name_for_gm(name, current_user_id, session)
 
     now = utcnow()
     party = Party(
@@ -161,7 +189,7 @@ async def add_party_member_service(
         session.add(existing)
         session.commit()
         session.refresh(existing)
-        await broadcast_party_member_updated(
+        await broadcast_party_member_updated_safe(
             party.campaign_id,
             party_id_value,
             existing.user_id,
@@ -180,7 +208,7 @@ async def add_party_member_service(
     session.add(entry)
     session.commit()
     session.refresh(entry)
-    await broadcast_party_member_updated(
+    await broadcast_party_member_updated_safe(
         party.campaign_id,
         party_id_value,
         entry.user_id,

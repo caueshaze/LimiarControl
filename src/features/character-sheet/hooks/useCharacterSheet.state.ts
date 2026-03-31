@@ -109,7 +109,14 @@ export function characterSheetHookReducer(
       return { ...state, importError: action.error };
     case "reset":
       return {
-        ...initialCharacterSheetHookState,
+        ...state,
+        sheet: INITIAL_SHEET,
+        loading: false,
+        saving: false,
+        isDirty: false,
+        loadError: null,
+        saveError: null,
+        importError: null,
         remoteId: state.remoteId,
         characterRecord: state.characterRecord,
         draftRecord: state.draftRecord,

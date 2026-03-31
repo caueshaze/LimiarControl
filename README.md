@@ -107,13 +107,24 @@ CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
 ```
 
+If `server_py/.env` is reserved for production, keep your local Postgres and
+Centrifugo in `server_py/.env.development.local`. The backend loader now
+prefers this file in development automatically, so local runs do not hit
+production services by mistake:
+
+```bash
+cd server_py
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+```
+
 ### 3. Frontend setup
 
 From the repository root:
 
 ```bash
 npm install
-cp .env.example .env
+# If the root .env is reserved for production, use a dev-only override:
+cp .env.example .env.development.local
 npm run dev
 ```
 
@@ -129,6 +140,18 @@ npm run dev
 ### Frontend `.env`
 
 Default example:
+
+```env
+VITE_APP_ENV=development
+VITE_API_BASE_URL=http://localhost:3000/api
+VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
+VITE_ENABLE_MUSIC=true
+VITE_ENABLE_MAPS=true
+```
+
+If the repository root `.env` is pointing to production, create
+`.env.development.local` instead. Vite loads it automatically during
+`npm run dev`, so local development can keep using:
 
 ```env
 VITE_APP_ENV=development
@@ -155,6 +178,11 @@ CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
 ```
 
+If `server_py/.env` is production-only, keep local values in
+`server_py/.env.development.local`. The backend will use that file by default in
+development. `APP_ENV_FILE=.env.development.local` is still available if you
+want to force it explicitly.
+
 ## Useful commands
 
 ### Frontend
@@ -172,6 +200,7 @@ npx tsc --noEmit
 cd server_py
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+APP_ENV_FILE=.env.development.local uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 python -m py_compile app/api/routes/sessions/*.py
 ```
 

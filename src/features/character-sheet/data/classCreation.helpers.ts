@@ -21,6 +21,12 @@ export const option = (label: string, ...items: string[]): ClassEquipmentOption 
   items,
 });
 
+const optionWithItems = (label: string, items: string[]): ClassEquipmentOption => ({
+  id: slugify(label),
+  label,
+  items,
+});
+
 export const uniqueOptions = (options: ClassEquipmentOption[]) => {
   const seen = new Set<string>();
   return options.filter((entry) => {
@@ -56,14 +62,18 @@ export const simpleWeaponOptions = weaponOptions({ category: "simple" });
 export const simpleMeleeWeaponOptions = weaponOptions({ category: "simple", kind: "melee" });
 export const martialWeaponOptions = weaponOptions({ category: "martial" });
 export const martialMeleeWeaponOptions = weaponOptions({ category: "martial", kind: "melee" });
+const shieldStarterItem = (() => {
+  const resolvedShield = resolveCreationItem("Shield", getCreationItemCatalog());
+  return resolvedShield ? toCatalogStarterToken(resolvedShield.canonicalKey) : "Shield";
+})();
 export const simpleMeleePairOptions = simpleMeleeWeaponOptions.map((entry) =>
-  option(`${entry.label} x2`, entry.label, entry.label),
+  optionWithItems(`${entry.label} x2`, [...entry.items, ...entry.items]),
 );
 export const martialWeaponWithShieldOptions = martialWeaponOptions.map((entry) =>
-  option(`${entry.label} + Escudo`, entry.label, "Shield"),
+  optionWithItems(`${entry.label} + Escudo`, [...entry.items, shieldStarterItem]),
 );
 export const martialWeaponPairOptions = martialWeaponOptions.map((entry) =>
-  option(`${entry.label} x2`, entry.label, entry.label),
+  optionWithItems(`${entry.label} x2`, [...entry.items, ...entry.items]),
 );
 
 const resolveStaticStarterEntry = (entry: string) => {

@@ -16,6 +16,7 @@ export const campaignEnUSDictionary = {
   "campaign.form.system": "System",
   "campaign.form.submit": "Create campaign",
   "campaign.form.error": "Could not create campaign.",
+  "campaign.form.duplicateName": "You already have a campaign with this name.",
   "campaign.createTitle": "New campaign",
   "campaign.createDescription": "Set a name and system for this campaign.",
   "campaign.createCta": "Create new campaign",

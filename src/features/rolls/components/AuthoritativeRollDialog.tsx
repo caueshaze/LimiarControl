@@ -140,11 +140,6 @@ export const AuthoritativeRollDialog = ({
               {t("rolls.disadvantage" as Parameters<typeof t>[0])}
             </span>
           )}
-          {request.dc != null && (
-            <span className="rounded-full border border-slate-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-300">
-              DC {request.dc}
-            </span>
-          )}
         </div>
 
         {request.issuedBy && (
@@ -156,7 +151,7 @@ export const AuthoritativeRollDialog = ({
         {/* Result display */}
         {result && (
           <div className="mt-4">
-            <RollResultCard result={result} />
+            <RollResultCard result={result} hideDc />
             <button
               type="button"
               onClick={onClose}

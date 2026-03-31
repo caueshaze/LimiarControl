@@ -15,6 +15,7 @@ import {
 } from "./creationEquipment";
 import {
   resetCreationItemCatalogForTests,
+  resolveCreationItem,
   seedCreationCatalogItemsForTests,
   seedCreationItemCatalogForTests,
 } from "./creationItemCatalog";
@@ -62,6 +63,22 @@ describe("creationEquipment", () => {
     ]);
   });
 
+  it("preserves catalog tokens in duplicated and shielded martial weapon options", () => {
+    const fighterConfig = getClassCreationConfig("fighter");
+    const rangerConfig = getClassCreationConfig("ranger");
+    const fighterOptions = fighterConfig?.equipmentChoices.find((group) => group.id === "fighter-main-weapon")?.options ?? [];
+    const rangerOptions = rangerConfig?.equipmentChoices.find((group) => group.id === "ranger-weapons")?.options ?? [];
+    const shortswordWithShield = fighterOptions.find((entry) => entry.label === "Espada Curta + Escudo");
+    const shortswordPair = fighterOptions.find((entry) => entry.label === "Espada Curta x2");
+    const macePair = rangerOptions.find((entry) => entry.label === "Maça x2");
+
+    expect(fighterOptions.length).toBeGreaterThan(0);
+    expect(rangerOptions.length).toBeGreaterThan(0);
+    expect(shortswordWithShield?.items).toEqual(["catalog:shortsword", "catalog:shield"]);
+    expect(shortswordPair?.items).toEqual(["catalog:shortsword", "catalog:shortsword"]);
+    expect(macePair?.items).toEqual(["catalog:mace", "catalog:mace"]);
+  });
+
   it("resolves problematic starter item names to canonical names", () => {
     expect(canonicalizeStarterItemName("Escudo")).toBe("Shield");
     expect(canonicalizeStarterItemName("Wooden Shield")).toBe("Shield");
@@ -74,6 +91,244 @@ describe("creationEquipment", () => {
     expect(canonicalizeStarterItemName("Reliquary")).toBe("Holy Symbol");
     expect(canonicalizeStarterItemName("Holy Symbol")).toBe("Holy Symbol");
     expect(canonicalizeStarterItemName("Arcane Focus")).toBe("Arcane Focus");
+  });
+
+  it("resolves possessive pack names against canonical catalog keys", () => {
+    seedCreationCatalogItemsForTests([
+      {
+        id: "base-adventurers-pack",
+        campaignItemId: null,
+        baseItemId: "base-adventurers-pack",
+        canonicalKey: "adventurers_pack",
+        name: "Mochila do Aventureiro",
+        namePt: "Mochila do Aventureiro",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-artisans-tools",
+        campaignItemId: null,
+        baseItemId: "base-artisans-tools",
+        canonicalKey: "artisans_tools",
+        name: "Ferramentas de Artesão",
+        namePt: "Ferramentas de Artesão",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "tool",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-burglars-pack",
+        campaignItemId: null,
+        baseItemId: "base-burglars-pack",
+        canonicalKey: "burglars_pack",
+        name: "Mochila do Ladrão",
+        namePt: "Mochila do Ladrão",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-diplomats-pack",
+        campaignItemId: null,
+        baseItemId: "base-diplomats-pack",
+        canonicalKey: "diplomats_pack",
+        name: "Mochila do Diplomata",
+        namePt: "Mochila do Diplomata",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-entertainers-pack",
+        campaignItemId: null,
+        baseItemId: "base-entertainers-pack",
+        canonicalKey: "entertainers_pack",
+        name: "Mochila do Artista",
+        namePt: "Mochila do Artista",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-explorers-pack",
+        campaignItemId: null,
+        baseItemId: "base-explorers-pack",
+        canonicalKey: "explorers_pack",
+        name: "Mochila do Explorador",
+        namePt: "Mochila do Explorador",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-priests-pack",
+        campaignItemId: null,
+        baseItemId: "base-priests-pack",
+        canonicalKey: "priests_pack",
+        name: "Mochila do Sacerdote",
+        namePt: "Mochila do Sacerdote",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+      {
+        id: "base-scholars-pack",
+        campaignItemId: null,
+        baseItemId: "base-scholars-pack",
+        canonicalKey: "scholars_pack",
+        name: "Mochila do Estudioso",
+        namePt: "Mochila do Estudioso",
+        description: "",
+        descriptionPt: "",
+        properties: [],
+        weight: 0,
+        armorPresetName: null,
+        armorCategory: null,
+        isShield: false,
+        stealthDisadvantage: false,
+        itemKind: "pack",
+        weaponCategory: null,
+        weaponRangeType: null,
+        damageDice: null,
+        damageType: null,
+        weaponPropertiesJson: null,
+        rangeNormalMeters: null,
+        rangeLongMeters: null,
+        versatileDamage: null,
+        armorClassBase: null,
+        dexBonusRule: null,
+        strengthRequirement: null,
+      },
+    ]);
+
+    expect(resolveCreationItem("Adventurer's Pack")?.canonicalKey).toBe("adventurers_pack");
+    expect(resolveCreationItem("Artisan's Tools")?.canonicalKey).toBe("artisans_tools");
+    expect(resolveCreationItem("Burglar's Pack")?.canonicalKey).toBe("burglars_pack");
+    expect(resolveCreationItem("Diplomat's Pack")?.canonicalKey).toBe("diplomats_pack");
+    expect(resolveCreationItem("Entertainer's Pack")?.canonicalKey).toBe("entertainers_pack");
+    expect(resolveCreationItem("Explorer's Pack")?.canonicalKey).toBe("explorers_pack");
+    expect(resolveCreationItem("Priest's Pack")?.canonicalKey).toBe("priests_pack");
+    expect(resolveCreationItem("Scholar's Pack")?.canonicalKey).toBe("scholars_pack");
   });
 
   it("persists canonical starter names even when the source option is an alias", () => {

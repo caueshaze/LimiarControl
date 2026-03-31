@@ -9,7 +9,13 @@ const ROLL_TYPE_LABELS: Record<string, string> = {
   attack: "rolls.attackRoll",
 };
 
-export const RollResultCard = ({ result }: { result: RollResult }) => {
+export const RollResultCard = ({
+  result,
+  hideDc = false,
+}: {
+  result: RollResult;
+  hideDc?: boolean;
+}) => {
   const { t } = useLocale();
 
   const label = t((ROLL_TYPE_LABELS[result.roll_type] ?? result.roll_type) as Parameters<typeof t>[0]);
@@ -52,7 +58,7 @@ export const RollResultCard = ({ result }: { result: RollResult }) => {
 
       <p className="mt-2 text-xs text-slate-500">
         {rollBreakdown}
-        {result.dc != null && ` vs DC ${result.dc}`}
+        {!hideDc && result.dc != null && ` vs DC ${result.dc}`}
         {result.target_ac != null && ` vs AC ${result.target_ac}`}
       </p>
 

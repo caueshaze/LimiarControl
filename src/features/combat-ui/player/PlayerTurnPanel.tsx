@@ -314,7 +314,7 @@ export const PlayerTurnPanel = ({
             {t("combatUi.lastAttack")}
           </p>
           <div className="mt-4">
-            <RollResultCard result={lastAttackResult.roll_result} />
+            <RollResultCard result={lastAttackResult.roll_result} hideDc />
           </div>
         </section>
       ) : null}
@@ -325,7 +325,7 @@ export const PlayerTurnPanel = ({
             {t("combatUi.lastSpell")}
           </p>
           <div className="mt-4">
-            <RollResultCard result={lastSpellResult.roll_result} />
+            <RollResultCard result={lastSpellResult.roll_result} hideDc />
           </div>
         </section>
       ) : null}

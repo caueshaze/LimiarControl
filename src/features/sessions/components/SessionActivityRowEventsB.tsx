@@ -4,6 +4,7 @@ import { formatSessionActivityOffset } from "./sessionActivity.utils";
 import {
   formatCurrentHp,
   formatEntityDisplayName,
+  formatResolvedRollBreakdown,
   formatSignedModifier,
   localizeRollContext,
   localizeRollMode,
@@ -206,7 +207,7 @@ export const SessionActivityRollResolvedRow = ({ event }: Props) => {
   const advantageMode = localizeRollMode(event.advantageMode, t);
   const successIcon = event.success === true ? " ✓" : event.success === false ? " ✗" : "";
   const detailParts = [
-    `${t("sessionActivity.rollDetailD20")} [${event.rolls.join(", ")}] → ${event.selectedRoll} ${formatSignedModifier(event.modifierUsed)}`,
+    formatResolvedRollBreakdown(event, t("sessionActivity.rollDetailD20")),
   ];
 
   if (event.dc != null) {

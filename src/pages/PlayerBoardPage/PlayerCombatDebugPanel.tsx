@@ -141,7 +141,7 @@ export const PlayerCombatDebugPanel = ({
               Ultimo ataque
             </h4>
             <div className="mt-3">
-              <RollResultCard result={lastAttackResult.roll_result} />
+              <RollResultCard result={lastAttackResult.roll_result} hideDc />
             </div>
             <p className="mt-3 text-sm text-slate-200">
               {lastAttackResult.is_hit
@@ -158,7 +158,7 @@ export const PlayerCombatDebugPanel = ({
             </h4>
             {lastSpellResult.roll_result ? (
               <div className="mt-3">
-                <RollResultCard result={lastSpellResult.roll_result} />
+                <RollResultCard result={lastSpellResult.roll_result} hideDc />
               </div>
             ) : null}
             <p className="mt-3 text-sm text-slate-200">

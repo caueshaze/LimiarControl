@@ -7,6 +7,7 @@ import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
 import type { CharacterSheetRecord } from "../../entities/character";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
+import type { CampaignEvent } from "../../features/sessions/hooks/useCampaignEvents";
 import type { PlayerPartySelectedItem } from "./playerParty.types";
 
 type Props = {
@@ -59,6 +60,17 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
       setCharacterSheetStatus(null);
     }
   }, [partyId]);
+
+  const applyCharacterSheetRealtimeEvent = useCallback(
+    (
+      event: Extract<CampaignEvent, { type: "character_sheet_updated" }>,
+    ) => {
+      setHasCharacterSheet(true);
+      setCharacterSheetStatus(event.payload.acceptedAt ? "accepted" : "pending_acceptance");
+      void refreshCharacterSheetStatus();
+    },
+    [refreshCharacterSheetStatus],
+  );
 
   const loadData = useCallback(async () => {
     if (!partyId) return;
@@ -257,6 +269,8 @@ export const usePlayerPartyPageData = ({ partyId, userId }: Props) => {
     prevActiveSessionIdRef,
     notifiedLobbySessionIdRef,
     loadData,
+    refreshCharacterSheetStatus,
+    applyCharacterSheetRealtimeEvent,
     refreshSessions,
     refreshActiveSession,
     syncActiveSessionFromRealtime,

@@ -23,6 +23,21 @@ import {
 } from "./PartyDetailsResourceCards";
 import { usePartyDetailsResources } from "./usePartyDetailsResources";
 
+const RESOURCE_REFRESH_EVENT_TYPES = new Set([
+    "character_sheet_updated",
+    "consumable_used",
+    "gm_granted_currency",
+    "gm_granted_item",
+    "gm_granted_xp",
+    "hit_dice_used",
+    "level_up_approved",
+    "level_up_denied",
+    "level_up_requested",
+    "rest_ended",
+    "shop_purchase_created",
+    "shop_sale_created",
+]);
+
 export const PartyDetailsPage = () => {
     const { partyId } = useParams<{ partyId: string }>();
     const navigate = useNavigate();
@@ -46,6 +61,12 @@ export const PartyDetailsPage = () => {
     const [forceStarting, setForceStarting] = useState(false);
     const [missingSheetsPlayers, setMissingSheetsPlayers] = useState<{ userId: string; displayName: string }[]>([]);
     const partyCampaignId = party?.campaignId ?? null;
+    const isCurrentPartyEvent = useCallback((eventPartyId?: string | null) => {
+        if (!eventPartyId || !partyId) {
+            return true;
+        }
+        return eventPartyId === partyId;
+    }, [partyId]);
 
     const loadData = useCallback(async (showSpinner = false) => {
         if (!partyId) return;
@@ -105,19 +126,23 @@ export const PartyDetailsPage = () => {
     useEffect(() => {
         if (!lastEvent || !partyCampaignId) return;
         if (lastEvent.type === "session_started") {
-            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+            if (!isCurrentPartyEvent(lastEvent.payload.partyId)) {
                 return;
             }
             navigate(routes.campaignDashboard.replace(":campaignId", partyCampaignId));
             return;
         }
         if (lastEvent.type === "session_closed") {
+            const eventPartyId = typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+            if (!isCurrentPartyEvent(eventPartyId)) {
+                return;
+            }
             setLobbyStatus(null);
             void loadData();
             return;
         }
         if (lastEvent.type === "session_lobby") {
-            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+            if (!isCurrentPartyEvent(lastEvent.payload.partyId)) {
                 return;
             }
             setLobbyStatus({
@@ -133,7 +158,7 @@ export const PartyDetailsPage = () => {
             return;
         }
         if (lastEvent.type === "player_joined_lobby") {
-            if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+            if (!isCurrentPartyEvent(lastEvent.payload.partyId)) {
                 return;
             }
             setLobbyStatus((current) => {
@@ -152,9 +177,22 @@ export const PartyDetailsPage = () => {
             return;
         }
         if (lastEvent.type === "party_member_updated") {
+            if (!isCurrentPartyEvent(lastEvent.payload.partyId)) {
+                return;
+            }
             void loadData();
+            return;
         }
-    }, [lastEvent, loadData, navigate, partyCampaignId, partyId]);
+        if (RESOURCE_REFRESH_EVENT_TYPES.has(lastEvent.type)) {
+            const eventPartyId = "partyId" in lastEvent.payload && typeof lastEvent.payload.partyId === "string"
+                ? lastEvent.payload.partyId
+                : null;
+            if (!isCurrentPartyEvent(eventPartyId)) {
+                return;
+            }
+            void reloadResources();
+        }
+    }, [isCurrentPartyEvent, lastEvent, loadData, navigate, partyCampaignId, reloadResources]);
 
     useEffect(() => {
         if (!activeSession?.id || activeSession.status !== "LOBBY") {

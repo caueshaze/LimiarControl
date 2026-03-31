@@ -14,6 +14,7 @@ from app.api.routes.character_sheet_drafts_common import (
 from app.api.routes.character_sheets_common import (
     accept_my_character_sheet_service,
     normalize_character_sheet_payload,
+    publish_character_sheet_realtime_safe,
     publish_character_sheet_realtime,
     validate_character_sheet_payload,
     update_character_sheet_service,
@@ -292,6 +293,37 @@ class CharacterSheetAcceptanceTests(unittest.TestCase):
         self.assertEqual(event["payload"]["partyId"], "party-1")
         self.assertEqual(event["payload"]["playerUserId"], "player-1")
         self.assertEqual(event["payload"]["updateKind"], "delivered")
+
+    def test_publish_character_sheet_realtime_safe_swallows_publish_errors(self):
+        record = CharacterSheetRead(
+            id="sheet-1",
+            partyId="party-1",
+            playerId="player-1",
+            data={"name": "Hero"},
+            sourceDraftId="draft-1",
+            deliveredByUserId="gm-1",
+            deliveredAt=datetime(2026, 3, 27, 18, 0, tzinfo=timezone.utc),
+            acceptedAt=None,
+            createdAt=datetime(2026, 3, 27, 18, 0, tzinfo=timezone.utc),
+            updatedAt=None,
+        )
+
+        with patch(
+            "app.api.routes.character_sheets_common.publish_character_sheet_realtime",
+            new=AsyncMock(side_effect=RuntimeError("centrifugo unavailable")),
+        ), patch(
+            "app.api.routes.character_sheets_common.logger.exception",
+        ) as mock_logger:
+            run(
+                publish_character_sheet_realtime_safe(
+                    "campaign-1",
+                    "party-1",
+                    record,
+                    "accepted",
+                )
+            )
+
+        mock_logger.assert_called_once()
 
     def test_validate_character_sheet_payload_requires_draconic_ancestry(self):
         with self.assertRaises(HTTPException) as ctx:

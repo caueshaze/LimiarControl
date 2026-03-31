@@ -16,6 +16,7 @@ export const campaignPtBRDictionary = {
   "campaign.form.system": "Sistema",
   "campaign.form.submit": "Criar campanha",
   "campaign.form.error": "Nao foi possivel criar a campanha.",
+  "campaign.form.duplicateName": "Voce ja possui uma campanha com esse nome.",
   "campaign.createTitle": "Nova campanha",
   "campaign.createDescription": "Defina o nome e o sistema para a campanha.",
   "campaign.createCta": "Criar nova campanha",

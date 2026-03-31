@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlmodel import Session
 
 from app.api.routes.party_common import (
-    broadcast_party_member_updated,
+    broadcast_party_member_updated_safe,
     get_party_member_or_404,
     get_party_or_404,
     party_member_to_read,
@@ -73,7 +73,7 @@ async def join_party_invite_service(
     session.add(member)
     session.commit()
     session.refresh(member)
-    await broadcast_party_member_updated(
+    await broadcast_party_member_updated_safe(
         party.campaign_id,
         party_id,
         member.user_id,
@@ -130,7 +130,7 @@ async def decline_party_invite_service(
     session.add(member)
     session.commit()
     session.refresh(member)
-    await broadcast_party_member_updated(
+    await broadcast_party_member_updated_safe(
         party.campaign_id,
         party_id,
         member.user_id,
@@ -190,7 +190,7 @@ async def leave_party_service(
     session.add(member)
     session.commit()
     session.refresh(member)
-    await broadcast_party_member_updated(
+    await broadcast_party_member_updated_safe(
         party.campaign_id,
         party_id,
         member.user_id,

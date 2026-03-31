@@ -41,7 +41,7 @@ export const SpellCastResultPanel = ({
 
   return (
     <div className="mt-5 space-y-4">
-      {result.roll_result ? <RollResultCard result={result.roll_result} /> : null}
+      {result.roll_result ? <RollResultCard result={result.roll_result} hideDc /> : null}
 
       <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/30 px-4 py-3">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-fuchsia-300">

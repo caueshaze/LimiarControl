@@ -14,7 +14,7 @@ from app.api.routes.character_sheet_drafts_common import (
 )
 from app.api.routes.character_sheets_common import (
     get_party_or_404,
-    publish_character_sheet_realtime,
+    publish_character_sheet_realtime_safe,
 )
 from app.db.session import get_session
 from app.models.user import User
@@ -143,7 +143,7 @@ async def derive_party_character_sheet_draft(
         session,
     )
     party = get_party_or_404(party_id, session)
-    await publish_character_sheet_realtime(
+    await publish_character_sheet_realtime_safe(
         party.campaign_id,
         party_id,
         record,

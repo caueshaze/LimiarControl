@@ -40,6 +40,8 @@ export const PlayerPartyPage = () => {
     prevActiveSessionIdRef,
     notifiedLobbySessionIdRef,
     loadData,
+    refreshCharacterSheetStatus,
+    applyCharacterSheetRealtimeEvent,
     refreshSessions,
     refreshActiveSession,
     syncActiveSessionFromRealtime,
@@ -130,6 +132,31 @@ export const PlayerPartyPage = () => {
       return;
     }
 
+    if (lastEvent.type === "character_sheet_updated") {
+      if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
+        return;
+      }
+      if (user?.userId && lastEvent.payload.playerUserId !== user.userId) {
+        return;
+      }
+      applyCharacterSheetRealtimeEvent(lastEvent);
+      if (lastEvent.payload.updateKind === "delivered") {
+        showToast({
+          variant: "info",
+          title:
+            locale === "pt"
+              ? "Ficha entregue pelo mestre"
+              : "GM delivered your sheet",
+          description:
+            locale === "pt"
+              ? "Sua ficha já está pronta para revisão e aceite."
+              : "Your sheet is ready for review and acceptance.",
+          duration: 4500,
+        });
+      }
+      return;
+    }
+
     if (lastEvent.type === "player_joined_lobby") {
       if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
         return;
@@ -148,7 +175,18 @@ export const PlayerPartyPage = () => {
         };
       });
     }
-  }, [lastEvent, loadData, locale, navigate, partyId, refreshSessions, showToast, syncActiveSessionFromRealtime]);
+  }, [
+    lastEvent,
+    loadData,
+    locale,
+    navigate,
+    partyId,
+    applyCharacterSheetRealtimeEvent,
+    refreshSessions,
+    showToast,
+    syncActiveSessionFromRealtime,
+    user?.userId,
+  ]);
 
   useEffect(() => {
     if (activeSession?.status === "LOBBY") {
