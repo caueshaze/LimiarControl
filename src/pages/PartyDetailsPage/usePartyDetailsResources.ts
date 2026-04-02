@@ -59,7 +59,8 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
   const joinedPlayersSignature = useMemo(
     () =>
       joinedPlayers
-        .map((player) => [player.userId, player.displayName ?? "", player.username ?? ""].join(":"))
+        .map((player) => player.userId)
+        .sort()
         .join("|"),
     [joinedPlayers],
   );

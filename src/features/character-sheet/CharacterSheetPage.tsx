@@ -17,10 +17,11 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useLocale();
-  const [campaignId, setCampaignId] = useState<string | null>(null);
   const requestedMode = searchParams.get("mode") === "play" ? "play" : "creation";
   const requestedPlayerId = searchParams.get("playerId");
   const requestedCampaignId = searchParams.get("campaignId");
+  const [campaignId, setCampaignId] = useState<string | null>(requestedCampaignId ?? null);
+  const [campaignIdResolved, setCampaignIdResolved] = useState(!partyId || !!requestedCampaignId);
   const requestedPlayerName = searchParams.get("playerName");
   const requestedReturnTo = searchParams.get("returnTo");
   const creationPlayerUserId =
@@ -57,11 +58,18 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   useEffect(() => {
     if (!partyId || requestedCampaignId) {
       setCampaignId(requestedCampaignId ?? null);
+      setCampaignIdResolved(true);
       return;
     }
     partiesRepo.get(partyId)
-      .then((party) => setCampaignId(party.campaignId))
-      .catch(() => setCampaignId(null));
+      .then((party) => {
+        setCampaignId(party.campaignId);
+        setCampaignIdResolved(true);
+      })
+      .catch(() => {
+        setCampaignId(null);
+        setCampaignIdResolved(true);
+      });
   }, [partyId, requestedCampaignId]);
 
   const { lastEvent } = useCampaignEvents(campaignId);
@@ -82,6 +90,10 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
     }
     navigate(routes.home, { replace: true });
   }, [lastEvent, navigate, partyId, requestedMode, viewerRole]);
+
+  if (requestedMode === "creation" && !campaignIdResolved) {
+    return null;
+  }
 
   if (requestedMode === "play" && !playPlayerUserId) {
     return (

@@ -9,16 +9,28 @@ export const CharacterSheetDraftPage = () => {
   const { partyId, draftId } = useParams<{ partyId?: string; draftId?: string }>();
   const { t } = useLocale();
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [campaignIdResolved, setCampaignIdResolved] = useState(!partyId);
 
   useEffect(() => {
     if (!partyId) {
       setCampaignId(null);
+      setCampaignIdResolved(true);
       return;
     }
     partiesRepo.get(partyId)
-      .then((party) => setCampaignId(party.campaignId))
-      .catch(() => setCampaignId(null));
+      .then((party) => {
+        setCampaignId(party.campaignId);
+        setCampaignIdResolved(true);
+      })
+      .catch(() => {
+        setCampaignId(null);
+        setCampaignIdResolved(true);
+      });
   }, [partyId]);
+
+  if (!campaignIdResolved) {
+    return null;
+  }
 
   return (
     <CharacterSheet
