@@ -33,7 +33,7 @@ import { createCreationSheetActions } from "./useCharacterSheetActions.creation"
 import {
   stripRaceBonusesFromAbilities,
 } from "./useCharacterSheet.creation";
-import { hasUnresolvedCreationInventoryItems } from "../utils/creationEquipment";
+import { hasUnresolvedCreationInventoryItems, syncCreationInventoryLoadoutState } from "../utils/creationEquipment";
 import { hasUnresolvedCreationSpellSelections } from "../utils/creationSpells";
 import {
   buildCreationSetAbility,
@@ -119,10 +119,13 @@ export const useCharacterSheet = (
       }
 
       if (creationDraftId) {
-        const result = await loadCharacterSheetDraft(partyId, creationDraftId, campaignId);
+        const [result] = await Promise.all([
+          loadCharacterSheetDraft(partyId, creationDraftId, campaignId),
+          preloadCreationCatalogs(campaignId),
+        ]);
         dispatch({
           type: "load_success",
-          sheet: result.sheet,
+          sheet: syncCreationInventoryLoadoutState(result.sheet),
           id: result.id,
           draftRecord: result.draft,
         });
@@ -130,10 +133,13 @@ export const useCharacterSheet = (
       }
 
       if (creationPlayerUserId) {
-        const result = await loadCharacterSheetForPlayer(partyId, creationPlayerUserId, campaignId);
+        const [result] = await Promise.all([
+          loadCharacterSheetForPlayer(partyId, creationPlayerUserId, campaignId),
+          preloadCreationCatalogs(campaignId),
+        ]);
         dispatch({
           type: "load_success",
-          sheet: result.sheet,
+          sheet: syncCreationInventoryLoadoutState(result.sheet),
           id: result.id,
           characterRecord: result.record,
         });
