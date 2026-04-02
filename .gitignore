@@ -21,6 +21,7 @@ __pycache__/
 server_py/.env
 server_py/.env.local
 server_py/.env.*.local
+.env.production
 
 # ======================
 # Node / Frontend
