@@ -33,6 +33,27 @@ def ensure_rest_state(data: dict | None) -> dict:
     return next_data
 
 
+def _normalize_death_saves(data: dict) -> tuple[int, int]:
+    death_saves = data.get("deathSaves")
+    if not isinstance(death_saves, dict):
+        return 0, 0
+    try:
+        successes = max(0, min(3, int(death_saves.get("successes", 0))))
+    except (TypeError, ValueError):
+        successes = 0
+    try:
+        failures = max(0, min(3, int(death_saves.get("failures", 0))))
+    except (TypeError, ValueError):
+        failures = 0
+    return successes, failures
+
+
+def _is_dead_state(data: dict) -> bool:
+    current_hp = max(0, _safe_int(data.get("currentHP")))
+    _, failures = _normalize_death_saves(data)
+    return current_hp <= 0 and failures >= 3
+
+
 def start_rest(data: dict | None, rest_type: RestState) -> dict:
     if rest_type not in {"short_rest", "long_rest"}:
         raise SessionRestError("Invalid rest type")
@@ -170,16 +191,18 @@ def _force_revert_wild_shape_inline(data: dict) -> dict:
 
 def apply_long_rest(data: dict | None) -> dict:
     next_data = ensure_rest_state(data)
+    is_dead = _is_dead_state(next_data)
 
     max_hp = max(0, _safe_int(next_data.get("maxHP")))
     hit_dice_total = max(0, _safe_int(next_data.get("hitDiceTotal")))
     hit_dice_remaining = max(0, _safe_int(next_data.get("hitDiceRemaining")))
     hit_dice_recovered = 0 if hit_dice_total <= 0 else max(1, floor(hit_dice_total / 2))
 
-    next_data["currentHP"] = max_hp
+    if not is_dead:
+        next_data["currentHP"] = max_hp
+        next_data["deathSaves"] = {"successes": 0, "failures": 0}
     next_data["tempHP"] = 0
     next_data["hitDiceRemaining"] = min(hit_dice_total, hit_dice_remaining + hit_dice_recovered)
-    next_data["deathSaves"] = {"successes": 0, "failures": 0}
     next_data["restState"] = "exploration"
 
     spellcasting = next_data.get("spellcasting")

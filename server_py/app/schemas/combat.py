@@ -233,6 +233,16 @@ class CombatDeathSaveRequest(BaseModel):
     actor_participant_id: Optional[str] = None
 
 
+class CombatReviveRequest(BaseModel):
+    target_participant_id: str
+    hp: int | None = Field(default=1, ge=1)
+
+
+class CombatReviveResult(BaseModel):
+    new_hp: int
+    status: Literal["active"]
+
+
 # --- Active Effects ---
 
 ActiveEffectKind = Literal[

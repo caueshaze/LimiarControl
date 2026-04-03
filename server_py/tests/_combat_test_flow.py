@@ -2220,13 +2220,18 @@ class CombatFlowTestsMixin:
     async def test_next_turn_skips_dead_and_defeated(self, mock_emit_log, mock_emit_state):
         self.state.phase = CombatPhase.active
         self.state.current_turn_index = 0
+        self.state.participants[0]["status"] = "dead"
         self.state.participants[1]["status"] = "defeated"  # the goblin e1
         # Add a third participant
         self.state.participants.append({
              "id": "p2", "ref_id": "player-456", "kind": "player", "display_name": "Ally",
-             "initiative": None, "status": "active", "team": "players", "visible": True, "actor_user_id": "user-2"
+             "initiative": None, "status": "stable", "team": "players", "visible": True, "actor_user_id": "user-2"
+        })
+        self.state.participants.append({
+             "id": "p3", "ref_id": "player-789", "kind": "player", "display_name": "Rogue",
+             "initiative": None, "status": "active", "team": "players", "visible": True, "actor_user_id": "user-3"
         })
         with patch("app.services.combat.CombatService.get_state", return_value=self.state):
             state = await CombatService.next_turn(self.db, "session-123", actor_user_id="user-xyz", is_gm=True)
-            # Should skip index 1 (defeated goblin) and go to 2
-            self.assertEqual(state.current_turn_index, 2)
+            # Should skip dead player, defeated goblin, and stable ally, then go to active rogue
+            self.assertEqual(state.current_turn_index, 3)

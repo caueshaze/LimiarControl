@@ -43,6 +43,20 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 
 
 class CombatStatusMixin:
+    @classmethod
+    def _normalize_player_death_saves(cls, death_saves: dict | None) -> dict[str, int]:
+        source = cls._as_dict(death_saves)
+        return {
+            "successes": min(3, max(0, cls._safe_int(source.get("successes"), 0))),
+            "failures": min(3, max(0, cls._safe_int(source.get("failures"), 0))),
+        }
+
+    @classmethod
+    def _is_player_dead_state(cls, data: dict | None) -> bool:
+        normalized_data = cls._as_dict(data)
+        current_hp = max(0, cls._safe_int(normalized_data.get("currentHP"), 0))
+        death_saves = cls._normalize_player_death_saves(normalized_data.get("deathSaves"))
+        return current_hp <= 0 and death_saves["failures"] >= 3
 
     @classmethod
     def _sync_participant_status(
@@ -59,11 +73,7 @@ class CombatStatusMixin:
         if kind == "player":
             data = cls._as_dict(target_model.state_json)
             current_hp = max(0, cls._safe_int(data.get("currentHP"), 0))
-            death_saves = cls._as_dict(data.get("deathSaves"))
-            normalized_death_saves = {
-                "successes": min(3, max(0, cls._safe_int(death_saves.get("successes"), 0))),
-                "failures": min(3, max(0, cls._safe_int(death_saves.get("failures"), 0))),
-            }
+            normalized_death_saves = cls._normalize_player_death_saves(data.get("deathSaves"))
 
             if current_hp > 0:
                 normalized_death_saves = {"successes": 0, "failures": 0}

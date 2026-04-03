@@ -246,6 +246,7 @@ class CombatEffectsMixin:
 
         if not is_gm and target_p.get("actor_user_id") != actor_user_id:
             raise CombatServiceError("You can only mark your own reaction as used", 403)
+        cls._require_actor_status(target_p, ("active",), "Only active participants can use reactions.")
 
         was_overridden = cls._consume_turn_resource(
             target_p, "reaction", is_gm=is_gm, override_resource_limit=req.override_resource_limit
@@ -288,6 +289,7 @@ class CombatEffectsMixin:
 
         if target_p.get("actor_user_id") != actor_user_id:
             raise CombatServiceError("You can only request reaction for your own character", 403)
+        cls._require_actor_status(target_p, ("active",), "Only active participants can request reactions.")
 
         target_p["reaction_request"] = {
             "status": "pending",

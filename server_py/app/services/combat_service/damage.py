@@ -248,6 +248,10 @@ class CombatDamageMixin:
             from app.services.wild_shape_service import apply_healing_to_form, is_active as ws_is_active
 
             data = cls._as_dict(target_model.state_json)
+            current = max(0, cls._safe_int(data.get("currentHP"), 0))
+
+            if cls._is_player_dead_state(data):
+                return current, " (Dead characters require explicit revive, not normal healing.)", current
 
             # ── Wild Shape: heal the beast form's HP ──────────────────────────
             if ws_is_active(data):
@@ -266,7 +270,6 @@ class CombatDamageMixin:
                     return cls._safe_int(form_hp, 0), "", None
 
             # ── Normal humanoid HP ────────────────────────────────────────────
-            current = max(0, cls._safe_int(data.get("currentHP"), 0))
             max_hp = max(0, cls._safe_int(data.get("maxHP"), 0))
             data["currentHP"] = min(max_hp, current + amount)
             target_model.state_json = finalize_session_state_data(data)
@@ -294,6 +297,64 @@ class CombatDamageMixin:
                 flag_modified(state, "participants")
                 db.add(state)
             return target_model.current_hp, msg, current
+
+    @classmethod
+    async def revive_player(
+        cls,
+        db: Session,
+        session_id: str,
+        target_participant_id: str,
+        actor_user_id: str,
+        is_gm: bool,
+        *,
+        hp: int | None = None,
+    ) -> dict[str, int | str]:
+        if not is_gm:
+            raise CombatServiceError("Only GM can revive a dead player.", 403)
+
+        state = cls.get_state(db, session_id)
+        cls._require_active(state)
+
+        target_p = next(
+            (participant for participant in state.participants if participant.get("id") == target_participant_id),
+            None,
+        )
+        if not target_p:
+            raise CombatServiceError("Participant not found in combat", 404)
+        if target_p.get("kind") != "player":
+            raise CombatServiceError("Only player participants can be revived.", 400)
+        if target_p.get("status") != "dead":
+            raise CombatServiceError("Only dead players can be revived with this action.", 400)
+
+        target_model, *_ = cls._get_stats(db, target_p["ref_id"], "player", session_id)
+        data = cls._as_dict(target_model.state_json)
+        if not cls._is_player_dead_state(data):
+            raise CombatServiceError("Target player is not in a dead state.", 400)
+
+        revive_hp = max(1, cls._safe_int(hp, 1))
+        max_hp = max(1, cls._safe_int(data.get("maxHP"), revive_hp))
+        data["currentHP"] = min(max_hp, revive_hp)
+        cls._reset_death_saves(data)
+
+        target_model.state_json = finalize_session_state_data(data)
+        status = cls._sync_participant_status(db, state, target_p["ref_id"], "player", target_model)
+
+        flag_modified(target_model, "state_json")
+        db.add(target_model)
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        await cls._emit_player_state_update(db, session_id, target_p["ref_id"], target_model)
+        await cls._emit_state(session_id, state)
+        await cls._emit_log(session_id, {
+            "message": f"{target_p['display_name']} was revived with {data['currentHP']} HP.",
+            "actorUserId": actor_user_id,
+            "source": "gm_override",
+        })
+
+        return {"new_hp": int(data["currentHP"]), "status": status}
 
     @classmethod
     async def apply_damage(cls, db: Session, session_id: str, req: CombatApplyDamageRequest, actor_user_id: str, is_gm: bool):

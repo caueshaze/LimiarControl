@@ -25,6 +25,8 @@ from app.schemas.combat import (
     CombatEntityActionResult,
     CombatNextTurnRequest,
     CombatRemoveEffectRequest,
+    CombatReviveRequest,
+    CombatReviveResult,
     CombatResolveDamageRequest,
     CombatResolveSpellEffectRequest,
     CombatSetInitiativeRequest,
@@ -321,6 +323,23 @@ async def action_death_save(
         user.id,
         _is_session_gm(db, session_id, user),
         req.actor_participant_id,
+    )
+
+
+@router.post("/sessions/{session_id}/combat/action/revive", response_model=CombatReviveResult)
+async def action_revive(
+    session_id: str,
+    req: CombatReviveRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return await CombatService.revive_player(
+        db,
+        session_id,
+        req.target_participant_id,
+        user.id,
+        _is_session_gm(db, session_id, user),
+        hp=req.hp,
     )
 
 

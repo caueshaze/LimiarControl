@@ -71,6 +71,7 @@ export const GmCombatModeShell = ({
             currentParticipant={shell.currentParticipant}
             currentParticipantVitals={shell.currentParticipantVitals}
             rosterParticipants={shell.rosterParticipants}
+            deadPlayerParticipants={shell.deadPlayerParticipants}
             actionError={shell.actionError}
             actionResult={shell.actionResult}
             submitting={shell.submitting}
@@ -100,6 +101,8 @@ export const GmCombatModeShell = ({
             selectedStandardAction={shell.selectedStandardAction}
             selectedStandardTargetId={shell.selectedStandardTargetId}
             standardActionNote={shell.standardActionNote}
+            selectedReviveParticipantId={shell.selectedReviveParticipantId}
+            reviveHp={shell.reviveHp}
             lastEntityActionResult={shell.lastEntityActionResult}
             onNextTurn={() => void shell.handleNextTurn()}
             onMarkReaction={() => void shell.handleMarkReaction()}
@@ -119,9 +122,17 @@ export const GmCombatModeShell = ({
             onSetSelectedStandardAction={shell.setSelectedStandardAction}
             onSetSelectedStandardTargetId={shell.setSelectedStandardTargetId}
             onSetStandardActionNote={shell.setStandardActionNote}
+            onSetSelectedReviveParticipantId={shell.setSelectedReviveParticipantId}
+            onSetReviveHp={shell.setReviveHp}
             onEntityAction={() => void shell.handleEntityAction()}
             onNpcStandardAction={() => void shell.handleNpcStandardAction()}
             onEntityUtilityAction={() => void shell.handleEntityUtilityAction()}
+            onRevive={() =>
+              void shell.handleRevive(
+                shell.selectedReviveParticipantId,
+                Math.max(1, Number.parseInt(shell.reviveHp, 10) || 1),
+              )
+            }
           />
 
           <CombatLogPanel logs={shell.combat.logs} />

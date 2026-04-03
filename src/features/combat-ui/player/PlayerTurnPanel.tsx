@@ -118,9 +118,11 @@ export const PlayerTurnPanel = ({
   >("attack");
 
   const isDowned = myParticipant?.status === "downed";
+  const isDead = myParticipant?.status === "dead";
   const canUseReaction = Boolean(
     combat.state?.phase === "active" &&
       myParticipant &&
+      myParticipant.status === "active" &&
       !myParticipant.turn_resources?.reaction_used,
   );
   const isReactionPending = myParticipant?.reaction_request?.status === "pending";
@@ -179,6 +181,13 @@ export const PlayerTurnPanel = ({
         {!combat.state ? (
           <div className="mt-5 rounded-3xl border border-dashed border-white/10 bg-white/3 px-4 py-5 text-sm text-slate-400">
             {combat.loading ? t("combatUi.loadingState") : combat.error ?? t("combatUi.noCombatState")}
+          </div>
+        ) : isDead ? (
+          <div className="mt-5 rounded-3xl border border-rose-700/30 bg-rose-950/40 p-5">
+            <h3 className="text-lg font-semibold text-rose-100">{t("combatUi.status.dead")}</h3>
+            <p className="mt-2 text-sm text-rose-200">
+              {t("combatUi.deadNoActions")}
+            </p>
           </div>
         ) : isDowned ? (
           <div className="mt-5 rounded-3xl border border-rose-500/25 bg-rose-950/30 p-5">

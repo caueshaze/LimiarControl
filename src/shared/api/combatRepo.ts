@@ -102,6 +102,16 @@ export type CombatNextTurnRequest = {
   actor_participant_id?: string | null;
 };
 
+export type CombatReviveRequest = {
+  target_participant_id: string;
+  hp?: number | null;
+};
+
+export type CombatReviveResult = {
+  new_hp: number;
+  status: "active";
+};
+
 export type CombatAttackRequest = {
   actor_participant_id?: string | null;
   target_ref_id: string;
@@ -397,6 +407,8 @@ export const combatRepo = {
     http.post<any>(`/sessions/${sessionId}/combat/action/apply-damage`, payload),
   deathSave: (sessionId: string, payload: CombatDeathSaveRequest = {}) =>
     http.post<any>(`/sessions/${sessionId}/combat/action/death-save`, payload),
+  revive: (sessionId: string, payload: CombatReviveRequest) =>
+    http.post<CombatReviveResult>(`/sessions/${sessionId}/combat/action/revive`, payload),
   applyEffect: (sessionId: string, payload: CombatApplyEffectRequest) =>
     http.post<CombatState>(`/sessions/${sessionId}/combat/effects/apply`, payload),
   removeEffect: (sessionId: string, payload: CombatRemoveEffectRequest) =>

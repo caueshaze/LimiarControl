@@ -21,6 +21,7 @@ type Props = {
   currentParticipant: CombatParticipant | null;
   currentParticipantVitals: CombatParticipantView | null;
   rosterParticipants: CombatParticipantView[];
+  deadPlayerParticipants: CombatParticipantView[];
   actionError: string | null;
   actionResult: string | null;
   submitting: boolean;
@@ -52,6 +53,8 @@ type Props = {
   selectedStandardAction: StandardActionType;
   selectedStandardTargetId: string;
   standardActionNote: string;
+  selectedReviveParticipantId: string;
+  reviveHp: string;
   lastEntityActionResult: CombatEntityActionResult | null;
   // Handlers
   onNextTurn: () => void;
@@ -72,9 +75,12 @@ type Props = {
   onSetSelectedStandardAction: (action: StandardActionType) => void;
   onSetSelectedStandardTargetId: (id: string) => void;
   onSetStandardActionNote: (note: string) => void;
+  onSetSelectedReviveParticipantId: (id: string) => void;
+  onSetReviveHp: (value: string) => void;
   onEntityAction: () => void;
   onNpcStandardAction: () => void;
   onEntityUtilityAction: () => void;
+  onRevive: () => void;
 };
 
 export const GmQuickActionsPanel = ({
@@ -82,6 +88,7 @@ export const GmQuickActionsPanel = ({
   currentParticipant,
   currentParticipantVitals,
   rosterParticipants,
+  deadPlayerParticipants,
   actionError,
   actionResult,
   submitting,
@@ -111,6 +118,8 @@ export const GmQuickActionsPanel = ({
   selectedStandardAction,
   selectedStandardTargetId,
   standardActionNote,
+  selectedReviveParticipantId,
+  reviveHp,
   lastEntityActionResult,
   onNextTurn,
   onMarkReaction,
@@ -130,9 +139,12 @@ export const GmQuickActionsPanel = ({
   onSetSelectedStandardAction,
   onSetSelectedStandardTargetId,
   onSetStandardActionNote,
+  onSetSelectedReviveParticipantId,
+  onSetReviveHp,
   onEntityAction,
   onNpcStandardAction,
   onEntityUtilityAction,
+  onRevive,
 }: Props) => {
   const { t } = useLocale();
 
@@ -235,6 +247,44 @@ export const GmQuickActionsPanel = ({
           {debugOpen ? t("combatUi.hideDebug") : t("combatUi.showDebug")}
         </button>
       </div>
+
+      {deadPlayerParticipants.length > 0 ? (
+        <div className="mt-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200">
+            {t("combatUi.revivePlayer")}
+          </p>
+          <p className="mt-2 text-sm text-slate-300">{t("combatUi.revivePlayerHint")}</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_180px]">
+            <select
+              value={selectedReviveParticipantId}
+              onChange={(event) => onSetSelectedReviveParticipantId(event.target.value)}
+              className="rounded-3xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-emerald-400"
+            >
+              <option value="">{t("combatUi.selectTarget")}</option>
+              {deadPlayerParticipants.map((participant) => (
+                <option key={participant.id} value={participant.id}>
+                  {participant.display_name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={1}
+              value={reviveHp}
+              onChange={(event) => onSetReviveHp(event.target.value)}
+              className="rounded-3xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-emerald-400"
+            />
+            <button
+              type="button"
+              disabled={!selectedReviveParticipantId || submitting}
+              onClick={onRevive}
+              className="rounded-3xl bg-emerald-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22em] text-slate-950 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {t("combatUi.revivePlayer")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {applyEffectOpen ? (
         <GmApplyEffectForm

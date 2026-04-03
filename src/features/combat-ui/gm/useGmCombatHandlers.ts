@@ -279,6 +279,27 @@ export const useGmCombatHandlers = ({
     }
   };
 
+  const handleRevive = async (
+    targetParticipantId: string,
+    hp: number = 1,
+  ) => {
+    setSubmitting(true);
+    setActionError(null);
+    setActionResult(null);
+    try {
+      const result = await combatRepo.revive(sessionId, {
+        target_participant_id: targetParticipantId,
+        hp,
+      });
+      setActionResult(`Player revived with ${result.new_hp} HP.`);
+      await refreshCombat();
+    } catch (err: any) {
+      setActionError(err?.data?.detail || err?.message || "Failed to revive player");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return {
     handleEntityActionResolved,
     handleEntityAction,
@@ -289,5 +310,6 @@ export const useGmCombatHandlers = ({
     handleResolveReaction,
     handleApplyEffect,
     handleRemoveEffect,
+    handleRevive,
   };
 };

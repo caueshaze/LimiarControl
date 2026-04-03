@@ -83,6 +83,115 @@ class CombatStatusTestsMixin:
         self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 0})
         self.assertEqual(self.state.participants[0]["status"], "active")
 
+    def test_apply_healing_to_stable_player_returns_active(self):
+        self.state.participants[0]["status"] = "stable"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 3, "failures": 0},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, previous_hp = CombatService._apply_healing_to_target(
+                self.db,
+                "player-123",
+                "player",
+                3,
+                self.state,
+            )
+
+        self.assertEqual(previous_hp, 0)
+        self.assertEqual(new_hp, 3)
+        self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 0})
+        self.assertEqual(self.state.participants[0]["status"], "active")
+
+    def test_apply_healing_to_dead_player_does_not_revive(self):
+        self.state.participants[0]["status"] = "dead"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 0, "failures": 3},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, effect_msg, previous_hp = CombatService._apply_healing_to_target(
+                self.db,
+                "player-123",
+                "player",
+                5,
+                self.state,
+            )
+
+        self.assertEqual(previous_hp, 0)
+        self.assertEqual(new_hp, 0)
+        self.assertEqual(session_state.state_json["currentHP"], 0)
+        self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 3})
+        self.assertEqual(self.state.participants[0]["status"], "dead")
+        self.assertIn("explicit revive", effect_msg)
+
+    def test_player_with_three_failed_death_saves_becomes_dead(self):
+        self.state.participants[0]["status"] = "downed"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 0, "failures": 2},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, _, _ = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                1,
+                False,
+                self.state,
+            )
+
+        self.assertEqual(new_hp, 0)
+        self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 3})
+        self.assertEqual(self.state.participants[0]["status"], "dead")
+
+    def test_dead_player_remains_dead_after_more_damage(self):
+        self.state.participants[0]["status"] = "dead"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 0, "failures": 3},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, _, _, _ = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                4,
+                False,
+                self.state,
+            )
+
+        self.assertEqual(new_hp, 0)
+        self.assertEqual(self.state.participants[0]["status"], "dead")
+
     def test_apply_damage_to_draconic_bloodline_player_applies_resistance_at_level_6(self):
         session_state = SessionState(
             id="state-1",
@@ -534,6 +643,34 @@ class CombatStatusTestsMixin:
         self.assertEqual(session_state.state_json["deathSaves"]["successes"], 1)
         self.assertEqual(self.state.current_turn_index, 1)
 
+    async def test_dead_player_cannot_roll_death_save(self):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        self.state.participants[0]["status"] = "dead"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 0, "failures": 3},
+            },
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+                with self.assertRaises(CombatServiceError) as ctx:
+                    await CombatService.death_save(
+                        self.db,
+                        "session-123",
+                        "user-1",
+                        False,
+                        "p1",
+                    )
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
     @patch("app.services.combat.CombatService._emit_player_state_update")
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
@@ -579,3 +716,55 @@ class CombatStatusTestsMixin:
                 )
 
         self.assertEqual(self.state.participants[0]["status"], "active")
+
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_gm_can_revive_dead_player(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.participants[0]["status"] = "dead"
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "currentHP": 0,
+                "maxHP": 12,
+                "deathSaves": {"successes": 0, "failures": 3},
+            },
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+                result = await CombatService.revive_player(
+                    self.db,
+                    "session-123",
+                    "p1",
+                    "gm-user",
+                    True,
+                    hp=4,
+                )
+
+        self.assertEqual(result["new_hp"], 4)
+        self.assertEqual(result["status"], "active")
+        self.assertEqual(session_state.state_json["currentHP"], 4)
+        self.assertEqual(session_state.state_json["deathSaves"], {"successes": 0, "failures": 0})
+        self.assertEqual(self.state.participants[0]["status"], "active")
+
+    async def test_non_gm_cannot_revive_dead_player(self):
+        with self.assertRaises(CombatServiceError) as ctx:
+            await CombatService.revive_player(
+                self.db,
+                "session-123",
+                "p1",
+                "user-1",
+                False,
+                hp=1,
+            )
+
+        self.assertEqual(ctx.exception.status_code, 403)

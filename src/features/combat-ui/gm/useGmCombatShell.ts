@@ -39,6 +39,8 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
   const [selectedStandardAction, setSelectedStandardAction] = useState<StandardActionType>("dodge");
   const [selectedStandardTargetId, setSelectedStandardTargetId] = useState("");
   const [standardActionNote, setStandardActionNote] = useState("");
+  const [selectedReviveParticipantId, setSelectedReviveParticipantId] = useState("");
+  const [reviveHp, setReviveHp] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideResourceName, setOverrideResourceName] = useState("");
@@ -126,6 +128,13 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
   const pendingReactionRequests = useMemo(
     () => (combat.state?.participants ?? []).filter((p) => p.reaction_request?.status === "pending"),
     [combat.state?.participants],
+  );
+  const deadPlayerParticipants = useMemo(
+    () =>
+      rosterParticipants.filter(
+        (participant) => participant.kind === "player" && participant.status === "dead",
+      ),
+    [rosterParticipants],
   );
 
   const handlers = useGmCombatHandlers({
@@ -237,6 +246,16 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     setLastEntityActionResult(null);
   }, [currentParticipant?.id]);
 
+  useEffect(() => {
+    if (!deadPlayerParticipants.length) {
+      setSelectedReviveParticipantId("");
+      return;
+    }
+    if (!deadPlayerParticipants.some((participant) => participant.id === selectedReviveParticipantId)) {
+      setSelectedReviveParticipantId(deadPlayerParticipants[0]?.id ?? "");
+    }
+  }, [deadPlayerParticipants, selectedReviveParticipantId]);
+
   return {
     // Combat state
     combat,
@@ -244,6 +263,7 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     currentParticipant,
     currentParticipantVitals,
     pendingReactionRequests,
+    deadPlayerParticipants,
     // UI state
     debugOpen,
     setDebugOpen,
@@ -299,6 +319,10 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     setSelectedStandardTargetId,
     standardActionNote,
     setStandardActionNote,
+    selectedReviveParticipantId,
+    setSelectedReviveParticipantId,
+    reviveHp,
+    setReviveHp,
     selectedTarget,
     // Handlers (from useGmCombatHandlers)
     ...handlers,

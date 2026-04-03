@@ -93,6 +93,30 @@ class SessionRestTests(unittest.TestCase):
         self.assertEqual(next_data["spellcasting"]["slots"][1]["used"], 0)
         self.assertEqual(next_data["spellcasting"]["slots"][2]["used"], 0)
 
+    def test_long_rest_does_not_revive_dead_character(self):
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 0,
+                "maxHP": 18,
+                "tempHP": 5,
+                "deathSaves": {"successes": 0, "failures": 3},
+                "spellcasting": {
+                    "ability": "wisdom",
+                    "mode": "prepared",
+                    "slots": {
+                        1: {"max": 4, "used": 3},
+                    },
+                    "spells": [],
+                },
+            }
+        )
+
+        self.assertEqual(next_data["currentHP"], 0)
+        self.assertEqual(next_data["deathSaves"], {"successes": 0, "failures": 3})
+        self.assertEqual(next_data["tempHP"], 0)
+        self.assertEqual(next_data["spellcasting"]["slots"][1]["used"], 0)
+
     def test_long_rest_keeps_goodberry_until_temporal_expiration(self):
         next_data = apply_long_rest(
             {
