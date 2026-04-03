@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.api.deps import require_system_admin
@@ -10,6 +11,7 @@ from app.models.base_spell import SpellSchool
 from app.models.campaign import SystemType
 from app.models.user import User
 from app.schemas.base_spell import BaseSpellCreate, BaseSpellRead, BaseSpellUpdate
+from app.services.base_spell_seeds import import_base_spell_seed_file
 from app.services.base_spells import (
     create_base_spell,
     delete_base_spell,
@@ -19,6 +21,13 @@ from app.services.base_spells import (
 )
 
 router = APIRouter()
+
+
+class BaseSpellSeedSyncResult(BaseModel):
+    inserted: int
+    updated: int
+    deactivated: int = 0
+    total: int
 
 
 @router.get("/base-spells", response_model=list[BaseSpellRead])
@@ -44,6 +53,15 @@ def admin_list_base_spells(
         is_active=is_active,
     )
     return [to_base_spell_read(spell) for spell in spells]
+
+
+@router.post("/base-spells/sync-seed", response_model=BaseSpellSeedSyncResult)
+def admin_sync_base_spells_seed(
+    _user: User = Depends(require_system_admin),
+    session: Session = Depends(get_session),
+):
+    result = import_base_spell_seed_file(session, replace=False)
+    return BaseSpellSeedSyncResult(**result)
 
 
 @router.get("/base-spells/{base_spell_id}", response_model=BaseSpellRead)

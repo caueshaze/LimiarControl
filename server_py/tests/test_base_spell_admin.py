@@ -12,6 +12,7 @@ from app.api.routes.admin_base_spells import (
     admin_create_base_spell,
     admin_delete_base_spell,
     admin_list_base_spells,
+    admin_sync_base_spells_seed,
     admin_update_base_spell,
 )
 from app.models.base_spell import (
@@ -31,7 +32,9 @@ from app.schemas.base_spell import (
     SpellUpcastConfig,
 )
 from app.services.base_spell_seeds import (
+    bootstrap_base_spells_if_empty,
     export_base_spell_seed_document,
+    import_base_spell_seed_document,
     read_base_spell_seed_document,
     write_base_spell_seed_document,
 )
@@ -488,6 +491,63 @@ class BaseSpellSeedTests(unittest.TestCase):
             ["acid_splash", "fireball"],
         )
 
+    @patch("app.services.base_spell_seeds.create_base_spell")
+    @patch("app.services.base_spell_seeds.update_base_spell")
+    def test_import_base_spell_seed_document_upserts_entries(self, mock_update, mock_create):
+        existing_spell = make_base_spell(id="spell-existing", canonical_key="fireball")
+        session = MagicMock()
+        session.exec.return_value.all.return_value = [existing_spell]
+        document = BaseSpellSeedDocument(
+            version=1,
+            spells=[
+                BaseSpellCreate(
+                    canonicalKey="fireball",
+                    nameEn="Fireball",
+                    descriptionEn="Explosion of flame.",
+                    level=3,
+                    school=SpellSchool.EVOCATION,
+                ),
+                BaseSpellCreate(
+                    canonicalKey="magic_missile",
+                    nameEn="Magic Missile",
+                    descriptionEn="Darts of force.",
+                    level=1,
+                    school=SpellSchool.EVOCATION,
+                ),
+            ],
+        )
+
+        result = import_base_spell_seed_document(session, document)
+
+        self.assertEqual(result["inserted"], 1)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["total"], 2)
+        mock_update.assert_called_once()
+        mock_create.assert_called_once()
+        session.commit.assert_called_once()
+
+    @patch("app.services.base_spell_seeds.import_base_spell_seed_file")
+    def test_bootstrap_base_spells_if_empty_imports_when_catalog_is_empty(self, mock_import):
+        session = MagicMock()
+        session.exec.return_value.first.return_value = None
+        mock_import.return_value = {"inserted": 2, "updated": 0, "deactivated": 0, "total": 2}
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "base_spells.seed.json"
+            path.write_text('{"version":1,"spells":[]}', encoding="utf-8")
+            result = bootstrap_base_spells_if_empty(session, path=path)
+
+        self.assertEqual(result["inserted"], 2)
+        mock_import.assert_called_once()
+
+    def test_bootstrap_base_spells_if_empty_skips_when_catalog_exists(self):
+        session = MagicMock()
+        session.exec.return_value.first.return_value = "spell-1"
+
+        result = bootstrap_base_spells_if_empty(session)
+
+        self.assertEqual(result, {"inserted": 0, "updated": 0, "total": 0})
+
 
 # ---------------------------------------------------------------------------
 # Admin route tests
@@ -504,6 +564,24 @@ class AdminBaseSpellRouteTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].canonicalKey, "fireball")
         self.assertEqual(result[0].resolutionType, "damage")
+
+    @patch("app.api.routes.admin_base_spells.import_base_spell_seed_file")
+    def test_admin_sync_seed_route_returns_sync_result(self, mock_import):
+        mock_import.return_value = {
+            "inserted": 3,
+            "updated": 2,
+            "deactivated": 0,
+            "total": 5,
+        }
+
+        result = admin_sync_base_spells_seed(
+            _user=self.admin_user,
+            session=MagicMock(),
+        )
+
+        self.assertEqual(result.inserted, 3)
+        self.assertEqual(result.updated, 2)
+        self.assertEqual(result.total, 5)
 
     @patch("app.api.routes.admin_base_spells.create_base_spell")
     def test_admin_create_route_returns_created_spell(self, mock_create):

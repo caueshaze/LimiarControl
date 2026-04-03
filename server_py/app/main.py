@@ -42,6 +42,7 @@ from app.core.logging import RequestLoggingMiddleware
 from app.db.migrations import ensure_database_schema
 from app.db.session import engine
 from app.services.base_item_seeds import bootstrap_base_items_if_empty
+from app.services.base_spell_seeds import bootstrap_base_spells_if_empty
 from app.services.centrifugo import centrifugo
 
 _is_production = settings.app_env != "development"
@@ -128,6 +129,7 @@ def health():
 def startup_event() -> None:
     ensure_database_schema()
     with Session(engine) as session:
+        bootstrap_base_spells_if_empty(session)
         bootstrap_base_items_if_empty(session)
 
 

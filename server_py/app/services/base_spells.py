@@ -136,7 +136,13 @@ def _apply_payload(spell: BaseSpell, data: dict) -> None:
             setattr(spell, key, value)
 
 
-def create_base_spell(*, db: Session, payload: BaseSpellCreate) -> BaseSpell:
+def _create_base_spell(
+    *,
+    db: Session,
+    payload: BaseSpellCreate,
+    commit: bool,
+    refresh: bool,
+) -> BaseSpell:
     existing = get_base_spell_by_canonical_key(
         db=db,
         system=payload.system,
@@ -152,9 +158,23 @@ def create_base_spell(*, db: Session, payload: BaseSpellCreate) -> BaseSpell:
     data = payload.model_dump(exclude={"system"})
     _apply_payload(spell, data)
     db.add(spell)
-    db.commit()
-    db.refresh(spell)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    if refresh:
+        db.refresh(spell)
     return spell
+
+
+def create_base_spell(
+    *,
+    db: Session,
+    payload: BaseSpellCreate,
+    commit: bool = True,
+    refresh: bool = True,
+) -> BaseSpell:
+    return _create_base_spell(db=db, payload=payload, commit=commit, refresh=refresh)
 
 
 def update_base_spell(
@@ -162,12 +182,18 @@ def update_base_spell(
     db: Session,
     spell: BaseSpell,
     payload: BaseSpellUpdate,
+    commit: bool = True,
+    refresh: bool = True,
 ) -> BaseSpell:
     data = payload.model_dump(exclude_unset=True)
     _apply_payload(spell, data)
     db.add(spell)
-    db.commit()
-    db.refresh(spell)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    if refresh:
+        db.refresh(spell)
     return spell
 
 
