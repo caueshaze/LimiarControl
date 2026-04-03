@@ -98,6 +98,8 @@ export const combatUiPtBRDictionary = {
   "combatUi.gmQuickActions": "Ações rápidas do GM",
   "combatUi.revivePlayer": "Reviver Jogador",
   "combatUi.revivePlayerHint": "Use o revive explícito para jogadores mortos. Cura normal não revive personagem morto.",
+  "combatUi.revivePlayerSuccess": "Jogador revivido com {hp} PV.",
+  "combatUi.revivePlayerError": "Falha ao reviver jogador.",
   "combatUi.advanceTurn": "Avançar Turno",
   "combatUi.markReaction": "Marcar Reação",
   "combatUi.applyEffect": "Aplicar Efeito",

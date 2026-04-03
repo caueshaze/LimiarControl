@@ -22,7 +22,7 @@ It is designed around party-based play: players join a party, create their chara
 - Backend: FastAPI, SQLModel, Alembic
 - Database: PostgreSQL 16
 - Real-time: Centrifugo
-- Local infrastructure: Docker Compose for PostgreSQL and Centrifugo
+- Local infrastructure: Docker Compose
 
 ## Repository layout
 
@@ -44,7 +44,9 @@ It is designed around party-based play: players join a party, create their chara
 │   └── alembic/             Database migrations
 ├── centrifugo/              Centrifugo config
 ├── Base/                    Base RPG datasets used by the app
-└── docker-compose.yml       Local development services
+├── docker-compose.yml       Local development infra
+├── docker-compose.lab.yml   Homologation stack
+└── docker-compose.prod.yml  Production-like stack
 ```
 
 ## Core flow
@@ -63,6 +65,35 @@ It is designed around party-based play: players join a party, create their chara
    - grant items or currency to players
 7. Players receive state updates live through Centrifugo events.
 
+## Environments
+
+### Development
+
+Recommended for day-to-day work. Run infrastructure in Docker and keep frontend/backend hot reload on the host.
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3000`
+- Centrifugo: `ws://localhost:8001/connection/websocket`
+- Compose file: [docker-compose.yml](/home/caue/LimiarControl/docker-compose.yml)
+
+### Lab
+
+Recommended for pre-merge validation and homologation. This stack is isolated from production and uses its own ports, containers, network, and database volume.
+
+- Frontend: `http://127.0.0.1:3001`
+- API: `http://127.0.0.1:8002`
+- Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
+- Compose file: [docker-compose.lab.yml](/home/caue/LimiarControl/docker-compose.lab.yml)
+- Env example: [.env.lab.example](/home/caue/LimiarControl/.env.lab.example)
+
+### Production
+
+Production now uses the single-container app stack for frontend + backend, with Centrifugo and Postgres alongside it.
+
+- App + API: `http://127.0.0.1:8000`
+- Centrifugo: `ws://127.0.0.1:8001/connection/websocket`
+- Compose file: [docker-compose.prod.yml](/home/caue/LimiarControl/docker-compose.prod.yml)
+
 ## Local development
 
 ### Prerequisites
@@ -76,7 +107,7 @@ It is designed around party-based play: players join a party, create their chara
 Start PostgreSQL and Centrifugo:
 
 ```bash
-docker compose up -d db centrifugo
+docker compose up -d
 ```
 
 ### 2. Backend setup
@@ -126,17 +157,30 @@ npm run dev
 - API docs: `http://localhost:3000/docs`
 - API health: `http://localhost:3000/health`
 
-### 5. Teste o stack em container único
+### 5. Validate the production-like stack locally
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Endpoints esperados nesse modo:
+Expected endpoints in this mode:
 
 - App + API: `http://127.0.0.1:8000/`
 - API health: `http://127.0.0.1:8000/health`
 - Centrifugo websocket: `ws://localhost:8001/connection/websocket`
+
+### 6. Validate the lab stack locally
+
+```bash
+cp .env.lab.example .env.lab
+docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
+```
+
+Expected endpoints in this mode:
+
+- Frontend: `http://127.0.0.1:3001/`
+- API health: `http://127.0.0.1:8002/health`
+- Centrifugo websocket: `ws://127.0.0.1:8003/connection/websocket`
 
 ## Environment files
 
@@ -174,6 +218,14 @@ DOCKER_VITE_ENABLE_MUSIC=true
 DOCKER_VITE_ENABLE_MAPS=true
 ```
 
+### Lab `.env`
+
+Use [.env.lab.example](/home/caue/LimiarControl/.env.lab.example) as the starting point for homologation:
+
+```bash
+cp .env.lab.example .env.lab
+```
+
 ## Useful commands
 
 ### Frontend
@@ -185,12 +237,12 @@ npm run preview
 npx tsc --noEmit
 ```
 
-### Produção com container único
+### Production with single-container app
 
-O `Dockerfile` principal já empacota frontend + backend no mesmo container. Em produção,
-o FastAPI serve o `dist/` do Vite diretamente.
+The main `Dockerfile` already packages frontend + backend in the same container. In production,
+FastAPI serves the Vite `dist/` directly.
 
-Antes de subir o stack de produção, ajuste o `.env` da raiz com valores reais:
+Before bringing the production stack up, set the root `.env` with real values:
 
 ```env
 APP_ENV=production
@@ -212,8 +264,25 @@ Suba com:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Se `POSTGRES_USER=postgres` e `POSTGRES_PASSWORD=postgres` continuarem no `.env`, o backend
-vai abortar em produção com `DATABASE_URL must use strong credentials in production`.
+If `POSTGRES_USER=postgres` and `POSTGRES_PASSWORD=postgres` remain in `.env`, the backend
+will abort in production with `DATABASE_URL must use strong credentials in production`.
+
+### Lab stack
+
+The lab stack is intentionally isolated from production:
+
+- frontend lab: `127.0.0.1:3001`
+- api lab: `127.0.0.1:8002`
+- realtime lab: `127.0.0.1:8003`
+- containers: `limiar-lab-*`
+- network: `limiar_lab_internal`
+- database volume: `limiar_lab_db`
+
+Start it with:
+
+```bash
+docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
+```
 
 ### Backend
 
@@ -240,9 +309,16 @@ Export the current database catalog back to the repository seed format:
 server_py/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
 ```
 
+Bootstrap or replace the base spell catalog with the repository seed:
+
+```bash
+server_py/.venv/bin/python scripts/import_base_spells_json.py --input Base/base_spells.seed.json --replace
+```
+
 Notes:
 
 - `Base/base_items.seed.json` is the official bootstrap/backup file for the base item catalog
+- `Base/base_spells.seed.json` is the official bootstrap/backup file for the base spell catalog
 - the database is the source of truth at runtime
 - old CSV files may remain in `Base/` for editorial reference, but they are no longer part of the main runtime flow
 

@@ -349,7 +349,7 @@ class CombatDamageMixin:
         await cls._emit_player_state_update(db, session_id, target_p["ref_id"], target_model)
         await cls._emit_state(session_id, state)
         await cls._emit_log(session_id, {
-            "message": f"{target_p['display_name']} was revived with {data['currentHP']} HP.",
+            "message": f"{target_p['display_name']} foi revivido com {data['currentHP']} PV.",
             "actorUserId": actor_user_id,
             "source": "gm_override",
         })

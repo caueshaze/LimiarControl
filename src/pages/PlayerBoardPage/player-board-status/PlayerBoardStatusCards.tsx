@@ -51,11 +51,15 @@ export const DeathSaveCard = ({
   combatActive: boolean;
   playerStatus: PlayerBoardStatusSummary;
 }) => {
+  const { t } = useLocale();
+  const isDead =
+    playerStatus.currentHp <= 0 && playerStatus.deathSaveFailures >= 3;
   const hasDeathSaveState =
-    combatActive &&
-    (playerStatus.currentHp <= 0 ||
-      playerStatus.deathSaveSuccesses > 0 ||
-      playerStatus.deathSaveFailures > 0);
+    isDead ||
+    (combatActive &&
+      (playerStatus.currentHp <= 0 ||
+        playerStatus.deathSaveSuccesses > 0 ||
+        playerStatus.deathSaveFailures > 0));
 
   if (!hasDeathSaveState) {
     return null;
@@ -81,28 +85,30 @@ export const DeathSaveCard = ({
 
   const label =
     status === "active"
-      ? "Back Up"
+      ? t("playerBoard.deathState.active")
       : status === "stable"
-        ? "Stable"
+        ? t("playerBoard.deathState.stable")
         : status === "dead"
-          ? "Dead"
-          : "Downed";
+          ? t("playerBoard.deathState.dead")
+          : t("playerBoard.deathState.downed");
 
   const description =
     status === "active"
-      ? `You are conscious again at ${playerStatus.currentHp}/${playerStatus.maxHp} HP.`
+      ? t("playerBoard.deathState.activeDescription")
+          .replace("{currentHp}", String(playerStatus.currentHp))
+          .replace("{maxHp}", String(playerStatus.maxHp))
       : status === "stable"
-        ? "You are stable at 0 HP and no longer rolling death saves."
+        ? t("playerBoard.deathState.stableDescription")
         : status === "dead"
-          ? "You reached 3 failed death saves."
-          : "You are at 0 HP and waiting on death save resolution.";
+          ? t("playerBoard.deathState.deadDescription")
+          : t("playerBoard.deathState.downedDescription");
 
   return (
     <div className={`mt-5 rounded-3xl border px-4 py-4 ${toneClass}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-300">
-            Death Save Status
+            {t("playerBoard.deathState.title")}
           </p>
           <h3 className="mt-2 text-lg font-semibold">{label}</h3>
         </div>
@@ -116,13 +122,13 @@ export const DeathSaveCard = ({
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-300">
-            Successes
+            {t("playerBoard.deathState.successes")}
           </p>
           <p className="mt-2 text-xl font-semibold">{playerStatus.deathSaveSuccesses}/3</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-300">
-            Failures
+            {t("playerBoard.deathState.failures")}
           </p>
           <p className="mt-2 text-xl font-semibold">{playerStatus.deathSaveFailures}/3</p>
         </div>

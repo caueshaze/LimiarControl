@@ -98,6 +98,8 @@ export const combatUiEnUSDictionary = {
   "combatUi.gmQuickActions": "GM quick actions",
   "combatUi.revivePlayer": "Revive Player",
   "combatUi.revivePlayerHint": "Use explicit revive for dead players. Normal healing does not revive a dead character.",
+  "combatUi.revivePlayerSuccess": "Player revived with {hp} HP.",
+  "combatUi.revivePlayerError": "Failed to revive player.",
   "combatUi.advanceTurn": "Advance Turn",
   "combatUi.markReaction": "Mark Reaction",
   "combatUi.applyEffect": "Apply Effect",

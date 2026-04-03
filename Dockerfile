@@ -27,6 +27,11 @@ COPY src ./src
 
 RUN npm run build
 
+FROM nginx:1.27-alpine AS frontend-runtime
+
+COPY docker/nginx.lab-frontend.conf /etc/nginx/conf.d/default.conf
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
+
 FROM python:3.11-slim
 
 RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser

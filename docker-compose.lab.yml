@@ -1,0 +1,100 @@
+name: limiar-lab
+
+services:
+  db:
+    image: postgres:16
+    container_name: limiar-lab-db
+    environment:
+      POSTGRES_USER: ${LAB_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${LAB_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${LAB_POSTGRES_DB:-limiarcontrol_lab}
+    volumes:
+      - limiar_lab_db:/var/lib/postgresql/data
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    container_name: limiar-lab-centrifugo
+    command: centrifugo -c /centrifugo/config.json
+    volumes:
+      - ./centrifugo/config.json:/centrifugo/config.json:ro,Z
+    environment:
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
+      CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
+      CENTRIFUGO_ALLOWED_ORIGINS: ${LAB_CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
+    ports:
+      - "127.0.0.1:8003:8000"
+    networks:
+      - internal
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_ENV: ${LAB_VITE_APP_ENV:-production}
+        VITE_API_BASE_URL: ${LAB_DOCKER_VITE_API_BASE_URL:-http://127.0.0.1:8002/api}
+        VITE_CENTRIFUGO_URL: ${LAB_DOCKER_VITE_CENTRIFUGO_URL:-ws://127.0.0.1:8003/connection/websocket}
+        VITE_ENABLE_MUSIC: ${LAB_DOCKER_VITE_ENABLE_MUSIC:-true}
+        VITE_ENABLE_MAPS: ${LAB_DOCKER_VITE_ENABLE_MAPS:-true}
+    container_name: limiar-lab-api
+    ports:
+      - "127.0.0.1:${LAB_API_PORT:-8002}:8000"
+    environment:
+      APP_ENV: ${LAB_APP_ENV:-production}
+      DATABASE_URL: postgresql+psycopg://${LAB_POSTGRES_USER:-postgres}:${LAB_POSTGRES_PASSWORD:-postgres}@db:5432/${LAB_POSTGRES_DB:-limiarcontrol_lab}
+      JWT_SECRET: ${LAB_JWT_SECRET:?LAB_JWT_SECRET is required}
+      CENTRIFUGO_API_URL: http://centrifugo:8000/api
+      CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
+      CENTRIFUGO_TOKEN_SECRET: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
+      CENTRIFUGO_PUBLIC_URL: ${LAB_CENTRIFUGO_PUBLIC_URL:-ws://127.0.0.1:8003/connection/websocket}
+      CORS_ORIGIN: ${LAB_CORS_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001}
+      AUTO_MIGRATE: ${LAB_AUTO_MIGRATE:-true}
+      CLOUDINARY_CLOUD_NAME: ${LAB_CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${LAB_CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${LAB_CLOUDINARY_API_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      centrifugo:
+        condition: service_started
+    networks:
+      - internal
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-runtime
+      args:
+        VITE_APP_ENV: ${LAB_VITE_APP_ENV:-production}
+        VITE_API_BASE_URL: ${LAB_DOCKER_VITE_API_BASE_URL:-http://127.0.0.1:8002/api}
+        VITE_CENTRIFUGO_URL: ${LAB_DOCKER_VITE_CENTRIFUGO_URL:-ws://127.0.0.1:8003/connection/websocket}
+        VITE_ENABLE_MUSIC: ${LAB_DOCKER_VITE_ENABLE_MUSIC:-true}
+        VITE_ENABLE_MAPS: ${LAB_DOCKER_VITE_ENABLE_MAPS:-true}
+    container_name: limiar-lab-frontend
+    ports:
+      - "127.0.0.1:${LAB_FRONTEND_PORT:-3001}:80"
+    depends_on:
+      - api
+    networks:
+      - internal
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+    name: limiar_lab_internal
+
+volumes:
+  limiar_lab_db:
+    name: limiar_lab_db

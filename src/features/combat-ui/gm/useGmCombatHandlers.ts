@@ -8,6 +8,7 @@ import type {
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import type { CombatAction } from "../../../entities/campaign-entity/campaignEntity.types";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus"]);
 
@@ -68,6 +69,7 @@ export const useGmCombatHandlers = ({
   setOverrideResourceName,
   setPendingOverrideAction,
 }: UseCombatHandlersOptions) => {
+  const { t } = useLocale();
   const formatEntityActionResult = (result: CombatEntityActionResult) => {
     const actionName = result.action_name || selectedCombatAction?.name || selectedUtilityAction?.name || "Action";
     if (result.action_kind === "weapon_attack" || result.action_kind === "spell_attack") {
@@ -291,10 +293,12 @@ export const useGmCombatHandlers = ({
         target_participant_id: targetParticipantId,
         hp,
       });
-      setActionResult(`Player revived with ${result.new_hp} HP.`);
+      setActionResult(
+        t("combatUi.revivePlayerSuccess").replace("{hp}", String(result.new_hp)),
+      );
       await refreshCombat();
     } catch (err: any) {
-      setActionError(err?.data?.detail || err?.message || "Failed to revive player");
+      setActionError(err?.data?.detail || err?.message || t("combatUi.revivePlayerError"));
     } finally {
       setSubmitting(false);
     }

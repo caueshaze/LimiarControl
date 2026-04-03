@@ -4,9 +4,23 @@
 - Python 3.11+
 - Docker (for Postgres and Centrifugo)
 
+## Recommended workflows
+
+### Development
+
+Use the root [docker-compose.yml](/home/caue/LimiarControl/docker-compose.yml) for infrastructure and run FastAPI locally with reload.
+
+### Lab
+
+Use [docker-compose.lab.yml](/home/caue/LimiarControl/docker-compose.lab.yml) when you want an isolated homologation stack before merging to `main`.
+
+### Production-like
+
+Use [docker-compose.prod.yml](/home/caue/LimiarControl/docker-compose.prod.yml) when you want to validate the single-container app stack locally or on a server.
+
 ## Run Postgres
 ```bash
-docker compose up -d db centrifugo
+docker compose up -d
 ```
 
 This starts PostgreSQL on port `5432` and Centrifugo on port `8001`.
@@ -50,23 +64,30 @@ Set `AUTO_MIGRATE=false` if you prefer fail-fast behavior instead of automatic u
 
 ## Seed base catalogs
 
-After the schema is up to date, bootstrap the base item catalog from the repository JSON seed.
+After the schema is up to date, bootstrap the base catalogs from the repository JSON seeds.
 
-Import:
+Items import:
 
 ```bash
 server_py/.venv/bin/python scripts/import_base_items_json.py --input Base/base_items.seed.json --replace
 ```
 
-Export:
+Items export:
 
 ```bash
 server_py/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
 ```
 
+Spells import:
+
+```bash
+server_py/.venv/bin/python scripts/import_base_spells_json.py --input Base/base_spells.seed.json --replace
+```
+
 Notes:
 
 - `Base/base_items.seed.json` is the official bootstrap/backup file for base items
+- `Base/base_spells.seed.json` is the official bootstrap/backup file for base spells
 - the runtime source of truth is the database
 - legacy CSV files are no longer part of the main runtime flow
 
@@ -82,6 +103,21 @@ Validated local result:
 cd server_py
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
+
+## Run lab locally
+
+Use the lab env example from the repo root:
+
+```bash
+cp .env.lab.example .env.lab
+docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
+```
+
+Endpoints:
+
+- Frontend: `http://127.0.0.1:3001`
+- API health: `http://127.0.0.1:8002/health`
+- Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
 
 ## Combat docs
 
