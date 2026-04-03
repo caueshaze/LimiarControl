@@ -37,11 +37,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_APP_ENV: ${VITE_APP_ENV:-production}
+        VITE_API_BASE_URL: ${DOCKER_VITE_API_BASE_URL:-/api}
+        VITE_CENTRIFUGO_URL: ${DOCKER_VITE_CENTRIFUGO_URL:-ws://localhost:8001/connection/websocket}
+        VITE_ENABLE_MUSIC: ${DOCKER_VITE_ENABLE_MUSIC:-true}
+        VITE_ENABLE_MAPS: ${DOCKER_VITE_ENABLE_MAPS:-true}
     container_name: limiarcontrol-api
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     environment:
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-limiarcontrol}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       CENTRIFUGO_API_URL: http://centrifugo:8000/api

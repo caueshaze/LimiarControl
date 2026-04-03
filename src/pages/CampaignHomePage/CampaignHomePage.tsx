@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
@@ -7,6 +7,7 @@ import { useLocale } from "../../shared/hooks/useLocale";
 import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { CampaignQuickLinkCard } from "./CampaignQuickLinkCard";
+import { BackButton } from "../../shared/ui";
 
 export const CampaignHomePage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -132,12 +133,11 @@ export const CampaignHomePage = () => {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to={routes.home}
+            <BackButton
+              fallbackTo={routes.gmHome}
+              label={t("campaignHome.back")}
               className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
-            >
-              {t("campaignHome.back")}
-            </Link>
+            />
           </div>
         </div>
         <p className="mt-4 text-sm text-slate-300">

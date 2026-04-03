@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { characterSheetDraftsRepo } from "../../shared/api/characterSheetDraftsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import type { PartyCharacterSheetDraftRecord } from "../../entities/character";
@@ -47,18 +46,9 @@ export const PartyDetailsCharacterSheetDraftsCard = ({
     if (creating) return;
     setCreating(true);
     try {
-      const draft = await characterSheetDraftsRepo.create(partyId, {
-        name: t("gm.party.draftDefaultName"),
-        data: INITIAL_SHEET,
-      });
-      await onChanged();
       navigate(
-        routes.gmPartyCharacterSheetDraft
-          .replace(":partyId", partyId)
-          .replace(":draftId", draft.id),
+        routes.gmPartyCharacterSheetDraftNew.replace(":partyId", partyId),
       );
-    } catch (error) {
-      alert((error as { message?: string })?.message ?? "Failed to create draft.");
     } finally {
       setCreating(false);
     }

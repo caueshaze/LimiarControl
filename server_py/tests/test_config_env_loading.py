@@ -92,6 +92,61 @@ class TestConfigEnvLoading(unittest.TestCase):
             self.assertEqual(environ["JWT_SECRET"], "shared-secret")
             self.assertEqual(environ["CENTRIFUGO_API_URL"], "http://localhost:8001/api")
 
+    def test_fallback_env_dir_loads_root_env_when_backend_env_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root_env_dir = Path(tmp_dir) / "root"
+            backend_env_dir = root_env_dir / "server_py"
+            root_env_dir.mkdir()
+            backend_env_dir.mkdir()
+
+            (root_env_dir / ".env").write_text(
+                "DATABASE_URL=postgresql+psycopg://root-user:root-pass@db:5432/root\n"
+                "JWT_SECRET=root-secret\n"
+                "CENTRIFUGO_API_URL=https://root.example.com/api\n"
+            )
+
+            environ = {}
+            load_env(
+                env_dir=backend_env_dir,
+                fallback_env_dir=root_env_dir,
+                environ=environ,
+            )
+
+            self.assertEqual(
+                environ["DATABASE_URL"],
+                "postgresql+psycopg://root-user:root-pass@db:5432/root",
+            )
+            self.assertEqual(environ["JWT_SECRET"], "root-secret")
+            self.assertEqual(environ["CENTRIFUGO_API_URL"], "https://root.example.com/api")
+
+    def test_backend_env_overrides_root_env_when_both_exist(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root_env_dir = Path(tmp_dir) / "root"
+            backend_env_dir = root_env_dir / "server_py"
+            root_env_dir.mkdir()
+            backend_env_dir.mkdir()
+
+            (root_env_dir / ".env").write_text(
+                "DATABASE_URL=postgresql+psycopg://root-user:root-pass@db:5432/root\n"
+                "JWT_SECRET=root-secret\n"
+            )
+            (backend_env_dir / ".env").write_text(
+                "DATABASE_URL=postgresql+psycopg://api-user:api-pass@db:5432/backend\n"
+            )
+
+            environ = {}
+            load_env(
+                env_dir=backend_env_dir,
+                fallback_env_dir=root_env_dir,
+                environ=environ,
+            )
+
+            self.assertEqual(
+                environ["DATABASE_URL"],
+                "postgresql+psycopg://api-user:api-pass@db:5432/backend",
+            )
+            self.assertEqual(environ["JWT_SECRET"], "root-secret")
+
 
 if __name__ == "__main__":
     unittest.main()

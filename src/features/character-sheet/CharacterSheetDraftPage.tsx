@@ -37,6 +37,7 @@ export const CharacterSheetDraftPage = () => {
       partyId={partyId ?? null}
       campaignId={campaignId}
       mode="creation"
+      creationDraftMode
       creationDraftId={draftId ?? null}
       backHref={partyId ? routes.partyDetails.replace(":partyId", partyId) : null}
       backLabel={t("sheet.header.backToParty")}

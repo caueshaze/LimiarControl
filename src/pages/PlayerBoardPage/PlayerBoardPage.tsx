@@ -28,6 +28,7 @@ import { useSession } from "../../features/sessions";
 import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
 import { PlayerCombatModeShell } from "../../features/combat-ui/player/PlayerCombatModeShell";
 import { useCombatUiState } from "../../features/combat-ui/useCombatUiState";
+import { navigateBackOrFallback } from "../../shared/lib/navigation";
 
 export const PlayerBoardPage = () => {
   const { locale, t } = useLocale();
@@ -232,11 +233,11 @@ export const PlayerBoardPage = () => {
         combatActive={combatActive}
         inventoryTotal={inventoryTotal}
         onBack={() =>
-          navigate(
-            partyId
+          navigateBackOrFallback(navigate, {
+            fallbackTo: partyId
               ? routes.playerPartyDetails.replace(":partyId", partyId)
               : routes.home,
-          )
+          })
         }
         primaryActionLabel={activeSession?.status === "ACTIVE" && partyId ? t("playerBoard.openSheet") : null}
         onPrimaryAction={activeSession?.status === "ACTIVE" && partyId ? handleOpenSheet : undefined}

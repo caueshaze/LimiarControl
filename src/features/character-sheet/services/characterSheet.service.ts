@@ -133,6 +133,17 @@ export async function saveCharacterSheetDraft(
   });
 }
 
+export async function createCharacterSheetDraft(
+  partyId: string,
+  draftName: string,
+  sheet: CharacterSheet,
+): Promise<PartyCharacterSheetDraftRecord> {
+  return characterSheetDraftsRepo.create(partyId, {
+    name: draftName,
+    data: sheet,
+  });
+}
+
 export async function acceptCharacterSheet(
   partyId: string,
 ): Promise<CharacterSheetRecord> {

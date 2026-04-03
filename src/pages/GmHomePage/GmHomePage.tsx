@@ -61,6 +61,9 @@ export const GmHomePage = () => {
           campaignsCount={campaigns.length}
           partiesCount={parties.length}
           activeCampaignName={selectedCampaign?.name ?? null}
+          onOpenAdmin={
+            user?.isSystemAdmin ? () => navigate(routes.adminHome) : undefined
+          }
         />
 
         <section className="rounded-[34px] border border-limiar-300/10 bg-[linear-gradient(180deg,rgba(26,12,55,0.4),rgba(2,6,23,0.92))] p-1 shadow-[0_24px_70px_rgba(2,6,23,0.32)]">

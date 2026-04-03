@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { CharacterSheetMode } from "../model/characterSheet.types";
@@ -9,6 +9,7 @@ import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
 import { formatClassDisplayName } from "../data/classes";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import { canNavigateBack, navigateBackOrFallback } from "../../../shared/lib/navigation";
 
 const REQUIRED_FIELD_LABEL_KEY: Record<RequiredField, LocaleKey> = {
   name: "sheet.basicInfo.characterName",
@@ -55,6 +56,10 @@ type Props = {
   saveDisabledReason?: string | null;
   missingRequiredFields?: RequiredField[];
   onSave: () => void;
+  draftName?: string;
+  draftNamePlaceholder?: string;
+  draftNameDisabled?: boolean;
+  onDraftNameChange?: (value: string) => void;
   // Import / export
   importRef: React.RefObject<HTMLInputElement | null>;
   importError: string | null;
@@ -67,6 +72,7 @@ export const CharacterHeader = ({
   sheet, mode, canSave, showResetImport, ac, initiative, profBonus, passivePerception,
   spellSaveDC, spellAttack, hpTextColor,
   partyId, backHref, backLabel, isDirty, saving, saveError, saveDisabledReason, missingRequiredFields = [], onSave,
+  draftName, draftNamePlaceholder, draftNameDisabled = false, onDraftNameChange,
   importRef, importError, onExport, onImport, onReset,
 }: Props) => {
   const navigate = useNavigate();
@@ -74,25 +80,25 @@ export const CharacterHeader = ({
   const isCreation = mode === "creation";
   const activeConditions = CONDITION_NAMES.filter((c) => sheet.conditions[c]);
   const [showSaved, setShowSaved] = useState(false);
+  const previousSavingRef = useRef(false);
 
-  // Show "Saved" briefly after a successful save
   useEffect(() => {
-    if (canSave && !saving && !isDirty && !saveError && partyId) {
+    if (canSave && previousSavingRef.current && !saving && !saveError && partyId) {
       setShowSaved(true);
       const timer = setTimeout(() => setShowSaved(false), 2000);
+      previousSavingRef.current = saving;
       return () => clearTimeout(timer);
     }
+    previousSavingRef.current = saving;
   }, [canSave, saving, isDirty, saveError, partyId]);
 
   const handleBack = () => {
-    if (backHref) {
-      navigate(backHref);
-      return;
-    }
-    if (window.history.length > 1) {
-      navigate(-1);
-    }
+    navigateBackOrFallback(navigate, { fallbackTo: backHref });
   };
+  const showBackButton = Boolean(backHref || canNavigateBack());
+  const backButtonLabel = canNavigateBack()
+    ? t("campaignHome.back")
+    : backLabel ?? t("sheet.header.backToParty");
 
   // Progress: count fields that are NOT missing
   const doneFields = TOTAL_REQUIRED_FIELDS - missingRequiredFields.length;
@@ -101,13 +107,13 @@ export const CharacterHeader = ({
   return (
     <div className="space-y-4 px-4 pt-4 lg:px-6">
       <div className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-3">
-        {(backHref || window.history.length > 1) && (
+        {showBackButton && (
           <button
             type="button"
             onClick={handleBack}
             className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300"
           >
-            {backLabel ?? t("sheet.header.backToParty")}
+            {backButtonLabel}
           </button>
         )}
         {showResetImport && (
@@ -124,6 +130,20 @@ export const CharacterHeader = ({
           <label className="cursor-pointer rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
             {t("sheet.header.importJson")}
             <input ref={importRef} type="file" accept=".json" className="hidden" onChange={onImport} />
+          </label>
+        )}
+        {partyId && onDraftNameChange && (
+          <label className="flex min-w-[260px] flex-1 items-center gap-3 rounded-[20px] border border-white/8 bg-white/3 px-4 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              {t("sheet.header.draftName")}
+            </span>
+            <input
+              value={draftName ?? ""}
+              disabled={draftNameDisabled}
+              onChange={(event) => onDraftNameChange(event.target.value)}
+              placeholder={draftNamePlaceholder ?? ""}
+              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-500"
+            />
           </label>
         )}
 

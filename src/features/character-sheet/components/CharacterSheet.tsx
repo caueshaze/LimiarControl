@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { routes } from "../../../app/routes/routes";
 import { useCharacterSheet } from "../hooks/useCharacterSheet";
 import type { CharacterSheetMode } from "../model/characterSheet.types";
 import { CharacterHeader } from "./CharacterHeader";
@@ -36,6 +38,7 @@ type Props = {
   playPlayerUserId?: string | null;
   creationPlayerUserId?: string | null;
   creationDraftId?: string | null;
+  creationDraftMode?: boolean;
   canEditPlay?: boolean;
   backHref?: string | null;
   backLabel?: string | null;
@@ -49,34 +52,38 @@ export const CharacterSheet = ({
   playPlayerUserId = null,
   creationPlayerUserId = null,
   creationDraftId = null,
+  creationDraftMode = false,
   canEditPlay = false,
   backHref = null,
   backLabel = null,
   playContextLabel = null,
 }: Props) => {
+  const navigate = useNavigate();
   const actions = useCharacterSheet(partyId, mode, {
     playPlayerUserId,
     creationPlayerUserId,
     creationDraftId,
+    creationDraftMode,
     canEditPlay,
     campaignId,
   });
   const { sheet } = actions;
   const { t } = useLocale();
   const isCreation = mode === "creation";
+  const isCreationDraft = isCreation && creationDraftMode;
   const isPlay = mode === "play";
   const isGmPlayView = isPlay && canEditPlay;
   const isRuntimeReadOnly = isPlay && !canEditPlay;
   const isPlayReadOnly = isPlay;
-  const isDraftEditor = isCreation && !!creationDraftId;
-  const isOwnCreationSheet = isCreation && !creationPlayerUserId && !creationDraftId;
+  const isDraftEditor = isCreationDraft;
+  const isOwnCreationSheet = isCreation && !creationPlayerUserId && !isCreationDraft;
   const isPendingAcceptance =
     isOwnCreationSheet &&
     !!actions.characterRecord?.sourceDraftId &&
     !actions.characterRecord?.acceptedAt;
   const canEditExistingCreation =
     isDraftEditor
-      ? actions.draftRecord?.status === "active"
+      ? !actions.draftRecord || actions.draftRecord.status === "active"
       : isOwnCreationSheet
         ? !actions.characterRecord || actions.characterRecord.acceptedAt == null
         : false;
@@ -93,14 +100,20 @@ export const CharacterSheet = ({
     (!actions.remoteId || canEditExistingCreation);
   const shouldValidateCreationProgress =
     isCreation &&
+    !isCreationDraft &&
     !creationDraftId &&
     !actions.characterRecord?.sourceDraftId;
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const [draftName, setDraftName] = useState(t("gm.party.draftDefaultName"));
   const [pendingInventoryResetChange, setPendingInventoryResetChange] = useState<{
     field: "class" | "background" | "race";
     value: string;
   } | null>(null);
+  const savedDraftName = actions.draftRecord?.name ?? t("gm.party.draftDefaultName");
+  const normalizedDraftName = draftName.trim() || t("gm.party.draftDefaultName");
+  const isDraftNameDirty = isDraftEditor && normalizedDraftName !== savedDraftName;
+  const hasUnsavedChanges = actions.isDirty || isDraftNameDirty;
   const creationValidation = shouldValidateCreationProgress ? validateCreationSheet(sheet) : null;
   const saveBlockedReason = creationValidation && !creationValidation.isValid
     ? t("sheet.creation.saveBlocked")
@@ -164,14 +177,32 @@ export const CharacterSheet = ({
           ? t("sheet.basicInfo.race")
           : "";
 
+  useEffect(() => {
+    if (!isDraftEditor) {
+      return;
+    }
+    setDraftName(actions.draftRecord?.name ?? t("gm.party.draftDefaultName"));
+  }, [actions.draftRecord?.name, isDraftEditor, t]);
+
+  useEffect(() => {
+    if (!isDraftEditor || creationDraftId || !partyId || !actions.draftRecord?.id) {
+      return;
+    }
+    navigate(
+      routes.gmPartyCharacterSheetDraft
+        .replace(":partyId", partyId)
+        .replace(":draftId", actions.draftRecord.id),
+      { replace: true },
+    );
+  }, [actions.draftRecord?.id, creationDraftId, isDraftEditor, navigate, partyId]);
+
   const handleSave = () => {
     if (saveBlockedReason) return;
-    // First-time creation save: require explicit confirmation
-    if (isCreation && !actions.remoteId) {
+    if (isOwnCreationSheet && !actions.remoteId) {
       setShowConfirm(true);
       return;
     }
-    void actions.save();
+    void actions.save(isDraftEditor ? normalizedDraftName : undefined);
   };
 
   const {
@@ -213,12 +244,16 @@ export const CharacterSheet = ({
         partyId={partyId}
         backHref={backHref}
         backLabel={backLabel}
-        isDirty={actions.isDirty}
+        isDirty={hasUnsavedChanges}
         saving={actions.saving}
         saveError={actions.saveError}
         saveDisabledReason={saveBlockedReason}
         missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
         onSave={handleSave}
+        draftName={isDraftEditor ? draftName : undefined}
+        draftNamePlaceholder={isDraftEditor ? t("sheet.header.draftNamePlaceholder") : undefined}
+        draftNameDisabled={isSheetLocked}
+        onDraftNameChange={isDraftEditor ? setDraftName : undefined}
         importRef={actions.importRef}
         importError={actions.importError}
         onExport={actions.handleExport}

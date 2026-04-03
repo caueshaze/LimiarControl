@@ -5,6 +5,7 @@ type GmWorkspaceHeroProps = {
   campaignsCount: number;
   partiesCount: number;
   activeCampaignName: string | null;
+  onOpenAdmin?: () => void;
 };
 
 export const GmWorkspaceHero = ({
@@ -12,6 +13,7 @@ export const GmWorkspaceHero = ({
   campaignsCount,
   partiesCount,
   activeCampaignName,
+  onOpenAdmin,
 }: GmWorkspaceHeroProps) => {
   const { t } = useLocale();
 
@@ -45,6 +47,17 @@ export const GmWorkspaceHero = ({
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
             {t("gm.home.heroDescription")}
           </p>
+          {onOpenAdmin && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="rounded-full border border-amber-400/25 bg-amber-400/10 px-5 py-3 text-xs font-bold uppercase tracking-[0.22em] text-amber-100 transition hover:bg-amber-400/18"
+              >
+                {t("admin.menuLabel")}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">

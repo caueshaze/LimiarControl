@@ -39,37 +39,61 @@ def resolve_env_path(env_dir: Path, raw_path: str) -> Path:
     return env_dir / env_path
 
 
+def iter_env_dirs(env_dir: Path, fallback_env_dir: Path | None = None) -> list[Path]:
+    env_dirs: list[Path] = []
+    if fallback_env_dir and fallback_env_dir != env_dir:
+        env_dirs.append(fallback_env_dir)
+    env_dirs.append(env_dir)
+    return env_dirs
+
+
 def load_env(
     env_dir: Path | None = None,
+    fallback_env_dir: Path | None = None,
     environ: MutableMapping[str, str] | None = None,
 ) -> None:
     environ = environ if environ is not None else os.environ
-    env_dir = env_dir if env_dir is not None else Path(__file__).resolve().parents[2]
+    default_env_dir = Path(__file__).resolve().parents[2]
+    env_dir = env_dir if env_dir is not None else default_env_dir
+    if fallback_env_dir is None and env_dir == default_env_dir:
+        fallback_env_dir = default_env_dir.parent
     locked_keys = set(environ.keys())
 
     explicit_env_file = environ.get("APP_ENV_FILE")
     if explicit_env_file:
-        load_env_file(
-            resolve_env_path(env_dir, explicit_env_file),
-            locked_keys=locked_keys,
-            environ=environ,
+        explicit_candidates = [
+            resolve_env_path(candidate_env_dir, explicit_env_file)
+            for candidate_env_dir in iter_env_dirs(env_dir, fallback_env_dir)
+        ]
+        explicit_path = next(
+            (candidate for candidate in explicit_candidates if candidate.exists()),
+            explicit_candidates[-1],
         )
+        load_env_file(explicit_path, locked_keys=locked_keys, environ=environ)
         return
 
     app_env = environ.get("APP_ENV", "development")
-    load_env_file(env_dir / ".env", locked_keys=locked_keys, environ=environ)
-    load_env_file(env_dir / ".env.local", locked_keys=locked_keys, environ=environ)
+    for candidate_env_dir in iter_env_dirs(env_dir, fallback_env_dir):
+        load_env_file(candidate_env_dir / ".env", locked_keys=locked_keys, environ=environ)
+    for candidate_env_dir in iter_env_dirs(env_dir, fallback_env_dir):
+        load_env_file(
+            candidate_env_dir / ".env.local",
+            locked_keys=locked_keys,
+            environ=environ,
+        )
 
-    load_env_file(
-        env_dir / f".env.{app_env}",
-        locked_keys=locked_keys,
-        environ=environ,
-    )
-    load_env_file(
-        env_dir / f".env.{app_env}.local",
-        locked_keys=locked_keys,
-        environ=environ,
-    )
+    for candidate_env_dir in iter_env_dirs(env_dir, fallback_env_dir):
+        load_env_file(
+            candidate_env_dir / f".env.{app_env}",
+            locked_keys=locked_keys,
+            environ=environ,
+        )
+    for candidate_env_dir in iter_env_dirs(env_dir, fallback_env_dir):
+        load_env_file(
+            candidate_env_dir / f".env.{app_env}.local",
+            locked_keys=locked_keys,
+            environ=environ,
+        )
 
 
 load_env()

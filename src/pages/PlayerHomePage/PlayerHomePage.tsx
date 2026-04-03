@@ -216,6 +216,7 @@ export const PlayerHomePage = () => {
                   ?.scrollIntoView({ behavior: "smooth", block: "start" })
             : undefined
         }
+        onOpenAdmin={user?.isSystemAdmin ? () => navigate(routes.adminHome) : undefined}
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">

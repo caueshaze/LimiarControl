@@ -31,12 +31,11 @@ from app.schemas.base_spell import (
     SpellUpcastConfig,
 )
 from app.services.base_spell_seeds import (
-    bootstrap_base_spells_if_empty,
     export_base_spell_seed_document,
     read_base_spell_seed_document,
     write_base_spell_seed_document,
 )
-from app.services.base_spells import create_base_spell
+from app.services.base_spells import create_base_spell, delete_base_spell
 
 
 def make_base_spell(**overrides):
@@ -343,6 +342,28 @@ class BaseSpellServiceTests(unittest.TestCase):
             create_base_spell(db=MagicMock(), payload=payload)
         self.assertEqual(ctx.exception.status_code, 409)
 
+    def test_delete_clears_campaign_references_and_aliases_before_delete(self):
+        spell = make_base_spell(id="spell-1")
+        linked_campaign_spell = SimpleNamespace(base_spell_id="spell-1")
+        alias = SimpleNamespace(base_spell_id="spell-1")
+
+        campaign_spell_result = MagicMock()
+        campaign_spell_result.all.return_value = [linked_campaign_spell]
+        alias_result = MagicMock()
+        alias_result.all.return_value = [alias]
+
+        db = MagicMock()
+        db.exec.side_effect = [campaign_spell_result, alias_result]
+
+        delete_base_spell(db=db, spell=spell)
+
+        self.assertIsNone(linked_campaign_spell.base_spell_id)
+        db.add.assert_called_once_with(linked_campaign_spell)
+        self.assertEqual(db.delete.call_count, 2)
+        db.delete.assert_any_call(alias)
+        db.delete.assert_any_call(spell)
+        db.commit.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # Serializer tests
@@ -439,22 +460,6 @@ class BaseSpellSeedTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "Unknown source"):
                 read_base_spell_seed_document(path)
-
-    def test_bootstrap_imports_seed_when_catalog_is_empty(self):
-        session = MagicMock()
-        session.exec.return_value.first.return_value = None
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            path = Path(tmp_dir) / "base_spells.seed.json"
-            path.write_text('{"version": 1, "spells": []}', encoding="utf-8")
-            with patch(
-                "app.services.base_spell_seeds.import_base_spell_seed_file",
-                return_value={"inserted": 5, "updated": 0, "total": 5},
-            ) as mock_import:
-                result = bootstrap_base_spells_if_empty(session, path=path)
-
-        self.assertEqual(result["inserted"], 5)
-        mock_import.assert_called_once_with(session, path=path, replace=False)
 
     def test_export_base_spell_seed_document_writes_sorted_json(self):
         spell_b = make_base_spell(

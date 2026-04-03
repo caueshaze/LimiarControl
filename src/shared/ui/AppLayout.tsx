@@ -112,32 +112,18 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                   </button>
 
                   {user.isSystemAdmin && (
-                    <>
-                      <Link
-                        to={routes.systemCatalogAdmin}
-                        onClick={() => setOpen(false)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
-                      >
-                        <span className="uppercase tracking-widest text-slate-500">
-                          Admin
-                        </span>
-                        <span className="rounded-full border border-amber-400/30 px-2 py-0.5 font-bold uppercase tracking-widest text-amber-200">
-                          Base items
-                        </span>
-                      </Link>
-                      <Link
-                        to={routes.systemSpellCatalogAdmin}
-                        onClick={() => setOpen(false)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
-                      >
-                        <span className="uppercase tracking-widest text-slate-500">
-                          Admin
-                        </span>
-                        <span className="rounded-full border border-violet-400/30 px-2 py-0.5 font-bold uppercase tracking-widest text-violet-200">
-                          Base spells
-                        </span>
-                      </Link>
-                    </>
+                    <Link
+                      to={routes.adminHome}
+                      onClick={() => setOpen(false)}
+                      className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
+                    >
+                      <span className="uppercase tracking-widest text-slate-500">
+                        {t("admin.menuLabel")}
+                      </span>
+                      <span className="rounded-full border border-amber-400/30 px-2 py-0.5 font-bold uppercase tracking-widest text-amber-200">
+                        {t("admin.badge")}
+                      </span>
+                    </Link>
                   )}
 
                   <div className="mx-3 border-t border-white/6" />

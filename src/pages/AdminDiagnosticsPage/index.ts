@@ -1,0 +1,1 @@
+export { AdminDiagnosticsPage } from "./AdminDiagnosticsPage";

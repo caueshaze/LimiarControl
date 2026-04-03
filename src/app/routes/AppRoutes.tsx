@@ -1,12 +1,13 @@
 import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AppLayout } from "../../shared/ui/AppLayout";
+import { AdminLayout, AppLayout } from "../../shared/ui";
 import { APP_NAME } from "../config/appConfig";
 import { routes } from "./routes";
 import { RequireAuth, useAuth } from "../../features/auth";
 import { useCampaigns } from "../../features/campaign-select";
 import type { RoleMode } from "../../shared/types/role";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { resolveWorkspaceMode } from "./workspaceRouting";
 import { JoinPage } from "../../pages/JoinPage";
 import { LandingPage } from "../../pages/LandingPage";
 import { LoginPage } from "../../pages/LoginPage";
@@ -64,6 +65,22 @@ const CharacterSheetDraftPage = lazy(async () => {
   const module = await import("../../features/character-sheet");
   return { default: module.CharacterSheetDraftPage };
 });
+const AdminHomePage = lazy(async () => {
+  const module = await import("../../pages/AdminHomePage");
+  return { default: module.AdminHomePage };
+});
+const AdminUsersPage = lazy(async () => {
+  const module = await import("../../pages/AdminUsersPage");
+  return { default: module.AdminUsersPage };
+});
+const AdminCampaignsPage = lazy(async () => {
+  const module = await import("../../pages/AdminCampaignsPage");
+  return { default: module.AdminCampaignsPage };
+});
+const AdminDiagnosticsPage = lazy(async () => {
+  const module = await import("../../pages/AdminDiagnosticsPage");
+  return { default: module.AdminDiagnosticsPage };
+});
 
 const RequireGmRole = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -119,8 +136,18 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               <RequireGmRole>
-                <Navigate to={routes.home} replace />
+                {renderRoute(<GmHomePage />)}
               </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.workspaceHome}
+          element={
+            <RequireAuth>
+              {renderRoute(
+                resolveWorkspaceMode(userRole) === "gm" ? <GmHomePage /> : <PlayerHomePage />,
+              )}
             </RequireAuth>
           }
         />
@@ -157,6 +184,16 @@ export const AppRoutes = () => {
             <RequireAuth>
               <RequireGmRole>
                 {renderRoute(<PartyDetailsPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.gmPartyCharacterSheetDraftNew}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CharacterSheetDraftPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
@@ -215,26 +252,6 @@ export const AppRoutes = () => {
           }
         />
         <Route
-          path={routes.systemCatalogAdmin}
-          element={
-            <RequireAuth>
-              <RequireSystemAdmin>
-                {renderRoute(<SystemCatalogPage />)}
-              </RequireSystemAdmin>
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={routes.systemSpellCatalogAdmin}
-          element={
-            <RequireAuth>
-              <RequireSystemAdmin>
-                {renderRoute(<SystemSpellCatalogPage />)}
-              </RequireSystemAdmin>
-            </RequireAuth>
-          }
-        />
-        <Route
           path={routes.bestiary}
           element={
             <RequireAuth>
@@ -281,6 +298,88 @@ export const AppRoutes = () => {
               {renderRoute(
                 <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />,
               )}
+            </RequireAuth>
+          }
+        />
+      </Route>
+      <Route element={<AdminLayout user={user ?? undefined} onLogout={logout} />}>
+        <Route
+          path={routes.adminHome}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<AdminHomePage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.systemCatalogAdmin}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<Navigate to={routes.adminCatalogItems} replace />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.systemSpellCatalogAdmin}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<Navigate to={routes.adminCatalogSpells} replace />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.adminCatalogItems}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<SystemCatalogPage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.adminCatalogSpells}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<SystemSpellCatalogPage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.adminUsers}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<AdminUsersPage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.adminCampaigns}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<AdminCampaignsPage />)}
+              </RequireSystemAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.adminDiagnostics}
+          element={
+            <RequireAuth>
+              <RequireSystemAdmin>
+                {renderRoute(<AdminDiagnosticsPage />)}
+              </RequireSystemAdmin>
             </RequireAuth>
           }
         />

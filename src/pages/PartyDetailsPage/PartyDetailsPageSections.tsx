@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import type { PartyActiveSession, PartyDetail } from "../../shared/api/partiesRepo";
 import type { LobbyStatus } from "../../shared/api/sessionsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { BackButton } from "../../shared/ui";
 import { PartyDetailsSessionActivityLog } from "./PartyDetailsSessionActivityLog";
 
 type HeaderProps = {
@@ -27,12 +27,11 @@ export const PartyDetailsHeader = ({
   return (
     <header className="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/30 p-6">
       <div>
-        <Link
-          to={routes.home}
+        <BackButton
+          fallbackTo={routes.gmHome}
+          label={`← ${t("campaignHome.back")}`}
           className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200"
-        >
-          ← GM Home
-        </Link>
+        />
         <p className="mt-3 text-xs uppercase tracking-[0.3em] text-limiar-300">
           {t("gm.home.partyPanelTitle")}
         </p>

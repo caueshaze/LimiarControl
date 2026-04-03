@@ -84,7 +84,7 @@ export const PlayerBoardHero = ({
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
           >
             <span aria-hidden>←</span>
-            {t("playerParty.backHome")}
+            {t("campaignHome.back")}
           </button>
 
           <div className="flex flex-wrap items-center gap-2">

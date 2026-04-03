@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, Enum as SAEnum, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Enum as SAEnum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -182,8 +182,12 @@ class BaseSpellAlias(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     base_spell_id: str = Field(
-        foreign_key="base_spell.id",
-        index=True,
+        sa_column=Column(
+            String,
+            ForeignKey("base_spell.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
     )
     alias: str = Field(
         sa_column=Column(String, nullable=False, index=True)

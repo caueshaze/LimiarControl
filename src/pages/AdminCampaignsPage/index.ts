@@ -1,0 +1,1 @@
+export { AdminCampaignsPage } from "./AdminCampaignsPage";

@@ -64,7 +64,7 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
   } catch (error) {
     const err = new Error(
       baseUrl === "/api"
-        ? "Unable to reach the API. Make sure the backend is running on http://localhost:3000."
+        ? "Unable to reach the API. Make sure the current app origin is serving /api or that the backend is running on http://localhost:3000."
         : `Unable to reach the API at ${baseUrl}.`,
     ) as Error & HttpError;
     err.status = 0;

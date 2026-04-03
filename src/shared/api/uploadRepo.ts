@@ -29,7 +29,7 @@ export const uploadRepo = {
     } catch {
       throw new Error(
         baseUrl === "/api"
-          ? "Unable to reach the API. Make sure the backend is running on http://localhost:3000."
+          ? "Unable to reach the API. Make sure the current app origin is serving /api or that the backend is running on http://localhost:3000."
           : `Unable to reach the API at ${baseUrl}.`,
       );
     }

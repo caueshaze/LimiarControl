@@ -36,6 +36,7 @@ from app.schemas.item import ItemCreate
 from app.services.base_item_seeds import (
     bootstrap_base_items_if_empty,
     export_base_item_seed_document,
+    import_base_item_seed_document,
     read_base_item_seed_document,
     write_base_item_seed_document,
 )
@@ -481,6 +482,86 @@ class BaseItemSeedTests(unittest.TestCase):
             document = read_base_item_seed_document(path)
 
         self.assertEqual([item.canonicalKey for item in document.items], ["club", "dagger"])
+
+    @patch("app.services.base_item_seeds.update_base_item")
+    def test_replace_deactivates_stale_items_without_deleting_them(self, mock_update):
+        existing = make_base_item(id="item-existing", canonical_key="dagger", is_active=True)
+        stale = make_base_item(id="item-stale", canonical_key="club", is_active=True)
+        session = MagicMock()
+        session.exec.return_value.all.return_value = [existing, stale]
+        mock_update.return_value = existing
+        document = BaseItemSeedDocument(
+            version=1,
+            items=[
+                BaseItemCreate(
+                    canonicalKey="dagger",
+                    nameEn="Dagger",
+                    itemKind=BaseItemKind.WEAPON,
+                    weaponCategory=BaseItemWeaponCategory.SIMPLE,
+                    weaponRangeType=BaseItemWeaponRangeType.MELEE,
+                    damageDice="1d4",
+                    damageType="piercing",
+                    rangeNormalMeters=5,
+                ),
+            ],
+        )
+
+        result = import_base_item_seed_document(session, document, replace=True)
+
+        self.assertEqual(result["inserted"], 0)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["deactivated"], 1)
+        self.assertFalse(stale.is_active)
+        session.delete.assert_not_called()
+        session.commit.assert_called_once()
+        mock_update.assert_called_once_with(
+            db=session,
+            item=existing,
+            payload=document.items[0],
+            commit=False,
+            refresh=False,
+        )
+
+    @patch("app.services.base_item_seeds.create_base_item")
+    def test_import_rolls_back_all_changes_when_a_seed_entry_fails(self, mock_create):
+        created = make_base_item(id="item-created", canonical_key="dagger")
+        mock_create.side_effect = [
+            created,
+            RuntimeError("boom"),
+        ]
+        session = MagicMock()
+        session.exec.return_value.all.return_value = []
+        document = BaseItemSeedDocument(
+            version=1,
+            items=[
+                BaseItemCreate(
+                    canonicalKey="dagger",
+                    nameEn="Dagger",
+                    itemKind=BaseItemKind.WEAPON,
+                    weaponCategory=BaseItemWeaponCategory.SIMPLE,
+                    weaponRangeType=BaseItemWeaponRangeType.MELEE,
+                    damageDice="1d4",
+                    damageType="piercing",
+                    rangeNormalMeters=5,
+                ),
+                BaseItemCreate(
+                    canonicalKey="club",
+                    nameEn="Club",
+                    itemKind=BaseItemKind.WEAPON,
+                    weaponCategory=BaseItemWeaponCategory.SIMPLE,
+                    weaponRangeType=BaseItemWeaponRangeType.MELEE,
+                    damageDice="1d4",
+                    damageType="bludgeoning",
+                    rangeNormalMeters=5,
+                ),
+            ],
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "boom"):
+            import_base_item_seed_document(session, document, replace=False)
+
+        session.commit.assert_not_called()
+        session.rollback.assert_called_once()
 
 
 class AdminBaseItemRouteTests(unittest.TestCase):

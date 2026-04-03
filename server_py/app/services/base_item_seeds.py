@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from app.api.serializers.base_item import to_base_item_seed_entry
 from app.models.base_item import BaseItem
 from app.schemas.base_item import BaseItemCreate, BaseItemSeedDocument
-from app.services.base_items import create_base_item, get_base_item_by_canonical_key, update_base_item
+from app.services.base_items import create_base_item, update_base_item
 
 logger = logging.getLogger(__name__)
 
@@ -74,31 +74,58 @@ def import_base_item_seed_document(
 ) -> dict[str, int]:
     inserted = 0
     updated = 0
+    deactivated = 0
+    items_by_key: dict[tuple[str, str], BaseItem] = {}
+    touched_keys: set[tuple[str, str]] = set()
+    systems = sorted({item.system for item in document.items}, key=lambda value: value.value)
 
-    if replace:
-        systems = sorted({item.system for item in document.items}, key=lambda value: value.value)
-        if systems:
-            stale_items = db.exec(
-                select(BaseItem).where(BaseItem.system.in_(systems))  # type: ignore[arg-type]
-            ).all()
-            for stale_item in stale_items:
-                db.delete(stale_item)
-            db.commit()
+    if systems:
+        existing_items = db.exec(
+            select(BaseItem).where(BaseItem.system.in_(systems))  # type: ignore[arg-type]
+        ).all()
+        items_by_key = {
+            (item.system.value, item.canonical_key): item
+            for item in existing_items
+        }
 
-    for entry in document.items:
-        existing = get_base_item_by_canonical_key(
-            db=db,
-            system=entry.system,
-            canonical_key=entry.canonicalKey,
-        )
-        if existing:
-            update_base_item(db=db, item=existing, payload=entry)
-            updated += 1
-        else:
-            create_base_item(db=db, payload=BaseItemCreate.model_validate(entry.model_dump()))
+    try:
+        for entry in document.items:
+            key = (entry.system.value, entry.canonicalKey)
+            touched_keys.add(key)
+            existing = items_by_key.get(key)
+            if existing:
+                update_base_item(db=db, item=existing, payload=entry, commit=False, refresh=False)
+                updated += 1
+                continue
+
+            created = create_base_item(
+                db=db,
+                payload=BaseItemCreate.model_validate(entry.model_dump()),
+                commit=False,
+                refresh=False,
+            )
+            items_by_key[key] = created
             inserted += 1
 
-    return {"inserted": inserted, "updated": updated, "total": len(document.items)}
+        if replace:
+            for key, stale_item in items_by_key.items():
+                if key in touched_keys or not stale_item.is_active:
+                    continue
+                stale_item.is_active = False
+                db.add(stale_item)
+                deactivated += 1
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "inserted": inserted,
+        "updated": updated,
+        "deactivated": deactivated,
+        "total": len(document.items),
+    }
 
 
 def import_base_item_seed_file(

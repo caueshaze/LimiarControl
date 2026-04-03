@@ -9,6 +9,7 @@ import { useSession } from "../../features/sessions";
 import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { partiesRepo, type PartyInvite } from "../../shared/api/partiesRepo";
+import { navigateBackOrFallback } from "../../shared/lib/navigation";
 
 export const JoinPage = () => {
   const { selectCampaign, upsertCampaign } = useCampaigns();
@@ -93,7 +94,7 @@ export const JoinPage = () => {
       <header>
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigateBackOrFallback(navigate, { fallbackTo: routes.home })}
           className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200"
         >
           ← Voltar

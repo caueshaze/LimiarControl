@@ -1,6 +1,8 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
@@ -17,15 +19,35 @@ def normalize_username(username: str) -> str:
     return username.strip().lower()
 
 
+_REGISTER_ADMIN_LOCK_KEY = 461337486
+
+
+def _is_postgres_session(session: Session) -> bool:
+    bind = session.get_bind()
+    dialect = getattr(bind, "dialect", None)
+    return getattr(dialect, "name", None) == "postgresql"
+
+
+def _acquire_register_lock(session: Session) -> None:
+    if _is_postgres_session(session):
+        session.exec(
+            text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            params={"lock_key": _REGISTER_ADMIN_LOCK_KEY},
+        )
+
+
 @router.post("/auth/register", response_model=AuthResponse)
 def register(payload: RegisterRequest, session: Session = Depends(get_session)):
     username = normalize_username(payload.username)
     if not username or not payload.pin.strip():
         raise HTTPException(status_code=400, detail="Invalid payload")
+    _acquire_register_lock(session)
+
     existing = session.exec(select(User).where(User.username == username)).first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already exists")
-    is_first_user = session.exec(select(User.id)).first() is None
+
+    is_first_user = session.exec(select(func.count()).select_from(User)).one() == 0
     user = User(
         id=str(uuid4()),
         username=username,
@@ -35,7 +57,11 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
         is_system_admin=is_first_user,
     )
     session.add(user)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Username already exists") from exc
     session.refresh(user)
     token = build_access_token(user.id, user.username)
     return AuthResponse(token=token)

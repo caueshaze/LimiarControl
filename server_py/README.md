@@ -17,30 +17,26 @@ cd server_py
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-cp .env.example .env
 ```
 
-Use localhost-based values in `server_py/.env`:
+Use the repository root `.env`:
 
 ```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=limiarcontrol
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
+PORT=3000
 CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+CENTRIFUGO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
+APP_ENV=development
 AUTO_MIGRATE=true
 JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
+CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
-CENTRIFUGO_API_KEY=dev-api-key
-```
-
-If `server_py/.env` is reserved for production, keep your local database and
-Centrifugo config in `server_py/.env.development.local`. The backend now
-prefers that file automatically in development, so local runs stay on the dev
-services by default:
-
-```bash
-cd server_py
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
 ```
 
 ## Run migrations
@@ -85,7 +81,6 @@ Validated local result:
 ```bash
 cd server_py
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
-APP_ENV_FILE=.env.development.local uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 ## Combat docs

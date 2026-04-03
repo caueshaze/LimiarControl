@@ -11,6 +11,7 @@ type PlayerWorkspaceHeroProps = {
   focusPartyName: string | null;
   onOpenCurrent?: () => void;
   onOpenInvites?: () => void;
+  onOpenAdmin?: () => void;
 };
 
 export const PlayerWorkspaceHero = ({
@@ -22,6 +23,7 @@ export const PlayerWorkspaceHero = ({
   focusPartyName,
   onOpenCurrent,
   onOpenInvites,
+  onOpenAdmin,
 }: PlayerWorkspaceHeroProps) => {
   const { t } = useLocale();
 
@@ -106,6 +108,15 @@ export const PlayerWorkspaceHero = ({
                 className="rounded-full border border-white/10 bg-white/4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100 transition hover:border-white/20 hover:bg-white/8"
               >
                 {t("home.player.pendingInvites")}
+              </button>
+            )}
+            {onOpenAdmin && (
+              <button
+                type="button"
+                onClick={onOpenAdmin}
+                className="rounded-full border border-amber-400/25 bg-amber-400/10 px-5 py-3 text-xs font-bold uppercase tracking-[0.22em] text-amber-100 transition hover:bg-amber-400/18"
+              >
+                {t("admin.menuLabel")}
               </button>
             )}
           </div>

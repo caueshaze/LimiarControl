@@ -18,6 +18,7 @@ import { joinEnUSDictionary } from "./enUS/join";
 import { rollsEnUSDictionary } from "./enUS/rolls";
 import { sheetEnUSDictionary } from "./enUS/sheet";
 import { combatUiEnUSDictionary } from "./enUS/combatUi";
+import { adminEnUSDictionary } from "./enUS/admin";
 
 export const enUS = {
   ...navEnUSDictionary,
@@ -40,4 +41,5 @@ export const enUS = {
   ...rollsEnUSDictionary,
   ...sheetEnUSDictionary,
   ...combatUiEnUSDictionary,
+  ...adminEnUSDictionary,
 } as const;

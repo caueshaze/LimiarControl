@@ -26,6 +26,7 @@ router = APIRouter()
 class BaseItemSeedSyncResult(BaseModel):
     inserted: int
     updated: int
+    deactivated: int = 0
     total: int
 
 

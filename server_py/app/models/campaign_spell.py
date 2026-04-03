@@ -44,7 +44,7 @@ class CampaignSpell(SQLModel, table=True):
         default=None,
         sa_column=Column(
             String,
-            ForeignKey("base_spell.id"),
+            ForeignKey("base_spell.id", ondelete="SET NULL"),
             nullable=True,
             index=True,
         ),

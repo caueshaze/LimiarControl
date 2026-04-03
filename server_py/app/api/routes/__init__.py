@@ -1,5 +1,6 @@
 from app.api.routes.admin_base_items import router as admin_base_items_router
 from app.api.routes.admin_base_spells import router as admin_base_spells_router
+from app.api.routes.admin_system import router as admin_system_router
 from app.api.routes.base_items import router as base_items_router
 from app.api.routes.base_spells import router as base_spells_router
 from app.api.routes.campaign_catalog import router as campaign_catalog_router
@@ -29,6 +30,7 @@ __all__ = [
     "campaigns_router",
     "admin_base_items_router",
     "admin_base_spells_router",
+    "admin_system_router",
     "base_items_router",
     "base_spells_router",
     "campaign_catalog_router",

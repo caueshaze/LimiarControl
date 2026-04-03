@@ -86,7 +86,7 @@ export const gmPtBRDictionary = {
   "gm.party.draftsTitle": "Rascunhos de ficha",
   "gm.party.draftsDescription": "Monte fichas base da party sem vincular a um jogador de imediato, depois derive quando o player ja estiver no grupo.",
   "gm.party.createDraft": "Nova ficha rascunho",
-  "gm.party.creatingDraft": "Criando...",
+  "gm.party.creatingDraft": "Abrindo...",
   "gm.party.draftDefaultName": "Ficha rascunho",
   "gm.party.activeDrafts": "Ativos",
   "gm.party.archivedDrafts": "Arquivados",

@@ -212,6 +212,8 @@ export const sheetPtBRDictionary = {
   "sheet.header.retry": "Tentar novamente",
   "sheet.header.requiredBefore": "Obrigatório antes de salvar",
   "sheet.header.progressLabel": "{done}/{total} campos completos",
+  "sheet.header.draftName": "Nome do rascunho",
+  "sheet.header.draftNamePlaceholder": "Defina um nome para este rascunho",
   "sheet.status.lockedBody": "Esta ficha esta confirmada e nao pode mais ser alterada por este fluxo.",
   "sheet.status.pendingAcceptanceEyebrow": "Entrega pendente",
   "sheet.status.pendingAcceptanceBody": "O mestre derivou esta ficha para voce. Revise os detalhes, salve se precisar ajustar algo e aceite quando estiver pronto.",

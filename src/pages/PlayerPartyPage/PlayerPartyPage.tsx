@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaignEvents } from "../../features/sessions";
@@ -13,7 +13,7 @@ import { PlayerPartySessionCard } from "./components/PlayerPartySessionCard";
 import { PlayerPartySessionHistoryCard } from "./components/PlayerPartySessionHistoryCard";
 import { PlayerPartySheetCard } from "./components/PlayerPartySheetCard";
 import { useToast } from "../../shared/hooks/useToast";
-import { Toast } from "../../shared/ui";
+import { BackButton, Toast } from "../../shared/ui";
 import { usePlayerPartyPageData } from "./usePlayerPartyPageData";
 
 export const PlayerPartyPage = () => {
@@ -212,12 +212,11 @@ export const PlayerPartyPage = () => {
     return (
       <section className="space-y-4 px-1">
         <p className="text-sm text-slate-400">{t("playerParty.notFound")}</p>
-        <Link
-          to={routes.home}
+        <BackButton
+          fallbackTo={routes.home}
+          label={`← ${t("campaignHome.back")}`}
           className="text-xs font-semibold uppercase tracking-[0.22em] text-limiar-200 transition hover:text-white"
-        >
-          ← {t("playerParty.backHome")}
-        </Link>
+        />
       </section>
     );
   }

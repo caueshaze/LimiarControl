@@ -5,9 +5,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: limiarcontrol
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-limiarcontrol}
     volumes:
       - limiarcontrol_db:/var/lib/postgresql/data
 
@@ -19,10 +19,10 @@ services:
     command: centrifugo -c /centrifugo/config.json
     volumes:
       - ./centrifugo/config.json:/centrifugo/config.json:ro,Z
-    env_file:
-      - ./server_py/.env
     environment:
-      CENTRIFUGO_ALLOWED_ORIGINS: "${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:5173}"
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET_KEY:-dev-secret-change-me}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev-api-key}
+      CENTRIFUGO_ALLOWED_ORIGINS: "${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000}"
 
 volumes:
   limiarcontrol_db:

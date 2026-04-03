@@ -212,6 +212,8 @@ export const sheetEnUSDictionary = {
   "sheet.header.retry": "Retry",
   "sheet.header.requiredBefore": "Required before save",
   "sheet.header.progressLabel": "{done}/{total} fields complete",
+  "sheet.header.draftName": "Draft name",
+  "sheet.header.draftNamePlaceholder": "Give this draft a name",
   "sheet.status.lockedBody": "This sheet is confirmed and can no longer be edited in this flow.",
   "sheet.status.pendingAcceptanceEyebrow": "Delivery pending",
   "sheet.status.pendingAcceptanceBody": "The GM derived this sheet for you. Review it, save any final changes you need, and accept it when you are ready.",

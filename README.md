@@ -87,34 +87,28 @@ python -m venv .venv
 source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e .
-cp .env.example .env
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
-Use `server_py/.env` with localhost values when running FastAPI directly on your machine:
+Use the repository root `.env` with localhost values when running FastAPI directly on your machine:
 
 ```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=limiarcontrol
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
 PORT=3000
 CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+CENTRIFUGO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
 APP_ENV=development
 AUTO_MIGRATE=true
 JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
+CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
-```
-
-If `server_py/.env` is reserved for production, keep your local Postgres and
-Centrifugo in `server_py/.env.development.local`. The backend loader now
-prefers this file in development automatically, so local runs do not hit
-production services by mistake:
-
-```bash
-cd server_py
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 ### 3. Frontend setup
@@ -123,8 +117,6 @@ From the repository root:
 
 ```bash
 npm install
-# If the root .env is reserved for production, use a dev-only override:
-cp .env.example .env.development.local
 npm run dev
 ```
 
@@ -133,55 +125,54 @@ npm run dev
 - Frontend: `http://localhost:5173`
 - API docs: `http://localhost:3000/docs`
 - API health: `http://localhost:3000/health`
-- Centrifugo health: `http://localhost:8001/health`
+
+### 5. Teste o stack em container único
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Endpoints esperados nesse modo:
+
+- App + API: `http://127.0.0.1:8000/`
+- API health: `http://127.0.0.1:8000/health`
+- Centrifugo websocket: `ws://localhost:8001/connection/websocket`
 
 ## Environment files
 
-### Frontend `.env`
+### Root `.env`
 
 Default example:
 
 ```env
-VITE_APP_ENV=development
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
-VITE_ENABLE_MUSIC=true
-VITE_ENABLE_MAPS=true
-```
-
-If the repository root `.env` is pointing to production, create
-`.env.development.local` instead. Vite loads it automatically during
-`npm run dev`, so local development can keep using:
-
-```env
-VITE_APP_ENV=development
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
-VITE_ENABLE_MUSIC=true
-VITE_ENABLE_MAPS=true
-```
-
-### Backend `server_py/.env`
-
-Default example:
-
-```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=limiarcontrol
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
 PORT=3000
 CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+CENTRIFUGO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
 APP_ENV=development
 AUTO_MIGRATE=true
 JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
+CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+VITE_APP_ENV=development
+VITE_API_BASE_URL=/api
+VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
+VITE_ENABLE_MUSIC=true
+VITE_ENABLE_MAPS=true
+DOCKER_VITE_API_BASE_URL=/api
+DOCKER_VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
+DOCKER_VITE_ENABLE_MUSIC=true
+DOCKER_VITE_ENABLE_MAPS=true
 ```
-
-If `server_py/.env` is production-only, keep local values in
-`server_py/.env.development.local`. The backend will use that file by default in
-development. `APP_ENV_FILE=.env.development.local` is still available if you
-want to force it explicitly.
 
 ## Useful commands
 
@@ -194,13 +185,42 @@ npm run preview
 npx tsc --noEmit
 ```
 
+### Produção com container único
+
+O `Dockerfile` principal já empacota frontend + backend no mesmo container. Em produção,
+o FastAPI serve o `dist/` do Vite diretamente.
+
+Antes de subir o stack de produção, ajuste o `.env` da raiz com valores reais:
+
+```env
+APP_ENV=production
+POSTGRES_USER=app_user
+POSTGRES_PASSWORD=use-uma-senha-forte
+POSTGRES_DB=limiarcontrol
+JWT_SECRET=use-um-segredo-forte
+CENTRIFUGO_API_KEY=use-uma-chave-forte
+CENTRIFUGO_TOKEN_SECRET=use-um-segredo-forte
+CORS_ORIGIN=https://seu-dominio.com
+CENTRIFUGO_ALLOWED_ORIGINS=https://seu-dominio.com
+DOCKER_VITE_API_BASE_URL=/api
+DOCKER_VITE_CENTRIFUGO_URL=wss://rt.seu-dominio.com/connection/websocket
+```
+
+Suba com:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Se `POSTGRES_USER=postgres` e `POSTGRES_PASSWORD=postgres` continuarem no `.env`, o backend
+vai abortar em produção com `DATABASE_URL must use strong credentials in production`.
+
 ### Backend
 
 ```bash
 cd server_py
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
-APP_ENV_FILE=.env.development.local uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 python -m py_compile app/api/routes/sessions/*.py
 ```
 

@@ -10,6 +10,7 @@ from app.api.routes.character_sheet_drafts_common import (
     create_party_character_sheet_draft_service,
     derive_party_character_sheet_draft_service,
     list_party_character_sheet_drafts_service,
+    update_party_character_sheet_draft_service,
 )
 from app.api.routes.character_sheets_common import (
     accept_my_character_sheet_service,
@@ -34,6 +35,7 @@ from app.schemas.character_sheet import CharacterSheetUpdate
 from app.schemas.character_sheet_draft import (
     PartyCharacterSheetDraftCreate,
     PartyCharacterSheetDraftDeriveRequest,
+    PartyCharacterSheetDraftUpdate,
 )
 
 
@@ -212,6 +214,41 @@ class CharacterSheetDraftServiceTests(unittest.TestCase):
                     "party-1",
                     "draft-1",
                     PartyCharacterSheetDraftDeriveRequest(playerUserId="player-1"),
+                    user=SimpleNamespace(id="gm-1"),
+                    session=session,
+                )
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        session.commit.assert_not_called()
+
+    def test_update_party_character_sheet_draft_rejects_archived_entry(self):
+        session = MagicMock()
+        draft = PartyCharacterSheetDraft(
+            id="draft-1",
+            party_id="party-1",
+            name="Archived Draft",
+            data={"name": "Cleric"},
+            status=PartyCharacterSheetDraftStatus.ARCHIVED,
+            created_by_user_id="gm-1",
+            created_at=datetime.now(timezone.utc),
+            updated_at=None,
+        )
+
+        with patch(
+            "app.api.routes.character_sheet_drafts_common.get_party_with_gm_check",
+            return_value=SimpleNamespace(id="party-1"),
+        ), patch(
+            "app.api.routes.character_sheet_drafts_common.get_party_character_sheet_draft_or_404",
+            return_value=draft,
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                update_party_character_sheet_draft_service(
+                    "party-1",
+                    "draft-1",
+                    PartyCharacterSheetDraftUpdate(
+                        name=" Updated Draft ",
+                        data={"name": "Updated Hero"},
+                    ),
                     user=SimpleNamespace(id="gm-1"),
                     session=session,
                 )

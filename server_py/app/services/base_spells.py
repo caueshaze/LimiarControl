@@ -6,7 +6,8 @@ from fastapi import HTTPException
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.base_spell import BaseSpell, SpellSchool
+from app.models.base_spell import BaseSpell, BaseSpellAlias, SpellSchool
+from app.models.campaign_spell import CampaignSpell
 from app.models.campaign import SystemType
 from app.schemas.base_spell import BaseSpellCreate, BaseSpellUpdate
 
@@ -171,5 +172,18 @@ def update_base_spell(
 
 
 def delete_base_spell(*, db: Session, spell: BaseSpell) -> None:
+    linked_campaign_spells = db.exec(
+        select(CampaignSpell).where(CampaignSpell.base_spell_id == spell.id)
+    ).all()
+    for campaign_spell in linked_campaign_spells:
+        campaign_spell.base_spell_id = None
+        db.add(campaign_spell)
+
+    aliases = db.exec(
+        select(BaseSpellAlias).where(BaseSpellAlias.base_spell_id == spell.id)
+    ).all()
+    for alias in aliases:
+        db.delete(alias)
+
     db.delete(spell)
     db.commit()

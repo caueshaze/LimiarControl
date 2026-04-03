@@ -86,7 +86,7 @@ export const gmEnUSDictionary = {
   "gm.party.draftsTitle": "Sheet drafts",
   "gm.party.draftsDescription": "Build party base sheets before assigning them to a player, then derive them once the player has joined the group.",
   "gm.party.createDraft": "New sheet draft",
-  "gm.party.creatingDraft": "Creating...",
+  "gm.party.creatingDraft": "Opening...",
   "gm.party.draftDefaultName": "Sheet draft",
   "gm.party.activeDrafts": "Active",
   "gm.party.archivedDrafts": "Archived",

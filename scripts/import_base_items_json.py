@@ -31,7 +31,7 @@ def main() -> int:
     parser.add_argument(
         "--replace",
         action="store_true",
-        help="Delete existing base items for the systems present in the file before importing.",
+        help="Deactivate existing base items missing from the file for the systems present before importing.",
     )
     args = parser.parse_args()
 

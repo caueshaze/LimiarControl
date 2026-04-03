@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from app.models.campaign import RoleMode
 from app.schemas.auth import RegisterRequest
@@ -89,6 +90,20 @@ class TestMemberSelfUpdateSecurity(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestRegistrationSecurity(unittest.TestCase):
+    def _make_session_for_register(self, *, existing_user=None, user_count=0, dialect_name=None):
+        session_mock = MagicMock()
+
+        first_result = MagicMock()
+        first_result.first.return_value = existing_user
+
+        count_result = MagicMock()
+        count_result.one.return_value = user_count
+
+        session_mock.exec.side_effect = [first_result, count_result]
+        if dialect_name is not None:
+            session_mock.get_bind.return_value.dialect.name = dialect_name
+        return session_mock
+
     def test_register_request_has_role_field(self):
         """RegisterRequest schema should accept a role field."""
         self.assertIn("role", RegisterRequest.model_fields)
@@ -106,8 +121,7 @@ class TestRegistrationSecurity(unittest.TestCase):
         """The register handler should use the role from the payload."""
         from app.api.routes.auth import register
 
-        session_mock = MagicMock()
-        session_mock.exec.return_value.first.side_effect = [None, None]
+        session_mock = self._make_session_for_register(user_count=0)
 
         payload_gm = RegisterRequest(username="gmuser", pin="5678", role=RoleMode.GM)
 
@@ -122,8 +136,7 @@ class TestRegistrationSecurity(unittest.TestCase):
         """When no role is provided, the register handler should default to PLAYER."""
         from app.api.routes.auth import register
 
-        session_mock = MagicMock()
-        session_mock.exec.return_value.first.side_effect = [None, None]
+        session_mock = self._make_session_for_register(user_count=0)
 
         payload_player = RegisterRequest(username="playeruser", pin="5678")
 
@@ -133,6 +146,75 @@ class TestRegistrationSecurity(unittest.TestCase):
 
         created_user = session_mock.add.call_args[0][0]
         self.assertEqual(created_user.role, RoleMode.PLAYER)
+
+    def test_first_registered_user_becomes_system_admin(self):
+        from app.api.routes.auth import register
+
+        session_mock = self._make_session_for_register(user_count=0)
+
+        payload = RegisterRequest(username="firstuser", pin="5678")
+
+        with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
+             patch("app.api.routes.auth.build_access_token", return_value="tok"):
+            register(payload, session_mock)
+
+        created_user = session_mock.add.call_args[0][0]
+        self.assertTrue(created_user.is_system_admin)
+
+    def test_non_first_registered_user_is_not_system_admin(self):
+        from app.api.routes.auth import register
+
+        session_mock = self._make_session_for_register(user_count=1)
+
+        payload = RegisterRequest(username="lateruser", pin="5678")
+
+        with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
+             patch("app.api.routes.auth.build_access_token", return_value="tok"):
+            register(payload, session_mock)
+
+        created_user = session_mock.add.call_args[0][0]
+        self.assertFalse(created_user.is_system_admin)
+
+    def test_register_acquires_postgres_advisory_lock(self):
+        from app.api.routes.auth import register
+        from app.api.routes.auth import _REGISTER_ADMIN_LOCK_KEY
+
+        session_mock = self._make_session_for_register(user_count=0, dialect_name="postgresql")
+        advisory_lock_result = MagicMock()
+        first_result = MagicMock()
+        first_result.first.return_value = None
+        count_result = MagicMock()
+        count_result.one.return_value = 0
+        session_mock.exec.side_effect = [advisory_lock_result, first_result, count_result]
+
+        payload = RegisterRequest(username="firstuser", pin="5678")
+
+        with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
+             patch("app.api.routes.auth.build_access_token", return_value="tok"):
+            register(payload, session_mock)
+
+        self.assertEqual(session_mock.exec.call_count, 3)
+        advisory_lock_call = session_mock.exec.call_args_list[0]
+        self.assertEqual(
+            advisory_lock_call.kwargs.get("params"),
+            {"lock_key": _REGISTER_ADMIN_LOCK_KEY},
+        )
+
+    def test_register_rolls_back_duplicate_username_integrity_error(self):
+        from app.api.routes.auth import register
+
+        session_mock = self._make_session_for_register(user_count=0)
+        session_mock.commit.side_effect = IntegrityError("insert", {}, Exception("dup"))
+
+        payload = RegisterRequest(username="playeruser", pin="5678")
+
+        with patch("app.api.routes.auth.hash_pin", return_value="hashed"), \
+             patch("app.api.routes.auth.build_access_token", return_value="tok"), \
+             self.assertRaises(HTTPException) as ctx:
+            register(payload, session_mock)
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        session_mock.rollback.assert_called_once()
 
     def test_register_request_validates_pin_length(self):
         with self.assertRaises(ValidationError):

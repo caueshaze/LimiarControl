@@ -17,6 +17,7 @@ import {
 } from "../utils/calculations";
 import {
   acceptCharacterSheet,
+  createCharacterSheetDraft,
   loadCharacterSheet,
   loadCharacterSheetDraft,
   loadCharacterSheetForPlayer,
@@ -28,6 +29,7 @@ import {
   savePlayCharacterSheet,
 } from "../services/characterSheet.service";
 import { stripClassLevelAbilityBonuses } from "../data/classFeatures";
+import { INITIAL_SHEET } from "../model/initialSheet";
 import { createBaseSheetActions } from "./useCharacterSheetActions.base";
 import { createCreationSheetActions } from "./useCharacterSheetActions.creation";
 import {
@@ -49,6 +51,7 @@ type UseCharacterSheetOptions = {
   playPlayerUserId?: string | null;
   creationPlayerUserId?: string | null;
   creationDraftId?: string | null;
+  creationDraftMode?: boolean;
   canEditPlay?: boolean;
   campaignId?: string | null;
 };
@@ -77,6 +80,7 @@ export const useCharacterSheet = (
   const playPlayerUserId = options.playPlayerUserId ?? null;
   const creationPlayerUserId = options.creationPlayerUserId ?? null;
   const creationDraftId = options.creationDraftId ?? null;
+  const creationDraftMode = options.creationDraftMode ?? false;
   const canEditPlay = options.canEditPlay ?? false;
   const campaignId = options.campaignId ?? null;
   const canMutate = mode !== "play" || canEditPlay;
@@ -132,6 +136,17 @@ export const useCharacterSheet = (
         return;
       }
 
+      if (creationDraftMode) {
+        await preloadCreationCatalogs(campaignId);
+        dispatch({
+          type: "load_success",
+          sheet: syncCreationInventoryLoadoutState(INITIAL_SHEET),
+          id: null,
+          draftRecord: null,
+        });
+        return;
+      }
+
       if (creationPlayerUserId) {
         const [result] = await Promise.all([
           loadCharacterSheetForPlayer(partyId, creationPlayerUserId, campaignId),
@@ -159,7 +174,16 @@ export const useCharacterSheet = (
         error: (error as { message?: string })?.message ?? "Failed to load",
       });
     }
-  }, [partyId, mode, playPlayerUserId, creationDraftId, creationPlayerUserId, canEditPlay, campaignId]);
+  }, [
+    partyId,
+    mode,
+    playPlayerUserId,
+    creationDraftId,
+    creationDraftMode,
+    creationPlayerUserId,
+    canEditPlay,
+    campaignId,
+  ]);
 
   useEffect(() => {
     void loadSheet();
@@ -261,6 +285,7 @@ export const useCharacterSheet = (
   useEffect(() => {
     if (
       mode !== "creation" ||
+      creationDraftMode ||
       !!creationDraftId ||
       !campaignId ||
       !partyId
@@ -349,13 +374,14 @@ export const useCharacterSheet = (
   }, [
     campaignId,
     creationDraftId,
+    creationDraftMode,
     creationPlayerUserId,
     loadSheet,
     mode,
     partyId,
   ]);
 
-  const save = async () => {
+  const save = async (draftName?: string) => {
     if (!partyId) return;
 
     if (mode === "creation" && hasUnresolvedCreationInventoryItems(state.sheet.inventory)) {
@@ -401,7 +427,7 @@ export const useCharacterSheet = (
     }
 
     if (mode === "creation") {
-      if (!creationDraftId) {
+      if (!creationDraftId && !creationDraftMode) {
         const normalizedBaseAbilities = stripClassLevelAbilityBonuses(
           stripRaceBonusesFromAbilities(
             state.sheet.abilities,
@@ -437,13 +463,20 @@ export const useCharacterSheet = (
     const sheetToSave = prepareCharacterSheetForSave(state.sheet, mode);
     dispatch({ type: "saving_start" });
     try {
-      if (creationDraftId) {
-        const draft = await saveCharacterSheetDraft(
-          partyId,
-          creationDraftId,
-          state.draftRecord?.name ?? "Untitled Draft",
-          sheetToSave,
-        );
+      if (creationDraftMode) {
+        const normalizedDraftName = draftName?.trim() || state.draftRecord?.name || "Untitled Draft";
+        const draft = creationDraftId
+          ? await saveCharacterSheetDraft(
+              partyId,
+              creationDraftId,
+              normalizedDraftName,
+              sheetToSave,
+            )
+          : await createCharacterSheetDraft(
+              partyId,
+              normalizedDraftName,
+              sheetToSave,
+            );
         dispatch({
           type: "saving_success",
           id: draft.id,
@@ -532,12 +565,12 @@ export const useCharacterSheet = (
   const setAbility = (ability: AbilityName, value: number) =>
     guardedUpdate((sheet) =>
       buildCreationSetAbility(mode, campaignId, {
-        allowCreationEditing: !!creationDraftId,
+        allowCreationEditing: creationDraftMode,
       })(sheet, ability, value),
     );
 
   const baseActions = createBaseSheetActions(guardedUpdate, set, mode, {
-    allowCreationEditing: !!creationDraftId,
+    allowCreationEditing: creationDraftMode,
     campaignId,
   });
   const creationActions = createCreationSheetActions({
@@ -571,6 +604,7 @@ export const useCharacterSheet = (
     requestLevelUp,
     acceptPendingSheet,
     save,
+    creationDraftMode,
     set,
     setAbility,
     ...baseActions,

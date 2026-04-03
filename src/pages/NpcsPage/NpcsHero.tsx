@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { BackButton } from "../../shared/ui";
 
 type NpcsHeroProps = {
   campaignName: string;
@@ -52,12 +52,11 @@ export const NpcsHero = ({
             <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white">
               {campaignName}
             </span>
-            <Link
-              to={backTo}
+            <BackButton
+              fallbackTo={backTo}
+              label={`← ${t("campaignHome.back")}`}
               className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/8"
-            >
-              {t("npc.backCampaign")}
-            </Link>
+            />
           </div>
         </div>
 

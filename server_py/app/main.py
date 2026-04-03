@@ -10,6 +10,7 @@ from app.core.rate_limit import RateLimitMiddleware
 from app.api.routes import (
     admin_base_items_router,
     admin_base_spells_router,
+    admin_system_router,
     auth_router,
     base_items_router,
     base_spells_router,
@@ -41,7 +42,6 @@ from app.core.logging import RequestLoggingMiddleware
 from app.db.migrations import ensure_database_schema
 from app.db.session import engine
 from app.services.base_item_seeds import bootstrap_base_items_if_empty
-from app.services.base_spell_seeds import bootstrap_base_spells_if_empty
 from app.services.centrifugo import centrifugo
 
 _is_production = settings.app_env != "development"
@@ -52,8 +52,15 @@ app = FastAPI(
     openapi_url=None if _is_production else "/openapi.json",
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-FRONTEND_DIST_DIR = REPO_ROOT / "dist"
+CURRENT_FILE = Path(__file__).resolve()
+FRONTEND_DIST_CANDIDATES = [
+    CURRENT_FILE.parents[1] / "dist",
+    CURRENT_FILE.parents[2] / "dist",
+]
+FRONTEND_DIST_DIR = next(
+    (candidate for candidate in FRONTEND_DIST_CANDIDATES if candidate.is_dir()),
+    FRONTEND_DIST_CANDIDATES[0],
+)
 FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
 FRONTEND_RESERVED_PREFIXES = {"api", "health", "ws"}
 
@@ -84,6 +91,7 @@ async def validation_exception_handler(
 app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
 app.include_router(admin_base_items_router, prefix="/api/admin", tags=["admin-base-items"])
 app.include_router(admin_base_spells_router, prefix="/api/admin", tags=["admin-base-spells"])
+app.include_router(admin_system_router, prefix="/api/admin", tags=["admin-system"])
 app.include_router(base_items_router, prefix="/api/base-items", tags=["base-items"])
 app.include_router(base_spells_router, prefix="/api/base-spells", tags=["base-spells"])
 app.include_router(role_mode_router, prefix="/api/campaigns", tags=["role-mode"])
@@ -121,7 +129,6 @@ def startup_event() -> None:
     ensure_database_schema()
     with Session(engine) as session:
         bootstrap_base_items_if_empty(session)
-        bootstrap_base_spells_if_empty(session)
 
 
 @app.on_event("shutdown")

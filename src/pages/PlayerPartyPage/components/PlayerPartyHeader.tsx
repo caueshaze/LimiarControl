@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
 import { routes } from "../../../app/routes/routes";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { PartyActiveSession } from "../../../shared/api/partiesRepo";
+import { BackButton } from "../../../shared/ui";
 import {
   formatPartyDate,
   getPlayerPartyStatusKey,
@@ -50,13 +50,16 @@ export const PlayerPartyHeader = ({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.12),transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[auto,auto,42px_42px,42px_42px]" />
 
       <div className="relative space-y-6">
-        <Link
-          to={routes.home}
+        <BackButton
+          fallbackTo={routes.home}
+          label={
+            <>
+              <span aria-hidden>←</span>
+              {t("campaignHome.back")}
+            </>
+          }
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
-        >
-          <span aria-hidden>←</span>
-          {t("playerParty.backHome")}
-        </Link>
+        />
 
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl space-y-4">

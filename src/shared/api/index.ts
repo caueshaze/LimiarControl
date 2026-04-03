@@ -2,6 +2,7 @@ export { http } from "./http";
 export { authRepo } from "./authRepo";
 export { adminBaseItemsRepo } from "./adminBaseItemsRepo";
 export { adminBaseSpellsRepo } from "./adminBaseSpellsRepo";
+export { adminSystemRepo } from "./adminSystemRepo";
 export { baseItemsRepo } from "./baseItemsRepo";
 export { baseSpellsRepo } from "./baseSpellsRepo";
 export { campaignCatalogRepo } from "./campaignCatalogRepo";

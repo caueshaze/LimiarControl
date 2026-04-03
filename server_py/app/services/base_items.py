@@ -114,7 +114,13 @@ def _apply_payload(item: BaseItem, payload: BaseItemCreate | BaseItemUpdate) -> 
     item.is_active = payload.isActive
 
 
-def create_base_item(*, db: Session, payload: BaseItemCreate) -> BaseItem:
+def create_base_item(
+    *,
+    db: Session,
+    payload: BaseItemCreate,
+    commit: bool = True,
+    refresh: bool = True,
+) -> BaseItem:
     existing = get_base_item_by_canonical_key(
         db=db,
         system=payload.system,
@@ -131,8 +137,12 @@ def create_base_item(*, db: Session, payload: BaseItemCreate) -> BaseItem:
     item = BaseItem(id=str(uuid4()))
     _apply_payload(item, payload)
     db.add(item)
-    db.commit()
-    db.refresh(item)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    if refresh:
+        db.refresh(item)
     return item
 
 
@@ -141,6 +151,8 @@ def update_base_item(
     db: Session,
     item: BaseItem,
     payload: BaseItemUpdate,
+    commit: bool = True,
+    refresh: bool = True,
 ) -> BaseItem:
     existing = get_base_item_by_canonical_key(
         db=db,
@@ -157,8 +169,12 @@ def update_base_item(
 
     _apply_payload(item, payload)
     db.add(item)
-    db.commit()
-    db.refresh(item)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    if refresh:
+        db.refresh(item)
     return item
 
 

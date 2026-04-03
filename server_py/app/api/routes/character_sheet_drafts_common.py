@@ -31,6 +31,10 @@ from app.schemas.character_sheet_draft import (
 from app.services.character_sheet_inventory import sync_character_sheet_inventory
 
 
+def _normalize_draft_name(name: str) -> str:
+    return name.strip() or "Untitled Draft"
+
+
 def to_party_character_sheet_draft_read(
     entry: PartyCharacterSheetDraft,
 ) -> PartyCharacterSheetDraftRead:
@@ -104,7 +108,7 @@ def create_party_character_sheet_draft_service(
     entry = PartyCharacterSheetDraft(
         id=str(uuid4()),
         party_id=party_id_value,
-        name=payload.name.strip() or "Untitled Draft",
+        name=_normalize_draft_name(payload.name),
         data=normalize_character_sheet_payload(payload.data),
         status=PartyCharacterSheetDraftStatus.ACTIVE,
         created_by_user_id=user_id(user),
@@ -140,8 +144,10 @@ def update_party_character_sheet_draft_service(
 ) -> PartyCharacterSheetDraftRead:
     get_party_with_gm_check(party_id_value, user, session)
     entry = get_party_character_sheet_draft_or_404(party_id_value, draft_id, session)
+    if entry.status != PartyCharacterSheetDraftStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="Character sheet draft is archived")
     validate_character_sheet_payload(payload.data)
-    entry.name = payload.name.strip() or entry.name
+    entry.name = _normalize_draft_name(payload.name)
     entry.data = normalize_character_sheet_payload(payload.data)
     session.add(entry)
     session.commit()
