@@ -115,7 +115,7 @@ docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
 
 Endpoints:
 
-- Frontend: `http://127.0.0.1:3001`
+- App + API: `http://127.0.0.1:8002`
 - API health: `http://127.0.0.1:8002/health`
 - Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
 

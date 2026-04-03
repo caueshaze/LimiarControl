@@ -28,7 +28,7 @@ services:
     environment:
       CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
       CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
-      CENTRIFUGO_ALLOWED_ORIGINS: ${LAB_CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
+      CENTRIFUGO_ALLOWED_ORIGINS: ${LAB_CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:8002,http://127.0.0.1:8002}
     ports:
       - "127.0.0.1:8003:8000"
     networks:
@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_ENV: ${LAB_VITE_APP_ENV:-production}
-        VITE_API_BASE_URL: ${LAB_DOCKER_VITE_API_BASE_URL:-http://127.0.0.1:8002/api}
+        VITE_API_BASE_URL: ${LAB_DOCKER_VITE_API_BASE_URL:-/api}
         VITE_CENTRIFUGO_URL: ${LAB_DOCKER_VITE_CENTRIFUGO_URL:-ws://127.0.0.1:8003/connection/websocket}
         VITE_ENABLE_MUSIC: ${LAB_DOCKER_VITE_ENABLE_MUSIC:-true}
         VITE_ENABLE_MAPS: ${LAB_DOCKER_VITE_ENABLE_MAPS:-true}
@@ -56,7 +56,7 @@ services:
       CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
       CENTRIFUGO_TOKEN_SECRET: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
       CENTRIFUGO_PUBLIC_URL: ${LAB_CENTRIFUGO_PUBLIC_URL:-ws://127.0.0.1:8003/connection/websocket}
-      CORS_ORIGIN: ${LAB_CORS_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001}
+      CORS_ORIGIN: ${LAB_CORS_ORIGIN:-http://localhost:8002,http://127.0.0.1:8002}
       AUTO_MIGRATE: ${LAB_AUTO_MIGRATE:-true}
       CLOUDINARY_CLOUD_NAME: ${LAB_CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${LAB_CLOUDINARY_API_KEY:-}
@@ -66,26 +66,6 @@ services:
         condition: service_healthy
       centrifugo:
         condition: service_started
-    networks:
-      - internal
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: frontend-runtime
-      args:
-        VITE_APP_ENV: ${LAB_VITE_APP_ENV:-production}
-        VITE_API_BASE_URL: ${LAB_DOCKER_VITE_API_BASE_URL:-http://127.0.0.1:8002/api}
-        VITE_CENTRIFUGO_URL: ${LAB_DOCKER_VITE_CENTRIFUGO_URL:-ws://127.0.0.1:8003/connection/websocket}
-        VITE_ENABLE_MUSIC: ${LAB_DOCKER_VITE_ENABLE_MUSIC:-true}
-        VITE_ENABLE_MAPS: ${LAB_DOCKER_VITE_ENABLE_MAPS:-true}
-    container_name: limiar-lab-frontend
-    ports:
-      - "127.0.0.1:${LAB_FRONTEND_PORT:-3001}:80"
-    depends_on:
-      - api
     networks:
       - internal
     restart: unless-stopped

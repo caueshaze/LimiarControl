@@ -80,8 +80,7 @@ Recommended for day-to-day work. Run infrastructure in Docker and keep frontend/
 
 Recommended for pre-merge validation and homologation. This stack is isolated from production and uses its own ports, containers, network, and database volume.
 
-- Frontend: `http://127.0.0.1:3001`
-- API: `http://127.0.0.1:8002`
+- App + API: `http://127.0.0.1:8002`
 - Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
 - Compose file: [docker-compose.lab.yml](/home/caue/LimiarControl/docker-compose.lab.yml)
 - Env example: [.env.lab.example](/home/caue/LimiarControl/.env.lab.example)
@@ -178,7 +177,7 @@ docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
 
 Expected endpoints in this mode:
 
-- Frontend: `http://127.0.0.1:3001/`
+- App + API: `http://127.0.0.1:8002/`
 - API health: `http://127.0.0.1:8002/health`
 - Centrifugo websocket: `ws://127.0.0.1:8003/connection/websocket`
 
@@ -271,10 +270,9 @@ will abort in production with `DATABASE_URL must use strong credentials in produ
 
 The lab stack is intentionally isolated from production:
 
-- frontend lab: `127.0.0.1:3001`
-- api lab: `127.0.0.1:8002`
+- app + api lab: `127.0.0.1:8002`
 - realtime lab: `127.0.0.1:8003`
-- containers: `limiar-lab-*`
+- containers: `limiar-lab-api`, `limiar-lab-db`, `limiar-lab-centrifugo`
 - network: `limiar_lab_internal`
 - database volume: `limiar_lab_db`
 
