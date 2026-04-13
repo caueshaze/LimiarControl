@@ -6,7 +6,15 @@ export {
   getDndItemCanonicalKey,
   getDndItemCanonicalization,
   getDndItemLookupNames,
-  normalizeDndItemKey,
+  normalizeDndItemKey
 } from "./itemCanonicalization";
 export type { BaseSpell } from "./spellCatalogApi";
-export { getBaseSpells, findBaseSpell, getBaseSpellsForClass, loadSpellCatalog, isSpellCatalogLoaded, seedSpellCatalogCache } from "./spellCatalogApi";
+export {
+  getBaseSpells,
+  findBaseSpell,
+  getBaseSpellsForClass,
+  loadSpellCatalog,
+  isSpellCatalogLoaded,
+  resolveSpellSourceClassId,
+  seedSpellCatalogCache
+} from "./spellCatalogApi";

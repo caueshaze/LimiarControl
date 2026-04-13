@@ -24,7 +24,6 @@ export function handleRealtimePublication(data: unknown): void {
   }
 
   const event = parsed.data;
-  console.log("eventType:", event.eventType);
   switch (event.eventType) {
     case "movement.applied": {
       const tokenId =

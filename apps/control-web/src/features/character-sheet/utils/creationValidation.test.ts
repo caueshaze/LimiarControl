@@ -150,6 +150,40 @@ describe("validateCreationSheet", () => {
     });
   });
 
+  it("requires paladin spell picks once spellcasting unlocks", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("paladin", 2),
+      spellcasting: buildSpellSelection("paladin", 0, 0),
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).not.toContain("cantrips");
+    expect(result.missingRequiredFields).toContain("leveledSpells");
+    expect(result.spellDetails).toMatchObject({
+      selectedCantrips: 0,
+      totalCantrips: 0,
+      selectedLeveled: 0,
+      totalLeveled: 1,
+    });
+  });
+
+  it("requires ranger spell picks once spellcasting unlocks", () => {
+    const result = validateCreationSheet({
+      ...buildBaseCreationSheet("ranger", 2),
+      spellcasting: buildSpellSelection("ranger", 0, 0),
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.missingRequiredFields).not.toContain("cantrips");
+    expect(result.missingRequiredFields).toContain("leveledSpells");
+    expect(result.spellDetails).toMatchObject({
+      selectedCantrips: 0,
+      totalCantrips: 0,
+      selectedLeveled: 0,
+      totalLeveled: 2,
+    });
+  });
+
   it("accepts a creation sheet once all required fields are filled", () => {
     const result = validateCreationSheet({
       ...INITIAL_SHEET,

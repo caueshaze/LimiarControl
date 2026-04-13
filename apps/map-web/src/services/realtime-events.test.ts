@@ -134,12 +134,22 @@ describe("map-web realtime events", () => {
     battleMapStore.markEdgePaintPending("edge-action-1");
     battleMapStore.setMessage("Aplicando borda...");
 
-    const beforeVersion = sessionStore.getSnapshot()?.combatState.version;
-    console.log("before version:", beforeVersion);
-    console.log("after version:", snapshot?.combatState.version);
-    console.log("after edgeObstacles:", snapshot?.edgeObstacles);
-    expect(snapshot?.combatState.version).toBe(3);
+    const eventPayload = {
+      eventId: "edge-1",
+      eventType: "edge_obstacles.updated",
+      encounterId: "demo-session",
+      version: 3,
+      actionId: "edge-action-1",
+      payload: {
+        edgeObstacles: [{ x: 5, y: 5, direction: "E", blocksMovement: true }]
+      },
+      replaySafe: true
+    };
 
+    handleRealtimePublication(eventPayload);
+
+    const snapshot = sessionStore.getSnapshot();
+    expect(snapshot?.combatState.version).toBe(3);
     expect(snapshot?.edgeObstacles).toHaveLength(1);
     expect(snapshot?.edgeObstacles?.[0]).toMatchObject({
       x: 5,
