@@ -1,0 +1,155 @@
+import type { Coordinate, Token } from "@limiarmap/shared-contracts";
+import { reconnectAs } from "./centrifugo-client";
+import { battleMapStore, type EmbeddedSelectionMode } from "../features/battle-map/battle-map-store";
+
+type MapActorType = "player" | "gm";
+
+type EmbeddedMapContextMessage = {
+  type: "limiar-control:map-context";
+  payload: {
+    sessionId: string;
+    actor?: {
+      actorId: string;
+      actorType: MapActorType;
+    } | null;
+    selectionMode?: EmbeddedSelectionMode;
+    previewCells?: Coordinate[];
+    selectedCell?: Coordinate | null;
+    selectedTargetRefId?: string | null;
+  };
+};
+
+type EmbeddedMapReadyMessage = {
+  type: "limiar-map:ready";
+  payload: {
+    sessionId: string;
+  };
+};
+
+type EmbeddedMapTokenSelectedMessage = {
+  type: "limiar-map:token-selected";
+  payload: {
+    sessionId: string;
+    tokenId: string;
+    combatantId: string | null;
+    label: string;
+    position: Coordinate;
+  };
+};
+
+type EmbeddedMapCellSelectedMessage = {
+  type: "limiar-map:cell-selected";
+  payload: {
+    sessionId: string;
+    cell: Coordinate;
+    tokenId: string | null;
+    combatantId: string | null;
+  };
+};
+
+const isCoordinate = (value: unknown): value is Coordinate => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as { x?: unknown; y?: unknown };
+  return Number.isInteger(candidate.x) && Number.isInteger(candidate.y);
+};
+
+export const isEmbeddedMapContextMessage = (
+  value: unknown,
+): value is EmbeddedMapContextMessage => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as { type?: unknown; payload?: unknown };
+  if (candidate.type !== "limiar-control:map-context" || !candidate.payload || typeof candidate.payload !== "object") {
+    return false;
+  }
+
+  const payload = candidate.payload as {
+    sessionId?: unknown;
+    actor?: { actorId?: unknown; actorType?: unknown } | null;
+    selectionMode?: unknown;
+    previewCells?: unknown;
+    selectedCell?: unknown;
+    selectedTargetRefId?: unknown;
+  };
+
+  const actorValid =
+    payload.actor == null ||
+    (typeof payload.actor.actorId === "string" &&
+      (payload.actor.actorType === "player" || payload.actor.actorType === "gm"));
+  const selectionModeValid =
+    payload.selectionMode == null ||
+    payload.selectionMode === "none" ||
+    payload.selectionMode === "select-token" ||
+    payload.selectionMode === "select-cell";
+  const previewCellsValid =
+    payload.previewCells == null ||
+    (Array.isArray(payload.previewCells) && payload.previewCells.every(isCoordinate));
+  const selectedCellValid =
+    payload.selectedCell == null || isCoordinate(payload.selectedCell);
+  const selectedTargetValid =
+    payload.selectedTargetRefId == null || typeof payload.selectedTargetRefId === "string";
+
+  return (
+    typeof payload.sessionId === "string" &&
+    actorValid &&
+    selectionModeValid &&
+    previewCellsValid &&
+    selectedCellValid &&
+    selectedTargetValid
+  );
+};
+
+export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payload"]): void {
+  if (message.actor) {
+    reconnectAs(message.actor.actorId, message.actor.actorType);
+  }
+
+  battleMapStore.setEmbeddedInteractionContext({
+    selectionMode: message.selectionMode ?? "none",
+    previewCells: message.previewCells ?? [],
+    selectedCell: message.selectedCell ?? null,
+    selectedTargetRefId: message.selectedTargetRefId ?? null,
+  });
+}
+
+export function postEmbeddedMapReady(sessionId: string): void {
+  const message: EmbeddedMapReadyMessage = {
+    type: "limiar-map:ready",
+    payload: { sessionId },
+  };
+  window.parent.postMessage(message, "*");
+}
+
+export function postEmbeddedTokenSelected(sessionId: string, token: Token): void {
+  const message: EmbeddedMapTokenSelectedMessage = {
+    type: "limiar-map:token-selected",
+    payload: {
+      sessionId,
+      tokenId: token.id,
+      combatantId: token.combatantId ?? null,
+      label: token.label,
+      position: token.position,
+    },
+  };
+  window.parent.postMessage(message, "*");
+}
+
+export function postEmbeddedCellSelected(
+  sessionId: string,
+  cell: Coordinate,
+  token: Token | null,
+): void {
+  const message: EmbeddedMapCellSelectedMessage = {
+    type: "limiar-map:cell-selected",
+    payload: {
+      sessionId,
+      cell,
+      tokenId: token?.id ?? null,
+      combatantId: token?.combatantId ?? null,
+    },
+  };
+  window.parent.postMessage(message, "*");
+}

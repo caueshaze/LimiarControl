@@ -1,0 +1,170 @@
+import { useState, type MouseEvent } from "react";
+import { ManagedImage } from "../../../shared/ui";
+import type { HoveredGridCell, MapPreviewSurfaceProps } from "./types";
+import { formatHoveredCell } from "./utils";
+
+export const MapPreviewSurface = ({
+  imageUrl,
+  alt,
+  bounds,
+  gridWidth,
+  gridHeight,
+  imageClassName,
+  invalidMessage,
+  hoverHint,
+  hoverMissingGrid,
+  hoverCellLabel,
+  blockedCellSet,
+  onCellToggle,
+}: MapPreviewSurfaceProps) => {
+  const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
+  const isEditMode = Boolean(onCellToggle);
+
+  const previewVerticalLines =
+    bounds != null && gridWidth != null && gridWidth > 1
+      ? Array.from({ length: gridWidth - 1 }, (_, index) => index + 1)
+      : [];
+  const previewHorizontalLines =
+    bounds != null && gridHeight != null && gridHeight > 1
+      ? Array.from({ length: gridHeight - 1 }, (_, index) => index + 1)
+      : [];
+  const canHoverCells =
+    bounds != null && gridWidth != null && gridHeight != null && gridWidth > 0 && gridHeight > 0;
+
+  const resolveHoveredCell = (
+    event: MouseEvent<HTMLDivElement>,
+  ): HoveredGridCell | null => {
+    if (!canHoverCells || bounds == null || gridWidth == null || gridHeight == null) {
+      return null;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+
+    const normalizedX = (event.clientX - rect.left) / rect.width;
+    const normalizedY = (event.clientY - rect.top) / rect.height;
+    const insideBounds =
+      normalizedX >= bounds.x &&
+      normalizedY >= bounds.y &&
+      normalizedX <= bounds.x + bounds.width &&
+      normalizedY <= bounds.y + bounds.height;
+    if (!insideBounds) return null;
+
+    const gridX = (normalizedX - bounds.x) / bounds.width;
+    const gridY = (normalizedY - bounds.y) / bounds.height;
+    return {
+      column: Math.min(gridWidth, Math.floor(gridX * gridWidth) + 1),
+      row: Math.min(gridHeight, Math.floor(gridY * gridHeight) + 1),
+    };
+  };
+
+  const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    const next = resolveHoveredCell(event);
+    setHoveredCell((current) => {
+      if (current?.row === next?.row && current?.column === next?.column) return current;
+      return next;
+    });
+  };
+
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!onCellToggle) return;
+    const cell = resolveHoveredCell(event);
+    if (cell == null) return;
+    // Convert from 1-based UI coords to 0-based API coords
+    onCellToggle(cell.column - 1, cell.row - 1);
+  };
+
+  const hoverBadgeText =
+    bounds == null
+      ? null
+      : canHoverCells
+        ? hoveredCell != null
+          ? hoverCellLabel.replace("{cell}", formatHoveredCell(hoveredCell))
+          : hoverHint
+        : hoverMissingGrid;
+
+  return (
+    <div
+      className="relative"
+      style={isEditMode ? { cursor: "crosshair" } : undefined}
+      onMouseMove={bounds != null ? handleMouseMove : undefined}
+      onMouseLeave={() => setHoveredCell(null)}
+      onClick={isEditMode && bounds != null ? handleClick : undefined}
+    >
+      <ManagedImage
+        src={imageUrl}
+        alt={alt}
+        className={imageClassName}
+      />
+      {hoverBadgeText ? (
+        <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full border border-slate-700 bg-slate-950/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-100">
+          {hoverBadgeText}
+        </div>
+      ) : null}
+      {bounds != null ? (
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute border-2 border-limiar-300/95 bg-limiar-400/10 shadow-[0_0_0_9999px_rgba(2,6,23,0.52)]"
+            style={{
+              left: `${bounds.x * 100}%`,
+              top: `${bounds.y * 100}%`,
+              width: `${bounds.width * 100}%`,
+              height: `${bounds.height * 100}%`,
+            }}
+          >
+            {/* Blocked cell overlays */}
+            {blockedCellSet != null && gridWidth != null && gridHeight != null &&
+              Array.from(blockedCellSet).map((key) => {
+                const [cx, cy] = key.split(":").map(Number);
+                return (
+                  <div
+                    key={key}
+                    className="absolute bg-rose-500/45 border border-rose-400/60"
+                    style={{
+                      left: `${(cx / gridWidth) * 100}%`,
+                      top: `${(cy / gridHeight) * 100}%`,
+                      width: `${100 / gridWidth}%`,
+                      height: `${100 / gridHeight}%`,
+                    }}
+                  />
+                );
+              })
+            }
+            {hoveredCell != null && gridWidth != null && gridHeight != null ? (
+              <div
+                className={`absolute border ${
+                  isEditMode
+                    ? "border-rose-300/90 bg-rose-400/20"
+                    : "border-amber-200/90 bg-amber-300/15"
+                }`}
+                style={{
+                  left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
+                  top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
+                  width: `${100 / gridWidth}%`,
+                  height: `${100 / gridHeight}%`,
+                }}
+              />
+            ) : null}
+            {previewVerticalLines.map((line) => (
+              <div
+                key={`preview-v-${line}`}
+                className="absolute bottom-0 top-0 w-px bg-white/35"
+                style={{ left: `${(line / gridWidth!) * 100}%` }}
+              />
+            ))}
+            {previewHorizontalLines.map((line) => (
+              <div
+                key={`preview-h-${line}`}
+                className="absolute left-0 right-0 h-px bg-white/35"
+                style={{ top: `${(line / gridHeight!) * 100}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/60 px-6 text-center text-xs font-medium text-amber-100">
+          {invalidMessage}
+        </div>
+      )}
+    </div>
+  );
+};

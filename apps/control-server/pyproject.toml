@@ -1,0 +1,31 @@
+[project]
+name = "limiarcontrol-server"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.30.6",
+  "sqlmodel==0.0.22",
+  "alembic==1.13.3",
+  "psycopg[binary]==3.3.2",
+  "httpx>=0.27",
+  "minio>=7.2.10",
+  "pillow>=11.1.0",
+  "python-multipart>=0.0.9",
+  "centrifuge-python>=0.4.3,<0.5"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.alembic]
+script_location = "apps/control-server/alembic"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

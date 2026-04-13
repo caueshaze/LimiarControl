@@ -1,0 +1,12 @@
+{
+  "name": "@limiarmap/tactical-engine",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@limiarmap/shared-contracts": "file:../shared-contracts"
+  }
+}

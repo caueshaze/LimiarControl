@@ -1,0 +1,19 @@
+{
+  "name": "@limiar/map-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@limiarmap/shared-contracts": "file:../../packages/shared-contracts",
+    "@limiarmap/tactical-engine": "file:../../packages/tactical-engine",
+    "fastify": "^5.1.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

@@ -1,0 +1,18 @@
+[project]
+name = "limiar-tactical-engine"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "limiar-shared-contracts"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tactical_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

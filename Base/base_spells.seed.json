@@ -10,14 +10,20 @@
       "descriptionPt": "Você arremessa uma bolha de ácido. Escolha uma ou duas criaturas que possa ver dentro do alcance. Se escolher duas, devem estar a até 1,5 m uma da outra. O alvo deve ter sucesso em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
       "level": 0,
       "school": "conjuration",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "targetMode": "ranged",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -27,7 +33,12 @@
       "damageType": "Acid",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -38,14 +49,20 @@
       "descriptionPt": "Você arremessa um fragmento de fogo em uma criatura ou objeto dentro do alcance. Faça um ataque de magia à distância contra o alvo. Em um acerto, o alvo sofre 1d10 de dano de fogo.",
       "level": 0,
       "school": "evocation",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 36,
       "rangeText": "120 ft",
       "targetMode": "ranged",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -53,7 +70,11 @@
       "damageType": "Fire",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -64,21 +85,33 @@
       "descriptionPt": "Você toca um objeto que não seja maior que 3 metros em qualquer dimensão. Até a magia acabar, o objeto emite luz plena em um raio de 6 metros e luz fraca por mais 6 metros.",
       "level": 0,
       "school": "evocation",
-      "classesJson": ["Bard", "Cleric", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
       "targetMode": "touch",
       "duration": "1 hour",
-      "componentsJson": ["V", "M"],
+      "componentsJson": [
+        "V",
+        "M"
+      ],
       "materialComponentText": "a firefly or phosphorescent moss",
       "concentration": false,
       "ritual": false,
       "resolutionType": "utility",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -89,14 +122,19 @@
       "descriptionPt": "Um brilho semelhante a chamas desce sobre uma criatura que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
       "level": 0,
       "school": "evocation",
-      "classesJson": ["Cleric"],
+      "classesJson": [
+        "Cleric"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "targetMode": "ranged",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -106,7 +144,12 @@
       "damageType": "Radiant",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -117,14 +160,23 @@
       "descriptionPt": "Uma criatura que você tocar recupera pontos de vida iguais a 1d8 + seu modificador de habilidade de conjuração.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Bard", "Cleric", "Druid", "Paladin", "Ranger"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Paladin",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
       "targetMode": "touch",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "heal",
@@ -136,7 +188,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -147,14 +203,22 @@
       "descriptionPt": "Escolha uma fera que você possa ver dentro do alcance. Ela deve ter sucesso em uma salvaguarda de Sabedoria ou considerará você um conhecido amigável pela duração.",
       "level": 1,
       "school": "enchantment",
-      "classesJson": ["Bard", "Druid", "Ranger"],
+      "classesJson": [
+        "Bard",
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 9,
       "rangeText": "30 ft",
       "targetMode": "ranged",
       "duration": "24 hours",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a morsel of food",
       "concentration": false,
       "ritual": false,
@@ -166,7 +230,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none"
     },
     {
       "system": "DND5E",
@@ -177,14 +246,18 @@
       "descriptionPt": "Você marca uma criatura que possa ver dentro do alcance como sua presa. Até a magia terminar, você causa dano extra ao alvo marcado quando o atinge com um ataque de arma.",
       "level": 1,
       "school": "divination",
-      "classesJson": ["Ranger"],
+      "classesJson": [
+        "Ranger"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 27,
       "rangeText": "90 ft",
       "targetMode": "ranged",
       "duration": "Concentration, up to 1 hour",
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "buff",
@@ -194,7 +267,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -205,21 +282,32 @@
       "descriptionPt": "Até dez bagas aparecem em sua mão. Uma criatura pode usar uma ação para comer uma baga e recuperar 1 ponto de vida.",
       "level": 1,
       "school": "transmutation",
-      "classesJson": ["Druid", "Ranger"],
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
       "targetMode": "touch",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a sprig of mistletoe",
       "concentration": false,
       "ritual": false,
       "resolutionType": "utility",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -230,14 +318,20 @@
       "descriptionPt": "Você cria três dardos brilhantes de força mágica. Cada dardo atinge uma criatura à sua escolha que você possa ver dentro do alcance. Um dardo causa 1d4+1 de dano de força.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 36,
       "rangeText": "120 ft",
       "targetMode": "ranged",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -250,7 +344,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -261,20 +359,30 @@
       "descriptionPt": "Uma barreira invisível de força mágica aparece e protege você. Até o início do seu próximo turno, você tem +5 de bônus na CA, inclusive contra o ataque que acionou a magia.",
       "level": 1,
       "school": "abjuration",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "reaction",
       "castingTime": "1 reaction",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "1 round",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "buff",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -285,14 +393,20 @@
       "descriptionPt": "Enquanto você segura suas mãos com os polegares se tocando e os dedos abertos, uma fina camada de chamas jorra das pontas dos seus dedos. Cada criatura em um cone de 4,5 metros deve fazer uma salvaguarda de Destreza. Uma criatura sofre 3d6 de dano de fogo em uma falha, ou metade do dano em um sucesso.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self (15-foot cone)",
       "targetMode": "cone",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -307,7 +421,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -318,20 +437,35 @@
       "descriptionPt": "Pela duração, você sente a presença de magia a até 9 metros de você. Se sentir magia dessa forma, pode usar sua ação para ver uma aura tênue ao redor de qualquer criatura ou objeto visível na área que contenha magia.",
       "level": 1,
       "school": "divination",
-      "classesJson": ["Bard", "Cleric", "Druid", "Paladin", "Ranger", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Paladin",
+        "Ranger",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "Concentration, up to 10 minutes",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": true,
       "ritual": true,
       "resolutionType": "utility",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -342,14 +476,20 @@
       "descriptionPt": "Uma criatura à sua escolha que você possa ver dentro do alcance recupera pontos de vida iguais a 1d4 + seu modificador de habilidade de conjuração.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Bard", "Cleric", "Druid"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "targetMode": "ranged",
       "duration": "Instantaneous",
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "heal",
@@ -361,7 +501,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -372,14 +516,25 @@
       "descriptionPt": "Escolha um humanoide que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Sabedoria ou ficará paralisado pela duração.",
       "level": 2,
       "school": "enchantment",
-      "classesJson": ["Bard", "Cleric", "Druid", "Sorcerer", "Warlock", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "targetMode": "ranged",
       "duration": "Concentration, up to 1 minute",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a small, straight piece of iron",
       "concentration": true,
       "ritual": false,
@@ -391,7 +546,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none"
     },
     {
       "system": "DND5E",
@@ -402,14 +562,21 @@
       "descriptionPt": "Um clarão brilhante sai do seu dedo indicador até um ponto que você escolher dentro do alcance e então floresce com um rugido grave em uma explosão de chamas. Cada criatura em uma esfera de 6 metros de raio centrada naquele ponto deve fazer uma salvaguarda de Destreza. O alvo sofre 8d6 de dano de fogo em uma falha, ou metade em um sucesso.",
       "level": 3,
       "school": "evocation",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 45,
       "rangeText": "150 ft",
       "targetMode": "sphere",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a tiny ball of bat guano and sulfur",
       "concentration": false,
       "ritual": false,
@@ -425,7 +592,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -436,21 +608,30 @@
       "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma antes que esta magia termine, uma massa retorcida de vinhas espinhosas aparece no ponto de impacto, e o alvo deve ter sucesso em uma salvaguarda de Força ou ficar impedido pelas vinhas mágicas até a magia terminar. Uma criatura Grande ou maior tem vantagem nessa salvaguarda. Se o alvo tiver sucesso na salvaguarda, as vinhas definham. Enquanto impedido por esta magia, o alvo sofre 1d6 de dano perfurante no início de cada um de seus turnos.",
       "level": 1,
       "school": "conjuration",
-      "classesJson": ["Ranger"],
+      "classesJson": [
+        "Ranger"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "Concentration, up to 1 minute",
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "control",
       "savingThrow": "STR",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none"
     },
     {
       "system": "DND5E",
@@ -461,14 +642,18 @@
       "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma à distância antes que a magia termine, esta magia cria uma chuva de espinhos que brota de sua arma ou munição à distância. Além do efeito normal do ataque, o alvo do ataque e cada criatura em um raio de 1,5 metro devem fazer uma salvaguarda de Destreza. Uma criatura sofre 1d10 de dano perfurante em uma falha, ou metade em um sucesso.",
       "level": 1,
       "school": "conjuration",
-      "classesJson": ["Ranger"],
+      "classesJson": [
+        "Ranger"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "Concentration, up to 1 minute",
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "damage",
@@ -483,7 +668,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -494,14 +684,22 @@
       "descriptionPt": "Você toca uma criatura. A velocidade do alvo aumenta em 3 metros até a magia terminar.",
       "level": 1,
       "school": "transmutation",
-      "classesJson": ["Druid", "Ranger", "Wizard"],
+      "classesJson": [
+        "Druid",
+        "Ranger",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
       "targetMode": "touch",
       "duration": "1 hour",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a pinch of dirt",
       "concentration": false,
       "ritual": false,
@@ -512,7 +710,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -523,20 +725,31 @@
       "descriptionPt": "Você ganha a habilidade de compreender e se comunicar verbalmente com feras pela duração. O conhecimento e a consciência de muitas feras são limitados por sua inteligência, mas no mínimo elas podem fornecer informações sobre locais próximos e monstros, incluindo o que puderam perceber no último dia.",
       "level": 1,
       "school": "divination",
-      "classesJson": ["Bard", "Druid", "Ranger"],
+      "classesJson": [
+        "Bard",
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "10 minutes",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": true,
       "resolutionType": "utility",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -547,14 +760,22 @@
       "descriptionPt": "Você cria uma esfera de névoa com 6 metros de raio centrada em um ponto dentro do alcance. A esfera se espalha ao redor dos cantos, e sua área está fortemente obscurecida. Dura pela duração ou até que um vento de velocidade moderada ou maior (pelo menos 16 km/h) a disperse.",
       "level": 1,
       "school": "conjuration",
-      "classesJson": ["Druid", "Ranger", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Druid",
+        "Ranger",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 36,
       "rangeText": "120 ft",
       "targetMode": "sphere",
       "duration": "Concentration, up to 1 hour",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "utility",
@@ -566,7 +787,11 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true
     },
     {
       "system": "DND5E",
@@ -577,21 +802,32 @@
       "descriptionPt": "Um véu de sombras e silêncio irradia de você, mascarando você e seus companheiros da detecção. Pela duração, cada criatura que você escolher em um raio de 9 metros de você (incluindo você) recebe um bônus de +10 nas verificações de Destreza (Furtividade) e não pode ser rastreada, exceto por meios mágicos.",
       "level": 2,
       "school": "abjuration",
-      "classesJson": ["Druid", "Ranger"],
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "Concentration, up to 1 hour",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "ashes from a burned leaf of mistletoe and a sprig of spruce",
       "concentration": true,
       "ritual": false,
       "resolutionType": "buff",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -602,14 +838,20 @@
       "descriptionPt": "O chão em um raio de 6 metros centrado em um ponto dentro do alcance torce-se e brota espinhos e espinheiros. A área torna-se terreno difícil pela duração. Quando uma criatura se move para dentro ou dentro da área, ela sofre 2d4 de dano perfurante para cada 1,5 metro percorrido.",
       "level": 2,
       "school": "transmutation",
-      "classesJson": ["Druid", "Ranger"],
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 45,
       "rangeText": "150 ft",
       "targetMode": "sphere",
       "duration": "Concentration, up to 10 minutes",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "damage",
@@ -617,7 +859,11 @@
       "damageType": "Piercing",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true
     },
     {
       "system": "DND5E",
@@ -628,20 +874,31 @@
       "descriptionPt": "Você altera sua aparência, incluindo roupas, armadura, armas e outros pertences visíveis em você, até a magia terminar ou até usar sua ação para encerrá-la.",
       "level": 1,
       "school": "illusion",
-      "classesJson": ["Bard", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "targetMode": "self",
       "duration": "1 hour",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "buff",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -652,21 +909,31 @@
       "descriptionPt": "Um disco circular de força aparece e segue você, carregando peso enquanto permanecer ao seu alcance.",
       "level": 1,
       "school": "conjuration",
-      "classesJson": ["Wizard"],
+      "classesJson": [
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 9,
       "rangeText": "30 ft",
       "targetMode": "ranged",
       "duration": "1 hour",
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a drop of mercury",
       "concentration": false,
       "ritual": true,
       "resolutionType": "utility",
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     },
     {
       "system": "DND5E",
@@ -677,14 +944,22 @@
       "descriptionPt": "Uma onda de força trovejante irrompe de você. Criaturas na área devem fazer uma salvaguarda de Constituição, sofrendo dano trovejante em uma falha ou metade em um sucesso.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Bard", "Druid", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Druid",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self (15-foot cube)",
       "targetMode": "cube",
       "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -699,7 +974,12 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "coverAppliesToSave": "physical"
     },
     {
       "system": "DND5E",
@@ -710,14 +990,22 @@
       "descriptionPt": "Você tenta enfeitiçar um humanoide que possa ver. Ele deve fazer uma salvaguarda de Sabedoria e, em falha, fica enfeitiçado por você até o fim da magia.",
       "level": 1,
       "school": "enchantment",
-      "classesJson": ["Bard", "Sorcerer", "Warlock", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 9,
       "rangeText": "30 ft",
       "targetMode": "ranged",
       "duration": "1 hour",
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "control",
@@ -729,7 +1017,190 @@
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
-      "isActive": true
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "guidance",
+      "nameEn": "Guidance",
+      "namePt": "Orientação",
+      "descriptionEn": "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice. The spell then ends.",
+      "descriptionPt": "Você toca uma criatura voluntária. Antes que a magia termine, o alvo pode rolar um d4 e adicionar o número obtido em um teste de habilidade de sua escolha. A magia então termina.",
+      "level": 0,
+      "school": "divination",
+      "classesJson": [
+        "Cleric",
+        "Druid"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 0,
+      "rangeText": "Touch",
+      "targetMode": "touch",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "requiresTargetSight": false,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "minor_illusion",
+      "nameEn": "Minor Illusion",
+      "namePt": "Ilusão Menor",
+      "descriptionEn": "You create a sound or an image of an object within range that lasts for the duration. The illusion also ends if you dismiss it as an action or cast this spell again.",
+      "descriptionPt": "Você cria um som ou uma imagem de um objeto dentro do alcance que dura pela duração. A ilusão também termina se você a dispensar como uma ação ou conjurar essa magia novamente.",
+      "level": 0,
+      "school": "illusion",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "targetMode": "ranged",
+      "duration": "1 minute",
+      "componentsJson": [
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a bit of fleece",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility",
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "eldritch_blast",
+      "nameEn": "Eldritch Blast",
+      "namePt": "Explosão Eldritch",
+      "descriptionEn": "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage.",
+      "descriptionPt": "Um feixe de energia crepitante se estende até uma criatura dentro do alcance. Faça um ataque de magia à distância contra o alvo. Em um acerto, o alvo sofre 1d10 de dano de força.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Warlock"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "targetMode": "ranged",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "1d10",
+      "damageType": "Force",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "thorn_whip",
+      "nameEn": "Thorn Whip",
+      "namePt": "Chicote de Espinhos",
+      "descriptionEn": "You create a long, vine-like whip covered in thorns that lashes out toward a creature in range. Make a melee spell attack against the target. On a hit, the creature takes 1d6 piercing damage, and if Large or smaller, you pull it up to 10 feet closer to you.",
+      "descriptionPt": "Você cria um chicote longo coberto de espinhos que açoita em direção a uma criatura dentro do alcance. Faça um ataque de magia corpo a corpo contra o alvo. Em um acerto, a criatura sofre 1d6 de dano perfurante e, se for Grande ou menor, você a puxa até 3 metros em sua direção.",
+      "level": 0,
+      "school": "transmutation",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "targetMode": "ranged",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "the stem of a plant with thorns",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "1d6",
+      "damageType": "Piercing",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "hex",
+      "nameEn": "Hex",
+      "namePt": "Maldição",
+      "descriptionEn": "You place a curse on a creature you can see within range. Until the spell ends, you deal an extra 1d6 necrotic damage whenever you hit it with an attack. Also, choose one ability; the target has disadvantage on ability checks with that ability.",
+      "descriptionPt": "Você coloca uma maldição em uma criatura que pode ver dentro do alcance. Até a magia acabar, você causa 1d6 de dano necrótico extra ao alvo sempre que o acertar com um ataque. Além disso, escolha uma habilidade; o alvo tem desvantagem nos testes feitos com ela.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Warlock"
+      ],
+      "castingTime": "1 bonus action",
+      "castingTimeType": "bonus_action",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "targetMode": "ranged",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "the petrified eye of a newt",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "debuff",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap"
     }
   ]
 }

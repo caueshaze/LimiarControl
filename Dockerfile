@@ -14,16 +14,16 @@ ENV VITE_CENTRIFUGO_URL=${VITE_CENTRIFUGO_URL}
 ENV VITE_ENABLE_MUSIC=${VITE_ENABLE_MUSIC}
 ENV VITE_ENABLE_MAPS=${VITE_ENABLE_MAPS}
 
-COPY package*.json ./
-RUN npm ci
+COPY apps/control-web/package.json ./
+RUN npm install
 
-COPY index.html ./
-COPY vite.config.ts ./
-COPY tsconfig*.json ./
-COPY postcss.config.js ./
-COPY tailwind.config.js ./
-COPY public ./public
-COPY src ./src
+COPY apps/control-web/index.html ./
+COPY apps/control-web/vite.config.ts ./
+COPY apps/control-web/tsconfig*.json ./
+COPY apps/control-web/postcss.config.js ./
+COPY apps/control-web/tailwind.config.js ./
+COPY apps/control-web/public ./public
+COPY apps/control-web/src ./src
 
 RUN npm run build
 
@@ -33,10 +33,10 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
 
 WORKDIR /app
 
-COPY server_py/requirements.txt ./
+COPY apps/control-server/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=appuser:appuser server_py/ ./
+COPY --chown=appuser:appuser apps/control-server/ ./
 COPY --chown=appuser:appuser Base/ /Base/
 COPY --from=frontend-build --chown=appuser:appuser /app/dist ./dist
 

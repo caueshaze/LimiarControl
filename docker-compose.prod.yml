@@ -17,6 +17,22 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2025-02-07T23-21-09Z
+    container_name: limiarcontrol-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - limiarcontrol_minio:/data
+    networks:
+      - internal
+    restart: unless-stopped
+
   centrifugo:
     image: centrifugo/centrifugo:v5
     container_name: limiarcontrol-centrifugo
@@ -45,7 +61,7 @@ services:
         VITE_ENABLE_MAPS: ${DOCKER_VITE_ENABLE_MAPS:-true}
     container_name: limiarcontrol-api
     ports:
-      - "127.0.0.1:${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8002}:8000"
     environment:
       APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-limiarcontrol}
@@ -54,15 +70,21 @@ services:
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:?CENTRIFUGO_API_KEY is required}
       CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:?CENTRIFUGO_TOKEN_SECRET is required}
       CENTRIFUGO_PUBLIC_URL: ${CENTRIFUGO_PUBLIC_URL:?CENTRIFUGO_PUBLIC_URL is required}
+      LIMIAR_MAP_INTERNAL_KEY: ${LIMIAR_MAP_INTERNAL_KEY:?LIMIAR_MAP_INTERNAL_KEY is required}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       AUTO_MIGRATE: ${AUTO_MIGRATE:-false}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      MEDIA_LEGACY_ALLOWED_ORIGINS: ${MEDIA_LEGACY_ALLOWED_ORIGINS:-}
     depends_on:
       db:
         condition: service_healthy
       centrifugo:
+        condition: service_started
+      minio:
         condition: service_started
     networks:
       - internal
@@ -74,3 +96,4 @@ networks:
 
 volumes:
   limiarcontrol_db:
+  limiarcontrol_minio:

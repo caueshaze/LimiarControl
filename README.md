@@ -28,25 +28,20 @@ It is designed around party-based play: players join a party, create their chara
 
 ```text
 .
-├── src/                     Frontend application
-│   ├── app/                 App config and routes
-│   ├── entities/            Domain types and schemas
-│   ├── features/            Feature modules
-│   ├── pages/               Route-level pages
-│   ├── shared/              Shared UI, API clients, realtime helpers
-│   └── widgets/             Composed UI blocks
-├── server_py/               FastAPI backend
-│   ├── app/
-│   │   ├── api/routes/      HTTP routes
-│   │   ├── models/          SQLModel models
-│   │   ├── schemas/         Pydantic schemas
-│   │   └── services/        Backend services
-│   └── alembic/             Database migrations
+├── apps/
+│   ├── control-web/         React frontend do LimiarControl
+│   ├── control-server/      FastAPI backend do LimiarControl
+│   ├── map-web/             React frontend do LimiarMap
+│   └── map-server/          Fastify + Centrifugo backend do LimiarMap
+├── packages/
+│   ├── shared-contracts/    Contratos compartilhados para integracao
+│   └── tactical-engine/     Engine tatica pura
 ├── centrifugo/              Centrifugo config
 ├── Base/                    Base RPG datasets used by the app
 ├── docker-compose.yml       Local development infra
 ├── docker-compose.lab.yml   Homologation stack
-└── docker-compose.prod.yml  Production-like stack
+├── docker-compose.prod.yml  Production-like stack
+└── package.json             Workspaces e scripts do monorepo
 ```
 
 ## Core flow
@@ -72,7 +67,7 @@ It is designed around party-based play: players join a party, create their chara
 Recommended for day-to-day work. Run infrastructure in Docker and keep frontend/backend hot reload on the host.
 
 - Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
 - Centrifugo: `ws://localhost:8001/connection/websocket`
 - Compose file: [docker-compose.yml](/home/caue/LimiarControl/docker-compose.yml)
 
@@ -101,62 +96,72 @@ Production now uses the single-container app stack for frontend + backend, with 
 - Python 3.11+
 - Docker and Docker Compose
 
-### 1. Start infrastructure
+### 1. Configure environment
 
-Start PostgreSQL and Centrifugo:
+Copy the root env example and adjust if needed:
+
+```bash
+cp .env.example .env
+```
+
+The defaults in `.env.example` work out of the box for local development.
+
+### 2. Start infrastructure
+
+Start PostgreSQL, MinIO, and Centrifugo:
 
 ```bash
 docker compose up -d
 ```
 
-### 2. Backend setup
+### 3. Backend setup
 
 ```bash
-cd server_py
+cd apps/control-server
 python -m venv .venv
 source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e .
 alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Use the repository root `.env` with localhost values when running FastAPI directly on your machine:
+The backend reads the repository root `.env` automatically (python-dotenv). The relevant variables for local development are already set in `.env.example`.
 
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=limiarcontrol
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
-PORT=3000
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
-CENTRIFUGO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
-APP_ENV=development
-AUTO_MIGRATE=true
-JWT_SECRET=dev-secret-change-me
-CENTRIFUGO_API_URL=http://localhost:8001/api
-CENTRIFUGO_API_KEY=dev-api-key
-CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
-CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
-CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
+### 4. Map server (LimiarMap)
+
+Required when `LIMIAR_MAP_ENABLED=true` (default). From the repository root:
+
+```bash
+npm run dev:map
 ```
 
-### 3. Frontend setup
+This starts both the Fastify map server (port 3000) and the map frontend (port 5174).
+
+To run only the map server without the map frontend:
+
+```bash
+npm run dev:map:server
+```
+
+### 5. Install dependencies and start the frontend
 
 From the repository root:
 
 ```bash
 npm install
-npm run dev
+npm run dev:control
 ```
 
-### 4. Open the app
+### 6. Open the app
 
-- Frontend: `http://localhost:5173`
-- API docs: `http://localhost:3000/docs`
-- API health: `http://localhost:3000/health`
+- Control frontend: `http://localhost:5173`
+- Map frontend: `http://localhost:5174`
+- API docs: `http://localhost:8000/docs`
+- API health: `http://localhost:8000/health`
+- MinIO console: `http://localhost:9001` (minioadmin / minioadmin)
 
-### 5. Validate the production-like stack locally
+### 7. Validate the production-like stack locally
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
@@ -168,7 +173,7 @@ Expected endpoints in this mode:
 - API health: `http://127.0.0.1:8000/health`
 - Centrifugo websocket: `ws://localhost:8001/connection/websocket`
 
-### 6. Validate the lab stack locally
+### 8. Validate the lab stack locally
 
 ```bash
 cp .env.lab.example .env.lab
@@ -185,41 +190,17 @@ Expected endpoints in this mode:
 
 ### Root `.env`
 
-Default example:
+Use [.env.example](.env.example) as the starting point:
 
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=limiarcontrol
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/limiarcontrol
-PORT=3000
-CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
-CENTRIFUGO_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
-APP_ENV=development
-AUTO_MIGRATE=true
-JWT_SECRET=dev-secret-change-me
-CENTRIFUGO_API_URL=http://localhost:8001/api
-CENTRIFUGO_API_KEY=dev-api-key
-CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
-CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
-CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-VITE_APP_ENV=development
-VITE_API_BASE_URL=/api
-VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
-VITE_ENABLE_MUSIC=true
-VITE_ENABLE_MAPS=true
-DOCKER_VITE_API_BASE_URL=/api
-DOCKER_VITE_CENTRIFUGO_URL=ws://localhost:8001/connection/websocket
-DOCKER_VITE_ENABLE_MUSIC=true
-DOCKER_VITE_ENABLE_MAPS=true
+```bash
+cp .env.example .env
 ```
+
+All defaults work out of the box for local development. The file covers PostgreSQL, MinIO, Centrifugo, JWT, CORS, and Vite build variables.
 
 ### Lab `.env`
 
-Use [.env.lab.example](/home/caue/LimiarControl/.env.lab.example) as the starting point for homologation:
+Use [.env.lab.example](.env.lab.example) as the starting point for homologation:
 
 ```bash
 cp .env.lab.example .env.lab
@@ -230,9 +211,9 @@ cp .env.lab.example .env.lab
 ### Frontend
 
 ```bash
-npm run dev
-npm run build
-npm run preview
+npm run dev:control
+npm run build:control
+npm run preview -w apps/control-web
 npx tsc --noEmit
 ```
 
@@ -285,9 +266,9 @@ docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
 ### Backend
 
 ```bash
-cd server_py
+cd apps/control-server
 alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 python -m py_compile app/api/routes/sessions/*.py
 ```
 
@@ -298,19 +279,19 @@ After running migrations, the runtime uses database + JSON seed as the official 
 Bootstrap or replace the base item catalog with the repository seed:
 
 ```bash
-server_py/.venv/bin/python scripts/import_base_items_json.py --input Base/base_items.seed.json --replace
+apps/control-server/.venv/bin/python scripts/import_base_items_json.py --input Base/base_items.seed.json --replace
 ```
 
 Export the current database catalog back to the repository seed format:
 
 ```bash
-server_py/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
+apps/control-server/.venv/bin/python scripts/export_base_items_json.py --output Base/base_items.seed.json
 ```
 
 Bootstrap or replace the base spell catalog with the repository seed:
 
 ```bash
-server_py/.venv/bin/python scripts/import_base_spells_json.py --input Base/base_spells.seed.json --replace
+apps/control-server/.venv/bin/python scripts/import_base_spells_json.py --input Base/base_spells.seed.json --replace
 ```
 
 Notes:
@@ -349,9 +330,9 @@ Some screens still keep short polling fallbacks, but the primary source of truth
 
 ## Notes for contributors
 
-- Frontend code is organized by slices under `src/`
+- Frontend code is organized by slices under `apps/control-web/src/`
 - Pages should stay thin and compose feature modules
-- Backend routes live under `server_py/app/api/routes/`
+- Backend routes live under `apps/control-server/app/api/routes/`
 - Always run `alembic upgrade head` after pulling schema changes
 - Do not commit local `.env` files or generated build artifacts
 

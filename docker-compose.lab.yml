@@ -19,6 +19,22 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2025-02-07T23-21-09Z
+    container_name: limiar-lab-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${LAB_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${LAB_MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "127.0.0.1:9004:9000"
+      - "127.0.0.1:9005:9001"
+    volumes:
+      - limiar_lab_minio:/data
+    networks:
+      - internal
+    restart: unless-stopped
+
   centrifugo:
     image: centrifugo/centrifugo:v5
     container_name: limiar-lab-centrifugo
@@ -28,7 +44,7 @@ services:
     environment:
       CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
       CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
-      CENTRIFUGO_ALLOWED_ORIGINS: ${LAB_CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:8002,http://127.0.0.1:8002}
+      CENTRIFUGO_ALLOWED_ORIGINS: ${LAB_CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:${LAB_API_PORT:-8002} http://127.0.0.1:${LAB_API_PORT:-8002}}
     ports:
       - "127.0.0.1:8003:8000"
     networks:
@@ -56,15 +72,21 @@ services:
       CENTRIFUGO_API_KEY: ${LAB_CENTRIFUGO_API_KEY:-dev-api-key}
       CENTRIFUGO_TOKEN_SECRET: ${LAB_CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
       CENTRIFUGO_PUBLIC_URL: ${LAB_CENTRIFUGO_PUBLIC_URL:-ws://127.0.0.1:8003/connection/websocket}
-      CORS_ORIGIN: ${LAB_CORS_ORIGIN:-http://localhost:8002,http://127.0.0.1:8002}
+      LIMIAR_MAP_INTERNAL_KEY: ${LAB_LIMIAR_MAP_INTERNAL_KEY:-dev-map-internal-key}
+      CORS_ORIGIN: ${LAB_CORS_ORIGIN:-http://localhost:${LAB_API_PORT:-8002},http://127.0.0.1:${LAB_API_PORT:-8002}}
       AUTO_MIGRATE: ${LAB_AUTO_MIGRATE:-true}
-      CLOUDINARY_CLOUD_NAME: ${LAB_CLOUDINARY_CLOUD_NAME:-}
-      CLOUDINARY_API_KEY: ${LAB_CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${LAB_CLOUDINARY_API_SECRET:-}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${LAB_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${LAB_MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${LAB_MINIO_BUCKET:-limiarcontrol-media}
+      MINIO_SECURE: ${LAB_MINIO_SECURE:-false}
+      MEDIA_LEGACY_ALLOWED_ORIGINS: ${LAB_MEDIA_LEGACY_ALLOWED_ORIGINS:-}
     depends_on:
       db:
         condition: service_healthy
       centrifugo:
+        condition: service_started
+      minio:
         condition: service_started
     networks:
       - internal
@@ -78,3 +100,5 @@ networks:
 volumes:
   limiar_lab_db:
     name: limiar_lab_db
+  limiar_lab_minio:
+    name: limiar_lab_minio

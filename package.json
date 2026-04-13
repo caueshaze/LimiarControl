@@ -1,37 +1,38 @@
 {
-  "type": "module",
+  "name": "limiar",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "test": "vitest run",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tanstack/react-query": "^5.90.20",
-    "autoprefixer": "^10.4.23",
-    "centrifuge": "^5.5.3",
-    "clsx": "^2.1.1",
-    "nanoid": "^5.1.5",
-    "postcss": "^8.5.6",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "react-hook-form": "^7.71.1",
-    "react-router-dom": "^7.13.0",
-    "tailwindcss": "^4.1.18",
-    "zod": "^4.3.6"
+    "dev:control": "npm run dev -w apps/control-web",
+    "dev:map": "concurrently -n map-server,map-web \"npm run dev -w apps/map-server\" \"npm run dev -w apps/map-web\"",
+    "dev:map:server": "npm run dev -w apps/map-server",
+    "dev:map:web": "npm run dev -w apps/map-web",
+    "build:control": "npm run build -w apps/control-web",
+    "build:map": "npm run build -w apps/map-server && npm run build -w apps/map-web",
+    "test": "vitest run --exclude 'apps/map-web/tests/**'",
+    "test:control": "npm run test -w apps/control-web",
+    "test:e2e": "playwright test",
+    "lint": "eslint ."
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/react": "^19.2.9",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.7.0",
-    "eslint": "^9.39.4",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
+    "@playwright/test": "^1.54.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.0.1",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
     "vite": "^7.3.1",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.2"
   }
 }

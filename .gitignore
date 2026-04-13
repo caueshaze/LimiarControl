@@ -20,9 +20,9 @@ __pycache__/
 .env.development.local
 .env.test.local
 .env.production.local
-server_py/.env
-server_py/.env.local
-server_py/.env.*.local
+apps/control-server/.env
+apps/control-server/.env.local
+apps/control-server/.env.*.local
 .env.production
 
 # ======================
