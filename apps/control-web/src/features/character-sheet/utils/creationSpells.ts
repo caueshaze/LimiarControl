@@ -166,6 +166,10 @@ const ensureFixedStartingSpells = (
         ...fixedSpell,
         ...merged[existingIndex],
         canonicalKey: fixedSpell.canonicalKey,
+        campaignSpellId:
+          merged[existingIndex]?.campaignSpellId ??
+          fixedSpell.campaignSpellId ??
+          null,
         name: merged[existingIndex]?.name || fixedSpell.name,
         level: merged[existingIndex]?.level ?? fixedSpell.level,
         school: merged[existingIndex]?.school || fixedSpell.school,
