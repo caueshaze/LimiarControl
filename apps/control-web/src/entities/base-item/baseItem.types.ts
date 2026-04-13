@@ -125,6 +125,8 @@ export type MagicItemRechargeType =
 
 export type MagicItemCastSpellEffect = {
   type: "cast_spell";
+  /** Authority id for campaign-backed spell entries. Null/absent for base or legacy item spells. */
+  campaignSpellId?: string | null;
   spellCanonicalKey: string;
   castLevel: number;
   ignoreComponents: boolean;

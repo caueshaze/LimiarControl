@@ -17,6 +17,29 @@ type UseShopOptions = {
   auto?: boolean;
 };
 
+export const toItemRepoPayload = (payload: ItemInput): ItemInput => ({
+  name: payload.name.trim(),
+  type: payload.type,
+  description: payload.description.trim(),
+  price: payload.price,
+  weight: payload.weight,
+  damageDice: payload.damageDice,
+  damageType: payload.damageType,
+  magicEffect: payload.magicEffect,
+  rangeMeters: payload.rangeMeters,
+  rangeLongMeters: payload.rangeLongMeters,
+  versatileDamage: payload.versatileDamage,
+  weaponCategory: payload.weaponCategory || undefined,
+  weaponRangeType: payload.weaponRangeType || undefined,
+  armorCategory: payload.armorCategory || undefined,
+  armorClassBase: payload.armorClassBase,
+  dexBonusRule: payload.dexBonusRule || undefined,
+  strengthRequirement: payload.strengthRequirement,
+  stealthDisadvantage: payload.stealthDisadvantage,
+  isShield: payload.isShield,
+  properties: payload.properties,
+});
+
 export const useShop = (options?: UseShopOptions) => {
   const { campaigns, selectedCampaignId } = useCampaigns();
   const campaignId = options?.campaignId ?? selectedCampaignId ?? null;
@@ -75,27 +98,10 @@ export const useShop = (options?: UseShopOptions) => {
     }
 
     try {
-      const item = await itemsRepo.create(campaignId, {
-        name: validation.value.name.trim(),
-        type: validation.value.type,
-        description: validation.value.description.trim(),
-        price: validation.value.price,
-        weight: validation.value.weight,
-        damageDice: validation.value.damageDice,
-        damageType: validation.value.damageType,
-        rangeMeters: validation.value.rangeMeters,
-        rangeLongMeters: validation.value.rangeLongMeters,
-        versatileDamage: validation.value.versatileDamage,
-        weaponCategory: validation.value.weaponCategory || undefined,
-        weaponRangeType: validation.value.weaponRangeType || undefined,
-        armorCategory: validation.value.armorCategory || undefined,
-        armorClassBase: validation.value.armorClassBase,
-        dexBonusRule: validation.value.dexBonusRule || undefined,
-        strengthRequirement: validation.value.strengthRequirement,
-        stealthDisadvantage: validation.value.stealthDisadvantage,
-        isShield: validation.value.isShield,
-        properties: validation.value.properties,
-      });
+      const item = await itemsRepo.create(
+        campaignId,
+        toItemRepoPayload(validation.value),
+      );
       if (item) {
         setItems((current) => [item, ...current]);
       }
@@ -119,27 +125,11 @@ export const useShop = (options?: UseShopOptions) => {
     }
 
     try {
-      const item = await itemsRepo.update(campaignId, itemId, {
-        name: validation.value.name.trim(),
-        type: validation.value.type,
-        description: validation.value.description.trim(),
-        price: validation.value.price,
-        weight: validation.value.weight,
-        damageDice: validation.value.damageDice,
-        damageType: validation.value.damageType,
-        rangeMeters: validation.value.rangeMeters,
-        rangeLongMeters: validation.value.rangeLongMeters,
-        versatileDamage: validation.value.versatileDamage,
-        weaponCategory: validation.value.weaponCategory || undefined,
-        weaponRangeType: validation.value.weaponRangeType || undefined,
-        armorCategory: validation.value.armorCategory || undefined,
-        armorClassBase: validation.value.armorClassBase,
-        dexBonusRule: validation.value.dexBonusRule || undefined,
-        strengthRequirement: validation.value.strengthRequirement,
-        stealthDisadvantage: validation.value.stealthDisadvantage,
-        isShield: validation.value.isShield,
-        properties: validation.value.properties,
-      });
+      const item = await itemsRepo.update(
+        campaignId,
+        itemId,
+        toItemRepoPayload(validation.value),
+      );
       if (item) {
         setItems((current) =>
           current.map((entry) => (entry.id === itemId ? item : entry)),
