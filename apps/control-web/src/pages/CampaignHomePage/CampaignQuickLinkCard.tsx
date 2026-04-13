@@ -5,7 +5,7 @@ type CampaignQuickLinkCardProps = {
   to: string;
   title: string;
   description: string;
-  accent: "sky" | "emerald" | "amber";
+  accent: "sky" | "emerald" | "amber" | "violet";
 };
 
 export const CampaignQuickLinkCard = ({
@@ -30,6 +30,13 @@ export const CampaignQuickLinkCard = ({
           badge: "border-emerald-300/15 bg-emerald-400/10 text-emerald-100",
           text: "text-emerald-200",
         }
+        : accent === "violet"
+          ? {
+            border: "border-violet-400/18 hover:border-violet-300/30",
+            glow: "bg-violet-400/16",
+            badge: "border-violet-300/15 bg-violet-400/10 text-violet-100",
+            text: "text-violet-200",
+          }
         : {
           border: "border-amber-400/18 hover:border-amber-300/30",
           glow: "bg-amber-400/16",

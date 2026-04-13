@@ -1,4 +1,4 @@
-import type { BaseSpell, BaseSpellFilters } from "../../entities/base-spell";
+import type { BaseSpell, BaseSpellFilters, BaseSpellWritePayload, SpellSchool } from "../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "./baseSpellsRepo";
 import { http } from "./http";
 
@@ -30,8 +30,18 @@ export const campaignSpellsRepo = {
     http.get<BaseSpell[]>(`/campaigns/${campaignId}/spells${toQueryString(filters)}`),
   get: (campaignId: string, spellId: string) =>
     http.get<BaseSpell>(`/campaigns/${campaignId}/spells/${spellId}`),
+  create: (campaignId: string, payload: CampaignSpellCreatePayload) =>
+    http.post<BaseSpell>(`/campaigns/${campaignId}/spells`, payload),
   update: (campaignId: string, spellId: string, payload: BaseSpellUpdatePayload) =>
     http.put<BaseSpell>(`/campaigns/${campaignId}/spells/${spellId}`, payload),
   delete: (campaignId: string, spellId: string) =>
     http.del(`/campaigns/${campaignId}/spells/${spellId}`),
+};
+
+export type CampaignSpellCreatePayload = BaseSpellWritePayload & {
+  canonicalKey: string;
+  nameEn: string;
+  descriptionEn: string;
+  level: number;
+  school: SpellSchool;
 };

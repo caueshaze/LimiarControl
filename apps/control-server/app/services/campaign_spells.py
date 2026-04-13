@@ -1,18 +1,63 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.base_spell import BaseSpell
+from app.models.base_spell import BaseSpell, SpellSchool, SpellSource
 from app.models.campaign_spell import CampaignSpell
 from app.models.campaign import Campaign, SystemType
-from app.models.base_spell import SpellSchool
+from app.schemas.base_spell import BaseSpellCreate
 
 
 def _normalize_lookup(value: str) -> str:
     return value.strip().lower()
+
+
+_FIELD_MAP: dict[str, str] = {
+    "canonicalKey": "canonical_key",
+    "nameEn": "name_en",
+    "namePt": "name_pt",
+    "descriptionEn": "description_en",
+    "descriptionPt": "description_pt",
+    "classesJson": "classes_json",
+    "castingTimeType": "casting_time_type",
+    "castingTime": "casting_time",
+    "rangeMeters": "range_meters",
+    "rangeText": "range_text",
+    "targetMode": "target_mode",
+    "componentsJson": "components_json",
+    "materialComponentText": "material_component_text",
+    "resolutionType": "resolution_type",
+    "savingThrow": "saving_throw",
+    "saveSuccessOutcome": "save_success_outcome",
+    "coverAppliesToSave": "cover_applies_to_save",
+    "damageDice": "damage_dice",
+    "damageType": "damage_type",
+    "healDice": "heal_dice",
+    "requiresTargetSight": "requires_target_sight",
+    "requiresTargetEffect": "requires_target_effect",
+    "requiresPointSight": "requires_point_sight",
+    "requiresPointEffect": "requires_point_effect",
+    "upcast": "upcast_json",
+    "upcastMode": "upcast_mode",
+    "upcastValue": "upcast_value",
+    "sourceRef": "source_ref",
+    "isSrd": "is_srd",
+}
+
+
+def _to_db_fields(data: dict) -> dict:
+    return {_FIELD_MAP.get(key, key): value for key, value in data.items()}
+
+
+def _apply_spell_data(spell: CampaignSpell, data: dict) -> None:
+    for key, value in _to_db_fields(data).items():
+        if hasattr(spell, key):
+            setattr(spell, key, value)
 
 
 def seed_campaign_spells(
@@ -176,6 +221,64 @@ def get_campaign_spell_by_id(
     ).first()
 
 
+def get_campaign_spell_by_canonical_key(
+    *,
+    db: Session,
+    campaign_id: str,
+    canonical_key: str,
+) -> CampaignSpell | None:
+    return db.exec(
+        select(CampaignSpell).where(
+            CampaignSpell.campaign_id == campaign_id,
+            func.lower(CampaignSpell.canonical_key) == _normalize_lookup(canonical_key),
+        )
+    ).first()
+
+
+def create_campaign_spell(
+    *,
+    db: Session,
+    campaign: Campaign,
+    payload: BaseSpellCreate,
+    commit: bool = True,
+    refresh: bool = True,
+) -> CampaignSpell:
+    existing = get_campaign_spell_by_canonical_key(
+        db=db,
+        campaign_id=campaign.id,
+        canonical_key=payload.canonicalKey,
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Campaign spell with canonical_key '{payload.canonicalKey}' "
+                f"already exists for campaign '{campaign.id}'"
+            ),
+        )
+
+    spell = CampaignSpell(
+        id=str(uuid4()),
+        campaign_id=campaign.id,
+        base_spell_id=None,
+        is_custom=True,
+        is_enabled=True,
+        source=payload.source or SpellSource.ADMIN_PANEL.value,
+    )
+    _apply_spell_data(spell, payload.model_dump(exclude={"system"}))
+    if not spell.source:
+        spell.source = SpellSource.ADMIN_PANEL.value
+
+    db.add(spell)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    if refresh:
+        db.refresh(spell)
+    return spell
+
+
 def update_campaign_spell(
     *,
     db: Session,
@@ -191,9 +294,7 @@ def update_campaign_spell(
     if not spell:
         return None
 
-    for key, value in data.items():
-        if hasattr(spell, key):
-            setattr(spell, key, value)
+    _apply_spell_data(spell, data)
 
     db.add(spell)
     db.commit()

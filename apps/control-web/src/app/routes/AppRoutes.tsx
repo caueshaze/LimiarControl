@@ -25,6 +25,14 @@ const CatalogPage = lazy(async () => {
   const module = await import("../../pages/CatalogPage");
   return { default: module.CatalogPage };
 });
+const CatalogItemsPage = lazy(async () => {
+  const module = await import("../../pages/CatalogPage");
+  return { default: module.CatalogItemsPage };
+});
+const CatalogSpellsPage = lazy(async () => {
+  const module = await import("../../pages/CatalogPage");
+  return { default: module.CatalogSpellsPage };
+});
 const SystemCatalogPage = lazy(async () => {
   const module = await import("../../pages/SystemCatalogPage");
   return { default: module.SystemCatalogPage };
@@ -261,6 +269,26 @@ export const AppRoutes = () => {
             <RequireAuth>
               <RequireGmRole>
                 {renderRoute(<CatalogPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.catalogItems}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CatalogItemsPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.catalogSpells}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CatalogSpellsPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
