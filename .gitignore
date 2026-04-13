@@ -54,3 +54,4 @@ Thumbs.db
 .coverage
 coverage/
 htmlcov/
+historico_commits.txt
