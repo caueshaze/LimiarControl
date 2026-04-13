@@ -129,7 +129,7 @@ describe("guardian creation flow", () => {
     );
   });
 
-  it("builds guardian spellcasting with hunters_mark fixed and 1 open choice at level 2", () => {
+  it("builds guardian spellcasting with animal_friendship and hunters_mark fixed at level 2", () => {
     const sheet = normalizeCreationAfterClassChange(
       {
         ...INITIAL_SHEET,
@@ -142,10 +142,9 @@ describe("guardian creation flow", () => {
 
     expect(sheet.spellcasting?.ability).toBe("wisdom");
     expect(sheet.spellcasting?.slots[1]).toEqual({ max: 2, used: 0 });
-    // hunters_mark is the only fixed spell; player must choose 1 more from the catalog
     expect(
       sheet.spellcasting?.spells.map((spell) => spell.canonicalKey)
-    ).toEqual(["hunters_mark"]);
+    ).toEqual(["animal_friendship", "hunters_mark"]);
   });
 
   it("unlocks guardian spellcasting when the draft level changes from 1 to 2", () => {
@@ -165,7 +164,7 @@ describe("guardian creation flow", () => {
     expect(level2Guardian.spellcasting?.slots[1]).toEqual({ max: 2, used: 0 });
     expect(
       level2Guardian.spellcasting?.spells.map((spell) => spell.canonicalKey)
-    ).toEqual(["hunters_mark"]);
+    ).toEqual(["animal_friendship", "hunters_mark"]);
     expect(level2Guardian.classFeatures.map((feature) => feature.id)).toContain(
       "spellcasting_guardian"
     );
@@ -206,7 +205,7 @@ describe("guardian creation flow", () => {
     ).toBe(12);
   });
 
-  it("builds the fixed guardian progression at level 3", () => {
+  it("builds the fixed guardian progression at level 3 including goodberry", () => {
     const sheet = normalizeCreationAfterClassChange(
       {
         ...INITIAL_SHEET,
@@ -248,10 +247,9 @@ describe("guardian creation flow", () => {
     );
     expect(sheet.spellcasting?.ability).toBe("wisdom");
     expect(sheet.spellcasting?.slots[1]).toEqual({ max: 3, used: 0 });
-    // hunters_mark is always present; player may choose up to 2 additional spells from catalog
     expect(
       sheet.spellcasting?.spells.map((spell) => spell.canonicalKey)
-    ).toContain("hunters_mark");
+    ).toEqual(["animal_friendship", "goodberry", "hunters_mark"]);
   });
 
   it("applies the fixed ASI at level 4 and archery to ranged attacks", () => {
@@ -380,7 +378,7 @@ describe("guardian creation flow", () => {
     expect(spell).toBeNull();
   });
 
-  it("validates guardian level 2 creation correctly with spell requirements", () => {
+  it("validates guardian level 2 creation without manual spell picks", () => {
     const sheet = normalizeCreationAfterClassChange(
       { ...INITIAL_SHEET, level: 2, race: "human", background: "soldier" },
       "guardian"
@@ -393,7 +391,7 @@ describe("guardian creation flow", () => {
       classSkillChoices: getClass("guardian")!.skillChoices.slice(0, 3),
       classEquipmentSelections: getInitialClassEquipmentSelections("guardian")
     });
-    expect(result.missingRequiredFields).toContain("leveledSpells");
+    expect(result.missingRequiredFields).not.toContain("leveledSpells");
   });
 
   it("maintains consistent spellcasting through level 4 progression", () => {
@@ -413,9 +411,20 @@ describe("guardian creation flow", () => {
     expect(level3.spellcasting!.ability).toBe("wisdom");
     expect(level4.spellcasting!.ability).toBe("wisdom");
 
-    expect(level4.spellcasting!.spells.map((s) => s.canonicalKey)).toContain(
+    expect(level2.spellcasting!.spells.map((s) => s.canonicalKey)).toEqual([
+      "animal_friendship",
       "hunters_mark"
-    );
+    ]);
+    expect(level3.spellcasting!.spells.map((s) => s.canonicalKey)).toEqual([
+      "animal_friendship",
+      "goodberry",
+      "hunters_mark"
+    ]);
+    expect(level4.spellcasting!.spells.map((s) => s.canonicalKey)).toEqual([
+      "animal_friendship",
+      "goodberry",
+      "hunters_mark"
+    ]);
     expect(level4.spellcasting!.slots[1]).toEqual({ max: 3, used: 0 });
   });
 });
