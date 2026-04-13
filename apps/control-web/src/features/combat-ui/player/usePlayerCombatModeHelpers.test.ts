@@ -264,6 +264,7 @@ describe("buildSpellOptions", () => {
     expect(options).toEqual([
       expect.objectContaining({
         id: "magic-item:inv-1",
+        campaignSpellId: null,
         canonicalKey: "magic_missile",
         sourceType: "magic_item",
         sourceItemName: "Bracelete de Phantyr: Mísseis Mágicos",
@@ -275,6 +276,149 @@ describe("buildSpellOptions", () => {
         noFreeHandRequired: true,
       }),
     ]);
+  });
+
+  it("resolves campaign-backed magic item spells by campaignSpellId", () => {
+    seedSpellCatalogCache(
+      [
+        {
+          campaignSpellId: "camp-spell-1",
+          canonicalKey: "spike_growth",
+          name: "Spike Growth",
+          level: 2,
+          school: "transmutation",
+          castingTimeType: "action",
+          castingTime: "1 action",
+          range: "45 m",
+          components: "V, S, M",
+          duration: "Up to 10 minutes",
+          concentration: true,
+          ritual: false,
+          description: "Test spell.",
+          resolutionType: "control",
+          targetMode: "sphere",
+          damageType: null,
+          savingThrow: "DEX",
+          saveSuccessOutcome: "none",
+          healDice: null,
+          upcast: null,
+          classes: ["Druid", "Ranger"],
+        },
+      ],
+      "camp-magic-item",
+    );
+
+    const options = buildSpellOptions(
+      null,
+      "camp-magic-item",
+      [
+        {
+          id: "inv-1",
+          itemId: "item-1",
+          memberId: "member-1",
+          quantity: 1,
+          chargesCurrent: 1,
+          isEquipped: false,
+        },
+      ],
+      {
+        "item-1": {
+          id: "item-1",
+          name: "Cajado de Espinhos",
+          type: ITEM_TYPES.MAGIC,
+          description: "Canaliza Spike Growth.",
+          chargesMax: 3,
+          rechargeType: "dawn",
+          magicEffect: {
+            type: "cast_spell",
+            campaignSpellId: "camp-spell-1",
+            spellCanonicalKey: "outdated_key",
+            castLevel: 2,
+            ignoreComponents: true,
+            noFreeHandRequired: false,
+          },
+        },
+      },
+    );
+
+    expect(options).toEqual([
+      expect.objectContaining({
+        id: "magic-item:inv-1",
+        campaignSpellId: "camp-spell-1",
+        canonicalKey: "spike_growth",
+        name: "Spike Growth",
+        sourceType: "magic_item",
+        actionCost: "action",
+        targetMode: "sphere",
+        savingThrow: "DEX",
+        availableSlotLevels: [2],
+      }),
+    ]);
+  });
+
+  it("does not fall back to canonicalKey when a magic item campaignSpellId is present but invalid", () => {
+    seedSpellCatalogCache(
+      [
+        {
+          campaignSpellId: "camp-spell-2",
+          canonicalKey: "magic_missile",
+          name: "Magic Missile",
+          level: 1,
+          school: "evocation",
+          castingTimeType: "action",
+          castingTime: "1 action",
+          range: "36 m",
+          components: "V, S",
+          duration: "Instantaneous",
+          concentration: false,
+          ritual: false,
+          description: "Test spell.",
+          resolutionType: "damage",
+          damageType: "Force",
+          savingThrow: null,
+          saveSuccessOutcome: null,
+          healDice: null,
+          upcast: null,
+          classes: ["Wizard"],
+        },
+      ],
+      "camp-magic-item-mismatch",
+    );
+
+    const options = buildSpellOptions(
+      null,
+      "camp-magic-item-mismatch",
+      [
+        {
+          id: "inv-1",
+          itemId: "item-1",
+          memberId: "member-1",
+          quantity: 1,
+          chargesCurrent: 1,
+          isEquipped: false,
+        },
+      ],
+      {
+        "item-1": {
+          id: "item-1",
+          name: "Bracelete Quebrado",
+          type: ITEM_TYPES.MAGIC,
+          description: "Tem uma referencia de spell quebrada.",
+          chargesMax: 1,
+          rechargeType: "none",
+          magicEffect: {
+            type: "cast_spell",
+            campaignSpellId: "camp-spell-1",
+            spellCanonicalKey: "magic_missile",
+            castLevel: 1,
+            ignoreComponents: true,
+            noFreeHandRequired: true,
+          },
+        },
+      },
+    );
+
+    expect(options).toEqual([]);
   });
 
   it("hides exhausted magic items from combat spell options", () => {

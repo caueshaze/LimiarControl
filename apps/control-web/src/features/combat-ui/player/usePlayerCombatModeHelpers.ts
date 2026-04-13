@@ -49,9 +49,6 @@ export const buildSpellOptions = (
   itemsById?: Record<string, Item>
 ): CombatSpellOption[] => {
   const catalog = getBaseSpells(campaignId);
-  const byCanonicalKey = new Map(
-    catalog.map((spell) => [spell.canonicalKey.toLowerCase(), spell] as const)
-  );
   const spellcasting = playerSheet?.spellcasting;
   const availableSlotLevels = Object.entries(spellcasting?.slots ?? {})
     .map(([level, slot]) => ({ level: Number(level), slot }))
@@ -134,15 +131,18 @@ export const buildSpellOptions = (
     if (typeof chargesCurrent === "number" && chargesCurrent <= 0) {
       return [];
     }
-    const catalogSpell = byCanonicalKey.get(
-      magicEffect.spellCanonicalKey.toLowerCase()
-    );
+    const catalogSpell = resolveSpellByAuthority(catalog, {
+      campaignSpellId: magicEffect.campaignSpellId,
+      canonicalKey: magicEffect.spellCanonicalKey,
+    });
     if (!catalogSpell) {
       return [];
     }
     return [
       {
         canonicalKey: catalogSpell.canonicalKey,
+        campaignSpellId:
+          magicEffect.campaignSpellId ?? catalogSpell.campaignSpellId ?? null,
         actionCost: resolveCombatSpellActionCost(
           catalogSpell.castingTimeType ?? null
         ),
