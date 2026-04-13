@@ -122,6 +122,7 @@ const spellSchema = z.object({
   id: z.string(),
   name: z.string(),
   canonicalKey: z.string().nullable().optional(),
+  campaignSpellId: z.string().nullable().optional(),
   level: z.number().min(0).max(9),
   school: z.string(),
   prepared: z.boolean(),
