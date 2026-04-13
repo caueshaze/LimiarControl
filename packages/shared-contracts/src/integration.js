@@ -110,6 +110,7 @@ export const integrationSpatialEventTypeSchema = z.enum([
     "targeting.resolved",
     "action.rejected",
     "obstacles.updated",
+    "edge_obstacles.updated",
     "grid.calibration.updated"
 ]);
 export const integrationSpatialEventEnvelopeSchema = z.object({

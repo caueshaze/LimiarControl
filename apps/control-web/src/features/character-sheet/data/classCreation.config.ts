@@ -149,6 +149,14 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
       },
       { id: "paladin-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Sacerdote", "Priest's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
+    startingSpells: {
+      minimumLevel: 2,
+      cantrips: 0,
+      leveledSpells: 1,
+      leveledMode: "prepared",
+      preparationAbility: "charisma",
+      levelOneSlots: 2,
+    },
   },
   ranger: {
     fixedEquipment: ["Longbow", "Quiver", "Arrow x20"],
@@ -157,6 +165,13 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
       { id: "ranger-weapons", label: "Escolha suas armas corpo a corpo", options: uniqueOptions([option("Espada Curta x2", "Shortsword", "Shortsword"), ...simpleMeleePairOptions]) },
       { id: "ranger-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Explorador", "Explorer's Pack"], ["Mochila do Aventureiro", "Adventurer's Pack"]) },
     ],
+    startingSpells: {
+      minimumLevel: 2,
+      cantrips: 0,
+      leveledSpells: 2,
+      leveledMode: "known",
+      levelOneSlots: 2,
+    },
   },
   guardian: {
     fixedEquipment: ["Breastplate", "Longbow", "Quiver", "Arrow x20", "Shortsword x2"],

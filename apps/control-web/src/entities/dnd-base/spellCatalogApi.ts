@@ -5,7 +5,11 @@
  * caches them in memory by scope, and exposes the same synchronous interface
  * that creationSpells.ts expects.
  */
-import type { BaseSpell as ApiBaseSpell, ResolutionType, TargetMode } from "../base-spell/baseSpell.types";
+import type {
+  BaseSpell as ApiBaseSpell,
+  ResolutionType,
+  TargetMode
+} from "../base-spell/baseSpell.types";
 import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
 import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 
@@ -41,17 +45,32 @@ export type BaseSpell = {
 };
 
 const BASE_SCOPE_KEY = "__base__";
-const SPELL_CLASS_ALIASES: Record<string, string> = {
-  guardian: "ranger",
+
+/**
+ * Maps a class id to the catalog class whose spell entries it reuses.
+ * This is an explicit spell-source-only mapping — it MUST NOT be used for
+ * class identity, UI labels, sheet persistence, or validation.
+ *
+ * Guardian is its own class but reuses Ranger-tagged catalog spells.
+ */
+const SPELL_SOURCE_CLASS_MAP: Record<string, string> = {
+  guardian: "ranger"
 };
 
 const getScopeKey = (campaignId?: string | null) =>
   campaignId?.trim() ? campaignId : BASE_SCOPE_KEY;
 
-const normalizeClassLookup = (className: string) => {
-  const normalized = className.trim().toLowerCase();
-  return SPELL_CLASS_ALIASES[normalized] ?? normalized;
+/**
+ * Resolve the class id used to query the spell catalog.
+ * Returns the source class id for classes that reuse another class's spells,
+ * or the class id itself if no mapping exists.
+ */
+export const resolveSpellSourceClassId = (classId: string): string => {
+  const normalized = classId.trim().toLowerCase();
+  return SPELL_SOURCE_CLASS_MAP[normalized] ?? normalized;
 };
+
+const normalizeClassLookup = resolveSpellSourceClassId;
 
 // ---- Module-level cache ----
 let activeScopeKey = BASE_SCOPE_KEY;
@@ -66,7 +85,10 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   school: api.school || "Evocation",
   castingTimeType: api.castingTimeType ?? null,
   castingTime: api.castingTime ?? "",
-  range: typeof api.rangeMeters === "number" ? `${api.rangeMeters} m` : api.rangeText ?? "",
+  range:
+    typeof api.rangeMeters === "number"
+      ? `${api.rangeMeters} m`
+      : (api.rangeText ?? ""),
   components: api.componentsJson?.join(", ") ?? "",
   duration: api.duration ?? "",
   concentration: api.concentration,
@@ -83,7 +105,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   requiresPointSight: api.requiresPointSight ?? null,
   requiresPointEffect: api.requiresPointEffect ?? null,
   upcast: api.upcast ?? null,
-  classes: api.classesJson ?? [],
+  classes: api.classesJson ?? []
 });
 
 /**
@@ -110,7 +132,10 @@ export const loadSpellCatalog = (campaignId?: string | null): Promise<void> => {
   )
     .then((spells) => {
       const scope = scopeKey === BASE_SCOPE_KEY ? "base" : "campaign";
-      cacheByScope.set(scopeKey, spells.map((s) => adapt(s, scope)));
+      cacheByScope.set(
+        scopeKey,
+        spells.map((s) => adapt(s, scope))
+      );
     })
     .catch((err) => {
       console.error("[spellCatalogApi] Failed to load spells:", err);
@@ -130,29 +155,34 @@ export const isSpellCatalogLoaded = (campaignId?: string | null): boolean =>
 
 /** Returns all cached spells — empty array if not yet loaded. */
 export const getBaseSpells = (campaignId?: string | null): BaseSpell[] =>
-  cacheByScope.get(campaignId === undefined ? activeScopeKey : getScopeKey(campaignId)) ?? [];
+  cacheByScope.get(
+    campaignId === undefined ? activeScopeKey : getScopeKey(campaignId)
+  ) ?? [];
 
 export const getBaseSpellsForClass = (
   className: string,
   maxLevel = 9,
-  campaignId?: string | null,
+  campaignId?: string | null
 ): BaseSpell[] => {
   const source = getBaseSpells(campaignId);
   const lookupClass = normalizeClassLookup(className);
   return source.filter(
     (spell) =>
       spell.level <= maxLevel &&
-      spell.classes.some((c) => c.toLowerCase() === lookupClass),
+      spell.classes.some((c) => c.toLowerCase() === lookupClass)
   );
 };
 
-export const findBaseSpell = (name: string, campaignId?: string | null): BaseSpell | undefined => {
+export const findBaseSpell = (
+  name: string,
+  campaignId?: string | null
+): BaseSpell | undefined => {
   const source = getBaseSpells(campaignId);
   const lookup = name.trim().toLowerCase();
   return source.find(
     (spell) =>
       spell.canonicalKey.toLowerCase() === lookup ||
-      spell.name.toLowerCase() === lookup,
+      spell.name.toLowerCase() === lookup
   );
 };
 
@@ -160,7 +190,10 @@ export const findBaseSpell = (name: string, campaignId?: string | null): BaseSpe
  * Directly seed the cache with pre-built spell data.
  * Used for tests that can't call the API.
  */
-export const seedSpellCatalogCache = (spells: BaseSpell[], campaignId?: string | null): void => {
+export const seedSpellCatalogCache = (
+  spells: BaseSpell[],
+  campaignId?: string | null
+): void => {
   const scopeKey = getScopeKey(campaignId);
   activeScopeKey = scopeKey;
   cacheByScope.set(scopeKey, spells);

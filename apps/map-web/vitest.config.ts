@@ -4,9 +4,10 @@ import path from "path";
 export default defineConfig({
   test: {
     name: "map-web-unit",
-    root: ".",
+    root: path.resolve(__dirname),
     environment: "node",
-    include: ["src/**/*.test.ts"]
+    include: ["src/**/*.test.ts"],
+    exclude: ["tests/**", "**/*.spec.ts"]
   },
   resolve: {
     alias: {
