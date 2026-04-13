@@ -94,6 +94,23 @@ describe("spellCatalogForm", () => {
       level: 2,
       school: SpellSchool.EVOCATION,
       classesJson: ["Wizard"],
+      castingTimeType: "bonus_action",
+      rangeMeters: "18",
+      rangeText: "18 m",
+      targetMode: "sphere",
+      resolutionType: "damage",
+      damageDice: "3d6",
+      damageType: "Lightning",
+      savingThrow: "DEX",
+      saveSuccessOutcome: "half_damage",
+      requiresTargetSight: false,
+      requiresTargetEffect: true,
+      requiresPointSight: true,
+      requiresPointEffect: false,
+      upcastMode: "extra_damage_dice",
+      upcastDice: "1d6",
+      upcastPerLevel: "1",
+      upcastMaxLevel: "5",
     });
 
     expect(payload).toEqual(
@@ -105,8 +122,119 @@ describe("spellCatalogForm", () => {
         level: 2,
         school: SpellSchool.EVOCATION,
         classesJson: ["Wizard"],
+        castingTimeType: "bonus_action",
+        castingTime: "1 bonus action",
+        rangeMeters: 18,
+        rangeText: "18 m",
+        targetMode: "sphere",
+        resolutionType: "damage",
+        damageDice: "3d6",
+        damageType: "Lightning",
+        savingThrow: "DEX",
+        saveSuccessOutcome: "half_damage",
+        requiresTargetSight: false,
+        requiresTargetEffect: true,
+        requiresPointSight: true,
+        requiresPointEffect: false,
+        upcast: {
+          mode: "extra_damage_dice",
+          dice: "1d6",
+          flat: null,
+          perLevel: 1,
+          maxLevel: 5,
+          scalingKey: null,
+          scalingSummary: null,
+          scalingEditorial: null,
+          unlockKey: null,
+          unlockSummary: null,
+          unlockEditorial: null,
+        },
       }),
     );
+  });
+
+  it("hydrates structured combat fields from an existing spell", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        castingTimeType: "special",
+        castingTime: "When an ally falls to 0 HP",
+        targetMode: "ranged",
+        resolutionType: "heal",
+        healDice: "2d4",
+        requiresTargetSight: null,
+        requiresTargetEffect: true,
+        requiresPointSight: null,
+        requiresPointEffect: false,
+        upcast: {
+          mode: "extra_heal_dice",
+          dice: "1d4",
+          perLevel: 1,
+          maxLevel: 6,
+        },
+      }),
+    );
+
+    expect(state.castingTimeType).toBe("special");
+    expect(state.castingTime).toBe("When an ally falls to 0 HP");
+    expect(state.targetMode).toBe("ranged");
+    expect(state.resolutionType).toBe("heal");
+    expect(state.healDice).toBe("2d4");
+    expect(state.requiresTargetSight).toBeNull();
+    expect(state.requiresTargetEffect).toBe(true);
+    expect(state.requiresPointSight).toBeNull();
+    expect(state.requiresPointEffect).toBe(false);
+    expect(state.upcastMode).toBe("extra_heal_dice");
+    expect(state.upcastDice).toBe("1d4");
+    expect(state.upcastPerLevel).toBe("1");
+    expect(state.upcastMaxLevel).toBe("6");
+  });
+
+  it("preserves structured targeting and upcast fields when building an update payload", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createSpellEditorState(
+        createSpell({
+          castingTimeType: "special",
+          castingTime: "When an ally falls to 0 HP",
+          targetMode: "ranged",
+          resolutionType: "heal",
+          healDice: "2d4",
+          requiresTargetSight: null,
+          requiresTargetEffect: true,
+          requiresPointSight: null,
+          requiresPointEffect: false,
+          upcast: {
+            mode: "extra_heal_dice",
+            dice: "1d4",
+            perLevel: 1,
+            maxLevel: 6,
+          },
+        }),
+      ),
+    });
+
+    expect(payload.castingTimeType).toBe("special");
+    expect(payload.castingTime).toBe("When an ally falls to 0 HP");
+    expect(payload.targetMode).toBe("ranged");
+    expect(payload.resolutionType).toBe("heal");
+    expect(payload.damageDice).toBeNull();
+    expect(payload.healDice).toBe("2d4");
+    expect(payload.requiresTargetSight).toBeNull();
+    expect(payload.requiresTargetEffect).toBe(true);
+    expect(payload.requiresPointSight).toBeNull();
+    expect(payload.requiresPointEffect).toBe(false);
+    expect(payload.upcast).toEqual({
+      mode: "extra_heal_dice",
+      dice: "1d4",
+      flat: null,
+      perLevel: 1,
+      maxLevel: 6,
+      scalingKey: null,
+      scalingSummary: null,
+      scalingEditorial: null,
+      unlockKey: null,
+      unlockSummary: null,
+      unlockEditorial: null,
+    });
   });
 
   it("keeps canonical key normalization deterministic", () => {
