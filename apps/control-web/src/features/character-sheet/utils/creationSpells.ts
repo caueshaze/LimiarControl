@@ -3,6 +3,8 @@ import {
   findBaseSpell,
   getBaseSpells,
   getBaseSpellsForClass,
+  isSameSpellAuthority,
+  resolveSpellByAuthority,
   resolveSpellSourceClassId
 } from "../../../entities/dnd-base";
 import { getModifier } from "./calculations";
@@ -50,14 +52,6 @@ const getFixedSpellKeys = (
       : (levelConfig?.fixedLeveledSpellCanonicalKeys ?? []))
   ]);
 };
-
-const spellMatchesBaseSpell = (
-  spell: Spell,
-  baseSpellName: string,
-  baseSpellKey: string
-) =>
-  spell.canonicalKey?.toLowerCase() === baseSpellKey.toLowerCase() ||
-  spell.name.toLowerCase() === baseSpellName.toLowerCase();
 
 const toSheetSpell = (
   spellIdentifier: string,
@@ -125,17 +119,10 @@ export const hasUnresolvedCreationSpellSelections = (
   campaignId?: string | null
 ) => {
   if (!spellcasting) return false;
-
-  const availableSpellKeys = new Set(
-    getCatalogSpellOptions(className, campaignId).map((spell) =>
-      spell.canonicalKey.toLowerCase()
-    )
+  const availableSpells = getCatalogSpellOptions(className, campaignId);
+  return spellcasting.spells.some(
+    (spell) => !resolveSpellByAuthority(availableSpells, spell)
   );
-
-  return spellcasting.spells.some((spell) => {
-    const lookup = spell.canonicalKey?.trim().toLowerCase();
-    return !lookup || !availableSpellKeys.has(lookup);
-  });
 };
 
 const ensureFixedStartingSpells = (
@@ -155,11 +142,7 @@ const ensureFixedStartingSpells = (
   const merged = [...spells];
   for (const fixedSpell of fixedSpells) {
     const existingIndex = merged.findIndex((spell) =>
-      spellMatchesBaseSpell(
-        spell,
-        fixedSpell.name,
-        fixedSpell.canonicalKey ?? ""
-      )
+      isSameSpellAuthority(spell, fixedSpell)
     );
     if (existingIndex >= 0) {
       merged[existingIndex] = {
@@ -285,18 +268,9 @@ export const normalizeCreationSpellSelection = (
 
   const mode = spellcasting.mode;
   const allowedSpells = getBaseSpellsForClass(className, 1, campaignId);
-  const allowedSpellKeys = new Set(
-    allowedSpells.map((spell) => spell.canonicalKey.toLowerCase())
-  );
-  const allowedSpellNames = new Set(
-    allowedSpells.map((spell) => spell.name.toLowerCase())
-  );
   const selected = ensureFixedStartingSpells(
-    spellcasting.spells.filter(
-      (spell) =>
-        (spell.canonicalKey &&
-          allowedSpellKeys.has(spell.canonicalKey.toLowerCase())) ||
-        allowedSpellNames.has(spell.name.toLowerCase())
+    spellcasting.spells.filter((spell) =>
+      Boolean(resolveSpellByAuthority(allowedSpells, spell))
     ),
     className,
     level,
@@ -352,7 +326,7 @@ export const toggleStartingSpell = (
   }
 
   const existing = spellcasting.spells.find((entry) =>
-    spellMatchesBaseSpell(entry, spell.name, spell.canonicalKey)
+    isSameSpellAuthority(entry, spell)
   );
   if (existing) {
     return normalizeCreationSpellSelection(

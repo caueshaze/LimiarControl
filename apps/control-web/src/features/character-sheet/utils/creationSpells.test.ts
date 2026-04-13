@@ -178,4 +178,84 @@ describe("toSheetSpell / selectCatalogSpellForSheet", () => {
       }),
     ]);
   });
+
+  it("keeps campaign-authoritative fixed spells even when weaker identifiers drift", () => {
+    seedSpellCatalogCache(
+      [
+        {
+          campaignSpellId: "camp-animal-friendship",
+          canonicalKey: "animal_friendship",
+          name: "Animal Friendship",
+          level: 1,
+          school: "Enchantment",
+          castingTime: "1 action",
+          range: "9 m",
+          components: "V, S, M",
+          duration: "24 hours",
+          concentration: false,
+          ritual: false,
+          description: "",
+          damageType: null,
+          savingThrow: "WIS",
+          classes: ["Bard", "Druid", "Ranger"],
+        },
+        {
+          campaignSpellId: "camp-hunters-mark",
+          canonicalKey: "hunters_mark",
+          name: "Hunter's Mark",
+          level: 1,
+          school: "Divination",
+          castingTime: "1 bonus action",
+          range: "27 m",
+          components: "V",
+          duration: "1 hour",
+          concentration: true,
+          ritual: false,
+          description: "",
+          damageType: null,
+          savingThrow: null,
+          classes: ["Ranger"],
+        },
+      ],
+      "camp-2",
+    );
+
+    const normalized = normalizeCreationSpellSelection(
+      {
+        ability: "wisdom",
+        mode: "known",
+        slots: { 1: { max: 2, used: 0 } },
+        spells: [
+          {
+            id: "spell-1",
+            name: "Outdated Spell Name",
+            canonicalKey: "outdated_key",
+            campaignSpellId: "camp-animal-friendship",
+            level: 1,
+            school: "Enchantment",
+            prepared: true,
+            notes: "",
+          },
+        ],
+      },
+      "guardian",
+      INITIAL_SHEET.abilities,
+      2,
+      "camp-2",
+    );
+
+    expect(normalized?.spells).toHaveLength(2);
+    expect(normalized?.spells).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          canonicalKey: "animal_friendship",
+          campaignSpellId: "camp-animal-friendship",
+        }),
+        expect.objectContaining({
+          canonicalKey: "hunters_mark",
+          campaignSpellId: "camp-hunters-mark",
+        }),
+      ]),
+    );
+  });
 });

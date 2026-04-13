@@ -9,6 +9,17 @@ export {
   normalizeDndItemKey
 } from "./itemCanonicalization";
 export type { BaseSpell } from "./spellCatalogApi";
+export type {
+  SpellAuthorityCandidate,
+  SpellAuthorityReference
+} from "./spellAuthority";
+export {
+  getSpellAuthorityKey,
+  getSpellAuthorityReference,
+  isSameSpellAuthority,
+  normalizeSpellAuthorityName,
+  resolveSpellByAuthority,
+} from "./spellAuthority";
 export {
   getBaseSpells,
   findBaseSpell,
