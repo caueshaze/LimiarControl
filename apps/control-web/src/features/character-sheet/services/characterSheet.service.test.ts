@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { INITIAL_SHEET } from "../model/initialSheet";
 import { prepareCharacterSheetForSave } from "./characterSheet.service";
+import { parseCharacterSheet } from "../model/characterSheet.schema";
 import { applyCreationLoadoutToSheet } from "../utils/creationEquipment";
 import {
   resetCreationItemCatalogForTests,
@@ -85,5 +86,36 @@ describe("prepareCharacterSheetForSave", () => {
   it("does not rebuild play sheets", () => {
     const prepared = prepareCharacterSheetForSave(INITIAL_SHEET, "play");
     expect(prepared).toStrictEqual(INITIAL_SHEET);
+  });
+
+  it("preserves campaignSpellId through save and parse round-trip", () => {
+    const prepared = prepareCharacterSheetForSave(
+      {
+        ...INITIAL_SHEET,
+        spellcasting: {
+          ability: "intelligence",
+          mode: "spellbook",
+          slots: { 1: { max: 2, used: 0 } },
+          spells: [
+            {
+              id: "spell-1",
+              name: "Magic Missile",
+              canonicalKey: "magic_missile",
+              campaignSpellId: "camp-spell-1",
+              level: 1,
+              school: "Evocation",
+              prepared: false,
+              notes: "",
+            },
+          ],
+        },
+      },
+      "play",
+    );
+
+    const parsed = parseCharacterSheet(prepared);
+
+    expect(prepared.spellcasting?.spells[0]?.campaignSpellId).toBe("camp-spell-1");
+    expect(parsed.spellcasting?.spells[0]?.campaignSpellId).toBe("camp-spell-1");
   });
 });
