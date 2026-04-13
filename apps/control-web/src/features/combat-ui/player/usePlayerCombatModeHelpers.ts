@@ -1,5 +1,9 @@
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
-import { getBaseSpells, loadSpellCatalog } from "../../../entities/dnd-base";
+import {
+  getBaseSpells,
+  loadSpellCatalog,
+  resolveSpellByAuthority
+} from "../../../entities/dnd-base";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
@@ -48,9 +52,6 @@ export const buildSpellOptions = (
   const byCanonicalKey = new Map(
     catalog.map((spell) => [spell.canonicalKey.toLowerCase(), spell] as const)
   );
-  const byName = new Map(
-    catalog.map((spell) => [spell.name.toLowerCase(), spell] as const)
-  );
   const spellcasting = playerSheet?.spellcasting;
   const availableSlotLevels = Object.entries(spellcasting?.slots ?? {})
     .map(([level, slot]) => ({ level: Number(level), slot }))
@@ -89,12 +90,11 @@ export const buildSpellOptions = (
             spell.level === 0 || spell.prepared || spellcasting.mode === "known"
         )
         .map((spell) => {
-          const catalogSpell = spell.canonicalKey
-            ? (byCanonicalKey.get(spell.canonicalKey.toLowerCase()) ??
-              byName.get(spell.name.toLowerCase()))
-            : byName.get(spell.name.toLowerCase());
+          const catalogSpell = resolveSpellByAuthority(catalog, spell);
           const canonicalKey =
-            spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null;
+            spell.campaignSpellId
+              ? (catalogSpell?.canonicalKey ?? spell.canonicalKey ?? null)
+              : (spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null);
           return {
             canonicalKey,
             campaignSpellId: spell.campaignSpellId ?? null,

@@ -9,7 +9,11 @@ import {
 } from "../../../shared/api/combatRepo";
 import { subscribe } from "../../../shared/realtime/centrifugoClient";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
-import { getBaseSpells, loadSpellCatalog } from "../../../entities/dnd-base";
+import {
+  getBaseSpells,
+  loadSpellCatalog,
+  resolveSpellByAuthority
+} from "../../../entities/dnd-base";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import {
   getCombatSpellAutomation,
@@ -61,12 +65,6 @@ const buildSpellOptions = (
   if (!spellcasting) return [];
 
   const catalog = getBaseSpells(campaignId);
-  const byCanonicalKey = new Map(
-    catalog.map((spell) => [spell.canonicalKey.toLowerCase(), spell] as const)
-  );
-  const byName = new Map(
-    catalog.map((spell) => [spell.name.toLowerCase(), spell] as const)
-  );
   const availableSlotLevels = Object.entries(spellcasting.slots ?? {})
     .map(([level, slot]) => ({ level: Number(level), slot }))
     .filter(
@@ -82,12 +80,11 @@ const buildSpellOptions = (
         spell.level === 0 || spell.prepared || spellcasting.mode === "known"
     )
     .map((spell) => {
-      const catalogSpell = spell.canonicalKey
-        ? (byCanonicalKey.get(spell.canonicalKey.toLowerCase()) ??
-          byName.get(spell.name.toLowerCase()))
-        : byName.get(spell.name.toLowerCase());
+      const catalogSpell = resolveSpellByAuthority(catalog, spell);
       const automation = getCombatSpellAutomation(
-        spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null
+        spell.campaignSpellId
+          ? (catalogSpell?.canonicalKey ?? spell.canonicalKey ?? null)
+          : (spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null)
       );
       const suggestedMode: CombatSpellMode | null =
         (catalogSpell?.defaultSpellMode as
@@ -103,7 +100,10 @@ const buildSpellOptions = (
       return {
         id: spell.id,
         name: spell.name,
-        canonicalKey: spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null,
+        canonicalKey: spell.campaignSpellId
+          ? (catalogSpell?.canonicalKey ?? spell.canonicalKey ?? null)
+          : (spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null),
+        campaignSpellId: spell.campaignSpellId ?? null,
         level: spell.level,
         prepared: spell.prepared,
         actionCost: resolveCombatSpellActionCost(

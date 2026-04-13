@@ -25,6 +25,7 @@ export type CombatSpellOption = {
   id: string;
   name: string;
   canonicalKey: string | null;
+  campaignSpellId?: string | null;
   sourceType?: "sheet" | "magic_item";
   sourceItemName?: string | null;
   inventoryItemId?: string | null;
