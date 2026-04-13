@@ -21,6 +21,8 @@ export const routes = {
   board: "/board/:partyId",
 
   catalog: "/catalog",
+  catalogItems: "/catalog/items",
+  catalogSpells: "/catalog/spells",
   adminHome: "/admin",
   adminCatalogItems: "/admin/catalog/items",
   adminCatalogSpells: "/admin/catalog/spells",

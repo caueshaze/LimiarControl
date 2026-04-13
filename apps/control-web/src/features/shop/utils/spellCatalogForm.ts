@@ -1,5 +1,6 @@
 import { SpellSchool, type BaseSpell, type SaveSuccessOutcome, type SpellDamageType, type SpellSavingThrow } from "../../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
+import type { CampaignSpellCreatePayload } from "../../../shared/api/campaignSpellsRepo";
 
 export const SPELL_LEVEL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -63,6 +64,16 @@ export const toNullableText = (value: string) => {
   const normalized = value.trim();
   return normalized ? normalized : null;
 };
+
+export const normalizeSpellCanonicalKey = (value: string) =>
+  value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
 const toNullableInteger = (value: string) => {
   const normalized = value.trim();
@@ -128,7 +139,19 @@ export const buildSpellUpdatePayload = (
   saveSuccessOutcome: state.savingThrow ? toNullableText(state.saveSuccessOutcome) as SaveSuccessOutcome | null : null,
 });
 
+export const buildSpellCreatePayload = (
+  state: SpellCatalogEditorState,
+): CampaignSpellCreatePayload => ({
+  canonicalKey: normalizeSpellCanonicalKey(state.canonicalKey),
+  ...buildSpellUpdatePayload(state),
+  nameEn: state.nameEn.trim(),
+  descriptionEn: state.descriptionEn.trim(),
+  level: state.level,
+  school: state.school,
+});
+
 export type SpellCatalogEditorState = {
+  canonicalKey: string;
   nameEn: string;
   namePt: string;
   descriptionEn: string;
@@ -150,6 +173,7 @@ export type SpellCatalogEditorState = {
 };
 
 export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorState => ({
+  canonicalKey: spell.canonicalKey,
   nameEn: spell.nameEn,
   namePt: spell.namePt ?? "",
   descriptionEn: spell.descriptionEn,
@@ -171,4 +195,26 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
     spell.saveSuccessOutcome,
     SPELL_SAVE_SUCCESS_OUTCOME_OPTION_SET,
   ),
+});
+
+export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
+  canonicalKey: "",
+  nameEn: "",
+  namePt: "",
+  descriptionEn: "",
+  descriptionPt: "",
+  level: 0,
+  school: SpellSchool.EVOCATION,
+  classesJson: [],
+  castingTime: "",
+  rangeMeters: "",
+  rangeText: "",
+  duration: "",
+  componentsJson: [],
+  materialComponentText: "",
+  concentration: false,
+  ritual: false,
+  damageType: "",
+  savingThrow: "",
+  saveSuccessOutcome: "",
 });

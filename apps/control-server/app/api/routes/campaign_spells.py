@@ -7,11 +7,13 @@ from app.models.base_spell import SpellSchool
 from app.models.campaign import Campaign
 from app.models.campaign_spell import CampaignSpell
 from app.models.user import User
-from app.schemas.base_spell import BaseSpellRead, BaseSpellUpdate
+from app.schemas.base_spell import BaseSpellCreate, BaseSpellRead, BaseSpellUpdate
 from app.services.campaign_spells import (
+    create_campaign_spell,
     disable_campaign_spell,
     get_campaign_spell_by_id,
     list_campaign_spells,
+    update_campaign_spell,
 )
 from app.services.combat_service.spell_automation import (
     CombatSpellAutomationMixin,
@@ -167,6 +169,22 @@ def get_spell(
     )
     if not spell or not spell.is_enabled:
         raise HTTPException(status_code=404, detail="Campaign spell not found")
+    return to_campaign_spell_read(spell, campaign)
+
+
+@router.post("/{campaign_id}/spells", response_model=BaseSpellRead, status_code=201)
+def create_spell(
+    campaign_id: str,
+    payload: BaseSpellCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    campaign, _member = require_gm(campaign_id, user, session)
+    spell = create_campaign_spell(
+        db=session,
+        campaign=campaign,
+        payload=payload,
+    )
     return to_campaign_spell_read(spell, campaign)
 
 

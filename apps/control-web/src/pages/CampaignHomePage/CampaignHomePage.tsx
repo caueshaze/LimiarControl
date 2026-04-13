@@ -168,7 +168,7 @@ export const CampaignHomePage = () => {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {effectiveCampaignId && (
               <CampaignQuickLinkCard
                 to={routes.campaignMaps.replace(":campaignId", effectiveCampaignId)}
@@ -178,10 +178,16 @@ export const CampaignHomePage = () => {
               />
             )}
             <CampaignQuickLinkCard
-              to={routes.catalog}
+              to={routes.catalogItems}
               title={t("campaignHome.actionItems")}
               description={t("campaignHome.actionItemsDescription")}
               accent="sky"
+            />
+            <CampaignQuickLinkCard
+              to={routes.catalogSpells}
+              title={t("campaignHome.actionSpells")}
+              description={t("campaignHome.actionSpellsDescription")}
+              accent="violet"
             />
             <CampaignQuickLinkCard
               to={routes.bestiary}

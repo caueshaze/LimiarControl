@@ -10,6 +10,8 @@ type CatalogHeroProps = {
   totalCount: number;
   customCount: number;
   backTo: string;
+  title: string;
+  description: string;
 };
 
 export const CatalogHero = ({
@@ -20,6 +22,8 @@ export const CatalogHero = ({
   totalCount,
   customCount,
   backTo,
+  title,
+  description,
 }: CatalogHeroProps) => {
   const { t } = useLocale();
 
@@ -43,10 +47,10 @@ export const CatalogHero = ({
             {t("catalog.heroEyebrow")}
           </p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-tight text-white sm:text-5xl">
-            {t("catalog.subtitle")}
+            {title}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-            {t("catalog.heroDescription")}
+            {description}
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
