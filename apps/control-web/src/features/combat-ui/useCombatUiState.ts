@@ -32,6 +32,11 @@ export const useCombatUiState = ({
   const [error, setError] = useState<string | null>(null);
   const logSequenceRef = useRef(0);
 
+  const applyState = useCallback((newState: CombatState) => {
+    setState(newState);
+    setError(null);
+  }, []);
+
   const refreshState = useCallback(async () => {
     if (!enabled || !sessionId) {
       setState(null);
@@ -176,6 +181,7 @@ export const useCombatUiState = ({
   );
 
   return {
+    applyState,
     currentParticipant,
     defeatedParticipants,
     error,
