@@ -184,12 +184,12 @@ def ensure_combat_map(
             reason="combat_not_active",
         )
 
-    if not settings.limiar_map_enabled:
+    if not state.use_map:
         return CombatMapEnsureResponse(
             session_id=session_id,
             combat_phase=phase,
             map_available=False,
-            reason="limiar_map_disabled",
+            reason="map_disabled_for_combat",
         )
 
     result = get_limiar_map_projection_service().project_combat_start(

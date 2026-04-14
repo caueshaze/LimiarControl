@@ -253,7 +253,7 @@ class CombatNpcActionMixin:
                 )
 
             # Validate targeting
-            targeting_result = get_combat_targeting_service().validate(
+            targeting_result = get_combat_targeting_service(state.use_map).validate(
                 targeting_intent, state
             )
             if not targeting_result.is_valid:

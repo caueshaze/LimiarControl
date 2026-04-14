@@ -614,7 +614,6 @@ def _build_projection_service() -> LimiarMapCombatProjectionService:
 def get_limiar_map_projection_service() -> LimiarMapCombatProjectionService:
     global _projection_service, _projection_service_signature
     signature = (
-        settings.limiar_map_enabled,
         settings.limiar_map_base_url,
         settings.limiar_map_timeout_seconds,
     )
@@ -629,7 +628,7 @@ def maybe_project_combat_start_to_limiar_map(
     session_id: str,
     state: CombatState,
 ) -> None:
-    if not settings.limiar_map_enabled:
+    if not state.use_map:
         return
 
     get_limiar_map_projection_service().project_combat_start(
@@ -643,7 +642,7 @@ def maybe_project_combat_advance_to_limiar_map(
     session_id: str,
     state: CombatState,
 ) -> None:
-    if not settings.limiar_map_enabled:
+    if not state.use_map:
         return
 
     get_limiar_map_projection_service().project_combat_advance(
@@ -656,7 +655,7 @@ def maybe_project_combat_end_to_limiar_map(
     session_id: str,
     state: CombatState,
 ) -> None:
-    if not settings.limiar_map_enabled:
+    if not state.use_map:
         return
 
     get_limiar_map_projection_service().project_combat_end(
@@ -675,7 +674,7 @@ def maybe_sync_conditions_to_limiar_map(
     Errors are logged and swallowed inside the projection service — condition
     display degradation must never block the combat flow.
     """
-    if not settings.limiar_map_enabled:
+    if not state.use_map:
         return
 
     get_limiar_map_projection_service().sync_conditions_to_map(

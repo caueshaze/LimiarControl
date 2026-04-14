@@ -101,11 +101,6 @@ class AreaTargetingMixin:
 
     @classmethod
     def _build_limiar_map_client(cls) -> LimiarMapClient:
-        if not settings.limiar_map_enabled:
-            raise CombatServiceError(
-                "Area targeting map integration is disabled.",
-                503,
-            )
         return LimiarMapClient(
             base_url=settings.limiar_map_base_url,
             timeout_seconds=settings.limiar_map_timeout_seconds,
@@ -150,6 +145,8 @@ class AreaTargetingMixin:
     ) -> CombatMapPreviewState:
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if not state.use_map:
+            raise CombatServiceError("This combat was opened without a tactical map.", 400)
         actor = cls._resolve_actor_participant(
             state,
             actor_user_id,
@@ -215,6 +212,8 @@ class AreaTargetingMixin:
     ) -> dict[str, Any]:
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if not state.use_map:
+            raise CombatServiceError("This combat was opened without a tactical map.", 400)
         attacker = cls._resolve_actor_participant(
             state,
             actor_user_id,

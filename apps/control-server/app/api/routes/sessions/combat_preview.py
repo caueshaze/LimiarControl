@@ -163,7 +163,7 @@ def combat_preview(
             requires_effect=True,
         )
 
-    targeting_service = get_combat_targeting_service()
+    targeting_service = get_combat_targeting_service(combat_state.use_map)
     result = targeting_service.validate(intent, combat_state)
 
     diag: TargetingDiagnostics = result.diagnostics or TargetingDiagnostics()
@@ -215,8 +215,8 @@ def _handle_aoe_preview(
     assert payload.source_position is not None
     assert payload.target_position is not None
 
-    if not settings.limiar_map_enabled:
-        logger.debug("[preview] AoE preview skipped — LimiarMap disabled session=%s", session_id)
+    if not combat_state.use_map:
+        logger.debug("[preview] AoE preview skipped — combat opened without map session=%s", session_id)
         return CombatPreviewResponse(effectiveReachCells=reach)
 
     try:

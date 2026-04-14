@@ -149,6 +149,7 @@ class CombatLifecycleMixin:
                 for p in req.participants
             ],
             map_selection=map_selection,
+            use_map=req.useMap,
         )
         db.add(new_state)
         cls._sync_all_participant_statuses(db, new_state)

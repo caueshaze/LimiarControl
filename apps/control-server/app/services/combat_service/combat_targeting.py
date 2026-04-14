@@ -701,50 +701,54 @@ class LimiarMapTargetingService(CombatTargetingService):
 # Module-level singleton — swap this to change the active implementation.
 # ---------------------------------------------------------------------------
 
-_targeting_service: CombatTargetingService | None = None
-_targeting_service_signature: tuple[bool, str, float] | None = None
+_map_targeting_service: CombatTargetingService | None = None
+_map_targeting_service_signature: tuple[str, float] | None = None
+_local_targeting_service: LocalCombatTargetingService | None = None
 
 
 def reset_combat_targeting_service() -> None:
-    global _targeting_service, _targeting_service_signature
-    _targeting_service = None
-    _targeting_service_signature = None
+    global _map_targeting_service, _map_targeting_service_signature, _local_targeting_service
+    _map_targeting_service = None
+    _map_targeting_service_signature = None
+    _local_targeting_service = None
 
 
-def _build_targeting_service() -> CombatTargetingService:
-    if not settings.limiar_map_enabled:
-        logger.info(
-            "Combat targeting service using LocalCombatTargetingService (LIMIAR_MAP_ENABLED=false)"
-        )
-        return LocalCombatTargetingService()
-
-    logger.info(
-        "Combat targeting service using LimiarMapTargetingService base_url=%s timeout_seconds=%s",
-        settings.limiar_map_base_url,
-        settings.limiar_map_timeout_seconds,
-    )
-    return LimiarMapTargetingService(
-        LimiarMapClient(
-            base_url=settings.limiar_map_base_url,
-            timeout_seconds=settings.limiar_map_timeout_seconds,
-        ),
-        fallback_service=LocalCombatTargetingService(),
-    )
+def _get_local_targeting_service() -> LocalCombatTargetingService:
+    global _local_targeting_service
+    if _local_targeting_service is None:
+        _local_targeting_service = LocalCombatTargetingService()
+    return _local_targeting_service
 
 
-def get_combat_targeting_service() -> CombatTargetingService:
-    """Return the active CombatTargetingService implementation.
-
-    Replace the module-level _targeting_service instance (or override this
-    function) to plug in the LimiarMap adapter without touching any caller.
-    """
-    global _targeting_service, _targeting_service_signature
+def _get_map_targeting_service() -> CombatTargetingService:
+    global _map_targeting_service, _map_targeting_service_signature
     signature = (
-        settings.limiar_map_enabled,
         settings.limiar_map_base_url,
         settings.limiar_map_timeout_seconds,
     )
-    if _targeting_service is None or _targeting_service_signature != signature:
-        _targeting_service = _build_targeting_service()
-        _targeting_service_signature = signature
-    return _targeting_service
+    if _map_targeting_service is None or _map_targeting_service_signature != signature:
+        logger.info(
+            "Combat targeting service using LimiarMapTargetingService base_url=%s timeout_seconds=%s",
+            settings.limiar_map_base_url,
+            settings.limiar_map_timeout_seconds,
+        )
+        _map_targeting_service = LimiarMapTargetingService(
+            LimiarMapClient(
+                base_url=settings.limiar_map_base_url,
+                timeout_seconds=settings.limiar_map_timeout_seconds,
+            ),
+            fallback_service=_get_local_targeting_service(),
+        )
+        _map_targeting_service_signature = signature
+    return _map_targeting_service
+
+
+def get_combat_targeting_service(use_map: bool = True) -> CombatTargetingService:
+    """Return the active CombatTargetingService for this combat.
+
+    Pass ``use_map=state.use_map`` so that combats opened without a tactical
+    map fall back to the local targeting service, skipping all LimiarMap calls.
+    """
+    if not use_map:
+        return _get_local_targeting_service()
+    return _get_map_targeting_service()

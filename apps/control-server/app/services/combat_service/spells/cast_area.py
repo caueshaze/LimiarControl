@@ -101,7 +101,7 @@ class CastAreaMixin:
             requires_sight=bool(spell_context.get("requires_point_sight")),
             requires_effect=bool(spell_context.get("requires_point_effect")),
         )
-        targeting_result = get_combat_targeting_service().validate(targeting_intent, state)
+        targeting_result = get_combat_targeting_service(state.use_map).validate(targeting_intent, state)
         if not targeting_result.is_valid:
             raise CombatServiceError(
                 targeting_result.failure_reason or "Area targeting could not be resolved.",
