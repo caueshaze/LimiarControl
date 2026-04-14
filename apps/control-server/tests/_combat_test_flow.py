@@ -33,6 +33,7 @@ from app.services.combat import (
     _parse_dice,
     _roll_dice_expression,
 )
+from app.services.combat_service.targeting_result import SpatialMetadata, TargetingResult
 from app.schemas.roll import RollActorStats
 from app.schemas.roll import RollResult
 
@@ -458,6 +459,95 @@ class CombatFlowTestsMixin:
         self.assertEqual(res["roll_result"].roll_source, "manual")
         self.assertEqual(res["roll_result"].selected_roll, 17)
         self.assertEqual(res["target_ac"], 14)
+
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_attack_applies_disadvantage_when_target_is_in_long_range(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"currentWeaponId": "inv-1"}
+        long_range_roll = RollResult(
+            event_id="roll-long-1",
+            roll_type="attack",
+            actor_kind="player",
+            actor_ref_id="player-123",
+            actor_display_name="Hero",
+            rolls=[7, 15],
+            selected_roll=7,
+            advantage_mode="disadvantage",
+            modifier_used=5,
+            override_used=True,
+            formula="2d20kh1 + 5",
+            total=12,
+            target_ac=14,
+            success=False,
+            timestamp=datetime.now(timezone.utc),
+        )
+        mock_targeting_service = MagicMock()
+        mock_targeting_service.validate.return_value = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-123",
+            affected_target_ref_ids=["enemy-123"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(
+                targeting_authority="local",
+                distance_meters=24.0,
+                is_in_normal_range=False,
+                is_in_long_range=True,
+            ),
+        )
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch(
+                "app.services.combat_service.actions.weapon_attacks.get_combat_targeting_service",
+                return_value=mock_targeting_service,
+            ),
+            patch(
+                "app.services.combat.CombatService._get_stats",
+                side_effect=[
+                    (attacker_state, 12, 16, 14, 2, 0),
+                    (MagicMock(), 14, 10, 10, 2, 0),
+                ],
+            ),
+            patch(
+                "app.services.combat.CombatService._build_player_attack_context",
+                return_value={
+                    "name": "Longbow",
+                    "damage_dice": "1d8",
+                    "damage_bonus": 3,
+                    "attack_bonus": 5,
+                    "damage_type": "piercing",
+                    "range_meters": 18,
+                    "range_long_meters": 36,
+                    "weapon_range_type": "ranged",
+                    "has_reach": False,
+                },
+            ),
+            patch(
+                "app.services.combat_service.actions.weapon_attacks.resolve_attack_base",
+                return_value=long_range_roll,
+            ) as mock_resolve_attack,
+        ):
+            res = await CombatService.attack(
+                self.db,
+                "session-123",
+                CombatAttackRequest(target_ref_id="enemy-123"),
+                "user-xyz",
+                True,
+            )
+
+        self.assertEqual(
+            mock_resolve_attack.call_args.kwargs["advantage_mode"], "disadvantage"
+        )
+        self.assertEqual(res["roll_result"].advantage_mode, "disadvantage")
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")

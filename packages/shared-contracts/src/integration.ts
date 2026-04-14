@@ -218,6 +218,8 @@ export const singleTargetResponseSchema = z.object({
   sourceTokenId: z.string().nullable(),
   /** Present when isValid is true. Null otherwise. */
   targetTokenId: z.string().nullable(),
+  /** Chebyshev distance between source and target, in cells, when resolved. */
+  distanceCells: z.number().int().nonnegative().nullable().optional(),
   /**
    * Cover level evaluated along the line between source and target.
    * Evaluated independently of LoS/LoE. Defaults to "none".

@@ -81,6 +81,7 @@ from ..targeting_requirements import (
     resolve_weapon_targeting_requirements,
 )
 from ..targeting_intent import AreaTargetingIntent, SpellCastIntent, WeaponAttackIntent
+from ..reach import resolve_weapon_attack_kind
 from ..unit_conversion import meters_to_cells
 
 
@@ -147,6 +148,7 @@ class WeaponAttacksMixin:
             weapon_item_id=req.weapon_item_id,
             weapon_canonical_key=attack_context.get("weapon_canonical_key"),
             range_meters=attack_context.get("range_meters"),
+            range_long_meters=attack_context.get("range_long_meters"),
             weapon_range_type=attack_context.get("weapon_range_type"),
             has_reach=bool(attack_context.get("has_reach")),
             requires_sight=weapon_targeting.requires_target_sight,
@@ -196,10 +198,12 @@ class WeaponAttacksMixin:
             attacker, "attack_bonus"
         )
         # Condition-based advantage/disadvantage (Phase F1)
-        _attack_kind = (
-            "ranged"
-            if str(attack_context.get("weapon_range_type") or "").lower() == "ranged"
-            else "melee"
+        _attack_kind = resolve_weapon_attack_kind(
+            weapon_range_type=attack_context.get("weapon_range_type"),
+            range_meters=attack_context.get("range_meters"),
+            range_long_meters=attack_context.get("range_long_meters"),
+            has_reach=bool(attack_context.get("has_reach")),
+            distance_meters=targeting_result.spatial_metadata.distance_meters,
         )
         _adv_ctx = resolve_attack_advantage(attacker, target_p, _attack_kind)
         _vis_ctx = resolve_target_visibility(
@@ -219,6 +223,7 @@ class WeaponAttacksMixin:
             or cls._has_effect_kind(attacker, "disadvantage_on_attacks")
             or cls._has_effect_kind(target_p, "dodging")
             or bool(_adv_ctx.disadvantage_sources)
+            or bool(targeting_result.spatial_metadata.is_in_long_range)
             or not _vis_ctx.is_directly_visible
         )
         # Consume advantage_on_attacks (Help) after first use

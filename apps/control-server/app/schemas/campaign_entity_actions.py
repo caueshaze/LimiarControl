@@ -22,6 +22,9 @@ class CombatAction(BaseModel):
     damageBonus: int | None = None
     damageType: DamageType | None = None
     rangeMeters: int | None = Field(default=None, ge=0)
+    rangeLongMeters: int | None = Field(default=None, ge=0)
+    rangeType: str | None = None
+    hasReach: bool | None = None
     isMelee: bool | None = None
     saveAbility: AbilityName | None = None
     saveDc: int | None = Field(default=None, ge=1)
@@ -59,6 +62,14 @@ class CombatAction(BaseModel):
         normalized = value.strip().lower()
         return normalized or None
 
+    @field_validator("rangeType", mode="before")
+    @classmethod
+    def normalize_range_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        return normalized or None
+
     @field_validator("description", mode="before")
     @classmethod
     def normalize_description(cls, value: str | None) -> str | None:
@@ -91,6 +102,9 @@ class CombatAction(BaseModel):
             self.damageBonus,
             self.damageType,
             self.rangeMeters,
+            self.rangeLongMeters,
+            self.rangeType,
+            self.hasReach,
             self.isMelee,
             self.saveAbility,
             self.saveDc,

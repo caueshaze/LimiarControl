@@ -38,7 +38,8 @@ class WeaponAttackIntent:
     weapon_item_id: str | None = None
     weapon_canonical_key: str | None = None
     is_wild_shape: bool = False
-    range_meters: int | None = None
+    range_meters: int | float | None = None
+    range_long_meters: int | float | None = None
     weapon_range_type: str | None = None
     has_reach: bool = False
     # Final target-facing requirements resolved before validation.

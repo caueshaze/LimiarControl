@@ -39,6 +39,7 @@ mechanical resolution code are needed.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import replace
 import logging
 
 from app.core.config import settings
@@ -58,7 +59,11 @@ from .targeting_requirements import (
     resolve_spell_targeting_requirements,
     resolve_weapon_targeting_requirements,
 )
-from .reach import resolve_melee_reach_cells, derive_max_range_meters
+from .reach import derive_max_range_meters
+from .reach import (
+    classify_weapon_attack_distance,
+    resolve_weapon_attack_range_profile,
+)
 from .targeting_diagnostics import (
     TARGET_NOT_FOUND,
     INVALID_TARGET_TYPE,
@@ -80,7 +85,7 @@ from .targeting_diagnostics import (
     TargetingDiagnostics,
 )
 from .targeting_result import SpatialMetadata, TargetingResult
-from .unit_conversion import meters_to_cells
+from .unit_conversion import METERS_PER_CELL, meters_to_cells
 from .visibility import can_target_in_combat
 
 logger = logging.getLogger(__name__)
@@ -290,12 +295,25 @@ class LocalCombatTargetingService(CombatTargetingService):
             diag.set_check(CHECK_HAS_LINE_OF_SIGHT, True)
             diag.set_check(CHECK_IS_VISIBLE, True)
 
-        max_range, range_failure = derive_max_range_meters(
-            range_meters=getattr(intent, "range_meters", None),
-            weapon_range_type=getattr(intent, "weapon_range_type", None),
-            has_reach=getattr(intent, "has_reach", False),
-            target_mode=getattr(intent, "target_mode", None),
-        )
+        weapon_profile = None
+        if isinstance(intent, WeaponAttackIntent):
+            weapon_profile = resolve_weapon_attack_range_profile(
+                range_meters=getattr(intent, "range_meters", None),
+                range_long_meters=getattr(intent, "range_long_meters", None),
+                weapon_range_type=getattr(intent, "weapon_range_type", None),
+                has_reach=getattr(intent, "has_reach", False),
+            )
+            max_range = weapon_profile.max_range
+            range_failure = weapon_profile.failure_reason
+        else:
+            max_range, range_failure = derive_max_range_meters(
+                range_meters=getattr(intent, "range_meters", None),
+                weapon_range_type=getattr(intent, "weapon_range_type", None),
+                has_reach=getattr(intent, "has_reach", False),
+                target_mode=getattr(intent, "target_mode", None),
+            )
+
+        spatial_metadata = SpatialMetadata(targeting_authority="local")
 
         if not self._skip_range_validation:
             if range_failure is not None:
@@ -324,7 +342,31 @@ class LocalCombatTargetingService(CombatTargetingService):
                     return result
                 diag.set_meta("distance_meters", distance_meters)
                 diag.set_meta("max_range_meters", max_range)
-                if distance_meters > max_range:
+                if weapon_profile is not None and weapon_profile.normal_range is not None:
+                    diag.set_meta("normal_range_meters", weapon_profile.normal_range)
+                    if weapon_profile.long_range is not None:
+                        diag.set_meta("long_range_meters", weapon_profile.long_range)
+                    range_classification = classify_weapon_attack_distance(
+                        distance_meters,
+                        normal_range=weapon_profile.normal_range,
+                        long_range=weapon_profile.long_range,
+                    )
+                    spatial_metadata = SpatialMetadata(
+                        distance_meters=distance_meters,
+                        is_in_normal_range=range_classification.is_in_normal_range,
+                        is_in_long_range=range_classification.is_in_long_range,
+                        targeting_authority="local",
+                    )
+                    if not range_classification.is_in_range:
+                        diag.set_check(CHECK_IN_RANGE, False)
+                        diag.fail(TARGET_OUT_OF_REACH)
+                        result = TargetingResult.invalid(
+                            f"Target out of range ({distance_meters:.1f}m > {max_range:.1f}m).",
+                            diagnostics=diag,
+                        )
+                        _log_diagnostics_debug(logger, intent, result)
+                        return result
+                elif distance_meters > max_range:
                     diag.set_check(CHECK_IN_RANGE, False)
                     diag.fail(TARGET_OUT_OF_REACH)
                     result = TargetingResult.invalid(
@@ -333,6 +375,11 @@ class LocalCombatTargetingService(CombatTargetingService):
                     )
                     _log_diagnostics_debug(logger, intent, result)
                     return result
+                else:
+                    spatial_metadata = SpatialMetadata(
+                        distance_meters=distance_meters,
+                        targeting_authority="local",
+                    )
             diag.set_check(CHECK_IN_RANGE, True)
 
         result = TargetingResult(
@@ -340,7 +387,7 @@ class LocalCombatTargetingService(CombatTargetingService):
             validated_primary_target_ref_id=requested_ref_id,
             affected_target_ref_ids=[requested_ref_id],
             target_kind=target_kind,
-            spatial_metadata=SpatialMetadata(targeting_authority="local"),
+            spatial_metadata=spatial_metadata,
             diagnostics=diag,
         )
         _log_diagnostics_debug(logger, intent, result)
@@ -424,6 +471,11 @@ class LimiarMapTargetingService(CombatTargetingService):
             return result
 
         if not response.is_valid:
+            if isinstance(response.distance_cells, int):
+                diag.set_meta("distance_cells", response.distance_cells)
+                diag.set_meta(
+                    "distance_meters", response.distance_cells * METERS_PER_CELL
+                )
             canonical = self._map_reason_to_canonical(response.reason)
             diag.fail(canonical)
             self._populate_checks_from_map_failure(diag, response.reason)
@@ -447,8 +499,51 @@ class LimiarMapTargetingService(CombatTargetingService):
         diag.set_check(CHECK_IN_RANGE, True)
         diag.set_check(CHECK_HAS_LINE_OF_SIGHT, True)
         diag.set_check(CHECK_HAS_LINE_OF_EFFECT, True)
+        spatial_metadata = SpatialMetadata(
+            source_token_id=response.source_token_id,
+            target_token_id=response.target_token_id,
+            map_version=response.version,
+            targeting_authority="limiar_map",
+            cover=response.cover,
+        )
         if getattr(response, "cover", None):
             diag.set_meta("cover", response.cover)
+        if isinstance(response.distance_cells, int):
+            diag.set_meta("distance_cells", response.distance_cells)
+            diag.set_meta(
+                "distance_meters", response.distance_cells * METERS_PER_CELL
+            )
+            spatial_metadata = replace(
+                spatial_metadata,
+                distance_meters=response.distance_cells * METERS_PER_CELL,
+            )
+            if isinstance(intent, WeaponAttackIntent):
+                weapon_profile = resolve_weapon_attack_range_profile(
+                    range_meters=intent.range_meters,
+                    range_long_meters=intent.range_long_meters,
+                    weapon_range_type=intent.weapon_range_type,
+                    has_reach=intent.has_reach,
+                )
+                if weapon_profile.normal_range is not None:
+                    normal_range_cells = meters_to_cells(weapon_profile.normal_range)
+                    long_range_cells = (
+                        meters_to_cells(weapon_profile.long_range)
+                        if weapon_profile.long_range is not None
+                        else None
+                    )
+                    range_classification = classify_weapon_attack_distance(
+                        response.distance_cells,
+                        normal_range=normal_range_cells,
+                        long_range=long_range_cells,
+                    )
+                    diag.set_meta("normal_range_cells", normal_range_cells)
+                    if long_range_cells is not None:
+                        diag.set_meta("long_range_cells", long_range_cells)
+                    spatial_metadata = replace(
+                        spatial_metadata,
+                        is_in_normal_range=range_classification.is_in_normal_range,
+                        is_in_long_range=range_classification.is_in_long_range,
+                    )
 
         actor_participant = next(
             (p for p in state.participants if p.get("ref_id") == intent.actor_ref_id),
@@ -490,13 +585,7 @@ class LimiarMapTargetingService(CombatTargetingService):
             validated_primary_target_ref_id=local_result.validated_primary_target_ref_id,
             affected_target_ref_ids=local_result.affected_target_ref_ids,
             target_kind=local_result.target_kind,
-            spatial_metadata=SpatialMetadata(
-                source_token_id=response.source_token_id,
-                target_token_id=response.target_token_id,
-                map_version=response.version,
-                targeting_authority="limiar_map",
-                cover=response.cover,
-            ),
+            spatial_metadata=spatial_metadata,
             diagnostics=diag,
         )
         _log_diagnostics_debug(logger, intent, result)
@@ -721,17 +810,18 @@ class LimiarMapTargetingService(CombatTargetingService):
         Returns None when no range constraint applies.
         """
         if isinstance(intent, SpellCastIntent):
-            if isinstance(intent.range_meters, int) and intent.range_meters > 0:
+            if isinstance(intent.range_meters, (int, float)) and intent.range_meters > 0:
                 return meters_to_cells(intent.range_meters)
             return None
 
-        if isinstance(intent.range_meters, int) and intent.range_meters > 0:
-            return meters_to_cells(intent.range_meters)
-
-        weapon_range_type = (intent.weapon_range_type or "").strip().lower()
-        if weapon_range_type == "melee":
-            return resolve_melee_reach_cells(has_reach=intent.has_reach)
-
+        profile = resolve_weapon_attack_range_profile(
+            range_meters=intent.range_meters,
+            range_long_meters=intent.range_long_meters,
+            weapon_range_type=intent.weapon_range_type,
+            has_reach=intent.has_reach,
+        )
+        if profile.max_range is not None:
+            return meters_to_cells(profile.max_range)
         return None
 
     @staticmethod

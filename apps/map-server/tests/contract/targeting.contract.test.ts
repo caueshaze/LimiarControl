@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   areaTargetRequestSchema,
   areaTargetResponseSchema,
+  singleTargetResponseSchema,
   targetingSubmitSchema,
   targetingResolvedEventSchema
 } from "@limiarmap/shared-contracts";
@@ -71,6 +72,22 @@ describe("targeting contract", () => {
         affectedCells: [{ x: 10, y: 10 }],
         affectedTokenIds: ["tok_enemy"],
         affectedCombatantIds: ["cmb_2"]
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts single-target integration responses with distanceCells", () => {
+    expect(() =>
+      singleTargetResponseSchema.parse({
+        isValid: false,
+        reason: "out_of_range",
+        sessionId: "demo-session",
+        actionId: "target-1",
+        version: 3,
+        sourceTokenId: "tok_player",
+        targetTokenId: "tok_enemy",
+        distanceCells: 7,
+        cover: "none"
       })
     ).not.toThrow();
   });

@@ -68,6 +68,7 @@ from .cover_modifiers import (
 from .exceptions import CombatServiceError, _roll_dice_expression
 from .targeting_intent import SpellCastIntent, WeaponAttackIntent
 from .targeting_requirements import resolve_spell_targeting_requirements
+from .reach import resolve_weapon_attack_kind
 
 
 class CombatNpcActionMixin:
@@ -85,10 +86,6 @@ class CombatNpcActionMixin:
         # Read explicit targeting requirements from action definition
         requires_sight = resolved_action.get("requiresTargetSight")
         requires_effect = resolved_action.get("requiresTargetEffect")
-
-        # Determine weapon range type
-        range_type = resolved_action.get("rangeType") or ""
-        is_ranged = range_type.lower() == "ranged"
 
         return TargetingRequirements(
             requires_target_sight=True if requires_sight is None else requires_sight,
@@ -216,6 +213,9 @@ class CombatNpcActionMixin:
                     range_meters=cls._safe_int(
                         resolved_action.get("rangeMeters"), None
                     ),
+                    range_long_meters=cls._safe_int(
+                        resolved_action.get("rangeLongMeters"), None
+                    ),
                     weapon_range_type=resolved_action.get("rangeType"),
                     has_reach=bool(resolved_action.get("hasReach")),
                     requires_sight=weapon_targeting.requires_target_sight,
@@ -311,10 +311,12 @@ class CombatNpcActionMixin:
             damage_bonus = cls._safe_int(resolved_action.get("damageBonus"), 0)
             # Condition-based advantage/disadvantage (Phase F1)
             if action_kind == "weapon_attack":
-                _attack_kind = (
-                    "ranged"
-                    if str(resolved_action.get("rangeType") or "").lower() == "ranged"
-                    else "melee"
+                _attack_kind = resolve_weapon_attack_kind(
+                    weapon_range_type=resolved_action.get("rangeType"),
+                    range_meters=resolved_action.get("rangeMeters"),
+                    range_long_meters=resolved_action.get("rangeLongMeters"),
+                    has_reach=bool(resolved_action.get("hasReach")),
+                    distance_meters=targeting_result.spatial_metadata.distance_meters,
                 )
             else:  # spell_attack — kind resolved centrally
                 _attack_kind = resolve_spell_attack_kind(resolved_action)
@@ -338,6 +340,7 @@ class CombatNpcActionMixin:
                 or cls._has_effect_kind(attacker, "disadvantage_on_attacks")
                 or cls._has_effect_kind(target_p, "dodging")
                 or bool(_adv_ctx.disadvantage_sources)
+                or bool(targeting_result.spatial_metadata.is_in_long_range)
                 or not _vis_ctx.is_directly_visible
             )
             # Consume advantage_on_attacks (Help) after first use

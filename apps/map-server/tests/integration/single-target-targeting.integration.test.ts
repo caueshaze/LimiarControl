@@ -58,7 +58,8 @@ describe("single-target targeting integration", () => {
       isValid: false,
       reason: "no_line_of_sight",
       sourceTokenId: "tok_player",
-      targetTokenId: "tok_enemy"
+      targetTokenId: "tok_enemy",
+      distanceCells: 3
     });
 
     await app.close();
@@ -98,7 +99,8 @@ describe("single-target targeting integration", () => {
       isValid: false,
       reason: "no_line_of_effect",
       sourceTokenId: "tok_player",
-      targetTokenId: "tok_enemy"
+      targetTokenId: "tok_enemy",
+      distanceCells: 3
     });
 
     await app.close();
@@ -139,7 +141,45 @@ describe("single-target targeting integration", () => {
       isValid: true,
       reason: null,
       sourceTokenId: "tok_player",
-      targetTokenId: "tok_enemy"
+      targetTokenId: "tok_enemy",
+      distanceCells: 3
+    });
+
+    await app.close();
+  });
+
+  it("returns distanceCells for out_of_range rejections", async () => {
+    const { app, repository } = createApp();
+    registerIntegrationRoutes(app, repository, { emit: vi.fn() });
+
+    const encounter = repository.createEncounter("session-out-of-range");
+    encounter.tokens = encounter.tokens.map((token) =>
+      token.combatantId === "cmb_1"
+        ? { ...token, position: { x: 0, y: 0 } }
+        : token.combatantId === "cmb_2"
+          ? { ...token, position: { x: 4, y: 0 } }
+          : token
+    );
+    repository.saveEncounter(encounter);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-out-of-range/targeting",
+      payload: {
+        actionId: "target-out-of-range-1",
+        combatantId: "cmb_1",
+        targetCombatantId: "cmb_2",
+        rangeCells: 3
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      isValid: false,
+      reason: "out_of_range",
+      sourceTokenId: "tok_player",
+      targetTokenId: "tok_enemy",
+      distanceCells: 4
     });
 
     await app.close();
@@ -343,4 +383,3 @@ describe("single-target targeting integration", () => {
     await app.close();
   });
 });
-

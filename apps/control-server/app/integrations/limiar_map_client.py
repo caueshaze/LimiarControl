@@ -57,6 +57,7 @@ class LimiarMapTargetingResponse:
     version: int
     source_token_id: str | None
     target_token_id: str | None
+    distance_cells: int | None = None
     cover: str | None = None
 
 
@@ -305,6 +306,7 @@ class LimiarMapClient:
         version = payload.get("version")
         source_token_id = payload.get("sourceTokenId")
         target_token_id = payload.get("targetTokenId")
+        distance_cells = payload.get("distanceCells")
 
         if not isinstance(is_valid, bool):
             raise LimiarMapClientError(
@@ -341,6 +343,11 @@ class LimiarMapClient:
                 "LimiarMap targeting response has an invalid targetTokenId",
                 kind="payload",
             )
+        if distance_cells is not None and not isinstance(distance_cells, int):
+            raise LimiarMapClientError(
+                "LimiarMap targeting response has an invalid distanceCells",
+                kind="payload",
+            )
 
         return LimiarMapTargetingResponse(
             is_valid=is_valid,
@@ -350,6 +357,7 @@ class LimiarMapClient:
             version=version,
             source_token_id=source_token_id,
             target_token_id=target_token_id,
+            distance_cells=distance_cells,
             cover=payload.get("cover") if isinstance(payload.get("cover"), str) else None,
         )
 

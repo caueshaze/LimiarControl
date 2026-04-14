@@ -81,7 +81,8 @@ export const singleTargetResponseSchema = z.object({
     actionId: z.string(),
     version: z.number().int().nonnegative(),
     sourceTokenId: z.string().nullable(),
-    targetTokenId: z.string().nullable()
+    targetTokenId: z.string().nullable(),
+    distanceCells: z.number().int().nonnegative().nullable().optional()
 });
 export const areaTargetResponseSchema = z.object({
     isValid: z.boolean(),

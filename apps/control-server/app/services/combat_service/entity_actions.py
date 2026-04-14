@@ -7,7 +7,7 @@ from math import floor
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
 
-from app.models.base_item import BaseItemKind, BaseItemWeaponRangeType
+from app.models.base_item import BaseItemKind, BaseItemProperty, BaseItemWeaponRangeType
 from app.models.campaign import Campaign, SystemType
 from app.models.combat import CombatPhase, CombatState
 from app.models.session import Session as CampaignSession
@@ -42,6 +42,23 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 
 
 class CombatEntityActionMixin:
+
+    @staticmethod
+    def _has_reach_property(properties: list[str] | None) -> bool:
+        return BaseItemProperty.REACH.value in {
+            str(value).strip().lower()
+            for value in (properties or [])
+            if isinstance(value, str)
+        }
+
+    @staticmethod
+    def _normalize_weapon_range_type_value(value: object) -> str | None:
+        if isinstance(value, BaseItemWeaponRangeType):
+            return value.value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            return normalized or None
+        return None
 
     @classmethod
     def _resolve_weapon_combat_action(
@@ -85,6 +102,41 @@ class CombatEntityActionMixin:
                 else (catalog_weapon.range_normal_meters if catalog_weapon else None)
             )
         )
+        range_long_meters = (
+            action.rangeLongMeters
+            if action.rangeLongMeters is not None
+            else (
+                int(campaign_weapon.range_long_meters)
+                if campaign_weapon and campaign_weapon.range_long_meters is not None
+                else (catalog_weapon.range_long_meters if catalog_weapon else None)
+            )
+        )
+        range_type = (
+            action.rangeType.strip().lower()
+            if isinstance(action.rangeType, str) and action.rangeType.strip()
+            else (
+                cls._normalize_weapon_range_type_value(campaign_weapon.weapon_range_type)
+                if campaign_weapon and campaign_weapon.weapon_range_type is not None
+                else (
+                    cls._normalize_weapon_range_type_value(catalog_weapon.weapon_range_type)
+                    if catalog_weapon and catalog_weapon.weapon_range_type is not None
+                    else ("melee" if action.isMelee else None)
+                )
+            )
+        )
+        has_reach = (
+            action.hasReach
+            if isinstance(action.hasReach, bool)
+            else (
+                cls._has_reach_property(campaign_weapon.properties)
+                if campaign_weapon
+                else (
+                    cls._has_reach_property(catalog_weapon.weapon_properties_json)
+                    if catalog_weapon
+                    else False
+                )
+            )
+        )
         is_melee = (
             action.isMelee
             if action.isMelee is not None
@@ -116,6 +168,9 @@ class CombatEntityActionMixin:
             "damageBonus": action.damageBonus or 0,
             "damageType": damage_type,
             "rangeMeters": range_meters,
+            "rangeLongMeters": range_long_meters,
+            "rangeType": range_type,
+            "hasReach": has_reach,
             "isMelee": is_melee,
         }
 

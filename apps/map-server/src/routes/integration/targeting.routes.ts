@@ -118,7 +118,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         actionId,
         version: encounter.combatState.version,
         sourceTokenId: null,
-        targetTokenId: null
+        targetTokenId: null,
+        distanceCells: null
       });
     }
 
@@ -140,7 +141,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         actionId,
         version: encounter.combatState.version,
         sourceTokenId: null,
-        targetTokenId: null
+        targetTokenId: null,
+        distanceCells: null
       });
     }
 
@@ -165,13 +167,15 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         actionId,
         version: encounter.combatState.version,
         sourceTokenId: sourceToken.id,
-        targetTokenId: null
+        targetTokenId: null,
+        distanceCells: null
       });
     }
 
+    const distance = chebyshevDistance(sourceToken.position, targetToken.position);
+
     // Range validation (rangeCells is in grid cells, Chebyshev distance)
     if (rangeCells !== null) {
-      const distance = chebyshevDistance(sourceToken.position, targetToken.position);
       if (distance > rangeCells) {
         request.log.info(
           { sessionId, combatantId, targetCombatantId, distance, rangeCells },
@@ -184,7 +188,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
           actionId,
           version: encounter.combatState.version,
           sourceTokenId: sourceToken.id,
-          targetTokenId: targetToken.id
+          targetTokenId: targetToken.id,
+          distanceCells: distance
         });
       }
     }
@@ -202,7 +207,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         actionId,
         version: encounter.combatState.version,
         sourceTokenId: sourceToken.id,
-        targetTokenId: targetToken.id
+        targetTokenId: targetToken.id,
+        distanceCells: distance
       });
     }
 
@@ -219,7 +225,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         actionId,
         version: encounter.combatState.version,
         sourceTokenId: sourceToken.id,
-        targetTokenId: targetToken.id
+        targetTokenId: targetToken.id,
+        distanceCells: distance
       });
     }
 
@@ -240,6 +247,7 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         version: encounter.combatState.version,
         sourceTokenId: sourceToken.id,
         targetTokenId: targetToken.id,
+        distanceCells: distance,
         cover
       });
     }
@@ -292,6 +300,7 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
       version: newVersion,
       sourceTokenId: sourceToken.id,
       targetTokenId: targetToken.id,
+      distanceCells: distance,
       cover
     });
   });
