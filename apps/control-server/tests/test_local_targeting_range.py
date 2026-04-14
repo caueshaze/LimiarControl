@@ -11,8 +11,11 @@ import unittest
 
 from app.models.combat import CombatState, CombatPhase
 from app.services.combat_service.reach import (
+    classify_weapon_attack_distance,
     derive_max_range_meters,
+    normalize_weapon_long_range,
     WEAPON_RANGE_NOT_CONFIGURED,
+    WeaponAttackRangeClassification,
     SPELL_RANGE_NOT_CONFIGURED,
     TOUCH_RANGE_METERS,
 )
@@ -57,6 +60,7 @@ def _weapon_intent(
     target_ref_id: str = "enemy-1",
     *,
     range_meters: int | None = None,
+    range_long_meters: int | None = None,
     weapon_range_type: str | None = "melee",
     has_reach: bool = False,
     requires_sight: bool = False,
@@ -68,6 +72,7 @@ def _weapon_intent(
         actor_kind="player",
         requested_target_ref_id=target_ref_id,
         range_meters=range_meters,
+        range_long_meters=range_long_meters,
         weapon_range_type=weapon_range_type,
         has_reach=has_reach,
         requires_sight=requires_sight,
@@ -106,6 +111,28 @@ svc = LocalCombatTargetingService()
 
 
 class TestDeriveMaxRangeMeters(unittest.TestCase):
+    def test_normalize_weapon_long_range_requires_long_to_exceed_normal(self):
+        self.assertEqual(
+            normalize_weapon_long_range(range_meters=18, range_long_meters=18),
+            (18.0, None),
+        )
+
+    def test_classify_weapon_attack_distance_marks_long_range(self):
+        classification = classify_weapon_attack_distance(
+            24,
+            normal_range=18,
+            long_range=36,
+        )
+        self.assertEqual(
+            classification,
+            WeaponAttackRangeClassification(
+                band="long",
+                is_in_range=True,
+                is_in_normal_range=False,
+                is_in_long_range=True,
+            ),
+        )
+
     def test_self_target_mode_returns_none(self):
         r, fail = derive_max_range_meters(target_mode="self")
         self.assertIsNone(r)
@@ -119,6 +146,15 @@ class TestDeriveMaxRangeMeters(unittest.TestCase):
     def test_ranged_with_range_meters(self):
         r, fail = derive_max_range_meters(range_meters=18, weapon_range_type="ranged")
         self.assertEqual(r, 18.0)
+        self.assertIsNone(fail)
+
+    def test_ranged_with_long_range_uses_long_range_as_max(self):
+        r, fail = derive_max_range_meters(
+            range_meters=18,
+            range_long_meters=36,
+            weapon_range_type="ranged",
+        )
+        self.assertEqual(r, 36.0)
         self.assertIsNone(fail)
 
     def test_ranged_without_range_meters_fails(self):
@@ -213,6 +249,27 @@ class TestLocalRangedRangeValidation(unittest.TestCase):
         result = svc.validate(intent, state)
         self.assertTrue(result.is_valid)
         self.assertTrue(result.diagnostics.checks.get(CHECK_IN_RANGE))
+        self.assertEqual(result.spatial_metadata.distance_meters, 9.0)
+        self.assertTrue(result.spatial_metadata.is_in_normal_range)
+        self.assertFalse(result.spatial_metadata.is_in_long_range)
+
+    def test_ranged_weapon_in_long_range_is_valid_with_long_range_metadata(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 24.0}},
+        )
+        intent = _weapon_intent(
+            range_meters=18,
+            range_long_meters=36,
+            weapon_range_type="ranged",
+        )
+        result = svc.validate(intent, state)
+        self.assertTrue(result.is_valid)
+        self.assertTrue(result.diagnostics.checks.get(CHECK_IN_RANGE))
+        self.assertEqual(result.spatial_metadata.distance_meters, 24.0)
+        self.assertFalse(result.spatial_metadata.is_in_normal_range)
+        self.assertTrue(result.spatial_metadata.is_in_long_range)
 
     def test_ranged_weapon_out_of_range(self):
         state = _make_state(
@@ -229,6 +286,24 @@ class TestLocalRangedRangeValidation(unittest.TestCase):
         self.assertIn("18.0m", result.failure_reason)
         self.assertEqual(result.diagnostics.metadata.get("distance_meters"), 20.0)
         self.assertEqual(result.diagnostics.metadata.get("max_range_meters"), 18.0)
+
+    def test_ranged_weapon_beyond_long_range_is_invalid(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 40.0}},
+        )
+        intent = _weapon_intent(
+            range_meters=18,
+            range_long_meters=36,
+            weapon_range_type="ranged",
+        )
+        result = svc.validate(intent, state)
+        self.assertFalse(result.is_valid)
+        self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
+        self.assertIn("40.0m", result.failure_reason)
+        self.assertIn("36.0m", result.failure_reason)
+        self.assertEqual(result.diagnostics.metadata.get("max_range_meters"), 36.0)
 
     def test_ranged_weapon_without_range_meters_fails(self):
         state = _make_state(

@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from app.models.campaign_entity import CampaignEntity
@@ -24,6 +25,7 @@ from app.services.combat import (
     _roll_dice_expression,
 )
 from app.services.combat_service.combat_targeting import TargetingResult, SpatialMetadata
+from app.schemas.roll import RollResult
 
 
 
@@ -271,6 +273,105 @@ class CombatNpcTurnTestsMixin:
         log_args = mock_emit_log.call_args.args
         log_message = log_args[1]["message"] if len(log_args) > 1 else mock_emit_log.call_args.kwargs.get("message", "")
         self.assertIn("Half Cover", log_message)
+
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_npc_attack_applies_disadvantage_in_long_range(self, mock_emit_log, mock_emit_state, mock_emit_entity_hp_update):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 1
+        self.state.participants.append({
+            "id": "e2",
+            "ref_id": "enemy-456",
+            "kind": "session_entity",
+            "display_name": "Wolf",
+            "initiative": 8,
+            "status": "active",
+            "team": "enemies",
+            "visible": True,
+            "actor_user_id": None,
+        })
+
+        mock_targeting_service = MagicMock()
+        mock_targeting_service.validate.return_value = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-456",
+            affected_target_ref_ids=["enemy-456"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(
+                targeting_authority="local",
+                distance_meters=24.0,
+                is_in_normal_range=False,
+                is_in_long_range=True,
+            ),
+        )
+        long_range_roll = RollResult(
+            event_id="roll-npc-long-1",
+            roll_type="attack",
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+            actor_display_name="Goblin Archer",
+            rolls=[5, 16],
+            selected_roll=5,
+            advantage_mode="disadvantage",
+            modifier_used=5,
+            override_used=True,
+            formula="2d20kl1 + 5",
+            total=10,
+            target_ac=10,
+            success=True,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.npc_actions.get_combat_targeting_service", return_value=mock_targeting_service),
+            patch(
+                "app.services.combat.CombatService._get_combat_action_for_entity",
+                return_value=(
+                    SessionEntity(id="enemy-123", session_id="session-123", campaign_entity_id="ce-1", current_hp=7),
+                    MagicMock(),
+                    CombatAction(
+                        id="ranged_attack",
+                        name="Ranged Attack",
+                        kind="weapon_attack",
+                        toHitBonus=5,
+                        damageDice="1d8",
+                        damageBonus=2,
+                        damageType="piercing",
+                        isMelee=False,
+                        rangeType="ranged",
+                        rangeMeters=18,
+                        rangeLongMeters=36,
+                    ),
+                ),
+            ),
+            patch(
+                "app.services.combat.CombatService._get_stats",
+                return_value=(SessionEntity(id="enemy-456", session_id="session-123", campaign_entity_id="ce-2", current_hp=5), 10, 10, 10, 2, 0),
+            ),
+            patch(
+                "app.services.combat_service.npc_actions.resolve_attack_base",
+                return_value=long_range_roll,
+            ) as mock_resolve_attack,
+        ):
+            await CombatService.entity_action(
+                self.db,
+                "session-123",
+                CombatEntityActionRequest(
+                    actor_participant_id="e1",
+                    target_ref_id="enemy-456",
+                    combat_action_id="ranged_attack",
+                    roll_source="manual",
+                    manual_roll=17,
+                ),
+                "gm-user",
+                True,
+            )
+
+        self.assertEqual(
+            mock_resolve_attack.call_args.kwargs["advantage_mode"], "disadvantage"
+        )
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")

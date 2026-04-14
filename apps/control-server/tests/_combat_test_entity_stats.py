@@ -245,7 +245,9 @@ class CombatEntityStatsTestsMixin:
             damage_dice="1d6",
             damage_type="piercing",
             range_normal_meters=24,
+            range_long_meters=96,
             weapon_range_type="ranged",
+            weapon_properties_json=[],
         )
 
         resolved = CombatService._resolve_weapon_combat_action(
@@ -264,6 +266,9 @@ class CombatEntityStatsTestsMixin:
         self.assertEqual(resolved["damageDice"], "1d6")
         self.assertEqual(resolved["damageType"], "piercing")
         self.assertEqual(resolved["rangeMeters"], 24)
+        self.assertEqual(resolved["rangeLongMeters"], 96)
+        self.assertEqual(resolved["rangeType"], "ranged")
+        self.assertFalse(resolved["hasReach"])
         self.assertEqual(resolved["isMelee"], False)
 
     def test_resolve_weapon_action_prefers_campaign_item_profile(self):
@@ -279,8 +284,10 @@ class CombatEntityStatsTestsMixin:
             damage_dice="1d6",
             damage_type="piercing",
             range_meters=6,
+            range_long_meters=18,
             weapon_range_type="melee",
             item_kind="weapon",
+            properties=["reach"],
         )
         self.db.exec.side_effect = [session_entry_result, item_result]
 
@@ -300,6 +307,9 @@ class CombatEntityStatsTestsMixin:
         self.assertEqual(resolved["damageDice"], "1d6")
         self.assertEqual(resolved["damageType"], "piercing")
         self.assertEqual(resolved["rangeMeters"], 6)
+        self.assertEqual(resolved["rangeLongMeters"], 18)
+        self.assertEqual(resolved["rangeType"], "melee")
+        self.assertTrue(resolved["hasReach"])
         self.assertEqual(resolved["isMelee"], True)
 
     @patch("app.services.combat.CombatService._get_spell_catalog_entry_for_session")

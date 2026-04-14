@@ -14,6 +14,7 @@ from app.services.combat_service.reach import (
     get_effective_reach,
     is_within_melee_reach,
     is_within_melee_reach_multi,
+    resolve_weapon_attack_kind,
     resolve_melee_reach_cells,
 )
 
@@ -73,6 +74,41 @@ class TestResolveMeleeReachCells(unittest.TestCase):
         # Ensures the clamp in get_effective_reach is respected via this path
         self.assertGreaterEqual(resolve_melee_reach_cells(), 1)
         self.assertGreaterEqual(resolve_melee_reach_cells(has_reach=True), 1)
+
+
+class TestResolveWeaponAttackKind(unittest.TestCase):
+    def test_true_ranged_weapon_is_always_ranged(self):
+        self.assertEqual(
+            resolve_weapon_attack_kind(
+                weapon_range_type="ranged",
+                range_meters=18,
+                range_long_meters=36,
+                distance_meters=1.5,
+            ),
+            "ranged",
+        )
+
+    def test_thrown_profile_stays_melee_inside_reach(self):
+        self.assertEqual(
+            resolve_weapon_attack_kind(
+                weapon_range_type="melee",
+                range_meters=6,
+                range_long_meters=18,
+                distance_meters=1.5,
+            ),
+            "melee",
+        )
+
+    def test_thrown_profile_becomes_ranged_beyond_melee_reach(self):
+        self.assertEqual(
+            resolve_weapon_attack_kind(
+                weapon_range_type="melee",
+                range_meters=6,
+                range_long_meters=18,
+                distance_meters=6,
+            ),
+            "ranged",
+        )
 
 
 # ─── is_within_melee_reach ───────────────────────────────────────────────────

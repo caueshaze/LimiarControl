@@ -209,6 +209,7 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
                 version=7,
                 source_token_id="token-source",
                 target_token_id="token-target",
+                distance_cells=4,
             )
         )
         service = LimiarMapTargetingService(
@@ -234,6 +235,9 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
         self.assertEqual(result.spatial_metadata.target_token_id, "token-target")
         self.assertEqual(result.spatial_metadata.map_version, 7)
         self.assertEqual(result.spatial_metadata.targeting_authority, "limiar_map")
+        self.assertEqual(result.spatial_metadata.distance_meters, 6.0)
+        self.assertTrue(result.spatial_metadata.is_in_normal_range)
+        self.assertFalse(result.spatial_metadata.is_in_long_range)
         # 6 m / 1.5 m/cell = 4 cells (round)
         self.assertEqual(client.calls[0]["range_cells"], 4)
         self.assertTrue(client.calls[0]["requires_sight"])
@@ -412,6 +416,42 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
 
         # 9 m / 1.5 m/cell = 6 cells
         self.assertEqual(client.calls[0]["range_cells"], 6)
+
+    def test_weapon_attack_long_range_uses_long_range_cells(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapTargetingResponse(
+                is_valid=True,
+                reason=None,
+                session_id="session-123",
+                action_id="action-long",
+                version=3,
+                source_token_id="token-source",
+                target_token_id="token-target",
+                distance_cells=10,
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            WeaponAttackIntent(
+                session_id="session-123",
+                action_id="action-long",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                range_meters=9,
+                range_long_meters=18,
+                weapon_range_type="ranged",
+            ),
+            state,
+        )
+
+        self.assertEqual(client.calls[0]["range_cells"], 12)
+        self.assertTrue(result.spatial_metadata.is_in_long_range)
+        self.assertFalse(result.spatial_metadata.is_in_normal_range)
 
     def test_spell_range_is_derived_from_range_meters(self) -> None:
         state = build_combat_state()

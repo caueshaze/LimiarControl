@@ -250,6 +250,7 @@ class CombatWeaponResolutionMixin:
                 "inventory_item_id": "unarmed",
                 "weapon_canonical_key": None,
                 "range_meters": 1,
+                "range_long_meters": None,
                 "weapon_range_type": BaseItemWeaponRangeType.MELEE.value,
                 "has_reach": False,
             }
@@ -269,6 +270,7 @@ class CombatWeaponResolutionMixin:
                 "inventory_item_id": "unarmed",
                 "weapon_canonical_key": None,
                 "range_meters": 1,
+                "range_long_meters": None,
                 "weapon_range_type": BaseItemWeaponRangeType.MELEE.value,
                 "has_reach": False,
             }
@@ -294,6 +296,7 @@ class CombatWeaponResolutionMixin:
                 "inventory_item_id": "unarmed",
                 "weapon_canonical_key": None,
                 "range_meters": 1,
+                "range_long_meters": None,
                 "weapon_range_type": BaseItemWeaponRangeType.MELEE.value,
                 "has_reach": False,
             }
@@ -359,6 +362,11 @@ class CombatWeaponResolutionMixin:
             "range_meters": (
                 int(item.range_meters)
                 if getattr(item, "range_meters", None) is not None
+                else None
+            ),
+            "range_long_meters": (
+                int(item.range_long_meters)
+                if getattr(item, "range_long_meters", None) is not None
                 else None
             ),
             "weapon_range_type": (

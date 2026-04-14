@@ -20,6 +20,9 @@ For 1×1 entities the two functions are equivalent.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal
+
 from .unit_conversion import METERS_PER_CELL
 
 DEFAULT_MELEE_REACH_CELLS: int = 1
@@ -28,6 +31,24 @@ TOUCH_RANGE_METERS: float = METERS_PER_CELL
 
 WEAPON_RANGE_NOT_CONFIGURED = "weapon_range_not_configured"
 SPELL_RANGE_NOT_CONFIGURED = "spell_range_not_configured"
+
+WeaponRangeBand = Literal["normal", "long", "out_of_range"]
+
+
+@dataclass(frozen=True)
+class WeaponAttackRangeProfile:
+    normal_range: float | None
+    long_range: float | None
+    max_range: float | None
+    failure_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class WeaponAttackRangeClassification:
+    band: WeaponRangeBand
+    is_in_range: bool
+    is_in_normal_range: bool
+    is_in_long_range: bool
 
 
 def get_effective_reach(base_reach_cells: int) -> int:
@@ -56,6 +77,149 @@ def resolve_melee_reach_cells(*, has_reach: bool = False) -> int:
     """
     base = EXTENDED_REACH_CELLS if has_reach else DEFAULT_MELEE_REACH_CELLS
     return get_effective_reach(base)
+
+
+def normalize_weapon_long_range(
+    *,
+    range_meters: int | float | None = None,
+    range_long_meters: int | float | None = None,
+) -> tuple[float | None, float | None]:
+    """Normalize a weapon's normal/long range bounds.
+
+    Long range is only considered valid when it is numeric and strictly
+    greater than the normal range.
+    """
+    if not isinstance(range_meters, (int, float)):
+        return (None, None)
+
+    normal_range = float(range_meters)
+    if normal_range <= 0:
+        normal_range = TOUCH_RANGE_METERS
+
+    long_range = None
+    if isinstance(range_long_meters, (int, float)):
+        maybe_long = float(range_long_meters)
+        if maybe_long > normal_range:
+            long_range = maybe_long
+
+    return (normal_range, long_range)
+
+
+def resolve_weapon_attack_range_profile(
+    *,
+    range_meters: int | float | None = None,
+    range_long_meters: int | float | None = None,
+    weapon_range_type: str | None = None,
+    has_reach: bool = False,
+) -> WeaponAttackRangeProfile:
+    """Resolve the authoritative weapon range profile for a targeting intent."""
+    normal_range, long_range = normalize_weapon_long_range(
+        range_meters=range_meters,
+        range_long_meters=range_long_meters,
+    )
+    if normal_range is not None:
+        return WeaponAttackRangeProfile(
+            normal_range=normal_range,
+            long_range=long_range,
+            max_range=long_range if long_range is not None else normal_range,
+        )
+
+    rng_type = (weapon_range_type or "").strip().lower()
+    if rng_type == "melee":
+        melee_reach = resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL
+        return WeaponAttackRangeProfile(
+            normal_range=melee_reach,
+            long_range=None,
+            max_range=melee_reach,
+        )
+
+    if rng_type == "ranged":
+        return WeaponAttackRangeProfile(
+            normal_range=None,
+            long_range=None,
+            max_range=None,
+            failure_reason=WEAPON_RANGE_NOT_CONFIGURED,
+        )
+
+    return WeaponAttackRangeProfile(
+        normal_range=None,
+        long_range=None,
+        max_range=None,
+    )
+
+
+def classify_weapon_attack_distance(
+    distance: int | float,
+    *,
+    normal_range: int | float | None,
+    long_range: int | float | None = None,
+) -> WeaponAttackRangeClassification:
+    """Classify a resolved distance using the normal/long range profile."""
+    normalized_normal, normalized_long = normalize_weapon_long_range(
+        range_meters=normal_range,
+        range_long_meters=long_range,
+    )
+    if normalized_normal is None:
+        raise ValueError("normal_range must be numeric to classify weapon distance.")
+
+    resolved_distance = float(distance)
+    max_range = (
+        normalized_long if normalized_long is not None else normalized_normal
+    )
+    if resolved_distance <= normalized_normal:
+        return WeaponAttackRangeClassification(
+            band="normal",
+            is_in_range=True,
+            is_in_normal_range=True,
+            is_in_long_range=False,
+        )
+    if resolved_distance <= max_range:
+        return WeaponAttackRangeClassification(
+            band="long",
+            is_in_range=True,
+            is_in_normal_range=False,
+            is_in_long_range=True,
+        )
+    return WeaponAttackRangeClassification(
+        band="out_of_range",
+        is_in_range=False,
+        is_in_normal_range=False,
+        is_in_long_range=False,
+    )
+
+
+def resolve_weapon_attack_kind(
+    *,
+    weapon_range_type: str | None = None,
+    range_meters: int | float | None = None,
+    range_long_meters: int | float | None = None,
+    has_reach: bool = False,
+    distance_meters: int | float | None = None,
+) -> Literal["melee", "ranged"]:
+    """Resolve the effective attack kind for a weapon strike.
+
+    This keeps thrown/melee weapons coherent:
+    - true ranged weapons are always ranged
+    - melee weapons with a valid ranged profile become ranged only when the
+      resolved attack distance exceeds melee reach
+    - otherwise the attack remains melee
+    """
+    normalized_range_type = (weapon_range_type or "").strip().lower()
+    if normalized_range_type == "ranged":
+        return "ranged"
+
+    if isinstance(distance_meters, (int, float)):
+        profile = resolve_weapon_attack_range_profile(
+            range_meters=range_meters,
+            range_long_meters=range_long_meters,
+            weapon_range_type=weapon_range_type,
+            has_reach=has_reach,
+        )
+        melee_reach = resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL
+        if profile.normal_range is not None and float(distance_meters) > melee_reach:
+            return "ranged"
+
+    return "melee"
 
 
 def is_within_melee_reach(
@@ -125,6 +289,7 @@ def is_within_melee_reach_multi(
 def derive_max_range_meters(
     *,
     range_meters: int | float | None = None,
+    range_long_meters: int | float | None = None,
     weapon_range_type: str | None = None,
     has_reach: bool = False,
     target_mode: str | None = None,
@@ -141,23 +306,25 @@ def derive_max_range_meters(
     if target_mode == "self":
         return (None, None)
 
-    if isinstance(range_meters, (int, float)):
-        if range_meters > 0:
-            return (float(range_meters), None)
-        return (TOUCH_RANGE_METERS, None)
-
     if target_mode == "touch":
         return (TOUCH_RANGE_METERS, None)
 
     normalized_target_mode = (target_mode or "").strip().lower()
     if normalized_target_mode == "ranged":
+        if isinstance(range_meters, (int, float)):
+            if range_meters > 0:
+                return (float(range_meters), None)
+            return (TOUCH_RANGE_METERS, None)
         return (None, SPELL_RANGE_NOT_CONFIGURED)
 
-    rng_type = (weapon_range_type or "").strip().lower()
-    if rng_type == "melee":
-        return (resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL, None)
-
-    if rng_type == "ranged":
-        return (None, WEAPON_RANGE_NOT_CONFIGURED)
-
+    profile = resolve_weapon_attack_range_profile(
+        range_meters=range_meters,
+        range_long_meters=range_long_meters,
+        weapon_range_type=weapon_range_type,
+        has_reach=has_reach,
+    )
+    if profile.failure_reason is not None:
+        return (None, profile.failure_reason)
+    if profile.max_range is not None:
+        return (profile.max_range, None)
     return (None, None)
