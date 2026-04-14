@@ -11,6 +11,7 @@ import { GmPendingReactionsPanel } from "./GmPendingReactionsPanel";
 import { GmQuickActionsPanel } from "./GmQuickActionsPanel";
 import { useGmCombatShell } from "./useGmCombatShell";
 import { CombatMapFrame } from "../map/CombatMapFrame";
+import { GmDistancesPanel } from "./GmDistancesPanel";
 
 type Props = {
   campaignId: string;
@@ -59,21 +60,30 @@ export const GmCombatModeShell = ({
       />
 
       <div className="space-y-6">
-        <CombatMapFrame
-          sessionId={sessionId}
-          title={t("combatUi.mapTitle")}
-          hint={mapHint}
-          combatPhase={shell.combat.state?.phase ?? null}
-          actor={{ actorId: "gm-control", actorType: "gm" }}
-          selectionMode={mapSelectionMode}
-          selectedTargetRefId={shell.selectedTargetRefId || null}
-          frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
-          onTokenSelected={(selection) => {
-            if (selection.combatantId) {
-              shell.setSelectedTargetRefId(selection.combatantId);
-            }
-          }}
-        />
+        {shell.combat.state?.use_map === false ? (
+          <GmDistancesPanel
+            participants={shell.combat.state.participants}
+            localDistances={shell.combat.state.local_distances}
+            sessionId={sessionId}
+            onDistancesUpdated={shell.combat.applyState}
+          />
+        ) : (
+          <CombatMapFrame
+            sessionId={sessionId}
+            title={t("combatUi.mapTitle")}
+            hint={mapHint}
+            combatPhase={shell.combat.state?.phase ?? null}
+            actor={{ actorId: "gm-control", actorType: "gm" }}
+            selectionMode={mapSelectionMode}
+            selectedTargetRefId={shell.selectedTargetRefId || null}
+            frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
+            onTokenSelected={(selection) => {
+              if (selection.combatantId) {
+                shell.setSelectedTargetRefId(selection.combatantId);
+              }
+            }}
+          />
+        )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
           <div className="space-y-6">

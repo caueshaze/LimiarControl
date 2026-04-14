@@ -81,8 +81,20 @@ export type CombatState = {
   round: number;
   current_turn_index: number;
   participants: CombatParticipant[];
+  use_map: boolean;
+  local_distances: Record<string, Record<string, number>>;
   created_at: string;
   updated_at?: string | null;
+};
+
+export type CombatLocalDistanceEntry = {
+  from_ref_id: string;
+  to_ref_id: string;
+  distance_meters: number;
+};
+
+export type CombatUpdateDistancesRequest = {
+  distances: CombatLocalDistanceEntry[];
 };
 
 export type CombatMapChoiceKind = "campaign_map" | "demo_map";
@@ -510,4 +522,6 @@ export const combatRepo = {
     http.post<CombatState>(`/sessions/${sessionId}/combat/action/reaction/resolve`, payload),
   listEffects: (sessionId: string) =>
     http.get<ActiveEffect[]>(`/sessions/${sessionId}/combat/effects`),
+  updateDistances: (sessionId: string, payload: CombatUpdateDistancesRequest) =>
+    http.patch<CombatState>(`/sessions/${sessionId}/combat/distances`, payload),
 };
