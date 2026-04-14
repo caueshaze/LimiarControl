@@ -83,6 +83,10 @@ class CampaignSpell(SQLModel, table=True):
     range_meters: Optional[int] = None
     range_text: Optional[str] = None
     target_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    area_size_meters: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, nullable=True),
+    )  # AoE radius / side length in meters (sphere/cone/line/cube)
     duration: Optional[str] = None
     components_json: Optional[list[str]] = Field(
         default=None,

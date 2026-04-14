@@ -240,6 +240,7 @@ export const buildSpellUpdatePayload = (
   rangeMeters: toNullableInteger(state.rangeMeters),
   rangeText: toNullableText(state.rangeText),
   targetMode: toNullableText(state.targetMode) as TargetMode | null,
+  areaSizeMeters: toNullableInteger(state.areaSizeMeters),
   duration: toNullableText(state.duration),
   componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
   materialComponentText: state.componentsJson.includes("M")
@@ -304,6 +305,7 @@ export type SpellCatalogEditorState = {
   healDice: string;
   savingThrow: string;
   saveSuccessOutcome: string;
+  areaSizeMeters: string;
   requiresTargetSight: boolean | null;
   requiresTargetEffect: boolean | null;
   requiresPointSight: boolean | null;
@@ -335,6 +337,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   rangeText: spell.rangeText ?? "",
   targetMode: spell.targetMode ?? "",
+  areaSizeMeters: spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "",
   duration: spell.duration ?? "",
   componentsJson: filterKnownSpellValues(spell.componentsJson, SPELL_COMPONENT_OPTION_SET),
   materialComponentText: spell.materialComponentText ?? "",
@@ -380,6 +383,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   rangeMeters: "",
   rangeText: "",
   targetMode: "",
+  areaSizeMeters: "",
   duration: "",
   componentsJson: [],
   materialComponentText: "",

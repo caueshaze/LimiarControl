@@ -152,6 +152,8 @@ export type BaseSpell = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetMode?: TargetMode | null;
+  /** AoE radius / side-length in meters (sphere/cone/line/cube). Null for non-area spells. */
+  areaSizeMeters?: number | null;
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;
@@ -217,6 +219,7 @@ export type BaseSpellWritePayload = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetMode?: TargetMode | null;
+  areaSizeMeters?: number | null;
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;

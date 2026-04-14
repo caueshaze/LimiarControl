@@ -282,6 +282,7 @@ class BaseSpellWrite(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetMode: Optional[str] = None
+    areaSizeMeters: Optional[int] = None
     duration: Optional[str] = None
     componentsJson: Optional[list[str]] = None
     materialComponentText: Optional[str] = None
@@ -371,6 +372,15 @@ class BaseSpellWrite(BaseModel):
             return None
         if value < 0:
             raise ValueError("rangeMeters cannot be negative")
+        return value
+
+    @field_validator("areaSizeMeters")
+    @classmethod
+    def validate_area_size_meters(cls, value: Optional[int]):
+        if value is None:
+            return None
+        if value < 1:
+            raise ValueError("areaSizeMeters must be at least 1")
         return value
 
     @field_validator("classesJson", mode="before")
@@ -690,6 +700,7 @@ class BaseSpellRead(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetMode: Optional[str] = None
+    areaSizeMeters: Optional[int] = None
     duration: Optional[str] = None
     componentsJson: Optional[Any] = None
     materialComponentText: Optional[str] = None

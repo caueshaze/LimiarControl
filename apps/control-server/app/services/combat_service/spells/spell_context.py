@@ -449,6 +449,7 @@ class SpellContextMixin:
             "spell_mode": spell_mode,
             "target_mode": getattr(catalog_spell, "target_mode", None),
             "range_meters": getattr(catalog_spell, "range_meters", None),
+            "area_size_meters": getattr(catalog_spell, "area_size_meters", None),
             "requires_target_sight": targeting_requirements.requires_target_sight,
             "requires_target_effect": targeting_requirements.requires_target_effect,
             "requires_point_sight": targeting_requirements.requires_point_sight,

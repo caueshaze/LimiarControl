@@ -240,4 +240,28 @@ describe("spellCatalogForm", () => {
   it("keeps canonical key normalization deterministic", () => {
     expect(normalizeSpellCanonicalKey(" Détect Magic!!! ")).toBe("detect_magic");
   });
+
+  it("includes areaSizeMeters in the update payload when set", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createSpellEditorState(createSpell({ targetMode: "sphere", areaSizeMeters: 6 })),
+    });
+    expect(payload.areaSizeMeters).toBe(6);
+  });
+
+  it("sends null for areaSizeMeters when the field is empty", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createSpellEditorState(createSpell({ areaSizeMeters: null })),
+    });
+    expect(payload.areaSizeMeters).toBeNull();
+  });
+
+  it("hydrates areaSizeMeters into editor state from an existing spell", () => {
+    const state = createSpellEditorState(createSpell({ areaSizeMeters: 4 }));
+    expect(state.areaSizeMeters).toBe("4");
+  });
+
+  it("initializes areaSizeMeters as empty string for new spells", () => {
+    const state = createEmptySpellEditorState();
+    expect(state.areaSizeMeters).toBe("");
+  });
 });

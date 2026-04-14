@@ -7,6 +7,7 @@ import {
   hasLineOfSight,
   nextEncounterVersion,
   resolveCone,
+  resolveCube,
   resolveLine,
   resolveSphere
 } from "@limiarmap/tactical-engine";
@@ -431,6 +432,8 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
           return resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles);
         case "sphere":
           return resolveSphere(anchorCell, sizeCells, encounter.obstacles);
+        case "cube":
+          return resolveCube(anchorCell, sizeCells, encounter.obstacles);
       }
     };
 
@@ -650,7 +653,9 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
         ? resolveCone(originCell, anchorCell, sizeCells, encounter.obstacles)
         : shape === "line"
           ? resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles)
-          : resolveSphere(anchorCell, sizeCells, encounter.obstacles);
+          : shape === "cube"
+            ? resolveCube(anchorCell, sizeCells, encounter.obstacles)
+            : resolveSphere(anchorCell, sizeCells, encounter.obstacles);
     const affectedCellKeySet = new Set(affectedCells.map((cell) => `${cell.x}:${cell.y}`));
     const affectedTokens = encounter.tokens.filter((token) =>
       affectedCellKeySet.has(`${token.position.x}:${token.position.y}`)

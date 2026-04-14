@@ -50,6 +50,7 @@ def to_campaign_spell_read(
         rangeMeters=spell.range_meters,
         rangeText=spell.range_text,
         targetMode=spell.target_mode,
+        areaSizeMeters=spell.area_size_meters,
         duration=spell.duration,
         componentsJson=spell.components_json,
         materialComponentText=spell.material_component_text,
@@ -82,54 +83,6 @@ def to_campaign_spell_read(
     )
 
 
-router = APIRouter()
-
-
-def to_campaign_spell_read(
-    spell: CampaignSpell,
-    campaign: Campaign,
-) -> BaseSpellRead:
-    return BaseSpellRead(
-        id=spell.id,
-        system=campaign.system,
-        canonicalKey=spell.canonical_key,
-        nameEn=spell.name_en,
-        namePt=spell.name_pt,
-        descriptionEn=spell.description_en,
-        descriptionPt=spell.description_pt,
-        level=spell.level,
-        school=spell.school,
-        classesJson=spell.classes_json,
-        castingTimeType=spell.casting_time_type,
-        castingTime=spell.casting_time,
-        rangeMeters=spell.range_meters,
-        rangeText=spell.range_text,
-        targetMode=spell.target_mode,
-        duration=spell.duration,
-        componentsJson=spell.components_json,
-        materialComponentText=spell.material_component_text,
-        concentration=spell.concentration,
-        ritual=spell.ritual,
-        resolutionType=spell.resolution_type,
-        damageDice=spell.damage_dice,
-        damageType=spell.damage_type,
-        healDice=spell.heal_dice,
-        savingThrow=spell.saving_throw,
-        saveSuccessOutcome=spell.save_success_outcome,
-        coverAppliesToSave=spell.cover_applies_to_save,
-        upcast=spell.upcast_json,
-        upcastMode=spell.upcast_mode,
-        upcastValue=spell.upcast_value,
-        requiresTargetSight=spell.requires_target_sight,
-        requiresTargetEffect=spell.requires_target_effect,
-        requiresPointSight=spell.requires_point_sight,
-        requiresPointEffect=spell.requires_point_effect,
-        source=spell.source,
-        sourceRef=spell.source_ref,
-        isSrd=spell.is_srd,
-        isActive=spell.is_enabled,
-        aliases=[],
-    )
 
 
 @router.get("/{campaign_id}/spells", response_model=list[BaseSpellRead])
@@ -208,6 +161,7 @@ def update_spell(
         "rangeMeters": "range_meters",
         "rangeText": "range_text",
         "targetMode": "target_mode",
+        "areaSizeMeters": "area_size_meters",
         "duration": "duration",
         "componentsJson": "components_json",
         "materialComponentText": "material_component_text",

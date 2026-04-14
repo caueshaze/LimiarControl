@@ -74,7 +74,7 @@ class AreaTargetingMixin:
         if not isinstance(value, str):
             return None
         normalized = value.strip().lower()
-        if normalized in {"sphere", "cone", "line"}:
+        if normalized in {"sphere", "cone", "line", "cube"}:
             return normalized
         return None
 
@@ -87,22 +87,16 @@ class AreaTargetingMixin:
         if target_mode is None:
             return None
 
-        spell_key = cls._normalize_lookup(spell_context.get("spell_canonical_key"))
-        spec = cls._SUPPORTED_AREA_SPELL_SPECS.get(spell_key)
-        if spec is None:
-            return None
+        range_meters = cls._safe_optional_int(spell_context.get("range_meters"))
 
-        shape = cls._normalize_area_shape(spec.get("shape"))
-        size_meters = cls._safe_optional_int(spec.get("size_meters"))
-        if shape is None or size_meters is None or size_meters <= 0:
-            return None
-        if shape != target_mode:
+        area_size_meters = cls._safe_optional_int(spell_context.get("area_size_meters"))
+        if area_size_meters is None or area_size_meters <= 0:
             return None
 
         return {
-            "shape": shape,
-            "size_meters": size_meters,
-            "range_meters": cls._safe_optional_int(spell_context.get("range_meters")),
+            "shape": target_mode,
+            "size_meters": area_size_meters,
+            "range_meters": range_meters,
         }
 
     @classmethod
@@ -269,6 +263,7 @@ class AreaTargetingMixin:
                 requested_origin_cell=req.origin_cell,
             )
             # Convert meters → cells at the Control → Map boundary.
+            # range_meters == 0 means self-origin (no range restriction) → send null to skip map check.
             preview_range_meters = cls._safe_optional_int(area_spec.get("range_meters"))
             preview_size_meters = cls._safe_int(area_spec.get("size_meters"), 0)
             preview = client.preview_area_targeting(
@@ -279,7 +274,9 @@ class AreaTargetingMixin:
                 origin_cell=origin_cell,
                 anchor_cell={"x": req.anchor_cell.x, "y": req.anchor_cell.y},
                 range_cells=(
-                    meters_to_cells(preview_range_meters) if preview_range_meters is not None else None
+                    meters_to_cells(preview_range_meters)
+                    if preview_range_meters is not None and preview_range_meters > 0
+                    else None
                 ),
                 size_cells=meters_to_cells(preview_size_meters),
                 requires_sight=bool(spell_context.get("requires_point_sight")),
