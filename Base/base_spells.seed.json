@@ -426,7 +426,8 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": true,
-      "coverAppliesToSave": "physical"
+      "coverAppliesToSave": "physical",
+      "areaSizeMeters": 4
     },
     {
       "system": "DND5E",
@@ -597,7 +598,8 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": true,
-      "coverAppliesToSave": "physical"
+      "coverAppliesToSave": "physical",
+      "areaSizeMeters": 6
     },
     {
       "system": "DND5E",
@@ -979,7 +981,8 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": true,
-      "coverAppliesToSave": "physical"
+      "coverAppliesToSave": "physical",
+      "areaSizeMeters": 4
     },
     {
       "system": "DND5E",

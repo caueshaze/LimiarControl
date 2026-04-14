@@ -461,9 +461,10 @@ class LimiarMapTargetingService(CombatTargetingService):
                 return TargetingResult.invalid("Area anchor is missing.")
 
             # Convert meters → cells at the Control → Map boundary.
+            # range_meters == 0 means self-origin (no range restriction) → send null to skip map check.
             range_cells = (
                 meters_to_cells(intent.range_meters)
-                if intent.range_meters is not None
+                if intent.range_meters is not None and intent.range_meters > 0
                 else None
             )
             size_cells = meters_to_cells(intent.size_meters)

@@ -84,9 +84,4 @@ class CombatPlayerActionMixin(
     CastAreaMixin,
     CastTargetMixin,
 ):
-    _SUPPORTED_AREA_SPELL_SPECS: dict[str, dict[str, int | str]] = {
-        "fireball": {
-            "shape": "sphere",
-            "size_meters": 6,
-        }
-    }
+    pass

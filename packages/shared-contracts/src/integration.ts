@@ -154,7 +154,7 @@ export const singleTargetRequestSchema = z.object({
  * LimiarControl remains the authority for rules and only asks LimiarMap to
  * resolve geometry and which combatants/tokens are affected.
  */
-export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line"]);
+export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line", "cube"]);
 
 /**
  * All numeric dimensions in this schema are in grid cells, not meters.
