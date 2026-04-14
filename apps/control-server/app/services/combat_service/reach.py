@@ -20,8 +20,14 @@ For 1×1 entities the two functions are equivalent.
 
 from __future__ import annotations
 
+from .unit_conversion import METERS_PER_CELL
+
 DEFAULT_MELEE_REACH_CELLS: int = 1
 EXTENDED_REACH_CELLS: int = 2
+TOUCH_RANGE_METERS: float = METERS_PER_CELL
+
+WEAPON_RANGE_NOT_CONFIGURED = "weapon_range_not_configured"
+SPELL_RANGE_NOT_CONFIGURED = "spell_range_not_configured"
 
 
 def get_effective_reach(base_reach_cells: int) -> int:
@@ -114,3 +120,44 @@ def is_within_melee_reach_multi(
     from .entity_size import min_chebyshev_distance  # local import avoids circular dep
 
     return min_chebyshev_distance(attacker_cells, target_cells) <= reach_cells
+
+
+def derive_max_range_meters(
+    *,
+    range_meters: int | float | None = None,
+    weapon_range_type: str | None = None,
+    has_reach: bool = False,
+    target_mode: str | None = None,
+) -> tuple[float | None, str | None]:
+    """Derive the maximum allowed range in meters for a targeting intent.
+
+    Returns a 2-tuple ``(max_range_meters, failure_reason)``.
+
+    * ``max_range_meters`` is *None* when no range constraint applies
+      (e.g. self-targeted spells, actions without spatial range).
+    * ``failure_reason`` is a non-None canonical code when the intent
+      carries *incomplete* range metadata that makes validation impossible.
+    """
+    if target_mode == "self":
+        return (None, None)
+
+    if isinstance(range_meters, (int, float)):
+        if range_meters > 0:
+            return (float(range_meters), None)
+        return (TOUCH_RANGE_METERS, None)
+
+    if target_mode == "touch":
+        return (TOUCH_RANGE_METERS, None)
+
+    normalized_target_mode = (target_mode or "").strip().lower()
+    if normalized_target_mode == "ranged":
+        return (None, SPELL_RANGE_NOT_CONFIGURED)
+
+    rng_type = (weapon_range_type or "").strip().lower()
+    if rng_type == "melee":
+        return (resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL, None)
+
+    if rng_type == "ranged":
+        return (None, WEAPON_RANGE_NOT_CONFIGURED)
+
+    return (None, None)

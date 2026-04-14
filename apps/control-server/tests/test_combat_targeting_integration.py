@@ -163,6 +163,10 @@ def build_combat_state() -> CombatState:
                 "actor_user_id": None,
             },
         ],
+        local_distances={
+            "player-123": {"enemy-123": 1.5},
+            "enemy-123": {"player-123": 1.5},
+        },
     )
 
 
@@ -963,6 +967,7 @@ class LocalTargetingVisibilityTests(unittest.TestCase):
 
 # ─── Phase F4 — melee reach range_cells ──────────────────────────────────────
 
+
 class MeleeReachRangeCellsTests(unittest.TestCase):
     """Verify that LimiarMapTargetingService passes the correct range_cells to
     the map based on melee reach resolution.
@@ -982,7 +987,9 @@ class MeleeReachRangeCellsTests(unittest.TestCase):
             target_token_id="token-tgt",
         )
 
-    def _service(self, response: LimiarMapTargetingResponse) -> LimiarMapTargetingService:
+    def _service(
+        self, response: LimiarMapTargetingResponse
+    ) -> LimiarMapTargetingService:
         return LimiarMapTargetingService(
             StubLimiarMapClient(response=response),
             fallback_service=LocalCombatTargetingService(),
@@ -1047,7 +1054,7 @@ class MeleeReachRangeCellsTests(unittest.TestCase):
                 actor_kind="player",
                 requested_target_ref_id="enemy-123",
                 weapon_range_type="ranged",
-                has_reach=True,   # has_reach must be ignored for ranged
+                has_reach=True,  # has_reach must be ignored for ranged
                 range_meters=36,  # 36m → 9 cells (4m/cell)
             ),
             build_combat_state(),

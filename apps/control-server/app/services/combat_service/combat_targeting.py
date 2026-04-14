@@ -58,13 +58,15 @@ from .targeting_requirements import (
     resolve_spell_targeting_requirements,
     resolve_weapon_targeting_requirements,
 )
-from .reach import resolve_melee_reach_cells
+from .reach import resolve_melee_reach_cells, derive_max_range_meters
 from .targeting_diagnostics import (
     TARGET_NOT_FOUND,
     INVALID_TARGET_TYPE,
     AREA_TARGETING_UNAVAILABLE,
     MAP_UNAVAILABLE_FOR_AREA_SPELL,
     TARGET_OUT_OF_REACH,
+    WEAPON_RANGE_NOT_CONFIGURED,
+    SPELL_RANGE_NOT_CONFIGURED,
     NO_LINE_OF_SIGHT,
     NO_LINE_OF_EFFECT,
     NOT_VISIBLE,
@@ -82,6 +84,26 @@ from .unit_conversion import meters_to_cells
 from .visibility import can_target_in_combat
 
 logger = logging.getLogger(__name__)
+
+_RANGE_FAILURE_MESSAGES: dict[str, str] = {
+    WEAPON_RANGE_NOT_CONFIGURED: "Ranged weapon has no range configured. Cannot validate distance.",
+    SPELL_RANGE_NOT_CONFIGURED: "Spell range is not configured. Cannot validate distance.",
+}
+
+
+def _get_local_distance(state: CombatState, from_ref: str, to_ref: str) -> float | None:
+    distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+    from_map = distances.get(from_ref)
+    if isinstance(from_map, dict):
+        d = from_map.get(to_ref)
+        if isinstance(d, (int, float)):
+            return float(d)
+    to_map = distances.get(to_ref)
+    if isinstance(to_map, dict):
+        d = to_map.get(from_ref)
+        if isinstance(d, (int, float)):
+            return float(d)
+    return None
 
 
 def _map_visibility_failure(reason: str | None) -> str:
@@ -150,18 +172,38 @@ class CombatTargetingService(ABC):
 
 
 class LocalCombatTargetingService(CombatTargetingService):
-    """Default (local) implementation — no map, no distance validation.
+    """Local targeting service for non-map (theater-of-mind) combat.
 
     Behaviour
     ---------
     - Looks up the requested target in state.participants.
     - Confirms the target exists and its kind is resolved.
+    - Validates visibility (condition-based: invisible, blinded, etc.).
+    - Validates weapon/spell range using ``state.local_distances``
+      (only when *not* acting as a map fallback).
     - Returns a valid TargetingResult with a single affected target.
-    - Does NOT validate distance, range, LoS or area geometry.
+    - Does NOT validate line-of-sight geometry or area geometry.
 
-    This implementation preserves 100% of the current system behaviour
-    while establishing the architectural boundary for future integration.
+    Range validation
+    ----------------
+    When ``skip_range_validation`` is *False* (the default — used when
+    ``use_map=False``), ``state.local_distances`` is consulted:
+
+    * Melee weapons: 1.5 m (1 cell) default, 3 m (2 cells) with reach.
+    * Ranged weapons: ``range_meters`` from the weapon metadata.
+    * Ranged weapons without ``range_meters``: **fails** with
+      ``weapon_range_not_configured``.
+    * Spells with ``target_mode="self"``: no range constraint.
+    * Spells with ``target_mode="touch"``: 1.5 m.
+    * Spells with ``range_meters > 0``: uses that value.
+
+    When ``skip_range_validation`` is *True* (used as a fallback inside
+    ``LimiarMapTargetingService``), range checks are skipped entirely
+    because the map service handles its own range validation.
     """
+
+    def __init__(self, skip_range_validation: bool = False) -> None:
+        self._skip_range_validation = skip_range_validation
 
     def validate(
         self,
@@ -248,6 +290,51 @@ class LocalCombatTargetingService(CombatTargetingService):
             diag.set_check(CHECK_HAS_LINE_OF_SIGHT, True)
             diag.set_check(CHECK_IS_VISIBLE, True)
 
+        max_range, range_failure = derive_max_range_meters(
+            range_meters=getattr(intent, "range_meters", None),
+            weapon_range_type=getattr(intent, "weapon_range_type", None),
+            has_reach=getattr(intent, "has_reach", False),
+            target_mode=getattr(intent, "target_mode", None),
+        )
+
+        if not self._skip_range_validation:
+            if range_failure is not None:
+                diag.set_check(CHECK_IN_RANGE, False)
+                diag.fail(range_failure)
+                result = TargetingResult.invalid(
+                    _RANGE_FAILURE_MESSAGES.get(range_failure, range_failure),
+                    diagnostics=diag,
+                )
+                _log_diagnostics_debug(logger, intent, result)
+                return result
+
+            if max_range is not None:
+                distance_meters = _get_local_distance(
+                    state, intent.actor_ref_id, requested_ref_id
+                )
+                if distance_meters is None:
+                    diag.set_check(CHECK_IN_RANGE, False)
+                    diag.fail(TARGET_OUT_OF_REACH)
+                    result = TargetingResult.invalid(
+                        "Target distance not configured for non-map combat. "
+                        "GM must set combat distances first.",
+                        diagnostics=diag,
+                    )
+                    _log_diagnostics_debug(logger, intent, result)
+                    return result
+                diag.set_meta("distance_meters", distance_meters)
+                diag.set_meta("max_range_meters", max_range)
+                if distance_meters > max_range:
+                    diag.set_check(CHECK_IN_RANGE, False)
+                    diag.fail(TARGET_OUT_OF_REACH)
+                    result = TargetingResult.invalid(
+                        f"Target out of range ({distance_meters:.1f}m > {max_range:.1f}m).",
+                        diagnostics=diag,
+                    )
+                    _log_diagnostics_debug(logger, intent, result)
+                    return result
+            diag.set_check(CHECK_IN_RANGE, True)
+
         result = TargetingResult(
             is_valid=True,
             validated_primary_target_ref_id=requested_ref_id,
@@ -267,7 +354,16 @@ class LimiarMapTargetingService(CombatTargetingService):
         fallback_service: CombatTargetingService | None = None,
     ) -> None:
         self._limiar_map_client = limiar_map_client
-        self._fallback_service = fallback_service or LocalCombatTargetingService()
+        if fallback_service is None:
+            self._fallback_service = LocalCombatTargetingService(
+                skip_range_validation=True
+            )
+        elif isinstance(fallback_service, LocalCombatTargetingService):
+            self._fallback_service = LocalCombatTargetingService(
+                skip_range_validation=True
+            )
+        else:
+            self._fallback_service = fallback_service
 
     def validate(
         self,
@@ -704,13 +800,19 @@ class LimiarMapTargetingService(CombatTargetingService):
 _map_targeting_service: CombatTargetingService | None = None
 _map_targeting_service_signature: tuple[str, float] | None = None
 _local_targeting_service: LocalCombatTargetingService | None = None
+_map_fallback_targeting_service: LocalCombatTargetingService | None = None
 
 
 def reset_combat_targeting_service() -> None:
-    global _map_targeting_service, _map_targeting_service_signature, _local_targeting_service
+    global \
+        _map_targeting_service, \
+        _map_targeting_service_signature, \
+        _local_targeting_service, \
+        _map_fallback_targeting_service
     _map_targeting_service = None
     _map_targeting_service_signature = None
     _local_targeting_service = None
+    _map_fallback_targeting_service = None
 
 
 def _get_local_targeting_service() -> LocalCombatTargetingService:
@@ -718,6 +820,15 @@ def _get_local_targeting_service() -> LocalCombatTargetingService:
     if _local_targeting_service is None:
         _local_targeting_service = LocalCombatTargetingService()
     return _local_targeting_service
+
+
+def _get_map_fallback_targeting_service() -> LocalCombatTargetingService:
+    global _map_fallback_targeting_service
+    if _map_fallback_targeting_service is None:
+        _map_fallback_targeting_service = LocalCombatTargetingService(
+            skip_range_validation=True
+        )
+    return _map_fallback_targeting_service
 
 
 def _get_map_targeting_service() -> CombatTargetingService:
@@ -737,7 +848,7 @@ def _get_map_targeting_service() -> CombatTargetingService:
                 base_url=settings.limiar_map_base_url,
                 timeout_seconds=settings.limiar_map_timeout_seconds,
             ),
-            fallback_service=_get_local_targeting_service(),
+            fallback_service=_get_map_fallback_targeting_service(),
         )
         _map_targeting_service_signature = signature
     return _map_targeting_service
@@ -749,6 +860,6 @@ def get_combat_targeting_service(use_map: bool = True) -> CombatTargetingService
     Pass ``use_map=state.use_map`` so that combats opened without a tactical
     map fall back to the local targeting service, skipping all LimiarMap calls.
     """
-    if not use_map:
+    if not use_map or not settings.limiar_map_enabled:
         return _get_local_targeting_service()
     return _get_map_targeting_service()

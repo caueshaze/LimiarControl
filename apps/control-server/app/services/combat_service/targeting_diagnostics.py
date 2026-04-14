@@ -22,6 +22,8 @@ INVALID_TARGET_TYPE = "invalid_target_type"
 AREA_TARGETING_UNAVAILABLE = "area_targeting_unavailable"
 MAP_UNAVAILABLE_FOR_AREA_SPELL = "map_unavailable_for_area_spell"
 TARGET_OUT_OF_REACH = "target_out_of_reach"
+WEAPON_RANGE_NOT_CONFIGURED = "weapon_range_not_configured"
+SPELL_RANGE_NOT_CONFIGURED = "spell_range_not_configured"
 NO_LINE_OF_SIGHT = "no_line_of_sight"
 NO_LINE_OF_EFFECT = "no_line_of_effect"
 NOT_VISIBLE = "not_visible"
@@ -36,6 +38,8 @@ ALL_CANONICAL_REASONS: frozenset[str] = frozenset(
         AREA_TARGETING_UNAVAILABLE,
         MAP_UNAVAILABLE_FOR_AREA_SPELL,
         TARGET_OUT_OF_REACH,
+        WEAPON_RANGE_NOT_CONFIGURED,
+        SPELL_RANGE_NOT_CONFIGURED,
         NO_LINE_OF_SIGHT,
         NO_LINE_OF_EFFECT,
         NOT_VISIBLE,

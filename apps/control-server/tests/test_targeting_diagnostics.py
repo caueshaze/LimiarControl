@@ -28,6 +28,7 @@ from app.services.combat_service.targeting_diagnostics import (
     NOT_VISIBLE,
     NO_LINE_OF_EFFECT,
     NO_LINE_OF_SIGHT,
+    SPELL_RANGE_NOT_CONFIGURED,
     SELF_TARGET_NOT_ALLOWED,
     TARGET_NOT_FOUND,
     TARGET_OUT_OF_REACH,
@@ -59,16 +60,20 @@ def _make_participant(ref_id: str, kind: str = "player", **kwargs) -> dict:
 
 
 def _make_state(*participants) -> CombatState:
+    ref_ids = [
+        p.get("ref_id") for p in participants if isinstance(p.get("ref_id"), str)
+    ]
+    local_distances: dict = {}
+    for i, a in enumerate(ref_ids):
+        for b in ref_ids[i + 1 :]:
+            local_distances.setdefault(a, {})[b] = 1.5
+            local_distances.setdefault(b, {})[a] = 1.5
     return CombatState(
         id="s",
         session_id="sess",
-        status="active",
         phase=CombatPhase.active,
         participants=list(participants),
-        initiative_order=[],
-        current_turn_index=0,
-        round_number=1,
-        state_json={},
+        local_distances=local_distances,
     )
 
 
@@ -235,6 +240,7 @@ class TestCanonicalReasons(unittest.TestCase):
             BLOCKED_BY_CONDITION,
             SELF_TARGET_NOT_ALLOWED,
             MAP_UNREACHABLE,
+            SPELL_RANGE_NOT_CONFIGURED,
         }
         self.assertTrue(required.issubset(ALL_CANONICAL_REASONS))
 
@@ -386,6 +392,25 @@ class TestLocalServiceDiagnostics(unittest.TestCase):
         state = _make_state(self.attacker)
         result = self.svc.validate(_weapon_intent(), state)
         self.assertEqual(result.diagnostics.is_valid, result.is_valid)
+
+    def test_spell_range_missing_config_has_canonical_reason(self):
+        state = _make_state(self.attacker, self.target)
+        result = self.svc.validate(
+            SpellCastIntent(
+                session_id="sess",
+                action_id="act",
+                actor_ref_id="player-1",
+                actor_kind="player",
+                requested_target_ref_id="enemy-1",
+                spell_canonical_key="mystery_spell",
+                spell_mode="spell_attack",
+                target_mode="ranged",
+                range_meters=None,
+            ),
+            state,
+        )
+        self.assertFalse(result.is_valid)
+        self.assertIn(SPELL_RANGE_NOT_CONFIGURED, result.diagnostics.failure_reasons)
 
 
 # ─── LimiarMapTargetingService diagnostics ────────────────────────────────────

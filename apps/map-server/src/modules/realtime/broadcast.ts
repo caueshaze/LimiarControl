@@ -45,6 +45,10 @@ export function broadcastAuthoritativeEvent(
     );
   }
 
+  if (process.env.VITEST && publisher === centrifugo) {
+    return;
+  }
+
   for (const channel of getSpatialEventChannels(envelope.encounterId)) {
     try {
       void publisher.publish(channel, envelope);
