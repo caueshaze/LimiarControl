@@ -92,6 +92,7 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 casting_time_type="action",
                 target_mode="sphere",
                 range_meters=45,
+                area_size_meters=6,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",

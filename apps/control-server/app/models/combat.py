@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 from sqlmodel import Field, SQLModel
 
 
@@ -37,6 +38,10 @@ class CombatState(SQLModel, table=True):
     use_map: bool = Field(
         default=True,
         sa_column=Column(Boolean, nullable=False, server_default="true"),
+    )
+    local_distances: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSON, nullable=False, server_default="{}"),
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())

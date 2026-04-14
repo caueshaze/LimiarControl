@@ -19,16 +19,28 @@ class CombatParticipant(BaseModel):
     visible: bool = True
     actor_user_id: Optional[str] = None  # Original actor if player
     active_effects: list[dict] = Field(default_factory=list)
-    turn_resources: dict = Field(default_factory=lambda: {
-        "action_used": False,
-        "bonus_action_used": False,
-        "reaction_used": False,
-    })
+    turn_resources: dict = Field(
+        default_factory=lambda: {
+            "action_used": False,
+            "bonus_action_used": False,
+            "reaction_used": False,
+        }
+    )
 
 
 class CombatMapChoice(BaseModel):
     kind: Literal["campaign_map", "demo_map"]
     mapId: str | None = None
+
+
+class CombatLocalDistanceEntry(BaseModel):
+    from_ref_id: str
+    to_ref_id: str
+    distance_meters: float = Field(ge=0)
+
+
+class CombatUpdateDistancesRequest(BaseModel):
+    distances: list[CombatLocalDistanceEntry]
 
 
 class CombatMapSelection(BaseModel):
@@ -44,7 +56,9 @@ class CombatMapSelection(BaseModel):
 
     @model_validator(mode="after")
     def validate_map_id(self):
-        if self.kind == "campaign_map" and (self.mapId is None or not self.mapId.strip()):
+        if self.kind == "campaign_map" and (
+            self.mapId is None or not self.mapId.strip()
+        ):
             raise ValueError("campaign_map selections must include mapId")
         return self
 
@@ -53,6 +67,7 @@ class CombatStartRequest(BaseModel):
     participants: list[CombatParticipant]
     selectedMap: CombatMapChoice | None = None
     useMap: bool = True
+    initialDistances: list[CombatLocalDistanceEntry] | None = None
 
     @model_validator(mode="after")
     def validate_selected_map(self):
@@ -122,7 +137,10 @@ class CombatCastSpellRequest(BaseModel):
     spell_id: str | None = None
     spell_canonical_key: str | None = None
     campaign_spell_id: str | None = None
-    spell_mode: Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"] | None = None
+    spell_mode: (
+        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+        | None
+    ) = None
     slot_level: Optional[int] = None
     has_advantage: bool = False
     has_disadvantage: bool = False
@@ -202,7 +220,10 @@ class CombatAreaPreviewRequest(BaseModel):
     inventory_item_id: str | None = None
     spell_id: str | None = None
     spell_canonical_key: str | None = None
-    spell_mode: Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"] | None = None
+    spell_mode: (
+        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+        | None
+    ) = None
     slot_level: Optional[int] = None
 
 
@@ -219,7 +240,9 @@ class CombatAreaPreviewResponse(BaseModel):
 class CombatSpellResult(BaseModel):
     spell_name: str
     spell_canonical_key: str | None = None
-    action_kind: Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+    action_kind: Literal[
+        "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
+    ]
     effect_kind: Literal["damage", "healing"] | None = None
     damage: int = 0
     healing: int = 0
@@ -247,7 +270,9 @@ class CombatSpellResult(BaseModel):
     summary_text: str | None = None
     inventory_refresh_required: bool = False
     concentration_check: "CombatConcentrationCheckResult | None" = None
-    concentration_checks: list["CombatConcentrationCheckResult"] = Field(default_factory=list)
+    concentration_checks: list["CombatConcentrationCheckResult"] = Field(
+        default_factory=list
+    )
     area_shape: Literal["sphere", "cone", "line"] | None = None
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
@@ -274,7 +299,9 @@ class CombatEntityActionRequest(BaseModel):
 
 class CombatEntityActionResult(BaseModel):
     action_name: str
-    action_kind: Literal["weapon_attack", "spell_attack", "saving_throw", "heal", "utility"]
+    action_kind: Literal[
+        "weapon_attack", "spell_attack", "saving_throw", "heal", "utility"
+    ]
     damage: int = 0
     damage_type: Optional[str] = None
     healing: int = 0

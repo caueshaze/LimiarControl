@@ -575,6 +575,7 @@ def reset_limiar_map_realtime_sync_service() -> None:
 def get_limiar_map_realtime_sync_service() -> LimiarMapRealtimeSyncService:
     global _realtime_sync_service, _realtime_sync_service_signature
     signature = (
+        settings.limiar_map_enabled,
         settings.limiar_map_base_url,
         settings.limiar_map_timeout_seconds,
         settings.centrifugo_public_url,
@@ -593,6 +594,8 @@ def get_limiar_map_realtime_sync_service() -> LimiarMapRealtimeSyncService:
 
 
 def start_limiar_map_realtime_sync() -> None:
+    if not settings.limiar_map_enabled:
+        return
     get_limiar_map_realtime_sync_service().start()
 
 
@@ -605,6 +608,8 @@ def stop_limiar_map_realtime_sync() -> None:
 def resync_limiar_map_session(
     session_id: str,
 ) -> LimiarMapSessionSyncState | None:
+    if not settings.limiar_map_enabled:
+        return None
     return get_limiar_map_realtime_sync_service().resync_session(session_id)
 
 
@@ -614,6 +619,8 @@ def trigger_limiar_map_resync_if_needed(
     reason: str,
     version: int | None = None,
 ) -> LimiarMapSessionSyncState | None:
+    if not settings.limiar_map_enabled:
+        return None
     return get_limiar_map_realtime_sync_service().trigger_resync_if_needed(
         session_id,
         reason=reason,

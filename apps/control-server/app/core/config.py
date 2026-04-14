@@ -156,6 +156,10 @@ class Settings:
         "LIMIAR_MAP_BASE_URL",
         "http://localhost:3000",
     )
+    limiar_map_enabled: bool = parse_bool(
+        os.getenv("LIMIAR_MAP_ENABLED"),
+        default=True,
+    )
     limiar_map_timeout_seconds: float = parse_float(
         os.getenv("LIMIAR_MAP_TIMEOUT_SECONDS"),
         default=2.0,

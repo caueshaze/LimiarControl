@@ -24,9 +24,11 @@ from app.schemas.combat import (
     CombatAttackRequest,
     CombatCastSpellRequest,
     CombatEntityActionRequest,
+    CombatLocalDistanceEntry,
     CombatMapSelection,
     CombatSetInitiativeRequest,
     CombatStartRequest,
+    CombatUpdateDistancesRequest,
 )
 from app.schemas.campaign_entity import (
     SKILL_ABILITY_MAP,
@@ -39,7 +41,12 @@ from app.schemas.campaign_entity import (
 from app.services.base_items import get_base_item_by_canonical_key
 from app.services.base_spells import get_base_spell_by_canonical_key
 from app.services.centrifugo import centrifugo
-from app.services.realtime import build_event, campaign_channel, event_version, session_channel
+from app.services.realtime import (
+    build_event,
+    campaign_channel,
+    event_version,
+    session_channel,
+)
 
 from .exceptions import CombatServiceError, _roll_dice_expression
 from .limiar_map_projection import (
@@ -75,7 +82,10 @@ class CombatLifecycleMixin:
             for participant in state.participants
             if cls._participant_requires_initiative(participant)
         ]
-        if any(participant.get("initiative") is None for participant in pending_participants):
+        if any(
+            participant.get("initiative") is None
+            for participant in pending_participants
+        ):
             return False
 
         state.participants.sort(
@@ -107,7 +117,8 @@ class CombatLifecycleMixin:
             (
                 candidate
                 for candidate in state.participants
-                if candidate.get("ref_id") == actor_ref_id and candidate.get("kind") == actor_kind
+                if candidate.get("ref_id") == actor_ref_id
+                and candidate.get("kind") == actor_kind
             ),
             None,
         )
@@ -126,7 +137,10 @@ class CombatLifecycleMixin:
         if transitioned_to_active and state.participants:
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
             active_name = state.participants[0]["display_name"]
-            await cls._emit_log(session_id, {"message": f"Initiative set! It is now {active_name}'s turn."})
+            await cls._emit_log(
+                session_id,
+                {"message": f"Initiative set! It is now {active_name}'s turn."},
+            )
 
         return state
 
@@ -145,18 +159,32 @@ class CombatLifecycleMixin:
             round=1,
             current_turn_index=0,
             participants=[
-                {**p.model_dump(), "status": "active" if p.kind == "player" else ("active" if not getattr(p, "is_defeated", False) else "defeated")}
+                {
+                    **p.model_dump(),
+                    "status": "active"
+                    if p.kind == "player"
+                    else (
+                        "active" if not getattr(p, "is_defeated", False) else "defeated"
+                    ),
+                }
                 for p in req.participants
             ],
             map_selection=map_selection,
             use_map=req.useMap,
         )
+
+        if req.initialDistances and not req.useMap:
+            cls._validate_distance_participant_refs(new_state, req.initialDistances)
+            cls._apply_distance_entries(new_state, req.initialDistances)
+
         db.add(new_state)
         cls._sync_all_participant_statuses(db, new_state)
         db.commit()
         db.refresh(new_state)
         await cls._emit_state(session_id, new_state)
-        await cls._emit_log(session_id, {"message": "Combat started! Roll for initiative."})
+        await cls._emit_log(
+            session_id, {"message": "Combat started! Roll for initiative."}
+        )
         return new_state
 
     @classmethod
@@ -166,7 +194,9 @@ class CombatLifecycleMixin:
         session_id: str,
         req: CombatStartRequest,
     ) -> dict:
-        requested_kind = req.selectedMap.kind if req.selectedMap is not None else "demo_map"
+        requested_kind = (
+            req.selectedMap.kind if req.selectedMap is not None else "demo_map"
+        )
         if requested_kind == "demo_map":
             return cls._DEMO_MAP_SELECTION.model_dump(mode="json")
 
@@ -176,7 +206,9 @@ class CombatLifecycleMixin:
         if session_entry is None:
             raise CombatServiceError("Session not found", 404)
 
-        requested_map_id = req.selectedMap.mapId if req.selectedMap is not None else None
+        requested_map_id = (
+            req.selectedMap.mapId if req.selectedMap is not None else None
+        )
         if requested_map_id is None or not requested_map_id.strip():
             raise CombatServiceError("Campaign tactical map id is required", 400)
 
@@ -191,13 +223,23 @@ class CombatLifecycleMixin:
         if not campaign_map.image_url:
             raise CombatServiceError("Selected tactical map is missing an image", 400)
         if campaign_map.grid_width is None or campaign_map.grid_height is None:
-            raise CombatServiceError("Selected tactical map is missing grid dimensions", 400)
+            raise CombatServiceError(
+                "Selected tactical map is missing grid dimensions", 400
+            )
 
         calibration = {
-            "x": campaign_map.calibration_x if campaign_map.calibration_x is not None else 0,
-            "y": campaign_map.calibration_y if campaign_map.calibration_y is not None else 0,
-            "width": campaign_map.calibration_width if campaign_map.calibration_width is not None else 1,
-            "height": campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
+            "x": campaign_map.calibration_x
+            if campaign_map.calibration_x is not None
+            else 0,
+            "y": campaign_map.calibration_y
+            if campaign_map.calibration_y is not None
+            else 0,
+            "width": campaign_map.calibration_width
+            if campaign_map.calibration_width is not None
+            else 1,
+            "height": campaign_map.calibration_height
+            if campaign_map.calibration_height is not None
+            else 1,
         }
 
         selection = CombatMapSelection(
@@ -215,7 +257,9 @@ class CombatLifecycleMixin:
         return selection.model_dump(mode="json")
 
     @classmethod
-    async def set_initiative(cls, db: Session, session_id: str, req: CombatSetInitiativeRequest):
+    async def set_initiative(
+        cls, db: Session, session_id: str, req: CombatSetInitiativeRequest
+    ):
         state = cls.get_state(db, session_id)
         if not state:
             raise CombatServiceError("Combat not found", 404)
@@ -229,16 +273,23 @@ class CombatLifecycleMixin:
 
         transitioned_to_active = cls._maybe_activate_initiative_order(state)
         flag_modified(state, "participants")
-        
+
         db.add(state)
         db.commit()
         db.refresh(state)
         await cls._emit_state(session_id, state)
-        
+
         if transitioned_to_active:
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
-            active_name = state.participants[0]["display_name"] if state.participants else "Unknown"
-            await cls._emit_log(session_id, {"message": f"Initiative set! It is now {active_name}'s turn."})
+            active_name = (
+                state.participants[0]["display_name"]
+                if state.participants
+                else "Unknown"
+            )
+            await cls._emit_log(
+                session_id,
+                {"message": f"Initiative set! It is now {active_name}'s turn."},
+            )
         else:
             await cls._emit_log(session_id, {"message": "Initiative updated."})
         return state
@@ -264,8 +315,12 @@ class CombatLifecycleMixin:
 
         if not is_gm and not skip_turn_end_validation:
             if attacker.get("status") == "downed":
-                raise CombatServiceError("You must roll a Death Save before ending your turn.", 403)
-            cls._require_actor_status(attacker, ("active",), "You can only end your turn when active.")
+                raise CombatServiceError(
+                    "You must roll a Death Save before ending your turn.", 403
+                )
+            cls._require_actor_status(
+                attacker, ("active",), "You can only end your turn when active."
+            )
 
         cls._clear_participant_pending_attack(attacker)
         flag_modified(state, "participants")
@@ -280,24 +335,36 @@ class CombatLifecycleMixin:
         )
         for exp in expired_end:
             label = exp.get("condition_type") or exp.get("kind", "effect")
-            await cls._emit_log(session_id, {
-                "message": f"Effect '{label}' expired on {exp['target_display_name']} (end of {outgoing_p['display_name']}'s turn).",
-                "source": "effect_expired",
-            })
+            await cls._emit_log(
+                session_id,
+                {
+                    "message": f"Effect '{label}' expired on {exp['target_display_name']} (end of {outgoing_p['display_name']}'s turn).",
+                    "source": "effect_expired",
+                },
+            )
 
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
                 state.current_turn_index = 0
                 state.round += 1
-                await cls._emit_log(session_id, {"message": f"Round {state.round} started!"})
-            
-            p_status = state.participants[state.current_turn_index].get("status", "active")
+                await cls._emit_log(
+                    session_id, {"message": f"Round {state.round} started!"}
+                )
+
+            p_status = state.participants[state.current_turn_index].get(
+                "status", "active"
+            )
             if p_status not in ("dead", "defeated", "stable"):
-                break # Valid turn!
+                break  # Valid turn!
             if p_status == "stable":
                 # stable ignores turn but stays in order implicitly. We just log skipping it.
-                await cls._emit_log(session_id, {"message": f"Turn skipped for stable participant {state.participants[state.current_turn_index]['display_name']}."})
+                await cls._emit_log(
+                    session_id,
+                    {
+                        "message": f"Turn skipped for stable participant {state.participants[state.current_turn_index]['display_name']}."
+                    },
+                )
                 continue
             # "dead" and "defeated" are completely skipped silently in terms of explicit turn messages, they just pass.
 
@@ -308,10 +375,13 @@ class CombatLifecycleMixin:
         )
         for exp in expired_start:
             label = exp.get("condition_type") or exp.get("kind", "effect")
-            await cls._emit_log(session_id, {
-                "message": f"Effect '{label}' expired on {exp['target_display_name']} (start of {incoming_p['display_name']}'s turn).",
-                "source": "effect_expired",
-            })
+            await cls._emit_log(
+                session_id,
+                {
+                    "message": f"Effect '{label}' expired on {exp['target_display_name']} (start of {incoming_p['display_name']}'s turn).",
+                    "source": "effect_expired",
+                },
+            )
 
         # --- Reset turn resources for the incoming participant ---
         cls._reset_turn_resources(incoming_p)
@@ -324,13 +394,20 @@ class CombatLifecycleMixin:
 
         active_p = state.participants[state.current_turn_index]
         active_name = active_p["display_name"]
-        
+
         # Determine specific action required
         if active_p.get("status") == "downed":
-            await cls._emit_log(session_id, {"message": f"It is now {active_name}'s turn. They are downed and must roll a Death Save."})
+            await cls._emit_log(
+                session_id,
+                {
+                    "message": f"It is now {active_name}'s turn. They are downed and must roll a Death Save."
+                },
+            )
         else:
-            await cls._emit_log(session_id, {"message": f"It is now {active_name}'s turn."})
-            
+            await cls._emit_log(
+                session_id, {"message": f"It is now {active_name}'s turn."}
+            )
+
         return state
 
     @classmethod
@@ -340,7 +417,7 @@ class CombatLifecycleMixin:
         state = cls.get_state(db, session_id)
         if not state:
             raise CombatServiceError("Combat not found", 404)
-        
+
         state.phase = CombatPhase.ended
         db.add(state)
         db.commit()
@@ -348,4 +425,64 @@ class CombatLifecycleMixin:
         await cls._emit_state(session_id, state)
         maybe_project_combat_end_to_limiar_map(session_id, state)
         await cls._emit_log(session_id, {"message": "Combat ended."})
+        return state
+
+    @classmethod
+    def _validate_distance_participant_refs(
+        cls,
+        state: CombatState,
+        entries: list[CombatLocalDistanceEntry],
+    ) -> None:
+        known_ref_ids = {
+            p.get("ref_id")
+            for p in state.participants
+            if isinstance(p.get("ref_id"), str)
+        }
+        for entry in entries:
+            if entry.from_ref_id not in known_ref_ids:
+                raise CombatServiceError(
+                    f"Participant {entry.from_ref_id!r} not found in combat.", 404
+                )
+            if entry.to_ref_id not in known_ref_ids:
+                raise CombatServiceError(
+                    f"Participant {entry.to_ref_id!r} not found in combat.", 404
+                )
+
+    @classmethod
+    def _apply_distance_entries(
+        cls,
+        state: CombatState,
+        entries: list[CombatLocalDistanceEntry],
+    ) -> None:
+        distances = (
+            state.local_distances if isinstance(state.local_distances, dict) else {}
+        )
+        for entry in entries:
+            from_map = distances.setdefault(entry.from_ref_id, {})
+            from_map[entry.to_ref_id] = entry.distance_meters
+            to_map = distances.setdefault(entry.to_ref_id, {})
+            to_map[entry.from_ref_id] = entry.distance_meters
+        state.local_distances = distances
+
+    @classmethod
+    async def update_distances(
+        cls,
+        db: Session,
+        session_id: str,
+        req: CombatUpdateDistancesRequest,
+    ) -> CombatState:
+        state = cls.get_state(db, session_id)
+        if not state:
+            raise CombatServiceError("Combat not found", 404)
+        if state.phase not in (CombatPhase.active, CombatPhase.initiative):
+            raise CombatServiceError("Combat is not in an active or initiative phase")
+
+        cls._validate_distance_participant_refs(state, req.distances)
+        cls._apply_distance_entries(state, req.distances)
+
+        flag_modified(state, "local_distances")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
         return state
