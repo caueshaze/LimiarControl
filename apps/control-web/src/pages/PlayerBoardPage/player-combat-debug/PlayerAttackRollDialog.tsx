@@ -8,6 +8,7 @@ import type {
   CombatParticipant,
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
+import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
 import {
   formatDamageDiceExpression,
   getDamageRollCount,
@@ -91,7 +92,7 @@ export const PlayerAttackRollDialog = ({
         await onResolved?.(resolved);
       }
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Falha ao resolver ataque");
+      setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao resolver ataque"));
     } finally {
       setLoading(false);
     }
@@ -120,7 +121,7 @@ export const PlayerAttackRollDialog = ({
       setResult(resolved);
       await onResolved?.(resolved);
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Falha ao rolar dano");
+      setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao rolar dano"));
     } finally {
       setLoading(false);
     }

@@ -9,6 +9,7 @@ import type {
 import { combatRepo } from "../../../shared/api/combatRepo";
 import type { CombatAction } from "../../../entities/campaign-entity/campaignEntity.types";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { isMissingDistanceError } from "../combatErrors";
 
 const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus"]);
 
@@ -29,6 +30,8 @@ type UseCombatHandlersOptions = {
   numericValue: string;
   durationType: ActiveEffectDurationType;
   remainingRounds: string;
+  availableParticipants: CombatParticipant[];
+  setMissingDistancePair: (pair: { fromRefId: string; toRefId: string } | null) => void;
   refreshCombat: () => Promise<void>;
   setSubmitting: (v: boolean) => void;
   setActionError: (v: string | null) => void;
@@ -58,6 +61,8 @@ export const useGmCombatHandlers = ({
   numericValue,
   durationType,
   remainingRounds,
+  availableParticipants,
+  setMissingDistancePair,
   refreshCombat,
   setSubmitting,
   setActionError,
@@ -70,6 +75,21 @@ export const useGmCombatHandlers = ({
   setPendingOverrideAction,
 }: UseCombatHandlersOptions) => {
   const { t } = useLocale();
+
+  const handleMissingDistanceError = (rawMsg: string): string => {
+    if (!isMissingDistanceError(rawMsg) || !currentParticipant || !selectedTargetRefId) {
+      return rawMsg;
+    }
+    const targetName =
+      availableParticipants.find((p) => p.ref_id === selectedTargetRefId)?.display_name ??
+      selectedTargetRefId;
+    setMissingDistancePair({
+      fromRefId: currentParticipant.ref_id,
+      toRefId: selectedTargetRefId,
+    });
+    return `Distância não configurada entre ${currentParticipant.display_name} e ${targetName}. Defina o par no painel abaixo.`;
+  };
+
   const formatEntityActionResult = (result: CombatEntityActionResult) => {
     const actionName = result.action_name || selectedCombatAction?.name || selectedUtilityAction?.name || "Action";
     if (result.action_kind === "weapon_attack" || result.action_kind === "spell_attack") {
@@ -108,7 +128,8 @@ export const useGmCombatHandlers = ({
             const overrideResult = await apiCall(true);
             await onSuccess(overrideResult);
           } catch (overrideErr: any) {
-            setActionError(overrideErr?.data?.detail || overrideErr?.message || fallbackMsg);
+            const overrideMsg = overrideErr?.data?.detail || overrideErr?.message || fallbackMsg;
+            setActionError(handleMissingDistanceError(overrideMsg));
           } finally {
             setSubmitting(false);
             setOverrideDialogOpen(false);
@@ -118,7 +139,8 @@ export const useGmCombatHandlers = ({
         setOverrideDialogOpen(true);
         setSubmitting(false);
       } else {
-        setActionError(err?.data?.detail || err?.message || fallbackMsg);
+        const errMsg = err?.data?.detail || err?.message || fallbackMsg;
+        setActionError(handleMissingDistanceError(errMsg));
       }
     } finally {
       if (!is409) setSubmitting(false);

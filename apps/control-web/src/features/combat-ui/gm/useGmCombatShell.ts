@@ -4,6 +4,7 @@ import type {
   ActiveEffectDurationType,
   ActiveEffectKind,
   CombatEntityActionResult,
+  CombatParticipant,
   StandardActionType,
 } from "../../../shared/api/combatRepo";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
@@ -45,6 +46,7 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideResourceName, setOverrideResourceName] = useState("");
   const [pendingOverrideAction, setPendingOverrideAction] = useState<(() => Promise<void>) | null>(null);
+  const [missingDistancePair, setMissingDistancePair] = useState<{ fromRefId: string; toRefId: string } | null>(null);
 
   const playerVitalsByUserId = useMemo(
     () =>
@@ -154,6 +156,8 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     numericValue,
     durationType,
     remainingRounds,
+    availableParticipants: availableTargets as CombatParticipant[],
+    setMissingDistancePair,
     refreshCombat: combat.refreshState,
     setSubmitting,
     setActionError,
@@ -324,6 +328,9 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     reviveHp,
     setReviveHp,
     selectedTarget,
+    // Missing distance pair (for GmDistancesPanel preselection)
+    missingDistancePair,
+    setMissingDistancePair,
     // Handlers (from useGmCombatHandlers)
     ...handlers,
   };

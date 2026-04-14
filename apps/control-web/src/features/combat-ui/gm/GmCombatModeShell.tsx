@@ -62,10 +62,14 @@ export const GmCombatModeShell = ({
       <div className="space-y-6">
         {shell.combat.state?.use_map === false ? (
           <GmDistancesPanel
+            highlightPair={shell.missingDistancePair}
             participants={shell.combat.state.participants}
             localDistances={shell.combat.state.local_distances}
             sessionId={sessionId}
-            onDistancesUpdated={shell.combat.applyState}
+            onDistancesUpdated={(updatedState) => {
+              shell.combat.applyState(updatedState);
+              shell.setMissingDistancePair(null);
+            }}
           />
         ) : (
           <CombatMapFrame
@@ -198,6 +202,12 @@ export const GmCombatModeShell = ({
           actionDescription={shell.selectedCombatAction?.description}
           target={shell.selectedTarget as any}
           onClose={() => shell.setEntityActionDialogOpen(false)}
+          onMissingDistance={() =>
+            shell.setMissingDistancePair({
+              fromRefId: shell.currentParticipant?.ref_id ?? "",
+              toRefId: shell.selectedTarget?.ref_id ?? "",
+            })
+          }
           onResolved={shell.handleEntityActionResolved}
         />
       ) : null}
