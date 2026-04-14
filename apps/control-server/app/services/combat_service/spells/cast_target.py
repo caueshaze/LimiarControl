@@ -740,7 +740,7 @@ class CastTargetMixin:
             requires_sight=bool(spell_context.get("requires_target_sight")),
             requires_effect=bool(spell_context.get("requires_target_effect")),
         )
-        targeting_result = get_combat_targeting_service().validate(
+        targeting_result = get_combat_targeting_service(state.use_map).validate(
             targeting_intent, state
         )
         if not targeting_result.is_valid:

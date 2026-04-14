@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, Enum, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -33,6 +33,10 @@ class CombatState(SQLModel, table=True):
     map_selection: dict | None = Field(
         default=None,
         sa_column=Column(JSONB, nullable=True),
+    )
+    use_map: bool = Field(
+        default=True,
+        sa_column=Column(Boolean, nullable=False, server_default="true"),
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())

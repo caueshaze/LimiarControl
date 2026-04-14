@@ -52,6 +52,7 @@ class CombatMapSelection(BaseModel):
 class CombatStartRequest(BaseModel):
     participants: list[CombatParticipant]
     selectedMap: CombatMapChoice | None = None
+    useMap: bool = True
 
     @model_validator(mode="after")
     def validate_selected_map(self):

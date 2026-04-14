@@ -152,9 +152,6 @@ class Settings:
         "CENTRIFUGO_PUBLIC_URL",
         "ws://localhost:8001/connection/websocket",
     )
-    limiar_map_enabled: bool = parse_bool(
-        os.getenv("LIMIAR_MAP_ENABLED"), default=False
-    )
     limiar_map_base_url: str = os.getenv(
         "LIMIAR_MAP_BASE_URL",
         "http://localhost:3000",

@@ -138,7 +138,7 @@ class WildShapeMixin:
             requires_sight=weapon_targeting.requires_target_sight,
             requires_effect=weapon_targeting.requires_target_effect,
         )
-        targeting_result = get_combat_targeting_service().validate(targeting_intent, state)
+        targeting_result = get_combat_targeting_service(state.use_map).validate(targeting_intent, state)
         if not targeting_result.is_valid:
             _diag = targeting_result.diagnostics
             logger.info(
