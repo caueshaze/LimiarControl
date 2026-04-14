@@ -11,6 +11,7 @@ import type {
   CombatSpellResult,
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
+import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
 import {
   getDamageRollCount,
   getDamageRollSides,
@@ -297,7 +298,7 @@ export const PlayerSpellCastDialog = ({
         await onResolved?.(resolved);
       }
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Falha ao conjurar magia");
+      setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao conjurar magia"));
       setTargetingMode(isAreaSpell ? "area_target_select" : "single_target_select");
     } finally {
       setLoading(false);

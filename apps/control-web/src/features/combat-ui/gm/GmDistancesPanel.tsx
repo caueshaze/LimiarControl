@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   CombatParticipant,
   CombatState,
@@ -7,6 +7,7 @@ import type {
 import { combatRepo } from "../../../shared/api/combatRepo";
 
 type Props = {
+  highlightPair?: { fromRefId: string; toRefId: string } | null;
   participants: CombatParticipant[];
   localDistances: Record<string, Record<string, number>>;
   sessionId: string;
@@ -37,6 +38,7 @@ function formatMeters(meters: number): string {
 }
 
 export const GmDistancesPanel = ({
+  highlightPair,
   participants,
   localDistances,
   sessionId,
@@ -48,6 +50,12 @@ export const GmDistancesPanel = ({
 
   const [fromRefId, setFromRefId] = useState(activeParticipants[0]?.ref_id ?? "");
   const [toRefId, setToRefId] = useState(activeParticipants[1]?.ref_id ?? "");
+
+  useEffect(() => {
+    if (!highlightPair) return;
+    if (highlightPair.fromRefId) setFromRefId(highlightPair.fromRefId);
+    if (highlightPair.toRefId) setToRefId(highlightPair.toRefId);
+  }, [highlightPair]);
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>("engaged");
   const [customValue, setCustomValue] = useState("5");
   const [submitting, setSubmitting] = useState(false);

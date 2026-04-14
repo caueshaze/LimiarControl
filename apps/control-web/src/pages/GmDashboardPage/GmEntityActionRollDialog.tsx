@@ -15,6 +15,7 @@ import {
 import { GmActionOverrideDialog } from "../../features/combat-ui/gm/GmActionOverrideDialog";
 import { D20_VALUES, formatSigned, formatDamageBreakdown } from "./gmEntityActionRollHelpers";
 import { GmDamageRollSection } from "./GmDamageRollSection";
+import { isMissingDistanceError } from "../../features/combat-ui/combatErrors";
 
 type Props = {
   actionDescription?: string | null;
@@ -23,6 +24,7 @@ type Props = {
   actionName: string;
   actorParticipantId: string;
   onClose: () => void;
+  onMissingDistance?: () => void;
   onResolved?: (result: CombatEntityActionResult) => void | Promise<void>;
   sessionId: string;
   target: CombatParticipant;
@@ -35,6 +37,7 @@ export const GmEntityActionRollDialog = ({
   actionName,
   actorParticipantId,
   onClose,
+  onMissingDistance,
   onResolved,
   sessionId,
   target,
@@ -99,7 +102,9 @@ export const GmEntityActionRollDialog = ({
         setPendingOverridePayload(payload);
         setOverrideDialogOpen(true);
       } else {
-        setError(err?.data?.detail || err?.message || "Falha ao resolver a acao");
+        const errMsg = err?.data?.detail || err?.message || "Falha ao resolver a acao";
+        if (isMissingDistanceError(errMsg)) onMissingDistance?.();
+        setError(errMsg);
       }
     } finally {
       if (!overrideDialogOpen) setLoading(false);
@@ -129,7 +134,9 @@ export const GmEntityActionRollDialog = ({
       setResult(resolved);
       await onResolved?.(resolved);
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Falha ao rolar dano");
+      const errMsg = err?.data?.detail || err?.message || "Falha ao rolar dano";
+      if (isMissingDistanceError(errMsg)) onMissingDistance?.();
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
