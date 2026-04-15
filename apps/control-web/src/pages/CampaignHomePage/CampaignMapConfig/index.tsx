@@ -141,12 +141,13 @@ export const CampaignMapConfigCard = ({
   };
 
   const handleImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setError(t("campaignHome.mapImageTypeError"));
-      event.currentTarget.value = "";
+      input.value = "";
       return;
     }
 
@@ -157,7 +158,7 @@ export const CampaignMapConfigCard = ({
           String(MAX_IMAGE_MB),
         ),
       );
-      event.currentTarget.value = "";
+      input.value = "";
       return;
     }
 
@@ -179,7 +180,7 @@ export const CampaignMapConfigCard = ({
       );
     } finally {
       setUploading(false);
-      event.currentTarget.value = "";
+      input.value = "";
     }
   };
 
