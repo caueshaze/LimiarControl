@@ -10,11 +10,13 @@ from app.api.serializers.base_spell import to_base_spell_seed_entry
 from app.models.base_spell import BaseSpell
 from app.schemas.base_spell import BaseSpellCreate, BaseSpellSeedDocument
 from app.services.base_spells import create_base_spell, update_base_spell
+from app.services.seed_paths import resolve_base_seed_path
 
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_BASE_SPELLS_SEED_PATH = REPO_ROOT / "Base" / "base_spells.seed.json"
+DEFAULT_BASE_SPELLS_SEED_PATH = resolve_base_seed_path(
+    __file__, "base_spells.seed.json"
+)
 
 
 def read_base_spell_seed_document(

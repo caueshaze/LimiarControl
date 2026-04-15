@@ -10,11 +10,13 @@ from app.api.serializers.base_item import to_base_item_seed_entry
 from app.models.base_item import BaseItem
 from app.schemas.base_item import BaseItemCreate, BaseItemSeedDocument
 from app.services.base_items import create_base_item, update_base_item
+from app.services.seed_paths import resolve_base_seed_path
 
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_BASE_ITEMS_SEED_PATH = REPO_ROOT / "Base" / "base_items.seed.json"
+DEFAULT_BASE_ITEMS_SEED_PATH = resolve_base_seed_path(
+    __file__, "base_items.seed.json"
+)
 
 
 def read_base_item_seed_document(
