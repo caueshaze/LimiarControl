@@ -1,5 +1,6 @@
 import type { ControllerType } from "@limiarmap/shared-contracts";
 import {
+  findMovementPath,
   nextEncounterVersion,
   validateMovement,
   type GridState
@@ -9,6 +10,77 @@ import { getTacticalActionRejectionReason } from "./action-authorization";
 
 export class MovementService {
   constructor(private readonly repository: InMemoryEncounterRepository) {}
+
+  previewMovement(
+    sessionId: string,
+    combatantId: string,
+    destination: { x: number; y: number }
+  ) {
+    const encounter = this.repository.requireEncounter(sessionId);
+    const token = encounter.tokens.find((candidate) => candidate.combatantId === combatantId);
+    if (!token) {
+      return { accepted: false, rejectionReason: "unknown_combatant", encounter };
+    }
+
+    const gridState: GridState = {
+      map: encounter.battleMap,
+      obstacles: encounter.obstacles,
+      edgeObstacles: encounter.edgeObstacles,
+      tokens: encounter.tokens
+    };
+    const preview = findMovementPath(gridState, token, destination, encounter.combatState);
+
+    return {
+      accepted: preview.accepted,
+      rejectionReason: preview.rejectionReason,
+      tokenId: token.id,
+      combatantId,
+      source: token.position,
+      destination,
+      path: preview.path,
+      pathCostUnits: preview.pathCostUnits,
+      movementBudget: token.movementBudget,
+      movementSpeedCells: token.movementSpeedCells,
+      remainingBudget: Math.max(0, token.movementBudget - preview.pathCostUnits),
+      encounter
+    };
+  }
+
+  moveCombatant(
+    sessionId: string,
+    combatantId: string,
+    destination: { x: number; y: number },
+    actionId: string
+  ) {
+    const preview = this.previewMovement(sessionId, combatantId, destination);
+    if (!preview.accepted) {
+      return preview;
+    }
+    if (!preview.tokenId) {
+      return {
+        ...preview,
+        accepted: false,
+        rejectionReason: "unknown_token"
+      };
+    }
+
+    const result = this.moveToken(
+      sessionId,
+      preview.tokenId,
+      "limiarControl",
+      "gm",
+      preview.path,
+      actionId
+    );
+    return {
+      ...preview,
+      ...result,
+      source: preview.source,
+      destination: preview.destination,
+      path: preview.path,
+      movementSpeedCells: preview.movementSpeedCells
+    };
+  }
 
   moveToken(
     sessionId: string,

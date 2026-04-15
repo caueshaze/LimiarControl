@@ -255,6 +255,8 @@ export type CombatMapPreviewToken = {
   position: { x: number; y: number };
   combatant_id?: string | null;
   controller_type: string;
+  movement_speed_cells?: number | null;
+  movement_budget?: number | null;
 };
 
 export type CombatMapPreviewObstacle = {
@@ -326,6 +328,24 @@ export type CombatAreaPreviewResponse = {
   affected_cells: Array<{ x: number; y: number }>;
   affected_target_ref_ids: string[];
   affected_token_ids: string[];
+  map_version?: number | null;
+};
+
+export type CombatMovementPreviewRequest = {
+  actor_participant_id?: string | null;
+  destination_cell: { x: number; y: number };
+};
+
+export type CombatMovementPreviewResponse = {
+  is_valid: boolean;
+  reason?: string | null;
+  source_cell?: { x: number; y: number } | null;
+  destination_cell: { x: number; y: number };
+  path: Array<{ x: number; y: number }>;
+  path_cost_units: number;
+  movement_budget: number;
+  movement_speed_cells: number;
+  remaining_budget: number;
   map_version?: number | null;
 };
 
@@ -522,6 +542,10 @@ export const combatRepo = {
     ),
   previewAreaSpell: (sessionId: string, payload: CombatAreaPreviewRequest) =>
     http.post<CombatAreaPreviewResponse>(`/sessions/${sessionId}/combat/action/cast/preview`, payload),
+  previewMovement: (sessionId: string, payload: CombatMovementPreviewRequest) =>
+    http.post<CombatMovementPreviewResponse>(`/sessions/${sessionId}/combat/action/move/preview`, payload),
+  confirmMovement: (sessionId: string, payload: CombatMovementPreviewRequest) =>
+    http.post<CombatMovementPreviewResponse>(`/sessions/${sessionId}/combat/action/move`, payload),
   previewAction: (sessionId: string, payload: CombatPreviewRequest) =>
     http.post<CombatPreviewResponse>(`/sessions/${sessionId}/combat/preview`, payload),
   castSpellEffect: (sessionId: string, payload: CombatResolveSpellEffectRequest) =>

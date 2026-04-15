@@ -43,6 +43,7 @@ import {
   formatPathCostUnitsAsMeters
 } from "../../services/movement-metrics";
 import {
+  postEmbeddedCellHovered,
   postEmbeddedCellSelected,
   postEmbeddedTokenSelected
 } from "../../services/embedded-map-bridge";
@@ -321,7 +322,6 @@ export function BattleMapCanvas(): React.JSX.Element {
       app.stage.on("pointermove", (e: FederatedPointerEvent) => {
         const { encounter: enc, uiState: ui } = cbRef.current;
         if (!enc || ui.isGridEditMode || ui.isObstaclePaintMode) return;
-        if (!ui.tacticalPreview.active) return;
 
         const cal = ui.gridCalibrationDraft ?? enc.battleMap.gridCalibration;
         const gridW = ui.gridWidthDraft ?? enc.battleMap.gridWidth;
@@ -331,6 +331,19 @@ export function BattleMapCanvas(): React.JSX.Element {
           e.global.x, e.global.y, cal, gridW, gridH,
           app.screen.width, app.screen.height
         );
+
+        if (ui.embeddedSelectionMode === "select-cell") {
+          if (!coord) {
+            postEmbeddedCellHovered(enc.sessionId, null, null);
+          } else {
+            const hoveredToken = enc.tokens.find(
+              (t) => t.position.x === coord.x && t.position.y === coord.y
+            );
+            postEmbeddedCellHovered(enc.sessionId, coord, hoveredToken ?? null);
+          }
+        }
+
+        if (!ui.tacticalPreview.active) return;
         if (!coord) return;
 
         const tokenAtCell = enc.tokens.find(

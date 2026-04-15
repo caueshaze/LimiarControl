@@ -47,6 +47,16 @@ type EmbeddedMapCellSelectedMessage = {
   };
 };
 
+type EmbeddedMapCellHoveredMessage = {
+  type: "limiar-map:cell-hovered";
+  payload: {
+    sessionId: string;
+    cell: Coordinate | null;
+    tokenId: string | null;
+    combatantId: string | null;
+  };
+};
+
 const isCoordinate = (value: unknown): value is Coordinate => {
   if (!value || typeof value !== "object") {
     return false;
@@ -144,6 +154,23 @@ export function postEmbeddedCellSelected(
 ): void {
   const message: EmbeddedMapCellSelectedMessage = {
     type: "limiar-map:cell-selected",
+    payload: {
+      sessionId,
+      cell,
+      tokenId: token?.id ?? null,
+      combatantId: token?.combatantId ?? null,
+    },
+  };
+  window.parent.postMessage(message, "*");
+}
+
+export function postEmbeddedCellHovered(
+  sessionId: string,
+  cell: Coordinate | null,
+  token: Token | null,
+): void {
+  const message: EmbeddedMapCellHoveredMessage = {
+    type: "limiar-map:cell-hovered",
     payload: {
       sessionId,
       cell,

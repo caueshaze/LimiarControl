@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   AbilityName,
   AdvantageMode,
@@ -26,6 +26,9 @@ import type {
 import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
 import { CombatMapFrame } from "../map/CombatMapFrame";
+import { MovementPreviewPanel } from "../map/MovementPreviewPanel";
+import { useMovementPreview } from "../map/useMovementPreview";
+import { combatRepo } from "../../../shared/api/combatRepo";
 
 type Props = {
   campaignId?: string | null;
@@ -159,16 +162,71 @@ export const PlayerCombatModeShell = ({
 
   const myParticipant = combat.myParticipant;
   const selectedSpellIsArea = isAreaTargetMode(selectedSpell?.targetMode);
-  const mapSelectionMode =
+  const [movementMode, setMovementMode] = useState(false);
+  const [movementHoverCell, setMovementHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
+  const [movementSubmitting, setMovementSubmitting] = useState(false);
+  const movementDestination = movementSelectedCell ?? movementHoverCell;
+  const movementEnabled =
+    movementMode &&
+    combat.state?.use_map !== false &&
     combat.state?.phase === "active" &&
     combat.isMyTurn &&
-    myParticipant?.status === "active" &&
-    ((activeActionPanel === "attack" && Boolean(playerStatus?.currentWeapon)) ||
-      (activeActionPanel === "spell" && Boolean(selectedSpell) && !selectedSpellIsArea))
+    myParticipant?.status === "active";
+  const movementPreview = useMovementPreview({
+    sessionId,
+    actorParticipantId: myParticipant?.id,
+    actorRefId: myParticipant?.ref_id,
+    destinationCell: movementEnabled ? movementDestination : null,
+    enabled: movementEnabled,
+  });
+
+  useEffect(() => {
+    if (movementEnabled) {
+      return;
+    }
+    setMovementMode(false);
+    setMovementHoverCell(null);
+    setMovementSelectedCell(null);
+  }, [movementEnabled]);
+
+  const clearMovementMode = () => {
+    setMovementMode(false);
+    setMovementHoverCell(null);
+    setMovementSelectedCell(null);
+  };
+
+  const handleConfirmMovement = async () => {
+    if (!myParticipant?.id || !movementSelectedCell || !movementPreview.preview?.is_valid) {
+      return;
+    }
+    setMovementSubmitting(true);
+    try {
+      await combatRepo.confirmMovement(sessionId, {
+        actor_participant_id: myParticipant.id,
+        destination_cell: movementSelectedCell,
+      });
+      clearMovementMode();
+      await combat.refreshState();
+    } finally {
+      setMovementSubmitting(false);
+    }
+  };
+
+  const mapSelectionMode =
+    movementEnabled
+      ? "select-cell"
+      : combat.state?.phase === "active" &&
+          combat.isMyTurn &&
+          myParticipant?.status === "active" &&
+          ((activeActionPanel === "attack" && Boolean(playerStatus?.currentWeapon)) ||
+            (activeActionPanel === "spell" && Boolean(selectedSpell) && !selectedSpellIsArea))
       ? "select-token"
       : "none";
   const mapHint =
-    activeActionPanel === "attack"
+    movementEnabled
+      ? t("combatUi.mapHintMove")
+      : activeActionPanel === "attack"
       ? t("combatUi.mapHintAttack")
       : activeActionPanel === "spell" && selectedSpellIsArea
         ? t("combatUi.mapHintAreaSpell")
@@ -189,6 +247,31 @@ export const PlayerCombatModeShell = ({
       />
 
       <div className="space-y-6">
+        {combat.state?.use_map !== false ? (
+          <MovementPreviewPanel
+            active={movementEnabled}
+            actorLabel={myParticipant?.display_name ?? null}
+            actorToken={movementPreview.actorToken}
+            preview={movementPreview.preview}
+            loading={movementPreview.loading}
+            error={movementPreview.error}
+            confirming={movementSubmitting}
+            onToggle={() => {
+              if (movementEnabled) {
+                clearMovementMode();
+                return;
+              }
+              setMovementMode(true);
+              setMovementHoverCell(null);
+              setMovementSelectedCell(null);
+            }}
+            onCancel={clearMovementMode}
+            onConfirm={() => {
+              void handleConfirmMovement();
+            }}
+          />
+        ) : null}
+
         <CombatMapFrame
           sessionId={sessionId}
           title={t("combatUi.mapTitle")}
@@ -196,10 +279,25 @@ export const PlayerCombatModeShell = ({
           combatPhase={combat.state?.phase ?? null}
           actor={userId ? { actorId: userId, actorType: "player" } : null}
           selectionMode={mapSelectionMode}
-          selectedTargetRefId={targetId || null}
+          previewCells={movementEnabled ? movementPreview.preview?.path ?? [] : []}
+          selectedCell={movementEnabled ? movementSelectedCell : null}
+          selectedTargetRefId={movementEnabled ? null : (targetId || null)}
           frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
+          onCellHovered={(selection) => {
+            if (!movementEnabled || movementSelectedCell) {
+              return;
+            }
+            setMovementHoverCell(selection?.cell ?? null);
+          }}
+          onCellSelected={(selection) => {
+            if (!movementEnabled) {
+              return;
+            }
+            setMovementSelectedCell(selection.cell);
+            setMovementHoverCell(selection.cell);
+          }}
           onTokenSelected={(selection) => {
-            if (selection.combatantId) {
+            if (!movementEnabled && selection.combatantId) {
               setTargetId(selection.combatantId);
             }
           }}

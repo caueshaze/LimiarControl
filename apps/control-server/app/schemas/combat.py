@@ -186,6 +186,8 @@ class CombatMapPreviewToken(BaseModel):
     position: CombatGridCell
     combatant_id: str | None = None
     controller_type: str
+    movement_speed_cells: int | None = None
+    movement_budget: int | None = None
 
 
 class CombatMapPreviewObstacle(BaseModel):
@@ -234,6 +236,24 @@ class CombatAreaPreviewResponse(BaseModel):
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_token_ids: list[str] = Field(default_factory=list)
+    map_version: int | None = None
+
+
+class CombatMovementPreviewRequest(BaseModel):
+    actor_participant_id: Optional[str] = None
+    destination_cell: CombatGridCell
+
+
+class CombatMovementPreviewResponse(BaseModel):
+    is_valid: bool
+    reason: str | None = None
+    source_cell: CombatGridCell | None = None
+    destination_cell: CombatGridCell
+    path: list[CombatGridCell] = Field(default_factory=list)
+    path_cost_units: int = Field(ge=0)
+    movement_budget: int = Field(ge=0)
+    movement_speed_cells: int = Field(ge=1)
+    remaining_budget: int = Field(ge=0)
     map_version: int | None = None
 
 

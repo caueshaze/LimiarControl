@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { GmEntityActionRollDialog } from "../../../pages/GmDashboardPage/GmEntityActionRollDialog";
 import { GmActionOverrideDialog } from "./GmActionOverrideDialog";
@@ -12,6 +13,9 @@ import { GmQuickActionsPanel } from "./GmQuickActionsPanel";
 import { useGmCombatShell } from "./useGmCombatShell";
 import { CombatMapFrame } from "../map/CombatMapFrame";
 import { GmDistancesPanel } from "./GmDistancesPanel";
+import { MovementPreviewPanel } from "../map/MovementPreviewPanel";
+import { useMovementPreview } from "../map/useMovementPreview";
+import { combatRepo } from "../../../shared/api/combatRepo";
 
 type Props = {
   campaignId: string;
@@ -32,15 +36,69 @@ export const GmCombatModeShell = ({
 }: Props) => {
   const { t } = useLocale();
   const shell = useGmCombatShell({ sessionId, playerSheetByUserId });
-  const mapSelectionMode =
+  const [movementMode, setMovementMode] = useState(false);
+  const [movementHoverCell, setMovementHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
+  const [movementSubmitting, setMovementSubmitting] = useState(false);
+  const movementEnabled =
+    movementMode &&
+    shell.combat.state?.use_map !== false &&
     shell.combat.state?.phase === "active" &&
-    shell.currentParticipant?.kind === "session_entity" &&
-    (shell.entityActionPanel === "attack" || shell.entityActionPanel === "spell") &&
-    shell.selectedCombatAction
+    shell.currentParticipant?.status === "active";
+  const movementDestination = movementSelectedCell ?? movementHoverCell;
+  const movementPreview = useMovementPreview({
+    sessionId,
+    actorParticipantId: shell.currentParticipant?.id,
+    actorRefId: shell.currentParticipant?.ref_id,
+    destinationCell: movementEnabled ? movementDestination : null,
+    enabled: movementEnabled,
+  });
+
+  useEffect(() => {
+    if (movementEnabled) {
+      return;
+    }
+    setMovementMode(false);
+    setMovementHoverCell(null);
+    setMovementSelectedCell(null);
+  }, [movementEnabled]);
+
+  const clearMovementMode = () => {
+    setMovementMode(false);
+    setMovementHoverCell(null);
+    setMovementSelectedCell(null);
+  };
+
+  const handleConfirmMovement = async () => {
+    if (!shell.currentParticipant?.id || !movementSelectedCell || !movementPreview.preview?.is_valid) {
+      return;
+    }
+    setMovementSubmitting(true);
+    try {
+      await combatRepo.confirmMovement(sessionId, {
+        actor_participant_id: shell.currentParticipant.id,
+        destination_cell: movementSelectedCell,
+      });
+      clearMovementMode();
+      await shell.combat.refreshState();
+    } finally {
+      setMovementSubmitting(false);
+    }
+  };
+
+  const mapSelectionMode =
+    movementEnabled
+      ? "select-cell"
+      : shell.combat.state?.phase === "active" &&
+          shell.currentParticipant?.kind === "session_entity" &&
+          (shell.entityActionPanel === "attack" || shell.entityActionPanel === "spell") &&
+          shell.selectedCombatAction
       ? "select-token"
       : "none";
   const mapHint =
-    shell.currentParticipant?.kind !== "session_entity"
+    movementEnabled
+      ? t("combatUi.mapHintMove")
+      : shell.currentParticipant?.kind !== "session_entity"
       ? t("combatUi.mapHintIdle")
       : shell.entityActionPanel === "attack"
         ? t("combatUi.mapHintAttack")
@@ -72,21 +130,61 @@ export const GmCombatModeShell = ({
             }}
           />
         ) : (
-          <CombatMapFrame
-            sessionId={sessionId}
-            title={t("combatUi.mapTitle")}
-            hint={mapHint}
-            combatPhase={shell.combat.state?.phase ?? null}
-            actor={{ actorId: "gm-control", actorType: "gm" }}
-            selectionMode={mapSelectionMode}
-            selectedTargetRefId={shell.selectedTargetRefId || null}
-            frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
-            onTokenSelected={(selection) => {
-              if (selection.combatantId) {
-                shell.setSelectedTargetRefId(selection.combatantId);
-              }
-            }}
-          />
+          <>
+            <MovementPreviewPanel
+              active={movementEnabled}
+              actorLabel={shell.currentParticipant?.display_name ?? null}
+              actorToken={movementPreview.actorToken}
+              preview={movementPreview.preview}
+              loading={movementPreview.loading}
+              error={movementPreview.error}
+              confirming={movementSubmitting}
+              onToggle={() => {
+                if (movementEnabled) {
+                  clearMovementMode();
+                  return;
+                }
+                setMovementMode(true);
+                setMovementHoverCell(null);
+                setMovementSelectedCell(null);
+              }}
+              onCancel={clearMovementMode}
+              onConfirm={() => {
+                void handleConfirmMovement();
+              }}
+            />
+
+            <CombatMapFrame
+              sessionId={sessionId}
+              title={t("combatUi.mapTitle")}
+              hint={mapHint}
+              combatPhase={shell.combat.state?.phase ?? null}
+              actor={{ actorId: "gm-control", actorType: "gm" }}
+              selectionMode={mapSelectionMode}
+              previewCells={movementEnabled ? movementPreview.preview?.path ?? [] : []}
+              selectedCell={movementEnabled ? movementSelectedCell : null}
+              selectedTargetRefId={movementEnabled ? null : (shell.selectedTargetRefId || null)}
+              frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
+              onCellHovered={(selection) => {
+                if (!movementEnabled || movementSelectedCell) {
+                  return;
+                }
+                setMovementHoverCell(selection?.cell ?? null);
+              }}
+              onCellSelected={(selection) => {
+                if (!movementEnabled) {
+                  return;
+                }
+                setMovementSelectedCell(selection.cell);
+                setMovementHoverCell(selection.cell);
+              }}
+              onTokenSelected={(selection) => {
+                if (!movementEnabled && selection.combatantId) {
+                  shell.setSelectedTargetRefId(selection.combatantId);
+                }
+              }}
+            />
+          </>
         )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
