@@ -195,6 +195,7 @@ export const GmCombatModeShell = ({
         shell.selectedCombatAction.kind === "spell_attack") ? (
         <GmEntityActionRollDialog
           actorParticipantId={shell.currentParticipant.id}
+          actorRefId={shell.currentParticipant.ref_id}
           sessionId={sessionId}
           actionId={shell.selectedCombatActionId}
           actionName={shell.selectedCombatAction?.name || ""}

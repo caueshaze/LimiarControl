@@ -12,6 +12,8 @@ import type {
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
+import { useTargetingPreview } from "../../../features/combat-ui/hooks/useTargetingPreview";
+import { RangeStatusBadge } from "../../../features/combat-ui/components/RangeStatusBadge";
 import {
   getDamageRollCount,
   getDamageRollSides,
@@ -84,6 +86,16 @@ export const PlayerSpellCastDialog = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const isAreaSpell = isAreaTargetMode(spell.targetMode);
+  const rangePreview = useTargetingPreview({
+    sessionId,
+    actorRefId: actor.ref_id,
+    targetRefId: target?.ref_id ?? null,
+    actionType: "spell",
+    normalRangeMeters: spell.rangeMeters ?? null,
+    longRangeMeters: null,
+    enabled: !isAreaSpell && !!target,
+  });
+  const spellOutOfRange = !isAreaSpell && rangePreview.rangeStatus === "out";
   const targetHasConcentration = target ? participantHasActiveConcentration(target) : false;
   const shouldShowConcentrationControl = targetHasConcentration && spellMode !== "heal" && spellMode !== "utility";
   const slotOptions = spell.availableSlotLevels.length > 0 ? spell.availableSlotLevels : (spell.level > 0 ? [spell.level] : []);
@@ -469,6 +481,12 @@ export const PlayerSpellCastDialog = ({
           </div>
         ) : null}
 
+        {!result && !isAreaSpell && target ? (
+          <div className="mt-4">
+            <RangeStatusBadge preview={rangePreview} />
+          </div>
+        ) : null}
+
         {error ? (
           <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
             {error}
@@ -498,15 +516,17 @@ export const PlayerSpellCastDialog = ({
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
+              disabled={spellOutOfRange}
               onClick={() => setAttackMode("virtual")}
-              className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500"
+              className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500 disabled:opacity-40"
             >
               Virtual
             </button>
             <button
               type="button"
+              disabled={spellOutOfRange}
               onClick={() => setAttackMode("manual")}
-              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
+              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             >
               Manual
             </button>
@@ -565,7 +585,7 @@ export const PlayerSpellCastDialog = ({
           <div className="mt-5 flex gap-3">
             <button
               type="button"
-              disabled={isAreaSpell ? !canSubmitArea : loading}
+              disabled={isAreaSpell ? !canSubmitArea : loading || spellOutOfRange}
               onClick={() => {
                 setTargetingMode(isAreaSpell ? "confirming" : "single_target_select");
                 void submitCast();

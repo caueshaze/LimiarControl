@@ -41,6 +41,9 @@ export type PlayerBoardWeaponSummary = {
   damageLabel: string;
   name: string;
   proficient: boolean;
+  rangeMeters: number | null;
+  rangeLongMeters: number | null;
+  isRanged: boolean;
 };
 
 const normalizeTimestamp = (ts: string): string =>

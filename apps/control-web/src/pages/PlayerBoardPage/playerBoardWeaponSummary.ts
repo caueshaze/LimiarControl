@@ -138,10 +138,14 @@ export const buildPlayerBoardWeaponSummary = ({
     (proficient ? getProficiencyBonus(playerSheet.level) : 0) +
     magicBonus +
     fightingStyleBonus;
+  const isRanged = item.weaponRangeType === "ranged";
   return {
     attackBonus,
     damageLabel: formatDamageLabel(item.damageDice, item.damageType, locale) ?? "—",
     name: localizedItemName(item, locale),
     proficient,
+    rangeMeters: item.rangeMeters ?? (isRanged ? null : 1.5),
+    rangeLongMeters: item.rangeLongMeters ?? null,
+    isRanged,
   };
 };

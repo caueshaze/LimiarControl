@@ -40,6 +40,7 @@ export type CombatSpellOption = {
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
   targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | null;
+  rangeMeters?: number | null;
   availableSlotLevels: number[];
   upcast?: SpellUpcast | null;
   chargesCurrent?: number | null;

@@ -16,6 +16,8 @@ import { GmActionOverrideDialog } from "../../features/combat-ui/gm/GmActionOver
 import { D20_VALUES, formatSigned, formatDamageBreakdown } from "./gmEntityActionRollHelpers";
 import { GmDamageRollSection } from "./GmDamageRollSection";
 import { isMissingDistanceError } from "../../features/combat-ui/combatErrors";
+import { useTargetingPreview } from "../../features/combat-ui/hooks/useTargetingPreview";
+import { RangeStatusBadge } from "../../features/combat-ui/components/RangeStatusBadge";
 
 type Props = {
   actionDescription?: string | null;
@@ -23,6 +25,7 @@ type Props = {
   actionKind: "weapon_attack" | "spell_attack";
   actionName: string;
   actorParticipantId: string;
+  actorRefId: string;
   onClose: () => void;
   onMissingDistance?: () => void;
   onResolved?: (result: CombatEntityActionResult) => void | Promise<void>;
@@ -36,12 +39,22 @@ export const GmEntityActionRollDialog = ({
   actionKind,
   actionName,
   actorParticipantId,
+  actorRefId,
   onClose,
   onMissingDistance,
   onResolved,
   sessionId,
   target,
 }: Props) => {
+  const preview = useTargetingPreview({
+    sessionId,
+    actorRefId,
+    targetRefId: target.ref_id,
+    actionType: actionKind === "spell_attack" ? "spell" : "attack",
+    normalRangeMeters: null,
+    longRangeMeters: null,
+  });
+  const outOfRange = preview.rangeStatus === "out";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
@@ -175,6 +188,12 @@ export const GmEntityActionRollDialog = ({
           <p className="mt-2 text-sm text-slate-400">{actionDescription}</p>
         ) : null}
 
+        {!result ? (
+          <div className="mt-4">
+            <RangeStatusBadge preview={preview} />
+          </div>
+        ) : null}
+
         {error && (
           <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
             {error}
@@ -256,15 +275,17 @@ export const GmEntityActionRollDialog = ({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                disabled={outOfRange}
                 onClick={() => setAttackMode("virtual")}
-                className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500"
+                className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500 disabled:opacity-40"
               >
                 Virtual
               </button>
               <button
                 type="button"
+                disabled={outOfRange}
                 onClick={() => setAttackMode("manual")}
-                className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
+                className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
               >
                 Manual
               </button>

@@ -281,6 +281,32 @@ export type CombatMapEnsureResponse = {
   reason?: string | null;
 };
 
+export type PreviewPosition = { x: number; y: number };
+
+export type CombatPreviewRequest = {
+  source_ref_id: string;
+  action_type: "move" | "attack" | "spell";
+  target_ref_id?: string | null;
+  source_position?: PreviewPosition | null;
+  target_position?: PreviewPosition | null;
+  reach_cells?: number;
+  aoe_shape?: "sphere" | "cone" | "line" | null;
+  aoe_size_cells?: number | null;
+};
+
+export type TacticalDiagnosticsPayload = {
+  isValid: boolean;
+  failureReasons: string[];
+  checks: Record<string, boolean>;
+  metadata: Record<string, unknown>;
+};
+
+export type CombatPreviewResponse = {
+  diagnostics?: TacticalDiagnosticsPayload | null;
+  effectiveReachCells: number;
+  aoeCells: PreviewPosition[];
+};
+
 export type CombatAreaPreviewRequest = {
   actor_participant_id?: string | null;
   target_ref_id?: string | null;
@@ -496,6 +522,8 @@ export const combatRepo = {
     ),
   previewAreaSpell: (sessionId: string, payload: CombatAreaPreviewRequest) =>
     http.post<CombatAreaPreviewResponse>(`/sessions/${sessionId}/combat/action/cast/preview`, payload),
+  previewAction: (sessionId: string, payload: CombatPreviewRequest) =>
+    http.post<CombatPreviewResponse>(`/sessions/${sessionId}/combat/preview`, payload),
   castSpellEffect: (sessionId: string, payload: CombatResolveSpellEffectRequest) =>
     http.post<CombatSpellResult>(`/sessions/${sessionId}/combat/action/cast/effect`, payload),
   entityAction: (sessionId: string, payload: CombatEntityActionRequest) =>

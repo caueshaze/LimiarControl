@@ -25,6 +25,7 @@ export type BaseSpell = {
   castingTime: string;
   // Display-only summary. Mechanical systems must use structured rangeMeters upstream.
   range: string;
+  rangeMeters?: number | null;
   components: string;
   duration: string;
   concentration: boolean;
@@ -89,6 +90,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
     typeof api.rangeMeters === "number"
       ? `${api.rangeMeters} m`
       : (api.rangeText ?? ""),
+  rangeMeters: api.rangeMeters ?? null,
   components: api.componentsJson?.join(", ") ?? "",
   duration: api.duration ?? "",
   concentration: api.concentration,
