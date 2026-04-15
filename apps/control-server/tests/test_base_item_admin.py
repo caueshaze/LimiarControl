@@ -41,6 +41,7 @@ from app.services.base_item_seeds import (
     write_base_item_seed_document,
 )
 from app.services.base_items import create_base_item
+from app.services.seed_paths import resolve_base_seed_path
 
 
 def make_base_item(**overrides):
@@ -348,6 +349,36 @@ class BaseItemServiceTests(unittest.TestCase):
 
 
 class BaseItemSeedTests(unittest.TestCase):
+    def test_resolve_base_seed_path_prefers_repo_base_directory(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo_root = Path(tmp_dir)
+            service_path = repo_root / "apps" / "control-server" / "app" / "services" / "base_item_seeds.py"
+            service_path.parent.mkdir(parents=True, exist_ok=True)
+            service_path.write_text("# test\n", encoding="utf-8")
+
+            expected_path = repo_root / "Base" / "base_items.seed.json"
+            expected_path.parent.mkdir(parents=True, exist_ok=True)
+            expected_path.write_text('{"version": 1, "items": []}\n', encoding="utf-8")
+
+            resolved_path = resolve_base_seed_path(service_path, "base_items.seed.json")
+
+        self.assertEqual(resolved_path, expected_path)
+
+    def test_resolve_base_seed_path_supports_docker_base_directory(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            container_root = Path(tmp_dir)
+            service_path = container_root / "app" / "app" / "services" / "base_item_seeds.py"
+            service_path.parent.mkdir(parents=True, exist_ok=True)
+            service_path.write_text("# test\n", encoding="utf-8")
+
+            expected_path = container_root / "Base" / "base_items.seed.json"
+            expected_path.parent.mkdir(parents=True, exist_ok=True)
+            expected_path.write_text('{"version": 1, "items": []}\n', encoding="utf-8")
+
+            resolved_path = resolve_base_seed_path(service_path, "base_items.seed.json")
+
+        self.assertEqual(resolved_path, expected_path)
+
     def test_write_and_read_seed_document_roundtrip(self):
         item_a = BaseItemCreate(
             canonicalKey="club",
