@@ -175,6 +175,7 @@ export const PlayerCombatDebugPanel = ({
       {attackDialogOpen && state.phase === "active" && currentParticipant && selectedTarget ? (
         <PlayerAttackRollDialog
           actorParticipantId={currentParticipant.id}
+          actorRefId={currentParticipant.ref_id}
           sessionId={sessionId}
           target={selectedTarget}
           weapon={playerStatus?.currentWeapon ?? null}

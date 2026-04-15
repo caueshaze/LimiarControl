@@ -162,6 +162,7 @@ export const GmCombatDebugPanel = ({
       (selectedCombatAction.kind === "weapon_attack" || selectedCombatAction.kind === "spell_attack") ? (
         <GmEntityActionRollDialog
           actorParticipantId={currentParticipant.id}
+          actorRefId={currentParticipant.ref_id}
           actionDescription={describeCombatAction(selectedCombatAction)}
           actionId={selectedCombatAction.id}
           actionKind={selectedCombatAction.kind}

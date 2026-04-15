@@ -9,6 +9,8 @@ import type {
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
+import { useTargetingPreview } from "../../../features/combat-ui/hooks/useTargetingPreview";
+import { RangeStatusBadge } from "../../../features/combat-ui/components/RangeStatusBadge";
 import {
   formatDamageDiceExpression,
   getDamageRollCount,
@@ -18,6 +20,7 @@ import type { PlayerBoardWeaponSummary } from "../playerBoard.types";
 
 type Props = {
   actorParticipantId: string;
+  actorRefId: string;
   onClose: () => void;
   onResolved?: (result: CombatAttackResult) => void | Promise<void>;
   sessionId: string;
@@ -43,12 +46,22 @@ const formatDamageBreakdown = (result: CombatAttackResult) => {
 
 export const PlayerAttackRollDialog = ({
   actorParticipantId,
+  actorRefId,
   onClose,
   onResolved,
   sessionId,
   target,
   weapon,
 }: Props) => {
+  const preview = useTargetingPreview({
+    sessionId,
+    actorRefId,
+    targetRefId: target.ref_id,
+    actionType: "attack",
+    normalRangeMeters: weapon?.rangeMeters ?? null,
+    longRangeMeters: weapon?.rangeLongMeters ?? null,
+  });
+  const outOfRange = preview.rangeStatus === "out";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
@@ -150,6 +163,12 @@ export const PlayerAttackRollDialog = ({
         <p className="mt-1 text-sm text-slate-400">
           Bonus de ataque {attackBonusLabel} · Dano {damageLabel}
         </p>
+
+        {!result ? (
+          <div className="mt-4">
+            <RangeStatusBadge preview={preview} />
+          </div>
+        ) : null}
 
         {error && (
           <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
@@ -366,15 +385,17 @@ export const PlayerAttackRollDialog = ({
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
+              disabled={outOfRange}
               onClick={() => setAttackMode("virtual")}
-              className="rounded-2xl bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-400"
+              className="rounded-2xl bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-400 disabled:opacity-40"
             >
               Virtual
             </button>
             <button
               type="button"
+              disabled={outOfRange}
               onClick={() => setAttackMode("manual")}
-              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
+              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             >
               Manual
             </button>

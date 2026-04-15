@@ -321,6 +321,7 @@ export const PlayerCombatModeShell = ({
       {attackDialogOpen && combat.state?.phase === "active" && combat.currentParticipant && selectedTarget ? (
         <PlayerAttackRollDialog
           actorParticipantId={combat.currentParticipant.id}
+          actorRefId={combat.currentParticipant.ref_id}
           onClose={closeAttackDialog}
           onResolved={(result) => {
             setLastAttackResult(result);
