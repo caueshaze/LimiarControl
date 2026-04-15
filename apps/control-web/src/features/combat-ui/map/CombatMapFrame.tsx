@@ -39,6 +39,7 @@ type Props = {
   className?: string;
   frameClassName?: string;
   onCellSelected?: (selection: CombatMapCellSelection) => void;
+  onCellHovered?: (selection: CombatMapCellSelection | null) => void;
   onTokenSelected?: (selection: CombatMapTokenSelection) => void;
 };
 
@@ -97,6 +98,7 @@ export const CombatMapFrame = ({
   className,
   frameClassName,
   onCellSelected,
+  onCellHovered,
   onTokenSelected,
 }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -245,12 +247,33 @@ export const CombatMapFrame = ({
           combatantId:
             typeof data.payload.combatantId === "string" ? data.payload.combatantId : null,
         });
+        return;
+      }
+
+      if (data.type === "limiar-map:cell-hovered") {
+        if (!onCellHovered || data.payload?.sessionId !== sessionId) {
+          return;
+        }
+        const cell = data.payload.cell as Coordinate | null | undefined;
+        if (cell == null) {
+          onCellHovered(null);
+          return;
+        }
+        if (typeof cell.x !== "number" || typeof cell.y !== "number") {
+          return;
+        }
+        onCellHovered({
+          cell,
+          tokenId: typeof data.payload.tokenId === "string" ? data.payload.tokenId : null,
+          combatantId:
+            typeof data.payload.combatantId === "string" ? data.payload.combatantId : null,
+        });
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onCellSelected, onTokenSelected, sessionId]);
+  }, [onCellHovered, onCellSelected, onTokenSelected, sessionId]);
 
   useEffect(() => {
     if (bootstrapState.status !== "ready") {

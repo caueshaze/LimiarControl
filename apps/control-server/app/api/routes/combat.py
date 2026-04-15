@@ -23,6 +23,8 @@ from app.schemas.combat import (
     CombatAttackRequest,
     CombatAttackResult,
     CombatMapEnsureResponse,
+    CombatMovementPreviewRequest,
+    CombatMovementPreviewResponse,
     CombatCastSpellRequest,
     CombatDeathSaveRequest,
     CombatEntityActionRequest,
@@ -394,6 +396,44 @@ def action_cast_spell_preview(
         req,
         user.id,
         _is_session_gm(db, session_id, user),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/action/move/preview",
+    response_model=CombatMovementPreviewResponse,
+)
+def action_move_preview(
+    session_id: str,
+    req: CombatMovementPreviewRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return CombatService.preview_movement(
+        db,
+        session_id,
+        req,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/action/move",
+    response_model=CombatMovementPreviewResponse,
+)
+def action_move(
+    session_id: str,
+    req: CombatMovementPreviewRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return CombatService.confirm_movement(
+        db,
+        session_id,
+        req,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
     )
 
 

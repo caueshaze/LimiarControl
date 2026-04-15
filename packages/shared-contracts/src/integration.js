@@ -97,6 +97,27 @@ export const areaTargetResponseSchema = z.object({
     affectedCombatantIds: z.array(z.string())
 });
 export const areaTargetPreviewResponseSchema = areaTargetResponseSchema;
+export const movementPreviewRequestSchema = z.object({
+    actionId: z.string(),
+    combatantId: z.string(),
+    destinationCell: coordinateSchema
+});
+export const movementPreviewResponseSchema = z.object({
+    isValid: z.boolean(),
+    reason: z.string().nullable(),
+    sessionId: z.string(),
+    actionId: z.string(),
+    version: z.number().int().nonnegative(),
+    tokenId: z.string().nullable(),
+    combatantId: z.string().nullable(),
+    sourceCell: coordinateSchema.nullable(),
+    destinationCell: coordinateSchema,
+    path: z.array(coordinateSchema),
+    pathCostUnits: z.number().int().nonnegative(),
+    movementBudget: z.number().int().nonnegative(),
+    movementSpeedCells: z.number().int().positive(),
+    remainingBudget: z.number().int().nonnegative()
+});
 export const integrationErrorResponseSchema = z.object({
     message: z.string(),
     reason: z.string()

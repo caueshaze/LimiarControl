@@ -2,6 +2,7 @@ import { registerStateRoutes } from "./integration/state.routes";
 import { registerInitiativeRoutes } from "./integration/initiative.routes";
 import { registerTokensRoutes } from "./integration/tokens.routes";
 import { registerTargetingRoutes } from "./integration/targeting.routes";
+import { registerMovementRoutes } from "./integration/movement.routes";
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import {
@@ -89,4 +90,5 @@ export function registerIntegrationRoutes(
   registerInitiativeRoutes(app, repository, broadcaster);
   registerTokensRoutes(app, repository, broadcaster);
   registerTargetingRoutes(app, repository, broadcaster);
+  registerMovementRoutes(app, repository, broadcaster);
 }

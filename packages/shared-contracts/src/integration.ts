@@ -247,6 +247,29 @@ export const areaTargetResponseSchema = z.object({
 
 export const areaTargetPreviewResponseSchema = areaTargetResponseSchema;
 
+export const movementPreviewRequestSchema = z.object({
+  actionId: z.string(),
+  combatantId: z.string(),
+  destinationCell: coordinateSchema
+});
+
+export const movementPreviewResponseSchema = z.object({
+  isValid: z.boolean(),
+  reason: z.string().nullable(),
+  sessionId: z.string(),
+  actionId: z.string(),
+  version: z.number().int().nonnegative(),
+  tokenId: z.string().nullable(),
+  combatantId: z.string().nullable(),
+  sourceCell: coordinateSchema.nullable(),
+  destinationCell: coordinateSchema,
+  path: z.array(coordinateSchema),
+  pathCostUnits: z.number().int().nonnegative(),
+  movementBudget: z.number().int().nonnegative(),
+  movementSpeedCells: z.number().int().positive(),
+  remainingBudget: z.number().int().nonnegative()
+});
+
 /**
  * Uniform error response for all integration endpoints.
  * Use `reason` for programmatic handling, `message` for human-readable logs.
@@ -354,6 +377,8 @@ export type AreaTargetResponse = z.infer<typeof areaTargetResponseSchema>;
 export type AreaTargetPreviewResponse = z.infer<
   typeof areaTargetPreviewResponseSchema
 >;
+export type MovementPreviewRequest = z.infer<typeof movementPreviewRequestSchema>;
+export type MovementPreviewResponse = z.infer<typeof movementPreviewResponseSchema>;
 export type IntegrationErrorResponse = z.infer<
   typeof integrationErrorResponseSchema
 >;

@@ -182,6 +182,8 @@ class AreaTargetingMixin:
                     },
                     "combatant_id": token.combatant_id,
                     "controller_type": token.controller_type,
+                    "movement_speed_cells": token.movement_speed_cells,
+                    "movement_budget": token.movement_budget,
                 }
                 for token in map_state.tokens
                 if token.position_x is not None and token.position_y is not None

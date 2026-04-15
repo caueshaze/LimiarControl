@@ -1,12 +1,66 @@
 import type { CombatState, Coordinate, Token } from "@limiarmap/shared-contracts";
 import { findOccupyingToken, getEdgeBetweenCells, isBlockedCell, isEdgeBlocked, isInsideMap, type GridState } from "../grid/grid-state";
 import { clipsDiagonalMovement, getMovementCostMultiplier } from "../validation/obstacle-rules";
-import { computePathCost } from "./path-cost";
+import { computePathCost, isDiagonalStep, stepCost } from "./path-cost";
 
 export interface MovementValidationResult {
   accepted: boolean;
   pathCostUnits: number;
   rejectionReason?: string;
+}
+
+export interface MovementPathResult extends MovementValidationResult {
+  path: Coordinate[];
+}
+
+function getStepRejectionReason(
+  gridState: GridState,
+  token: Token,
+  previous: Coordinate,
+  current: Coordinate
+): string | undefined {
+  const xDelta = Math.abs(current.x - previous.x);
+  const yDelta = Math.abs(current.y - previous.y);
+
+  if (!isInsideMap(gridState, current)) {
+    return "outside_map";
+  }
+
+  if (xDelta > 1 || yDelta > 1 || (xDelta === 0 && yDelta === 0)) {
+    return "non_contiguous_path";
+  }
+
+  if ((xDelta === 1 && yDelta === 0) || (xDelta === 0 && yDelta === 1)) {
+    if (isEdgeBlocked(gridState, previous, current)) {
+      return "blocked_path";
+    }
+  } else if (xDelta === 1 && yDelta === 1) {
+    const cornerH = getEdgeBetweenCells(gridState, previous, { x: current.x, y: previous.y });
+    const cornerV = getEdgeBetweenCells(gridState, { x: current.x, y: previous.y }, current);
+    if (cornerH?.blocksMovement || cornerV?.blocksMovement) {
+      return "blocked_path";
+    }
+  }
+
+  if (isBlockedCell(gridState, current)) {
+    return "blocked_path";
+  }
+
+  if (
+    xDelta === 1 &&
+    yDelta === 1 &&
+    (clipsDiagonalMovement(gridState.obstacles, { x: current.x, y: previous.y }) ||
+      clipsDiagonalMovement(gridState.obstacles, { x: previous.x, y: current.y }))
+  ) {
+    return "diagonal_clipped";
+  }
+
+  const occupant = findOccupyingToken(gridState, current);
+  if (occupant && occupant.id !== token.id) {
+    return "occupied_cell";
+  }
+
+  return undefined;
 }
 
 export function validateMovement(
@@ -27,49 +81,9 @@ export function validateMovement(
   for (let index = 1; index < fullPath.length; index += 1) {
     const current = fullPath[index];
     const previous = fullPath[index - 1];
-    const xDelta = Math.abs(current.x - previous.x);
-    const yDelta = Math.abs(current.y - previous.y);
-
-    if (!isInsideMap(gridState, current)) {
-      return { accepted: false, pathCostUnits: 0, rejectionReason: "outside_map" };
-    }
-
-    if (xDelta > 1 || yDelta > 1 || (xDelta === 0 && yDelta === 0)) {
-      return { accepted: false, pathCostUnits: 0, rejectionReason: "non_contiguous_path" };
-    }
-
-    // Phase 10: Edge blocking takes priority over cell semantics
-    if ((xDelta === 1 && yDelta === 0) || (xDelta === 0 && yDelta === 1)) {
-      // Orthogonal: check the single edge between the two cells
-      if (isEdgeBlocked(gridState, previous, current)) {
-        return { accepted: false, pathCostUnits: 0, rejectionReason: "blocked_path" };
-      }
-    } else if (xDelta === 1 && yDelta === 1) {
-      // Diagonal: check both orthogonal "corner" edges.
-      // Mirrors the existing clipsDiagonalMovement cell check.
-      const cornerH = getEdgeBetweenCells(gridState, previous, { x: current.x, y: previous.y });
-      const cornerV = getEdgeBetweenCells(gridState, { x: current.x, y: previous.y }, current);
-      if (cornerH?.blocksMovement || cornerV?.blocksMovement) {
-        return { accepted: false, pathCostUnits: 0, rejectionReason: "blocked_path" };
-      }
-    }
-
-    if (isBlockedCell(gridState, current)) {
-      return { accepted: false, pathCostUnits: 0, rejectionReason: "blocked_path" };
-    }
-
-    if (
-      xDelta === 1 &&
-      yDelta === 1 &&
-      (clipsDiagonalMovement(gridState.obstacles, { x: current.x, y: previous.y }) ||
-        clipsDiagonalMovement(gridState.obstacles, { x: previous.x, y: current.y }))
-    ) {
-      return { accepted: false, pathCostUnits: 0, rejectionReason: "diagonal_clipped" };
-    }
-
-    const occupant = findOccupyingToken(gridState, current);
-    if (occupant && occupant.id !== token.id) {
-      return { accepted: false, pathCostUnits: 0, rejectionReason: "occupied_cell" };
+    const rejectionReason = getStepRejectionReason(gridState, token, previous, current);
+    if (rejectionReason) {
+      return { accepted: false, pathCostUnits: 0, rejectionReason };
     }
   }
 
@@ -85,4 +99,140 @@ export function validateMovement(
   }
 
   return { accepted: true, pathCostUnits };
+}
+
+export function findMovementPath(
+  gridState: GridState,
+  token: Token,
+  destination: Coordinate,
+  combatState?: CombatState
+): MovementPathResult {
+  if (combatState?.status === "active" && token.combatantId !== combatState.activeCombatantId) {
+    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "out_of_turn" };
+  }
+
+  if (destination.x === token.position.x && destination.y === token.position.y) {
+    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "empty_path" };
+  }
+
+  if (!isInsideMap(gridState, destination)) {
+    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "outside_map" };
+  }
+
+  if (isBlockedCell(gridState, destination)) {
+    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "blocked_path" };
+  }
+
+  const destinationOccupant = findOccupyingToken(gridState, destination);
+  if (destinationOccupant && destinationOccupant.id !== token.id) {
+    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "occupied_cell" };
+  }
+
+  type SearchNode = {
+    coordinate: Coordinate;
+    diagonalParity: 0 | 1;
+    pathCostUnits: number;
+  };
+
+  const queue: SearchNode[] = [
+    {
+      coordinate: token.position,
+      diagonalParity: 0,
+      pathCostUnits: 0
+    }
+  ];
+  const bestByState = new Map<string, number>([[`${token.position.x}:${token.position.y}:0`, 0]]);
+  const previousByState = new Map<
+    string,
+    { previousKey: string; coordinate: Coordinate; diagonalParity: 0 | 1 }
+  >();
+
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    let nextIndex = 0;
+    for (let index = 1; index < queue.length; index += 1) {
+      if (queue[index]!.pathCostUnits < queue[nextIndex]!.pathCostUnits) {
+        nextIndex = index;
+      }
+    }
+
+    const current = queue.splice(nextIndex, 1)[0]!;
+    const currentKey = `${current.coordinate.x}:${current.coordinate.y}:${current.diagonalParity}`;
+    if (visited.has(currentKey)) {
+      continue;
+    }
+    visited.add(currentKey);
+
+    if (current.coordinate.x === destination.x && current.coordinate.y === destination.y) {
+      const fullPath: Coordinate[] = [current.coordinate];
+      let cursorKey = currentKey;
+      while (previousByState.has(cursorKey)) {
+        const previousState = previousByState.get(cursorKey)!;
+        fullPath.push(previousState.coordinate);
+        cursorKey = previousState.previousKey;
+      }
+      fullPath.reverse();
+      const previewPath = fullPath.slice(1);
+      const validation = validateMovement(gridState, token, previewPath, combatState);
+      return {
+        accepted: validation.accepted,
+        path: previewPath,
+        pathCostUnits: validation.pathCostUnits,
+        rejectionReason: validation.rejectionReason
+      };
+    }
+
+    for (let yDelta = -1; yDelta <= 1; yDelta += 1) {
+      for (let xDelta = -1; xDelta <= 1; xDelta += 1) {
+        if (xDelta === 0 && yDelta === 0) {
+          continue;
+        }
+
+        const candidate: Coordinate = {
+          x: current.coordinate.x + xDelta,
+          y: current.coordinate.y + yDelta
+        };
+        const rejectionReason = getStepRejectionReason(gridState, token, current.coordinate, candidate);
+        if (rejectionReason) {
+          continue;
+        }
+
+        const nextParity = isDiagonalStep(current.coordinate, candidate)
+          ? ((1 - current.diagonalParity) as 0 | 1)
+          : current.diagonalParity;
+        const cost = stepCost(
+          current.coordinate,
+          candidate,
+          current.diagonalParity,
+          getMovementCostMultiplier(gridState.obstacles, candidate)
+        );
+        const nextCost = current.pathCostUnits + cost;
+        const nextKey = `${candidate.x}:${candidate.y}:${nextParity}`;
+        const previousBest = bestByState.get(nextKey);
+        if (previousBest !== undefined && previousBest <= nextCost) {
+          continue;
+        }
+
+        bestByState.set(nextKey, nextCost);
+        previousByState.set(nextKey, {
+          previousKey: currentKey,
+          coordinate: current.coordinate,
+          diagonalParity: current.diagonalParity
+        });
+        queue.push({
+          coordinate: candidate,
+          diagonalParity: nextParity,
+          pathCostUnits: nextCost
+        });
+      }
+    }
+  }
+
+  return {
+    accepted: false,
+    path: [],
+    pathCostUnits: 0,
+    rejectionReason: "blocked_path"
+  };
 }

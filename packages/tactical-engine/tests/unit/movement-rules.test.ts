@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BattleMap, CombatState, Obstacle, Token } from "@limiarmap/shared-contracts";
 import { METERS_PER_CELL } from "@limiarmap/shared-contracts";
-import { computePathCost, getMovementCostMultiplier, validateMovement } from "../../src";
+import { computePathCost, findMovementPath, getMovementCostMultiplier, validateMovement } from "../../src";
 
 const map: BattleMap = {
   id: "map",
@@ -91,6 +91,55 @@ describe("movement rules", () => {
         { x: 3, y: 3 }
       ])
     ).toBe(15);
+  });
+
+  it("finds a valid preview path around blocked cells", () => {
+    const obstacles: Obstacle[] = [
+      {
+        id: "obs-wall",
+        battleMapId: "map",
+        cells: [{ x: 2, y: 1 }],
+        blocksMovement: true,
+        blocksEffect: true,
+        blocksVision: true,
+        cover: "full",
+        clipsDiagonalMovement: false,
+        movementCostMultiplier: 1
+      }
+    ];
+
+    const result = findMovementPath(
+      { map, obstacles, tokens: [token] },
+      token,
+      { x: 3, y: 1 },
+      combatState
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.path).toHaveLength(2);
+    expect(result.path[1]).toEqual({ x: 3, y: 1 });
+    expect(result.path).not.toContainEqual({ x: 2, y: 1 });
+    expect(result.pathCostUnits).toBe(15);
+  });
+
+  it("returns the cheapest path cost even when movement budget is exceeded", () => {
+    const tokenWith10: Token = { ...token, movementSpeedCells: 2, movementBudget: 10 };
+
+    const result = findMovementPath(
+      { map, obstacles: [], tokens: [tokenWith10] },
+      tokenWith10,
+      { x: 4, y: 1 },
+      combatState
+    );
+
+    expect(result.accepted).toBe(false);
+    expect(result.rejectionReason).toBe("movement_budget_exceeded");
+    expect(result.path).toEqual([
+      { x: 2, y: 1 },
+      { x: 3, y: 1 },
+      { x: 4, y: 1 }
+    ]);
+    expect(result.pathCostUnits).toBe(15);
   });
 
   it("rejects blocked destinations", () => {
