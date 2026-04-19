@@ -182,4 +182,3 @@ export function applyGridCalibrationInteraction(
 }
 
 // ─── Drawing export functions ────────────────────────────────────────────────────────
-
