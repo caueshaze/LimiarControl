@@ -17,7 +17,7 @@ from app.models.session_state import SessionState
 from app.models.campaign_entity import CampaignEntity
 from app.models.inventory import InventoryItem
 from app.models.item import Item, ItemType
-from app.schemas.campaign import decode_blocked_cells
+from app.schemas.campaign import decode_blocked_cells, decode_obstacles
 from app.schemas.combat import (
     CombatApplyDamageRequest,
     CombatApplyHealingRequest,
@@ -242,6 +242,7 @@ class CombatLifecycleMixin:
             else 1,
         }
 
+        obstacles = decode_obstacles(campaign_map.obstacles_json)
         selection = CombatMapSelection(
             kind="campaign_map",
             mapId=campaign_map.id,
@@ -250,9 +251,9 @@ class CombatLifecycleMixin:
             gridWidth=campaign_map.grid_width,
             gridHeight=campaign_map.grid_height,
             calibration=calibration,
-            # Carry campaign-level blocked cells so the map projection can send them
-            # to LimiarMap when combat starts (Phase 1 obstacle persistence).
-            blockedCells=decode_blocked_cells(campaign_map.blocked_cells_json),
+            # Canonical semantic obstacles take priority over legacy blockedCells.
+            obstacles=obstacles,
+            blockedCells=decode_blocked_cells(campaign_map.blocked_cells_json) if obstacles is None else [],
         )
         return selection.model_dump(mode="json")
 
