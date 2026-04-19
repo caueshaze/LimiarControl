@@ -1,39 +1,66 @@
-import { useCallback, useEffect, useState } from "react";
-import { sessionsRepo, type ActiveSession } from "../../../shared/api/sessionsRepo";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useCampaigns } from "../../campaign-select";
+import {
+  beginActiveSessionRefresh,
+  createInitialActiveSessionQueryState,
+  resolveActiveSessionView,
+} from "./useActiveSession.state";
 
 export const useActiveSession = (campaignId?: string | null) => {
   const { selectedCampaignId } = useCampaigns();
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState(() =>
+    createInitialActiveSessionQueryState(effectiveCampaignId),
+  );
+  const requestIdRef = useRef(0);
+
+  const view = resolveActiveSessionView(state, effectiveCampaignId);
 
   const refresh = useCallback(() => {
     if (!effectiveCampaignId) {
-      setActiveSession(null);
-      setError(null);
+      requestIdRef.current += 1;
+      setState(createInitialActiveSessionQueryState(null));
       return Promise.resolve(null);
     }
-    setLoading(true);
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setState((current) => beginActiveSessionRefresh(current, effectiveCampaignId));
     return sessionsRepo
       .getActive(effectiveCampaignId)
       .then((data) => {
-        setActiveSession(data);
-        setError(null);
+        if (requestIdRef.current !== requestId) {
+          return null;
+        }
+        setState({
+          campaignId: effectiveCampaignId,
+          activeSession: data,
+          loading: false,
+          error: null,
+        });
         return data;
       })
       .catch((err: { status?: number; message?: string }) => {
-        if (err?.status === 404) {
-          setActiveSession(null);
-          setError(null);
+        if (requestIdRef.current !== requestId) {
           return null;
         }
-        setActiveSession(null);
-        setError(err?.message ?? "Failed to load active session");
+        if (err?.status === 404) {
+          setState({
+            campaignId: effectiveCampaignId,
+            activeSession: null,
+            loading: false,
+            error: null,
+          });
+          return null;
+        }
+        setState({
+          campaignId: effectiveCampaignId,
+          activeSession: null,
+          loading: false,
+          error: err?.message ?? "Failed to load active session",
+        });
         return null;
-      })
-      .finally(() => setLoading(false));
+      });
   }, [effectiveCampaignId]);
 
   useEffect(() => {
@@ -48,12 +75,19 @@ export const useActiveSession = (campaignId?: string | null) => {
       return sessionsRepo
         .activate(effectiveCampaignId, { title })
         .then((data) => {
-          setActiveSession(data);
-          setError(null);
+          setState({
+            campaignId: effectiveCampaignId,
+            activeSession: data,
+            loading: false,
+            error: null,
+          });
           return data;
         })
         .catch((err: { message?: string }) => {
-          setError(err?.message ?? "Failed to activate session");
+          setState((current) => ({
+            ...current,
+            error: err?.message ?? "Failed to activate session",
+          }));
           throw err; // re-throw so callers can inspect the full error
         });
     },
@@ -61,24 +95,30 @@ export const useActiveSession = (campaignId?: string | null) => {
   );
 
   const endSession = useCallback(() => {
-    if (!activeSession?.id) return Promise.resolve(null);
+    if (!view.activeSession?.id) return Promise.resolve(null);
     return sessionsRepo
-      .end(activeSession.id)
+      .end(view.activeSession.id)
       .then(() => {
-        setActiveSession(null);
-        setError(null);
+        setState((current) => ({
+          ...current,
+          activeSession: null,
+          error: null,
+        }));
         return true;
       })
       .catch((err: { message?: string }) => {
-        setError(err?.message ?? "Failed to end session");
+        setState((current) => ({
+          ...current,
+          error: err?.message ?? "Failed to end session",
+        }));
         return false;
       });
-  }, [activeSession?.id]);
+  }, [view.activeSession?.id]);
 
   return {
-    activeSession,
-    loading,
-    error,
+    activeSession: view.activeSession,
+    loading: view.loading,
+    error: view.error,
     refresh,
     activate,
     endSession,
