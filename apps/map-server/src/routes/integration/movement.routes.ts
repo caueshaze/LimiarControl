@@ -123,7 +123,7 @@ export function registerMovementRoutes(
       remainingBudget: result.remainingBudget
     });
 
-    if (result.accepted && broadcaster && response.tokenId && response.sourceCell) {
+    if (result.accepted && response.tokenId && response.sourceCell) {
       const appliedEvent = movementAppliedEventSchema.parse({
         eventId: `move:${actionId}`,
         eventType: "movement.applied",

@@ -35,7 +35,7 @@ import type {
   Obstacle,
   Token
 } from "@limiarmap/shared-contracts";
-import { canTokenAct } from "@limiarmap/tactical-engine";
+import { findReachableCells } from "@limiarmap/tactical-engine";
 import { useEncounterSnapshot } from "../../services/session-store";
 import { useCurrentActor } from "../../services/centrifugo-client";
 import {
@@ -716,26 +716,18 @@ export function BattleMapCanvas(): React.JSX.Element {
 
     battleMapStore.activateTacticalPreview(selectedToken.id, "move");
 
-    // Chebyshev reach radius from remaining movement budget.
-    // 5 path-cost-units = 1 grid cell (see movement-metrics.ts).
-    const reachRadius = Math.floor(selectedToken.movementBudget / 5);
-    if (reachRadius <= 0) {
-      battleMapStore.setTacticalPreviewReachableCells([]);
-      return;
-    }
-
-    const gridW = encounter.battleMap.gridWidth;
-    const gridH = encounter.battleMap.gridHeight;
-    const { x: ax, y: ay } = selectedToken.position;
-    const cells: { x: number; y: number }[] = [];
-    for (let x = 0; x < gridW; x++) {
-      for (let y = 0; y < gridH; y++) {
-        if (Math.max(Math.abs(x - ax), Math.abs(y - ay)) <= reachRadius) {
-          cells.push({ x, y });
-        }
-      }
-    }
-    battleMapStore.setTacticalPreviewReachableCells(cells);
+    battleMapStore.setTacticalPreviewReachableCells(
+      findReachableCells(
+        {
+          map: encounter.battleMap,
+          obstacles: encounter.obstacles,
+          edgeObstacles: encounter.edgeObstacles,
+          tokens: encounter.tokens
+        },
+        selectedToken,
+        encounter.combatState
+      )
+    );
   }, [selectedTokenId, selectedToken?.movementBudget, encounter]);
 
   // ─── Publish map frame size to store ───────────────────────────────────

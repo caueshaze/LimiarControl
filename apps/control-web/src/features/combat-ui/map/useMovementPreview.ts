@@ -34,11 +34,39 @@ export function pathCostUnitsToMeters(pathCostUnits: number): number {
   return (pathCostUnits / PATH_COST_UNITS_PER_CELL) * MOVEMENT_METERS_PER_CELL;
 }
 
+export function formatMovementMeters(
+  meters: number,
+  locale: "pt" | "en",
+): string {
+  const rounded = Math.round(meters * 10) / 10;
+  const value =
+    rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+  return `${locale === "pt" ? value.replace(".", ",") : value}m`;
+}
+
 export function canConfirmMovementPreview(
   preview: CombatMovementPreviewResponse | null,
   loading: boolean,
 ): boolean {
   return Boolean(preview?.is_valid && !loading);
+}
+
+export function resolveMovementCellSelection(options: {
+  currentSelectedCell: { x: number; y: number } | null;
+  nextCell: { x: number; y: number };
+  preview: CombatMovementPreviewResponse | null;
+  loading: boolean;
+}): "lock" | "confirm" {
+  const { currentSelectedCell, nextCell, preview, loading } = options;
+  const isSameCell =
+    currentSelectedCell?.x === nextCell.x &&
+    currentSelectedCell?.y === nextCell.y;
+
+  if (isSameCell && canConfirmMovementPreview(preview, loading)) {
+    return "confirm";
+  }
+
+  return "lock";
 }
 
 export function getMovementPreviewReasonLabel(reason: string | null | undefined): string {

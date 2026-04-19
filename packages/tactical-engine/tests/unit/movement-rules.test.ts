@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { BattleMap, CombatState, Obstacle, Token } from "@limiarmap/shared-contracts";
 import { METERS_PER_CELL } from "@limiarmap/shared-contracts";
-import { computePathCost, findMovementPath, getMovementCostMultiplier, validateMovement } from "../../src";
+import {
+  computePathCost,
+  findMovementPath,
+  findReachableCells,
+  getMovementCostMultiplier,
+  validateMovement
+} from "../../src";
 
 const map: BattleMap = {
   id: "map",
@@ -232,6 +238,72 @@ describe("movement rules", () => {
       expect(rejected.accepted).toBe(false);
       expect(rejected.rejectionReason).toBe("movement_budget_exceeded");
     });
+  });
+});
+
+describe("reachable movement cells", () => {
+  it("uses the remaining movement budget and excludes the origin cell", () => {
+    const reachable = findReachableCells({ map, obstacles: [], tokens: [token] }, token, combatState);
+
+    expect(reachable).not.toContainEqual({ x: 1, y: 1 });
+    expect(reachable).toContainEqual({ x: 7, y: 1 });
+    expect(reachable).not.toContainEqual({ x: 8, y: 1 });
+  });
+
+  it("does not include blocked or occupied cells", () => {
+    const blocker: Token = {
+      ...token,
+      id: "blocker",
+      label: "Blocker",
+      position: { x: 1, y: 2 },
+      combatantId: "cmb_2"
+    };
+    const blockingObstacle: Obstacle = {
+      id: "blocking-obstacle",
+      battleMapId: "map",
+      cells: [{ x: 2, y: 1 }],
+      blocksMovement: true,
+      blocksEffect: false,
+      blocksVision: false,
+      cover: "none",
+      clipsDiagonalMovement: false,
+      movementCostMultiplier: 1
+    };
+
+    const reachable = findReachableCells(
+      { map, obstacles: [blockingObstacle], tokens: [token, blocker] },
+      token,
+      combatState
+    );
+
+    expect(reachable).not.toContainEqual({ x: 2, y: 1 });
+    expect(reachable).not.toContainEqual({ x: 1, y: 2 });
+  });
+
+  it("respects difficult terrain cost when computing reachable cells", () => {
+    const tightToken: Token = { ...token, movementSpeedCells: 1, movementBudget: 5 };
+
+    const reachable = findReachableCells(
+      { map, obstacles: [difficultTerrain], tokens: [tightToken] },
+      tightToken,
+      combatState
+    );
+
+    expect(reachable).toContainEqual({ x: 1, y: 2 });
+    expect(reachable).not.toContainEqual({ x: 3, y: 1 });
+  });
+
+  it("respects alternating diagonal costs while expanding reach", () => {
+    const diagonalToken: Token = { ...token, movementSpeedCells: 2, movementBudget: 10 };
+
+    const reachable = findReachableCells(
+      { map, obstacles: [], tokens: [diagonalToken] },
+      diagonalToken,
+      combatState
+    );
+
+    expect(reachable).toContainEqual({ x: 2, y: 2 });
+    expect(reachable).not.toContainEqual({ x: 3, y: 3 });
   });
 });
 

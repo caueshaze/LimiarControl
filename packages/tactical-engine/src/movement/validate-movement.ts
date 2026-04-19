@@ -13,6 +13,111 @@ export interface MovementPathResult extends MovementValidationResult {
   path: Coordinate[];
 }
 
+export function findReachableCells(
+  gridState: GridState,
+  token: Token,
+  combatState?: CombatState
+): Coordinate[] {
+  if (token.movementBudget <= 0) {
+    return [];
+  }
+
+  if (combatState?.status === "active" && token.combatantId !== combatState.activeCombatantId) {
+    return [];
+  }
+
+  type SearchNode = {
+    coordinate: Coordinate;
+    diagonalParity: 0 | 1;
+    pathCostUnits: number;
+  };
+
+  const queue: SearchNode[] = [
+    {
+      coordinate: token.position,
+      diagonalParity: 0,
+      pathCostUnits: 0
+    }
+  ];
+  const bestByState = new Map<string, number>([[`${token.position.x}:${token.position.y}:0`, 0]]);
+  const visited = new Set<string>();
+  const reachableByCoordinate = new Map<string, Coordinate>();
+
+  while (queue.length > 0) {
+    let nextIndex = 0;
+    for (let index = 1; index < queue.length; index += 1) {
+      if (queue[index]!.pathCostUnits < queue[nextIndex]!.pathCostUnits) {
+        nextIndex = index;
+      }
+    }
+
+    const current = queue.splice(nextIndex, 1)[0]!;
+    const currentKey = `${current.coordinate.x}:${current.coordinate.y}:${current.diagonalParity}`;
+    if (visited.has(currentKey)) {
+      continue;
+    }
+    visited.add(currentKey);
+
+    const isOrigin =
+      current.coordinate.x === token.position.x && current.coordinate.y === token.position.y;
+    if (!isOrigin) {
+      reachableByCoordinate.set(
+        `${current.coordinate.x}:${current.coordinate.y}`,
+        current.coordinate
+      );
+    }
+
+    for (let yDelta = -1; yDelta <= 1; yDelta += 1) {
+      for (let xDelta = -1; xDelta <= 1; xDelta += 1) {
+        if (xDelta === 0 && yDelta === 0) {
+          continue;
+        }
+
+        const candidate: Coordinate = {
+          x: current.coordinate.x + xDelta,
+          y: current.coordinate.y + yDelta
+        };
+        const rejectionReason = getStepRejectionReason(gridState, token, current.coordinate, candidate);
+        if (rejectionReason) {
+          continue;
+        }
+
+        const nextParity = isDiagonalStep(current.coordinate, candidate)
+          ? ((1 - current.diagonalParity) as 0 | 1)
+          : current.diagonalParity;
+        const nextCost =
+          current.pathCostUnits +
+          stepCost(
+            current.coordinate,
+            candidate,
+            current.diagonalParity,
+            getMovementCostMultiplier(gridState.obstacles, candidate)
+          );
+        if (nextCost > token.movementBudget) {
+          continue;
+        }
+
+        const nextKey = `${candidate.x}:${candidate.y}:${nextParity}`;
+        const previousBest = bestByState.get(nextKey);
+        if (previousBest !== undefined && previousBest <= nextCost) {
+          continue;
+        }
+
+        bestByState.set(nextKey, nextCost);
+        queue.push({
+          coordinate: candidate,
+          diagonalParity: nextParity,
+          pathCostUnits: nextCost
+        });
+      }
+    }
+  }
+
+  return Array.from(reachableByCoordinate.values()).sort((left, right) =>
+    left.x === right.x ? left.y - right.y : left.x - right.x
+  );
+}
+
 function getStepRejectionReason(
   gridState: GridState,
   token: Token,

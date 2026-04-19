@@ -3,8 +3,10 @@ import { combatRepo } from "../../../shared/api/combatRepo";
 import { http } from "../../../shared/api/http";
 import {
   canConfirmMovementPreview,
+  formatMovementMeters,
   getMovementPreviewReasonLabel,
   pathCostUnitsToMeters,
+  resolveMovementCellSelection,
 } from "./useMovementPreview";
 
 vi.mock("../../../shared/api/http", () => ({
@@ -21,6 +23,12 @@ describe("movement preview helpers", () => {
   it("converts path cost units to meters", () => {
     expect(pathCostUnitsToMeters(5)).toBe(1.5);
     expect(pathCostUnitsToMeters(15)).toBe(4.5);
+  });
+
+  it("formats movement meters according to locale", () => {
+    expect(formatMovementMeters(4.5, "pt")).toBe("4,5m");
+    expect(formatMovementMeters(4.5, "en")).toBe("4.5m");
+    expect(formatMovementMeters(6, "pt")).toBe("6m");
   });
 
   it("maps invalid preview reasons to a clear label", () => {
@@ -77,6 +85,62 @@ describe("movement preview helpers", () => {
         true,
       ),
     ).toBe(false);
+  });
+
+  it("confirms only after clicking the same locked cell with a valid preview", () => {
+    expect(
+      resolveMovementCellSelection({
+        currentSelectedCell: { x: 3, y: 3 },
+        nextCell: { x: 3, y: 3 },
+        preview: {
+          is_valid: true,
+          reason: null,
+          destination_cell: { x: 3, y: 3 },
+          path: [{ x: 2, y: 2 }, { x: 3, y: 3 }],
+          path_cost_units: 10,
+          movement_budget: 30,
+          movement_speed_cells: 6,
+          remaining_budget: 20,
+        },
+        loading: false,
+      }),
+    ).toBe("confirm");
+
+    expect(
+      resolveMovementCellSelection({
+        currentSelectedCell: { x: 3, y: 3 },
+        nextCell: { x: 4, y: 3 },
+        preview: {
+          is_valid: true,
+          reason: null,
+          destination_cell: { x: 4, y: 3 },
+          path: [{ x: 4, y: 3 }],
+          path_cost_units: 5,
+          movement_budget: 30,
+          movement_speed_cells: 6,
+          remaining_budget: 25,
+        },
+        loading: false,
+      }),
+    ).toBe("lock");
+
+    expect(
+      resolveMovementCellSelection({
+        currentSelectedCell: { x: 3, y: 3 },
+        nextCell: { x: 3, y: 3 },
+        preview: {
+          is_valid: false,
+          reason: "blocked_path",
+          destination_cell: { x: 3, y: 3 },
+          path: [],
+          path_cost_units: 0,
+          movement_budget: 30,
+          movement_speed_cells: 6,
+          remaining_budget: 30,
+        },
+        loading: false,
+      }),
+    ).toBe("lock");
   });
 });
 
