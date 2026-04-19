@@ -131,7 +131,7 @@ class LimiarMapRealtimeSyncServiceTests(unittest.TestCase):
             ),
             patch.object(
                 realtime_module.settings,
-                "centrifugo_public_url",
+                "centrifugo_internal_ws_url",
                 "ws://centrifugo.local/connection/websocket",
             ),
         ):

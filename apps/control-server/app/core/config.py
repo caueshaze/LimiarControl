@@ -152,6 +152,13 @@ class Settings:
         "CENTRIFUGO_PUBLIC_URL",
         "ws://localhost:8001/connection/websocket",
     )
+    centrifugo_internal_ws_url: str = os.getenv(
+        "CENTRIFUGO_INTERNAL_WS_URL",
+        os.getenv(
+            "CENTRIFUGO_PUBLIC_URL",
+            "ws://localhost:8001/connection/websocket",
+        ),
+    )
     limiar_map_base_url: str = os.getenv(
         "LIMIAR_MAP_BASE_URL",
         "http://localhost:3000",

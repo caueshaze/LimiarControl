@@ -92,7 +92,7 @@ class LimiarMapRealtimeSyncService:
                 self._realtime_client = _NoopSpatialEventStream()
             else:
                 self._realtime_client = LimiarMapCentrifugoClient(
-                    ws_url=settings.centrifugo_public_url,
+                    ws_url=settings.centrifugo_internal_ws_url,
                     event_handler=self.handle_event,
                     channels=(MAP_SYSTEM_EVENTS_CHANNEL,),
                 )
@@ -578,7 +578,7 @@ def get_limiar_map_realtime_sync_service() -> LimiarMapRealtimeSyncService:
         settings.limiar_map_enabled,
         settings.limiar_map_base_url,
         settings.limiar_map_timeout_seconds,
-        settings.centrifugo_public_url,
+        settings.centrifugo_internal_ws_url,
     )
     if _realtime_sync_service is None or _realtime_sync_service_signature != signature:
         if _realtime_sync_service is not None:
