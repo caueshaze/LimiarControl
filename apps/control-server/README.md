@@ -49,10 +49,14 @@ JWT_SECRET=dev-secret-change-me
 CENTRIFUGO_API_URL=http://localhost:8001/api
 CENTRIFUGO_API_KEY=dev-api-key
 CENTRIFUGO_PUBLIC_URL=ws://localhost:8001/connection/websocket
+CENTRIFUGO_INTERNAL_WS_URL=ws://localhost:8001/connection/websocket
 CENTRIFUGO_TOKEN_SECRET=dev-secret-change-me
 CENTRIFUGO_TOKEN_HMAC_SECRET_KEY=dev-secret-change-me
 LIMIAR_MAP_INTERNAL_KEY=dev-map-internal-key
 ```
+
+When the API itself runs inside Docker, use `CENTRIFUGO_INTERNAL_WS_URL=ws://centrifugo:8000/connection/websocket`
+so backend-to-backend realtime sync does not try to connect back to `localhost`.
 
 ## Run migrations
 ```bash
@@ -119,6 +123,10 @@ Endpoints:
 - App + API: `http://127.0.0.1:8002`
 - API health: `http://127.0.0.1:8002/health`
 - Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
+
+For browser access in homologation, prefer a reverse-proxied public URL such as
+`wss://lab-limiar.example.com/centrifugo/connection/websocket` and keep
+`LAB_CORS_ORIGIN` plus `LAB_CENTRIFUGO_ALLOWED_ORIGINS` aligned with that origin.
 
 ## Combat docs
 
