@@ -75,8 +75,9 @@ Recommended for day-to-day work. Run infrastructure in Docker and keep frontend/
 
 Recommended for pre-merge validation and homologation. This stack is isolated from production and uses its own ports, containers, network, and database volume.
 
-- App + API: `http://127.0.0.1:8002`
-- Centrifugo: `ws://127.0.0.1:8003/connection/websocket`
+- Host-local app + API bind: `http://127.0.0.1:8002`
+- Host-local Centrifugo bind: `ws://127.0.0.1:8003/connection/websocket`
+- Public browser origin should come from `LAB_CORS_ORIGIN` and `LAB_DOCKER_VITE_CENTRIFUGO_URL`
 - Compose file: [docker-compose.lab.yml](/home/caue/LimiarControl/docker-compose.lab.yml)
 - Env example: [.env.lab.example](/home/caue/LimiarControl/.env.lab.example)
 
@@ -84,8 +85,9 @@ Recommended for pre-merge validation and homologation. This stack is isolated fr
 
 Production now uses the single-container app stack for frontend + backend, with Centrifugo and Postgres alongside it.
 
-- App + API: `http://127.0.0.1:8000`
-- Centrifugo: `ws://127.0.0.1:8001/connection/websocket`
+- Host-local app + API bind: `http://127.0.0.1:8000`
+- Host-local Centrifugo bind: `ws://127.0.0.1:8001/connection/websocket`
+- Public browser origin should be reverse-proxied and must match `CORS_ORIGIN`, `CENTRIFUGO_ALLOWED_ORIGINS`, and `DOCKER_VITE_CENTRIFUGO_URL`
 - Compose file: [docker-compose.prod.yml](/home/caue/LimiarControl/docker-compose.prod.yml)
 
 ## Local development
@@ -172,6 +174,7 @@ Expected endpoints in this mode:
 - App + API: `http://127.0.0.1:8000/`
 - API health: `http://127.0.0.1:8000/health`
 - Centrifugo websocket: `ws://localhost:8001/connection/websocket`
+- Internal backend-to-Centrifugo websocket: `ws://centrifugo:8000/connection/websocket`
 
 ### 8. Validate the lab stack locally
 
@@ -185,6 +188,7 @@ Expected endpoints in this mode:
 - App + API: `http://127.0.0.1:8002/`
 - API health: `http://127.0.0.1:8002/health`
 - Centrifugo websocket: `ws://127.0.0.1:8003/connection/websocket`
+- Public browser websocket should usually be exposed by nginx as `wss://<lab-domain>/centrifugo/connection/websocket`
 
 ## Environment files
 
@@ -206,6 +210,14 @@ Use [.env.lab.example](.env.lab.example) as the starting point for homologation:
 cp .env.lab.example .env.lab
 ```
 
+### Production `.env`
+
+Use [.env.prod.example](.env.prod.example) as the starting point for the production-like stack:
+
+```bash
+cp .env.prod.example .env
+```
+
 ## Useful commands
 
 ### Frontend
@@ -222,20 +234,27 @@ npx tsc --noEmit
 The main `Dockerfile` already packages frontend + backend in the same container. In production,
 FastAPI serves the Vite `dist/` directly.
 
-Before bringing the production stack up, set the root `.env` with real values:
+Before bringing the production stack up, start from [.env.prod.example](.env.prod.example):
+
+```bash
+cp .env.prod.example .env
+```
+
+`docker-compose.prod.yml` forces `APP_ENV=production` and builds the SPA with `VITE_APP_ENV=production`:
 
 ```env
-APP_ENV=production
 POSTGRES_USER=app_user
 POSTGRES_PASSWORD=use-uma-senha-forte
 POSTGRES_DB=limiarcontrol
 JWT_SECRET=use-um-segredo-forte
 CENTRIFUGO_API_KEY=use-uma-chave-forte
 CENTRIFUGO_TOKEN_SECRET=use-um-segredo-forte
+# Comma-separated list of browser origins allowed by FastAPI.
 CORS_ORIGIN=https://seu-dominio.com
+# Space-separated list of browser origins allowed by Centrifugo.
 CENTRIFUGO_ALLOWED_ORIGINS=https://seu-dominio.com
 DOCKER_VITE_API_BASE_URL=/api
-DOCKER_VITE_CENTRIFUGO_URL=wss://rt.seu-dominio.com/connection/websocket
+DOCKER_VITE_CENTRIFUGO_URL=wss://seu-dominio.com/centrifugo/connection/websocket
 ```
 
 Suba com:
@@ -243,6 +262,9 @@ Suba com:
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+The compose stack already pins the backend-internal Centrifugo websocket to
+`ws://centrifugo:8000/connection/websocket`.
 
 If `POSTGRES_USER=postgres` and `POSTGRES_PASSWORD=postgres` remain in `.env`, the backend
 will abort in production with `DATABASE_URL must use strong credentials in production`.
@@ -261,6 +283,14 @@ Start it with:
 
 ```bash
 docker compose --env-file .env.lab -f docker-compose.lab.yml up -d --build
+```
+
+Recommended public settings in `.env.lab`:
+
+```env
+LAB_CORS_ORIGIN=https://lab-limiar.example.com
+LAB_CENTRIFUGO_ALLOWED_ORIGINS=https://lab-limiar.example.com
+LAB_DOCKER_VITE_CENTRIFUGO_URL=wss://lab-limiar.example.com/centrifugo/connection/websocket
 ```
 
 ### Backend

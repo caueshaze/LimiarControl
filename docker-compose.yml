@@ -58,6 +58,7 @@ services:
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev-api-key}
       CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-dev-secret-change-me}
       CENTRIFUGO_PUBLIC_URL: ${CENTRIFUGO_PUBLIC_URL:-ws://localhost:8001/connection/websocket}
+      CENTRIFUGO_INTERNAL_WS_URL: ws://centrifugo:8000/connection/websocket
       LIMIAR_MAP_INTERNAL_KEY: ${LIMIAR_MAP_INTERNAL_KEY:-dev-map-internal-key}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:${API_PORT:-8002},http://127.0.0.1:${API_PORT:-8002}}
       AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
