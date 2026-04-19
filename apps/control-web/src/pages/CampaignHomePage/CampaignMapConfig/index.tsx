@@ -5,7 +5,8 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import type { CampaignMapConfig } from "../../../entities/campaign";
+import type { CampaignMapConfig, ObstaclePresetId } from "../../../entities/campaign";
+import { CAMPAIGN_OBSTACLE_PRESETS, obstacleToPresetId } from "../../../entities/campaign";
 import { campaignsRepo } from "../../../shared/api/campaignsRepo";
 import { uploadRepo } from "../../../shared/api/uploadRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
@@ -23,6 +24,20 @@ import {
 } from "./utils";
 import { MapPreviewSurface } from "./MapPreviewSurface";
 import { MapListWidget } from "./MapListWidget";
+
+function buildObstacleMap(config: CampaignMapConfig | null | undefined): Map<string, ObstaclePresetId> {
+  const map = new Map<string, ObstaclePresetId>();
+  if (config?.obstacles) {
+    for (const obs of config.obstacles) {
+      map.set(`${obs.x}:${obs.y}`, obstacleToPresetId(obs));
+    }
+  } else if (config?.blockedCells) {
+    for (const cell of config.blockedCells) {
+      map.set(`${cell.x}:${cell.y}`, "solid_wall");
+    }
+  }
+  return map;
+}
 
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 const MAX_IMAGE_MB = 30;
@@ -48,10 +63,11 @@ export const CampaignMapConfigCard = ({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  // Obstacle editing state — tracks 0-based cell keys "x:y"
-  const [blockedCellSet, setBlockedCellSet] = useState<Set<string>>(
-    () => new Set((sortedMaps[0]?.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)),
+  // Obstacle editing: map from "x:y" → preset ID; active brush preset
+  const [obstacleMap, setObstacleMap] = useState<Map<string, ObstaclePresetId>>(
+    () => buildObstacleMap(sortedMaps[0]),
   );
+  const [selectedPresetId, setSelectedPresetId] = useState<ObstaclePresetId>("solid_wall");
   const [isObstacleEditMode, setIsObstacleEditMode] = useState(false);
 
   const selectedMap = sortedMaps.find((entry) => entry.id === selectedMapId) ?? null;
@@ -61,7 +77,7 @@ export const CampaignMapConfigCard = ({
     setSelectedMapId(nextSelected?.id ?? null);
     setIsCreatingNew(nextSelected == null);
     setForm(configToForm(nextSelected));
-    setBlockedCellSet(new Set((nextSelected?.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)));
+    setObstacleMap(buildObstacleMap(nextSelected));
     setIsObstacleEditMode(false);
     setError(null);
     setSuccess(null);
@@ -74,14 +90,14 @@ export const CampaignMapConfigCard = ({
 
     if (selectedMap != null) {
       setForm(configToForm(selectedMap));
-      setBlockedCellSet(new Set((selectedMap.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)));
+      setObstacleMap(buildObstacleMap(selectedMap));
       return;
     }
 
     const fallback = sortedMaps[0] ?? null;
     setSelectedMapId(fallback?.id ?? null);
     setForm(configToForm(fallback));
-    setBlockedCellSet(new Set((fallback?.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)));
+    setObstacleMap(buildObstacleMap(fallback));
   }, [isCreatingNew, selectedMap, sortedMaps]);
 
   useEffect(() => {
@@ -103,7 +119,7 @@ export const CampaignMapConfigCard = ({
     setSelectedMapId(map.id);
     setIsCreatingNew(false);
     setForm(configToForm(map));
-    setBlockedCellSet(new Set((map.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)));
+    setObstacleMap(buildObstacleMap(map));
     setIsObstacleEditMode(false);
     setError(null);
     setSuccess(null);
@@ -113,7 +129,7 @@ export const CampaignMapConfigCard = ({
     setSelectedMapId(null);
     setIsCreatingNew(true);
     setForm(EMPTY_FORM);
-    setBlockedCellSet(new Set());
+    setObstacleMap(new Map());
     setIsObstacleEditMode(false);
     setError(null);
     setSuccess(null);
@@ -121,12 +137,12 @@ export const CampaignMapConfigCard = ({
 
   const handleCellToggle = (x: number, y: number) => {
     const key = `${x}:${y}`;
-    setBlockedCellSet((current) => {
-      const next = new Set(current);
-      if (next.has(key)) {
+    setObstacleMap((current) => {
+      const next = new Map(current);
+      if (next.get(key) === selectedPresetId) {
         next.delete(key);
       } else {
-        next.add(key);
+        next.set(key, selectedPresetId);
       }
       return next;
     });
@@ -198,7 +214,7 @@ export const CampaignMapConfigCard = ({
   const handleClear = () => {
     const source = isCreatingNew ? null : selectedMap;
     setForm(configToForm(source));
-    setBlockedCellSet(new Set((source?.blockedCells ?? []).map((c) => `${c.x}:${c.y}`)));
+    setObstacleMap(buildObstacleMap(source));
     setIsObstacleEditMode(false);
     setError(null);
     setSuccess(null);
@@ -270,9 +286,10 @@ export const CampaignMapConfigCard = ({
         calibration = { x, y, width, height };
       }
 
-      const blockedCells = Array.from(blockedCellSet).map((key) => {
+      const obstacles = Array.from(obstacleMap.entries()).map(([key, presetId]) => {
         const [x, y] = key.split(":").map(Number);
-        return { x, y };
+        const preset = CAMPAIGN_OBSTACLE_PRESETS.find((p) => p.id === presetId)!;
+        return { x, y, ...preset.style };
       });
 
       const payload = {
@@ -281,7 +298,7 @@ export const CampaignMapConfigCard = ({
         gridWidth,
         gridHeight,
         calibration,
-        blockedCells,
+        obstacles,
       };
 
       const savedConfig = isCreatingNew
@@ -462,10 +479,10 @@ export const CampaignMapConfigCard = ({
                   gridHeight={previewGridHeight}
                   imageClassName="block w-full"
                   invalidMessage={t("campaignHome.mapPreviewInvalid")}
-                  hoverHint={isObstacleEditMode ? "Clique para marcar/desmarcar célula bloqueada" : t("campaignHome.mapPreviewHoverHint")}
+                  hoverHint={isObstacleEditMode ? "Clique para aplicar/remover obstáculo" : t("campaignHome.mapPreviewHoverHint")}
                   hoverMissingGrid={t("campaignHome.mapPreviewHoverMissingGrid")}
                   hoverCellLabel={t("campaignHome.mapPreviewHoverCell")}
-                  blockedCellSet={blockedCellSet}
+                  obstacleMap={obstacleMap}
                   onCellToggle={isObstacleEditMode ? handleCellToggle : undefined}
                 />
               ) : (
@@ -476,11 +493,34 @@ export const CampaignMapConfigCard = ({
             </div>
 
             {isObstacleEditMode && (
-              <div className="mt-3 rounded-2xl border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-xs text-rose-200">
-                Modo obstáculos ativo — clique nas células do mapa para marcar ou desmarcar terreno bloqueado.
-                {blockedCellSet.size > 0 && (
-                  <span className="ml-2 font-semibold">{blockedCellSet.size} célula{blockedCellSet.size !== 1 ? "s" : ""} bloqueada{blockedCellSet.size !== 1 ? "s" : ""}.</span>
-                )}
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {CAMPAIGN_OBSTACLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setSelectedPresetId(preset.id)}
+                      title={preset.description}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+                        selectedPresetId === preset.id
+                          ? "border-white/40 bg-white/10 text-white"
+                          : "border-slate-700 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: preset.color }}
+                      />
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-slate-700/50 bg-slate-950/60 px-4 py-2 text-xs text-slate-400">
+                  {CAMPAIGN_OBSTACLE_PRESETS.find((p) => p.id === selectedPresetId)?.description}
+                  {obstacleMap.size > 0 && (
+                    <span className="ml-2 font-semibold text-slate-200">{obstacleMap.size} célula{obstacleMap.size !== 1 ? "s" : ""} marcada{obstacleMap.size !== 1 ? "s" : ""}.</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -768,12 +808,35 @@ export const CampaignMapConfigCard = ({
             </div>
 
             {isObstacleEditMode && (
-              <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-xs text-rose-200">
-                Modo obstáculos ativo. Células em vermelho estão bloqueadas para movimento.
-                {blockedCellSet.size > 0 && (
-                  <span className="ml-2 font-semibold">{blockedCellSet.size} célula{blockedCellSet.size !== 1 ? "s" : ""} bloqueada{blockedCellSet.size !== 1 ? "s" : ""}.</span>
-                )}
-                {" "}Clique em <strong>"Salvar mapa"</strong> para persistir.
+              <div className="mt-4 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {CAMPAIGN_OBSTACLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setSelectedPresetId(preset.id)}
+                      title={preset.description}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+                        selectedPresetId === preset.id
+                          ? "border-white/40 bg-white/10 text-white"
+                          : "border-slate-700 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: preset.color }}
+                      />
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-slate-700/50 bg-slate-950/60 px-4 py-2 text-xs text-slate-400">
+                  {CAMPAIGN_OBSTACLE_PRESETS.find((p) => p.id === selectedPresetId)?.description}
+                  {obstacleMap.size > 0 && (
+                    <span className="ml-2 font-semibold text-slate-200">{obstacleMap.size} célula{obstacleMap.size !== 1 ? "s" : ""} marcada{obstacleMap.size !== 1 ? "s" : ""}.</span>
+                  )}
+                  {" "}Salve o mapa para persistir.
+                </div>
               </div>
             )}
 
@@ -788,10 +851,10 @@ export const CampaignMapConfigCard = ({
                     gridHeight={previewGridHeight}
                     imageClassName="block max-h-[72vh] max-w-full"
                     invalidMessage={t("campaignHome.mapPreviewInvalid")}
-                    hoverHint={isObstacleEditMode ? "Clique para marcar/desmarcar célula bloqueada" : t("campaignHome.mapPreviewHoverHint")}
+                    hoverHint={isObstacleEditMode ? "Clique para aplicar/remover obstáculo" : t("campaignHome.mapPreviewHoverHint")}
                     hoverMissingGrid={t("campaignHome.mapPreviewHoverMissingGrid")}
                     hoverCellLabel={t("campaignHome.mapPreviewHoverCell")}
-                    blockedCellSet={blockedCellSet}
+                    obstacleMap={obstacleMap}
                     onCellToggle={isObstacleEditMode ? handleCellToggle : undefined}
                   />
                 </div>

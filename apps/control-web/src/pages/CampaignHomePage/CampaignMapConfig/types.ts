@@ -54,8 +54,8 @@ export type MapPreviewSurfaceProps = {
   hoverHint: string;
   hoverMissingGrid: string;
   hoverCellLabel: string;
-  /** 0-based cell keys ("x:y") that should be rendered as blocked. */
-  blockedCellSet?: ReadonlySet<string>;
+  /** 0-based cell keys ("x:y") → preset ID for obstacle overlay colors. */
+  obstacleMap?: ReadonlyMap<string, string>;
   /** Called with 0-based (x, y) when a cell is clicked in obstacle-edit mode. */
   onCellToggle?: (x: number, y: number) => void;
 };

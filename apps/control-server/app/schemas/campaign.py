@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -9,10 +9,23 @@ from app.services.media_storage_service import is_managed_url
 
 MAX_GRID_DIMENSION = 150
 
+ObstacleCover = Literal["none", "half", "threeQuarters", "full"]
+
 
 class BlockedCell(BaseModel):
     x: int = Field(ge=0)
     y: int = Field(ge=0)
+
+
+class CampaignObstacle(BaseModel):
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
+    blocksMovement: bool
+    blocksEffect: bool = False
+    blocksVision: bool = False
+    cover: ObstacleCover = "none"
+    clipsDiagonalMovement: bool = False
+    movementCostMultiplier: int = Field(default=1, ge=1)
 
 
 def decode_blocked_cells(raw_json: str | None) -> list[BlockedCell]:
@@ -33,6 +46,40 @@ def encode_blocked_cells(cells: list[BlockedCell] | None) -> str | None:
     if not cells:
         return None
     return json.dumps([{"x": c.x, "y": c.y} for c in cells])
+
+
+def decode_obstacles(raw_json: str | None) -> list[CampaignObstacle] | None:
+    """Parse obstacles_json from DB. Returns None when column is absent (legacy map)."""
+    if raw_json is None:
+        return None
+    try:
+        items = json.loads(raw_json)
+        if not isinstance(items, list):
+            return []
+        return [CampaignObstacle(**item) for item in items if isinstance(item, dict)]
+    except Exception:
+        return []
+
+
+def encode_obstacles(obstacles: list[CampaignObstacle] | None) -> str | None:
+    """Serialize obstacles to JSON for DB storage. Empty list clears; None leaves unchanged."""
+    if obstacles is None:
+        return None
+    return json.dumps(
+        [
+            {
+                "x": o.x,
+                "y": o.y,
+                "blocksMovement": o.blocksMovement,
+                "blocksEffect": o.blocksEffect,
+                "blocksVision": o.blocksVision,
+                "cover": o.cover,
+                "clipsDiagonalMovement": o.clipsDiagonalMovement,
+                "movementCostMultiplier": o.movementCostMultiplier,
+            }
+            for o in obstacles
+        ]
+    )
 
 
 class CampaignCreate(BaseModel):
@@ -72,7 +119,9 @@ class CampaignMapConfigRead(BaseModel):
     gridWidth: Optional[int] = Field(default=None, ge=1, le=MAX_GRID_DIMENSION)
     gridHeight: Optional[int] = Field(default=None, ge=1, le=MAX_GRID_DIMENSION)
     calibration: Optional[CampaignMapCalibration] = None
-    # Movement-blocking cells defined at the campaign map level (Phase 1 obstacles).
+    # Canonical semantic obstacles (None = legacy map without obstacles_json).
+    obstacles: Optional[list[CampaignObstacle]] = None
+    # Legacy movement-blocking cells — present only when obstacles is None.
     blockedCells: list[BlockedCell] = Field(default_factory=list)
     createdAt: datetime
     updatedAt: Optional[datetime] = None
@@ -101,8 +150,11 @@ class CampaignMapConfigWrite(BaseModel):
     gridWidth: Optional[int] = Field(default=None, ge=1, le=MAX_GRID_DIMENSION)
     gridHeight: Optional[int] = Field(default=None, ge=1, le=MAX_GRID_DIMENSION)
     calibration: Optional[CampaignMapCalibration] = None
-    # Movement-blocking cells for Phase 1 obstacle handling.
-    # None means "leave existing cells unchanged"; [] means "clear all blocked cells".
+    # Canonical semantic obstacles.
+    # None = leave existing unchanged; [] = clear all; [...] = replace all.
+    obstacles: Optional[list[CampaignObstacle]] = None
+    # Legacy movement-only cells — still accepted for backward compat.
+    # Ignored when obstacles is provided.
     blockedCells: Optional[list[BlockedCell]] = None
 
     @field_validator("mapName", "imageUrl", mode="before")
@@ -136,6 +188,7 @@ class CampaignMapConfigWrite(BaseModel):
                 self.gridWidth,
                 self.gridHeight,
                 self.calibration,
+                self.obstacles,
                 self.blockedCells,
             )
         )

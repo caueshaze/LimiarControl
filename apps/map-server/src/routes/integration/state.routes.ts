@@ -114,33 +114,57 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
         ? repository.updateBattleMap(sessionId, battleMapSeed)
         : existingEncounter;
 
-    // Phase 2 compatibility mapping for legacy campaign blockedCells:
-    // blocked map cells now seed "solid" tactical obstacles so old campaign
-    // configs keep the same movement behavior while also blocking sight/effect.
-    if (parse.data.battleMap?.blockedCells && battleMapSeed && !isDuplicateAction) {
-      const { gridWidth, gridHeight } = parse.data.battleMap;
+    if (battleMapSeed && !isDuplicateAction) {
+      const { gridWidth, gridHeight } = parse.data.battleMap!;
       const seen = new Set<string>();
-      const validCells = parse.data.battleMap.blockedCells.filter((cell) => {
-        if (cell.x < 0 || cell.y < 0 || cell.x >= gridWidth || cell.y >= gridHeight) return false;
-        const key = `${cell.x}:${cell.y}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      const battleMapId = encounter.battleMap.id;
-      const campaignObstacles = validCells.map((cell, index) => ({
-        id: `campaign-obstacle-${index}`,
-        battleMapId,
-        label: "Terreno bloqueado",
-        cells: [cell],
-        blocksMovement: true,
-        blocksEffect: true,
-        blocksVision: true,
-        cover: "none" as const,
-        clipsDiagonalMovement: false,
-        movementCostMultiplier: 1
-      }));
-      repository.setObstacles(sessionId, campaignObstacles);
+
+      if (parse.data.battleMap?.obstacles?.length) {
+        // Canonical semantic path: each entry carries full tactical semantics.
+        const battleMapId = encounter.battleMap.id;
+        const campaignObstacles = parse.data.battleMap.obstacles
+          .filter((obs) => {
+            if (obs.x < 0 || obs.y < 0 || obs.x >= gridWidth || obs.y >= gridHeight) return false;
+            const key = `${obs.x}:${obs.y}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((obs, index) => ({
+            id: `campaign-obstacle-${index}`,
+            battleMapId,
+            cells: [{ x: obs.x, y: obs.y }],
+            blocksMovement: obs.blocksMovement,
+            blocksEffect: obs.blocksEffect,
+            blocksVision: obs.blocksVision,
+            cover: obs.cover,
+            clipsDiagonalMovement: obs.clipsDiagonalMovement,
+            movementCostMultiplier: obs.movementCostMultiplier
+          }));
+        repository.setObstacles(sessionId, campaignObstacles);
+      } else if (parse.data.battleMap?.blockedCells?.length) {
+        // Legacy path: movement-only blocked cells become solid obstacles.
+        const validCells = parse.data.battleMap.blockedCells.filter((cell) => {
+          if (cell.x < 0 || cell.y < 0 || cell.x >= gridWidth || cell.y >= gridHeight) return false;
+          const key = `${cell.x}:${cell.y}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        const battleMapId = encounter.battleMap.id;
+        const campaignObstacles = validCells.map((cell, index) => ({
+          id: `campaign-obstacle-${index}`,
+          battleMapId,
+          label: "Terreno bloqueado",
+          cells: [cell],
+          blocksMovement: true,
+          blocksEffect: true,
+          blocksVision: true,
+          cover: "none" as const,
+          clipsDiagonalMovement: false,
+          movementCostMultiplier: 1
+        }));
+        repository.setObstacles(sessionId, campaignObstacles);
+      }
     }
 
     request.log.info(
