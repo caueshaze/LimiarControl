@@ -20,6 +20,7 @@ export function hasLineOfSight(
   edgeObstacles: EdgeObstacle[] = []
 ): boolean {
   const intermediate = traceLine(from, to);
+  const fullPath = [from, ...intermediate, to];
 
   // Check cell obstacles for vision blocking
   for (const cell of intermediate) {
@@ -30,8 +31,8 @@ export function hasLineOfSight(
 
   // Phase 10: Check edge obstacles for vision blocking
   // We need to check edges that the line crosses between consecutive cells
-  for (let i = 0; i < intermediate.length - 1; i++) {
-    const edge = findEdgeBetween(edgeObstacles, intermediate[i], intermediate[i + 1]);
+  for (let i = 0; i < fullPath.length - 1; i++) {
+    const edge = findEdgeBetween(edgeObstacles, fullPath[i], fullPath[i + 1]);
     if (edge?.blocksVision) {
       return false;
     }
@@ -56,6 +57,7 @@ export function hasLineOfEffect(
   edgeObstacles: EdgeObstacle[] = []
 ): boolean {
   const intermediate = traceLine(from, to);
+  const fullPath = [from, ...intermediate, to];
 
   // Check cell obstacles for effect blocking
   for (const cell of intermediate) {
@@ -65,8 +67,8 @@ export function hasLineOfEffect(
   }
 
   // Phase 10: Check edge obstacles for effect blocking
-  for (let i = 0; i < intermediate.length - 1; i++) {
-    const edge = findEdgeBetween(edgeObstacles, intermediate[i], intermediate[i + 1]);
+  for (let i = 0; i < fullPath.length - 1; i++) {
+    const edge = findEdgeBetween(edgeObstacles, fullPath[i], fullPath[i + 1]);
     if (edge?.blocksEffect) {
       return false;
     }
@@ -108,6 +110,7 @@ export function evaluateCover(
   // traceLine excludes both endpoints; we manually include the target cell.
   const intermediate = traceLine(from, to);
   const cellsToCheck = [...intermediate, to];
+  const fullPath = [from, ...intermediate, to];
 
   let highest: ObstacleCover = "none";
   for (const cell of cellsToCheck) {
@@ -124,8 +127,8 @@ export function evaluateCover(
   // Phase 10: Check edge obstacles for cover contribution.
   // Use cellsToCheck (intermediate + target) so the edge adjacent to the target is also evaluated —
   // consistent with the cell-cover policy of including the target cell.
-  for (let i = 0; i < cellsToCheck.length - 1; i++) {
-    const edge = findEdgeBetween(edgeObstacles, cellsToCheck[i], cellsToCheck[i + 1]);
+  for (let i = 0; i < fullPath.length - 1; i++) {
+    const edge = findEdgeBetween(edgeObstacles, fullPath[i], fullPath[i + 1]);
     if (edge && edge.cover !== "none" && COVER_RANK[edge.cover] > COVER_RANK[highest]) {
       highest = edge.cover;
     }
@@ -137,4 +140,3 @@ export function evaluateCover(
 
   return highest;
 }
-

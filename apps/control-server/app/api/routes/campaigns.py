@@ -20,8 +20,10 @@ from app.schemas.campaign import (
     CampaignRead,
     CampaignUpdate,
     decode_blocked_cells,
+    decode_edge_obstacles,
     decode_obstacles,
     encode_blocked_cells,
+    encode_edge_obstacles,
     encode_obstacles,
 )
 from app.services.campaign_catalog import snapshot_campaign_catalog
@@ -122,6 +124,9 @@ def _apply_campaign_map_payload(
         # Legacy path: only write blockedCells when no canonical obstacles supplied.
         entry.blocked_cells_json = encode_blocked_cells(payload.blockedCells)
 
+    if payload.edgeObstacles is not None:
+        entry.edge_obstacles_json = encode_edge_obstacles(payload.edgeObstacles)
+
     return previous_image_url, entry.image_url
 
 
@@ -160,7 +165,8 @@ def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMap
             "height": campaign.calibration_height,
         }
 
-    obstacles = decode_obstacles(campaign.obstacles_json)
+    obstacles = decode_obstacles(getattr(campaign, "obstacles_json", None))
+    edge_obstacles = decode_edge_obstacles(getattr(campaign, "edge_obstacles_json", None))
     return CampaignMapConfigRead(
         id=campaign.id,
         mapName=campaign.name,
@@ -169,8 +175,9 @@ def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMap
         gridHeight=campaign.grid_height,
         calibration=calibration,
         obstacles=obstacles,
+        edgeObstacles=edge_obstacles,
         # Emit legacy blockedCells only when the canonical obstacles_json is absent.
-        blockedCells=decode_blocked_cells(campaign.blocked_cells_json) if obstacles is None else [],
+        blockedCells=decode_blocked_cells(getattr(campaign, "blocked_cells_json", None)) if obstacles is None else [],
         createdAt=campaign.created_at,
         updatedAt=campaign.updated_at,
     )

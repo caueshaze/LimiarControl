@@ -575,6 +575,10 @@ class LimiarMapCombatProjectionService:
             if isinstance(blocked_cells, list) and blocked_cells:
                 payload["blockedCells"] = blocked_cells
 
+        edge_obstacles = raw_selection.get("edgeObstacles")
+        if isinstance(edge_obstacles, list) and edge_obstacles:
+            payload["edgeObstacles"] = edge_obstacles
+
         return payload
 
     @staticmethod

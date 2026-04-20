@@ -1,9 +1,13 @@
-import type { ObstaclePresetId } from "../../../entities/campaign";
+import type {
+  CampaignEdgeDirection,
+  EdgeObstaclePresetId,
+  ObstaclePresetId,
+} from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { ObstacleEditorControls } from "./ObstacleEditorControls";
 import { MapPreviewSurface } from "./MapPreviewSurface";
 import { MapPreviewReviewPanel } from "./MapPreviewReviewPanel";
-import { ObstaclePresetPicker } from "./ObstaclePresetPicker";
-import type { CalibrationPreviewState } from "./types";
+import type { CalibrationPreviewState, ObstacleEditTarget } from "./types";
 
 type Props = {
   imageUrl: string;
@@ -15,12 +19,20 @@ type Props = {
   previewGridWidth: number | null;
   previewGridHeight: number | null;
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
   isObstacleEditMode: boolean;
+  obstacleEditTarget: ObstacleEditTarget;
   selectedPresetId: ObstaclePresetId;
+  selectedEdgePresetId: EdgeObstaclePresetId;
+  edgeDirection: CampaignEdgeDirection;
   onSelectPreset: (presetId: ObstaclePresetId) => void;
+  onSelectEdgePreset: (presetId: EdgeObstaclePresetId) => void;
+  onSelectEdgeDirection: (direction: CampaignEdgeDirection) => void;
+  onSelectObstacleTarget: (target: ObstacleEditTarget) => void;
   onToggleObstacleEditMode: () => void;
   onOpenPreview: () => void;
   onCellToggle: (x: number, y: number) => void;
+  onEdgeToggle: (x: number, y: number, direction: CampaignEdgeDirection) => void;
 };
 
 export const MapPreviewPanel = ({
@@ -33,12 +45,20 @@ export const MapPreviewPanel = ({
   previewGridWidth,
   previewGridHeight,
   obstacleMap,
+  edgeObstacleMap,
   isObstacleEditMode,
+  obstacleEditTarget,
   selectedPresetId,
+  selectedEdgePresetId,
+  edgeDirection,
   onSelectPreset,
+  onSelectEdgePreset,
+  onSelectEdgeDirection,
+  onSelectObstacleTarget,
   onToggleObstacleEditMode,
   onOpenPreview,
   onCellToggle,
+  onEdgeToggle,
 }: Props) => {
   const { t } = useLocale();
 
@@ -97,7 +117,12 @@ export const MapPreviewPanel = ({
             invalidMessage={t("campaignHome.mapPreviewInvalid")}
             hoverHint={
               isObstacleEditMode
-                ? t("campaignHome.mapPreviewEditHint")
+                ? obstacleEditTarget === "edge"
+                  ? t("campaignHome.mapPreviewEdgeEditHint").replace(
+                      "{direction}",
+                      edgeDirection,
+                    )
+                  : t("campaignHome.mapPreviewEditHint")
                 : t("campaignHome.mapPreviewHoverHint")
             }
             hoverMissingGrid={t("campaignHome.mapPreviewHoverMissingGrid")}
@@ -105,7 +130,19 @@ export const MapPreviewPanel = ({
             hoverColumnLabel={t("campaignHome.mapPreviewHoverColumn")}
             hoverRowLabel={t("campaignHome.mapPreviewHoverRow")}
             obstacleMap={obstacleMap}
-            onCellToggle={isObstacleEditMode ? onCellToggle : undefined}
+            edgeObstacleMap={edgeObstacleMap}
+            obstacleEditTarget={obstacleEditTarget}
+            edgeDirection={edgeDirection}
+            onCellToggle={
+              isObstacleEditMode && obstacleEditTarget === "cell"
+                ? onCellToggle
+                : undefined
+            }
+            onEdgeToggle={
+              isObstacleEditMode && obstacleEditTarget === "edge"
+                ? onEdgeToggle
+                : undefined
+            }
           />
         ) : (
           <div className="flex h-72 items-center justify-center px-6 text-center text-sm text-slate-500">
@@ -116,10 +153,17 @@ export const MapPreviewPanel = ({
 
       {isObstacleEditMode && (
         <div className="mt-3">
-          <ObstaclePresetPicker
+          <ObstacleEditorControls
+            obstacleEditTarget={obstacleEditTarget}
             selectedPresetId={selectedPresetId}
-            onSelectPreset={onSelectPreset}
+            selectedEdgePresetId={selectedEdgePresetId}
+            edgeDirection={edgeDirection}
             obstacleMap={obstacleMap}
+            edgeObstacleMap={edgeObstacleMap}
+            onSelectTarget={onSelectObstacleTarget}
+            onSelectPreset={onSelectPreset}
+            onSelectEdgePreset={onSelectEdgePreset}
+            onSelectEdgeDirection={onSelectEdgeDirection}
           />
         </div>
       )}
@@ -136,6 +180,7 @@ export const MapPreviewPanel = ({
         gridWidth={previewGridWidth}
         gridHeight={previewGridHeight}
         obstacleMap={obstacleMap}
+        edgeObstacleMap={edgeObstacleMap}
         className="mt-4"
       />
     </div>

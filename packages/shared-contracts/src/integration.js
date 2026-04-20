@@ -4,12 +4,33 @@ import {
     combatStateSchema,
     coordinateSchema,
     controllerTypeSchema,
+    edgeObstacleSchema,
+    obstacleCoverSchema,
     obstacleSchema,
     tokenSchema
 } from "./domain";
 export const initiativeEntrySchema = z.object({
     combatantId: z.string(),
     initiativeScore: z.number()
+});
+export const campaignObstacleInputSchema = z.object({
+    x: z.number().int().min(0),
+    y: z.number().int().min(0),
+    blocksMovement: z.boolean(),
+    blocksEffect: z.boolean().default(false),
+    blocksVision: z.boolean().default(false),
+    cover: obstacleCoverSchema.default("none"),
+    clipsDiagonalMovement: z.boolean().default(false),
+    movementCostMultiplier: z.number().int().min(1).default(1)
+});
+export const campaignEdgeObstacleInputSchema = z.object({
+    x: z.number().int().min(0),
+    y: z.number().int().min(0),
+    direction: z.enum(["N", "E", "S", "W"]),
+    blocksMovement: z.boolean(),
+    blocksVision: z.boolean().default(false),
+    blocksEffect: z.boolean().default(false),
+    cover: obstacleCoverSchema.default("none")
 });
 export const integrationBattleMapSchema = z.object({
     name: z.string(),
@@ -18,6 +39,8 @@ export const integrationBattleMapSchema = z.object({
     gridCalibration: battleMapSchema.shape.gridCalibration,
     imageUrl: z.string(),
     sourceImageUrl: z.string().nullable().optional(),
+    obstacles: z.array(campaignObstacleInputSchema).optional(),
+    edgeObstacles: z.array(campaignEdgeObstacleInputSchema).optional(),
     blockedCells: z.array(coordinateSchema).optional()
 });
 export const startCombatRequestSchema = z.object({
@@ -72,7 +95,8 @@ export const integrationStateResponseSchema = z.object({
     battleMap: battleMapSchema,
     combatState: combatStateSchema,
     tokens: z.array(tokenSchema),
-    obstacles: z.array(obstacleSchema)
+    obstacles: z.array(obstacleSchema),
+    edgeObstacles: z.array(edgeObstacleSchema).default([])
 });
 export const singleTargetResponseSchema = z.object({
     isValid: z.boolean(),
@@ -82,7 +106,8 @@ export const singleTargetResponseSchema = z.object({
     version: z.number().int().nonnegative(),
     sourceTokenId: z.string().nullable(),
     targetTokenId: z.string().nullable(),
-    distanceCells: z.number().int().nonnegative().nullable().optional()
+    distanceCells: z.number().int().nonnegative().nullable().optional(),
+    cover: obstacleCoverSchema.default("none")
 });
 export const areaTargetResponseSchema = z.object({
     isValid: z.boolean(),

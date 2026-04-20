@@ -1,5 +1,11 @@
-import type { ObstaclePresetId } from "../../../entities/campaign";
-import { CAMPAIGN_OBSTACLE_PRESETS } from "../../../entities/campaign";
+import type {
+  EdgeObstaclePresetId,
+  ObstaclePresetId,
+} from "../../../entities/campaign";
+import {
+  CAMPAIGN_EDGE_OBSTACLE_PRESETS,
+  CAMPAIGN_OBSTACLE_PRESETS,
+} from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type {
   CalibrationPreviewBounds,
@@ -9,7 +15,9 @@ import type {
 import {
   formatCalibrationBounds,
   formatHoveredCell,
+  getHoveredCellEdgePresets,
   getHoveredCellObstaclePreset,
+  summarizeEdgeObstacleMap,
   summarizeObstacleMap,
 } from "./utils";
 
@@ -18,6 +26,7 @@ type Props = {
   gridWidth: number | null;
   gridHeight: number | null;
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
   hoveredCell?: HoveredGridCell | null;
   className?: string;
 };
@@ -51,12 +60,15 @@ export const MapPreviewReviewPanel = ({
   gridWidth,
   gridHeight,
   obstacleMap,
+  edgeObstacleMap,
   hoveredCell = null,
   className = "",
 }: Props) => {
   const { t } = useLocale();
   const obstacleSummary = summarizeObstacleMap(obstacleMap);
+  const edgeObstacleSummary = summarizeEdgeObstacleMap(edgeObstacleMap);
   const hoveredPresetId = getHoveredCellObstaclePreset(obstacleMap, hoveredCell);
+  const hoveredEdgePresets = getHoveredCellEdgePresets(edgeObstacleMap, hoveredCell);
   const hoveredPreset =
     hoveredPresetId == null
       ? null
@@ -157,6 +169,40 @@ export const MapPreviewReviewPanel = ({
       </div>
 
       <div className={cardClassName}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {t("campaignHome.mapPreviewReviewEdgeObstacles")}
+          </p>
+          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+            {edgeObstacleMap.size}
+          </span>
+        </div>
+        {edgeObstacleMap.size === 0 ? (
+          <p className="mt-3 text-sm text-slate-400">
+            {t("campaignHome.mapPreviewReviewEdgeObstacleEmpty")}
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {edgeObstacleSummary.map((preset) => (
+              <div
+                key={preset.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/80 bg-slate-950/80 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 text-sm text-slate-200">
+                  <span
+                    className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                    style={{ backgroundColor: preset.color }}
+                  />
+                  <span>{preset.label}</span>
+                </div>
+                <span className="text-sm font-semibold text-white">{preset.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={cardClassName}>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
           {t("campaignHome.mapPreviewReviewInspection")}
         </p>
@@ -197,6 +243,45 @@ export const MapPreviewReviewPanel = ({
                   <p className="mt-2 text-sm leading-6 text-slate-400">
                     {hoveredPreset.description}
                   </p>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {t("campaignHome.mapPreviewReviewHoveredEdges")}
+              </p>
+              {hoveredEdgePresets.length === 0 ? (
+                <p className="mt-1 text-sm text-slate-400">
+                  {t("campaignHome.mapPreviewReviewNoEdgeObstacle")}
+                </p>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {hoveredEdgePresets.map(({ direction, presetId }) => {
+                    const preset =
+                      CAMPAIGN_EDGE_OBSTACLE_PRESETS.find(
+                        (entry) => entry.id === presetId,
+                      ) ?? null;
+                    if (preset == null) {
+                      return null;
+                    }
+                    return (
+                      <div
+                        key={`${direction}:${preset.id}`}
+                        className="rounded-xl border border-slate-800/80 bg-slate-950/80 px-3 py-3"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <span
+                            className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                            style={{ backgroundColor: preset.color }}
+                          />
+                          {direction} • {preset.label}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                          {preset.description}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

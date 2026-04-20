@@ -71,14 +71,22 @@ export const CampaignMapConfigCard = ({
             previewGridWidth={controller.previewGridWidth}
             previewGridHeight={controller.previewGridHeight}
             obstacleMap={controller.obstacleMap}
+            edgeObstacleMap={controller.edgeObstacleMap}
             isObstacleEditMode={controller.isObstacleEditMode}
+            obstacleEditTarget={controller.obstacleEditTarget}
             selectedPresetId={controller.selectedPresetId}
+            selectedEdgePresetId={controller.selectedEdgePresetId}
+            edgeDirection={controller.edgeDirection}
             onSelectPreset={controller.setSelectedPresetId}
+            onSelectEdgePreset={controller.setSelectedEdgePresetId}
+            onSelectEdgeDirection={controller.setEdgeDirection}
+            onSelectObstacleTarget={controller.setObstacleEditTarget}
             onToggleObstacleEditMode={() =>
               controller.setIsObstacleEditMode((value) => !value)
             }
             onOpenPreview={() => controller.setIsPreviewOpen(true)}
-            onCellToggle={controller.handleCellToggle}
+            onCellToggle={controller.toggleCell}
+            onEdgeToggle={controller.toggleEdge}
           />
 
           <MapEditorForm
@@ -113,8 +121,12 @@ export const CampaignMapConfigCard = ({
         previewGridWidth={controller.previewGridWidth}
         previewGridHeight={controller.previewGridHeight}
         obstacleMap={controller.obstacleMap}
+        edgeObstacleMap={controller.edgeObstacleMap}
         isObstacleEditMode={controller.isObstacleEditMode}
+        obstacleEditTarget={controller.obstacleEditTarget}
         selectedPresetId={controller.selectedPresetId}
+        selectedEdgePresetId={controller.selectedEdgePresetId}
+        edgeDirection={controller.edgeDirection}
         saving={controller.saving}
         uploading={controller.uploading}
         deleting={controller.deleting}
@@ -123,7 +135,11 @@ export const CampaignMapConfigCard = ({
           controller.setIsObstacleEditMode((value) => !value)
         }
         onSelectPreset={controller.setSelectedPresetId}
-        onCellToggle={controller.handleCellToggle}
+        onSelectEdgePreset={controller.setSelectedEdgePresetId}
+        onSelectEdgeDirection={controller.setEdgeDirection}
+        onSelectObstacleTarget={controller.setObstacleEditTarget}
+        onCellToggle={controller.toggleCell}
+        onEdgeToggle={controller.toggleEdge}
         onSave={() => void controller.handleSave()}
       />
     </>

@@ -17,7 +17,11 @@ from app.models.session_state import SessionState
 from app.models.campaign_entity import CampaignEntity
 from app.models.inventory import InventoryItem
 from app.models.item import Item, ItemType
-from app.schemas.campaign import decode_blocked_cells, decode_obstacles
+from app.schemas.campaign import (
+    decode_blocked_cells,
+    decode_edge_obstacles,
+    decode_obstacles,
+)
 from app.schemas.combat import (
     CombatApplyDamageRequest,
     CombatApplyHealingRequest,
@@ -242,7 +246,8 @@ class CombatLifecycleMixin:
             else 1,
         }
 
-        obstacles = decode_obstacles(campaign_map.obstacles_json)
+        obstacles = decode_obstacles(getattr(campaign_map, "obstacles_json", None))
+        edge_obstacles = decode_edge_obstacles(getattr(campaign_map, "edge_obstacles_json", None))
         selection = CombatMapSelection(
             kind="campaign_map",
             mapId=campaign_map.id,
@@ -253,7 +258,8 @@ class CombatLifecycleMixin:
             calibration=calibration,
             # Canonical semantic obstacles take priority over legacy blockedCells.
             obstacles=obstacles,
-            blockedCells=decode_blocked_cells(campaign_map.blocked_cells_json) if obstacles is None else [],
+            edgeObstacles=edge_obstacles,
+            blockedCells=decode_blocked_cells(getattr(campaign_map, "blocked_cells_json", None)) if obstacles is None else [],
         )
         return selection.model_dump(mode="json")
 

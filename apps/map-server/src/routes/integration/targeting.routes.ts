@@ -195,7 +195,15 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     }
 
     // Line of sight — obstacle with blocksVision between source and target
-    if (requiresSight && !hasLineOfSight(encounter.obstacles, sourceToken.position, targetToken.position)) {
+    if (
+      requiresSight &&
+      !hasLineOfSight(
+        encounter.obstacles,
+        sourceToken.position,
+        targetToken.position,
+        encounter.edgeObstacles
+      )
+    ) {
       request.log.info(
         { sessionId, combatantId, targetCombatantId },
         `${LOG_PREFIX} targeting no_line_of_sight`
@@ -213,7 +221,15 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     }
 
     // Line of effect — obstacle with blocksEffect between source and target
-    if (requiresEffect && !hasLineOfEffect(encounter.obstacles, sourceToken.position, targetToken.position)) {
+    if (
+      requiresEffect &&
+      !hasLineOfEffect(
+        encounter.obstacles,
+        sourceToken.position,
+        targetToken.position,
+        encounter.edgeObstacles
+      )
+    ) {
       request.log.info(
         { sessionId, combatantId, targetCombatantId },
         `${LOG_PREFIX} targeting no_line_of_effect`
@@ -231,7 +247,12 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     }
 
     // Cover evaluation — independent of LoS/LoE, evaluated after hard checks pass
-    const cover = evaluateCover(encounter.obstacles, sourceToken.position, targetToken.position);
+    const cover = evaluateCover(
+      encounter.obstacles,
+      sourceToken.position,
+      targetToken.position,
+      encounter.edgeObstacles
+    );
 
     // Full cover invalidates direct targeted attacks
     if (cover === "full") {
@@ -401,7 +422,10 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     }
 
     // Line of sight — obstacle with blocksVision between origin and anchor
-    if (requiresSight && !hasLineOfSight(encounter.obstacles, originCell, anchorCell)) {
+    if (
+      requiresSight &&
+      !hasLineOfSight(encounter.obstacles, originCell, anchorCell, encounter.edgeObstacles)
+    ) {
       return reply.status(200).send({
         isValid: false,
         reason: "no_line_of_sight",
@@ -417,7 +441,10 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     }
 
     // Line of effect — obstacle with blocksEffect between origin and anchor
-    if (requiresEffect && !hasLineOfEffect(encounter.obstacles, originCell, anchorCell)) {
+    if (
+      requiresEffect &&
+      !hasLineOfEffect(encounter.obstacles, originCell, anchorCell, encounter.edgeObstacles)
+    ) {
       return reply.status(200).send({
         isValid: false,
         reason: "no_line_of_effect",
@@ -436,13 +463,13 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     const resolveAffectedCells = () => {
       switch (shape) {
         case "cone":
-          return resolveCone(originCell, anchorCell, sizeCells, encounter.obstacles);
+          return resolveCone(originCell, anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
         case "line":
-          return resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles);
+          return resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles, encounter.edgeObstacles);
         case "sphere":
-          return resolveSphere(anchorCell, sizeCells, encounter.obstacles);
+          return resolveSphere(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
         case "cube":
-          return resolveCube(anchorCell, sizeCells, encounter.obstacles);
+          return resolveCube(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
       }
     };
 
@@ -626,7 +653,10 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
       });
     }
 
-    if (requiresSight && !hasLineOfSight(encounter.obstacles, originCell, anchorCell)) {
+    if (
+      requiresSight &&
+      !hasLineOfSight(encounter.obstacles, originCell, anchorCell, encounter.edgeObstacles)
+    ) {
       return reply.status(200).send({
         isValid: false,
         reason: "no_line_of_sight",
@@ -641,7 +671,10 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
       });
     }
 
-    if (requiresEffect && !hasLineOfEffect(encounter.obstacles, originCell, anchorCell)) {
+    if (
+      requiresEffect &&
+      !hasLineOfEffect(encounter.obstacles, originCell, anchorCell, encounter.edgeObstacles)
+    ) {
       return reply.status(200).send({
         isValid: false,
         reason: "no_line_of_effect",
@@ -659,12 +692,12 @@ export function registerTargetingRoutes(app: FastifyInstance, repository: InMemo
     // All dimensions here are in grid cells (already converted by LimiarControl at the boundary).
     const affectedCells =
       shape === "cone"
-        ? resolveCone(originCell, anchorCell, sizeCells, encounter.obstacles)
+        ? resolveCone(originCell, anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles)
         : shape === "line"
-          ? resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles)
+          ? resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles, encounter.edgeObstacles)
           : shape === "cube"
-            ? resolveCube(anchorCell, sizeCells, encounter.obstacles)
-            : resolveSphere(anchorCell, sizeCells, encounter.obstacles);
+            ? resolveCube(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles)
+            : resolveSphere(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
     const affectedCellKeySet = new Set(affectedCells.map((cell) => `${cell.x}:${cell.y}`));
     const affectedTokens = encounter.tokens.filter((token) =>
       affectedCellKeySet.has(`${token.position.x}:${token.position.y}`)

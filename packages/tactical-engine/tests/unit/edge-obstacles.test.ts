@@ -500,6 +500,24 @@ describe("Edge Obstacles - Line of Sight", () => {
 
     expect(hasLineOfSight(mockObstacles, { x: 5, y: 4 }, { x: 5, y: 7 }, edgeObstacles)).toBe(false);
   });
+
+  it("blocks line of sight across an adjacent blocked edge", () => {
+    const edgeObstacles: EdgeObstacle[] = [
+      {
+        id: "edge-adjacent-los",
+        battleMapId: "test-map",
+        x: 4,
+        y: 4,
+        direction: "E",
+        blocksMovement: true,
+        blocksVision: true,
+        blocksEffect: false,
+        cover: "full"
+      }
+    ];
+
+    expect(hasLineOfSight(mockObstacles, { x: 4, y: 4 }, { x: 5, y: 4 }, edgeObstacles)).toBe(false);
+  });
 });
 
 describe("Edge Obstacles - Line of Effect", () => {
@@ -562,6 +580,24 @@ describe("Edge Obstacles - Line of Effect", () => {
 
     expect(hasLineOfSight(mockObstacles, { x: 4, y: 5 }, { x: 7, y: 5 }, edgeObstacles)).toBe(true);
     expect(hasLineOfEffect(mockObstacles, { x: 4, y: 5 }, { x: 7, y: 5 }, edgeObstacles)).toBe(false);
+  });
+
+  it("blocks line of effect across an adjacent blocked edge", () => {
+    const edgeObstacles: EdgeObstacle[] = [
+      {
+        id: "edge-adjacent-loe",
+        battleMapId: "test-map",
+        x: 4,
+        y: 4,
+        direction: "E",
+        blocksMovement: false,
+        blocksVision: false,
+        blocksEffect: true,
+        cover: "none"
+      }
+    ];
+
+    expect(hasLineOfEffect(mockObstacles, { x: 4, y: 4 }, { x: 5, y: 4 }, edgeObstacles)).toBe(false);
   });
 });
 
@@ -658,5 +694,24 @@ describe("Edge Obstacles - Cover Integration", () => {
 
     const cover = evaluateCover(mockObstacles, { x: 4, y: 5 }, { x: 7, y: 5 }, edgeObstacles);
     expect(cover).toBe("threeQuarters");
+  });
+
+  it("includes adjacent edge cover between source and target", () => {
+    const edgeObstacles: EdgeObstacle[] = [
+      {
+        id: "edge-adjacent-cover",
+        battleMapId: "test-map",
+        x: 4,
+        y: 4,
+        direction: "E",
+        blocksMovement: false,
+        blocksVision: false,
+        blocksEffect: false,
+        cover: "full"
+      }
+    ];
+
+    const cover = evaluateCover(mockObstacles, { x: 4, y: 4 }, { x: 5, y: 4 }, edgeObstacles);
+    expect(cover).toBe("full");
   });
 });

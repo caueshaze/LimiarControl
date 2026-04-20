@@ -1,4 +1,9 @@
-import type { CampaignMapConfig } from "../../../entities/campaign";
+import type {
+  CampaignEdgeDirection,
+  EdgeObstaclePresetId,
+  CampaignMapConfig,
+  ObstaclePresetId,
+} from "../../../entities/campaign";
 
 export type Props = {
   campaignId: string;
@@ -43,6 +48,18 @@ export type HoveredGridCell = {
   column: number;
 };
 
+export type ObstacleEditTarget = "cell" | "edge";
+
+export type ObstacleEditorState = {
+  obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
+  selectedPresetId: ObstaclePresetId;
+  selectedEdgePresetId: EdgeObstaclePresetId;
+  edgeDirection: CampaignEdgeDirection;
+  isObstacleEditMode: boolean;
+  obstacleEditTarget: ObstacleEditTarget;
+};
+
 export type MapPreviewSurfaceProps = {
   imageUrl: string;
   alt: string;
@@ -58,7 +75,13 @@ export type MapPreviewSurfaceProps = {
   hoverRowLabel: string;
   /** 0-based cell keys ("x:y") → preset ID for obstacle overlay colors. */
   obstacleMap?: ReadonlyMap<string, string>;
+  /** 0-based edge keys ("x:y:direction") → preset ID for edge overlay colors. */
+  edgeObstacleMap?: ReadonlyMap<string, string>;
+  obstacleEditTarget?: ObstacleEditTarget;
+  edgeDirection?: CampaignEdgeDirection;
   /** Called with 0-based (x, y) when a cell is clicked in obstacle-edit mode. */
   onCellToggle?: (x: number, y: number) => void;
+  /** Called with 0-based (x, y, direction) when an edge is toggled in edge-edit mode. */
+  onEdgeToggle?: (x: number, y: number, direction: CampaignEdgeDirection) => void;
   onHoveredCellChange?: (cell: HoveredGridCell | null) => void;
 };
