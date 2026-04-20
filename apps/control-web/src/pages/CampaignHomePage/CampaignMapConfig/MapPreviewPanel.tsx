@@ -119,7 +119,7 @@ export const MapPreviewPanel = ({
           <ObstaclePresetPicker
             selectedPresetId={selectedPresetId}
             onSelectPreset={onSelectPreset}
-            obstacleCount={obstacleMap.size}
+            obstacleMap={obstacleMap}
           />
         </div>
       )}

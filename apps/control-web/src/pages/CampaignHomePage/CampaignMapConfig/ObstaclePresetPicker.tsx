@@ -5,18 +5,21 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 type Props = {
   selectedPresetId: ObstaclePresetId;
   onSelectPreset: (presetId: ObstaclePresetId) => void;
-  obstacleCount: number;
+  obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
 };
 
 export const ObstaclePresetPicker = ({
   selectedPresetId,
   onSelectPreset,
-  obstacleCount,
+  obstacleMap,
 }: Props) => {
   const { t } = useLocale();
   const selectedPreset =
     CAMPAIGN_OBSTACLE_PRESETS.find((preset) => preset.id === selectedPresetId) ??
     CAMPAIGN_OBSTACLE_PRESETS[0];
+  const selectedPresetCount = Array.from(obstacleMap.values()).filter(
+    (presetId) => presetId === selectedPresetId,
+  ).length;
 
   return (
     <div className="space-y-2">
@@ -46,7 +49,7 @@ export const ObstaclePresetPicker = ({
         <div className="flex items-center justify-between gap-3">
           <span className="font-semibold text-white">{selectedPreset.label}</span>
           <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-            {obstacleCount}
+            {selectedPresetCount}
           </span>
         </div>
         <p className="mt-2 leading-6 text-slate-400">{selectedPreset.description}</p>

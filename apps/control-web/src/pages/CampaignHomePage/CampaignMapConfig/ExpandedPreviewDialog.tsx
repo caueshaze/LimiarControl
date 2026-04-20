@@ -165,7 +165,7 @@ export const ExpandedPreviewDialog = ({
               <ObstaclePresetPicker
                 selectedPresetId={selectedPresetId}
                 onSelectPreset={onSelectPreset}
-                obstacleCount={obstacleMap.size}
+                obstacleMap={obstacleMap}
               />
             )}
 
