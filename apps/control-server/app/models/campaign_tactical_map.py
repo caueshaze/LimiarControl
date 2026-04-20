@@ -26,6 +26,9 @@ class CampaignTacticalMap(SQLModel, table=True):
     # cover, clipsDiagonalMovement, movementCostMultiplier}, ...]
     # Authoritative when present; blocked_cells_json is ignored.
     obstacles_json: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    # JSON-encoded semantic edge obstacles: [{x, y, direction, blocksMovement,
+    # blocksVision, blocksEffect, cover}, ...]
+    edge_obstacles_json: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

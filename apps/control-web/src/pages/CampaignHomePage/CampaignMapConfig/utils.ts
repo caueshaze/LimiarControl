@@ -1,7 +1,12 @@
 import {
+  CAMPAIGN_EDGE_OBSTACLE_PRESETS,
   CAMPAIGN_OBSTACLE_PRESETS,
+  edgeObstacleToPresetId,
   obstacleToPresetId,
   type CampaignMapConfig,
+  type CampaignEdgeDirection,
+  type CampaignEdgeObstacle,
+  type EdgeObstaclePresetId,
   type CampaignObstacle,
   type ObstaclePresetId,
 } from "../../../entities/campaign";
@@ -133,6 +138,19 @@ export function buildObstacleMap(
   return map;
 }
 
+export function buildEdgeObstacleMap(
+  config: CampaignMapConfig | null | undefined,
+): Map<string, EdgeObstaclePresetId> {
+  const map = new Map<string, EdgeObstaclePresetId>();
+  for (const edge of config?.edgeObstacles ?? []) {
+    map.set(
+      `${edge.x}:${edge.y}:${edge.direction}`,
+      edgeObstacleToPresetId(edge),
+    );
+  }
+  return map;
+}
+
 export function serializeObstacleMap(
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>,
 ): CampaignObstacle[] {
@@ -140,6 +158,23 @@ export function serializeObstacleMap(
     const [x, y] = key.split(":").map(Number);
     const preset = CAMPAIGN_OBSTACLE_PRESETS.find((entry) => entry.id === presetId)!;
     return { x, y, ...preset.style };
+  });
+}
+
+export function serializeEdgeObstacleMap(
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>,
+): CampaignEdgeObstacle[] {
+  return Array.from(edgeObstacleMap.entries()).map(([key, presetId]) => {
+    const [x, y, direction] = key.split(":");
+    const preset = CAMPAIGN_EDGE_OBSTACLE_PRESETS.find(
+      (entry) => entry.id === presetId,
+    )!;
+    return {
+      x: Number(x),
+      y: Number(y),
+      direction: direction as CampaignEdgeDirection,
+      ...preset.style,
+    };
   });
 }
 
@@ -152,6 +187,17 @@ export function summarizeObstacleMap(
   }));
 }
 
+export function summarizeEdgeObstacleMap(
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>,
+) {
+  return CAMPAIGN_EDGE_OBSTACLE_PRESETS.map((preset) => ({
+    ...preset,
+    count: Array.from(edgeObstacleMap.values()).filter(
+      (value) => value === preset.id,
+    ).length,
+  }));
+}
+
 export function getHoveredCellObstaclePreset(
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>,
   hoveredCell: HoveredGridCell | null,
@@ -160,6 +206,34 @@ export function getHoveredCellObstaclePreset(
     return null;
   }
   return obstacleMap.get(`${hoveredCell.column - 1}:${hoveredCell.row - 1}`) ?? null;
+}
+
+export function getHoveredCellEdgePresets(
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>,
+  hoveredCell: HoveredGridCell | null,
+) {
+  if (hoveredCell == null) {
+    return [];
+  }
+  const x = hoveredCell.column - 1;
+  const y = hoveredCell.row - 1;
+  const directions: CampaignEdgeDirection[] = ["N", "E", "S", "W"];
+  return directions
+    .map((direction) => {
+      const presetId = edgeObstacleMap.get(`${x}:${y}:${direction}`);
+      if (presetId == null) {
+        return null;
+      }
+      return { direction, presetId };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        direction: CampaignEdgeDirection;
+        presetId: EdgeObstaclePresetId;
+      } => entry != null,
+    );
 }
 
 export function formatCalibrationBounds(

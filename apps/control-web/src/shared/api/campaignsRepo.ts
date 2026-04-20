@@ -1,4 +1,11 @@
-import type { BlockedCell, CampaignObstacle, Campaign, CampaignMapConfig, CampaignSystemType } from "../../entities/campaign";
+import type {
+  BlockedCell,
+  Campaign,
+  CampaignEdgeObstacle,
+  CampaignMapConfig,
+  CampaignObstacle,
+  CampaignSystemType,
+} from "../../entities/campaign";
 import { http } from "./http";
 
 type CampaignCreatePayload = {
@@ -30,6 +37,8 @@ export type CampaignMapConfigPayload = {
   } | null;
   /** Canonical semantic obstacles — replace the full set on each save. */
   obstacles?: CampaignObstacle[] | null;
+  /** Canonical semantic edge obstacles — replace the full set on each save. */
+  edgeObstacles?: CampaignEdgeObstacle[] | null;
   /** @deprecated Legacy movement-only cells; use obstacles for new maps. */
   blockedCells?: BlockedCell[] | null;
 };

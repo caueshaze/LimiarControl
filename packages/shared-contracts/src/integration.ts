@@ -43,6 +43,25 @@ export const campaignObstacleInputSchema = z.object({
 
 export type CampaignObstacleInput = z.infer<typeof campaignObstacleInputSchema>;
 
+/**
+ * A single edge obstacle authored at the campaign level.
+ * Canonical path for edge-based tactical boundaries created from the
+ * campaign map configuration UI.
+ */
+export const campaignEdgeObstacleInputSchema = z.object({
+  x: z.number().int().min(0),
+  y: z.number().int().min(0),
+  direction: z.enum(["N", "E", "S", "W"]),
+  blocksMovement: z.boolean(),
+  blocksVision: z.boolean().default(false),
+  blocksEffect: z.boolean().default(false),
+  cover: obstacleCoverSchema.default("none")
+});
+
+export type CampaignEdgeObstacleInput = z.infer<
+  typeof campaignEdgeObstacleInputSchema
+>;
+
 export const integrationBattleMapSchema = z.object({
   name: z.string(),
   gridWidth: z.number().int().positive().max(150),
@@ -53,6 +72,8 @@ export const integrationBattleMapSchema = z.object({
   // Canonical semantic obstacles (Phase 2+): each entry maps a single cell to
   // its full tactical semantics. When present, `blockedCells` is ignored.
   obstacles: z.array(campaignObstacleInputSchema).optional(),
+  // Canonical semantic edge obstacles authored between adjacent cells.
+  edgeObstacles: z.array(campaignEdgeObstacleInputSchema).optional(),
   // Phase 1 legacy: movement-only blocked cells. Kept for backward compat with
   // old campaign maps that pre-date semantic obstacles.
   blockedCells: z.array(coordinateSchema).optional()

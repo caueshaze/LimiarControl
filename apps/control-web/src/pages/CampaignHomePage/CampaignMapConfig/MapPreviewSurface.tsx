@@ -1,11 +1,18 @@
 import { useState, type MouseEvent } from "react";
-import { CAMPAIGN_OBSTACLE_PRESETS } from "../../../entities/campaign";
+import {
+  CAMPAIGN_EDGE_OBSTACLE_PRESETS,
+  CAMPAIGN_OBSTACLE_PRESETS,
+} from "../../../entities/campaign";
 import { ManagedImage } from "../../../shared/ui";
 import type { HoveredGridCell, MapPreviewSurfaceProps } from "./types";
 import { formatHoveredCell } from "./utils";
 
 const PRESET_COLOR_MAP = Object.fromEntries(
   CAMPAIGN_OBSTACLE_PRESETS.map((p) => [p.id, p.color])
+);
+
+const EDGE_PRESET_COLOR_MAP = Object.fromEntries(
+  CAMPAIGN_EDGE_OBSTACLE_PRESETS.map((preset) => [preset.id, preset.color]),
 );
 
 export const MapPreviewSurface = ({
@@ -22,11 +29,17 @@ export const MapPreviewSurface = ({
   hoverColumnLabel,
   hoverRowLabel,
   obstacleMap,
+  edgeObstacleMap,
+  obstacleEditTarget = "cell",
+  edgeDirection = "N",
   onCellToggle,
+  onEdgeToggle,
   onHoveredCellChange,
 }: MapPreviewSurfaceProps) => {
   const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
-  const isEditMode = Boolean(onCellToggle);
+  const isCellEditMode = obstacleEditTarget === "cell" && Boolean(onCellToggle);
+  const isEdgeEditMode = obstacleEditTarget === "edge" && Boolean(onEdgeToggle);
+  const isEditMode = isCellEditMode || isEdgeEditMode;
 
   const previewVerticalLines =
     bounds != null && gridWidth != null && gridWidth > 1
@@ -75,11 +88,16 @@ export const MapPreviewSurface = ({
   };
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!onCellToggle) return;
+    if (!isEditMode) return;
     const cell = resolveHoveredCell(event);
     if (cell == null) return;
-    // Convert from 1-based UI coords to 0-based API coords
-    onCellToggle(cell.column - 1, cell.row - 1);
+    const x = cell.column - 1;
+    const y = cell.row - 1;
+    if (isCellEditMode) {
+      onCellToggle?.(x, y);
+      return;
+    }
+    onEdgeToggle?.(x, y, edgeDirection);
   };
 
   const hoverBadgeText =
@@ -150,19 +168,56 @@ export const MapPreviewSurface = ({
               })
             }
             {hoveredCell != null && gridWidth != null && gridHeight != null ? (
-              <div
-                className={`absolute border ${
-                  isEditMode
-                    ? "border-rose-300/90 bg-rose-400/20"
-                    : "border-amber-200/90 bg-amber-300/15"
-                }`}
-                style={{
-                  left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
-                  top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
-                  width: `${100 / gridWidth}%`,
-                  height: `${100 / gridHeight}%`,
-                }}
-              />
+              <>
+                <div
+                  className={`absolute border ${
+                    isEditMode
+                      ? "border-rose-300/90 bg-rose-400/20"
+                      : "border-amber-200/90 bg-amber-300/15"
+                  }`}
+                  style={{
+                    left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
+                    top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
+                    width: `${100 / gridWidth}%`,
+                    height: `${100 / gridHeight}%`,
+                  }}
+                />
+                {isEdgeEditMode ? (
+                  <div
+                    className="absolute bg-fuchsia-200"
+                    style={{
+                      ...(edgeDirection === "N"
+                        ? {
+                            left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
+                            top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
+                            width: `${100 / gridWidth}%`,
+                            height: "4px",
+                          }
+                        : edgeDirection === "S"
+                          ? {
+                              left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
+                              top: `${(hoveredCell.row / gridHeight) * 100}%`,
+                              width: `${100 / gridWidth}%`,
+                              height: "4px",
+                            }
+                          : edgeDirection === "E"
+                            ? {
+                                left: `${(hoveredCell.column / gridWidth) * 100}%`,
+                                top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
+                                width: "4px",
+                                height: `${100 / gridHeight}%`,
+                              }
+                            : {
+                                left: `${((hoveredCell.column - 1) / gridWidth) * 100}%`,
+                                top: `${((hoveredCell.row - 1) / gridHeight) * 100}%`,
+                                width: "4px",
+                                height: `${100 / gridHeight}%`,
+                              }),
+                      boxShadow: "0 0 0 1px rgba(244,114,182,0.9)",
+                    }}
+                  />
+                ) : null}
+              </>
             ) : null}
             {previewVerticalLines.map((line) => (
               <div
@@ -178,6 +233,57 @@ export const MapPreviewSurface = ({
                 style={{ top: `${(line / gridHeight!) * 100}%` }}
               />
             ))}
+            {edgeObstacleMap != null &&
+              gridWidth != null &&
+              gridHeight != null &&
+              Array.from(edgeObstacleMap.entries()).map(([key, presetId]) => {
+                const [cx, cy, direction] = key.split(":");
+                const color = EDGE_PRESET_COLOR_MAP[presetId] ?? "#d24646";
+                const left = (Number(cx) / gridWidth) * 100;
+                const top = (Number(cy) / gridHeight) * 100;
+                const width = 100 / gridWidth;
+                const height = 100 / gridHeight;
+                const lineStyle =
+                  direction === "N"
+                    ? {
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        width: `${width}%`,
+                        height: "3px",
+                      }
+                    : direction === "S"
+                      ? {
+                          left: `${left}%`,
+                          top: `${top + height}%`,
+                          width: `${width}%`,
+                          height: "3px",
+                        }
+                      : direction === "E"
+                        ? {
+                            left: `${left + width}%`,
+                            top: `${top}%`,
+                            width: "3px",
+                            height: `${height}%`,
+                          }
+                        : {
+                            left: `${left}%`,
+                            top: `${top}%`,
+                            width: "3px",
+                            height: `${height}%`,
+                          };
+                return (
+                  <div
+                    key={key}
+                    className="absolute"
+                    style={{
+                      ...lineStyle,
+                      backgroundColor: color,
+                      boxShadow: `0 0 0 1px ${color}88`,
+                      opacity: 0.95,
+                    }}
+                  />
+                );
+              })}
           </div>
         </div>
       ) : (

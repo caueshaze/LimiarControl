@@ -70,6 +70,18 @@ export type CampaignObstacle = {
   movementCostMultiplier: number;
 };
 
+export type CampaignEdgeDirection = "N" | "E" | "S" | "W";
+
+export type CampaignEdgeObstacle = {
+  x: number;
+  y: number;
+  direction: CampaignEdgeDirection;
+  blocksMovement: boolean;
+  blocksVision: boolean;
+  blocksEffect: boolean;
+  cover: ObstacleCover;
+};
+
 export type ObstaclePresetId =
   | "solid_wall"
   | "dense_obstacle"
@@ -86,6 +98,22 @@ export type ObstaclePreset = {
   /** Hex color for visual overlay on the map preview. */
   color: string;
   style: Omit<CampaignObstacle, "x" | "y">;
+};
+
+export type EdgeObstaclePresetId =
+  | "edge_wall"
+  | "edge_barrier"
+  | "edge_cover_half"
+  | "edge_cover_three_quarters"
+  | "edge_vision_blocker"
+  | "edge_effect_blocker";
+
+export type EdgeObstaclePreset = {
+  id: EdgeObstaclePresetId;
+  label: string;
+  description: string;
+  color: string;
+  style: Omit<CampaignEdgeObstacle, "x" | "y" | "direction">;
 };
 
 export const CAMPAIGN_OBSTACLE_PRESETS: ObstaclePreset[] = [
@@ -140,6 +168,81 @@ export const CAMPAIGN_OBSTACLE_PRESETS: ObstaclePreset[] = [
   },
 ];
 
+export const CAMPAIGN_EDGE_OBSTACLE_PRESETS: EdgeObstaclePreset[] = [
+  {
+    id: "edge_wall",
+    label: "Parede (borda)",
+    description: "Bloqueia movimento, visao e efeito na borda entre celulas.",
+    color: "#d24646",
+    style: {
+      blocksMovement: true,
+      blocksVision: true,
+      blocksEffect: true,
+      cover: "full",
+    },
+  },
+  {
+    id: "edge_barrier",
+    label: "Barreira (borda)",
+    description: "Bloqueia movimento, mas permite visao e efeito.",
+    color: "#ffa436",
+    style: {
+      blocksMovement: true,
+      blocksVision: false,
+      blocksEffect: false,
+      cover: "none",
+    },
+  },
+  {
+    id: "edge_cover_half",
+    label: "Cobertura 1/2 (borda)",
+    description: "Concede meia cobertura na borda sem bloquear passagem.",
+    color: "#ffdc78",
+    style: {
+      blocksMovement: false,
+      blocksVision: false,
+      blocksEffect: false,
+      cover: "half",
+    },
+  },
+  {
+    id: "edge_cover_three_quarters",
+    label: "Cobertura 3/4 (borda)",
+    description: "Concede cobertura de tres quartos na borda.",
+    color: "#ffaa44",
+    style: {
+      blocksMovement: false,
+      blocksVision: false,
+      blocksEffect: false,
+      cover: "threeQuarters",
+    },
+  },
+  {
+    id: "edge_vision_blocker",
+    label: "Barreira visual (borda)",
+    description: "Bloqueia visao sem bloquear movimento ou efeito.",
+    color: "#5ed2ff",
+    style: {
+      blocksMovement: false,
+      blocksVision: true,
+      blocksEffect: false,
+      cover: "none",
+    },
+  },
+  {
+    id: "edge_effect_blocker",
+    label: "Barreira de efeito (borda)",
+    description: "Bloqueia efeito sem bloquear movimento ou visao.",
+    color: "#bc56ff",
+    style: {
+      blocksMovement: false,
+      blocksVision: false,
+      blocksEffect: true,
+      cover: "none",
+    },
+  },
+];
+
 export function obstacleToPresetId(obs: CampaignObstacle): ObstaclePresetId {
   for (const preset of CAMPAIGN_OBSTACLE_PRESETS) {
     const s = preset.style;
@@ -157,6 +260,23 @@ export function obstacleToPresetId(obs: CampaignObstacle): ObstaclePresetId {
   return "solid_wall";
 }
 
+export function edgeObstacleToPresetId(
+  obstacle: CampaignEdgeObstacle,
+): EdgeObstaclePresetId {
+  for (const preset of CAMPAIGN_EDGE_OBSTACLE_PRESETS) {
+    const style = preset.style;
+    if (
+      style.blocksMovement === obstacle.blocksMovement &&
+      style.blocksVision === obstacle.blocksVision &&
+      style.blocksEffect === obstacle.blocksEffect &&
+      style.cover === obstacle.cover
+    ) {
+      return preset.id;
+    }
+  }
+  return "edge_wall";
+}
+
 export type CampaignMapConfig = {
   id: string;
   mapName?: string | null;
@@ -166,6 +286,8 @@ export type CampaignMapConfig = {
   calibration?: CampaignMapCalibration | null;
   /** Canonical semantic obstacles. Null = legacy map without obstacles_json. */
   obstacles?: CampaignObstacle[] | null;
+  /** Canonical semantic edge obstacles authored between adjacent cells. */
+  edgeObstacles?: CampaignEdgeObstacle[] | null;
   /** @deprecated Legacy movement-only blocked cells for pre-semantic maps. */
   blockedCells?: BlockedCell[] | null;
   createdAt: string;

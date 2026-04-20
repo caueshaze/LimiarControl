@@ -165,6 +165,35 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
         }));
         repository.setObstacles(sessionId, campaignObstacles);
       }
+
+      if (parse.data.battleMap?.edgeObstacles?.length) {
+        const battleMapId = encounter.battleMap.id;
+        const seenEdges = new Set<string>();
+        const campaignEdgeObstacles = parse.data.battleMap.edgeObstacles
+          .filter((edge) => {
+            if (edge.x < 0 || edge.y < 0 || edge.x >= gridWidth || edge.y >= gridHeight) {
+              return false;
+            }
+            const key = `${edge.x}:${edge.y}:${edge.direction}`;
+            if (seenEdges.has(key)) return false;
+            seenEdges.add(key);
+            return true;
+          })
+          .map((edge, index) => ({
+            id: `campaign-edge-obstacle-${index}`,
+            battleMapId,
+            x: edge.x,
+            y: edge.y,
+            direction: edge.direction,
+            blocksMovement: edge.blocksMovement,
+            blocksVision: edge.blocksVision,
+            blocksEffect: edge.blocksEffect,
+            cover: edge.cover
+          }));
+        repository.setEdgeObstacles(sessionId, campaignEdgeObstacles);
+      } else {
+        repository.setEdgeObstacles(sessionId, []);
+      }
     }
 
     request.log.info(

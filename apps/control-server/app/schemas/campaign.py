@@ -10,6 +10,7 @@ from app.services.media_storage_service import is_managed_url
 MAX_GRID_DIMENSION = 150
 
 ObstacleCover = Literal["none", "half", "threeQuarters", "full"]
+EdgeDirection = Literal["N", "E", "S", "W"]
 
 
 class BlockedCell(BaseModel):
@@ -26,6 +27,16 @@ class CampaignObstacle(BaseModel):
     cover: ObstacleCover = "none"
     clipsDiagonalMovement: bool = False
     movementCostMultiplier: int = Field(default=1, ge=1)
+
+
+class CampaignEdgeObstacle(BaseModel):
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
+    direction: EdgeDirection
+    blocksMovement: bool
+    blocksVision: bool = False
+    blocksEffect: bool = False
+    cover: ObstacleCover = "none"
 
 
 def decode_blocked_cells(raw_json: str | None) -> list[BlockedCell]:
@@ -82,6 +93,41 @@ def encode_obstacles(obstacles: list[CampaignObstacle] | None) -> str | None:
     )
 
 
+def decode_edge_obstacles(raw_json: str | None) -> list[CampaignEdgeObstacle]:
+    """Parse edge_obstacles_json from DB into edge obstacle objects."""
+    if not raw_json:
+        return []
+    try:
+        items = json.loads(raw_json)
+        if not isinstance(items, list):
+            return []
+        return [CampaignEdgeObstacle(**item) for item in items if isinstance(item, dict)]
+    except Exception:
+        return []
+
+
+def encode_edge_obstacles(
+    edge_obstacles: list[CampaignEdgeObstacle] | None,
+) -> str | None:
+    """Serialize edge obstacles to JSON for DB storage."""
+    if not edge_obstacles:
+        return None
+    return json.dumps(
+        [
+            {
+                "x": obstacle.x,
+                "y": obstacle.y,
+                "direction": obstacle.direction,
+                "blocksMovement": obstacle.blocksMovement,
+                "blocksVision": obstacle.blocksVision,
+                "blocksEffect": obstacle.blocksEffect,
+                "cover": obstacle.cover,
+            }
+            for obstacle in edge_obstacles
+        ]
+    )
+
+
 class CampaignCreate(BaseModel):
     name: str
     system: SystemType
@@ -121,6 +167,8 @@ class CampaignMapConfigRead(BaseModel):
     calibration: Optional[CampaignMapCalibration] = None
     # Canonical semantic obstacles (None = legacy map without obstacles_json).
     obstacles: Optional[list[CampaignObstacle]] = None
+    # Canonical semantic edge obstacles authored between adjacent cells.
+    edgeObstacles: list[CampaignEdgeObstacle] = Field(default_factory=list)
     # Legacy movement-blocking cells — present only when obstacles is None.
     blockedCells: list[BlockedCell] = Field(default_factory=list)
     createdAt: datetime
@@ -153,6 +201,9 @@ class CampaignMapConfigWrite(BaseModel):
     # Canonical semantic obstacles.
     # None = leave existing unchanged; [] = clear all; [...] = replace all.
     obstacles: Optional[list[CampaignObstacle]] = None
+    # Canonical semantic edge obstacles.
+    # None = leave existing unchanged; [] = clear all; [...] = replace all.
+    edgeObstacles: Optional[list[CampaignEdgeObstacle]] = None
     # Legacy movement-only cells — still accepted for backward compat.
     # Ignored when obstacles is provided.
     blockedCells: Optional[list[BlockedCell]] = None
@@ -189,6 +240,7 @@ class CampaignMapConfigWrite(BaseModel):
                 self.gridHeight,
                 self.calibration,
                 self.obstacles,
+                self.edgeObstacles,
                 self.blockedCells,
             )
         )

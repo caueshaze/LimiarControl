@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { CampaignMapConfig, ObstaclePresetId } from "../../../entities/campaign";
+import type { CampaignMapConfig } from "../../../entities/campaign";
 import { campaignsRepo } from "../../../shared/api/campaignsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { Props } from "./types";
+import { useCampaignMapObstacleEditor } from "./useCampaignMapObstacleEditor";
 import { useCampaignMapImageUpload } from "./useCampaignMapImageUpload";
 import {
   EMPTY_FORM,
-  buildObstacleMap,
   configToForm,
   formatCalibrationBounds,
   getCalibrationPreview,
@@ -14,6 +14,7 @@ import {
   normalizeOptionalFloat,
   normalizeOptionalInt,
   parsePreviewInt,
+  serializeEdgeObstacleMap,
   serializeObstacleMap,
   sortMaps,
 } from "./utils";
@@ -37,12 +38,7 @@ export function useCampaignMapConfigController({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [obstacleMap, setObstacleMap] = useState<Map<string, ObstaclePresetId>>(
-    () => buildObstacleMap(sortedMaps[0]),
-  );
-  const [selectedPresetId, setSelectedPresetId] =
-    useState<ObstaclePresetId>("solid_wall");
-  const [isObstacleEditMode, setIsObstacleEditMode] = useState(false);
+  const obstacleEditor = useCampaignMapObstacleEditor(sortedMaps[0] ?? null);
   const {
     imageInputRef,
     uploading,
@@ -85,8 +81,7 @@ export function useCampaignMapConfigController({
     setSelectedMapId(nextSelected?.id ?? null);
     setIsCreatingNew(nextSelected == null);
     setForm(configToForm(nextSelected));
-    setObstacleMap(buildObstacleMap(nextSelected));
-    setIsObstacleEditMode(false);
+    obstacleEditor.resetFromConfig(nextSelected);
     setError(null);
     setSuccess(null);
   }, [campaignId]);
@@ -98,14 +93,14 @@ export function useCampaignMapConfigController({
 
     if (selectedMap != null) {
       setForm(configToForm(selectedMap));
-      setObstacleMap(buildObstacleMap(selectedMap));
+      obstacleEditor.resetFromConfig(selectedMap);
       return;
     }
 
     const fallback = sortedMaps[0] ?? null;
     setSelectedMapId(fallback?.id ?? null);
     setForm(configToForm(fallback));
-    setObstacleMap(buildObstacleMap(fallback));
+    obstacleEditor.resetFromConfig(fallback);
   }, [isCreatingNew, selectedMap, sortedMaps]);
 
   useEffect(() => {
@@ -131,8 +126,7 @@ export function useCampaignMapConfigController({
 
   const resetEditorState = (config: CampaignMapConfig | null) => {
     setForm(configToForm(config));
-    setObstacleMap(buildObstacleMap(config));
-    setIsObstacleEditMode(false);
+    obstacleEditor.resetFromConfig(config);
     setError(null);
     setSuccess(null);
   };
@@ -151,23 +145,9 @@ export function useCampaignMapConfigController({
     setSelectedMapId(null);
     setIsCreatingNew(true);
     setForm(EMPTY_FORM);
-    setObstacleMap(new Map());
-    setIsObstacleEditMode(false);
+    obstacleEditor.clearAll();
     setError(null);
     setSuccess(null);
-  };
-
-  const handleCellToggle = (x: number, y: number) => {
-    const key = `${x}:${y}`;
-    setObstacleMap((current) => {
-      const next = new Map(current);
-      if (next.get(key) === selectedPresetId) {
-        next.delete(key);
-      } else {
-        next.set(key, selectedPresetId);
-      }
-      return next;
-    });
   };
 
   const handleResetCalibration = () => {
@@ -248,7 +228,8 @@ export function useCampaignMapConfigController({
         gridWidth,
         gridHeight,
         calibration,
-        obstacles: serializeObstacleMap(obstacleMap),
+        obstacles: serializeObstacleMap(obstacleEditor.obstacleMap),
+        edgeObstacles: serializeEdgeObstacleMap(obstacleEditor.edgeObstacleMap),
       };
 
       const savedConfig = isCreatingNew
@@ -265,7 +246,7 @@ export function useCampaignMapConfigController({
       setSelectedMapId(savedConfig.id);
       setIsCreatingNew(false);
       setForm(configToForm(savedConfig));
-      setObstacleMap(buildObstacleMap(savedConfig));
+      obstacleEditor.resetFromConfig(savedConfig);
       setSuccess(t("campaignHome.mapSaved"));
     } catch (saveError) {
       setError(
@@ -295,7 +276,7 @@ export function useCampaignMapConfigController({
       setSelectedMapId(fallback?.id ?? null);
       setIsCreatingNew(fallback == null);
       setForm(configToForm(fallback));
-      setObstacleMap(buildObstacleMap(fallback));
+      obstacleEditor.resetFromConfig(fallback);
       setSuccess(t("campaignHome.mapDeleted"));
     } catch (deleteError) {
       setError(
@@ -320,9 +301,7 @@ export function useCampaignMapConfigController({
     isPreviewOpen,
     error,
     success,
-    obstacleMap,
-    selectedPresetId,
-    isObstacleEditMode,
+    ...obstacleEditor,
     hasMapImage,
     isConfigured,
     readyMaps,
@@ -333,7 +312,6 @@ export function useCampaignMapConfigController({
     gridSummary,
     handleEditMap,
     handleCreateNew,
-    handleCellToggle,
     handleChooseImage,
     handleImageSelected,
     handleResetCalibration,
@@ -341,8 +319,6 @@ export function useCampaignMapConfigController({
     handleSave,
     handleDelete,
     setIsPreviewOpen,
-    setSelectedPresetId,
-    setIsObstacleEditMode,
     updateField,
   };
 }

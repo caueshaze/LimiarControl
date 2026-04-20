@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import type { ObstaclePresetId } from "../../../entities/campaign";
+import type {
+  CampaignEdgeDirection,
+  EdgeObstaclePresetId,
+  ObstaclePresetId,
+} from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { ObstacleEditorControls } from "./ObstacleEditorControls";
 import { MapPreviewReviewPanel } from "./MapPreviewReviewPanel";
 import { MapPreviewSurface } from "./MapPreviewSurface";
-import { ObstaclePresetPicker } from "./ObstaclePresetPicker";
 import type {
   CalibrationPreviewState,
   HoveredGridCell,
+  ObstacleEditTarget,
 } from "./types";
 
 type Props = {
@@ -18,15 +23,23 @@ type Props = {
   previewGridWidth: number | null;
   previewGridHeight: number | null;
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
+  edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
   isObstacleEditMode: boolean;
+  obstacleEditTarget: ObstacleEditTarget;
   selectedPresetId: ObstaclePresetId;
+  selectedEdgePresetId: EdgeObstaclePresetId;
+  edgeDirection: CampaignEdgeDirection;
   saving: boolean;
   uploading: boolean;
   deleting: boolean;
   onClose: () => void;
   onToggleObstacleEditMode: () => void;
   onSelectPreset: (presetId: ObstaclePresetId) => void;
+  onSelectEdgePreset: (presetId: EdgeObstaclePresetId) => void;
+  onSelectEdgeDirection: (direction: CampaignEdgeDirection) => void;
+  onSelectObstacleTarget: (target: ObstacleEditTarget) => void;
   onCellToggle: (x: number, y: number) => void;
+  onEdgeToggle: (x: number, y: number, direction: CampaignEdgeDirection) => void;
   onSave: () => void;
 };
 
@@ -39,15 +52,23 @@ export const ExpandedPreviewDialog = ({
   previewGridWidth,
   previewGridHeight,
   obstacleMap,
+  edgeObstacleMap,
   isObstacleEditMode,
+  obstacleEditTarget,
   selectedPresetId,
+  selectedEdgePresetId,
+  edgeDirection,
   saving,
   uploading,
   deleting,
   onClose,
   onToggleObstacleEditMode,
   onSelectPreset,
+  onSelectEdgePreset,
+  onSelectEdgeDirection,
+  onSelectObstacleTarget,
   onCellToggle,
+  onEdgeToggle,
   onSave,
 }: Props) => {
   const { t } = useLocale();
@@ -86,7 +107,12 @@ export const ExpandedPreviewDialog = ({
               </h4>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
                 {isObstacleEditMode
-                  ? t("campaignHome.mapPreviewEditHint")
+                  ? obstacleEditTarget === "edge"
+                    ? t("campaignHome.mapPreviewEdgeEditHint").replace(
+                        "{direction}",
+                        edgeDirection,
+                      )
+                    : t("campaignHome.mapPreviewEditHint")
                   : t("campaignHome.mapPreviewHint")}
               </p>
             </div>
@@ -144,7 +170,12 @@ export const ExpandedPreviewDialog = ({
                     invalidMessage={t("campaignHome.mapPreviewInvalid")}
                     hoverHint={
                       isObstacleEditMode
-                        ? t("campaignHome.mapPreviewEditHint")
+                        ? obstacleEditTarget === "edge"
+                          ? t("campaignHome.mapPreviewEdgeEditHint").replace(
+                              "{direction}",
+                              edgeDirection,
+                            )
+                          : t("campaignHome.mapPreviewEditHint")
                         : t("campaignHome.mapPreviewHoverHint")
                     }
                     hoverMissingGrid={t("campaignHome.mapPreviewHoverMissingGrid")}
@@ -152,7 +183,19 @@ export const ExpandedPreviewDialog = ({
                     hoverColumnLabel={t("campaignHome.mapPreviewHoverColumn")}
                     hoverRowLabel={t("campaignHome.mapPreviewHoverRow")}
                     obstacleMap={obstacleMap}
-                    onCellToggle={isObstacleEditMode ? onCellToggle : undefined}
+                    edgeObstacleMap={edgeObstacleMap}
+                    obstacleEditTarget={obstacleEditTarget}
+                    edgeDirection={edgeDirection}
+                    onCellToggle={
+                      isObstacleEditMode && obstacleEditTarget === "cell"
+                        ? onCellToggle
+                        : undefined
+                    }
+                    onEdgeToggle={
+                      isObstacleEditMode && obstacleEditTarget === "edge"
+                        ? onEdgeToggle
+                        : undefined
+                    }
                     onHoveredCellChange={setHoveredCell}
                   />
                 </div>
@@ -162,10 +205,17 @@ export const ExpandedPreviewDialog = ({
 
           <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
             {isObstacleEditMode && (
-              <ObstaclePresetPicker
+              <ObstacleEditorControls
+                obstacleEditTarget={obstacleEditTarget}
                 selectedPresetId={selectedPresetId}
-                onSelectPreset={onSelectPreset}
+                selectedEdgePresetId={selectedEdgePresetId}
+                edgeDirection={edgeDirection}
                 obstacleMap={obstacleMap}
+                edgeObstacleMap={edgeObstacleMap}
+                onSelectTarget={onSelectObstacleTarget}
+                onSelectPreset={onSelectPreset}
+                onSelectEdgePreset={onSelectEdgePreset}
+                onSelectEdgeDirection={onSelectEdgeDirection}
               />
             )}
 
@@ -174,6 +224,7 @@ export const ExpandedPreviewDialog = ({
               gridWidth={previewGridWidth}
               gridHeight={previewGridHeight}
               obstacleMap={obstacleMap}
+              edgeObstacleMap={edgeObstacleMap}
               hoveredCell={hoveredCell}
             />
           </div>

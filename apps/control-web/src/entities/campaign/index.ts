@@ -1,9 +1,24 @@
-export type { BlockedCell, Campaign, CampaignMapCalibration, CampaignMapConfig, CampaignObstacle, ObstaclePresetId, ObstaclePreset, ObstacleCover } from "./campaign.types";
+export type {
+  BlockedCell,
+  Campaign,
+  CampaignEdgeDirection,
+  CampaignEdgeObstacle,
+  CampaignMapCalibration,
+  CampaignMapConfig,
+  CampaignObstacle,
+  EdgeObstaclePreset,
+  EdgeObstaclePresetId,
+  ObstacleCover,
+  ObstaclePreset,
+  ObstaclePresetId,
+} from "./campaign.types";
 export {
+  CAMPAIGN_EDGE_OBSTACLE_PRESETS,
   CAMPAIGN_OBSTACLE_PRESETS,
   CampaignSystemType,
   campaignSystemLabels,
   defaultCampaignSystemType,
+  edgeObstacleToPresetId,
   enabledCampaignSystemOptions,
   enabledCampaignSystemTypes,
   getCampaignSystemLabel,

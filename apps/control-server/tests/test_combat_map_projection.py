@@ -327,6 +327,29 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
             "gridWidth": 32,
             "gridHeight": 24,
             "calibration": {"x": 0.1, "y": 0.2, "width": 0.7, "height": 0.6},
+            "obstacles": [
+                {
+                    "x": 2,
+                    "y": 3,
+                    "blocksMovement": True,
+                    "blocksEffect": False,
+                    "blocksVision": False,
+                    "cover": "threeQuarters",
+                    "clipsDiagonalMovement": True,
+                    "movementCostMultiplier": 1,
+                }
+            ],
+            "edgeObstacles": [
+                {
+                    "x": 4,
+                    "y": 5,
+                    "direction": "E",
+                    "blocksMovement": True,
+                    "blocksVision": False,
+                    "blocksEffect": False,
+                    "cover": "none",
+                }
+            ],
         }
 
         service.project_combat_start(db, "session-123", state)
@@ -341,6 +364,29 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
                 "gridCalibration": {"x": 0.1, "y": 0.2, "width": 0.7, "height": 0.6},
                 "imageUrl": "/sessions/session-123/battle-map/background",
                 "sourceImageUrl": "/api/assets/internal/campaigns/campaign-1/maps/asset1234567890abcdef1234567890ab",
+                "obstacles": [
+                    {
+                        "x": 2,
+                        "y": 3,
+                        "blocksMovement": True,
+                        "blocksEffect": False,
+                        "blocksVision": False,
+                        "cover": "threeQuarters",
+                        "clipsDiagonalMovement": True,
+                        "movementCostMultiplier": 1,
+                    }
+                ],
+                "edgeObstacles": [
+                    {
+                        "x": 4,
+                        "y": 5,
+                        "direction": "E",
+                        "blocksMovement": True,
+                        "blocksVision": False,
+                        "blocksEffect": False,
+                        "cover": "none",
+                    }
+                ],
             },
         )
 

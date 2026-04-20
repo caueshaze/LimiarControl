@@ -15,8 +15,11 @@ from app.schemas.campaign import (
     CampaignMapConfigCreate,
     CampaignMapConfigUpdate,
     BlockedCell,
+    CampaignEdgeObstacle,
     decode_blocked_cells,
+    decode_edge_obstacles,
     encode_blocked_cells,
+    encode_edge_obstacles,
 )
 
 
@@ -209,6 +212,41 @@ class CampaignMapConfigTests(unittest.TestCase):
     def test_decode_invalid_json_returns_empty_list(self):
         self.assertEqual(decode_blocked_cells("not-json"), [])
 
+    def test_encode_decode_edge_obstacles_roundtrip(self):
+        edge_obstacles = [
+            CampaignEdgeObstacle(
+                x=3,
+                y=5,
+                direction="E",
+                blocksMovement=True,
+                blocksVision=False,
+                blocksEffect=False,
+                cover="none",
+            ),
+            CampaignEdgeObstacle(
+                x=8,
+                y=2,
+                direction="N",
+                blocksMovement=False,
+                blocksVision=True,
+                blocksEffect=False,
+                cover="half",
+            ),
+        ]
+        encoded = encode_edge_obstacles(edge_obstacles)
+        self.assertIsNotNone(encoded)
+        decoded = decode_edge_obstacles(encoded)
+        self.assertEqual(len(decoded), 2)
+        self.assertEqual(decoded[0].direction, "E")
+        self.assertEqual(decoded[1].cover, "half")
+
+    def test_encode_empty_edge_obstacles_returns_none(self):
+        self.assertIsNone(encode_edge_obstacles([]))
+        self.assertIsNone(encode_edge_obstacles(None))
+
+    def test_decode_invalid_edge_obstacles_returns_empty_list(self):
+        self.assertEqual(decode_edge_obstacles("not-json"), [])
+
     @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
     @patch("app.api.routes.campaigns.assert_managed_asset_exists")
     @patch("app.api.routes.campaigns.require_gm")
@@ -256,6 +294,60 @@ class CampaignMapConfigTests(unittest.TestCase):
         coords = {(c.x, c.y) for c in decoded}
         self.assertIn((5, 3), coords)
         self.assertIn((6, 3), coords)
+
+    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
+    @patch("app.api.routes.campaigns.require_gm")
+    def test_create_campaign_map_config_persists_edge_obstacles(
+        self,
+        mock_require_gm,
+        mock_assert_managed_asset_exists,
+        _mock_delete_managed_url,
+    ):
+        campaign = SimpleNamespace(id="campaign-1")
+        mock_require_gm.return_value = (campaign, SimpleNamespace())
+        session = MagicMock()
+        created_at = datetime.now(UTC)
+
+        def _refresh(entry):
+            entry.created_at = created_at
+            entry.updated_at = None
+
+        session.refresh.side_effect = _refresh
+        user = SimpleNamespace(id="gm-1")
+        captured_entry: list = []
+
+        session.add.side_effect = captured_entry.append
+
+        create_campaign_map_config(
+            "campaign-1",
+            CampaignMapConfigCreate(
+                imageUrl="/api/assets/campaigns/campaign-1/maps/1234567890abcdef1234567890abcdef",
+                gridWidth=20,
+                gridHeight=14,
+                edgeObstacles=[
+                    {
+                        "x": 5,
+                        "y": 3,
+                        "direction": "E",
+                        "blocksMovement": True,
+                        "blocksVision": False,
+                        "blocksEffect": False,
+                        "cover": "none",
+                    }
+                ],
+            ),
+            user=user,
+            session=session,
+        )
+
+        self.assertTrue(captured_entry)
+        entry = captured_entry[0]
+        self.assertIsNotNone(entry.edge_obstacles_json)
+        decoded = decode_edge_obstacles(entry.edge_obstacles_json)
+        self.assertEqual(len(decoded), 1)
+        self.assertEqual(decoded[0].direction, "E")
+        mock_assert_managed_asset_exists.assert_called_once()
 
     @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
     @patch("app.api.routes.campaigns.assert_managed_asset_exists")
