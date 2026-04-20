@@ -119,7 +119,7 @@ export const MapEditorForm = ({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
+        <label className="block w-full space-y-2 md:col-span-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             {t("campaignHome.mapName")}
           </span>
@@ -131,7 +131,7 @@ export const MapEditorForm = ({
           />
         </label>
 
-        <label className="space-y-2">
+        <label className="block w-full space-y-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             {t("campaignHome.mapGridWidth")}
           </span>
@@ -145,7 +145,7 @@ export const MapEditorForm = ({
           />
         </label>
 
-        <label className="space-y-2">
+        <label className="block w-full space-y-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             {t("campaignHome.mapGridHeight")}
           </span>
@@ -173,14 +173,14 @@ export const MapEditorForm = ({
           <button
             type="button"
             onClick={onResetCalibration}
-            className="rounded-full border border-slate-700 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500"
+            className="self-start rounded-full border border-slate-700 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500"
           >
             {t("campaignHome.mapResetBounds")}
           </button>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2">
+          <label className="block w-full space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {t("campaignHome.mapCalibrationX")}
             </span>
@@ -194,7 +194,7 @@ export const MapEditorForm = ({
               className={calibrationFieldClassName}
             />
           </label>
-          <label className="space-y-2">
+          <label className="block w-full space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {t("campaignHome.mapCalibrationY")}
             </span>
@@ -208,7 +208,7 @@ export const MapEditorForm = ({
               className={calibrationFieldClassName}
             />
           </label>
-          <label className="space-y-2">
+          <label className="block w-full space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {t("campaignHome.mapCalibrationWidth")}
             </span>
@@ -222,7 +222,7 @@ export const MapEditorForm = ({
               className={calibrationFieldClassName}
             />
           </label>
-          <label className="space-y-2">
+          <label className="block w-full space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {t("campaignHome.mapCalibrationHeight")}
             </span>
