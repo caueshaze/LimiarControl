@@ -4,7 +4,7 @@ import { coordinateKey } from "./coordinates";
 export interface GridState {
   map: BattleMap;
   obstacles: Obstacle[];
-  edgeObstacles: EdgeObstacle[];
+  edgeObstacles?: EdgeObstacle[];
   tokens: Token[];
 }
 
@@ -66,7 +66,7 @@ export function getEdgeBetweenCells(
   fromCell: Coordinate,
   toCell: Coordinate
 ): EdgeObstacle | undefined {
-  return findEdgeBetween(gridState.edgeObstacles, fromCell, toCell);
+  return findEdgeBetween(gridState.edgeObstacles ?? [], fromCell, toCell);
 }
 
 /**

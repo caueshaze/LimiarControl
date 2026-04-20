@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { routes } from "../../app/routes/routes";
+import { buildCampaignDashboardPath, routes } from "../../app/routes/routes";
 import { partiesRepo, type PartyDetail, type PartyActiveSession } from "../../shared/api/partiesRepo";
 import { usersRepo, type UserSearchResult } from "../../shared/api/usersRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
@@ -263,6 +263,7 @@ export const PartyDetailsPage = () => {
                 setLobbyStatus(null);
             }
             await loadData();
+            navigate(buildCampaignDashboardPath(party.campaignId, partyId));
         } catch (err: any) {
             const detail = (err as { data?: { detail?: { code?: string; players?: { userId: string; displayName: string }[] } } })?.data?.detail;
             if (detail?.code === "missing_character_sheets") {

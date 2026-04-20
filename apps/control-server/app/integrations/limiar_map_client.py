@@ -1,124 +1,29 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
-
-@dataclass(frozen=True)
-class LimiarMapTokenState:
-    token_id: str
-    controller_type: str
-    controller_id: str
-    movement_speed_cells: int
-    combatant_id: str | None
-    movement_budget: int = 0
-    kind: str | None = None
-    label: str | None = None
-    position_x: int | None = None
-    position_y: int | None = None
-
-
-@dataclass(frozen=True)
-class LimiarMapObstacleCell:
-    x: int
-    y: int
-
-
-@dataclass(frozen=True)
-class LimiarMapObstacleState:
-    cells: tuple[LimiarMapObstacleCell, ...]
-    blocks_movement: bool
-    blocks_vision: bool
-    blocks_effect: bool
-    cover: str | None = None
-
-
-@dataclass(frozen=True)
-class LimiarMapStateResponse:
-    session_id: str
-    version: int
-    tokens: tuple[LimiarMapTokenState, ...]
-    grid_width: int | None = None
-    grid_height: int | None = None
-    obstacles: tuple[LimiarMapObstacleState, ...] = ()
-    active_combatant_id: str | None = None
-    round_number: int | None = None
-    turn_index: int | None = None
-    initiative_order: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class LimiarMapTargetingResponse:
-    is_valid: bool
-    reason: str | None
-    session_id: str
-    action_id: str
-    version: int
-    source_token_id: str | None
-    target_token_id: str | None
-    distance_cells: int | None = None
-    cover: str | None = None
-
-
-@dataclass(frozen=True)
-class LimiarMapAreaCell:
-    x: int
-    y: int
-
-
-@dataclass(frozen=True)
-class LimiarMapAreaTargetingResponse:
-    is_valid: bool
-    reason: str | None
-    session_id: str
-    action_id: str
-    version: int
-    shape: str
-    source_token_id: str | None
-    affected_cells: tuple[LimiarMapAreaCell, ...]
-    affected_token_ids: tuple[str, ...]
-    affected_combatant_ids: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class LimiarMapMovementCell:
-    x: int
-    y: int
-
-
-@dataclass(frozen=True)
-class LimiarMapMovementResponse:
-    is_valid: bool
-    reason: str | None
-    session_id: str
-    action_id: str
-    version: int
-    token_id: str | None
-    combatant_id: str | None
-    source_cell: LimiarMapMovementCell | None
-    destination_cell: LimiarMapMovementCell
-    path: tuple[LimiarMapMovementCell, ...]
-    path_cost_units: int
-    movement_budget: int
-    movement_speed_cells: int
-    remaining_budget: int
-
-
-class LimiarMapClientError(RuntimeError):
-    def __init__(
-        self,
-        message: str,
-        *,
-        kind: str,
-        status_code: int | None = None,
-        reason: str | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.kind = kind
-        self.status_code = status_code
-        self.reason = reason
+from .limiar_map_client_types import (
+    LimiarMapAreaTargetingResponse,
+    LimiarMapClientError,
+    LimiarMapMovementResponse,
+    LimiarMapStateResponse,
+    LimiarMapTargetingResponse,
+)
+from .limiar_map_client_types import (  # noqa: F401
+    LimiarMapAreaCell,
+    LimiarMapMovementCell,
+    LimiarMapObstacleCell,
+    LimiarMapObstacleState,
+    LimiarMapTokenState,
+)
+from .limiar_map_client_parsers import (
+    parse_area_targeting_response,
+    parse_movement_response,
+    parse_targeting_response,
+)
+from .limiar_map_client_state_parser import parse_state_response
 
 
 class LimiarMapClient:
@@ -128,7 +33,7 @@ class LimiarMapClient:
 
     def get_state(self, session_id: str) -> LimiarMapStateResponse:
         data = self._request_json("GET", f"/integration/sessions/{session_id}/state")
-        return self._parse_state_response(data)
+        return parse_state_response(data)
 
     def get_session_state(self, session_id: str) -> LimiarMapStateResponse:
         return self.get_state(session_id)
@@ -141,7 +46,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/tokens",
             json_payload=payload,
         )
-        return self._parse_state_response(data)
+        return parse_state_response(data)
 
     def start_combat(
         self, session_id: str, payload: dict[str, Any]
@@ -151,7 +56,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/combat/start",
             json_payload=payload,
         )
-        return self._parse_state_response(data)
+        return parse_state_response(data)
 
     def advance_combat(
         self, session_id: str, payload: dict[str, Any]
@@ -161,7 +66,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/combat/advance",
             json_payload=payload,
         )
-        return self._parse_state_response(data)
+        return parse_state_response(data)
 
     def end_combat(
         self, session_id: str, payload: dict[str, Any]
@@ -171,7 +76,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/combat/end",
             json_payload=payload,
         )
-        return self._parse_state_response(data)
+        return parse_state_response(data)
 
     def validate_single_target(
         self,
@@ -198,7 +103,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/targeting",
             json_payload=payload,
         )
-        return self._parse_targeting_response(data)
+        return parse_targeting_response(data)
 
     def resolve_area_targeting(
         self,
@@ -231,7 +136,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/targeting/area",
             json_payload=payload,
         )
-        return self._parse_area_targeting_response(data)
+        return parse_area_targeting_response(data)
 
     def preview_area_targeting(
         self,
@@ -264,7 +169,7 @@ class LimiarMapClient:
             f"/integration/sessions/{session_id}/targeting/area/preview",
             json_payload=payload,
         )
-        return self._parse_area_targeting_response(data)
+        return parse_area_targeting_response(data)
 
     def preview_movement(
         self,
@@ -283,7 +188,7 @@ class LimiarMapClient:
                 "destinationCell": destination_cell,
             },
         )
-        return self._parse_movement_response(data)
+        return parse_movement_response(data)
 
     def move_combatant(
         self,
@@ -302,7 +207,7 @@ class LimiarMapClient:
                 "destinationCell": destination_cell,
             },
         )
-        return self._parse_movement_response(data)
+        return parse_movement_response(data)
 
     def _request_json(
         self,
@@ -358,535 +263,3 @@ class LimiarMapClient:
                 kind="payload",
             )
         return data
-
-    def _parse_targeting_response(
-        self, payload: dict[str, Any]
-    ) -> LimiarMapTargetingResponse:
-        is_valid = payload.get("isValid")
-        reason = payload.get("reason")
-        session_id = payload.get("sessionId")
-        action_id = payload.get("actionId")
-        version = payload.get("version")
-        source_token_id = payload.get("sourceTokenId")
-        target_token_id = payload.get("targetTokenId")
-        distance_cells = payload.get("distanceCells")
-
-        if not isinstance(is_valid, bool):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response is missing isValid",
-                kind="payload",
-            )
-        if reason is not None and not isinstance(reason, str):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response has an invalid reason",
-                kind="payload",
-            )
-        if not isinstance(session_id, str) or not session_id.strip():
-            raise LimiarMapClientError(
-                "LimiarMap targeting response is missing sessionId",
-                kind="payload",
-            )
-        if not isinstance(action_id, str) or not action_id.strip():
-            raise LimiarMapClientError(
-                "LimiarMap targeting response is missing actionId",
-                kind="payload",
-            )
-        if not isinstance(version, int):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response is missing version",
-                kind="payload",
-            )
-        if source_token_id is not None and not isinstance(source_token_id, str):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response has an invalid sourceTokenId",
-                kind="payload",
-            )
-        if target_token_id is not None and not isinstance(target_token_id, str):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response has an invalid targetTokenId",
-                kind="payload",
-            )
-        if distance_cells is not None and not isinstance(distance_cells, int):
-            raise LimiarMapClientError(
-                "LimiarMap targeting response has an invalid distanceCells",
-                kind="payload",
-            )
-
-        return LimiarMapTargetingResponse(
-            is_valid=is_valid,
-            reason=reason,
-            session_id=session_id,
-            action_id=action_id,
-            version=version,
-            source_token_id=source_token_id,
-            target_token_id=target_token_id,
-            distance_cells=distance_cells,
-            cover=payload.get("cover") if isinstance(payload.get("cover"), str) else None,
-        )
-
-    def _parse_area_targeting_response(
-        self, payload: dict[str, Any]
-    ) -> LimiarMapAreaTargetingResponse:
-        is_valid = payload.get("isValid")
-        reason = payload.get("reason")
-        session_id = payload.get("sessionId")
-        action_id = payload.get("actionId")
-        version = payload.get("version")
-        shape = payload.get("shape")
-        source_token_id = payload.get("sourceTokenId")
-        affected_cells_payload = payload.get("affectedCells")
-        affected_token_ids_payload = payload.get("affectedTokenIds")
-        affected_combatant_ids_payload = payload.get("affectedCombatantIds")
-
-        if not isinstance(is_valid, bool):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing isValid",
-                kind="payload",
-            )
-        if reason is not None and not isinstance(reason, str):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response has an invalid reason",
-                kind="payload",
-            )
-        if not isinstance(session_id, str) or not session_id.strip():
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing sessionId",
-                kind="payload",
-            )
-        if not isinstance(action_id, str) or not action_id.strip():
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing actionId",
-                kind="payload",
-            )
-        if not isinstance(version, int):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing version",
-                kind="payload",
-            )
-        if not isinstance(shape, str) or not shape.strip():
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing shape",
-                kind="payload",
-            )
-        if source_token_id is not None and not isinstance(source_token_id, str):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response has an invalid sourceTokenId",
-                kind="payload",
-            )
-        if not isinstance(affected_cells_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing affectedCells",
-                kind="payload",
-            )
-        if not isinstance(affected_token_ids_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing affectedTokenIds",
-                kind="payload",
-            )
-        if not isinstance(affected_combatant_ids_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap area targeting response is missing affectedCombatantIds",
-                kind="payload",
-            )
-
-        affected_cells: list[LimiarMapAreaCell] = []
-        for raw_cell in affected_cells_payload:
-            if not isinstance(raw_cell, dict):
-                raise LimiarMapClientError(
-                    "LimiarMap area targeting response has an invalid affected cell",
-                    kind="payload",
-                )
-            x = raw_cell.get("x")
-            y = raw_cell.get("y")
-            if not isinstance(x, int) or not isinstance(y, int):
-                raise LimiarMapClientError(
-                    "LimiarMap area targeting response has an invalid affected cell coordinate",
-                    kind="payload",
-                )
-            affected_cells.append(LimiarMapAreaCell(x=x, y=y))
-
-        affected_token_ids: list[str] = []
-        for token_id in affected_token_ids_payload:
-            if not isinstance(token_id, str):
-                raise LimiarMapClientError(
-                    "LimiarMap area targeting response has an invalid affectedTokenId",
-                    kind="payload",
-                )
-            affected_token_ids.append(token_id)
-
-        affected_combatant_ids: list[str] = []
-        for combatant_id in affected_combatant_ids_payload:
-            if not isinstance(combatant_id, str):
-                raise LimiarMapClientError(
-                    "LimiarMap area targeting response has an invalid affectedCombatantId",
-                    kind="payload",
-                )
-            affected_combatant_ids.append(combatant_id)
-
-        return LimiarMapAreaTargetingResponse(
-            is_valid=is_valid,
-            reason=reason,
-            session_id=session_id,
-            action_id=action_id,
-            version=version,
-            shape=shape,
-            source_token_id=source_token_id,
-            affected_cells=tuple(affected_cells),
-            affected_token_ids=tuple(affected_token_ids),
-            affected_combatant_ids=tuple(affected_combatant_ids),
-        )
-
-    def _parse_movement_response(self, payload: dict[str, Any]) -> LimiarMapMovementResponse:
-        source_cell_payload = payload.get("sourceCell")
-        destination_cell_payload = payload.get("destinationCell")
-        path_payload = payload.get("path")
-
-        if not isinstance(payload.get("isValid"), bool):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing isValid",
-                kind="payload",
-            )
-        if payload.get("reason") is not None and not isinstance(payload.get("reason"), str):
-            raise LimiarMapClientError(
-                "LimiarMap movement response has an invalid reason",
-                kind="payload",
-            )
-        if not isinstance(payload.get("sessionId"), str) or not payload.get("sessionId"):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing sessionId",
-                kind="payload",
-            )
-        if not isinstance(payload.get("actionId"), str) or not payload.get("actionId"):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing actionId",
-                kind="payload",
-            )
-        if not isinstance(payload.get("version"), int):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing version",
-                kind="payload",
-            )
-        if not isinstance(destination_cell_payload, dict):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing destinationCell",
-                kind="payload",
-            )
-        if not isinstance(path_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap movement response is missing path",
-                kind="payload",
-            )
-
-        def parse_cell(raw_cell: Any, field_name: str) -> LimiarMapMovementCell:
-            if not isinstance(raw_cell, dict):
-                raise LimiarMapClientError(
-                    f"LimiarMap movement response has an invalid {field_name}",
-                    kind="payload",
-                )
-            x = raw_cell.get("x")
-            y = raw_cell.get("y")
-            if not isinstance(x, int) or not isinstance(y, int):
-                raise LimiarMapClientError(
-                    f"LimiarMap movement response has an invalid {field_name}",
-                    kind="payload",
-                )
-            return LimiarMapMovementCell(x=x, y=y)
-
-        return LimiarMapMovementResponse(
-            is_valid=bool(payload.get("isValid")),
-            reason=payload.get("reason") if isinstance(payload.get("reason"), str) else None,
-            session_id=str(payload["sessionId"]),
-            action_id=str(payload["actionId"]),
-            version=int(payload["version"]),
-            token_id=str(payload["tokenId"]) if payload.get("tokenId") is not None else None,
-            combatant_id=(
-                str(payload["combatantId"]) if payload.get("combatantId") is not None else None
-            ),
-            source_cell=(
-                parse_cell(source_cell_payload, "sourceCell")
-                if source_cell_payload is not None
-                else None
-            ),
-            destination_cell=parse_cell(destination_cell_payload, "destinationCell"),
-            path=tuple(parse_cell(raw_cell, "path cell") for raw_cell in path_payload),
-            path_cost_units=int(payload.get("pathCostUnits") or 0),
-            movement_budget=int(payload.get("movementBudget") or 0),
-            movement_speed_cells=max(1, int(payload.get("movementSpeedCells") or 1)),
-            remaining_budget=int(payload.get("remainingBudget") or 0),
-        )
-
-    def _parse_state_response(self, payload: dict[str, Any]) -> LimiarMapStateResponse:
-        session_id = payload.get("sessionId")
-        version = payload.get("version")
-        tokens_payload = payload.get("tokens")
-        combat_state_payload = payload.get("combatState")
-        battle_map_payload = payload.get("battleMap")
-        obstacles_payload = payload.get("obstacles")
-
-        if not isinstance(session_id, str) or not session_id.strip():
-            raise LimiarMapClientError(
-                "LimiarMap state response is missing sessionId",
-                kind="payload",
-            )
-        if not isinstance(version, int):
-            raise LimiarMapClientError(
-                "LimiarMap state response is missing version",
-                kind="payload",
-            )
-        if not isinstance(tokens_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap state response is missing tokens",
-                kind="payload",
-            )
-        if battle_map_payload is not None and not isinstance(battle_map_payload, dict):
-            raise LimiarMapClientError(
-                "LimiarMap state response has an invalid battleMap",
-                kind="payload",
-            )
-        if obstacles_payload is not None and not isinstance(obstacles_payload, list):
-            raise LimiarMapClientError(
-                "LimiarMap state response has invalid obstacles",
-                kind="payload",
-            )
-        active_combatant_id: str | None = None
-        round_number: int | None = None
-        turn_index: int | None = None
-        initiative_order: tuple[str, ...] = ()
-        if combat_state_payload is not None:
-            if not isinstance(combat_state_payload, dict):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid combatState",
-                    kind="payload",
-                )
-            raw_active_combatant_id = combat_state_payload.get("activeCombatantId")
-            raw_round_number = combat_state_payload.get("roundNumber")
-            raw_turn_index = combat_state_payload.get("turnIndex")
-            raw_initiative_order = combat_state_payload.get("initiativeOrder")
-            if raw_active_combatant_id is not None and not isinstance(
-                raw_active_combatant_id, str
-            ):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid activeCombatantId",
-                    kind="payload",
-                )
-            if raw_round_number is not None and not isinstance(raw_round_number, int):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid roundNumber",
-                    kind="payload",
-                )
-            if raw_turn_index is not None and not isinstance(raw_turn_index, int):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid turnIndex",
-                    kind="payload",
-                )
-            if raw_initiative_order is not None and not isinstance(raw_initiative_order, list):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid initiativeOrder",
-                    kind="payload",
-                )
-            if isinstance(raw_initiative_order, list):
-                normalized_initiative_order: list[str] = []
-                for combatant_id in raw_initiative_order:
-                    if not isinstance(combatant_id, str) or not combatant_id.strip():
-                        raise LimiarMapClientError(
-                            "LimiarMap state response has an invalid initiativeOrder entry",
-                            kind="payload",
-                        )
-                    normalized_initiative_order.append(combatant_id)
-                initiative_order = tuple(normalized_initiative_order)
-            active_combatant_id = raw_active_combatant_id
-            round_number = raw_round_number
-            turn_index = raw_turn_index
-
-        tokens: list[LimiarMapTokenState] = []
-        for token_payload in tokens_payload:
-            if not isinstance(token_payload, dict):
-                raise LimiarMapClientError(
-                    "LimiarMap state response has an invalid token entry",
-                    kind="payload",
-                )
-
-            token_id = token_payload.get("id")
-            controller_type = token_payload.get("controllerType")
-            controller_id = token_payload.get("controllerId")
-            token_kind = token_payload.get("kind")
-            movement_speed_cells = token_payload.get("movementSpeedCells")
-            movement_budget = token_payload.get("movementBudget")
-            combatant_id = token_payload.get("combatantId")
-            position_payload = token_payload.get("position")
-            label = token_payload.get("label")
-
-            if not isinstance(token_id, str) or not token_id.strip():
-                raise LimiarMapClientError(
-                    "LimiarMap token entry is missing id",
-                    kind="payload",
-                )
-            if not isinstance(controller_type, str) or not controller_type.strip():
-                raise LimiarMapClientError(
-                    "LimiarMap token entry is missing controllerType",
-                    kind="payload",
-                )
-            if token_kind is not None and not isinstance(token_kind, str):
-                raise LimiarMapClientError(
-                    "LimiarMap token entry has an invalid kind",
-                    kind="payload",
-                )
-            if not isinstance(controller_id, str) or not controller_id.strip():
-                raise LimiarMapClientError(
-                    "LimiarMap token entry is missing controllerId",
-                    kind="payload",
-                )
-            if not isinstance(movement_speed_cells, int):
-                raise LimiarMapClientError(
-                    "LimiarMap token entry is missing movementSpeedCells",
-                    kind="payload",
-                )
-            if not isinstance(movement_budget, int):
-                raise LimiarMapClientError(
-                    "LimiarMap token entry is missing movementBudget",
-                    kind="payload",
-                )
-            if combatant_id is not None and not isinstance(combatant_id, str):
-                raise LimiarMapClientError(
-                    "LimiarMap token entry has an invalid combatantId",
-                    kind="payload",
-                )
-            if label is not None and not isinstance(label, str):
-                raise LimiarMapClientError(
-                    "LimiarMap token entry has an invalid label",
-                    kind="payload",
-                )
-            position_x: int | None = None
-            position_y: int | None = None
-            if position_payload is not None:
-                if not isinstance(position_payload, dict):
-                    raise LimiarMapClientError(
-                        "LimiarMap token entry has an invalid position",
-                        kind="payload",
-                    )
-                raw_x = position_payload.get("x")
-                raw_y = position_payload.get("y")
-                if not isinstance(raw_x, int) or not isinstance(raw_y, int):
-                    raise LimiarMapClientError(
-                        "LimiarMap token entry has an invalid position",
-                        kind="payload",
-                    )
-                position_x = raw_x
-                position_y = raw_y
-
-            tokens.append(
-                LimiarMapTokenState(
-                    token_id=token_id,
-                    kind=token_kind,
-                    controller_type=controller_type,
-                    controller_id=controller_id,
-                    movement_speed_cells=movement_speed_cells,
-                    combatant_id=combatant_id,
-                    movement_budget=movement_budget,
-                    label=label,
-                    position_x=position_x,
-                    position_y=position_y,
-                )
-            )
-
-        grid_width: int | None = None
-        grid_height: int | None = None
-        if isinstance(battle_map_payload, dict):
-            raw_grid_width = battle_map_payload.get("gridWidth")
-            raw_grid_height = battle_map_payload.get("gridHeight")
-            if raw_grid_width is not None and not isinstance(raw_grid_width, int):
-                raise LimiarMapClientError(
-                    "LimiarMap battleMap has an invalid gridWidth",
-                    kind="payload",
-                )
-            if raw_grid_height is not None and not isinstance(raw_grid_height, int):
-                raise LimiarMapClientError(
-                    "LimiarMap battleMap has an invalid gridHeight",
-                    kind="payload",
-                )
-            grid_width = raw_grid_width
-            grid_height = raw_grid_height
-
-        obstacles: list[LimiarMapObstacleState] = []
-        for obstacle_payload in obstacles_payload or []:
-            if not isinstance(obstacle_payload, dict):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle entry is invalid",
-                    kind="payload",
-                )
-            raw_cells = obstacle_payload.get("cells")
-            if not isinstance(raw_cells, list):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle is missing cells",
-                    kind="payload",
-                )
-
-            cells: list[LimiarMapObstacleCell] = []
-            for raw_cell in raw_cells:
-                if not isinstance(raw_cell, dict):
-                    raise LimiarMapClientError(
-                        "LimiarMap obstacle cell is invalid",
-                        kind="payload",
-                    )
-                x = raw_cell.get("x")
-                y = raw_cell.get("y")
-                if not isinstance(x, int) or not isinstance(y, int):
-                    raise LimiarMapClientError(
-                        "LimiarMap obstacle cell has invalid coordinates",
-                        kind="payload",
-                    )
-                cells.append(LimiarMapObstacleCell(x=x, y=y))
-
-            blocks_movement = obstacle_payload.get("blocksMovement", False)
-            blocks_vision = obstacle_payload.get("blocksVision", False)
-            # Authoritative field is `blocksEffect` (Phase 2 naming).
-            # The `blocksTargeting` / `blocksSpell` fallback is retained only for
-            # payloads persisted before the rename; new map-server writes always
-            # emit `blocksEffect` exclusively.
-            blocks_effect = obstacle_payload.get(
-                "blocksEffect",
-                obstacle_payload.get("blocksTargeting", obstacle_payload.get("blocksSpell", False)),
-            )
-            cover = obstacle_payload.get("cover")
-            if not isinstance(blocks_movement, bool):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle has an invalid blocksMovement",
-                    kind="payload",
-                )
-            if not isinstance(blocks_vision, bool):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle has an invalid blocksVision",
-                    kind="payload",
-                )
-            if not isinstance(blocks_effect, bool):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle has an invalid blocksEffect",
-                    kind="payload",
-                )
-            if cover is not None and not isinstance(cover, str):
-                raise LimiarMapClientError(
-                    "LimiarMap obstacle has an invalid cover",
-                    kind="payload",
-                )
-            obstacles.append(
-                LimiarMapObstacleState(
-                    cells=tuple(cells),
-                    blocks_movement=blocks_movement,
-                    blocks_vision=blocks_vision,
-                    blocks_effect=blocks_effect,
-                    cover=cover,
-                )
-            )
-
-        return LimiarMapStateResponse(
-            session_id=session_id,
-            version=version,
-            tokens=tuple(tokens),
-            grid_width=grid_width,
-            grid_height=grid_height,
-            obstacles=tuple(obstacles),
-            active_combatant_id=active_combatant_id,
-            round_number=round_number,
-            turn_index=turn_index,
-            initiative_order=initiative_order,
-        )

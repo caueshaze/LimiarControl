@@ -35,6 +35,7 @@ const token: Token = {
   // 6 cells = 9 m = ~30 ft (standard D&D character); movementBudget = 6 * 5 = 30 path-cost units
   movementSpeedCells: 6,
   movementBudget: 30,
+  conditions: [],
   combatantId: "cmb_1"
 };
 

@@ -3,8 +3,6 @@ import type { BaseSpell } from "../../../entities/base-spell";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 import {
-  localizeDamageType,
-  localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
   localizeSpellClass,
 } from "../../../shared/i18n/domainLabels";
@@ -13,18 +11,16 @@ import {
   SpellCatalogLegacyWarning,
   SpellCatalogToggleChip,
 } from "./SpellCatalogEditorControls";
+import { SpellUpcastFields } from "./SpellUpcastFields";
+import { SpellCatalogResolutionFields } from "./SpellCatalogResolutionFields";
+import { SpellCatalogTargetingRequirements } from "./SpellCatalogTargetingRequirements";
 import {
     SPELL_CLASS_OPTIONS,
     SPELL_COMPONENT_OPTIONS,
     SPELL_CASTING_TIME_TYPE_OPTIONS,
-    SPELL_DAMAGE_TYPE_OPTIONS,
     SPELL_LEVEL_OPTIONS,
-    SPELL_RESOLUTION_TYPE_OPTIONS,
-    SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS,
-    SPELL_SAVING_THROW_OPTIONS,
     SPELL_SCHOOL_OPTIONS,
     SPELL_TARGET_MODE_OPTIONS,
-    SPELL_UPCAST_MODE_OPTIONS,
     type SpellCatalogEditorState,
     toggleSpellListValue,
 } from "../utils/spellCatalogForm";
@@ -274,349 +270,39 @@ export const SpellCatalogFormFields = ({
         </SpellCatalogField>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SpellCatalogField label={t("catalog.spells.form.resolutionType")}>
-          <select
-            value={state.resolutionType}
-            onChange={(event) =>
-              setState((current) => ({
-                ...current,
-                resolutionType: event.target.value as SpellCatalogEditorState["resolutionType"],
-              }))
-            }
-            className={fieldClassName}
-          >
-            <option value="">{selectPlaceholder}</option>
-            {SPELL_RESOLUTION_TYPE_OPTIONS.map((resolutionType) => (
-              <option key={resolutionType} value={resolutionType}>
-                {localizeSpellAdminValue(resolutionType, locale)}
-              </option>
-            ))}
-          </select>
-        </SpellCatalogField>
-        {showSavingThrowFields ? (
-          <SpellCatalogField label={t("catalog.spells.form.savingThrow")}>
-            <select
-              value={state.savingThrow}
-              onChange={(event) =>
-                setState((current) => ({ ...current, savingThrow: event.target.value }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{selectPlaceholder}</option>
-              {SPELL_SAVING_THROW_OPTIONS.map((savingThrow) => (
-                <option key={savingThrow} value={savingThrow}>
-                  {savingThrow}
-                </option>
-              ))}
-            </select>
-          </SpellCatalogField>
-        ) : null}
-        {showSaveSuccessOutcome ? (
-          <SpellCatalogField label={t("catalog.spells.form.saveSuccessOutcome")}>
-            <select
-              value={state.saveSuccessOutcome}
-              onChange={(event) =>
-                setState((current) => ({ ...current, saveSuccessOutcome: event.target.value }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{selectPlaceholder}</option>
-              {SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS.map((outcome) => (
-                <option key={outcome} value={outcome}>
-                  {localizeSaveSuccessOutcome(outcome, locale)}
-                </option>
-              ))}
-            </select>
-          </SpellCatalogField>
-        ) : null}
-      </div>
+      <SpellCatalogResolutionFields
+        state={state}
+        setState={setState}
+        t={t}
+        locale={locale}
+        selectPlaceholder={selectPlaceholder}
+        showSavingThrowFields={showSavingThrowFields}
+        showSaveSuccessOutcome={showSaveSuccessOutcome}
+        showDamageFields={showDamageFields}
+        showHealFields={showHealFields}
+      />
 
-      {showDamageFields ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SpellCatalogField label={t("catalog.spells.form.damageDice")}>
-            <input
-              value={state.damageDice}
-              onChange={(event) =>
-                setState((current) => ({ ...current, damageDice: event.target.value }))
-              }
-              className={fieldClassName}
-              placeholder="8d6"
-            />
-          </SpellCatalogField>
-          <SpellCatalogField label={t("catalog.spells.form.damageType")}>
-            <select
-              value={state.damageType}
-              onChange={(event) =>
-                setState((current) => ({ ...current, damageType: event.target.value }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{selectPlaceholder}</option>
-              {SPELL_DAMAGE_TYPE_OPTIONS.map((damageType) => (
-                <option key={damageType} value={damageType}>
-                  {localizeDamageType(damageType, locale)}
-                </option>
-              ))}
-            </select>
-          </SpellCatalogField>
-        </div>
-      ) : null}
+      <SpellCatalogTargetingRequirements
+        state={state}
+        setState={setState}
+        t={t}
+        booleanSelectValue={booleanSelectValue}
+        parseBooleanSelectValue={parseBooleanSelectValue}
+      />
 
-      {showHealFields ? (
-        <SpellCatalogField label={t("catalog.spells.form.healDice")}>
-          <input
-            value={state.healDice}
-            onChange={(event) =>
-              setState((current) => ({ ...current, healDice: event.target.value }))
-            }
-            className={fieldClassName}
-            placeholder="1d8"
-          />
-        </SpellCatalogField>
-      ) : null}
-
-      <div className="space-y-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-            {t("catalog.spells.form.targetingRequirements")}
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SpellCatalogField label={t("catalog.spells.form.requiresTargetSight")}>
-            <select
-              value={booleanSelectValue(state.requiresTargetSight)}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  requiresTargetSight: parseBooleanSelectValue(event.target.value),
-                }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{t("catalog.spells.form.inherit")}</option>
-              <option value="true">{t("catalog.admin.table.yes")}</option>
-              <option value="false">{t("catalog.admin.table.no")}</option>
-            </select>
-          </SpellCatalogField>
-          <SpellCatalogField label={t("catalog.spells.form.requiresTargetEffect")}>
-            <select
-              value={booleanSelectValue(state.requiresTargetEffect)}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  requiresTargetEffect: parseBooleanSelectValue(event.target.value),
-                }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{t("catalog.spells.form.inherit")}</option>
-              <option value="true">{t("catalog.admin.table.yes")}</option>
-              <option value="false">{t("catalog.admin.table.no")}</option>
-            </select>
-          </SpellCatalogField>
-          <SpellCatalogField label={t("catalog.spells.form.requiresPointSight")}>
-            <select
-              value={booleanSelectValue(state.requiresPointSight)}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  requiresPointSight: parseBooleanSelectValue(event.target.value),
-                }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{t("catalog.spells.form.inherit")}</option>
-              <option value="true">{t("catalog.admin.table.yes")}</option>
-              <option value="false">{t("catalog.admin.table.no")}</option>
-            </select>
-          </SpellCatalogField>
-          <SpellCatalogField label={t("catalog.spells.form.requiresPointEffect")}>
-            <select
-              value={booleanSelectValue(state.requiresPointEffect)}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  requiresPointEffect: parseBooleanSelectValue(event.target.value),
-                }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{t("catalog.spells.form.inherit")}</option>
-              <option value="true">{t("catalog.admin.table.yes")}</option>
-              <option value="false">{t("catalog.admin.table.no")}</option>
-            </select>
-          </SpellCatalogField>
-        </div>
-      </div>
-
-      <div className="space-y-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SpellCatalogField label={t("catalog.spells.form.upcastMode")}>
-            <select
-              value={state.upcastMode}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  upcastMode: event.target.value as SpellCatalogEditorState["upcastMode"],
-                }))
-              }
-              className={fieldClassName}
-            >
-              <option value="">{selectPlaceholder}</option>
-              {SPELL_UPCAST_MODE_OPTIONS.map((upcastMode) => (
-                <option key={upcastMode} value={upcastMode}>
-                  {localizeSpellAdminValue(upcastMode, locale)}
-                </option>
-              ))}
-            </select>
-          </SpellCatalogField>
-          {showUpcastDiceField ? (
-            <SpellCatalogField label={t("catalog.spells.form.upcastDice")}>
-              <input
-                value={state.upcastDice}
-                onChange={(event) =>
-                  setState((current) => ({ ...current, upcastDice: event.target.value }))
-                }
-                className={fieldClassName}
-                placeholder="1d6"
-              />
-            </SpellCatalogField>
-          ) : null}
-        </div>
-
-        {showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {showUpcastFlatField ? (
-              <SpellCatalogField label={t("catalog.spells.form.upcastFlat")}>
-                <input
-                  type="number"
-                  min={0}
-                  value={state.upcastFlat}
-                  onChange={(event) =>
-                    setState((current) => ({ ...current, upcastFlat: event.target.value }))
-                  }
-                  className={fieldClassName}
-                  placeholder="1"
-                />
-              </SpellCatalogField>
-            ) : null}
-            {showUpcastPerLevelField ? (
-              <SpellCatalogField label={t("catalog.spells.form.upcastPerLevel")}>
-                <input
-                  type="number"
-                  min={1}
-                  value={state.upcastPerLevel}
-                  onChange={(event) =>
-                    setState((current) => ({ ...current, upcastPerLevel: event.target.value }))
-                  }
-                  className={fieldClassName}
-                  placeholder="1"
-                />
-              </SpellCatalogField>
-            ) : null}
-            {showUpcastMaxLevelField ? (
-              <SpellCatalogField label={t("catalog.spells.form.upcastMaxLevel")}>
-                <input
-                  type="number"
-                  min={1}
-                  max={9}
-                  value={state.upcastMaxLevel}
-                  onChange={(event) =>
-                    setState((current) => ({ ...current, upcastMaxLevel: event.target.value }))
-                  }
-                  className={fieldClassName}
-                  placeholder="9"
-                />
-              </SpellCatalogField>
-            ) : null}
-          </div>
-        ) : null}
-
-        {showEffectScalingFields ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SpellCatalogField label={t("catalog.spells.form.upcastScalingKey")}>
-              <input
-                value={state.upcastScalingKey}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastScalingKey: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-                placeholder="armor_class_bonus"
-              />
-            </SpellCatalogField>
-            <SpellCatalogField label={t("catalog.spells.form.upcastScalingSummary")}>
-              <input
-                value={state.upcastScalingSummary}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastScalingSummary: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-              />
-            </SpellCatalogField>
-            <SpellCatalogField label={t("catalog.spells.form.upcastScalingEditorial")}>
-              <input
-                value={state.upcastScalingEditorial}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastScalingEditorial: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-              />
-            </SpellCatalogField>
-          </div>
-        ) : null}
-
-        {showExtraEffectFields ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SpellCatalogField label={t("catalog.spells.form.upcastUnlockKey")}>
-              <input
-                value={state.upcastUnlockKey}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastUnlockKey: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-                placeholder="additional_beam"
-              />
-            </SpellCatalogField>
-            <SpellCatalogField label={t("catalog.spells.form.upcastUnlockSummary")}>
-              <input
-                value={state.upcastUnlockSummary}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastUnlockSummary: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-              />
-            </SpellCatalogField>
-            <SpellCatalogField label={t("catalog.spells.form.upcastUnlockEditorial")}>
-              <input
-                value={state.upcastUnlockEditorial}
-                onChange={(event) =>
-                  setState((current) => ({
-                    ...current,
-                    upcastUnlockEditorial: event.target.value,
-                  }))
-                }
-                className={fieldClassName}
-              />
-            </SpellCatalogField>
-          </div>
-        ) : null}
-      </div>
+      <SpellUpcastFields
+        state={state}
+        setState={setState}
+        t={t}
+        locale={locale}
+        selectPlaceholder={selectPlaceholder}
+        showUpcastDiceField={showUpcastDiceField}
+        showUpcastFlatField={showUpcastFlatField}
+        showUpcastPerLevelField={showUpcastPerLevelField}
+        showUpcastMaxLevelField={showUpcastMaxLevelField}
+        showEffectScalingFields={showEffectScalingFields}
+        showExtraEffectFields={showExtraEffectFields}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <SpellCatalogField label={t("catalog.spells.form.descriptionEn")}>

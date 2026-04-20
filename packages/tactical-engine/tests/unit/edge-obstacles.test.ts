@@ -11,7 +11,7 @@ import {
   hasLineOfEffect,
   evaluateCover
 } from "@limiarmap/tactical-engine";
-import type { EdgeObstacle } from "@limiarmap/shared-contracts";
+import type { EdgeObstacle, Obstacle } from "@limiarmap/shared-contracts";
 
 describe("Edge Obstacles - Grid State Helpers", () => {
   const mockGridState = {
@@ -358,7 +358,8 @@ describe("Edge Obstacles - Movement Validation", () => {
     controllerId: "player-1",
     position: { x: 5, y: 5 },
     movementSpeedCells: 6,
-    movementBudget: 30
+    movementBudget: 30,
+    conditions: []
   };
 
   it("rejects movement when edge blocks movement", () => {
@@ -441,7 +442,7 @@ describe("Edge Obstacles - Movement Validation", () => {
 });
 
 describe("Edge Obstacles - Line of Sight", () => {
-  const mockObstacles = [];
+  const mockObstacles: Obstacle[] = [];
 
   it("blocks line of sight when edge blocks vision", () => {
     const edgeObstacles: EdgeObstacle[] = [
@@ -521,7 +522,7 @@ describe("Edge Obstacles - Line of Sight", () => {
 });
 
 describe("Edge Obstacles - Line of Effect", () => {
-  const mockObstacles = [];
+  const mockObstacles: Obstacle[] = [];
 
   it("blocks line of effect when edge blocks effects", () => {
     const edgeObstacles: EdgeObstacle[] = [
@@ -602,7 +603,7 @@ describe("Edge Obstacles - Line of Effect", () => {
 });
 
 describe("Edge Obstacles - Cover Integration", () => {
-  const mockObstacles = [];
+  const mockObstacles: Obstacle[] = [];
 
   it("returns half cover when edge provides half cover", () => {
     const edgeObstacles: EdgeObstacle[] = [

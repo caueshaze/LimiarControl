@@ -58,6 +58,19 @@ function normalizeObstacleSemantics(value) {
         movementCostMultiplier: value.movementCostMultiplier ?? 1
     };
 }
+export const edgeDirectionSchema = z.enum(["N", "E", "S", "W"]);
+export const edgeObstacleSchema = z.object({
+    id: z.string(),
+    battleMapId: z.string(),
+    x: z.number().int().nonnegative(),
+    y: z.number().int().nonnegative(),
+    direction: edgeDirectionSchema,
+    blocksMovement: z.boolean(),
+    blocksVision: z.boolean().default(false),
+    blocksEffect: z.boolean(),
+    cover: obstacleCoverSchema.default("none"),
+    label: z.string().optional()
+});
 export const obstacleStyleSchema = obstacleSemanticsInputSchema.transform((value) => normalizeObstacleSemantics(value));
 export const obstacleSchema = obstacleSemanticsInputSchema.extend({
     id: z.string(),

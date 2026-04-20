@@ -8,6 +8,7 @@ import {
   postEmbeddedMapReady,
 } from "../../services/embedded-map-bridge";
 import { BattleMapCanvas } from "./battle-map-canvas";
+import { TokenPlacementBar } from "./token-placement-bar";
 import { battleMapStore } from "./battle-map-store";
 import { GridCalibrationPanel } from "./grid-calibration-panel";
 import { ObstacleEditorPanel } from "./obstacle-editor-panel";
@@ -120,6 +121,7 @@ export function BattleMapPage(): React.JSX.Element {
         >
           {`LimiarMap · ${sessionId}`}
         </div>
+        <TokenPlacementBar />
         {message ? (
           <div
             style={{
@@ -180,6 +182,7 @@ export function BattleMapPage(): React.JSX.Element {
         >
           {`LimiarMap · ${sessionId}`}
         </div>
+        <TokenPlacementBar />
         <BattleMapCanvas />
       </div>
 

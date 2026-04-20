@@ -77,6 +77,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [runtime, setRuntime] = useState<SessionRuntimeState>(createInitialSessionRuntimeState);
   const [combatUiExpanded, setCombatUiExpanded] = useState(false);
   const latestVersionsRef = useRef<Record<string, number>>({});
+  const clearSessionRef = useRef(() => {
+    setSelectedSessionId(null);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_KEY);
+    }
+  });
 
   useEffect(() => {
     latestVersionsRef.current = {};
@@ -96,7 +102,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             restState: nextRuntime.restState,
           }));
         })
-        .catch(() => {
+        .catch((err: { status?: number }) => {
+          if (err?.status === 404 || err?.status === 403) {
+            clearSessionRef.current?.();
+            return;
+          }
           setRuntime((current) => ({
             ...current,
             shopOpen: false,

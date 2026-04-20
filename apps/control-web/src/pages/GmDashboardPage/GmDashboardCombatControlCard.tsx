@@ -89,7 +89,7 @@ export const GmDashboardCombatControlCard = ({
               initiative: null,
               status: "active" as const,
               team: "enemies" as const,
-              visible: combatModalEntities.find((e) => e.id === p.id)?.visibleToPlayers ?? true,
+              visible: true,
               actor_user_id: null as any,
             },
       );

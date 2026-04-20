@@ -1,0 +1,158 @@
+from __future__ import annotations
+
+from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import Session
+
+from app.services.dragonborn_breath_weapon import (
+    DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY,
+    apply_dragonborn_breath_weapon_canonical_state,
+    resolve_dragonborn_breath_weapon_action_state,
+)
+from app.services.session_state_finalize import finalize_session_state_data
+
+from .exceptions import CombatServiceError
+
+
+class CombatDragonbornBreathMixin:
+
+    @classmethod
+    def _precheck_dragonborn_breath_weapon(cls, db, session_id, state, actor, req) -> None:
+        if actor.get("kind") != "player":
+            raise CombatServiceError("Only players can use Dragonborn Breath Weapon.", 400)
+        target = cls._resolve_required_hostile_target(state, actor, req.target_participant_id)
+        attacker_state, *_ = cls._get_stats(db, actor["ref_id"], actor["kind"], session_id)
+        attacker_data = apply_dragonborn_breath_weapon_canonical_state(
+            cls._as_dict(attacker_state.state_json),
+        )
+        action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
+        if action_state is None:
+            raise CombatServiceError("Dragonborn Breath Weapon is not available for this actor.", 400)
+        if cls._safe_int(action_state.get("usesRemaining"), 0) <= 0:
+            raise CombatServiceError("No Dragonborn Breath Weapon uses remaining.", 400)
+        cls._assert_hostile_action_allowed(
+            actor,
+            target,
+            action_label="Dragonborn Breath Weapon",
+        )
+
+    @classmethod
+    async def _action_dragonborn_breath_weapon(cls, db, session_id, state, actor, req):
+        if actor.get("kind") != "player":
+            raise CombatServiceError("Only players can use Dragonborn Breath Weapon.", 400)
+
+        target = cls._resolve_required_hostile_target(state, actor, req.target_participant_id)
+        attacker_state, *_ = cls._get_stats(db, actor["ref_id"], actor["kind"], session_id)
+        attacker_data = apply_dragonborn_breath_weapon_canonical_state(
+            cls._as_dict(attacker_state.state_json),
+        )
+        action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
+        if action_state is None:
+            raise CombatServiceError("Dragonborn Breath Weapon is not available for this actor.", 400)
+
+        class_resources = (
+            dict(attacker_data.get("classResources"))
+            if isinstance(attacker_data.get("classResources"), dict)
+            else {}
+        )
+        resource = (
+            dict(class_resources.get(DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY))
+            if isinstance(class_resources.get(DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY), dict)
+            else {}
+        )
+        uses_max = cls._safe_int(resource.get("usesMax"), cls._safe_int(action_state.get("usesMax"), 1))
+        uses_remaining = cls._safe_int(resource.get("usesRemaining"), uses_max)
+        if uses_remaining <= 0:
+            raise CombatServiceError("No Dragonborn Breath Weapon uses remaining.", 400)
+
+        resource["usesMax"] = uses_max
+        resource["usesRemaining"] = uses_remaining - 1
+        class_resources[DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY] = resource
+        attacker_data["classResources"] = class_resources
+        attacker_state.state_json = finalize_session_state_data(attacker_data)
+        flag_modified(attacker_state, "state_json")
+        db.add(attacker_state)
+
+        from . import standard_actions as standard_actions_module
+
+        roll_result = standard_actions_module.resolve_saving_throw(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                target["ref_id"],
+                target["kind"],
+                target["display_name"],
+            ),
+            ability=action_state["saveType"],
+            dc=cls._safe_int(action_state.get("dc"), 0),
+            roll_source=req.roll_source,
+            manual_roll=req.manual_roll,
+            manual_rolls=req.manual_rolls,
+        )
+        roll_result.is_gm_roll = False
+        roll_total = roll_result.total
+        is_saved = bool(roll_result.success)
+
+        effect_rolls, base_damage = cls._resolve_damage_roll(action_state["damageDice"])
+        rolled_damage = max(0, base_damage)
+        damage = cls._resolve_save_damage_amount(
+            rolled_damage,
+            is_saved=is_saved,
+            save_success_outcome="half_damage",
+        )
+
+        applied_damage = damage
+        new_hp = None
+        effect_msg = ""
+        previous_hp = None
+        concentration_check = None
+        if damage > 0:
+            new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+                db,
+                target["ref_id"],
+                target["kind"],
+                damage,
+                False,
+                state,
+                damage_type=action_state.get("damageType"),
+            )
+            if previous_hp is not None and new_hp is not None:
+                applied_damage = max(0, previous_hp - new_hp)
+        else:
+            flag_modified(state, "participants")
+
+        save_text = "passes" if is_saved else "fails"
+        damage_type = action_state.get("damageType") or "energy"
+        message = (
+            f"{actor['display_name']} uses Dragonborn Breath Weapon on {target['display_name']}. "
+            f"{target['display_name']} {save_text} the {action_state.get('saveType')} save "
+            f"(roll {roll_total} vs DC {action_state.get('dc')}) and takes {applied_damage} {damage_type} damage"
+            f"{effect_msg}. Uses remaining: {resource['usesRemaining']}."
+        )
+
+        return {
+            "message": message,
+            "effect_applied": True,
+            "target_display_name": target["display_name"],
+            "target_kind": target["kind"],
+            "damage": applied_damage,
+            "damage_type": action_state.get("damageType"),
+            "new_hp": new_hp,
+            "roll_result": roll_result,
+            "save_ability": action_state.get("saveType"),
+            "save_dc": action_state.get("dc"),
+            "is_saved": is_saved,
+            "save_success_outcome": "half_damage",
+            "effect_dice": action_state["damageDice"],
+            "effect_rolls": effect_rolls,
+            "effect_roll_source": "system",
+            "uses_remaining": resource["usesRemaining"],
+            "concentration_check": concentration_check,
+            "_actor_player_user_id": actor["ref_id"],
+            "_actor_player_state": attacker_state,
+            "_target_player_user_id": target["ref_id"] if target["kind"] == "player" else None,
+            "_target_player_state": cls._get_stats(db, target["ref_id"], target["kind"], session_id)[0]
+            if target["kind"] == "player" and damage > 0
+            else None,
+            "_target_entity_ref_id": target["ref_id"] if target["kind"] == "session_entity" and damage > 0 else None,
+            "_target_previous_hp": previous_hp,
+        }

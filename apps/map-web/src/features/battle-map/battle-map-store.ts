@@ -10,81 +10,27 @@ import type {
   ObstacleBrushPresetId,
   EdgeBrushPresetId
 } from "./obstacle-presets";
+import type {
+  TacticalDiagnostics,
+  TacticalPreviewState,
+  BattleMapUIState,
+  EmbeddedSelectionMode,
+  TokenMovementRejectionState
+} from "./battle-map-store.types";
+
+export type {
+  TacticalDiagnostics,
+  TacticalPreviewState,
+  TokenMovementRejectionState,
+  BattleMapUIState,
+  EmbeddedSelectionMode
+} from "./battle-map-store.types";
 
 type Listener = () => void;
 
-// ─── Tactical Preview (Phase U1) ──────────────────────────────────────────────
-
-export interface TacticalDiagnostics {
-  isValid: boolean;
-  failureReasons: string[];
-  checks: Record<string, boolean>;
-  metadata: Record<string, number | string | boolean>;
-}
-
-export interface TacticalPreviewState {
-  /** True while a token is selected or embedded selection mode is active. */
-  active: boolean;
-  sourceTokenId: string | null;
-  /** Interaction context: movement reach or targeting intent. */
-  actionType: "move" | "attack" | "spell" | null;
-  /** Currently-hovered grid cell. */
-  targetCell: Coordinate | null;
-  /** ref_id of the currently-hovered entity (if any). */
-  targetEntityId: string | null;
-  /** Last diagnostics returned from the preview API (null when no target). */
-  diagnostics: TacticalDiagnostics | null;
-  /** AoE footprint cells when casting an area spell. */
-  aoeCells: Coordinate[];
-  /** All cells reachable by sourceToken (Chebyshev circle, movement context). */
-  reachableCells: Coordinate[];
-}
-
-export interface TokenMovementRejectionState {
-  tokenId: string;
-  reason: string;
-  message: string;
-  pathCostUnits?: number;
-  movementBudget?: number;
-  exceededBy?: number;
-}
-
-export interface BattleMapUIState {
-  selectedTokenId?: string;
-  movementPreview: Coordinate[];
-  targetingPreview: Coordinate[];
-  embeddedSelectionMode: EmbeddedSelectionMode;
-  embeddedPreview: Coordinate[];
-  embeddedSelectedCell?: Coordinate;
-  embeddedSelectedTargetRefId?: string;
-  message?: string;
-  isGridEditMode: boolean;
-  isObstaclePaintMode: boolean;
-  gridCalibrationDraft?: GridCalibration;
-  gridWidthDraft?: number;
-  gridHeightDraft?: number;
-  pendingGridCalibrationActionId?: string;
-  pendingObstaclePaintActionId?: string;
-  obstacleBrushRadius: number;
-  obstacleBrushMode: ObstaclePaintMode;
-  obstacleBrushPresetId: ObstacleBrushPresetId;
-  obstaclePaintTarget: "cell" | "edge";
-  edgeDirection: EdgeDirection;
-  edgeBrushPresetId: EdgeBrushPresetId;
-  pendingEdgePaintActionId?: string;
-  mapImageAspectRatio: number;
-  mapImageNaturalWidthPx: number;
-  mapImageNaturalHeightPx: number;
-  mapFrameWidthPx: number;
-  mapFrameHeightPx: number;
-  lastMovementRejectionByTokenId: Record<string, TokenMovementRejectionState>;
-  tacticalPreview: TacticalPreviewState;
-}
-
-export type EmbeddedSelectionMode = "none" | "select-token" | "select-cell";
-
 class BattleMapStore {
   private state: BattleMapUIState = {
+    placingTokenId: null,
     movementPreview: [],
     targetingPreview: [],
     embeddedSelectionMode: "none",
@@ -125,54 +71,50 @@ class BattleMapStore {
     return this.state;
   }
 
-  setMovementPreview(movementPreview: Coordinate[]): void {
-    this.state = { ...this.state, movementPreview };
-    this.emit();
+  private set(patch: Partial<BattleMapUIState>): void {
+    this.state = { ...this.state, ...patch };
+    this.listeners.forEach((l) => l());
   }
 
-  setTargetingPreview(targetingPreview: Coordinate[]): void {
-    this.state = { ...this.state, targetingPreview };
-    this.emit();
+  private setIfChanged(patch: Partial<BattleMapUIState>, changed: boolean): void {
+    if (changed) this.set(patch);
   }
 
-  setEmbeddedInteractionContext(context: {
+  setPlacingTokenId(placingTokenId: string | null): void { this.set({ placingTokenId }); }
+
+  setMovementPreview(movementPreview: Coordinate[]): void { this.set({ movementPreview }); }
+  setTargetingPreview(targetingPreview: Coordinate[]): void { this.set({ targetingPreview }); }
+  setMessage(message?: string): void { this.set({ message }); }
+
+  setMapImageAspectRatio(r: number): void { this.setIfChanged({ mapImageAspectRatio: r }, this.state.mapImageAspectRatio !== r); }
+  setMapImageNaturalSize(w: number, h: number): void { this.setIfChanged({ mapImageNaturalWidthPx: w, mapImageNaturalHeightPx: h }, this.state.mapImageNaturalWidthPx !== w || this.state.mapImageNaturalHeightPx !== h); }
+  setMapFrameSize(w: number, h: number): void { this.setIfChanged({ mapFrameWidthPx: w, mapFrameHeightPx: h }, this.state.mapFrameWidthPx !== w || this.state.mapFrameHeightPx !== h); }
+  setObstacleBrushRadius(r: number): void { this.setIfChanged({ obstacleBrushRadius: r }, this.state.obstacleBrushRadius !== r); }
+  setObstacleBrushMode(m: ObstaclePaintMode): void { this.setIfChanged({ obstacleBrushMode: m }, this.state.obstacleBrushMode !== m); }
+  setObstacleBrushPreset(p: ObstacleBrushPresetId): void { this.setIfChanged({ obstacleBrushPresetId: p }, this.state.obstacleBrushPresetId !== p); }
+  setObstaclePaintTarget(t: "cell" | "edge"): void { this.setIfChanged({ obstaclePaintTarget: t }, this.state.obstaclePaintTarget !== t); }
+  setEdgeDirection(d: EdgeDirection): void { this.setIfChanged({ edgeDirection: d }, this.state.edgeDirection !== d); }
+  setEdgeBrushPreset(p: EdgeBrushPresetId): void { this.setIfChanged({ edgeBrushPresetId: p }, this.state.edgeBrushPresetId !== p); }
+  setGridDimensionsDraft(w: number, h: number): void { this.setIfChanged({ gridWidthDraft: w, gridHeightDraft: h }, this.state.gridWidthDraft !== w || this.state.gridHeightDraft !== h); }
+
+  setEmbeddedInteractionContext(ctx: {
     selectionMode: EmbeddedSelectionMode;
     previewCells: Coordinate[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
   }): void {
-    this.state = {
-      ...this.state,
-      embeddedSelectionMode: context.selectionMode,
-      embeddedPreview: context.previewCells,
-      embeddedSelectedCell: context.selectedCell ?? undefined,
-      embeddedSelectedTargetRefId: context.selectedTargetRefId ?? undefined
-    };
-    this.emit();
+    this.set({
+      embeddedSelectionMode: ctx.selectionMode,
+      embeddedPreview: ctx.previewCells,
+      embeddedSelectedCell: ctx.selectedCell ?? undefined,
+      embeddedSelectedTargetRefId: ctx.selectedTargetRefId ?? undefined
+    });
   }
 
-  setEmbeddedSelectedCell(selectedCell?: Coordinate | null): void {
-    this.state = {
-      ...this.state,
-      embeddedSelectedCell: selectedCell ?? undefined
-    };
-    this.emit();
-  }
+  setEmbeddedSelectedCell(c?: Coordinate | null): void { this.set({ embeddedSelectedCell: c ?? undefined }); }
 
   clearEmbeddedInteraction(): void {
-    this.state = {
-      ...this.state,
-      embeddedSelectionMode: "none",
-      embeddedPreview: [],
-      embeddedSelectedCell: undefined,
-      embeddedSelectedTargetRefId: undefined
-    };
-    this.emit();
-  }
-
-  setMessage(message?: string): void {
-    this.state = { ...this.state, message };
-    this.emit();
+    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined });
   }
 
   setTokenMovementRejection(rejection: TokenMovementRejectionState): void {
@@ -183,412 +125,92 @@ class BattleMapStore {
         [rejection.tokenId]: rejection
       }
     };
-    this.emit();
+    this.listeners.forEach((l) => l());
   }
 
   clearTokenMovementRejection(tokenId: string): void {
-    if (!this.state.lastMovementRejectionByTokenId[tokenId]) {
-      return;
-    }
+    if (!this.state.lastMovementRejectionByTokenId[tokenId]) return;
     const next = { ...this.state.lastMovementRejectionByTokenId };
     delete next[tokenId];
-    this.state = {
-      ...this.state,
-      lastMovementRejectionByTokenId: next
-    };
-    this.emit();
+    this.set({ lastMovementRejectionByTokenId: next });
   }
 
-  setMapImageAspectRatio(mapImageAspectRatio: number): void {
-    if (this.state.mapImageAspectRatio === mapImageAspectRatio) {
-      return;
-    }
-
-    this.state = { ...this.state, mapImageAspectRatio };
-    this.emit();
+  startGridEdit(cal: GridCalibration, gw: number, gh: number): void {
+    this.set({ isGridEditMode: true, isObstaclePaintMode: false, gridCalibrationDraft: cal, gridWidthDraft: gw, gridHeightDraft: gh, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, message: undefined });
   }
 
-  setMapImageNaturalSize(
-    mapImageNaturalWidthPx: number,
-    mapImageNaturalHeightPx: number
-  ): void {
-    if (
-      this.state.mapImageNaturalWidthPx === mapImageNaturalWidthPx &&
-      this.state.mapImageNaturalHeightPx === mapImageNaturalHeightPx
-    ) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      mapImageNaturalWidthPx,
-      mapImageNaturalHeightPx
-    };
-    this.emit();
-  }
-
-  setMapFrameSize(mapFrameWidthPx: number, mapFrameHeightPx: number): void {
-    if (
-      this.state.mapFrameWidthPx === mapFrameWidthPx &&
-      this.state.mapFrameHeightPx === mapFrameHeightPx
-    ) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      mapFrameWidthPx,
-      mapFrameHeightPx
-    };
-    this.emit();
-  }
-
-  startGridEdit(
-    gridCalibration: GridCalibration,
-    gridWidth: number,
-    gridHeight: number
-  ): void {
-    this.state = {
-      ...this.state,
-      isGridEditMode: true,
-      isObstaclePaintMode: false,
-      gridCalibrationDraft: gridCalibration,
-      gridWidthDraft: gridWidth,
-      gridHeightDraft: gridHeight,
-      pendingGridCalibrationActionId: undefined,
-      pendingObstaclePaintActionId: undefined,
-      message: undefined
-    };
-    this.emit();
-  }
-
-  updateGridCalibrationDraft(gridCalibration: GridCalibration): void {
-    this.state = {
-      ...this.state,
-      gridCalibrationDraft: gridCalibration
-    };
-    this.emit();
-  }
-
-  setGridDimensionsDraft(gridWidth: number, gridHeight: number): void {
-    if (
-      this.state.gridWidthDraft === gridWidth &&
-      this.state.gridHeightDraft === gridHeight
-    ) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      gridWidthDraft: gridWidth,
-      gridHeightDraft: gridHeight
-    };
-    this.emit();
-  }
+  updateGridCalibrationDraft(cal: GridCalibration): void { this.set({ gridCalibrationDraft: cal }); }
 
   cancelGridEdit(): void {
-    this.state = {
-      ...this.state,
-      isGridEditMode: false,
-      gridCalibrationDraft: undefined,
-      gridWidthDraft: undefined,
-      gridHeightDraft: undefined,
-      pendingGridCalibrationActionId: undefined
-    };
-    this.emit();
+    this.set({ isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
   }
 
   startObstaclePaint(): void {
-    this.state = {
-      ...this.state,
-      isObstaclePaintMode: true,
-      isGridEditMode: false,
-      gridCalibrationDraft: undefined,
-      gridWidthDraft: undefined,
-      gridHeightDraft: undefined,
-      pendingGridCalibrationActionId: undefined,
-      pendingObstaclePaintActionId: undefined,
-      pendingEdgePaintActionId: undefined,
-      message: undefined
-    };
-    this.emit();
+    this.set({ isObstaclePaintMode: true, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, message: undefined });
   }
 
   cancelObstaclePaint(): void {
-    this.state = {
-      ...this.state,
-      isObstaclePaintMode: false,
-      pendingObstaclePaintActionId: undefined,
-      pendingEdgePaintActionId: undefined
-    };
-    this.emit();
+    this.set({ isObstaclePaintMode: false, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined });
   }
 
-  setObstacleBrushRadius(obstacleBrushRadius: number): void {
-    if (this.state.obstacleBrushRadius === obstacleBrushRadius) {
-      return;
-    }
+  markObstaclePaintPending(id: string): void { this.set({ pendingObstaclePaintActionId: id }); }
+  markGridCalibrationPending(id: string): void { this.set({ pendingGridCalibrationActionId: id }); }
+  markEdgePaintPending(id: string): void { this.set({ pendingEdgePaintActionId: id }); }
 
-    this.state = {
-      ...this.state,
-      obstacleBrushRadius
-    };
-    this.emit();
-  }
-
-  setObstacleBrushMode(obstacleBrushMode: ObstaclePaintMode): void {
-    if (this.state.obstacleBrushMode === obstacleBrushMode) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      obstacleBrushMode
-    };
-    this.emit();
-  }
-
-  setObstacleBrushPreset(obstacleBrushPresetId: ObstacleBrushPresetId): void {
-    if (this.state.obstacleBrushPresetId === obstacleBrushPresetId) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      obstacleBrushPresetId
-    };
-    this.emit();
-  }
-
-  markObstaclePaintPending(actionId: string): void {
-    this.state = {
-      ...this.state,
-      pendingObstaclePaintActionId: actionId
-    };
-    this.emit();
-  }
-
-  markGridCalibrationPending(actionId: string): void {
-    this.state = {
-      ...this.state,
-      pendingGridCalibrationActionId: actionId
-    };
-    this.emit();
-  }
-
-  completeGridCalibrationUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingGridCalibrationActionId !== actionId) {
-      return false;
-    }
-
-    this.state = {
-      ...this.state,
-      isGridEditMode: false,
-      gridCalibrationDraft: undefined,
-      gridWidthDraft: undefined,
-      gridHeightDraft: undefined,
-      pendingGridCalibrationActionId: undefined
-    };
-    this.emit();
+  private completePending(key: keyof BattleMapUIState, actionId?: string): boolean {
+    if (!actionId || this.state[key] !== actionId) return false;
+    this.set({ [key]: undefined } as Partial<BattleMapUIState>);
     return true;
   }
 
-  completeObstaclePaintUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingObstaclePaintActionId !== actionId) {
-      return false;
-    }
-
-    this.state = {
-      ...this.state,
-      pendingObstaclePaintActionId: undefined
-    };
-    this.emit();
+  completeGridCalibrationUpdate(id?: string): boolean {
+    if (!id || this.state.pendingGridCalibrationActionId !== id) return false;
+    this.set({ isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
     return true;
   }
 
-  failGridCalibrationUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingGridCalibrationActionId !== actionId) {
-      return false;
-    }
+  completeObstaclePaintUpdate(id?: string): boolean { return this.completePending("pendingObstaclePaintActionId", id); }
+  failGridCalibrationUpdate(id?: string): boolean { return this.completePending("pendingGridCalibrationActionId", id); }
+  failObstaclePaintUpdate(id?: string): boolean { return this.completePending("pendingObstaclePaintActionId", id); }
+  completeEdgePaintUpdate(id?: string): boolean { return this.completePending("pendingEdgePaintActionId", id); }
+  failEdgePaintUpdate(id?: string): boolean { return this.completePending("pendingEdgePaintActionId", id); }
 
-    this.state = {
-      ...this.state,
-      pendingGridCalibrationActionId: undefined
-    };
-    this.emit();
-    return true;
-  }
-
-  failObstaclePaintUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingObstaclePaintActionId !== actionId) {
-      return false;
-    }
-
-    this.state = {
-      ...this.state,
-      pendingObstaclePaintActionId: undefined
-    };
-    this.emit();
-    return true;
-  }
-
-  setObstaclePaintTarget(target: "cell" | "edge"): void {
-    if (this.state.obstaclePaintTarget === target) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      obstaclePaintTarget: target
-    };
-    this.emit();
-  }
-
-  setEdgeDirection(direction: EdgeDirection): void {
-    if (this.state.edgeDirection === direction) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      edgeDirection: direction
-    };
-    this.emit();
-  }
-
-  setEdgeBrushPreset(presetId: EdgeBrushPresetId): void {
-    if (this.state.edgeBrushPresetId === presetId) {
-      return;
-    }
-
-    this.state = {
-      ...this.state,
-      edgeBrushPresetId: presetId
-    };
-    this.emit();
-  }
-
-  markEdgePaintPending(actionId: string): void {
-    this.state = {
-      ...this.state,
-      pendingEdgePaintActionId: actionId
-    };
-    this.emit();
-  }
-
-  completeEdgePaintUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingEdgePaintActionId !== actionId) {
-      return false;
-    }
-
-    this.state = {
-      ...this.state,
-      pendingEdgePaintActionId: undefined
-    };
-    this.emit();
-    return true;
-  }
-
-  failEdgePaintUpdate(actionId?: string): boolean {
-    if (!actionId || this.state.pendingEdgePaintActionId !== actionId) {
-      return false;
-    }
-
-    this.state = {
-      ...this.state,
-      pendingEdgePaintActionId: undefined
-    };
-    this.emit();
-    return true;
-  }
-
-  // ─── Tactical preview ──────────────────────────────────────────────────
-
-  activateTacticalPreview(
-    sourceTokenId: string,
-    actionType: "move" | "attack" | "spell"
-  ): void {
-    this.state = {
-      ...this.state,
-      tacticalPreview: {
-        ...this.state.tacticalPreview,
-        active: true,
-        sourceTokenId,
-        actionType
-      }
-    };
-    this.emit();
+  activateTacticalPreview(sourceTokenId: string, actionType: "move" | "attack" | "spell"): void {
+    this.state = { ...this.state, tacticalPreview: { ...this.state.tacticalPreview, active: true, sourceTokenId, actionType } };
+    this.listeners.forEach((l) => l());
   }
 
   deactivateTacticalPreview(): void {
-    this.state = {
-      ...this.state,
-      tacticalPreview: {
-        active: false,
-        sourceTokenId: null,
-        actionType: null,
-        targetCell: null,
-        targetEntityId: null,
-        diagnostics: null,
-        aoeCells: [],
-        reachableCells: []
-      }
-    };
-    this.emit();
+    this.set({
+      tacticalPreview: { active: false, sourceTokenId: null, actionType: null, targetCell: null, targetEntityId: null, diagnostics: null, aoeCells: [], reachableCells: [] }
+    });
   }
 
-  setTacticalPreviewTarget(
-    targetCell: Coordinate | null,
-    targetEntityId: string | null
-  ): void {
+  setTacticalPreviewTarget(targetCell: Coordinate | null, targetEntityId: string | null): void {
     const prev = this.state.tacticalPreview;
-    if (
-      prev.targetCell?.x === targetCell?.x &&
-      prev.targetCell?.y === targetCell?.y &&
-      prev.targetEntityId === targetEntityId
-    ) {
-      return;
-    }
-    this.state = {
-      ...this.state,
-      tacticalPreview: { ...prev, targetCell, targetEntityId }
-    };
-    this.emit();
+    if (prev.targetCell?.x === targetCell?.x && prev.targetCell?.y === targetCell?.y && prev.targetEntityId === targetEntityId) return;
+    this.state = { ...this.state, tacticalPreview: { ...prev, targetCell, targetEntityId } };
+    this.listeners.forEach((l) => l());
   }
 
-  setTacticalPreviewDiagnostics(
-    diagnostics: TacticalDiagnostics | null
-  ): void {
-    this.state = {
-      ...this.state,
-      tacticalPreview: { ...this.state.tacticalPreview, diagnostics }
-    };
-    this.emit();
+  setTacticalPreviewDiagnostics(d: TacticalDiagnostics | null): void {
+    this.state = { ...this.state, tacticalPreview: { ...this.state.tacticalPreview, diagnostics: d } };
+    this.listeners.forEach((l) => l());
   }
 
-  setTacticalPreviewReachableCells(reachableCells: Coordinate[]): void {
-    this.state = {
-      ...this.state,
-      tacticalPreview: { ...this.state.tacticalPreview, reachableCells }
-    };
-    this.emit();
+  setTacticalPreviewReachableCells(c: Coordinate[]): void {
+    this.state = { ...this.state, tacticalPreview: { ...this.state.tacticalPreview, reachableCells: c } };
+    this.listeners.forEach((l) => l());
   }
 
-  setTacticalPreviewAoeCells(aoeCells: Coordinate[]): void {
-    this.state = {
-      ...this.state,
-      tacticalPreview: { ...this.state.tacticalPreview, aoeCells }
-    };
-    this.emit();
+  setTacticalPreviewAoeCells(c: Coordinate[]): void {
+    this.state = { ...this.state, tacticalPreview: { ...this.state.tacticalPreview, aoeCells: c } };
+    this.listeners.forEach((l) => l());
   }
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
-  }
-
-  private emit(): void {
-    this.listeners.forEach((listener) => listener());
   }
 }
 

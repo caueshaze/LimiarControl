@@ -82,6 +82,39 @@ export class MovementService {
     };
   }
 
+  placeToken(
+    sessionId: string,
+    tokenId: string,
+    position: { x: number; y: number },
+    actionId: string
+  ) {
+    const encounter = this.repository.requireEncounter(sessionId);
+
+    if (encounter.actionTracker.has(actionId)) {
+      return { accepted: false, rejectionReason: "duplicate_action", encounter };
+    }
+
+    const token = encounter.tokens.find((t) => t.id === tokenId);
+    if (!token) {
+      return { accepted: false, rejectionReason: "unknown_token", encounter };
+    }
+
+    encounter.actionTracker.record(actionId);
+    encounter.combatState = {
+      ...encounter.combatState,
+      version: nextEncounterVersion(encounter.combatState.version)
+    };
+    this.repository.updateTokenMovement(sessionId, tokenId, position, token.movementBudget);
+
+    return {
+      accepted: true as const,
+      tokenId,
+      position,
+      remainingBudget: token.movementBudget,
+      encounter: this.repository.requireEncounter(sessionId)
+    };
+  }
+
   moveToken(
     sessionId: string,
     tokenId: string,

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "./app";
 import { registerIntegrationRoutes } from "./routes/integration-routes";
 import { registerRealtimeRoutes } from "./routes/realtime-routes";
+import { registerRealtimePaintRoutes } from "./routes/realtime-paint-routes";
 
 try {
   process.loadEnvFile(resolve(fileURLToPath(new URL("../../../.env", import.meta.url))));
@@ -12,6 +13,7 @@ try {
 
 const { app, repository } = createApp();
 registerRealtimeRoutes(app, repository);
+registerRealtimePaintRoutes(app, repository);
 registerIntegrationRoutes(app, repository);
 
 export async function startServer(port = 3000): Promise<void> {

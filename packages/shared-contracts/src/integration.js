@@ -59,12 +59,15 @@ export const endCombatRequestSchema = z.object({
     actionId: z.string()
 });
 export const tokenSyncEntrySchema = z.object({
-    tokenId: z.string(),
+    tokenId: z.string().optional(),
     combatantId: z.string().optional(),
+    kind: z.enum(["playerCharacter", "ally", "enemy", "neutral"]).optional(),
     movementSpeedCells: z.number().int().positive().optional(),
     label: z.string().min(1).optional(),
     controllerId: z.string().optional(),
-    controllerType: controllerTypeSchema.optional()
+    controllerType: controllerTypeSchema.optional(),
+    conditions: z.array(z.string()).optional(),
+    sizeCategory: z.string().optional(),
 });
 export const syncTokensRequestSchema = z.object({
     tokens: z.array(tokenSyncEntrySchema).min(1)

@@ -189,7 +189,10 @@ export class InitiativeService {
   syncTokens(sessionId: string, tokens: TokenSyncEntry[]) {
     const encounter = this.repository.requireEncounter(sessionId);
 
-    for (const update of tokens) {
+    const toUpdate = tokens.filter((t) => t.tokenId !== undefined);
+    const toSpawn = tokens.filter((t) => t.tokenId === undefined);
+
+    for (const update of toUpdate) {
       if (!encounter.tokens.find((t) => t.id === update.tokenId)) {
         console.warn(
           `${LOG_PREFIX} syncTokens unknown_token session=${sessionId} tokenId=${update.tokenId}`
@@ -198,13 +201,31 @@ export class InitiativeService {
       }
     }
 
-    this.repository.syncTokens(sessionId, tokens);
+    if (toSpawn.length > 0) {
+      this.repository.spawnTokens(sessionId, toSpawn.map((e) => ({
+        combatantId: e.combatantId,
+        label: e.label,
+        kind: e.kind,
+        controllerId: e.controllerId,
+        controllerType: e.controllerType,
+        movementSpeedCells: e.movementSpeedCells,
+        conditions: e.conditions,
+      })));
+      console.info(
+        `${LOG_PREFIX} syncTokens spawned session=${sessionId} count=${toSpawn.length}`
+      );
+    }
+
+    if (toUpdate.length > 0) {
+      this.repository.syncTokens(sessionId, toUpdate as Array<{ tokenId: string } & Omit<TokenSyncEntry, "tokenId">>);
+    }
+
     const updated = this.repository.requireEncounter(sessionId);
 
     const linkedCount = tokens.filter((t) => t.combatantId !== undefined).length;
     console.info(
       `${LOG_PREFIX} syncTokens accepted session=${sessionId} ` +
-        `updatedTokens=${tokens.length} linkedCombatants=${linkedCount} ` +
+        `updatedTokens=${toUpdate.length} spawnedTokens=${toSpawn.length} linkedCombatants=${linkedCount} ` +
         `version=${updated.combatState.version}`
     );
 

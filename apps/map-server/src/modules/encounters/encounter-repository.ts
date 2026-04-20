@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   BattleMap,
   CombatState,
@@ -87,6 +88,7 @@ function createDemoEncounter(
       position: { x: 4, y: 4 },
       movementSpeedCells: 6,   // 6 cells = 9 m = ~30 ft (standard D&D character)
       movementBudget: 30,       // 6 cells × 5 path-cost units/cell
+      conditions: [],
       combatantId: "cmb_1"
     },
     {
@@ -99,6 +101,7 @@ function createDemoEncounter(
       position: { x: 10, y: 10 },
       movementSpeedCells: 6,   // 6 cells = 9 m = ~30 ft
       movementBudget: 30,
+      conditions: [],
       combatantId: "cmb_2"
     }
   ];
@@ -243,6 +246,63 @@ export class InMemoryEncounterRepository {
   removeEdgeObstacle(sessionId: string, edgeObstacleId: string): EncounterState {
     const encounter = this.requireEncounter(sessionId);
     encounter.edgeObstacles = encounter.edgeObstacles.filter((e) => e.id !== edgeObstacleId);
+    return this.saveEncounter(encounter);
+  }
+
+  spawnTokens(
+    sessionId: string,
+    entries: Array<{
+      combatantId?: string;
+      label?: string;
+      kind?: Token["kind"];
+      controllerId?: string;
+      controllerType?: Token["controllerType"];
+      movementSpeedCells?: number;
+      conditions?: string[];
+    }>
+  ): EncounterState {
+    const encounter = this.requireEncounter(sessionId);
+
+    // Remove previously-spawned tokens for these combatants to prevent duplicates on re-sync
+    const spawnCombatantIds = new Set(entries.map((e) => e.combatantId).filter(Boolean) as string[]);
+    if (spawnCombatantIds.size > 0) {
+      encounter.tokens = encounter.tokens.filter(
+        (t) => !t.combatantId || !spawnCombatantIds.has(t.combatantId)
+      );
+    }
+
+    const occupiedPositions = new Set(encounter.tokens.map((t) => `${t.position.x},${t.position.y}`));
+
+    entries.forEach((entry) => {
+      let x = 0;
+      let y = 0;
+      searchGrid: for (let row = 0; row < encounter.battleMap.gridHeight; row++) {
+        for (let col = 0; col < encounter.battleMap.gridWidth; col++) {
+          if (!occupiedPositions.has(`${col},${row}`)) {
+            x = col;
+            y = row;
+            break searchGrid;
+          }
+        }
+      }
+      occupiedPositions.add(`${x},${y}`);
+
+      const movementSpeedCells = entry.movementSpeedCells ?? 6;
+      const newToken: Token = {
+        id: randomUUID(),
+        battleMapId: encounter.battleMap.id,
+        label: entry.label ?? "?",
+        kind: entry.kind ?? "enemy",
+        controllerType: entry.controllerType ?? "gm",
+        controllerId: entry.controllerId ?? "gm-control",
+        position: { x, y },
+        movementSpeedCells,
+        movementBudget: movementSpeedCells * 5,
+        conditions: entry.conditions ?? [],
+        combatantId: entry.combatantId,
+      };
+      encounter.tokens.push(newToken);
+    });
     return this.saveEncounter(encounter);
   }
 

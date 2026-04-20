@@ -23,7 +23,10 @@ function buildCircleCells(
   for (let x = centerCell.x - radius; x <= centerCell.x + radius; x += 1) {
     for (let y = centerCell.y - radius; y <= centerCell.y + radius; y += 1) {
       const coordinate = { x, y };
-      if (chebyshevDistance(centerCell, coordinate) > radius || !isInsideMap({ map, obstacles: [], tokens: [] }, coordinate)) {
+      if (
+        chebyshevDistance(centerCell, coordinate) > radius ||
+        !isInsideMap({ map, obstacles: [], edgeObstacles: [], tokens: [] }, coordinate)
+      ) {
         continue;
       }
 
@@ -119,7 +122,7 @@ export class ObstaclePaintService {
       return { accepted: false, rejectionReason: "invalid_obstacle_brush", encounter };
     }
 
-    if (!isInsideMap({ map: encounter.battleMap, obstacles: [], tokens: [] }, centerCell)) {
+    if (!isInsideMap({ map: encounter.battleMap, obstacles: [], edgeObstacles: [], tokens: [] }, centerCell)) {
       return { accepted: false, rejectionReason: "outside_map", encounter };
     }
 

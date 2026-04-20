@@ -129,6 +129,17 @@ export class HttpClient {
     );
   }
 
+  async submitPlacement(
+    sessionId: string,
+    payload: { actionId: string; tokenId: string; position: Coordinate }
+  ): Promise<EncounterSnapshotResponse> {
+    return this.postJson<EncounterSnapshotResponse>(
+      `/sessions/${sessionId}/actions/place-token`,
+      payload,
+      true
+    );
+  }
+
   async advanceCombat(
     sessionId: string,
     payload: CombatAdvanceRequest

@@ -37,7 +37,7 @@ export class EdgeObstaclePaintService {
     }
 
     // Validate cell coordinates
-    if (!isInsideMap({ map: encounter.battleMap, obstacles: [], tokens: [] }, cell)) {
+    if (!isInsideMap({ map: encounter.battleMap, obstacles: [], edgeObstacles: [], tokens: [] }, cell)) {
       return { accepted: false, rejectionReason: "outside_map", encounter };
     }
 
@@ -69,11 +69,7 @@ export class EdgeObstaclePaintService {
         direction,
         blocksMovement: styleValidation.data.blocksMovement,
         blocksVision: styleValidation.data.blocksVision ?? false,
-        blocksEffect:
-          styleValidation.data.blocksEffect ??
-          styleValidation.data.blocksTargeting ??
-          styleValidation.data.blocksSpell ??
-          false,
+        blocksEffect: styleValidation.data.blocksEffect ?? false,
         cover: styleValidation.data.cover ?? "none",
         label: this.buildEdgeObstacleLabel(styleValidation.data)
       };

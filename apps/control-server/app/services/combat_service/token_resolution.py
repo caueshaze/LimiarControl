@@ -34,6 +34,18 @@ class ResolvedTokenSyncEntry:
     conditions: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class ResolvedTokenSpawnEntry:
+    combatant_id: str
+    movement_speed_cells: int | None
+    label: str | None = None
+    kind: str | None = None
+    controller_id: str | None = None
+    controller_type: str | None = None
+    size_category: str | None = None
+    conditions: tuple[str, ...] = ()
+
+
 def _resolve_participant_label(participant: dict) -> str | None:
     value = participant.get("display_name")
     if isinstance(value, str):
@@ -136,21 +148,15 @@ def _resolve_token_id(
     controller_type: str | None,
     label: str | None,
     expected_token_kind: str | None,
+    excluded_token_ids: frozenset[str] = frozenset(),
 ) -> str | None:
+    available = [t for t in map_state.tokens if t.token_id not in excluded_token_ids]
+
     if explicit_token_id:
-        token = next(
-            (
-                entry
-                for entry in map_state.tokens
-                if entry.token_id == explicit_token_id
-            ),
-            None,
-        )
+        token = next((e for e in available if e.token_id == explicit_token_id), None)
         return token.token_id if token is not None else None
 
-    linked_tokens = [
-        entry for entry in map_state.tokens if entry.combatant_id == combatant_id
-    ]
+    linked_tokens = [e for e in available if e.combatant_id == combatant_id]
     if len(linked_tokens) == 1:
         return linked_tokens[0].token_id
     if len(linked_tokens) > 1:
@@ -159,34 +165,27 @@ def _resolve_token_id(
     if label:
         normalized_label = _normalize_token_label(label)
         label_tokens = [
-            entry
-            for entry in map_state.tokens
-            if _normalize_token_label(entry.label) == normalized_label
+            e for e in available
+            if _normalize_token_label(e.label) == normalized_label
         ]
-        if len(label_tokens) == 1:
+        if label_tokens:
             return label_tokens[0].token_id
 
     if controller_id and controller_type:
         controller_tokens = [
-            entry
-            for entry in map_state.tokens
-            if entry.controller_type == controller_type
-            and entry.controller_id == controller_id
+            e for e in available
+            if e.controller_type == controller_type and e.controller_id == controller_id
         ]
         if len(controller_tokens) == 1:
             return controller_tokens[0].token_id
 
     if expected_token_kind:
-        kind_tokens = [
-            entry for entry in map_state.tokens if entry.kind == expected_token_kind
-        ]
-        if len(kind_tokens) == 1:
+        kind_tokens = [e for e in available if e.kind == expected_token_kind]
+        if kind_tokens:
             return kind_tokens[0].token_id
 
     if participant_kind == "player":
-        player_tokens = [
-            entry for entry in map_state.tokens if entry.controller_type == "player"
-        ]
+        player_tokens = [e for e in available if e.controller_type == "player"]
         if len(player_tokens) == 1:
             return player_tokens[0].token_id
 
@@ -198,11 +197,13 @@ def resolve_sync_entry(
     session_id: str,
     participant: dict,
     map_state: LimiarMapStateResponse,
-) -> ResolvedTokenSyncEntry | None:
+    *,
+    excluded_token_ids: frozenset[str] = frozenset(),
+) -> tuple[ResolvedTokenSyncEntry | None, ResolvedTokenSpawnEntry | None]:
     participant_kind = participant.get("kind")
     combatant_id = participant.get("ref_id")
     if not isinstance(participant_kind, str) or not isinstance(combatant_id, str):
-        return None
+        return None, None
 
     explicit_token_id: str | None = None
     movement_speed_base: int | None = None
@@ -272,28 +273,41 @@ def resolve_sync_entry(
         controller_type=controller_type,
         label=label,
         expected_token_kind=expected_token_kind,
+        excluded_token_ids=excluded_token_ids,
     )
-    if token_id is None:
-        return None
 
     movement_speed_cells = (
         meters_to_movement_cells(movement_speed_base)
         if movement_speed_base is not None
         else None
     )
-
     size_category_enum = normalize_size_category(size_raw)
     size_category = (
         size_category_enum.value if size_category_enum != SizeCategory.MEDIUM else None
     )
-
     conditions = _extract_participant_conditions(participant)
 
-    return ResolvedTokenSyncEntry(
-        token_id=token_id,
+    if token_id is not None:
+        return ResolvedTokenSyncEntry(
+            token_id=token_id,
+            combatant_id=combatant_id,
+            movement_speed_cells=movement_speed_cells,
+            label=label,
+            controller_id=controller_id,
+            controller_type=controller_type,
+            size_category=size_category,
+            conditions=tuple(conditions),
+        ), None
+
+    # No existing token found — spawn a new one for NPCs only (players must have tokens)
+    if participant_kind == "player":
+        return None, None
+
+    return None, ResolvedTokenSpawnEntry(
         combatant_id=combatant_id,
         movement_speed_cells=movement_speed_cells,
         label=label,
+        kind=expected_token_kind,
         controller_id=controller_id,
         controller_type=controller_type,
         size_category=size_category,
@@ -306,38 +320,28 @@ def build_sync_entries(
     session_id: str,
     participants: list[dict],
     map_state: LimiarMapStateResponse,
-) -> tuple[list[ResolvedTokenSyncEntry], list[str]]:
+) -> tuple[list[ResolvedTokenSyncEntry], list[ResolvedTokenSpawnEntry]]:
     resolved_by_token_id: dict[str, ResolvedTokenSyncEntry] = {}
-    unresolved_combatants: list[str] = []
+    spawn_entries: list[ResolvedTokenSpawnEntry] = []
+    assigned_token_ids: set[str] = set()
 
     for participant in participants:
         combatant_id = participant.get("ref_id")
-        participant_kind = participant.get("kind")
         if not isinstance(combatant_id, str) or not combatant_id.strip():
             continue
 
-        resolution = resolve_sync_entry(
+        sync_entry, spawn_entry = resolve_sync_entry(
             db,
             session_id,
             participant,
             map_state,
+            excluded_token_ids=frozenset(assigned_token_ids),
         )
-        if resolution is None:
-            unresolved_combatants.append(combatant_id)
-            continue
 
-        existing = resolved_by_token_id.get(resolution.token_id)
-        if existing and existing.combatant_id != resolution.combatant_id:
-            logger.warning(
-                "LimiarMap token linkage conflict for session_id=%s token_id=%s combatants=(%s,%s) kind=%s",
-                session_id,
-                resolution.token_id,
-                existing.combatant_id,
-                resolution.combatant_id,
-                participant_kind,
-            )
-            continue
+        if sync_entry is not None:
+            assigned_token_ids.add(sync_entry.token_id)
+            resolved_by_token_id[sync_entry.token_id] = sync_entry
+        elif spawn_entry is not None:
+            spawn_entries.append(spawn_entry)
 
-        resolved_by_token_id[resolution.token_id] = resolution
-
-    return list(resolved_by_token_id.values()), unresolved_combatants
+    return list(resolved_by_token_id.values()), spawn_entries

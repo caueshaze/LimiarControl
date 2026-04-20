@@ -87,7 +87,10 @@ def get_active_session_service(
     session: DbSession,
 ) -> ActiveSessionRead:
     _campaign, _member = require_campaign_member_role(campaign_id, user, session)
-    party_id = resolve_party_id_for_campaign(campaign_id, session)
+    try:
+        party_id = resolve_party_id_for_campaign(campaign_id, session)
+    except HTTPException:
+        party_id = None
     active = get_open_campaign_session(
         campaign_id=campaign_id,
         party_id=party_id,

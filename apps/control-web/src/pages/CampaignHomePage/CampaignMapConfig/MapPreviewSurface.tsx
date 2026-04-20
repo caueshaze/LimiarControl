@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import {
   CAMPAIGN_EDGE_OBSTACLE_PRESETS,
   CAMPAIGN_OBSTACLE_PRESETS,
@@ -37,6 +37,7 @@ export const MapPreviewSurface = ({
   onHoveredCellChange,
 }: MapPreviewSurfaceProps) => {
   const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
+  const hoveredCellRef = useRef<HoveredGridCell | null>(null);
   const isCellEditMode = obstacleEditTarget === "cell" && Boolean(onCellToggle);
   const isEdgeEditMode = obstacleEditTarget === "edge" && Boolean(onEdgeToggle);
   const isEditMode = isCellEditMode || isEdgeEditMode;
@@ -80,11 +81,11 @@ export const MapPreviewSurface = ({
 
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
     const next = resolveHoveredCell(event);
-    setHoveredCell((current) => {
-      if (current?.row === next?.row && current?.column === next?.column) return current;
-      onHoveredCellChange?.(next);
-      return next;
-    });
+    const prev = hoveredCellRef.current;
+    if (prev?.row === next?.row && prev?.column === next?.column) return;
+    hoveredCellRef.current = next;
+    setHoveredCell(next);
+    onHoveredCellChange?.(next);
   };
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -121,6 +122,7 @@ export const MapPreviewSurface = ({
       style={isEditMode ? { cursor: "crosshair" } : undefined}
       onMouseMove={bounds != null ? handleMouseMove : undefined}
       onMouseLeave={() => {
+        hoveredCellRef.current = null;
         setHoveredCell(null);
         onHoveredCellChange?.(null);
       }}
