@@ -1,4 +1,10 @@
-import type { CampaignMapConfig } from "../../../entities/campaign";
+import {
+  CAMPAIGN_OBSTACLE_PRESETS,
+  obstacleToPresetId,
+  type CampaignMapConfig,
+  type CampaignObstacle,
+  type ObstaclePresetId,
+} from "../../../entities/campaign";
 import type { FormState, CalibrationPreviewState, HoveredGridCell } from "./types";
 
 export const EMPTY_FORM: FormState = {
@@ -111,4 +117,62 @@ export const sortMaps = (maps: CampaignMapConfig[]) =>
     return rightValue - leftValue;
   });
 
-export const formatHoveredCell = ({ row, column }: HoveredGridCell) => `${row}.${column}`;
+export function buildObstacleMap(
+  config: CampaignMapConfig | null | undefined,
+): Map<string, ObstaclePresetId> {
+  const map = new Map<string, ObstaclePresetId>();
+  if (config?.obstacles) {
+    for (const obstacle of config.obstacles) {
+      map.set(`${obstacle.x}:${obstacle.y}`, obstacleToPresetId(obstacle));
+    }
+  } else if (config?.blockedCells) {
+    for (const cell of config.blockedCells) {
+      map.set(`${cell.x}:${cell.y}`, "solid_wall");
+    }
+  }
+  return map;
+}
+
+export function serializeObstacleMap(
+  obstacleMap: ReadonlyMap<string, ObstaclePresetId>,
+): CampaignObstacle[] {
+  return Array.from(obstacleMap.entries()).map(([key, presetId]) => {
+    const [x, y] = key.split(":").map(Number);
+    const preset = CAMPAIGN_OBSTACLE_PRESETS.find((entry) => entry.id === presetId)!;
+    return { x, y, ...preset.style };
+  });
+}
+
+export function summarizeObstacleMap(
+  obstacleMap: ReadonlyMap<string, ObstaclePresetId>,
+) {
+  return CAMPAIGN_OBSTACLE_PRESETS.map((preset) => ({
+    ...preset,
+    count: Array.from(obstacleMap.values()).filter((value) => value === preset.id).length,
+  }));
+}
+
+export function getHoveredCellObstaclePreset(
+  obstacleMap: ReadonlyMap<string, ObstaclePresetId>,
+  hoveredCell: HoveredGridCell | null,
+): ObstaclePresetId | null {
+  if (hoveredCell == null) {
+    return null;
+  }
+  return obstacleMap.get(`${hoveredCell.column - 1}:${hoveredCell.row - 1}`) ?? null;
+}
+
+export function formatCalibrationBounds(
+  bounds: CalibrationPreviewState["bounds"],
+): string {
+  if (bounds == null) {
+    return "X - | Y - | W - | H -";
+  }
+  return `X ${bounds.x.toFixed(3)} | Y ${bounds.y.toFixed(3)} | W ${bounds.width.toFixed(3)} | H ${bounds.height.toFixed(3)}`;
+}
+
+export const formatHoveredCell = (
+  { row, column }: HoveredGridCell,
+  labels?: { columnLabel?: string; rowLabel?: string },
+) =>
+  `${labels?.columnLabel ?? "Col"} ${column} • ${labels?.rowLabel ?? "Row"} ${row}`;
