@@ -19,8 +19,11 @@ export const MapPreviewSurface = ({
   hoverHint,
   hoverMissingGrid,
   hoverCellLabel,
+  hoverColumnLabel,
+  hoverRowLabel,
   obstacleMap,
   onCellToggle,
+  onHoveredCellChange,
 }: MapPreviewSurfaceProps) => {
   const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
   const isEditMode = Boolean(onCellToggle);
@@ -66,6 +69,7 @@ export const MapPreviewSurface = ({
     const next = resolveHoveredCell(event);
     setHoveredCell((current) => {
       if (current?.row === next?.row && current?.column === next?.column) return current;
+      onHoveredCellChange?.(next);
       return next;
     });
   };
@@ -83,7 +87,13 @@ export const MapPreviewSurface = ({
       ? null
       : canHoverCells
         ? hoveredCell != null
-          ? hoverCellLabel.replace("{cell}", formatHoveredCell(hoveredCell))
+          ? hoverCellLabel.replace(
+              "{cell}",
+              formatHoveredCell(hoveredCell, {
+                columnLabel: hoverColumnLabel,
+                rowLabel: hoverRowLabel,
+              }),
+            )
           : hoverHint
         : hoverMissingGrid;
 
@@ -92,7 +102,10 @@ export const MapPreviewSurface = ({
       className="relative"
       style={isEditMode ? { cursor: "crosshair" } : undefined}
       onMouseMove={bounds != null ? handleMouseMove : undefined}
-      onMouseLeave={() => setHoveredCell(null)}
+      onMouseLeave={() => {
+        setHoveredCell(null);
+        onHoveredCellChange?.(null);
+      }}
       onClick={isEditMode && bounds != null ? handleClick : undefined}
     >
       <ManagedImage
