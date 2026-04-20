@@ -91,7 +91,7 @@ export const campaignHomePtBRDictionary = {
   "campaignHome.mapPreviewGridMissing": "Grid pendente",
   "campaignHome.mapPreviewEditHint": "Clique nas celulas para aplicar ou remover o preset selecionado.",
   "campaignHome.mapPreviewSaveHint": "Revise o mapa e salve quando a calibracao e os obstaculos estiverem corretos.",
-  "campaignHome.mapPreviewScrollableHint": "Role para explorar mapas altos ou largos sem perder o resumo de revisao.",
+  "campaignHome.mapPreviewScrollableHint": "O mapa inteiro e ajustado ao espaco visivel; role apenas se quiser inspecionar mais de perto.",
   "campaignHome.mapPreviewReviewGrid": "Grid",
   "campaignHome.mapPreviewReviewCalibration": "Calibracao",
   "campaignHome.mapPreviewReviewObstacles": "Obstaculos",

@@ -91,7 +91,7 @@ export const campaignHomeEnUSDictionary = {
   "campaignHome.mapPreviewGridMissing": "Grid pending",
   "campaignHome.mapPreviewEditHint": "Click cells to apply or remove the selected preset.",
   "campaignHome.mapPreviewSaveHint": "Review the map and save once calibration and obstacles look correct.",
-  "campaignHome.mapPreviewScrollableHint": "Scroll to inspect tall or wide maps without losing the review summary.",
+  "campaignHome.mapPreviewScrollableHint": "The full map is fitted into view first; scroll only if you want a closer inspection.",
   "campaignHome.mapPreviewReviewGrid": "Grid",
   "campaignHome.mapPreviewReviewCalibration": "Calibration",
   "campaignHome.mapPreviewReviewObstacles": "Obstacles",

@@ -132,15 +132,15 @@ export const ExpandedPreviewDialog = ({
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="inline-flex min-h-full min-w-full items-start justify-center">
-                <div className="w-max min-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/30">
+              <div className="flex min-h-full items-center justify-center">
+                <div className="max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/30">
                   <MapPreviewSurface
                     imageUrl={imageUrl}
                     alt={mapName || t("campaignHome.mapPreviewAlt")}
                     bounds={calibrationPreview.bounds}
                     gridWidth={previewGridWidth}
                     gridHeight={previewGridHeight}
-                    imageClassName="block h-auto max-w-none"
+                    imageClassName="block h-auto max-h-[62vh] w-auto max-w-full"
                     invalidMessage={t("campaignHome.mapPreviewInvalid")}
                     hoverHint={
                       isObstacleEditMode
