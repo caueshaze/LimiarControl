@@ -57,6 +57,106 @@ export type BlockedCell = {
   y: number;
 };
 
+export type ObstacleCover = "none" | "half" | "threeQuarters" | "full";
+
+export type CampaignObstacle = {
+  x: number;
+  y: number;
+  blocksMovement: boolean;
+  blocksEffect: boolean;
+  blocksVision: boolean;
+  cover: ObstacleCover;
+  clipsDiagonalMovement: boolean;
+  movementCostMultiplier: number;
+};
+
+export type ObstaclePresetId =
+  | "solid_wall"
+  | "dense_obstacle"
+  | "barricade"
+  | "transparent_barrier"
+  | "blocked_path"
+  | "spell_blocker"
+  | "difficult_terrain";
+
+export type ObstaclePreset = {
+  id: ObstaclePresetId;
+  label: string;
+  description: string;
+  /** Hex color for visual overlay on the map preview. */
+  color: string;
+  style: Omit<CampaignObstacle, "x" | "y">;
+};
+
+export const CAMPAIGN_OBSTACLE_PRESETS: ObstaclePreset[] = [
+  {
+    id: "solid_wall",
+    label: "Parede sólida",
+    description: "Bloqueia movimento, visão e efeito; cobertura total.",
+    color: "#d24646",
+    style: { blocksMovement: true, blocksEffect: true, blocksVision: true, cover: "full", clipsDiagonalMovement: true, movementCostMultiplier: 1 },
+  },
+  {
+    id: "dense_obstacle",
+    label: "Obstáculo denso",
+    description: "Bloqueia movimento e concede 3/4 de cobertura. Não bloqueia visão nem efeito.",
+    color: "#ffaa44",
+    style: { blocksMovement: true, blocksEffect: false, blocksVision: false, cover: "threeQuarters", clipsDiagonalMovement: true, movementCostMultiplier: 1 },
+  },
+  {
+    id: "barricade",
+    label: "Barricada",
+    description: "Meia cobertura. Não bloqueia movimento, visão nem efeito.",
+    color: "#ffdc78",
+    style: { blocksMovement: false, blocksEffect: false, blocksVision: false, cover: "half", clipsDiagonalMovement: false, movementCostMultiplier: 1 },
+  },
+  {
+    id: "transparent_barrier",
+    label: "Barreira transparente",
+    description: "Bloqueia movimento e efeito, mas não bloqueia visão.",
+    color: "#7c9ef5",
+    style: { blocksMovement: true, blocksEffect: true, blocksVision: false, cover: "none", clipsDiagonalMovement: false, movementCostMultiplier: 1 },
+  },
+  {
+    id: "blocked_path",
+    label: "Caminho bloqueado",
+    description: "Bloqueia movimento sem bloquear visão, efeito ou oferecer cobertura.",
+    color: "#c084fc",
+    style: { blocksMovement: true, blocksEffect: false, blocksVision: false, cover: "none", clipsDiagonalMovement: false, movementCostMultiplier: 1 },
+  },
+  {
+    id: "spell_blocker",
+    label: "Bloqueador de magia",
+    description: "Bloqueia efeito de área sem bloquear movimento ou visão.",
+    color: "#34d399",
+    style: { blocksMovement: false, blocksEffect: true, blocksVision: false, cover: "none", clipsDiagonalMovement: false, movementCostMultiplier: 1 },
+  },
+  {
+    id: "difficult_terrain",
+    label: "Terreno difícil",
+    description: "Não bloqueia, mas custa 2× para atravessar.",
+    color: "#9c7040",
+    style: { blocksMovement: false, blocksEffect: false, blocksVision: false, cover: "none", clipsDiagonalMovement: false, movementCostMultiplier: 2 },
+  },
+];
+
+export function obstacleToPresetId(obs: CampaignObstacle): ObstaclePresetId {
+  for (const preset of CAMPAIGN_OBSTACLE_PRESETS) {
+    const s = preset.style;
+    if (
+      s.blocksMovement === obs.blocksMovement &&
+      s.blocksEffect === obs.blocksEffect &&
+      s.blocksVision === obs.blocksVision &&
+      s.cover === obs.cover &&
+      s.clipsDiagonalMovement === obs.clipsDiagonalMovement &&
+      s.movementCostMultiplier === obs.movementCostMultiplier
+    ) {
+      return preset.id;
+    }
+  }
+  return "solid_wall";
+}
+
 export type CampaignMapConfig = {
   id: string;
   mapName?: string | null;
@@ -64,7 +164,9 @@ export type CampaignMapConfig = {
   gridWidth?: number | null;
   gridHeight?: number | null;
   calibration?: CampaignMapCalibration | null;
-  /** Movement-blocking cells defined at the campaign map level (Phase 1 obstacles). */
+  /** Canonical semantic obstacles. Null = legacy map without obstacles_json. */
+  obstacles?: CampaignObstacle[] | null;
+  /** @deprecated Legacy movement-only blocked cells for pre-semantic maps. */
   blockedCells?: BlockedCell[] | null;
   createdAt: string;
   updatedAt?: string | null;

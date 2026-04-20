@@ -25,6 +25,24 @@ export const initiativeEntrySchema = z.object({
   initiativeScore: z.number()
 });
 
+/**
+ * A single per-cell obstacle authored at the campaign level.
+ * Canonical path for maps created after the semantic obstacle feature;
+ * supersedes `blockedCells` when present.
+ */
+export const campaignObstacleInputSchema = z.object({
+  x: z.number().int().min(0),
+  y: z.number().int().min(0),
+  blocksMovement: z.boolean(),
+  blocksEffect: z.boolean().default(false),
+  blocksVision: z.boolean().default(false),
+  cover: obstacleCoverSchema.default("none"),
+  clipsDiagonalMovement: z.boolean().default(false),
+  movementCostMultiplier: z.number().int().min(1).default(1)
+});
+
+export type CampaignObstacleInput = z.infer<typeof campaignObstacleInputSchema>;
+
 export const integrationBattleMapSchema = z.object({
   name: z.string(),
   gridWidth: z.number().int().positive().max(150),
@@ -32,9 +50,11 @@ export const integrationBattleMapSchema = z.object({
   gridCalibration: battleMapSchema.shape.gridCalibration,
   imageUrl: z.string(),
   sourceImageUrl: z.string().nullable().optional(),
-  // Phase 1 obstacles: movement-blocking cells seeded from the campaign map definition.
-  // LimiarControl converts these to Obstacle[] on the map-server at combat start.
-  // Absent or empty = no campaign-level blocked cells.
+  // Canonical semantic obstacles (Phase 2+): each entry maps a single cell to
+  // its full tactical semantics. When present, `blockedCells` is ignored.
+  obstacles: z.array(campaignObstacleInputSchema).optional(),
+  // Phase 1 legacy: movement-only blocked cells. Kept for backward compat with
+  // old campaign maps that pre-date semantic obstacles.
   blockedCells: z.array(coordinateSchema).optional()
 });
 

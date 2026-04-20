@@ -20,7 +20,9 @@ from app.schemas.campaign import (
     CampaignRead,
     CampaignUpdate,
     decode_blocked_cells,
+    decode_obstacles,
     encode_blocked_cells,
+    encode_obstacles,
 )
 from app.services.campaign_catalog import snapshot_campaign_catalog
 from app.services.campaign_cleanup import delete_campaign_tree
@@ -110,8 +112,14 @@ def _apply_campaign_map_payload(
         entry.calibration_width = payload.calibration.width
         entry.calibration_height = payload.calibration.height
 
-    # blockedCells: None = leave unchanged; [] = clear all; [...] = replace
-    if payload.blockedCells is not None:
+    # obstacles (canonical): None = leave unchanged; [] = clear; [...] = replace
+    if payload.obstacles is not None:
+        entry.obstacles_json = encode_obstacles(payload.obstacles)
+        # When canonical obstacles are written, clear the legacy column so the
+        # read path always returns a consistent view.
+        entry.blocked_cells_json = None
+    elif payload.blockedCells is not None:
+        # Legacy path: only write blockedCells when no canonical obstacles supplied.
         entry.blocked_cells_json = encode_blocked_cells(payload.blockedCells)
 
     return previous_image_url, entry.image_url
@@ -152,6 +160,7 @@ def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMap
             "height": campaign.calibration_height,
         }
 
+    obstacles = decode_obstacles(campaign.obstacles_json)
     return CampaignMapConfigRead(
         id=campaign.id,
         mapName=campaign.name,
@@ -159,7 +168,9 @@ def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMap
         gridWidth=campaign.grid_width,
         gridHeight=campaign.grid_height,
         calibration=calibration,
-        blockedCells=decode_blocked_cells(campaign.blocked_cells_json),
+        obstacles=obstacles,
+        # Emit legacy blockedCells only when the canonical obstacles_json is absent.
+        blockedCells=decode_blocked_cells(campaign.blocked_cells_json) if obstacles is None else [],
         createdAt=campaign.created_at,
         updatedAt=campaign.updated_at,
     )

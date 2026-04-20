@@ -1,7 +1,12 @@
 import { useState, type MouseEvent } from "react";
+import { CAMPAIGN_OBSTACLE_PRESETS } from "../../../entities/campaign";
 import { ManagedImage } from "../../../shared/ui";
 import type { HoveredGridCell, MapPreviewSurfaceProps } from "./types";
 import { formatHoveredCell } from "./utils";
+
+const PRESET_COLOR_MAP = Object.fromEntries(
+  CAMPAIGN_OBSTACLE_PRESETS.map((p) => [p.id, p.color])
+);
 
 export const MapPreviewSurface = ({
   imageUrl,
@@ -14,7 +19,7 @@ export const MapPreviewSurface = ({
   hoverHint,
   hoverMissingGrid,
   hoverCellLabel,
-  blockedCellSet,
+  obstacleMap,
   onCellToggle,
 }: MapPreviewSurfaceProps) => {
   const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
@@ -111,19 +116,21 @@ export const MapPreviewSurface = ({
               height: `${bounds.height * 100}%`,
             }}
           >
-            {/* Blocked cell overlays */}
-            {blockedCellSet != null && gridWidth != null && gridHeight != null &&
-              Array.from(blockedCellSet).map((key) => {
+            {/* Obstacle overlays — color-coded by preset */}
+            {obstacleMap != null && gridWidth != null && gridHeight != null &&
+              Array.from(obstacleMap.entries()).map(([key, presetId]) => {
                 const [cx, cy] = key.split(":").map(Number);
+                const color = PRESET_COLOR_MAP[presetId] ?? "#d24646";
                 return (
                   <div
                     key={key}
-                    className="absolute bg-rose-500/45 border border-rose-400/60"
+                    className="absolute border border-white/20"
                     style={{
                       left: `${(cx / gridWidth) * 100}%`,
                       top: `${(cy / gridHeight) * 100}%`,
                       width: `${100 / gridWidth}%`,
                       height: `${100 / gridHeight}%`,
+                      backgroundColor: `${color}70`,
                     }}
                   />
                 );

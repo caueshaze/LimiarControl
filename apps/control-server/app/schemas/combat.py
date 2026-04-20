@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 from app.schemas.campaign_entity_shared import AbilityName
-from app.schemas.campaign import BlockedCell, CampaignMapCalibration, MAX_GRID_DIMENSION
+from app.schemas.campaign import BlockedCell, CampaignMapCalibration, CampaignObstacle, MAX_GRID_DIMENSION
 from app.schemas.roll import RollResult, RollSource
 
 CombatActionCost = Literal["action", "bonus_action", "reaction", "free"]
@@ -51,7 +51,10 @@ class CombatMapSelection(BaseModel):
     gridWidth: int = Field(ge=1, le=MAX_GRID_DIMENSION)
     gridHeight: int = Field(ge=1, le=MAX_GRID_DIMENSION)
     calibration: CampaignMapCalibration
-    # Movement-blocking cells loaded from CampaignTacticalMap at combat start.
+    # Canonical semantic obstacles loaded from CampaignTacticalMap at combat start.
+    # None = legacy map without obstacles_json.
+    obstacles: list[CampaignObstacle] | None = None
+    # Legacy movement-only cells — present only when obstacles is None.
     blockedCells: list[BlockedCell] = Field(default_factory=list)
 
     @model_validator(mode="after")

@@ -566,11 +566,14 @@ class LimiarMapCombatProjectionService:
             "sourceImageUrl": source_image_url,
         }
 
-        # Include campaign-level blocked cells so LimiarMap can seed its
-        # encounter obstacles.  authoritative source: CampaignTacticalMap DB row.
-        blocked_cells = raw_selection.get("blockedCells")
-        if isinstance(blocked_cells, list) and blocked_cells:
-            payload["blockedCells"] = blocked_cells
+        # Canonical semantic obstacles take priority over legacy blockedCells.
+        obstacles = raw_selection.get("obstacles")
+        if isinstance(obstacles, list) and obstacles:
+            payload["obstacles"] = obstacles
+        else:
+            blocked_cells = raw_selection.get("blockedCells")
+            if isinstance(blocked_cells, list) and blocked_cells:
+                payload["blockedCells"] = blocked_cells
 
         return payload
 

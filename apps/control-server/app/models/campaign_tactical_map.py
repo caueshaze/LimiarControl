@@ -20,8 +20,12 @@ class CampaignTacticalMap(SQLModel, table=True):
     calibration_width: float | None = Field(default=None, sa_column=Column(Float, nullable=True))
     calibration_height: float | None = Field(default=None, sa_column=Column(Float, nullable=True))
     # JSON-encoded list of blocked cell coordinates: [{"x": int, "y": int}, ...]
-    # Used by Phase 1 of tactical obstacle handling (movement blocking only).
+    # Legacy Phase 1 storage — superseded by obstacles_json for new maps.
     blocked_cells_json: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    # JSON-encoded semantic obstacles: [{x, y, blocksMovement, blocksEffect, blocksVision,
+    # cover, clipsDiagonalMovement, movementCostMultiplier}, ...]
+    # Authoritative when present; blocked_cells_json is ignored.
+    obstacles_json: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

@@ -1,4 +1,4 @@
-import type { BlockedCell, Campaign, CampaignMapConfig, CampaignSystemType } from "../../entities/campaign";
+import type { BlockedCell, CampaignObstacle, Campaign, CampaignMapConfig, CampaignSystemType } from "../../entities/campaign";
 import { http } from "./http";
 
 type CampaignCreatePayload = {
@@ -28,7 +28,9 @@ export type CampaignMapConfigPayload = {
     width: number;
     height: number;
   } | null;
-  /** Pass an array to replace blocked cells; omit to leave them unchanged. */
+  /** Canonical semantic obstacles — replace the full set on each save. */
+  obstacles?: CampaignObstacle[] | null;
+  /** @deprecated Legacy movement-only cells; use obstacles for new maps. */
   blockedCells?: BlockedCell[] | null;
 };
 
