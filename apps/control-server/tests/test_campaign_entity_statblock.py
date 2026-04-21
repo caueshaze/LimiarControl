@@ -238,6 +238,40 @@ class TestCampaignEntityStatblock(unittest.TestCase):
 
         self.assertEqual(payload.combatActions[0].campaignItemId, "item-123")
 
+    def test_weapon_action_accepts_full_manual_profile_without_catalog_reference(self):
+        payload = CampaignEntityCreate(
+            name="Bandit",
+            combatActions=[
+                {
+                    "id": "rusty_axe",
+                    "name": "Rusty Axe",
+                    "kind": "weapon_attack",
+                    "toHitBonus": 3,
+                    "damageDice": "1d6",
+                    "damageType": "slashing",
+                    "isMelee": True,
+                }
+            ],
+        )
+
+        self.assertIsNone(payload.combatActions[0].campaignItemId)
+        self.assertEqual(payload.combatActions[0].damageDice, "1d6")
+
+    def test_utility_action_accepts_manual_description_without_catalog_reference(self):
+        payload = CampaignEntityCreate(
+            name="Bandit",
+            combatActions=[
+                {
+                    "id": "kick_sand",
+                    "name": "Kick Sand",
+                    "kind": "utility",
+                    "description": "Manual effect resolved by the GM.",
+                }
+            ],
+        )
+
+        self.assertEqual(payload.combatActions[0].kind, "utility")
+
 
 if __name__ == "__main__":
     unittest.main()

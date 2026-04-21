@@ -1,9 +1,16 @@
+import { useEffect, useRef, useState } from "react";
+
 import { fieldClass } from "./constants";
 
 const DICE_COUNTS = Array.from({ length: 12 }, (_, index) => index + 1);
 const DICE_SIDES = [4, 6, 8, 10, 12, 20];
 
-const parseDiceExpression = (value: string | null | undefined) => {
+type DiceParts = {
+  count: string;
+  sides: string;
+};
+
+export const parseDiceExpression = (value: string | null | undefined): DiceParts => {
   if (!value) {
     return { count: "", sides: "" };
   }
@@ -16,6 +23,9 @@ const parseDiceExpression = (value: string | null | undefined) => {
     sides: match[2] ?? "",
   };
 };
+
+export const buildDiceExpression = ({ count, sides }: DiceParts) =>
+  count && sides ? `${count}d${sides}` : "";
 
 type Props = {
   value: string | null | undefined;
@@ -32,22 +42,30 @@ export const DiceExpressionSelect = ({
   countPlaceholder,
   sidesPlaceholder,
 }: Props) => {
-  const parsed = parseDiceExpression(value);
+  const [draft, setDraft] = useState<DiceParts>(() => parseDiceExpression(value));
+  const previousValue = useRef(value ?? "");
+
+  useEffect(() => {
+    if (value) {
+      setDraft(parseDiceExpression(value));
+    } else if (previousValue.current) {
+      setDraft({ count: "", sides: "" });
+    }
+    previousValue.current = value ?? "";
+  }, [value]);
 
   const update = (nextCount: string, nextSides: string) => {
-    if (!nextCount || !nextSides) {
-      onChange("");
-      return;
-    }
-    onChange(`${nextCount}d${nextSides}`);
+    const next = { count: nextCount, sides: nextSides };
+    setDraft(next);
+    onChange(buildDiceExpression(next));
   };
 
   return (
     <div className="grid grid-cols-2 gap-3">
       <select
-        value={parsed.count}
+        value={draft.count}
         disabled={disabled}
-        onChange={(event) => update(event.target.value, parsed.sides)}
+        onChange={(event) => update(event.target.value, draft.sides)}
         className={fieldClass}
       >
         <option value="">{countPlaceholder}</option>
@@ -58,9 +76,9 @@ export const DiceExpressionSelect = ({
         ))}
       </select>
       <select
-        value={parsed.sides}
+        value={draft.sides}
         disabled={disabled}
-        onChange={(event) => update(parsed.count, event.target.value)}
+        onChange={(event) => update(draft.count, event.target.value)}
         className={fieldClass}
       >
         <option value="">{sidesPlaceholder}</option>

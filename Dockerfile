@@ -34,7 +34,7 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
 WORKDIR /app
 
 COPY apps/control-server/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=120 --retries=10 -r requirements.txt
 
 COPY --chown=appuser:appuser apps/control-server/ ./
 COPY --chown=appuser:appuser Base/ /Base/

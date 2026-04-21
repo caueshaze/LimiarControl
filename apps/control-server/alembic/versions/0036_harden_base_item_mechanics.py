@@ -94,9 +94,12 @@ def _normalize_legacy_values() -> None:
                 WHEN 'admin_panel' THEN 'admin_panel'
                 WHEN 'csv' THEN 'csv_import'
                 WHEN 'csv_import' THEN 'csv_import'
+                WHEN 'synthetic_import' THEN 'csv_import'
                 WHEN 'seed' THEN 'seed_json_bootstrap'
                 WHEN 'seed_json_bootstrap' THEN 'seed_json_bootstrap'
-                ELSE LOWER(TRIM(source))
+                ELSE CASE WHEN LOWER(TRIM(source)) LIKE '%.csv' THEN 'csv_import'
+                          ELSE 'csv_import'
+                     END
             END
             WHERE source IS NOT NULL
             """
