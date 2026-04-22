@@ -2,6 +2,8 @@ import { RollResultCard } from "../../../features/rolls/components/RollResultCar
 import type { StandardActionType } from "../../../shared/api/combatRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { getCombatStatusLabel } from "../combatUi.helpers";
+import { RangeStatusBadge } from "../components/RangeStatusBadge";
+import { useTargetingPreview } from "../hooks/useTargetingPreview";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import type { PendingRoll } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import type {
@@ -43,6 +45,7 @@ type Props = {
   selectedSpell: SpellOption | null;
   selectedSpellId: string;
   selectedTarget: { id: string } | null;
+  sessionId: string;
   setActiveActionPanel: (panel: "attack" | "spell" | "standard" | "object") => void;
   setConsumableItemId: (id: string) => void;
   setSelectedSpellId: (id: string) => void;
@@ -99,6 +102,7 @@ export const PlayerTurnPanel = ({
   selectedSpell,
   selectedSpellId,
   selectedTarget,
+  sessionId,
   setActiveActionPanel,
   setConsumableItemId,
   setSelectedSpellId,
@@ -130,6 +134,15 @@ export const PlayerTurnPanel = ({
   const actionUsed = Boolean(myParticipant?.turn_resources?.action_used);
   const canAct = Boolean(combat.isMyTurn && myParticipant?.status === "active");
   const turnSummaryLabel = waitLabelByPhase(combat.state?.phase, combat.isMyTurn, t);
+  const attackRangePreview = useTargetingPreview({
+    sessionId,
+    actorRefId: myParticipant?.ref_id,
+    targetRefId: targetId || null,
+    actionType: "attack",
+    normalRangeMeters: playerStatus?.currentWeapon?.rangeMeters ?? null,
+    longRangeMeters: playerStatus?.currentWeapon?.rangeLongMeters ?? null,
+    enabled: Boolean(combat.state && myParticipant?.ref_id && targetId),
+  });
 
   const selectedConsumableIsHealing = Boolean(selectedConsumable?.isHealingConsumable);
   const useObjectManualRollReady =
@@ -248,6 +261,11 @@ export const PlayerTurnPanel = ({
                       </option>
                     ))}
                 </select>
+                {targetId ? (
+                  <div className="mt-2">
+                    <RangeStatusBadge preview={attackRangePreview} />
+                  </div>
+                ) : null}
               </label>
 
               <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">

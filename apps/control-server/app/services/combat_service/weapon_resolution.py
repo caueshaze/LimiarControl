@@ -230,7 +230,21 @@ class CombatWeaponResolutionMixin:
             if isinstance(requested_weapon_item_id, str)
             else None
         )
-        selected_inventory_item_id = requested_id or data.get("currentWeaponId")
+        current_weapon_id_value = data.get("currentWeaponId")
+        current_weapon_id = (
+            current_weapon_id_value.strip()
+            if isinstance(current_weapon_id_value, str)
+            else None
+        )
+        effective_current_weapon_id = (
+            current_weapon_id
+            if isinstance(current_weapon_id, str) and current_weapon_id
+            else "unarmed"
+        )
+        selected_inventory_item_id = current_weapon_id
+
+        if requested_id and requested_id != effective_current_weapon_id:
+            raise CombatServiceError("Weapon attacks must use the currently equipped weapon.", 400)
 
         strength_mod = cls._ability_modifier(
             cls._get_player_ability_score(data, "strength")

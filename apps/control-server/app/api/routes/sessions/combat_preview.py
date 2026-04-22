@@ -20,6 +20,7 @@ Design constraints:
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session as DbSession, select
@@ -37,6 +38,7 @@ from app.schemas.combat_preview import (
     TacticalDiagnosticsPayload,
 )
 from app.services.combat_service.combat_targeting import get_combat_targeting_service
+from app.services.combat_service.reach import resolve_weapon_attack_range_profile
 from app.services.combat_service.targeting_diagnostics import (
     CHECK_IN_RANGE,
     TARGET_OUT_OF_REACH,
@@ -46,11 +48,15 @@ from app.services.combat_service.targeting_intent import (
     SpellCastIntent,
     WeaponAttackIntent,
 )
-from app.services.combat_service.unit_conversion import METERS_PER_CELL
+from app.services.combat_service.unit_conversion import METERS_PER_CELL, meters_to_cells
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _preview_action_id() -> str:
+    return f"preview:{uuid4()}"
 
 
 def _chebyshev(a: PreviewPosition, b: PreviewPosition) -> int:
@@ -73,6 +79,83 @@ def _reach_to_range_meters(reach_cells: int) -> int:
     all integer values of *n* between 1 and 60 at the default 1.5 m/cell scale.
     """
     return round(reach_cells * METERS_PER_CELL)
+
+
+def _build_attack_preview_intent(
+    *,
+    db: DbSession,
+    session_id: str,
+    source_ref_id: str,
+    actor_kind: str,
+    target_ref_id: str,
+    fallback_reach_cells: int,
+) -> tuple[WeaponAttackIntent, int]:
+    range_meters = _reach_to_range_meters(fallback_reach_cells)
+    action_id = _preview_action_id()
+    intent = WeaponAttackIntent(
+        session_id=session_id,
+        action_id=action_id,
+        actor_ref_id=source_ref_id,
+        actor_kind=actor_kind,
+        requested_target_ref_id=target_ref_id,
+        range_meters=range_meters,
+        requires_sight=True,
+        requires_effect=True,
+    )
+
+    if actor_kind != "player":
+        return intent, fallback_reach_cells
+
+    try:
+        from app.services.combat import CombatService
+
+        attacker_model, *_ = CombatService._get_stats(
+            db, source_ref_id, "player", session_id
+        )
+        attacker_data = CombatService._as_dict(attacker_model.state_json)
+        attack_context = CombatService._build_player_attack_context(
+            db,
+            session_id,
+            source_ref_id,
+            attacker_data,
+            None,
+        )
+    except Exception as exc:
+        logger.debug(
+            "[preview] could not derive current weapon for session=%s actor=%s: %s",
+            session_id,
+            source_ref_id,
+            exc,
+        )
+        return intent, fallback_reach_cells
+
+    intent = WeaponAttackIntent(
+        session_id=session_id,
+        action_id=action_id,
+        actor_ref_id=source_ref_id,
+        actor_kind=actor_kind,
+        requested_target_ref_id=target_ref_id,
+        weapon_item_id=attack_context.get("inventory_item_id"),
+        weapon_canonical_key=attack_context.get("weapon_canonical_key"),
+        range_meters=attack_context.get("range_meters"),
+        range_long_meters=attack_context.get("range_long_meters"),
+        weapon_range_type=attack_context.get("weapon_range_type"),
+        has_reach=bool(attack_context.get("has_reach")),
+        requires_sight=True,
+        requires_effect=True,
+    )
+    weapon_profile = resolve_weapon_attack_range_profile(
+        range_meters=intent.range_meters,
+        range_long_meters=intent.range_long_meters,
+        weapon_range_type=intent.weapon_range_type,
+        has_reach=intent.has_reach,
+    )
+    effective_reach_cells = (
+        meters_to_cells(weapon_profile.max_range)
+        if weapon_profile.max_range is not None
+        else fallback_reach_cells
+    )
+    return intent, effective_reach_cells
 
 
 @router.post(
@@ -107,6 +190,9 @@ def combat_preview(
         raise HTTPException(status_code=404, detail="Session not found")
 
     reach = payload.reach_cells
+    combat_state = db.exec(
+        select(CombatState).where(CombatState.session_id == session_id)
+    ).first()
 
     # ── AoE path ─────────────────────────────────────────────────────────────
     # AoE takes priority: when shape + size are provided we skip entity-level
@@ -117,16 +203,15 @@ def combat_preview(
         and payload.source_position is not None
         and payload.target_position is not None
     ):
-        return _handle_aoe_preview(session_id, payload, reach)
+        if not combat_state:
+            return CombatPreviewResponse(effectiveReachCells=reach)
+        return _handle_aoe_preview(session_id, payload, reach, combat_state.use_map)
 
     # ── Reach-only path ───────────────────────────────────────────────────────
     if not payload.target_ref_id:
         return CombatPreviewResponse(effectiveReachCells=reach)
 
     # ── Single-target path ────────────────────────────────────────────────────
-    combat_state = db.exec(
-        select(CombatState).where(CombatState.session_id == session_id)
-    ).first()
     if not combat_state:
         return CombatPreviewResponse(effectiveReachCells=reach)
 
@@ -141,7 +226,7 @@ def combat_preview(
     if payload.action_type == "spell":
         intent = SpellCastIntent(
             session_id=session_id,
-            action_id="preview",
+            action_id=_preview_action_id(),
             actor_ref_id=payload.source_ref_id,
             actor_kind=actor_kind,
             requested_target_ref_id=payload.target_ref_id,
@@ -152,21 +237,21 @@ def combat_preview(
             requires_effect=True,
         )
     else:
-        intent = WeaponAttackIntent(
+        intent, reach = _build_attack_preview_intent(
+            db=db,
             session_id=session_id,
-            action_id="preview",
-            actor_ref_id=payload.source_ref_id,
+            source_ref_id=payload.source_ref_id,
             actor_kind=actor_kind,
-            requested_target_ref_id=payload.target_ref_id,
-            range_meters=range_meters,
-            requires_sight=True,
-            requires_effect=True,
+            target_ref_id=payload.target_ref_id,
+            fallback_reach_cells=reach,
         )
 
     targeting_service = get_combat_targeting_service(combat_state.use_map)
     result = targeting_service.validate(intent, combat_state)
 
     diag: TargetingDiagnostics = result.diagnostics or TargetingDiagnostics()
+    if result.spatial_metadata.distance_meters is not None:
+        diag.set_meta("distance_meters", result.spatial_metadata.distance_meters)
 
     if payload.source_position and payload.target_position:
         distance = _chebyshev(payload.source_position, payload.target_position)
@@ -196,6 +281,7 @@ def _handle_aoe_preview(
     session_id: str,
     payload: CombatPreviewRequest,
     reach: int,
+    use_map: bool,
 ) -> CombatPreviewResponse:
     """Call LimiarMap /targeting/area/preview to compute the AoE footprint.
 
@@ -215,7 +301,7 @@ def _handle_aoe_preview(
     assert payload.source_position is not None
     assert payload.target_position is not None
 
-    if not combat_state.use_map:
+    if not use_map:
         logger.debug("[preview] AoE preview skipped — combat opened without map session=%s", session_id)
         return CombatPreviewResponse(effectiveReachCells=reach)
 
@@ -226,7 +312,7 @@ def _handle_aoe_preview(
         )
         response = client.preview_area_targeting(
             session_id=session_id,
-            action_id="preview",
+            action_id=_preview_action_id(),
             combatant_id=payload.source_ref_id,
             shape=payload.aoe_shape,
             origin_cell={"x": payload.source_position.x, "y": payload.source_position.y},

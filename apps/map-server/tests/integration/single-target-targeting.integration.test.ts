@@ -340,6 +340,52 @@ describe("single-target targeting integration", () => {
     await app.close();
   });
 
+  it("keeps valid previews read-only and returns distance for repeated preview action ids", async () => {
+    const { app, repository } = createApp();
+    const emit = vi.fn();
+    registerIntegrationRoutes(app, repository, { emit });
+
+    const encounter = repository.createEncounter("session-preview-readonly");
+    encounter.tokens = encounter.tokens.map((token) =>
+      token.combatantId === "cmb_1"
+        ? { ...token, position: { x: 0, y: 0 } }
+        : token.combatantId === "cmb_2"
+          ? { ...token, position: { x: 1, y: 0 } }
+          : token
+    );
+    repository.saveEncounter(encounter);
+
+    const payload = {
+      actionId: "preview",
+      combatantId: "cmb_1",
+      targetCombatantId: "cmb_2",
+      rangeCells: 12,
+      requiresSight: true,
+      requiresEffect: true
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-preview-readonly/targeting",
+      payload
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-preview-readonly/targeting",
+      payload
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ isValid: true, distanceCells: 1 });
+    expect(second.json()).toMatchObject({ isValid: true, distanceCells: 1 });
+    expect(repository.getEncounter("session-preview-readonly")?.combatState.version).toBe(0);
+    expect(repository.getEncounter("session-preview-readonly")?.actionTracker.has("preview")).toBe(false);
+    expect(emit).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
   it("LoS hard block still prevails when cover is also present", async () => {
     const { app, repository } = createApp();
     registerIntegrationRoutes(app, repository, { emit: vi.fn() });

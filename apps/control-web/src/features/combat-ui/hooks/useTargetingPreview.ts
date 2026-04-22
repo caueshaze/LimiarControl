@@ -15,6 +15,8 @@ export type TargetingPreviewState = {
   error: string | null;
   diagnostics: TacticalDiagnosticsPayload | null;
   distanceMeters: number | null;
+  normalRangeMeters: number | null;
+  maxRangeMeters: number | null;
   rangeStatus: RangeStatus;
   hasDisadvantage: boolean;
   failureReasons: string[];
@@ -53,6 +55,8 @@ const INITIAL: TargetingPreviewState = {
   error: null,
   diagnostics: null,
   distanceMeters: null,
+  normalRangeMeters: null,
+  maxRangeMeters: null,
   rangeStatus: "unknown",
   hasDisadvantage: false,
   failureReasons: [],
@@ -100,10 +104,26 @@ export function useTargetingPreview(opts: UseTargetingPreviewOptions): Targeting
               : typeof meta["distance_cells"] === "number"
                 ? (meta["distance_cells"] as number) * METERS_PER_CELL
                 : null;
+          const resolvedNormalRangeMeters =
+            typeof meta["normal_range_meters"] === "number"
+              ? (meta["normal_range_meters"] as number)
+              : typeof meta["normal_range_cells"] === "number"
+                ? (meta["normal_range_cells"] as number) * METERS_PER_CELL
+                : normalRangeMeters;
+          const resolvedLongRangeMeters =
+            typeof meta["long_range_meters"] === "number"
+              ? (meta["long_range_meters"] as number)
+              : typeof meta["long_range_cells"] === "number"
+                ? (meta["long_range_cells"] as number) * METERS_PER_CELL
+                : longRangeMeters;
+          const resolvedMaxRangeMeters =
+            typeof meta["max_range_meters"] === "number"
+              ? (meta["max_range_meters"] as number)
+              : resolvedLongRangeMeters ?? resolvedNormalRangeMeters ?? null;
           const { status, hasDisadvantage } = classifyRange(
             distanceMeters,
-            normalRangeMeters,
-            longRangeMeters,
+            resolvedNormalRangeMeters,
+            resolvedLongRangeMeters,
           );
           const checks = diag?.checks ?? {};
           const inRange = checks["in_range"];
@@ -113,6 +133,8 @@ export function useTargetingPreview(opts: UseTargetingPreviewOptions): Targeting
             error: null,
             diagnostics: diag,
             distanceMeters,
+            normalRangeMeters: resolvedNormalRangeMeters ?? null,
+            maxRangeMeters: resolvedMaxRangeMeters,
             rangeStatus: finalStatus,
             hasDisadvantage: finalStatus === "long" ? true : hasDisadvantage,
             failureReasons: diag?.failureReasons ?? [],

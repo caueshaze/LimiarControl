@@ -85,6 +85,10 @@ export const PlayerAttackRollDialog = ({
     manual_roll?: number;
     roll_source: "manual" | "system";
   }) => {
+    if (outOfRange) {
+      setError("Alvo fora do alcance da arma atual.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -103,6 +107,7 @@ export const PlayerAttackRollDialog = ({
       setDamageMode("choose");
       if (!resolved.damage_roll_required) {
         await onResolved?.(resolved);
+        onClose();
       }
     } catch (err: any) {
       setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao resolver ataque"));
@@ -133,6 +138,7 @@ export const PlayerAttackRollDialog = ({
       });
       setResult(resolved);
       await onResolved?.(resolved);
+      onClose();
     } catch (err: any) {
       setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao rolar dano"));
     } finally {
@@ -167,6 +173,11 @@ export const PlayerAttackRollDialog = ({
         {!result ? (
           <div className="mt-4">
             <RangeStatusBadge preview={preview} />
+            {outOfRange ? (
+              <p className="mt-2 text-xs font-semibold text-rose-200">
+                Alvo fora do alcance da arma atual.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

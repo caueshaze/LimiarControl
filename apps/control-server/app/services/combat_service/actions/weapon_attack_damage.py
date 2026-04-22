@@ -82,17 +82,26 @@ class WeaponAttackDamageMixin:
         concentration_summary = f" {concentration_check['summary_text']}" if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str) else ""
         await cls._emit_log(session_id, {"message": f"{attacker['display_name']} rolled damage with {pending_attack.get('weapon_name') or 'Attack'} against {target_display_name}: {damage + extra_damage} damage.{extra_damage_label}{effect_msg}{concentration_summary}", "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn"})
         return {
-            "weapon_name": pending_attack.get("weapon_name"),
+            "roll": cls._safe_int(pending_attack.get("roll"), 0),
+            "is_hit": True,
+            "is_critical": bool(pending_attack.get("is_critical")),
+            "target_ac": cls._safe_int(pending_attack.get("target_ac"), 10),
+            "target_kind": "session_entity" if target_kind == "entity" else target_kind,
+            "weapon_name": pending_attack.get("weapon_name") or "Attack",
             "damage": damage + extra_damage,
             "new_hp": new_hp,
+            "damage_dice": pending_attack.get("damage_dice") or "",
             "damage_rolls": damage_rolls,
             "extra_damage_rolls": extra_damage_rolls,
             "base_damage": base_damage,
             "damage_bonus": damage_bonus,
+            "attack_bonus": cls._safe_int(pending_attack.get("attack_bonus"), 0),
             "extra_damage": extra_damage,
             "roll_result": roll_result,
             "target_display_name": target_display_name,
             "damage_type": pending_attack.get("damage_type"),
+            "pending_attack_id": None,
+            "damage_roll_required": False,
             "damage_roll_source": req.roll_source,
             "concentration_check": concentration_check,
         }

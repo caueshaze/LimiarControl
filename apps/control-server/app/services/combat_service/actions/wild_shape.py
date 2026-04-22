@@ -156,6 +156,7 @@ class WildShapeMixin:
         )
         if not target_p:
             raise CombatServiceError("Target not found in combat")
+        target_kind = "session_entity" if target_p.get("kind") == "entity" else target_p.get("kind")
         # ─────────────────────────────────────────────────────────────────────
 
         _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
@@ -211,7 +212,7 @@ class WildShapeMixin:
                 {
                     "type": "player_attack",
                     "target_ref_id": target_p["ref_id"],
-                    "target_kind": target_p["kind"],
+                    "target_kind": target_kind,
                     "target_display_name": target_p["display_name"],
                     "target_ac": target_ac,
                     "weapon_name": natural_attack.name,
@@ -264,7 +265,7 @@ class WildShapeMixin:
             "roll_result": roll_result,
             "target_ac": target_ac,
             "target_display_name": target_p["display_name"],
-            "target_kind": target_p["kind"],
+            "target_kind": target_kind,
             "weapon_name": natural_attack.name,
             "damage_dice": natural_attack.damage_dice,
             "damage_bonus": natural_attack.damage_bonus,

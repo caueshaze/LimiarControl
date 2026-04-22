@@ -35,7 +35,14 @@ const formatDistance = (meters: number): string => {
 
 export const RangeStatusBadge = ({ preview }: Props) => {
   const { t } = useLocale();
-  const { loading, rangeStatus, distanceMeters, hasDisadvantage } = preview;
+  const {
+    loading,
+    rangeStatus,
+    distanceMeters,
+    normalRangeMeters,
+    maxRangeMeters,
+    hasDisadvantage,
+  } = preview;
 
   if (loading) {
     return (
@@ -47,6 +54,12 @@ export const RangeStatusBadge = ({ preview }: Props) => {
 
   const label = statusLabel(t, rangeStatus);
   const distanceLabel = distanceMeters != null ? formatDistance(distanceMeters) : null;
+  const normalRangeLabel = normalRangeMeters != null ? formatDistance(normalRangeMeters) : null;
+  const maxRangeLabel =
+    maxRangeMeters != null && maxRangeMeters !== normalRangeMeters
+      ? formatDistance(maxRangeMeters)
+      : null;
+  const neededLabel = maxRangeMeters != null ? formatDistance(maxRangeMeters) : null;
 
   return (
     <div
@@ -56,6 +69,18 @@ export const RangeStatusBadge = ({ preview }: Props) => {
         <span>{label}</span>
         {distanceLabel ? <span className="opacity-80">{distanceLabel}</span> : null}
       </div>
+      {distanceLabel || neededLabel ? (
+        <p className="mt-1 text-[11px] font-normal opacity-90">
+          {distanceLabel ? `Distancia atual: ${distanceLabel}` : "Distancia atual: -"}
+          {neededLabel ? ` · precisa <= ${neededLabel}` : ""}
+        </p>
+      ) : null}
+      {normalRangeLabel ? (
+        <p className="mt-1 text-[11px] font-normal opacity-80">
+          Alcance normal: {normalRangeLabel}
+          {maxRangeLabel ? ` · longo: ${maxRangeLabel}` : ""}
+        </p>
+      ) : null}
       {hasDisadvantage ? (
         <p className="mt-1 text-[11px] font-normal text-amber-100">
           {t("combatUi.disadvantageRange")}

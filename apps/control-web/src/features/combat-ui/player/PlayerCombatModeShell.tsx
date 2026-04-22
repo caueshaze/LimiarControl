@@ -332,7 +332,7 @@ export const PlayerCombatModeShell = ({
             }
             const isOwnToken =
               selection.combatantId != null && selection.combatantId === myParticipant?.ref_id;
-            if (isOwnToken && canMoveNow && !isTargetingAction) {
+            if (isOwnToken && canMoveNow) {
               setMovementMode(true);
               setMovementSelectedCell(null);
               return;
@@ -370,6 +370,7 @@ export const PlayerCombatModeShell = ({
             selectedSpell={selectedSpell}
             selectedSpellId={selectedSpellId}
             selectedTarget={selectedTarget}
+            sessionId={sessionId}
             setActiveActionPanel={setActiveActionPanel}
             setConsumableItemId={setConsumableItemId}
             setSelectedSpellId={setSelectedSpellId}

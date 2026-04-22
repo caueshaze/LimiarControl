@@ -39,6 +39,7 @@ from app.services.combat_service.targeting_diagnostics import (
 )
 from app.services.combat_service.targeting_result import TargetingResult
 from app.api.routes.sessions.combat_preview import (
+    _build_attack_preview_intent,
     _chebyshev,
     _to_payload,
     _reach_to_range_meters,
@@ -400,6 +401,28 @@ class TestPreviewDelegation(unittest.TestCase):
 
         self.assertEqual(diag.metadata["distance_cells"], 2)
         self.assertEqual(diag.metadata["reach_cells"], 3)
+
+    def test_attack_preview_uses_unique_action_ids(self):
+        first_intent, _ = _build_attack_preview_intent(
+            db=MagicMock(),
+            session_id="session:1",
+            source_ref_id="npc:1",
+            actor_kind="npc",
+            target_ref_id="player:1",
+            fallback_reach_cells=1,
+        )
+        second_intent, _ = _build_attack_preview_intent(
+            db=MagicMock(),
+            session_id="session:1",
+            source_ref_id="npc:1",
+            actor_kind="npc",
+            target_ref_id="player:1",
+            fallback_reach_cells=1,
+        )
+
+        self.assertNotEqual(first_intent.action_id, second_intent.action_id)
+        self.assertTrue(first_intent.action_id.startswith("preview:"))
+        self.assertTrue(second_intent.action_id.startswith("preview:"))
 
 
 if __name__ == "__main__":
