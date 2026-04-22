@@ -205,6 +205,93 @@ describe("buildSpellOptions", () => {
     ]);
   });
 
+  it("does not offer unprepared leveled known spells that backend rejects", () => {
+    seedSpellCatalogCache([
+      {
+        campaignSpellId: null,
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "evocation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        damageType: "Force",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Wizard"],
+      },
+      {
+        campaignSpellId: null,
+        canonicalKey: "fire_bolt",
+        name: "Fire Bolt",
+        level: 0,
+        school: "evocation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test cantrip.",
+        resolutionType: "damage",
+        damageType: "Fire",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Wizard"],
+      },
+    ]);
+
+    const playerSheet = {
+      spellcasting: {
+        ability: "intelligence",
+        mode: "known",
+        slots: { 1: { max: 2, used: 0 } },
+        spells: [
+          {
+            id: "spell-1",
+            name: "Magic Missile",
+            canonicalKey: "magic_missile",
+            campaignSpellId: null,
+            level: 1,
+            school: "evocation",
+            prepared: false,
+            notes: "",
+          },
+          {
+            id: "spell-2",
+            name: "Fire Bolt",
+            canonicalKey: "fire_bolt",
+            campaignSpellId: null,
+            level: 0,
+            school: "evocation",
+            prepared: false,
+            notes: "",
+          },
+        ],
+      },
+    } as CharacterSheet;
+
+    expect(buildSpellOptions(playerSheet)).toEqual([
+      expect.objectContaining({
+        id: "spell-2",
+        canonicalKey: "fire_bolt",
+        level: 0,
+      }),
+    ]);
+  });
+
   it("includes cast_spell magic items from inventory without requiring spellcasting", () => {
     seedSpellCatalogCache([
       {

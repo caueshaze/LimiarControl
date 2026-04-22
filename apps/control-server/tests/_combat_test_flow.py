@@ -1467,6 +1467,70 @@ class CombatFlowTestsMixin:
         self.assertEqual(context.exception.status_code, 400)
         self.assertIn("No spell slots", str(context.exception.detail))
 
+    async def test_player_leveled_known_spell_rejects_when_unprepared(
+        self,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "spellcasting": {
+                    "mode": "known",
+                    "spells": [
+                        {
+                            "name": "Magic Missile",
+                            "canonicalKey": "magic_missile",
+                            "level": 1,
+                            "prepared": False,
+                        }
+                    ],
+                    "slots": {"1": {"used": 0, "max": 2}},
+                }
+            },
+        )
+
+        with patch(
+            "app.services.combat.CombatService.get_state", return_value=self.state
+        ):
+            with patch(
+                "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+                return_value=MagicMock(
+                    canonical_key="magic_missile",
+                    name_en="Magic Missile",
+                    name_pt=None,
+                    level=1,
+                    damage_type="force",
+                    saving_throw=None,
+                    resolution_type="damage",
+                ),
+            ):
+                with patch(
+                    "app.services.combat.CombatService._get_stats",
+                    return_value=(attacker_state, 12, 10, 10, 2, 3),
+                ):
+                    with self.assertRaises(CombatServiceError) as context:
+                        await CombatService.cast_spell(
+                            self.db,
+                            "session-123",
+                            CombatCastSpellRequest(
+                                actor_participant_id="p1",
+                                target_ref_id="enemy-123",
+                                spell_canonical_key="magic_missile",
+                                spell_mode="direct_damage",
+                                slot_level=1,
+                                damage_bonus=4,
+                                damage_type="force",
+                            ),
+                            "user-1",
+                            False,
+                        )
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertIn("Spell is not prepared", str(context.exception.detail))
+
     @patch("app.services.combat.CombatService._emit_player_state_update")
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")

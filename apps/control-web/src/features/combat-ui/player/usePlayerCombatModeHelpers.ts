@@ -84,7 +84,7 @@ export const buildSpellOptions = (
     ? spellcasting.spells
         .filter(
           (spell) =>
-            spell.level === 0 || spell.prepared || spellcasting.mode === "known"
+            spell.level === 0 || spell.prepared
         )
         .map((spell) => {
           const catalogSpell = resolveSpellByAuthority(catalog, spell);
