@@ -24,6 +24,7 @@ export type CombatSpellOption = {
   noFreeHandRequired?: boolean;
   prepared: boolean;
   range: string;
+  rangeMeters?: number | null;
   targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | null;
   chargesCurrent?: number | null;
   chargesMax?: number | null;

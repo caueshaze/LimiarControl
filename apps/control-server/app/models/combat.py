@@ -12,6 +12,7 @@ from sqlmodel import Field, SQLModel
 
 class CombatPhase(str, enum.Enum):
     initiative = "initiative"
+    placement = "placement"
     active = "active"
     ended = "ended"
 

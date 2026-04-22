@@ -98,6 +98,9 @@ export const useGmCombatHandlers = ({
         : `${actionName} missed ${result.target_display_name ?? "the target"}.`;
     }
     if (result.action_kind === "saving_throw") {
+      if (result.pending_save_id) {
+        return `${actionName}: waiting for ${result.target_display_name ?? "the target"} to roll the save.`;
+      }
       return result.is_saved
         ? `${actionName}: target saved.`
         : `${actionName}: target failed the save and took ${result.damage ?? 0}.`;
@@ -263,6 +266,29 @@ export const useGmCombatHandlers = ({
     );
   };
 
+  const handleResolveSave = async (
+    targetParticipantId: string,
+    pendingSaveId: string,
+    rollSource: "system" | "manual",
+    manualRoll?: number,
+  ) => {
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      await combatRepo.resolvePendingSave(sessionId, {
+        target_participant_id: targetParticipantId,
+        pending_save_id: pendingSaveId,
+        roll_source: rollSource,
+        manual_roll: rollSource === "manual" ? manualRoll ?? null : null,
+      });
+      await refreshCombat();
+    } catch (err: any) {
+      setActionError(err?.data?.detail || err?.message || "Failed to resolve save");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleApplyEffect = async () => {
     if (!targetParticipantId) return;
     setSubmitting(true);
@@ -334,6 +360,7 @@ export const useGmCombatHandlers = ({
     handleNextTurn,
     handleMarkReaction,
     handleResolveReaction,
+    handleResolveSave,
     handleApplyEffect,
     handleRemoveEffect,
     handleRevive,

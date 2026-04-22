@@ -107,7 +107,6 @@ export const PlayerAttackRollDialog = ({
       setDamageMode("choose");
       if (!resolved.damage_roll_required) {
         await onResolved?.(resolved);
-        onClose();
       }
     } catch (err: any) {
       setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao resolver ataque"));

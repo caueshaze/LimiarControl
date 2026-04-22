@@ -299,10 +299,6 @@ def resolve_sync_entry(
             conditions=tuple(conditions),
         ), None
 
-    # No existing token found — spawn a new one for NPCs only (players must have tokens)
-    if participant_kind == "player":
-        return None, None
-
     return None, ResolvedTokenSpawnEntry(
         combatant_id=combatant_id,
         movement_speed_cells=movement_speed_cells,

@@ -519,6 +519,7 @@ class CombatActionEconomyTestsMixin:
     async def test_initiative_transition_resets_first_participant(self, mock_emit_log, mock_emit_state):
         # Start in initiative phase
         self.state.phase = CombatPhase.initiative
+        self.state.use_map = False
         self.state.participants[0]["initiative"] = 15
 
         with patch("app.services.combat.CombatService.get_state", return_value=self.state):

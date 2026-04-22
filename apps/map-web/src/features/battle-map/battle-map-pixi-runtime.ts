@@ -11,7 +11,7 @@ import { HttpClient } from "../../services/http-client";
 import { postEmbeddedCellHovered, postEmbeddedCellSelected, postEmbeddedTokenSelected } from "../../services/embedded-map-bridge";
 import { buildFailureExplanation } from "../targeting/diagnostics-to-explanation";
 import { drawCellFills, drawEdgeObstacles, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
-import { canInteractWithToken, computePath, getSelectionBlockedMessage, pixelToGrid } from "./utils";
+import { canControlToken, canInteractWithToken, computePath, getSelectionBlockedMessage, pixelToGrid } from "./utils";
 
 type Snapshot = {
   selectedTokenId: string | null;
@@ -104,6 +104,24 @@ export function bindPixiStageEvents(
       return;
     }
     const tokenAtCell = encounter.tokens.find((token: any) => token.position.x === coord.x && token.position.y === coord.y);
+    if (uiState.embeddedCombatPhase === "placement") {
+      if (tokenAtCell) {
+        if (!canControlToken(currentActor, tokenAtCell)) {
+          battleMapStore.setMessage(getSelectionBlockedMessage(currentActor, tokenAtCell, encounter.combatState));
+          setSelectedTokenId(null);
+          return;
+        }
+        battleMapStore.setMessage(undefined);
+        setSelectedTokenId((prev) => (prev === tokenAtCell.id ? null : tokenAtCell.id));
+        return;
+      }
+      const selectedToken = encounter.tokens.find((token: any) => token.id === selectedTokenId) ?? null;
+      if (selectedToken && canControlToken(currentActor, selectedToken)) {
+        submitPlacement(encounter.sessionId, selectedToken.id, coord);
+        setSelectedTokenId(selectedToken.id);
+      }
+      return;
+    }
     if (uiState.embeddedSelectionMode !== "none") {
       battleMapStore.setMessage(undefined);
       if (uiState.embeddedSelectionMode === "select-token") {

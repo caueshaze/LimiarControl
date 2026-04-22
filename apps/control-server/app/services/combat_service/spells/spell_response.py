@@ -59,14 +59,20 @@ class SpellResponseMixin:
                     f"{result.roll_total} total vs AC {result.target_ac or 10}{cover_text}{adv_text}{vis_text} - errou."
                 )
         elif spell_mode == "saving_throw":
-            save_text = "passou" if result.is_saved else "falhou"
-            cover_text = (
-                f" ({cover_label(result.cover)})" if cover_label(result.cover) else ""
-            )
-            log_message = (
-                f"{attacker['display_name']} lancou {spell_context['spell_name']} em {target_p['display_name']}: "
-                f"alvo {save_text} no save de {spell_context['save_ability']} contra CD {result.effective_dc}{cover_text}."
-            )
+            if result.pending_save_id:
+                log_message = (
+                    f"{attacker['display_name']} lancou {spell_context['spell_name']} em {target_p['display_name']}: "
+                    f"aguardando teste de {spell_context['save_ability']} contra CD {result.effective_dc} (GM resolve)."
+                )
+            else:
+                save_text = "passou" if result.is_saved else "falhou"
+                cover_text = (
+                    f" ({cover_label(result.cover)})" if cover_label(result.cover) else ""
+                )
+                log_message = (
+                    f"{attacker['display_name']} lancou {spell_context['spell_name']} em {target_p['display_name']}: "
+                    f"alvo {save_text} no save de {spell_context['save_ability']} contra CD {result.effective_dc}{cover_text}."
+                )
             if result.pending_spell_id:
                 if result.is_saved and save_success_outcome == "half_damage":
                     log_message += " Dano pendente para aplicar metade."
@@ -173,6 +179,7 @@ class SpellResponseMixin:
             "effect_dice": effect_dice,
             "effect_bonus": resp_effect_bonus,
             "pending_spell_id": result.pending_spell_id,
+            "pending_save_id": result.pending_save_id,
             "effect_roll_required": bool(result.pending_spell_id),
             "base_effect": (
                 automation_result.get("base_effect")

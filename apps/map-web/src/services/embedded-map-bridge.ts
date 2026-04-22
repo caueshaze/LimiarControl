@@ -1,6 +1,10 @@
 import type { Coordinate, Token } from "@limiarmap/shared-contracts";
 import { reconnectAs } from "./centrifugo-client";
-import { battleMapStore, type EmbeddedSelectionMode } from "../features/battle-map/battle-map-store";
+import {
+  battleMapStore,
+  type EmbeddedCombatPhase,
+  type EmbeddedSelectionMode
+} from "../features/battle-map/battle-map-store";
 
 type MapActorType = "player" | "gm";
 
@@ -16,6 +20,7 @@ type EmbeddedMapContextMessage = {
     previewCells?: Coordinate[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
+    combatPhase?: EmbeddedCombatPhase | null;
   };
 };
 
@@ -83,6 +88,7 @@ export const isEmbeddedMapContextMessage = (
     previewCells?: unknown;
     selectedCell?: unknown;
     selectedTargetRefId?: unknown;
+    combatPhase?: unknown;
   };
 
   const actorValid =
@@ -101,6 +107,12 @@ export const isEmbeddedMapContextMessage = (
     payload.selectedCell == null || isCoordinate(payload.selectedCell);
   const selectedTargetValid =
     payload.selectedTargetRefId == null || typeof payload.selectedTargetRefId === "string";
+  const combatPhaseValid =
+    payload.combatPhase == null ||
+    payload.combatPhase === "initiative" ||
+    payload.combatPhase === "placement" ||
+    payload.combatPhase === "active" ||
+    payload.combatPhase === "ended";
 
   return (
     typeof payload.sessionId === "string" &&
@@ -108,7 +120,8 @@ export const isEmbeddedMapContextMessage = (
     selectionModeValid &&
     previewCellsValid &&
     selectedCellValid &&
-    selectedTargetValid
+    selectedTargetValid &&
+    combatPhaseValid
   );
 };
 
@@ -122,6 +135,7 @@ export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payl
     previewCells: message.previewCells ?? [],
     selectedCell: message.selectedCell ?? null,
     selectedTargetRefId: message.selectedTargetRefId ?? null,
+    combatPhase: message.combatPhase ?? null,
   });
 }
 

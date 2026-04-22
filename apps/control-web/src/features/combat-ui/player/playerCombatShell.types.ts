@@ -26,6 +26,7 @@ export type SpellOption = {
   id: string;
   name: string;
   range?: string | null;
+  rangeMeters?: number | null;
   actionCost?: CombatActionCost | null;
   targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | null;
   sourceType?: "sheet" | "magic_item";

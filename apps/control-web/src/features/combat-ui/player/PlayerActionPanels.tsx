@@ -5,6 +5,8 @@ import type { StandardActionType, TurnResources } from "../../../shared/api/comb
 import { getAbilityLabel } from "../../character-sheet/utils/abilityLabels";
 import { isCombatSpellActionCostAvailable } from "../spellAutomation";
 import { isAreaTargetMode } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import { RangeStatusBadge } from "../components/RangeStatusBadge";
+import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import type {
   ConsumableOption,
   DragonbornBreathWeaponOption,
@@ -17,6 +19,7 @@ import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
 type Props = {
   activeActionPanel: "attack" | "spell" | "standard" | "object";
   actionUsed: boolean;
+  attackRangePreview: TargetingPreviewState;
   canAct: boolean;
   consumableItemId: string;
   consumableOptions: ConsumableOption[];
@@ -32,6 +35,7 @@ type Props = {
   selectedTarget: { id: string } | null;
   selectedSpell: SpellOption | null;
   selectedSpellId: string;
+  spellRangePreview: TargetingPreviewState;
   turnResources?: TurnResources | null;
   setActiveActionPanel: (panel: "attack" | "spell" | "standard" | "object") => void;
   setConsumableItemId: (id: string) => void;
@@ -53,6 +57,7 @@ type Props = {
 export const PlayerActionPanels = ({
   activeActionPanel,
   actionUsed,
+  attackRangePreview,
   canAct,
   consumableItemId,
   consumableOptions,
@@ -68,6 +73,7 @@ export const PlayerActionPanels = ({
   selectedTarget,
   selectedSpell,
   selectedSpellId,
+  spellRangePreview,
   turnResources,
   setActiveActionPanel,
   setConsumableItemId,
@@ -100,7 +106,7 @@ export const PlayerActionPanels = ({
         : t("combatUi.action");
 
   const actionPanels = [
-    { key: "attack" as const, label: t("combatUi.attack") },
+    { key: "attack" as const, label: t("combatUi.weaponAttack") },
     { key: "spell" as const, label: t("combatUi.castSpell") },
     { key: "standard" as const, label: t("combatUi.standardActions") },
     { key: "object" as const, label: t("combatUi.useObject") },
@@ -161,6 +167,11 @@ export const PlayerActionPanels = ({
               {t("combatUi.attack")}
             </button>
           </div>
+          {targetId ? (
+            <div className="mt-4">
+              <RangeStatusBadge preview={attackRangePreview} />
+            </div>
+          ) : null}
         </article>
       ) : null}
 
@@ -227,6 +238,11 @@ export const PlayerActionPanels = ({
               )}
             </select>
           </label>
+          {targetId && selectedSpell ? (
+            <div className="mt-4">
+              <RangeStatusBadge preview={spellRangePreview} />
+            </div>
+          ) : null}
         </article>
       ) : null}
 

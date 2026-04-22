@@ -8,11 +8,14 @@ export const combatUiPtBRDictionary = {
   "combatUi.activeTurn": "Turno Atual",
   "combatUi.logEyebrow": "Feed em tempo real",
   "combatUi.combatLog": "Log de combate",
-  "combatUi.logEmpty": "As ações do combate vão aparecer aqui assim que o encontro começar a girar.",
+  "combatUi.logEmpty":
+    "As ações do combate vão aparecer aqui assim que o encontro começar a girar.",
   "combatUi.participantsEyebrow": "Ordem de iniciativa",
   "combatUi.participants": "Participantes",
-  "combatUi.participantsDescription": "Ordem de turno, inimigos visíveis e estado dos aliados ficam concentrados aqui durante o combate.",
-  "combatUi.gmParticipantsDescription": "Jogadores e entidades da sessão ficam em um único roster com HP, efeitos e recursos de turno.",
+  "combatUi.participantsDescription":
+    "Ordem de turno, inimigos visíveis e estado dos aliados ficam concentrados aqui durante o combate.",
+  "combatUi.gmParticipantsDescription":
+    "Jogadores e entidades da sessão ficam em um único roster com HP, efeitos e recursos de turno.",
   "combatUi.you": "Você",
   "combatUi.kind.player": "Jogador",
   "combatUi.kind.entity": "Entidade",
@@ -43,22 +46,32 @@ export const combatUiPtBRDictionary = {
   "combatUi.condition.charmed": "Enfeitiçado",
   "combatUi.turnEyebrow": "Fluxo do turno",
   "combatUi.playerTurnPanel": "Painel de turno do jogador",
-  "combatUi.readyForTurn": "É o seu turno. Escolha a ação mais rápida e resolva tudo sem sair do foco de combate.",
-  "combatUi.waitingInitiative": "A iniciativa ainda está sendo resolvida. Fique pronto enquanto a ordem fecha.",
-  "combatUi.waitingTurn": "Aguardando o seu turno. Acompanhe o participante ativo e o log de combate.",
+  "combatUi.readyForTurn":
+    "É o seu turno. Escolha a ação mais rápida e resolva tudo sem sair do foco de combate.",
+  "combatUi.waitingInitiative":
+    "A iniciativa ainda está sendo resolvida. Fique pronto enquanto a ordem fecha.",
+  "combatUi.waitingPlacement":
+    "O GM está posicionando os combatentes no mapa. O combate começa assim que as posições forem confirmadas.",
+  "combatUi.waitingTurn":
+    "Aguardando o seu turno. Acompanhe o participante ativo e o log de combate.",
   "combatUi.useReaction": "Usar Reação",
   "combatUi.loadingState": "Carregando estado do combate...",
   "combatUi.noCombatState": "O estado do combate ainda não está disponível.",
   "combatUi.downedTitle": "Caído",
-  "combatUi.downedYourTurn": "Você está com 0 PV. Resolva o teste de morte agora.",
-  "combatUi.downedWaiting": "Você está com 0 PV. O teste de morte fica disponível no seu turno.",
-  "combatUi.deadNoActions": "Você está morto. Ações normais, reações e testes de morte ficam indisponíveis até o GM reviver você.",
+  "combatUi.downedYourTurn":
+    "Você está com 0 PV. Resolva o teste de morte agora.",
+  "combatUi.downedWaiting":
+    "Você está com 0 PV. O teste de morte fica disponível no seu turno.",
+  "combatUi.deadNoActions":
+    "Você está morto. Ações normais, reações e testes de morte ficam indisponíveis até o GM reviver você.",
   "combatUi.rollDeathSave": "Rolar Teste de Morte",
   "combatUi.target": "Alvo",
   "combatUi.selectTarget": "Selecione um alvo...",
   "combatUi.currentTurnState": "Turno atual",
   "combatUi.attack": "Atacar",
+  "combatUi.weaponAttack": "Ataque com Arma",
   "combatUi.castSpell": "Conjurar magia",
+  "combatUi.castBy": "Conjurado por:",
   "combatUi.noWeapon": "Nenhuma arma equipada",
   "combatUi.noSpellcasting": "Nenhuma magia pronta para combate",
   "combatUi.selectSpell": "Magia",
@@ -67,7 +80,8 @@ export const combatUiPtBRDictionary = {
   "combatUi.action": "Ação",
   "combatUi.bonusAction": "Ação bônus",
   "combatUi.reaction": "Reação",
-  "combatUi.spellActionUnavailable": "Esse custo de ação já foi gasto neste turno.",
+  "combatUi.spellActionUnavailable":
+    "Esse custo de ação já foi gasto neste turno.",
   "combatUi.standardActions": "Ações padrão",
   "combatUi.dragonbornBreathWeapon": "Sopro de Dragão",
   "combatUi.useDragonbornBreathWeapon": "Usar Sopro",
@@ -77,7 +91,8 @@ export const combatUiPtBRDictionary = {
   "combatUi.dash": "Disparada",
   "combatUi.disengage": "Desengajar",
   "combatUi.useObject": "Usar Objeto",
-  "combatUi.useObjectHint": "Consumiveis de cura estruturados aplicam a cura e consomem o item automaticamente. Outros objetos continuam com fallback manual pelo log.",
+  "combatUi.useObjectHint":
+    "Consumiveis de cura estruturados aplicam a cura e consomem o item automaticamente. Outros objetos continuam com fallback manual pelo log.",
   "combatUi.usableConsumable": "Consumível de contexto",
   "combatUi.useObjectManualOption": "Outro objeto / manual",
   "combatUi.noConsumables": "Sem consumíveis no inventário",
@@ -96,13 +111,23 @@ export const combatUiPtBRDictionary = {
   "combatUi.effects": "Efeitos ativos",
   "combatUi.noEffects": "Nenhum efeito ativo no momento.",
   "combatUi.mapTitle": "Mapa tatico",
-  "combatUi.mapHintIdle": "Use o mapa para acompanhar posicionamento, cobertura e o cenario escolhido para este combate.",
-  "combatUi.mapHintAttack": "Clique em um token no mapa para escolher o alvo do ataque sem sair do modo de combate.",
-  "combatUi.mapHintSpell": "Clique em um token no mapa para mirar a magia selecionada.",
-  "combatUi.mapHintAreaSpell": "Magias em area agora usam o mapa real dentro do dialogo de conjuracao.",
-  "combatUi.mapHintMove": "Clique em uma celula para ver a distancia. Clique de novo na mesma celula para mover.",
-  "combatUi.mapHintMovePreview": "Distancia: {cost}. Restante apos mover: {remaining}. Clique para fixar o destino.",
-  "combatUi.mapHintMoveLocked": "Distancia: {cost}. Restante apos mover: {remaining}. Clique novamente na mesma celula para mover.",
+  "combatUi.mapHintIdle":
+    "Use o mapa para acompanhar posicionamento, cobertura e o cenario escolhido para este combate.",
+  "combatUi.mapHintAttack":
+    "Clique em um token no mapa para escolher o alvo do ataque sem sair do modo de combate.",
+  "combatUi.mapHintSpell":
+    "Clique em um token no mapa para mirar a magia selecionada.",
+  "combatUi.mapHintAreaSpell":
+    "Magias em area agora usam o mapa real dentro do dialogo de conjuracao.",
+  "combatUi.mapHintMove":
+    "Clique em uma celula para ver a distancia. Clique de novo na mesma celula para mover.",
+  "combatUi.mapHintMovePreview":
+    "Distancia: {cost}. Restante apos mover: {remaining}. Clique para fixar o destino.",
+  "combatUi.mapHintMoveLocked":
+    "Distancia: {cost}. Restante apos mover: {remaining}. Clique novamente na mesma celula para mover.",
+  "combatUi.mapHintPlacement":
+    "Selecione um token na barra de posicionamento do mapa e clique na celula inicial. Confirme quando todos estiverem prontos.",
+  "combatUi.confirmPlacement": "Confirmar posições e iniciar combate",
   "combatUi.rangeNormal": "No alcance",
   "combatUi.rangeLong": "Alcance longo",
   "combatUi.rangeOut": "Fora de alcance",
@@ -116,12 +141,14 @@ export const combatUiPtBRDictionary = {
   "combatUi.movementModeActive": "Movendo",
   "combatUi.movementBudget": "Orçamento de movimento",
   "combatUi.movementPreview": "Prévia",
-  "combatUi.movementAwaitingDestination": "Escolha ou passe o cursor sobre uma celula de destino.",
+  "combatUi.movementAwaitingDestination":
+    "Escolha ou passe o cursor sobre uma celula de destino.",
   "combatUi.movementChecking": "Validando caminho...",
   "combatUi.confirmMovement": "Confirmar movimento",
   "combatUi.cancelMovement": "Cancelar movimento",
   "combatUi.revivePlayer": "Reviver Jogador",
-  "combatUi.revivePlayerHint": "Use o revive explícito para jogadores mortos. Cura normal não revive personagem morto.",
+  "combatUi.revivePlayerHint":
+    "Use o revive explícito para jogadores mortos. Cura normal não revive personagem morto.",
   "combatUi.revivePlayerSuccess": "Jogador revivido com {hp} PV.",
   "combatUi.revivePlayerError": "Falha ao reviver jogador.",
   "combatUi.advanceTurn": "Avançar Turno",
@@ -141,11 +168,15 @@ export const combatUiPtBRDictionary = {
   "combatUi.duration.until_turn_start": "Até o início do turno",
   "combatUi.duration.until_turn_end": "Até o fim do turno",
   "combatUi.npcTurnHint": "Uma entidade da sessão está com o turno ativo.",
-  "combatUi.npcTurnDescription": "Escolha entre atacar, conjurar magia ou usar ações padrão para a entidade ativa sem sair do foco de combate.",
+  "combatUi.npcTurnDescription":
+    "Escolha entre atacar, conjurar magia ou usar ações padrão para a entidade ativa sem sair do foco de combate.",
   "combatUi.self": "si",
-  "combatUi.entityNoStructuredActions": "Esta entidade não tem ações de combate estruturadas configuradas. As ações padrão continuam disponíveis aqui.",
-  "combatUi.entityNoAttackActions": "Esta entidade não tem ações de ataque configuradas.",
-  "combatUi.entityNoSpellActions": "Esta entidade não tem ações de magia configuradas.",
+  "combatUi.entityNoStructuredActions":
+    "Esta entidade não tem ações de combate estruturadas configuradas. As ações padrão continuam disponíveis aqui.",
+  "combatUi.entityNoAttackActions":
+    "Esta entidade não tem ações de ataque configuradas.",
+  "combatUi.entityNoSpellActions":
+    "Esta entidade não tem ações de magia configuradas.",
   "combatUi.entityUtilityActions": "Ações utilitárias",
   "combatUi.entityOpenActionRoll": "Abrir rolagem da ação",
   "combatUi.entityExecuteAction": "Executar ação",
@@ -153,7 +184,8 @@ export const combatUiPtBRDictionary = {
   "combatUi.lastEntityRoll": "Última rolagem da entidade",
   "combatUi.distances": "Distâncias de combate",
   "combatUi.distancesEyebrow": "Teatro da mente",
-  "combatUi.distancesDescription": "Defina a distância entre participantes para validação de alcance em combate sem mapa.",
+  "combatUi.distancesDescription":
+    "Defina a distância entre participantes para validação de alcance em combate sem mapa.",
   "combatUi.distancesFrom": "De",
   "combatUi.distancesTo": "Para",
   "combatUi.distancesPreset": "Distância",
@@ -168,5 +200,5 @@ export const combatUiPtBRDictionary = {
   "combatUi.distancesPreset.near": "Perto",
   "combatUi.distancesPreset.far": "Longe",
   "combatUi.distancesPreset.veryFar": "Muito Longe",
-  "combatUi.distancesPreset.custom": "Personalizado",
+  "combatUi.distancesPreset.custom": "Personalizado"
 } as const;

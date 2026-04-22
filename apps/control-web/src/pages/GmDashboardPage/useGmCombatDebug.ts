@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   combatRepo,
   type CombatEntityActionResult,
-  type CombatState,
+  type CombatState
 } from "../../shared/api/combatRepo";
 import { subscribe } from "../../shared/realtime/centrifugoClient";
 import type { SessionEntity } from "../../entities/session-entity";
@@ -15,19 +15,24 @@ export const useGmCombatDebug = (sessionId: string) => {
   const [error, setError] = useState<string | null>(null);
   const [initiatives, setInitiatives] = useState<Record<string, string>>({});
   const [sessionEntities, setSessionEntities] = useState<SessionEntity[]>([]);
-  const [selectedCombatActionId, setSelectedCombatActionId] = useState<string>("");
+  const [selectedCombatActionId, setSelectedCombatActionId] =
+    useState<string>("");
   const [targetId, setTargetId] = useState<string>("");
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [entityActionDialogOpen, setEntityActionDialogOpen] = useState(false);
-  const [lastEntityActionResult, setLastEntityActionResult] = useState<CombatEntityActionResult | null>(null);
+  const [lastEntityActionResult, setLastEntityActionResult] =
+    useState<CombatEntityActionResult | null>(null);
 
   useEffect(() => {
     let active = true;
-    combatRepo.getState(sessionId).then((s: CombatState) => {
-      if (active) setState(s);
-    }).catch(() => {
+    combatRepo
+      .getState(sessionId)
+      .then((s: CombatState) => {
+        if (active) setState(s);
+      })
+      .catch(() => {
         if (active) setState(null);
-    });
+      });
 
     const channel = `session:${sessionId}`;
     const unsub = subscribe(channel, {
@@ -35,7 +40,7 @@ export const useGmCombatDebug = (sessionId: string) => {
         if (message?.type === "combat_state_updated") {
           setState(message.payload as CombatState);
         }
-      },
+      }
     });
 
     return () => {
@@ -46,15 +51,18 @@ export const useGmCombatDebug = (sessionId: string) => {
 
   useEffect(() => {
     let active = true;
-    sessionEntitiesRepo.list(sessionId).then((data) => {
-      if (active) {
-        setSessionEntities(Array.isArray(data) ? data : []);
-      }
-    }).catch(() => {
-      if (active) {
-        setSessionEntities([]);
-      }
-    });
+    sessionEntitiesRepo
+      .list(sessionId)
+      .then((data) => {
+        if (active) {
+          setSessionEntities(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSessionEntities([]);
+        }
+      });
 
     return () => {
       active = false;
@@ -74,7 +82,7 @@ export const useGmCombatDebug = (sessionId: string) => {
         next[participant.id] =
           participant.initiative != null
             ? String(participant.initiative)
-            : existingValue ?? "";
+            : (existingValue ?? "");
       }
       return next;
     });
@@ -87,23 +95,34 @@ export const useGmCombatDebug = (sessionId: string) => {
     currentParticipant?.status === "active";
   const activeSessionEntity =
     canActForNpc && currentParticipant
-      ? sessionEntities.find((entity) => entity.id === currentParticipant.ref_id) ?? null
+      ? (sessionEntities.find(
+          (entity) => entity.id === currentParticipant.ref_id
+        ) ?? null)
       : null;
   const npcCombatActions = activeSessionEntity?.entity?.combatActions ?? [];
   const selectedCombatAction =
-    npcCombatActions.find((action) => action.id === selectedCombatActionId) ?? npcCombatActions[0] ?? null;
-  const availableTargets = state?.phase === "active" && currentParticipant
-    ? state.participants.filter((participant) => participant.status !== "dead" && participant.status !== "defeated")
-    : [];
+    npcCombatActions.find((action) => action.id === selectedCombatActionId) ??
+    npcCombatActions[0] ??
+    null;
+  const availableTargets =
+    state?.phase === "active" && currentParticipant
+      ? state.participants.filter(
+          (participant) =>
+            participant.status !== "dead" && participant.status !== "defeated"
+        )
+      : [];
   const selectedTarget =
-    availableTargets.find((participant) => participant.ref_id === targetId) ?? null;
+    availableTargets.find((participant) => participant.ref_id === targetId) ??
+    null;
 
   useEffect(() => {
     if (!npcCombatActions.length) {
       setSelectedCombatActionId("");
       return;
     }
-    const hasCurrentAction = npcCombatActions.some((action) => action.id === selectedCombatActionId);
+    const hasCurrentAction = npcCombatActions.some(
+      (action) => action.id === selectedCombatActionId
+    );
     if (!hasCurrentAction) {
       setSelectedCombatActionId(npcCombatActions[0].id);
     }
@@ -122,37 +141,62 @@ export const useGmCombatDebug = (sessionId: string) => {
 
     const preferredTarget =
       selectedCombatAction.kind === "heal"
-        ? availableTargets.find((participant) => participant.id === currentParticipant.id) ??
-          availableTargets.find((participant) => participant.team === currentParticipant.team) ??
-          availableTargets[0]
-        : availableTargets.find(
+        ? (availableTargets.find(
+            (participant) => participant.id === currentParticipant.id
+          ) ??
+          availableTargets.find(
+            (participant) => participant.team === currentParticipant.team
+          ) ??
+          availableTargets[0])
+        : (availableTargets.find(
             (participant) =>
               participant.id !== currentParticipant.id &&
-              participant.team !== currentParticipant.team,
+              participant.team !== currentParticipant.team
           ) ??
-          availableTargets.find((participant) => participant.id !== currentParticipant.id) ??
-          availableTargets[0];
+          availableTargets.find(
+            (participant) => participant.id !== currentParticipant.id
+          ) ??
+          availableTargets[0]);
 
-    const isCurrentTargetValid = availableTargets.some((participant) => participant.ref_id === targetId);
+    const isCurrentTargetValid = availableTargets.some(
+      (participant) => participant.ref_id === targetId
+    );
     if (!isCurrentTargetValid) {
       setTargetId(preferredTarget?.ref_id ?? "");
     }
-  }, [availableTargets, currentParticipant, selectedCombatAction, state, targetId]);
+  }, [
+    availableTargets,
+    currentParticipant,
+    selectedCombatAction,
+    state,
+    targetId
+  ]);
 
   const formatEntityActionResult = (result: CombatEntityActionResult) => {
     if (!selectedCombatAction) {
       return "Action resolved.";
     }
-    if (result?.action_kind === "weapon_attack" || result?.action_kind === "spell_attack") {
+    if (
+      result?.action_kind === "weapon_attack" ||
+      result?.action_kind === "spell_attack"
+    ) {
       const damageDiceLabel =
-        formatDamageDiceExpression(result.damage_dice, Boolean(result.is_critical)) ??
-        result.damage_dice;
+        formatDamageDiceExpression(
+          result.damage_dice,
+          Boolean(result.is_critical)
+        ) ?? result.damage_dice;
       return result?.is_hit
         ? `${selectedCombatAction.name} acertou e causou ${result?.damage ?? 0} de dano${damageDiceLabel ? ` (${damageDiceLabel}${typeof result.damage_bonus === "number" ? ` + ${result.damage_bonus}` : ""})` : ""}.`
         : `${selectedCombatAction.name} errou com ${result?.roll ?? "-"}.`;
     }
     if (result?.action_kind === "saving_throw") {
-      const rolledTotal = Math.max(0, (result.base_damage ?? 0) + (result.damage_bonus ?? 0));
+      if (result.pending_save_id) {
+        return `${selectedCombatAction.name}: aguardando o alvo rolar o save.`;
+      }
+      const rolledTotal = Math.max(
+        0,
+        (result.base_damage ?? 0) + (result.damage_bonus ?? 0)
+      );
       return result?.is_saved
         ? result?.save_success_outcome === "half_damage"
           ? `${selectedCombatAction.name}: target saved (${result?.save_roll ?? "-"} vs DC ${result?.save_dc ?? "-"}) and took half damage (${result?.damage ?? 0} of ${rolledTotal}).`
@@ -173,12 +217,32 @@ export const useGmCombatDebug = (sessionId: string) => {
     try {
       const req = Object.entries(initiatives).map(([id, val]) => ({
         id,
-        initiative: parseInt(val, 10) || 0,
+        initiative: parseInt(val, 10) || 0
       }));
-      const updated = await combatRepo.setInitiative(sessionId, { initiatives: req });
+      const updated = await combatRepo.setInitiative(sessionId, {
+        initiatives: req
+      });
       if (updated) setState(updated);
     } catch (err: any) {
       setError(err?.data?.detail || err?.message || "Failed to set initiative");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmPlacement = async () => {
+    setLoading(true);
+    setError(null);
+    setActionResult(null);
+    try {
+      const updated = await combatRepo.confirmPlacement(sessionId);
+      if (updated) setState(updated);
+    } catch (err: any) {
+      setError(
+        err?.data?.detail ||
+          err?.message ||
+          "Failed to confirm combat placement"
+      );
     } finally {
       setLoading(false);
     }
@@ -191,7 +255,8 @@ export const useGmCombatDebug = (sessionId: string) => {
     setActionResult(null);
     try {
       const updated = await combatRepo.nextTurn(sessionId, {
-        actor_participant_id: state.participants[state.current_turn_index]?.id ?? null,
+        actor_participant_id:
+          state.participants[state.current_turn_index]?.id ?? null
       });
       if (updated) setState(updated);
     } catch (err: any) {
@@ -206,8 +271,13 @@ export const useGmCombatDebug = (sessionId: string) => {
     if (!active) return;
     try {
       setLoading(true);
-      await combatRepo.consumeReaction(sessionId, { participant_id: active.id });
-    } catch {} finally { setLoading(false); }
+      await combatRepo.consumeReaction(sessionId, {
+        participant_id: active.id
+      });
+    } catch {
+    } finally {
+      setLoading(false);
+    }
   };
 
   const executeEntityActionDirectly = async () => {
@@ -218,9 +288,11 @@ export const useGmCombatDebug = (sessionId: string) => {
     setActionResult(null);
     try {
       const result = await combatRepo.entityAction(sessionId, {
-        actor_participant_id: state.participants[state.current_turn_index]?.id ?? null,
+        actor_participant_id:
+          state.participants[state.current_turn_index]?.id ?? null,
         combat_action_id: selectedCombatActionId,
-        target_ref_id: selectedCombatAction?.kind === "utility" ? null : targetId,
+        target_ref_id:
+          selectedCombatAction?.kind === "utility" ? null : targetId
       });
       const refreshed = await combatRepo.getState(sessionId);
       setState(refreshed);
@@ -250,7 +322,9 @@ export const useGmCombatDebug = (sessionId: string) => {
     await executeEntityActionDirectly();
   };
 
-  const handleEntityActionResolved = async (result: CombatEntityActionResult) => {
+  const handleEntityActionResolved = async (
+    result: CombatEntityActionResult
+  ) => {
     setLastEntityActionResult(result);
     setActionResult(formatEntityActionResult(result));
     const refreshed = await combatRepo.getState(sessionId);
@@ -282,9 +356,10 @@ export const useGmCombatDebug = (sessionId: string) => {
     availableTargets,
     selectedTarget,
     handleSetInitiative,
+    handleConfirmPlacement,
     handleNextTurn,
     handleMarkReaction,
     handleEntityAction,
-    handleEntityActionResolved,
+    handleEntityActionResolved
   };
 };

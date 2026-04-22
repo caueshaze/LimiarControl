@@ -89,10 +89,12 @@ class CombatNpcActionCommitMixin:
             target_name = target_p["display_name"] if target_p else "Target"
             log_message = (
                 f"{attacker['display_name']} used {action_name} on {target_name}: "
-                f"{target_name} {'SUCCEEDED' if result['is_saved'] else 'FAILED'} the {resolved_action.get('saveAbility')} "
-                f"save ({result['save_roll']} vs DC {result['save_dc_base']}{cover_text}){save_mod_text}"
+                f"waiting for {target_name}'s {resolved_action.get('saveAbility')} "
+                f"save against DC {result['save_dc_base']}{cover_text}{save_mod_text}"
             )
-            if result["is_saved"] and result["save_success_outcome"] == "half_damage":
+            if result["pending_save_id"]:
+                log_message += ". Save roll pending."
+            elif result["is_saved"] and result["save_success_outcome"] == "half_damage":
                 rolled_damage_total = max(0, (result["base_damage"] or 0) + cls._safe_int(result["damage_bonus"], 0))
                 log_message += f" and took half damage: {result['damage']} {damage_type or ''} damage (rolled {rolled_damage_total})".replace("  ", " ")
             elif not result["is_saved"] and result["damage"] > 0:
@@ -140,6 +142,7 @@ class CombatNpcActionCommitMixin:
             "damage_bonus": result["damage_bonus"],
             "attack_bonus": result["attack_bonus"],
             "pending_attack_id": result["pending_attack_id"],
+            "pending_save_id": result["pending_save_id"],
             "damage_roll_required": bool(result["pending_attack_id"]),
             "damage_rolls": result["damage_rolls"],
             "base_damage": result["base_damage"],

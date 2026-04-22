@@ -16,6 +16,7 @@ from app.schemas.combat import (
     CombatReactionResolveRequest,
     CombatRemoveEffectRequest,
     CombatResolveDamageRequest,
+    CombatResolveSaveRequest,
     CombatReviveRequest,
     CombatReviveResult,
     CombatStandardActionRequest,
@@ -191,6 +192,26 @@ async def action_reaction_resolve(
     if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can resolve reaction requests.", 403)
     return await CombatService.resolve_reaction(db, session_id, req)
+
+
+@router.post("/sessions/{session_id}/combat/action/save-resolve")
+async def action_save_resolve(
+    session_id: str,
+    req: CombatResolveSaveRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    result = await CombatService.resolve_pending_save(
+        db, session_id, req, user.id, _is_session_gm(db, session_id, user)
+    )
+    await _publish_roll_result(db, session_id, user, result.get("roll_result"))
+    concentration_roll = (
+        result.get("concentration_check", {}).get("roll_result")
+        if isinstance(result.get("concentration_check"), dict)
+        else None
+    )
+    await _publish_roll_result(db, session_id, user, concentration_roll)
+    return result
 
 
 @router.post("/sessions/{session_id}/combat/effects/apply")

@@ -131,6 +131,14 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     () => (combat.state?.participants ?? []).filter((p) => p.reaction_request?.status === "pending"),
     [combat.state?.participants],
   );
+  const pendingSaves = useMemo(
+    () =>
+      (combat.state?.participants ?? []).filter(
+        (p): p is CombatParticipant & { pending_save: NonNullable<CombatParticipant["pending_save"]> } =>
+          p.kind === "session_entity" && p.pending_save?.status === "pending",
+      ),
+    [combat.state?.participants],
+  );
   const deadPlayerParticipants = useMemo(
     () =>
       rosterParticipants.filter(
@@ -267,6 +275,7 @@ export const useGmCombatShell = ({ sessionId, playerSheetByUserId }: UseGmCombat
     currentParticipant,
     currentParticipantVitals,
     pendingReactionRequests,
+    pendingSaves,
     deadPlayerParticipants,
     // UI state
     debugOpen,

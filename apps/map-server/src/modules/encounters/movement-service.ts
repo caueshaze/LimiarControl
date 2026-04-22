@@ -17,9 +17,15 @@ export class MovementService {
     destination: { x: number; y: number }
   ) {
     const encounter = this.repository.requireEncounter(sessionId);
-    const token = encounter.tokens.find((candidate) => candidate.combatantId === combatantId);
+    const token = encounter.tokens.find(
+      (candidate) => candidate.combatantId === combatantId
+    );
     if (!token) {
-      return { accepted: false, rejectionReason: "unknown_combatant", encounter };
+      return {
+        accepted: false,
+        rejectionReason: "unknown_combatant",
+        encounter
+      };
     }
 
     const gridState: GridState = {
@@ -28,7 +34,12 @@ export class MovementService {
       edgeObstacles: encounter.edgeObstacles,
       tokens: encounter.tokens
     };
-    const preview = findMovementPath(gridState, token, destination, encounter.combatState);
+    const preview = findMovementPath(
+      gridState,
+      token,
+      destination,
+      encounter.combatState
+    );
 
     return {
       accepted: preview.accepted,
@@ -41,7 +52,10 @@ export class MovementService {
       pathCostUnits: preview.pathCostUnits,
       movementBudget: token.movementBudget,
       movementSpeedCells: token.movementSpeedCells,
-      remainingBudget: Math.max(0, token.movementBudget - preview.pathCostUnits),
+      remainingBudget: Math.max(
+        0,
+        token.movementBudget - preview.pathCostUnits
+      ),
       encounter
     };
   }
@@ -91,12 +105,58 @@ export class MovementService {
     const encounter = this.repository.requireEncounter(sessionId);
 
     if (encounter.actionTracker.has(actionId)) {
-      return { accepted: false, rejectionReason: "duplicate_action", encounter };
+      return {
+        accepted: false,
+        rejectionReason: "duplicate_action",
+        encounter
+      };
     }
 
     const token = encounter.tokens.find((t) => t.id === tokenId);
     if (!token) {
       return { accepted: false, rejectionReason: "unknown_token", encounter };
+    }
+    if (
+      position.x < 0 ||
+      position.y < 0 ||
+      position.x >= encounter.battleMap.gridWidth ||
+      position.y >= encounter.battleMap.gridHeight
+    ) {
+      return {
+        accepted: false,
+        rejectionReason: "invalid_destination",
+        encounter,
+        tokenId
+      };
+    }
+    const blockedByObstacle = encounter.obstacles.some(
+      (obstacle) =>
+        obstacle.blocksMovement &&
+        obstacle.cells.some(
+          (cell) => cell.x === position.x && cell.y === position.y
+        )
+    );
+    if (blockedByObstacle) {
+      return {
+        accepted: false,
+        rejectionReason: "movement_blocked",
+        encounter,
+        tokenId
+      };
+    }
+    const occupiedByOtherToken = encounter.tokens.some(
+      (candidate) =>
+        candidate.id !== tokenId &&
+        candidate.position.x === position.x &&
+        candidate.position.y === position.y
+    );
+    if (occupiedByOtherToken) {
+      return {
+        accepted: false,
+        rejectionReason: "destination_occupied",
+        encounter,
+        tokenId
+      };
     }
 
     encounter.actionTracker.record(actionId);
@@ -104,7 +164,12 @@ export class MovementService {
       ...encounter.combatState,
       version: nextEncounterVersion(encounter.combatState.version)
     };
-    this.repository.updateTokenMovement(sessionId, tokenId, position, token.movementBudget);
+    this.repository.updateTokenMovement(
+      sessionId,
+      tokenId,
+      position,
+      token.movementBudget
+    );
 
     return {
       accepted: true as const,
@@ -125,12 +190,23 @@ export class MovementService {
   ) {
     const encounter = this.repository.requireEncounter(sessionId);
     if (encounter.actionTracker.has(actionId)) {
-      return { accepted: false, rejectionReason: "duplicate_action", encounter };
+      return {
+        accepted: false,
+        rejectionReason: "duplicate_action",
+        encounter
+      };
     }
 
-    const token = encounter.tokens.find((candidate) => candidate.id === tokenId);
+    const token = encounter.tokens.find(
+      (candidate) => candidate.id === tokenId
+    );
     if (!token) {
-      return { accepted: false, rejectionReason: "unknown_token", encounter, tokenId };
+      return {
+        accepted: false,
+        rejectionReason: "unknown_token",
+        encounter,
+        tokenId
+      };
     }
 
     const tacticalActionRejectionReason = getTacticalActionRejectionReason(
@@ -155,7 +231,12 @@ export class MovementService {
       edgeObstacles: encounter.edgeObstacles,
       tokens: encounter.tokens
     };
-    const validation = validateMovement(gridState, token, path, encounter.combatState);
+    const validation = validateMovement(
+      gridState,
+      token,
+      path,
+      encounter.combatState
+    );
     if (!validation.accepted) {
       return {
         accepted: false,

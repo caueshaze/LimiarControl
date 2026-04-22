@@ -1,8 +1,6 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
 import type { StandardActionType } from "../../../shared/api/combatRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { getCombatStatusLabel } from "../combatUi.helpers";
-import { RangeStatusBadge } from "../components/RangeStatusBadge";
 import { useTargetingPreview } from "../hooks/useTargetingPreview";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import type { PendingRoll } from "../../../pages/PlayerBoardPage/playerBoard.types";
@@ -16,8 +14,9 @@ import type {
   SpellOption,
   SpellResult,
   UseObjectResult,
-  UseObjectTargetOption,
+  UseObjectTargetOption
 } from "./playerCombatShell.types";
+import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import { PlayerActionPanels } from "./PlayerActionPanels";
 
 type Props = {
@@ -33,7 +32,10 @@ type Props = {
   handleDragonbornBreathWeapon: () => Promise<void>;
   handleEndTurn: () => Promise<void>;
   handleRequestReaction: () => Promise<void>;
-  handleStandardAction: (action: StandardActionType, targetId?: string) => Promise<void>;
+  handleStandardAction: (
+    action: StandardActionType,
+    targetId?: string
+  ) => Promise<void>;
   handleUseObject: () => Promise<void>;
   lastAttackResult: AttackResult | null;
   lastSpellResult: SpellResult | null;
@@ -46,7 +48,9 @@ type Props = {
   selectedSpellId: string;
   selectedTarget: { id: string } | null;
   sessionId: string;
-  setActiveActionPanel: (panel: "attack" | "spell" | "standard" | "object") => void;
+  setActiveActionPanel: (
+    panel: "attack" | "spell" | "standard" | "object"
+  ) => void;
   setConsumableItemId: (id: string) => void;
   setSelectedSpellId: (id: string) => void;
   setTargetId: (id: string) => void;
@@ -66,13 +70,16 @@ type Props = {
 const waitLabelByPhase = (
   phase: string | null | undefined,
   isMyTurn: boolean,
-  t: (key: any) => string,
+  t: (key: any) => string
 ) => {
   if (isMyTurn) {
     return t("combatUi.readyForTurn");
   }
   if (phase === "initiative") {
     return t("combatUi.waitingInitiative");
+  }
+  if (phase === "placement") {
+    return t("combatUi.waitingPlacement");
   }
   return t("combatUi.waitingTurn");
 };
@@ -117,7 +124,7 @@ export const PlayerTurnPanel = ({
   useObjectNote,
   useObjectRollMode,
   useObjectTargetOptions,
-  useObjectTargetParticipantId,
+  useObjectTargetParticipantId
 }: Props) => {
   const { t } = useLocale();
 
@@ -125,15 +132,20 @@ export const PlayerTurnPanel = ({
   const isDead = myParticipant?.status === "dead";
   const canUseReaction = Boolean(
     combat.state?.phase === "active" &&
-      myParticipant &&
-      myParticipant.status === "active" &&
-      !myParticipant.turn_resources?.reaction_used,
+    myParticipant &&
+    myParticipant.status === "active" &&
+    !myParticipant.turn_resources?.reaction_used
   );
-  const isReactionPending = myParticipant?.reaction_request?.status === "pending";
+  const isReactionPending =
+    myParticipant?.reaction_request?.status === "pending";
   const hasInitiativePending = pendingRoll?.rollType === "initiative";
   const actionUsed = Boolean(myParticipant?.turn_resources?.action_used);
   const canAct = Boolean(combat.isMyTurn && myParticipant?.status === "active");
-  const turnSummaryLabel = waitLabelByPhase(combat.state?.phase, combat.isMyTurn, t);
+  const turnSummaryLabel = waitLabelByPhase(
+    combat.state?.phase,
+    combat.isMyTurn,
+    t
+  );
   const attackRangePreview = useTargetingPreview({
     sessionId,
     actorRefId: myParticipant?.ref_id,
@@ -141,10 +153,21 @@ export const PlayerTurnPanel = ({
     actionType: "attack",
     normalRangeMeters: playerStatus?.currentWeapon?.rangeMeters ?? null,
     longRangeMeters: playerStatus?.currentWeapon?.rangeLongMeters ?? null,
-    enabled: Boolean(combat.state && myParticipant?.ref_id && targetId),
+    enabled: Boolean(combat.state && myParticipant?.ref_id && targetId && activeActionPanel === "attack")
+  });
+  const spellRangePreview = useTargetingPreview({
+    sessionId,
+    actorRefId: myParticipant?.ref_id,
+    targetRefId: targetId || null,
+    actionType: "spell",
+    normalRangeMeters: selectedSpell?.rangeMeters ?? null,
+    longRangeMeters: null,
+    enabled: Boolean(combat.state && myParticipant?.ref_id && targetId && activeActionPanel === "spell" && selectedSpell),
   });
 
-  const selectedConsumableIsHealing = Boolean(selectedConsumable?.isHealingConsumable);
+  const selectedConsumableIsHealing = Boolean(
+    selectedConsumable?.isHealingConsumable
+  );
   const useObjectManualRollReady =
     !selectedConsumableIsHealing ||
     useObjectRollMode !== "manual" ||
@@ -165,8 +188,12 @@ export const PlayerTurnPanel = ({
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
               {t("combatUi.turnEyebrow")}
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">{t("combatUi.playerTurnPanel")}</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-300">{turnSummaryLabel}</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">
+              {t("combatUi.playerTurnPanel")}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {turnSummaryLabel}
+            </p>
           </div>
           {canUseReaction ? (
             isReactionPending ? (
@@ -193,11 +220,15 @@ export const PlayerTurnPanel = ({
 
         {!combat.state ? (
           <div className="mt-5 rounded-3xl border border-dashed border-white/10 bg-white/3 px-4 py-5 text-sm text-slate-400">
-            {combat.loading ? t("combatUi.loadingState") : combat.error ?? t("combatUi.noCombatState")}
+            {combat.loading
+              ? t("combatUi.loadingState")
+              : (combat.error ?? t("combatUi.noCombatState"))}
           </div>
         ) : isDead ? (
           <div className="mt-5 rounded-3xl border border-rose-700/30 bg-rose-950/40 p-5">
-            <h3 className="text-lg font-semibold text-rose-100">{t("combatUi.status.dead")}</h3>
+            <h3 className="text-lg font-semibold text-rose-100">
+              {t("combatUi.status.dead")}
+            </h3>
             <p className="mt-2 text-sm text-rose-200">
               {t("combatUi.deadNoActions")}
             </p>
@@ -206,9 +237,13 @@ export const PlayerTurnPanel = ({
           <div className="mt-5 rounded-3xl border border-rose-500/25 bg-rose-950/30 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold text-rose-100">{t("combatUi.downedTitle")}</h3>
+                <h3 className="text-lg font-semibold text-rose-100">
+                  {t("combatUi.downedTitle")}
+                </h3>
                 <p className="mt-2 text-sm text-rose-200">
-                  {combat.isMyTurn ? t("combatUi.downedYourTurn") : t("combatUi.downedWaiting")}
+                  {combat.isMyTurn
+                    ? t("combatUi.downedYourTurn")
+                    : t("combatUi.downedWaiting")}
                 </p>
               </div>
               <button
@@ -223,7 +258,9 @@ export const PlayerTurnPanel = ({
               </button>
             </div>
             {deathSaveFeedback?.message ? (
-              <p className="mt-4 text-sm text-rose-100">{deathSaveFeedback.message}</p>
+              <p className="mt-4 text-sm text-rose-100">
+                {deathSaveFeedback.message}
+              </p>
             ) : null}
           </div>
         ) : (
@@ -242,8 +279,7 @@ export const PlayerTurnPanel = ({
               </div>
             ) : null}
 
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)]">
-              <label className="space-y-2">
+            <label className="space-y-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                   {t("combatUi.target")}
                 </span>
@@ -254,38 +290,23 @@ export const PlayerTurnPanel = ({
                 >
                   <option value="">{t("combatUi.selectTarget")}</option>
                   {combat.livingParticipants
-                    .filter((participant) => participant.kind === "player" || participant.visible !== false)
+                    .filter(
+                      (participant) =>
+                        participant.kind === "player" ||
+                        participant.visible !== false
+                    )
                     .map((participant) => (
                       <option key={participant.id} value={participant.ref_id}>
                         {participant.display_name}
                       </option>
                     ))}
                 </select>
-                {targetId ? (
-                  <div className="mt-2">
-                    <RangeStatusBadge preview={attackRangePreview} />
-                  </div>
-                ) : null}
               </label>
-
-              <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  {t("combatUi.currentTurnState")}
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  {combat.currentParticipant?.display_name ?? "-"}
-                </p>
-                <p className="mt-2 text-xs text-slate-400">
-                  {combat.currentParticipant
-                    ? getCombatStatusLabel(t, combat.currentParticipant.status)
-                    : t("combatUi.waitingTurn")}
-                </p>
-              </div>
-            </div>
 
             <PlayerActionPanels
               activeActionPanel={activeActionPanel}
               actionUsed={actionUsed}
+              attackRangePreview={attackRangePreview}
               canAct={canAct}
               consumableItemId={consumableItemId}
               consumableOptions={consumableOptions}
@@ -301,6 +322,7 @@ export const PlayerTurnPanel = ({
               selectedTarget={selectedTarget}
               selectedSpell={selectedSpell}
               selectedSpellId={selectedSpellId}
+              spellRangePreview={spellRangePreview}
               turnResources={myParticipant?.turn_resources ?? null}
               setActiveActionPanel={setActiveActionPanel}
               setConsumableItemId={setConsumableItemId}
@@ -363,10 +385,14 @@ export const PlayerTurnPanel = ({
             {t("combatUi.lastConsumable")}
           </p>
           <div className="mt-4 rounded-3xl border border-emerald-400/15 bg-slate-950/35 px-4 py-4">
-            <p className="text-sm leading-6 text-white">{lastUseObjectResult.message}</p>
-            {lastUseObjectResult.target_display_name && lastUseObjectResult.new_hp != null ? (
+            <p className="text-sm leading-6 text-white">
+              {lastUseObjectResult.message}
+            </p>
+            {lastUseObjectResult.target_display_name &&
+            lastUseObjectResult.new_hp != null ? (
               <p className="mt-2 text-xs text-slate-300">
-                {lastUseObjectResult.target_display_name} · {t("combatUi.hp")} {lastUseObjectResult.new_hp}
+                {lastUseObjectResult.target_display_name} · {t("combatUi.hp")}{" "}
+                {lastUseObjectResult.new_hp}
               </p>
             ) : null}
           </div>

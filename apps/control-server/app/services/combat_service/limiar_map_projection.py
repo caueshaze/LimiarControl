@@ -44,7 +44,7 @@ class LimiarMapCombatProjectionService:
         session_id: str,
         state: CombatState,
     ) -> LimiarMapCombatProjectionResult:
-        if state.phase not in (CombatPhase.active, "active"):
+        if state.phase not in (CombatPhase.active, CombatPhase.placement, "active", "placement"):
             return LimiarMapCombatProjectionResult(
                 map_available=False,
                 reason="combat_not_active",

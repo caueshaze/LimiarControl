@@ -207,6 +207,22 @@ class CombatCoreMixin:
         )
 
     @classmethod
+    def _create_pending_save(
+        cls,
+        state: CombatState,
+        target_participant: dict,
+        payload: dict,
+    ) -> str:
+        pending_save_id = str(uuid4())
+        target_participant["pending_save"] = {
+            **payload,
+            "id": pending_save_id,
+            "status": "pending",
+        }
+        flag_modified(state, "participants")
+        return pending_save_id
+
+    @classmethod
     def _require_pending_attack(
         cls,
         participant: dict,

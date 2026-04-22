@@ -48,6 +48,7 @@ class CombatEntityActionResult(BaseModel):
     damage_bonus: int | None = None
     attack_bonus: int | None = None
     pending_attack_id: str | None = None
+    pending_save_id: str | None = None
     damage_roll_required: bool = False
     damage_rolls: list[int] = Field(default_factory=list)
     base_damage: int | None = None
@@ -197,6 +198,14 @@ class CombatReactionResolveRequest(BaseModel):
     actor_participant_id: str
     decision: Literal["approve", "deny"]
     override_resource_limit: bool = False
+
+
+class CombatResolveSaveRequest(BaseModel):
+    target_participant_id: str
+    pending_save_id: str
+    roll_source: RollSource = "system"
+    manual_roll: int | None = Field(default=None, ge=1, le=20)
+    manual_rolls: list[int] | None = None
 
 
 StandardActionType = Literal[

@@ -45,6 +45,7 @@ export interface BattleMapUIState {
   embeddedPreview: Coordinate[];
   embeddedSelectedCell?: Coordinate;
   embeddedSelectedTargetRefId?: string;
+  embeddedCombatPhase?: EmbeddedCombatPhase;
   message?: string;
   isGridEditMode: boolean;
   isObstaclePaintMode: boolean;
@@ -70,3 +71,5 @@ export interface BattleMapUIState {
 }
 
 export type EmbeddedSelectionMode = "none" | "select-token" | "select-cell";
+
+export type EmbeddedCombatPhase = "initiative" | "placement" | "active" | "ended";

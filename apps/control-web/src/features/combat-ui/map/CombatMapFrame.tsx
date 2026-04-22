@@ -127,6 +127,7 @@ export const CombatMapFrame = ({
           previewCells,
           selectedCell,
           selectedTargetRefId,
+          combatPhase,
         },
       },
       "*",
@@ -286,6 +287,7 @@ export const CombatMapFrame = ({
   }, [
     actor,
     bootstrapState.status,
+    combatPhase,
     frameLoaded,
     mapReady,
     previewCells,

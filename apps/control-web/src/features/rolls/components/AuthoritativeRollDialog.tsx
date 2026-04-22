@@ -18,6 +18,7 @@ export type AuthoritativeRollRequest = {
   dc?: number | null;
   reason?: string;
   issuedBy?: string;
+  issuedByLabel?: string;
 };
 
 type Props = {
@@ -27,6 +28,11 @@ type Props = {
   actorRefId: string;
   onClose: () => void;
   onResolved?: (result: RollResult) => void | Promise<void>;
+  onSubmitRoll?: (payload: {
+    rollSource: "system" | "manual";
+    manualRoll?: number | null;
+    manualRolls?: [number, number] | null;
+  }) => Promise<RollResult | null>;
 };
 
 const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -38,11 +44,14 @@ export const AuthoritativeRollDialog = ({
   actorRefId,
   onClose,
   onResolved,
+  onSubmitRoll,
 }: Props) => {
   const { t } = useLocale();
   const [mode, setMode] = useState<"choose" | "virtual" | "manual">("choose");
   const [manualD20, setManualD20] = useState<number | null>(null);
   const [manualD20Second, setManualD20Second] = useState<number | null>(null);
+  const [overrideResult, setOverrideResult] = useState<RollResult | null>(null);
+  const [overrideLoading, setOverrideLoading] = useState(false);
 
   const { result, loading, submitRoll } = useRollResolution(
     sessionId,
@@ -50,6 +59,8 @@ export const AuthoritativeRollDialog = ({
     actorRefId,
   );
 
+  const displayedResult = overrideResult ?? result;
+  const isLoading = overrideLoading || loading;
   const needsTwoRolls = request.advantageMode !== "normal";
   const selectingSecond = needsTwoRolls && manualD20 !== null && manualD20Second === null;
 
@@ -62,15 +73,19 @@ export const AuthoritativeRollDialog = ({
   };
 
   const handleVirtualRoll = async () => {
-    const result = await submitRoll({
-      rollType: request.rollType,
-      ability: request.ability,
-      skill: request.skill,
-      advantageMode: request.advantageMode,
-      dc: request.dc,
-      rollSource: "system",
-    });
+    setOverrideLoading(Boolean(onSubmitRoll));
+    const result = onSubmitRoll
+      ? await onSubmitRoll({ rollSource: "system" }).finally(() => setOverrideLoading(false))
+      : await submitRoll({
+          rollType: request.rollType,
+          ability: request.ability,
+          skill: request.skill,
+          advantageMode: request.advantageMode,
+          dc: request.dc,
+          rollSource: "system",
+        });
     if (result) {
+      setOverrideResult(result);
       await onResolved?.(result);
     }
   };
@@ -82,30 +97,38 @@ export const AuthoritativeRollDialog = ({
         return;
       }
       setManualD20Second(value);
-      const result = await submitRoll({
-        rollType: request.rollType,
-        ability: request.ability,
-        skill: request.skill,
-        advantageMode: request.advantageMode,
-        dc: request.dc,
-        rollSource: "manual",
-        manualRolls: [manualD20, value],
-      });
+      setOverrideLoading(Boolean(onSubmitRoll));
+      const result = onSubmitRoll
+        ? await onSubmitRoll({ rollSource: "manual", manualRolls: [manualD20, value] }).finally(() => setOverrideLoading(false))
+        : await submitRoll({
+            rollType: request.rollType,
+            ability: request.ability,
+            skill: request.skill,
+            advantageMode: request.advantageMode,
+            dc: request.dc,
+            rollSource: "manual",
+            manualRolls: [manualD20, value],
+          });
       if (result) {
+        setOverrideResult(result);
         await onResolved?.(result);
       }
     } else {
       setManualD20(value);
-      const result = await submitRoll({
-        rollType: request.rollType,
-        ability: request.ability,
-        skill: request.skill,
-        advantageMode: request.advantageMode,
-        dc: request.dc,
-        rollSource: "manual",
-        manualRoll: value,
-      });
+      setOverrideLoading(Boolean(onSubmitRoll));
+      const result = onSubmitRoll
+        ? await onSubmitRoll({ rollSource: "manual", manualRoll: value }).finally(() => setOverrideLoading(false))
+        : await submitRoll({
+            rollType: request.rollType,
+            ability: request.ability,
+            skill: request.skill,
+            advantageMode: request.advantageMode,
+            dc: request.dc,
+            rollSource: "manual",
+            manualRoll: value,
+          });
       if (result) {
+        setOverrideResult(result);
         await onResolved?.(result);
       }
     }
@@ -144,14 +167,14 @@ export const AuthoritativeRollDialog = ({
 
         {request.issuedBy && (
           <p className="mt-2 text-sm text-slate-400">
-            {t("playerBoard.requestedBy" as Parameters<typeof t>[0])} {request.issuedBy}
+            {request.issuedByLabel ?? t("playerBoard.requestedBy" as Parameters<typeof t>[0])} {request.issuedBy}
           </p>
         )}
 
         {/* Result display */}
-        {result && (
+        {displayedResult && (
           <div className="mt-4">
-            <RollResultCard result={result} hideDc />
+            <RollResultCard result={displayedResult} hideDc />
             <button
               type="button"
               onClick={onClose}
@@ -163,7 +186,7 @@ export const AuthoritativeRollDialog = ({
         )}
 
         {/* Mode selection */}
-        {!result && mode === "choose" && (
+        {!displayedResult && mode === "choose" && (
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -183,15 +206,15 @@ export const AuthoritativeRollDialog = ({
         )}
 
         {/* Virtual roll */}
-        {!result && mode === "virtual" && (
+        {!displayedResult && mode === "virtual" && (
           <div className="mt-5 flex gap-3">
             <button
               type="button"
-              disabled={loading}
+              disabled={isLoading}
               onClick={() => { void handleVirtualRoll(); }}
               className="flex-1 rounded-full bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
             >
-              {loading
+              {isLoading
                 ? "..."
                 : t("playerBoard.rollNow" as Parameters<typeof t>[0])}
             </button>
@@ -206,7 +229,7 @@ export const AuthoritativeRollDialog = ({
         )}
 
         {/* Manual roll — d20 grid */}
-        {!result && mode === "manual" && (
+        {!displayedResult && mode === "manual" && (
           <div className="mt-5 space-y-3">
             <p className="text-xs text-slate-400">
               {selectingSecond
@@ -221,7 +244,7 @@ export const AuthoritativeRollDialog = ({
                 <button
                   key={n}
                   type="button"
-                  disabled={loading}
+                  disabled={isLoading}
                   onClick={() => { void handleManualSelect(n); }}
                   className={`rounded-xl border px-2 py-3 text-center text-lg font-bold transition-colors ${
                     (n === manualD20 && !selectingSecond)

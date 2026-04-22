@@ -19,6 +19,7 @@ class SpellResolutionResult:
     cover: object = None
     effective_dc: int = 0
     pending_spell_id: str | None = None
+    pending_save_id: str | None = None
     damage: int = 0
     healing: int = 0
     new_hp: int | None = None

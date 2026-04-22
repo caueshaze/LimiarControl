@@ -32,6 +32,38 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
         result.cover = targeting_result.spatial_metadata.cover
         save_dc_base = cls._safe_int(spell_context.get("save_dc"), 0)
         result.effective_dc = max(0, save_dc_base - resolve_cover_save_modifier(result.cover)) if should_cover_apply_to_save(spell_context.get("cover_applies_to_save"), spell_context.get("save_ability")) else save_dc_base
+
+        result.pending_save_id = cls._create_pending_save(
+            state,
+            target_p,
+            {
+                "spell_name": spell_context["spell_name"],
+                "spell_canonical_key": spell_context["spell_canonical_key"],
+                "attacker_ref_id": attacker["ref_id"],
+                "attacker_participant_id": attacker["id"],
+                "attacker_display_name": attacker["display_name"],
+                "save_ability": spell_context["save_ability"],
+                "save_dc": result.effective_dc,
+                "effect_kind": effect_kind,
+                "effect_bonus": effect_bonus,
+                "effect_dice": spell_context.get("effect_dice"),
+                "damage_type": spell_context.get("damage_type"),
+                "save_success_outcome": save_success_outcome,
+                "effect_roll_required": effect_roll_required,
+                "cover": result.cover,
+                "elemental_affinity_eligible": spell_context.get("elemental_affinity_eligible"),
+                "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+                "target_ref_id": target_p["ref_id"],
+                "target_kind": target_p["kind"],
+                "target_display_name": target_p["display_name"],
+                "concentration_roll_source": getattr(req, "concentration_roll_source", None),
+                "action_kind": spell_mode,
+            },
+        )
+        result.is_saved = None
+        return result
+
         result.roll_result = cast_target_module.resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(db, session_id, target_p["ref_id"], target_p["kind"], target_p["display_name"]),
             ability=spell_context["save_ability"],

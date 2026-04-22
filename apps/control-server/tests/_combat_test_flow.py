@@ -185,6 +185,7 @@ class CombatFlowTestsMixin:
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
     async def test_set_initiative(self, mock_emit_log, mock_emit_state):
+        self.state.use_map = False
         with patch(
             "app.services.combat.CombatService.get_state", return_value=self.state
         ):
@@ -206,6 +207,7 @@ class CombatFlowTestsMixin:
     async def test_apply_initiative_roll_transitions_when_all_are_ready(
         self, mock_emit_log, mock_emit_state
     ):
+        self.state.use_map = False
         self.state.participants[1]["initiative"] = 12
         with patch(
             "app.services.combat.CombatService.get_state", return_value=self.state
@@ -530,6 +532,66 @@ class CombatFlowTestsMixin:
                     )
 
         self.assertEqual(res["target_kind"], "session_entity")
+
+    @patch("app.services.combat_service.lifecycle_initiative.maybe_project_combat_start_to_limiar_map")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_set_initiative_enters_placement_when_map_enabled(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_project_start,
+    ):
+        self.state.phase = CombatPhase.initiative
+        self.state.use_map = True
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            updated = await CombatService.set_initiative(
+                self.db,
+                "session-123",
+                CombatSetInitiativeRequest(
+                    initiatives=[
+                        CombatSetInitiativeParticipant(id="p1", initiative=12),
+                        CombatSetInitiativeParticipant(id="e1", initiative=14),
+                    ]
+                ),
+            )
+
+        self.assertEqual(updated.phase, CombatPhase.placement)
+        self.assertEqual(updated.current_turn_index, 0)
+        self.assertEqual(updated.participants[0]["id"], "e1")
+        mock_project_start.assert_called_once()
+
+    @patch("app.services.combat_service.lifecycle_initiative.maybe_project_combat_start_to_limiar_map")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_confirm_placement_activates_first_turn(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_project_start,
+    ):
+        self.state.phase = CombatPhase.placement
+        self.state.use_map = True
+        self.state.participants[0]["initiative"] = 20
+        self.state.participants[0]["turn_resources"] = {
+            "action_used": True,
+            "bonus_action_used": True,
+            "reaction_used": True,
+        }
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            updated = await CombatService.confirm_placement(
+                self.db,
+                "session-123",
+            )
+
+        self.assertEqual(updated.phase, CombatPhase.active)
+        self.assertEqual(updated.current_turn_index, 0)
+        self.assertFalse(updated.participants[0]["turn_resources"]["action_used"])
+        self.assertFalse(updated.participants[0]["turn_resources"]["bonus_action_used"])
+        self.assertFalse(updated.participants[0]["turn_resources"]["reaction_used"])
+        mock_project_start.assert_called_once()
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")

@@ -14,6 +14,7 @@ import type {
   TacticalDiagnostics,
   TacticalPreviewState,
   BattleMapUIState,
+  EmbeddedCombatPhase,
   EmbeddedSelectionMode,
   TokenMovementRejectionState
 } from "./battle-map-store.types";
@@ -23,6 +24,7 @@ export type {
   TacticalPreviewState,
   TokenMovementRejectionState,
   BattleMapUIState,
+  EmbeddedCombatPhase,
   EmbeddedSelectionMode
 } from "./battle-map-store.types";
 
@@ -102,19 +104,21 @@ class BattleMapStore {
     previewCells: Coordinate[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
+    combatPhase?: EmbeddedCombatPhase | null;
   }): void {
     this.set({
       embeddedSelectionMode: ctx.selectionMode,
       embeddedPreview: ctx.previewCells,
       embeddedSelectedCell: ctx.selectedCell ?? undefined,
-      embeddedSelectedTargetRefId: ctx.selectedTargetRefId ?? undefined
+      embeddedSelectedTargetRefId: ctx.selectedTargetRefId ?? undefined,
+      embeddedCombatPhase: ctx.combatPhase ?? undefined
     });
   }
 
   setEmbeddedSelectedCell(c?: Coordinate | null): void { this.set({ embeddedSelectedCell: c ?? undefined }); }
 
   clearEmbeddedInteraction(): void {
-    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined });
+    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined, embeddedCombatPhase: undefined });
   }
 
   setTokenMovementRejection(rejection: TokenMovementRejectionState): void {

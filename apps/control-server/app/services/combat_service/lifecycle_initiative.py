@@ -18,18 +18,24 @@ class CombatLifecycleInitiativeMixin:
         return participant.get("status") not in cls._INITIATIVE_SKIPPED_STATUSES
 
     @classmethod
-    def _maybe_activate_initiative_order(cls, state) -> bool:
+    def _maybe_advance_from_initiative(cls, state) -> str | None:
         if state.phase not in (CombatPhase.initiative, "initiative"):
-            return False
+            return None
         pending = [participant for participant in state.participants if cls._participant_requires_initiative(participant)]
         if any(participant.get("initiative") is None for participant in pending):
-            return False
+            return None
         state.participants.sort(key=lambda participant: participant.get("initiative") or 0, reverse=True)
+        if state.use_map:
+            state.phase = CombatPhase.placement
+            state.round = 1
+            state.current_turn_index = 0
+            return "placement"
         state.phase = CombatPhase.active
         state.round = 1
         state.current_turn_index = 0
-        cls._reset_turn_resources(state.participants[0])
-        return True
+        if state.participants:
+            cls._reset_turn_resources(state.participants[0])
+        return "active"
 
     @classmethod
     async def apply_initiative_roll(cls, db, session_id: str, actor_kind: str, actor_ref_id: str, initiative: int):
@@ -40,7 +46,7 @@ class CombatLifecycleInitiativeMixin:
         if not participant or not cls._participant_requires_initiative(participant):
             return state
         participant["initiative"] = initiative
-        transitioned_to_active = cls._maybe_activate_initiative_order(state)
+        transition = cls._maybe_advance_from_initiative(state)
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(state, "participants")
@@ -48,9 +54,12 @@ class CombatLifecycleInitiativeMixin:
         db.commit()
         db.refresh(state)
         await cls._emit_state(session_id, state)
-        if transitioned_to_active and state.participants:
+        if transition == "active" and state.participants:
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
             await cls._emit_log(session_id, {"message": f"Initiative set! It is now {state.participants[0]['display_name']}'s turn."})
+        elif transition == "placement":
+            maybe_project_combat_start_to_limiar_map(db, session_id, state)
+            await cls._emit_log(session_id, {"message": "Initiative set! GM must position tokens before combat begins."})
         return state
 
     @classmethod
@@ -137,7 +146,7 @@ class CombatLifecycleInitiativeMixin:
         for participant in state.participants:
             if participant["id"] in updates:
                 participant["initiative"] = updates[participant["id"]]
-        transitioned_to_active = cls._maybe_activate_initiative_order(state)
+        transition = cls._maybe_advance_from_initiative(state)
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(state, "participants")
@@ -145,10 +154,40 @@ class CombatLifecycleInitiativeMixin:
         db.commit()
         db.refresh(state)
         await cls._emit_state(session_id, state)
-        if transitioned_to_active:
+        if transition == "active":
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
             active_name = state.participants[0]["display_name"] if state.participants else "Unknown"
             await cls._emit_log(session_id, {"message": f"Initiative set! It is now {active_name}'s turn."})
+        elif transition == "placement":
+            maybe_project_combat_start_to_limiar_map(db, session_id, state)
+            await cls._emit_log(session_id, {"message": "Initiative set! GM must position tokens before combat begins."})
         else:
             await cls._emit_log(session_id, {"message": "Initiative updated."})
+        return state
+
+    @classmethod
+    async def confirm_placement(cls, db, session_id: str):
+        state = cls.get_state(db, session_id)
+        if not state:
+            raise CombatServiceError("Combat not found", 404)
+        if state.phase not in (CombatPhase.placement, "placement"):
+            raise CombatServiceError("Combat is not in placement phase", 400)
+        if not state.participants:
+            raise CombatServiceError("No participants", 400)
+
+        state.phase = CombatPhase.active
+        state.round = 1
+        state.current_turn_index = 0
+        cls._reset_turn_resources(state.participants[0])
+
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+        maybe_project_combat_start_to_limiar_map(db, session_id, state)
+        active_name = state.participants[0]["display_name"]
+        await cls._emit_log(session_id, {"message": f"Combat placement confirmed! It is now {active_name}'s turn."})
         return state

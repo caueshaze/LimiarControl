@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AbilityName,
   AdvantageMode,
@@ -33,7 +33,7 @@ import {
   resolveMovementCellSelection,
   useMovementPreview,
 } from "../map/useMovementPreview";
-import { combatRepo } from "../../../shared/api/combatRepo";
+import { combatRepo, type PendingSave } from "../../../shared/api/combatRepo";
 
 type Props = {
   campaignId?: string | null;
@@ -171,6 +171,9 @@ export const PlayerCombatModeShell = ({
   const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);
   const [movementRejectionReason, setMovementRejectionReason] = useState<string | null>(null);
+  const [activePendingSave, setActivePendingSave] = useState<(
+    PendingSave & { participantId: string; participantRefId: string; participantName: string }
+  ) | null>(null);
   const movementEnabled =
     movementMode &&
     combat.state?.use_map !== false &&
@@ -193,6 +196,17 @@ export const PlayerCombatModeShell = ({
     setMovementSelectedCell(null);
     setMovementRejectionReason(null);
   }, [movementEnabled]);
+
+  useEffect(() => {
+    if (myParticipant?.pending_save?.status === "pending") {
+      setActivePendingSave({
+        ...myParticipant.pending_save,
+        participantId: myParticipant.id,
+        participantName: myParticipant.display_name,
+        participantRefId: myParticipant.ref_id,
+      });
+    }
+  }, [myParticipant]);
 
   const clearMovementMode = () => {
     setMovementMode(false);
@@ -520,6 +534,35 @@ export const PlayerCombatModeShell = ({
           onRollModeChange={onRollModeChange}
           onSubmitManual={onSubmitManualRoll}
           onVirtualRoll={onVirtualRoll}
+        />
+      ) : null}
+
+      {!pendingRoll && activePendingSave ? (
+        <AuthoritativeRollDialog
+          request={{
+            rollType: "save",
+            ability: activePendingSave.save_ability as AbilityName,
+            advantageMode: "normal",
+            dc: activePendingSave.save_dc,
+            reason: `${activePendingSave.spell_name} - save de ${activePendingSave.save_ability}`,
+            issuedBy: activePendingSave.attacker_display_name ?? undefined,
+            issuedByLabel: t("combatUi.castBy"),
+          }}
+          sessionId={sessionId}
+          actorKind="player"
+          actorRefId={activePendingSave.participantRefId}
+          onClose={() => setActivePendingSave(null)}
+          onSubmitRoll={async ({ rollSource, manualRoll, manualRolls }) => {
+            const resolved = await combatRepo.resolvePendingSave(sessionId, {
+              target_participant_id: activePendingSave.participantId,
+              pending_save_id: activePendingSave.id,
+              roll_source: rollSource,
+              manual_roll: rollSource === "manual" ? manualRoll ?? null : null,
+              manual_rolls: rollSource === "manual" ? manualRolls ?? null : null,
+            });
+            await combat.refreshState();
+            return resolved.roll_result ?? null;
+          }}
         />
       ) : null}
     </section>

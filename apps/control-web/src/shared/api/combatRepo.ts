@@ -1,9 +1,17 @@
-import type { RollResult, RollSource } from "../../entities/roll/rollResolution.types";
+import type {
+  RollResult,
+  RollSource
+} from "../../entities/roll/rollResolution.types";
 import { http } from "./http";
 
-export type CombatPhase = "initiative" | "active" | "ended";
+export type CombatPhase = "initiative" | "placement" | "active" | "ended";
 export type CombatParticipantKind = "player" | "session_entity";
-export type CombatSpellMode = "spell_attack" | "saving_throw" | "direct_damage" | "heal" | "utility";
+export type CombatSpellMode =
+  | "spell_attack"
+  | "saving_throw"
+  | "direct_damage"
+  | "heal"
+  | "utility";
 export type CombatActionCost = "action" | "bonus_action" | "reaction" | "free";
 
 // --- Active Effects ---
@@ -59,6 +67,34 @@ export type ReactionRequestState = {
   requested_at: string;
 };
 
+export type PendingSave = {
+  id: string;
+  status: "pending";
+  spell_name: string;
+  spell_canonical_key?: string | null;
+  attacker_display_name?: string | null;
+  save_ability: string;
+  save_dc: number;
+  effect_kind?: "damage" | "healing" | null;
+};
+
+export type SaveResolution = {
+  spell_name: string;
+  pending_save_id?: string | null;
+  target_display_name: string;
+  save_ability: string;
+  save_dc: number;
+  is_saved: boolean;
+  roll_total: number;
+  damage: number;
+  healing: number;
+  damage_type?: string | null;
+  effect_kind?: "damage" | "healing" | null;
+  new_hp?: number | null;
+  roll_result: RollResult;
+  pending_spell_id?: string | null;
+};
+
 export type CombatParticipant = {
   id: string;
   kind: "player" | "session_entity";
@@ -72,6 +108,8 @@ export type CombatParticipant = {
   active_effects?: ActiveEffect[];
   turn_resources?: TurnResources;
   reaction_request?: ReactionRequestState;
+  pending_save?: PendingSave;
+  last_save_resolution?: SaveResolution;
 };
 
 export type CombatState = {
@@ -220,6 +258,7 @@ export type CombatSpellResult = {
   effect_dice?: string | null;
   effect_bonus?: number | null;
   pending_spell_id?: string | null;
+  pending_save_id?: string | null;
   effect_roll_required?: boolean;
   effect_rolls?: number[];
   base_effect?: number | null;
@@ -365,7 +404,12 @@ export type CombatEntityActionRequest = {
 
 export type CombatEntityActionResult = {
   action_name: string;
-  action_kind: "weapon_attack" | "spell_attack" | "saving_throw" | "heal" | "utility";
+  action_kind:
+    | "weapon_attack"
+    | "spell_attack"
+    | "saving_throw"
+    | "heal"
+    | "utility";
   damage: number;
   damage_type?: string | null;
   healing: number;
@@ -384,6 +428,7 @@ export type CombatEntityActionResult = {
   damage_bonus?: number | null;
   attack_bonus?: number | null;
   pending_attack_id?: string | null;
+  pending_save_id?: string | null;
   damage_roll_required?: boolean;
   damage_rolls?: number[];
   base_damage?: number | null;
@@ -524,56 +569,138 @@ export const combatRepo = {
     http.post<CombatState>(`/sessions/${sessionId}/combat/start`, payload),
   setInitiative: (sessionId: string, payload: CombatSetInitiativeRequest) =>
     http.put<CombatState>(`/sessions/${sessionId}/combat/initiative`, payload),
+  confirmPlacement: (sessionId: string) =>
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/placement/confirm`,
+      {}
+    ),
   nextTurn: (sessionId: string, payload: CombatNextTurnRequest = {}) =>
     http.post<CombatState>(`/sessions/${sessionId}/combat/turn/next`, payload),
   endCombat: (sessionId: string) =>
     http.post<CombatState>(`/sessions/${sessionId}/combat/end`, {}),
   attack: (sessionId: string, payload: CombatAttackRequest) =>
-    http.post<CombatAttackResult>(`/sessions/${sessionId}/combat/action/attack`, payload),
+    http.post<CombatAttackResult>(
+      `/sessions/${sessionId}/combat/action/attack`,
+      payload
+    ),
   attackDamage: (sessionId: string, payload: CombatResolveDamageRequest) =>
-    http.post<CombatAttackResult>(`/sessions/${sessionId}/combat/action/attack/damage`, payload),
+    http.post<CombatAttackResult>(
+      `/sessions/${sessionId}/combat/action/attack/damage`,
+      payload
+    ),
   castSpell: (sessionId: string, payload: CombatCastSpellRequest) =>
-    http.post<CombatSpellResult>(`/sessions/${sessionId}/combat/action/cast`, payload),
+    http.post<CombatSpellResult>(
+      `/sessions/${sessionId}/combat/action/cast`,
+      payload
+    ),
   ensureMap: (sessionId: string) =>
-    http.post<CombatMapEnsureResponse>(`/sessions/${sessionId}/combat/map/ensure`, {}),
+    http.post<CombatMapEnsureResponse>(
+      `/sessions/${sessionId}/combat/map/ensure`,
+      {}
+    ),
   getMapState: (sessionId: string, actorParticipantId?: string | null) =>
     http.get<CombatMapPreviewState>(
-      `/sessions/${sessionId}/combat/map-state${actorParticipantId ? `?actor_participant_id=${encodeURIComponent(actorParticipantId)}` : ""}`,
+      `/sessions/${sessionId}/combat/map-state${actorParticipantId ? `?actor_participant_id=${encodeURIComponent(actorParticipantId)}` : ""}`
     ),
   previewAreaSpell: (sessionId: string, payload: CombatAreaPreviewRequest) =>
-    http.post<CombatAreaPreviewResponse>(`/sessions/${sessionId}/combat/action/cast/preview`, payload),
+    http.post<CombatAreaPreviewResponse>(
+      `/sessions/${sessionId}/combat/action/cast/preview`,
+      payload
+    ),
   previewMovement: (sessionId: string, payload: CombatMovementPreviewRequest) =>
-    http.post<CombatMovementPreviewResponse>(`/sessions/${sessionId}/combat/action/move/preview`, payload),
+    http.post<CombatMovementPreviewResponse>(
+      `/sessions/${sessionId}/combat/action/move/preview`,
+      payload
+    ),
   confirmMovement: (sessionId: string, payload: CombatMovementPreviewRequest) =>
-    http.post<CombatMovementPreviewResponse>(`/sessions/${sessionId}/combat/action/move`, payload),
+    http.post<CombatMovementPreviewResponse>(
+      `/sessions/${sessionId}/combat/action/move`,
+      payload
+    ),
   previewAction: (sessionId: string, payload: CombatPreviewRequest) =>
-    http.post<CombatPreviewResponse>(`/sessions/${sessionId}/combat/preview`, payload),
-  castSpellEffect: (sessionId: string, payload: CombatResolveSpellEffectRequest) =>
-    http.post<CombatSpellResult>(`/sessions/${sessionId}/combat/action/cast/effect`, payload),
+    http.post<CombatPreviewResponse>(
+      `/sessions/${sessionId}/combat/preview`,
+      payload
+    ),
+  castSpellEffect: (
+    sessionId: string,
+    payload: CombatResolveSpellEffectRequest
+  ) =>
+    http.post<CombatSpellResult>(
+      `/sessions/${sessionId}/combat/action/cast/effect`,
+      payload
+    ),
   entityAction: (sessionId: string, payload: CombatEntityActionRequest) =>
-    http.post<CombatEntityActionResult>(`/sessions/${sessionId}/combat/action/entity`, payload),
-  entityActionDamage: (sessionId: string, payload: CombatResolveDamageRequest) =>
-    http.post<CombatEntityActionResult>(`/sessions/${sessionId}/combat/action/entity/damage`, payload),
+    http.post<CombatEntityActionResult>(
+      `/sessions/${sessionId}/combat/action/entity`,
+      payload
+    ),
+  entityActionDamage: (
+    sessionId: string,
+    payload: CombatResolveDamageRequest
+  ) =>
+    http.post<CombatEntityActionResult>(
+      `/sessions/${sessionId}/combat/action/entity/damage`,
+      payload
+    ),
   applyDamage: (sessionId: string, payload: CombatApplyDamageRequest) =>
-    http.post<any>(`/sessions/${sessionId}/combat/action/apply-damage`, payload),
+    http.post<any>(
+      `/sessions/${sessionId}/combat/action/apply-damage`,
+      payload
+    ),
   deathSave: (sessionId: string, payload: CombatDeathSaveRequest = {}) =>
     http.post<any>(`/sessions/${sessionId}/combat/action/death-save`, payload),
   revive: (sessionId: string, payload: CombatReviveRequest) =>
-    http.post<CombatReviveResult>(`/sessions/${sessionId}/combat/action/revive`, payload),
+    http.post<CombatReviveResult>(
+      `/sessions/${sessionId}/combat/action/revive`,
+      payload
+    ),
   applyEffect: (sessionId: string, payload: CombatApplyEffectRequest) =>
-    http.post<CombatState>(`/sessions/${sessionId}/combat/effects/apply`, payload),
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/effects/apply`,
+      payload
+    ),
   removeEffect: (sessionId: string, payload: CombatRemoveEffectRequest) =>
-    http.post<CombatState>(`/sessions/${sessionId}/combat/effects/remove`, payload),
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/effects/remove`,
+      payload
+    ),
   standardAction: (sessionId: string, payload: CombatStandardActionRequest) =>
-    http.post<CombatStandardActionResult>(`/sessions/${sessionId}/combat/action/standard`, payload),
+    http.post<CombatStandardActionResult>(
+      `/sessions/${sessionId}/combat/action/standard`,
+      payload
+    ),
   consumeReaction: (sessionId: string, payload: CombatConsumeReactionRequest) =>
-    http.post<CombatState>(`/sessions/${sessionId}/combat/action/consume-reaction`, payload),
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/action/consume-reaction`,
+      payload
+    ),
   requestReaction: (sessionId: string, payload: CombatReactionRequestRequest) =>
-    http.post<CombatState>(`/sessions/${sessionId}/combat/action/reaction/request`, payload),
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/action/reaction/request`,
+      payload
+    ),
   resolveReaction: (sessionId: string, payload: CombatReactionResolveRequest) =>
-    http.post<CombatState>(`/sessions/${sessionId}/combat/action/reaction/resolve`, payload),
+    http.post<CombatState>(
+      `/sessions/${sessionId}/combat/action/reaction/resolve`,
+      payload
+    ),
+  resolvePendingSave: (
+    sessionId: string,
+    payload: {
+      target_participant_id: string;
+      pending_save_id: string;
+      roll_source?: RollSource;
+      manual_roll?: number | null;
+      manual_rolls?: number[] | null;
+    },
+  ) =>
+    http.post<CombatSpellResult>(
+      `/sessions/${sessionId}/combat/action/save-resolve`,
+      payload,
+    ),
   listEffects: (sessionId: string) =>
     http.get<ActiveEffect[]>(`/sessions/${sessionId}/combat/effects`),
   updateDistances: (sessionId: string, payload: CombatUpdateDistancesRequest) =>
-    http.patch<CombatState>(`/sessions/${sessionId}/combat/distances`, payload),
+    http.patch<CombatState>(`/sessions/${sessionId}/combat/distances`, payload)
 };

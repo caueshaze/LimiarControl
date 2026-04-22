@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
 import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import type { CombatParticipant, CombatSpellMode, CombatSpellResult } from "../../../shared/api/combatRepo";
@@ -60,6 +60,7 @@ export const PlayerSpellCastDialog = ({
   );
   const [result, setResult] = useState<CombatSpellResult | null>(null);
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.targetMode));
+  const handledSaveResolutionKeyRef = useRef<string | null>(null);
 
   const {
     anchorCell,
@@ -128,7 +129,61 @@ export const PlayerSpellCastDialog = ({
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
     setTargetingMode(createInitialTargetingMode(spell.targetMode));
     setError(null);
+    handledSaveResolutionKeyRef.current = null;
   }, [spell.fixedCastLevel, spell.id, spell.level, spell.targetMode]);
+
+  useEffect(() => {
+    if (!result?.pending_save_id || !actor.last_save_resolution) {
+      return;
+    }
+
+    const resolution = actor.last_save_resolution;
+    if (
+      resolution.pending_save_id !== result.pending_save_id ||
+      resolution.spell_name !== result.spell_name ||
+      resolution.target_display_name !== result.target_display_name
+    ) {
+      return;
+    }
+
+    const resolutionKey = [
+      resolution.spell_name,
+      resolution.target_display_name,
+      resolution.roll_total,
+      resolution.pending_spell_id ?? "",
+      resolution.damage,
+      resolution.healing,
+    ].join(":");
+    if (handledSaveResolutionKeyRef.current === resolutionKey) {
+      return;
+    }
+    handledSaveResolutionKeyRef.current = resolutionKey;
+
+    const resolved: CombatSpellResult = {
+      ...result,
+      action_kind: "saving_throw",
+      damage: resolution.damage,
+      healing: resolution.healing,
+      damage_type: resolution.damage_type ?? result.damage_type,
+      effect_kind: resolution.effect_kind ?? result.effect_kind,
+      effect_roll_required: Boolean(resolution.pending_spell_id),
+      is_critical: false,
+      is_hit: null,
+      is_saved: resolution.is_saved,
+      new_hp: resolution.new_hp ?? null,
+      pending_save_id: null,
+      pending_spell_id: resolution.pending_spell_id ?? null,
+      roll: resolution.roll_total,
+      roll_result: resolution.roll_result,
+      save_ability: (resolution.save_ability as AbilityName) ?? result.save_ability,
+      save_dc: resolution.save_dc,
+    };
+
+    setResult(resolved);
+    setManualEffectRolls([]);
+    setEffectMode("choose");
+    void onResolved?.(resolved);
+  }, [actor.last_save_resolution, onResolved, result]);
 
   const resolveConcentrationManualRoll = () =>
     shouldShowConcentrationControl && concentrationRollMode === "manual"
@@ -195,7 +250,9 @@ export const PlayerSpellCastDialog = ({
       setResult(resolved);
       setManualEffectRolls([]);
       setEffectMode("choose");
-      if (!resolved.effect_roll_required) {
+      if (resolved.pending_save_id) {
+        await onResolved?.(resolved);
+      } else if (!resolved.effect_roll_required) {
         await onResolved?.(resolved);
       }
     } catch (err: any) {
@@ -277,7 +334,20 @@ export const PlayerSpellCastDialog = ({
           />
         ) : null}
 
-        {result ? (
+        {result && result.pending_save_id ? (
+          <div className="mt-4 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-3 text-sm text-fuchsia-200">
+            Magia conjurada. Aguardando o GM realizar o teste de resistencia de {target?.display_name ?? "alvo"}.
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full bg-white/10 border border-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-white/15"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : result ? (
           <SpellCastResultPanel
             effectDiceLabel={effectDiceLabel}
             effectKindLabel={effectKindLabel}

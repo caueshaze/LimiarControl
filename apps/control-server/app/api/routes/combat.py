@@ -164,7 +164,7 @@ def ensure_combat_map(
         )
 
     phase = state.phase.value if hasattr(state.phase, "value") else str(state.phase)
-    if state.phase not in (CombatPhase.active, "active"):
+    if state.phase not in (CombatPhase.active, CombatPhase.placement, "active", "placement"):
         return CombatMapEnsureResponse(
             session_id=session_id,
             combat_phase=phase,
@@ -215,6 +215,17 @@ async def set_initiative(
     if not _is_session_gm(db, session_id, user):
         raise CombatServiceError("Only GM can set initiative", 403)
     return await CombatService.set_initiative(db, session_id, req)
+
+
+@router.post("/sessions/{session_id}/combat/placement/confirm", response_model=CombatState)
+async def confirm_combat_placement(
+    session_id: str,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not _is_session_gm(db, session_id, user):
+        raise CombatServiceError("Only GM can confirm combat placement", 403)
+    return await CombatService.confirm_placement(db, session_id)
 
 
 @router.post("/sessions/{session_id}/combat/turn/next", response_model=CombatState)

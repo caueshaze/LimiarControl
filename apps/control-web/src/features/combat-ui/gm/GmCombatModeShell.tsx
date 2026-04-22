@@ -9,6 +9,7 @@ import { CombatLogPanel } from "../components/CombatLogPanel";
 import { CombatModeBar } from "../components/CombatModeBar";
 import { CombatParticipantRoster } from "../components/CombatParticipantRoster";
 import { GmPendingReactionsPanel } from "./GmPendingReactionsPanel";
+import { GmPendingSavesPanel } from "./GmPendingSavesPanel";
 import { GmQuickActionsPanel } from "./GmQuickActionsPanel";
 import { useGmCombatShell } from "./useGmCombatShell";
 import { CombatMapFrame } from "../map/CombatMapFrame";
@@ -18,7 +19,7 @@ import {
   getMovementPreviewReasonLabel,
   pathCostUnitsToMeters,
   resolveMovementCellSelection,
-  useMovementPreview,
+  useMovementPreview
 } from "../map/useMovementPreview";
 import { combatRepo } from "../../../shared/api/combatRepo";
 
@@ -37,14 +38,21 @@ export const GmCombatModeShell = ({
   onToggleExpanded,
   partyPlayers,
   playerSheetByUserId,
-  sessionId,
+  sessionId
 }: Props) => {
   const { locale, t } = useLocale();
   const shell = useGmCombatShell({ sessionId, playerSheetByUserId });
   const [movementMode, setMovementMode] = useState(false);
-  const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
+  const [movementSelectedCell, setMovementSelectedCell] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);
-  const [movementRejectionReason, setMovementRejectionReason] = useState<string | null>(null);
+  const [placementSubmitting, setPlacementSubmitting] = useState(false);
+  const [placementError, setPlacementError] = useState<string | null>(null);
+  const [movementRejectionReason, setMovementRejectionReason] = useState<
+    string | null
+  >(null);
   const movementEnabled =
     movementMode &&
     shell.combat.state?.use_map !== false &&
@@ -55,7 +63,7 @@ export const GmCombatModeShell = ({
     actorParticipantId: shell.currentParticipant?.id,
     actorRefId: shell.currentParticipant?.ref_id,
     destinationCell: movementEnabled ? movementSelectedCell : null,
-    enabled: movementEnabled,
+    enabled: movementEnabled
   });
 
   useEffect(() => {
@@ -82,11 +90,13 @@ export const GmCombatModeShell = ({
     combatRepo
       .confirmMovement(sessionId, {
         actor_participant_id: actorParticipantId,
-        destination_cell: cell,
+        destination_cell: cell
       })
       .then((response) => {
         if (!response.is_valid) {
-          setMovementRejectionReason(getMovementPreviewReasonLabel(response.reason));
+          setMovementRejectionReason(
+            getMovementPreviewReasonLabel(response.reason)
+          );
           return;
         }
         clearMovementMode();
@@ -94,7 +104,9 @@ export const GmCombatModeShell = ({
       })
       .catch((error) => {
         setMovementRejectionReason(
-          error?.data?.detail || error?.message || "Falha ao confirmar movimento.",
+          error?.data?.detail ||
+            error?.message ||
+            "Falha ao confirmar movimento."
         );
       })
       .finally(() => setMovementSubmitting(false));
@@ -106,13 +118,13 @@ export const GmCombatModeShell = ({
     shell.combat.state?.use_map !== false;
   const isTargetingAction =
     shell.currentParticipant?.kind === "session_entity" &&
-    (shell.entityActionPanel === "attack" || shell.entityActionPanel === "spell") &&
+    (shell.entityActionPanel === "attack" ||
+      shell.entityActionPanel === "spell") &&
     Boolean(shell.selectedCombatAction);
 
-  const mapSelectionMode =
-    movementEnabled
-      ? "select-cell"
-      : canMoveNow || isTargetingAction
+  const mapSelectionMode = movementEnabled
+    ? "select-cell"
+    : canMoveNow || isTargetingAction
       ? "select-token"
       : "none";
   const movementPreviewMessage =
@@ -122,34 +134,36 @@ export const GmCombatModeShell = ({
             "{cost}",
             formatMovementMeters(
               pathCostUnitsToMeters(movementPreview.preview.path_cost_units),
-              locale,
-            ),
+              locale
+            )
           )
           .replace(
             "{remaining}",
             formatMovementMeters(
               pathCostUnitsToMeters(movementPreview.preview.remaining_budget),
-              locale,
-            ),
+              locale
+            )
           )
       : null;
   const movementHintMessage = movementRejectionReason ?? movementPreview.error;
   const mapHint =
-    movementEnabled && movementHintMessage
-      ? movementHintMessage
-      : movementEnabled && movementPreview.loading && movementSelectedCell
-      ? t("combatUi.movementChecking")
-      : movementEnabled && movementPreviewMessage
-      ? movementPreviewMessage
-      : movementEnabled
-      ? t("combatUi.mapHintMove")
-      : shell.currentParticipant?.kind !== "session_entity"
-      ? t("combatUi.mapHintIdle")
-      : shell.entityActionPanel === "attack"
-        ? t("combatUi.mapHintAttack")
-        : shell.entityActionPanel === "spell"
-          ? t("combatUi.mapHintSpell")
-          : t("combatUi.mapHintIdle");
+    shell.combat.state?.phase === "placement"
+      ? (placementError ?? t("combatUi.mapHintPlacement"))
+      : movementEnabled && movementHintMessage
+        ? movementHintMessage
+        : movementEnabled && movementPreview.loading && movementSelectedCell
+          ? t("combatUi.movementChecking")
+          : movementEnabled && movementPreviewMessage
+            ? movementPreviewMessage
+            : movementEnabled
+              ? t("combatUi.mapHintMove")
+              : shell.currentParticipant?.kind !== "session_entity"
+                ? t("combatUi.mapHintIdle")
+                : shell.entityActionPanel === "attack"
+                  ? t("combatUi.mapHintAttack")
+                  : shell.entityActionPanel === "spell"
+                    ? t("combatUi.mapHintSpell")
+                    : t("combatUi.mapHintIdle");
 
   return (
     <section className="space-y-6">
@@ -184,7 +198,9 @@ export const GmCombatModeShell = ({
             selectionMode={mapSelectionMode}
             previewCells={[]}
             selectedCell={movementEnabled ? movementSelectedCell : null}
-            selectedTargetRefId={movementEnabled ? null : (shell.selectedTargetRefId || null)}
+            selectedTargetRefId={
+              movementEnabled ? null : shell.selectedTargetRefId || null
+            }
             frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
             onCellSelected={(selection) => {
               if (!movementEnabled) {
@@ -201,7 +217,7 @@ export const GmCombatModeShell = ({
                 currentSelectedCell: movementSelectedCell,
                 nextCell: selection.cell,
                 preview: movementPreview.preview,
-                loading: movementPreview.loading,
+                loading: movementPreview.loading
               });
               if (nextAction === "confirm") {
                 submitMovement(selection.cell);
@@ -235,28 +251,74 @@ export const GmCombatModeShell = ({
           />
         )}
 
+        {shell.combat.state?.phase === "placement" ? (
+          <section className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-amber-100">
+                {t("combatUi.mapHintPlacement")}
+              </p>
+              <button
+                type="button"
+                disabled={placementSubmitting}
+                onClick={() => {
+                  setPlacementSubmitting(true);
+                  setPlacementError(null);
+                  combatRepo
+                    .confirmPlacement(sessionId)
+                    .then((updated) => {
+                      shell.combat.applyState(updated);
+                    })
+                    .catch((error) => {
+                      setPlacementError(
+                        error?.data?.detail ||
+                          error?.message ||
+                          "Nao foi possivel confirmar as posicoes."
+                      );
+                    })
+                    .finally(() => setPlacementSubmitting(false));
+                }}
+                className="rounded-full bg-amber-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-950 transition hover:bg-amber-300 disabled:opacity-50"
+              >
+                {placementSubmitting ? "..." : t("combatUi.confirmPlacement")}
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
           <div className="space-y-6">
-          <CombatParticipantRoster
-            onRemoveEffect={(participantId, effectId) => void shell.handleRemoveEffect(participantId, effectId)}
-            participants={shell.rosterParticipants}
-            subtitle={t("combatUi.gmParticipantsDescription")}
-            title={t("combatUi.participants")}
-          />
-          {shell.debugOpen ? (
-            <GmCombatDebugPanel
-              campaignId={campaignId}
-              partyPlayers={partyPlayers}
-              sessionId={sessionId}
+            <CombatParticipantRoster
+              onRemoveEffect={(participantId, effectId) =>
+                void shell.handleRemoveEffect(participantId, effectId)
+              }
+              participants={shell.rosterParticipants}
+              subtitle={t("combatUi.gmParticipantsDescription")}
+              title={t("combatUi.participants")}
             />
-          ) : null}
-        </div>
+            {shell.debugOpen ? (
+              <GmCombatDebugPanel
+                campaignId={campaignId}
+                partyPlayers={partyPlayers}
+                sessionId={sessionId}
+              />
+            ) : null}
+          </div>
 
           <div className="space-y-6">
             <GmPendingReactionsPanel
               pendingReactionRequests={shell.pendingReactionRequests}
               submitting={shell.submitting}
-              onResolveReaction={(id, decision) => void shell.handleResolveReaction(id, decision)}
+              onResolveReaction={(id, decision) =>
+                void shell.handleResolveReaction(id, decision)
+              }
+            />
+
+            <GmPendingSavesPanel
+              pendingSaves={shell.pendingSaves}
+              submitting={shell.submitting}
+              onResolveSave={(targetId, saveId, rollSource, manualRoll) =>
+                void shell.handleResolveSave(targetId, saveId, rollSource, manualRoll)
+              }
             />
 
             <GmQuickActionsPanel
@@ -315,15 +377,19 @@ export const GmCombatModeShell = ({
               onSetSelectedStandardAction={shell.setSelectedStandardAction}
               onSetSelectedStandardTargetId={shell.setSelectedStandardTargetId}
               onSetStandardActionNote={shell.setStandardActionNote}
-              onSetSelectedReviveParticipantId={shell.setSelectedReviveParticipantId}
+              onSetSelectedReviveParticipantId={
+                shell.setSelectedReviveParticipantId
+              }
               onSetReviveHp={shell.setReviveHp}
               onEntityAction={() => void shell.handleEntityAction()}
               onNpcStandardAction={() => void shell.handleNpcStandardAction()}
-              onEntityUtilityAction={() => void shell.handleEntityUtilityAction()}
+              onEntityUtilityAction={() =>
+                void shell.handleEntityUtilityAction()
+              }
               onRevive={() =>
                 void shell.handleRevive(
                   shell.selectedReviveParticipantId,
-                  Math.max(1, Number.parseInt(shell.reviveHp, 10) || 1),
+                  Math.max(1, Number.parseInt(shell.reviveHp, 10) || 1)
                 )
               }
             />
@@ -345,14 +411,16 @@ export const GmCombatModeShell = ({
           sessionId={sessionId}
           actionId={shell.selectedCombatActionId}
           actionName={shell.selectedCombatAction?.name || ""}
-          actionKind={shell.selectedCombatAction?.kind as "weapon_attack" | "spell_attack"}
+          actionKind={
+            shell.selectedCombatAction?.kind as "weapon_attack" | "spell_attack"
+          }
           actionDescription={shell.selectedCombatAction?.description}
           target={shell.selectedTarget as any}
           onClose={() => shell.setEntityActionDialogOpen(false)}
           onMissingDistance={() =>
             shell.setMissingDistancePair({
               fromRefId: shell.currentParticipant?.ref_id ?? "",
-              toRefId: shell.selectedTarget?.ref_id ?? "",
+              toRefId: shell.selectedTarget?.ref_id ?? ""
             })
           }
           onResolved={shell.handleEntityActionResolved}

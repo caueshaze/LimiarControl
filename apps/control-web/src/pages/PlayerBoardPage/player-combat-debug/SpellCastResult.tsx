@@ -55,7 +55,7 @@ const buildNarrativeText = (
           ? `${result.target_display_name} passou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}; metade sera aplicada.`
           : `${result.target_display_name} passou no save e sofreu metade do ${effectKindLabel}: ${result.damage}.`;
       }
-      return `${result.target_display_name} passou no save e evitou o efeito desta fase.`;
+      return `${result.target_display_name} passou no save e evitou o ataque!`;
     }
     return pendingEffect
       ? `${result.target_display_name} falhou no save. Agora role o ${effectKindLabel} de ${effectDiceLabel}.`

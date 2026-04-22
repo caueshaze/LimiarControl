@@ -5,7 +5,7 @@ import type { BattleMapUIState } from "./battle-map-store";
 import type { GridEditInteraction } from "./types";
 import { battleMapStore } from "./battle-map-store";
 import { DEFAULT_MAP_IMAGE_URL, C } from "./constants";
-import { applyGridCalibrationInteraction, canInteractWithToken } from "./utils";
+import { applyGridCalibrationInteraction, canControlToken, canInteractWithToken } from "./utils";
 import { findReachableCells } from "@limiarmap/tactical-engine";
 import { attachPixiLayers, bindPixiStageEvents, buildDrawFunction, resetPixiRefs, type BattleMapPixiRefs } from "./battle-map-pixi-runtime";
 
@@ -176,8 +176,14 @@ export function useBattleMapPixi(params: {
   useEffect(() => {
     if (!encounter || !selectedTokenId) return;
     const token = encounter.tokens.find((item) => item.id === selectedTokenId);
-    if (!token || !canInteractWithToken(currentActor, token, encounter.combatState)) setSelectedTokenId(null);
-  }, [currentActor, encounter, selectedTokenId, setSelectedTokenId]);
+    const isPlacementPhase = uiState.embeddedCombatPhase === "placement";
+    const canKeepSelection = token
+      ? isPlacementPhase
+        ? canControlToken(currentActor, token)
+        : canInteractWithToken(currentActor, token, encounter.combatState)
+      : false;
+    if (!canKeepSelection) setSelectedTokenId(null);
+  }, [currentActor, encounter, selectedTokenId, setSelectedTokenId, uiState.embeddedCombatPhase]);
 
   useEffect(() => {
     if ((uiState.isGridEditMode || uiState.isObstaclePaintMode) && selectedTokenId) setSelectedTokenId(null);

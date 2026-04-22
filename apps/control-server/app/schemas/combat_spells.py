@@ -126,7 +126,7 @@ class CombatMapPreviewState(BaseModel):
 
 class CombatMapEnsureResponse(BaseModel):
     session_id: str
-    combat_phase: Literal["initiative", "active", "ended"]
+    combat_phase: Literal["initiative", "placement", "active", "ended"]
     map_available: bool
     reason: str | None = None
 
@@ -199,6 +199,7 @@ class CombatSpellResult(BaseModel):
     effect_dice: str | None = None
     effect_bonus: int | None = None
     pending_spell_id: str | None = None
+    pending_save_id: str | None = None
     effect_roll_required: bool = False
     effect_rolls: list[int] = Field(default_factory=list)
     base_effect: int | None = None

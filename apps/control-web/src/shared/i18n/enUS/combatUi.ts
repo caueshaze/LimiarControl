@@ -8,11 +8,14 @@ export const combatUiEnUSDictionary = {
   "combatUi.activeTurn": "Active Turn",
   "combatUi.logEyebrow": "Realtime feed",
   "combatUi.combatLog": "Combat log",
-  "combatUi.logEmpty": "Combat actions will appear here as soon as the encounter starts moving.",
+  "combatUi.logEmpty":
+    "Combat actions will appear here as soon as the encounter starts moving.",
   "combatUi.participantsEyebrow": "Initiative order",
   "combatUi.participants": "Participants",
-  "combatUi.participantsDescription": "Turn order, visible enemies, and ally states stay grouped here during combat.",
-  "combatUi.gmParticipantsDescription": "Players and session entities stay in one roster with HP, effects, and turn resources.",
+  "combatUi.participantsDescription":
+    "Turn order, visible enemies, and ally states stay grouped here during combat.",
+  "combatUi.gmParticipantsDescription":
+    "Players and session entities stay in one roster with HP, effects, and turn resources.",
   "combatUi.you": "You",
   "combatUi.kind.player": "Player",
   "combatUi.kind.entity": "Entity",
@@ -43,22 +46,31 @@ export const combatUiEnUSDictionary = {
   "combatUi.condition.charmed": "Charmed",
   "combatUi.turnEyebrow": "Turn flow",
   "combatUi.playerTurnPanel": "Player turn panel",
-  "combatUi.readyForTurn": "It is your turn. Pick the fastest action and resolve it without leaving combat focus.",
-  "combatUi.waitingInitiative": "Initiative is still being resolved. Stay ready while the order locks in.",
-  "combatUi.waitingTurn": "Waiting for your turn. Keep an eye on the active participant and the combat log.",
+  "combatUi.readyForTurn":
+    "It is your turn. Pick the fastest action and resolve it without leaving combat focus.",
+  "combatUi.waitingInitiative":
+    "Initiative is still being resolved. Stay ready while the order locks in.",
+  "combatUi.waitingPlacement":
+    "The GM is placing combatants on the map. Combat begins once positions are confirmed.",
+  "combatUi.waitingTurn":
+    "Waiting for your turn. Keep an eye on the active participant and the combat log.",
   "combatUi.useReaction": "Use Reaction",
   "combatUi.loadingState": "Loading combat state...",
   "combatUi.noCombatState": "Combat state is not available yet.",
   "combatUi.downedTitle": "Downed",
   "combatUi.downedYourTurn": "You are at 0 HP. Resolve your death save now.",
-  "combatUi.downedWaiting": "You are at 0 HP. Your death save becomes available on your turn.",
-  "combatUi.deadNoActions": "You are dead. Normal combat actions, reactions, and death saves are unavailable until the GM revives you.",
+  "combatUi.downedWaiting":
+    "You are at 0 HP. Your death save becomes available on your turn.",
+  "combatUi.deadNoActions":
+    "You are dead. Normal combat actions, reactions, and death saves are unavailable until the GM revives you.",
   "combatUi.rollDeathSave": "Roll Death Save",
   "combatUi.target": "Target",
   "combatUi.selectTarget": "Select a target...",
   "combatUi.currentTurnState": "Current turn",
   "combatUi.attack": "Attack",
+  "combatUi.weaponAttack": "Weapon Attack",
   "combatUi.castSpell": "Cast spell",
+  "combatUi.castBy": "Cast by:",
   "combatUi.noWeapon": "No weapon equipped",
   "combatUi.noSpellcasting": "No combat spell ready",
   "combatUi.selectSpell": "Spell",
@@ -67,7 +79,8 @@ export const combatUiEnUSDictionary = {
   "combatUi.action": "Action",
   "combatUi.bonusAction": "Bonus Action",
   "combatUi.reaction": "Reaction",
-  "combatUi.spellActionUnavailable": "That action cost has already been spent this turn.",
+  "combatUi.spellActionUnavailable":
+    "That action cost has already been spent this turn.",
   "combatUi.standardActions": "Standard actions",
   "combatUi.dragonbornBreathWeapon": "Breath Weapon",
   "combatUi.useDragonbornBreathWeapon": "Use Breath",
@@ -77,7 +90,8 @@ export const combatUiEnUSDictionary = {
   "combatUi.dash": "Dash",
   "combatUi.disengage": "Disengage",
   "combatUi.useObject": "Use Object",
-  "combatUi.useObjectHint": "Structured healing consumables restore HP and consume the item automatically. Other objects still use the manual combat fallback.",
+  "combatUi.useObjectHint":
+    "Structured healing consumables restore HP and consume the item automatically. Other objects still use the manual combat fallback.",
   "combatUi.usableConsumable": "Consumable context",
   "combatUi.useObjectManualOption": "Other object / manual",
   "combatUi.noConsumables": "No consumables in inventory",
@@ -96,13 +110,23 @@ export const combatUiEnUSDictionary = {
   "combatUi.effects": "Active effects",
   "combatUi.noEffects": "No active effects right now.",
   "combatUi.mapTitle": "Tactical map",
-  "combatUi.mapHintIdle": "Use the map to track positioning, cover, and the battlefield chosen for this combat.",
-  "combatUi.mapHintAttack": "Click a token on the map to choose the attack target without leaving combat mode.",
-  "combatUi.mapHintSpell": "Click a token on the map to aim the selected spell.",
-  "combatUi.mapHintAreaSpell": "Area spells now use the real map inside the casting dialog.",
-  "combatUi.mapHintMove": "Click a cell to see the distance. Click the same cell again to move.",
-  "combatUi.mapHintMovePreview": "Distance: {cost}. Remaining after moving: {remaining}. Click to lock the destination.",
-  "combatUi.mapHintMoveLocked": "Distance: {cost}. Remaining after moving: {remaining}. Click the same cell again to move.",
+  "combatUi.mapHintIdle":
+    "Use the map to track positioning, cover, and the battlefield chosen for this combat.",
+  "combatUi.mapHintAttack":
+    "Click a token on the map to choose the attack target without leaving combat mode.",
+  "combatUi.mapHintSpell":
+    "Click a token on the map to aim the selected spell.",
+  "combatUi.mapHintAreaSpell":
+    "Area spells now use the real map inside the casting dialog.",
+  "combatUi.mapHintMove":
+    "Click a cell to see the distance. Click the same cell again to move.",
+  "combatUi.mapHintMovePreview":
+    "Distance: {cost}. Remaining after moving: {remaining}. Click to lock the destination.",
+  "combatUi.mapHintMoveLocked":
+    "Distance: {cost}. Remaining after moving: {remaining}. Click the same cell again to move.",
+  "combatUi.mapHintPlacement":
+    "Select a token in the map placement bar and click its starting cell. Confirm once everyone is ready.",
+  "combatUi.confirmPlacement": "Confirm Positions And Start Combat",
   "combatUi.rangeNormal": "In range",
   "combatUi.rangeLong": "Long range",
   "combatUi.rangeOut": "Out of range",
@@ -121,7 +145,8 @@ export const combatUiEnUSDictionary = {
   "combatUi.confirmMovement": "Confirm Move",
   "combatUi.cancelMovement": "Cancel Move",
   "combatUi.revivePlayer": "Revive Player",
-  "combatUi.revivePlayerHint": "Use explicit revive for dead players. Normal healing does not revive a dead character.",
+  "combatUi.revivePlayerHint":
+    "Use explicit revive for dead players. Normal healing does not revive a dead character.",
   "combatUi.revivePlayerSuccess": "Player revived with {hp} HP.",
   "combatUi.revivePlayerError": "Failed to revive player.",
   "combatUi.advanceTurn": "Advance Turn",
@@ -141,11 +166,15 @@ export const combatUiEnUSDictionary = {
   "combatUi.duration.until_turn_start": "Until turn start",
   "combatUi.duration.until_turn_end": "Until turn end",
   "combatUi.npcTurnHint": "An NPC or session entity is active.",
-  "combatUi.npcTurnDescription": "Choose between attack, spell, or standard actions for the active entity without leaving combat focus.",
+  "combatUi.npcTurnDescription":
+    "Choose between attack, spell, or standard actions for the active entity without leaving combat focus.",
   "combatUi.self": "self",
-  "combatUi.entityNoStructuredActions": "This entity has no structured combat actions configured. Standard actions still work here.",
-  "combatUi.entityNoAttackActions": "This entity has no configured attack actions.",
-  "combatUi.entityNoSpellActions": "This entity has no configured spell actions.",
+  "combatUi.entityNoStructuredActions":
+    "This entity has no structured combat actions configured. Standard actions still work here.",
+  "combatUi.entityNoAttackActions":
+    "This entity has no configured attack actions.",
+  "combatUi.entityNoSpellActions":
+    "This entity has no configured spell actions.",
   "combatUi.entityUtilityActions": "Utility actions",
   "combatUi.entityOpenActionRoll": "Open action roll",
   "combatUi.entityExecuteAction": "Execute action",
@@ -153,7 +182,8 @@ export const combatUiEnUSDictionary = {
   "combatUi.lastEntityRoll": "Last entity roll",
   "combatUi.distances": "Combat distances",
   "combatUi.distancesEyebrow": "Theater of the mind",
-  "combatUi.distancesDescription": "Set the distance between participants for range validation in no-map combat.",
+  "combatUi.distancesDescription":
+    "Set the distance between participants for range validation in no-map combat.",
   "combatUi.distancesFrom": "From",
   "combatUi.distancesTo": "To",
   "combatUi.distancesPreset": "Distance",
@@ -168,5 +198,5 @@ export const combatUiEnUSDictionary = {
   "combatUi.distancesPreset.near": "Near",
   "combatUi.distancesPreset.far": "Far",
   "combatUi.distancesPreset.veryFar": "Very Far",
-  "combatUi.distancesPreset.custom": "Custom",
+  "combatUi.distancesPreset.custom": "Custom"
 } as const;
