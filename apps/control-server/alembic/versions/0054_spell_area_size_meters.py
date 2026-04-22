@@ -1,7 +1,7 @@
 """Add area_size_meters to base_spell and campaign_spell.
 
 Stores the AoE radius / side-length in meters for area spells (sphere, cone,
-line, cube).  When set, the combat targeting layer reads this value directly
+line, cube, cylinder).  When set, the combat targeting layer reads this value directly
 from the spell catalog instead of falling back to the hardcoded
 _SUPPORTED_AREA_SPELL_SPECS dictionary, enabling campaign-created spells to
 author their own map targeting geometry without backend code changes.

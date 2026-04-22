@@ -149,7 +149,7 @@ class CombatAreaPreviewRequest(BaseModel):
 class CombatAreaPreviewResponse(BaseModel):
     is_valid: bool
     reason: str | None = None
-    shape: Literal["sphere", "cone", "line"] | None = None
+    shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_token_ids: list[str] = Field(default_factory=list)
@@ -211,7 +211,7 @@ class CombatSpellResult(BaseModel):
     concentration_checks: list["CombatConcentrationCheckResult"] = Field(
         default_factory=list
     )
-    area_shape: Literal["sphere", "cone", "line"] | None = None
+    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     area_target_outcomes: list[CombatAreaTargetOutcome] = Field(default_factory=list)

@@ -10,7 +10,7 @@ export function previewTargeting(cells: Coordinate[]): void {
 export function submitTargeting(
   sessionId: string,
   tokenId: string,
-  shape: "line" | "cone" | "sphere" | "cube",
+  shape: "line" | "cone" | "sphere" | "cube" | "cylinder",
   originCell: Coordinate,
   anchorCell: Coordinate,
   rangeCells: number,

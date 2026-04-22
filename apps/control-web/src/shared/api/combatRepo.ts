@@ -268,7 +268,7 @@ export type CombatSpellResult = {
   inventory_refresh_required?: boolean;
   concentration_check?: CombatConcentrationCheckResult | null;
   concentration_checks?: CombatConcentrationCheckResult[];
-  area_shape?: "sphere" | "cone" | "line" | null;
+  area_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   affected_target_ref_ids?: string[];
   affected_cells?: Array<{ x: number; y: number }>;
   area_target_outcomes?: Array<{
@@ -331,7 +331,7 @@ export type CombatPreviewRequest = {
   source_position?: PreviewPosition | null;
   target_position?: PreviewPosition | null;
   reach_cells?: number;
-  aoe_shape?: "sphere" | "cone" | "line" | null;
+  aoe_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   aoe_size_cells?: number | null;
 };
 
@@ -363,7 +363,7 @@ export type CombatAreaPreviewRequest = {
 export type CombatAreaPreviewResponse = {
   is_valid: boolean;
   reason?: string | null;
-  shape?: "sphere" | "cone" | "line" | null;
+  shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   affected_cells: Array<{ x: number; y: number }>;
   affected_target_ref_ids: string[];
   affected_token_ids: string[];

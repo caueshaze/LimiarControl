@@ -2,6 +2,7 @@ import {
   chebyshevDistance,
   resolveCone,
   resolveCube,
+  resolveCylinder,
   resolveLine,
   resolveSphere,
 } from "@limiarmap/tactical-engine";
@@ -19,7 +20,7 @@ type EncounterLike = {
   tokens: Token[];
 };
 
-type AreaTargetShape = "sphere" | "cone" | "line" | "cube";
+type AreaTargetShape = "sphere" | "cone" | "line" | "cube" | "cylinder";
 
 export function err(reply: Reply, status: number, reason: string, message: string) {
   return reply.status(status).send({ message, reason });
@@ -72,7 +73,9 @@ export function resolveAreaTargeting(encounter: EncounterLike, params: {
         ? resolveLine(originCell, anchorCell, effectiveRange, encounter.obstacles, encounter.edgeObstacles)
         : shape === "cube"
           ? resolveCube(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles)
-          : resolveSphere(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
+          : shape === "cylinder"
+            ? resolveCylinder(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles)
+            : resolveSphere(anchorCell, sizeCells, encounter.obstacles, encounter.edgeObstacles);
   const affectedCellKeySet = new Set(affectedCells.map((cell) => `${cell.x}:${cell.y}`));
   const affectedTokens = encounter.tokens.filter((token) =>
     affectedCellKeySet.has(`${token.position.x}:${token.position.y}`),

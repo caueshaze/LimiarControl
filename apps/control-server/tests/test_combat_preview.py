@@ -230,14 +230,14 @@ class TestAoeSchemaFields(unittest.TestCase):
         self.assertIsNone(req.aoe_size_cells)
 
     def test_valid_aoe_shapes(self):
-        for shape in ("sphere", "cone", "line"):
+        for shape in ("sphere", "cone", "line", "cube", "cylinder"):
             req = CombatPreviewRequest(source_ref_id="x", aoe_shape=shape, aoe_size_cells=4)
             self.assertEqual(req.aoe_shape, shape)
 
     def test_invalid_aoe_shape_rejected(self):
         from pydantic import ValidationError
         with self.assertRaises(ValidationError):
-            CombatPreviewRequest(source_ref_id="x", aoe_shape="cube", aoe_size_cells=4)
+            CombatPreviewRequest(source_ref_id="x", aoe_shape="hemisphere", aoe_size_cells=4)
 
     def test_aoe_size_minimum(self):
         from pydantic import ValidationError

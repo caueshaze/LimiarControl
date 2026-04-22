@@ -1,6 +1,6 @@
 """Paridade com packages/tactical-engine/tests/unit/targeting-shapes.test.ts"""
 from shared_contracts import Coordinate, Obstacle
-from tactical_engine import resolve_cone, resolve_cube, resolve_line, resolve_sphere
+from tactical_engine import resolve_cone, resolve_cube, resolve_cylinder, resolve_line, resolve_sphere
 
 
 def _obstacle(id_: str, cells: list[Coordinate], *, blocks_spell: bool = False, blocks_targeting: bool = False) -> Obstacle:
@@ -25,6 +25,7 @@ def test_resolves_line_without_blocked_cells():
 def test_resolves_area_shapes_deterministically():
     assert len(resolve_cone(Coordinate(x=1, y=1), Coordinate(x=3, y=1), 2, [])) > 0
     assert len(resolve_sphere(Coordinate(x=2, y=2), 1, [])) > 0
+    assert resolve_cylinder(Coordinate(x=2, y=2), 1, []) == resolve_sphere(Coordinate(x=2, y=2), 1, [])
     assert len(resolve_cube(Coordinate(x=2, y=2), 2, [])) == 4
 
 

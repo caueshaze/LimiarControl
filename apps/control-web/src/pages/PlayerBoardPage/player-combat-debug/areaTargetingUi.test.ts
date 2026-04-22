@@ -25,7 +25,9 @@ const baseSpell = {
 describe("areaTargetingUi", () => {
   it("recognizes fireball as area targeting", () => {
     expect(isAreaTargetMode("sphere")).toBe(true);
+    expect(isAreaTargetMode("cylinder")).toBe(true);
     expect(createInitialTargetingMode("sphere")).toBe("area_target_select");
+    expect(createInitialTargetingMode("cylinder")).toBe("area_target_select");
     expect(createInitialTargetingMode("single")).toBe("single_target_select");
   });
 
