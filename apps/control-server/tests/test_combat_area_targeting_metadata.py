@@ -157,8 +157,8 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         spec = CombatService._resolve_supported_area_spell_spec(ctx)
         self.assertIsNone(spec)
 
-    def test_cylinder_target_mode_is_not_area_shape_returns_none(self):
-        """cylinder is a valid TargetMode but not a supported AoE map shape."""
+    def test_metadata_cylinder_returns_spec_from_area_size_meters(self):
+        """Cylinder uses a 2D circular map footprint with area_size_meters as radius."""
         ctx = {
             "target_mode": "cylinder",
             "area_size_meters": 5,
@@ -166,4 +166,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
             "spell_canonical_key": "some_cylinder_spell",
         }
         spec = CombatService._resolve_supported_area_spell_spec(ctx)
-        self.assertIsNone(spec)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cylinder")
+        self.assertEqual(spec["size_meters"], 5)
+        self.assertEqual(spec["range_meters"], 18)

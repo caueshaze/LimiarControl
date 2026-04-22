@@ -7,7 +7,8 @@ import {
   resolveCone,
   resolveCube,
   resolveLine,
-  resolveSphere
+  resolveSphere,
+  resolveCylinder
 } from "@limiarmap/tactical-engine";
 import { canSubmitTacticalAction } from "./action-authorization";
 import type { InMemoryEncounterRepository } from "./encounter-repository";
@@ -74,6 +75,9 @@ export class TargetingService {
         break;
       case "sphere":
         affectedCells = resolveSphere(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);
+        break;
+      case "cylinder":
+        affectedCells = resolveCylinder(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);
         break;
       case "cube":
         affectedCells = resolveCube(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);

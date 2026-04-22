@@ -389,6 +389,59 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
         self.assertFalse(client.area_calls[0]["requires_sight"])
         self.assertTrue(client.area_calls[0]["requires_effect"])
 
+    def test_cylinder_area_targeting_uses_center_radius_and_map_validation(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapAreaTargetingResponse(
+                is_valid=True,
+                reason=None,
+                session_id="session-123",
+                action_id="action-cylinder",
+                version=12,
+                shape="cylinder",
+                source_token_id="token-source",
+                affected_cells=(
+                    LimiarMapAreaCell(x=10, y=10),
+                    LimiarMapAreaCell(x=11, y=10),
+                ),
+                affected_token_ids=("token-target",),
+                affected_combatant_ids=("enemy-123",),
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            AreaTargetingIntent(
+                session_id="session-123",
+                action_id="action-cylinder",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                spell_canonical_key="flame_strike",
+                spell_mode="saving_throw",
+                shape="cylinder",
+                size_meters=6,
+                range_meters=45,
+                target_mode="cylinder",
+                requires_sight=True,
+                requires_effect=True,
+            ),
+            state,
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertEqual(result.affected_target_ref_ids, ["enemy-123"])
+        self.assertEqual(result.spatial_metadata.area_shape, "cylinder")
+        self.assertEqual(client.area_calls[0]["shape"], "cylinder")
+        self.assertEqual(client.area_calls[0]["origin_cell"], {"x": 4, "y": 4})
+        self.assertEqual(client.area_calls[0]["anchor_cell"], {"x": 10, "y": 10})
+        self.assertEqual(client.area_calls[0]["range_cells"], 30)
+        self.assertEqual(client.area_calls[0]["size_cells"], 4)
+        self.assertTrue(client.area_calls[0]["requires_sight"])
+        self.assertTrue(client.area_calls[0]["requires_effect"])
+
     def test_area_targeting_requires_map_when_unavailable(self) -> None:
         state = build_combat_state()
         client = StubLimiarMapClient(

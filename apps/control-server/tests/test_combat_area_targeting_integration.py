@@ -168,3 +168,111 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
         self.assertEqual(mock_apply_damage.call_args_list[1].args[3], 48)
         mock_emit_state.assert_awaited()
         mock_emit_log.assert_awaited()
+
+    @patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_entity_hp_update", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_log", new_callable=AsyncMock)
+    @patch("app.services.combat_service.spells.cast_area.resolve_saving_throw")
+    async def test_cylinder_area_spell_cast_creates_pending_multi_target_effect(
+        self,
+        mock_resolve_saving_throw,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "abilities": {"wisdom": 18},
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Flame Strike",
+                            "canonicalKey": "flame_strike",
+                            "level": 5,
+                            "prepared": True,
+                        }
+                    ],
+                    "slots": {"5": {"used": 0, "max": 1}},
+                },
+            },
+        )
+        map_targeting_result = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-123",
+            affected_target_ref_ids=["enemy-123"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(
+                source_token_id="tok_player",
+                affected_token_ids=["tok_enemy"],
+                affected_cells=[{"x": 10, "y": 10}, {"x": 11, "y": 10}],
+                area_shape="cylinder",
+                map_version=12,
+                targeting_authority="limiar_map",
+            ),
+        )
+
+        mock_resolve_saving_throw.return_value = MagicMock(total=7, success=False)
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="flame_strike",
+                name_en="Flame Strike",
+                name_pt=None,
+                level=5,
+                resolution_type="saving_throw",
+                saving_throw="dexterity",
+                save_success_outcome="half_damage",
+                damage_type="fire",
+                damage_dice="4d6",
+                heal_dice=None,
+                upcast_json=None,
+                casting_time_type="action",
+                target_mode="cylinder",
+                range_meters=18,
+                area_size_meters=3,
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 12, 10, 10, 3, 4),
+        ), patch(
+            "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+            return_value=RollActorStats(
+                display_name="Target",
+                abilities={"dexterity": 10},
+                actor_kind="session_entity",
+                actor_ref_id="enemy-123",
+            ),
+        ), patch(
+            "app.services.combat_service.spells.cast_area.get_combat_targeting_service",
+            return_value=SimpleNamespace(validate=MagicMock(return_value=map_targeting_result)),
+        ):
+            result = await CombatService.cast_spell(
+                self.db,
+                "session-123",
+                CombatCastSpellRequest(
+                    actor_participant_id="p1",
+                    origin_cell=CombatGridCell(x=8, y=8),
+                    anchor_cell=CombatGridCell(x=10, y=10),
+                    spell_canonical_key="flame_strike",
+                ),
+                "user-1",
+                False,
+            )
+
+        self.assertTrue(result["effect_roll_required"])
+        self.assertEqual(result["area_shape"], "cylinder")
+        self.assertEqual(result["affected_target_ref_ids"], ["enemy-123"])
+        self.assertEqual(result["target_count"], 1)
+        self.assertIsNotNone(result["pending_spell_id"])
+        self.assertEqual(self.state.participants[0]["pending_attack"]["area_shape"], "cylinder")
+        self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["5"]["used"], 1)
+        mock_emit_state.assert_awaited()
+        mock_emit_log.assert_awaited()

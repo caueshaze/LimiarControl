@@ -22,7 +22,7 @@ export interface CombatPreviewRequest {
   target_position?: { x: number; y: number };
   reach_cells?: number;
   /** AoE fields — only for spell actions with area targeting. */
-  aoe_shape?: "sphere" | "cone" | "line";
+  aoe_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder";
   /** Size in grid cells, resolved by the frontend from the spell catalog (meters → cells). */
   aoe_size_cells?: number;
 }

@@ -80,7 +80,7 @@ export const singleTargetRequestSchema = z.object({
     requiresSight: z.boolean().default(false),
     requiresEffect: z.boolean().default(false)
 });
-export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line"]);
+export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line", "cube", "cylinder"]);
 export const areaTargetRequestSchema = z.object({
     actionId: z.string(),
     combatantId: z.string(),

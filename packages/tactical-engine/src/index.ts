@@ -12,6 +12,7 @@ export * from "./targeting/targeting-template";
 export * from "./targeting/resolve-line";
 export * from "./targeting/resolve-cone";
 export * from "./targeting/resolve-sphere";
+export * from "./targeting/resolve-cylinder";
 export * from "./targeting/resolve-cube";
 export * from "./targeting/line-trace";
 export * from "./targeting/aoe-filter";

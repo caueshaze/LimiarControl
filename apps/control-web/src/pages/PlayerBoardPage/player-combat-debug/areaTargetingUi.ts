@@ -17,7 +17,7 @@ export type GridCell = {
   y: number;
 };
 
-const AREA_TARGET_MODES = new Set(["sphere", "cone", "line"]);
+const AREA_TARGET_MODES = new Set(["sphere", "cone", "line", "cube", "cylinder"]);
 
 export const isAreaTargetMode = (targetMode?: string | null): boolean =>
   typeof targetMode === "string" && AREA_TARGET_MODES.has(targetMode);

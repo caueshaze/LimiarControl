@@ -39,7 +39,7 @@ export const gridDimensionsSchema = z.object({
 export const controllerTypeSchema = z.enum(["player", "gm", "limiarControl"]);
 export const actionResultSchema = z.enum(["pending", "accepted", "rejected"]);
 export const combatStatusSchema = z.enum(["inactive", "active", "completed"]);
-export const targetingShapeSchema = z.enum(["line", "cone", "sphere", "cube"]);
+export const targetingShapeSchema = z.enum(["line", "cone", "sphere", "cube", "cylinder"]);
 export const obstacleCoverSchema = z.enum(["none", "half", "threeQuarters", "full"]);
 export const obstaclePaintModeSchema = z.enum(["paint", "erase"]);
 

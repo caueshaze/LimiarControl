@@ -17,6 +17,7 @@ from .validation.action_idempotency import ActionIdempotencyTracker
 from .targeting.resolve_line import resolve_line
 from .targeting.resolve_cone import resolve_cone
 from .targeting.resolve_sphere import resolve_sphere
+from .targeting.resolve_cylinder import resolve_cylinder
 from .targeting.resolve_cube import resolve_cube
 
 __all__ = [
@@ -47,5 +48,6 @@ __all__ = [
     "resolve_line",
     "resolve_cone",
     "resolve_sphere",
+    "resolve_cylinder",
     "resolve_cube",
 ]

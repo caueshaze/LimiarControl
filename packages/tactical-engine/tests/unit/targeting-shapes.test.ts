@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Obstacle } from "@limiarmap/shared-contracts";
-import { resolveCone, resolveCube, resolveLine, resolveSphere } from "../../src";
+import { resolveCone, resolveCube, resolveCylinder, resolveLine, resolveSphere } from "../../src";
 
 describe("targeting shapes", () => {
   it("resolves a line without blocked cells", () => {
@@ -14,6 +14,7 @@ describe("targeting shapes", () => {
   it("resolves area shapes deterministically", () => {
     expect(resolveCone({ x: 1, y: 1 }, { x: 3, y: 1 }, 2, []).length).toBeGreaterThan(0);
     expect(resolveSphere({ x: 2, y: 2 }, 1, []).length).toBeGreaterThan(0);
+    expect(resolveCylinder({ x: 2, y: 2 }, 1, [])).toEqual(resolveSphere({ x: 2, y: 2 }, 1, []));
     expect(resolveCube({ x: 2, y: 2 }, 2, []).length).toBe(4);
   });
 

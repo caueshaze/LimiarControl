@@ -74,7 +74,7 @@ class AreaTargetingMixin:
         if not isinstance(value, str):
             return None
         normalized = value.strip().lower()
-        if normalized in {"sphere", "cone", "line", "cube"}:
+        if normalized in {"sphere", "cone", "line", "cube", "cylinder"}:
             return normalized
         return None
 

@@ -12,7 +12,7 @@ export declare const coordinateSchema: z.ZodObject<{
 export declare const controllerTypeSchema: z.ZodEnum<["player", "gm", "limiarControl"]>;
 export declare const actionResultSchema: z.ZodEnum<["pending", "accepted", "rejected"]>;
 export declare const combatStatusSchema: z.ZodEnum<["inactive", "active", "completed"]>;
-export declare const targetingShapeSchema: z.ZodEnum<["line", "cone", "sphere", "cube"]>;
+export declare const targetingShapeSchema: z.ZodEnum<["line", "cone", "sphere", "cube", "cylinder"]>;
 export declare const battleMapSchema: z.ZodObject<{
     id: z.ZodString;
     name: z.ZodString;
@@ -189,7 +189,7 @@ export declare const movementActionSchema: z.ZodObject<{
 export declare const targetingTemplateSchema: z.ZodObject<{
     actionId: z.ZodString;
     tokenId: z.ZodString;
-    shape: z.ZodEnum<["line", "cone", "sphere", "cube"]>;
+    shape: z.ZodEnum<["line", "cone", "sphere", "cube", "cylinder"]>;
     originCell: z.ZodObject<{
         x: z.ZodNumber;
         y: z.ZodNumber;
@@ -228,7 +228,7 @@ export declare const targetingTemplateSchema: z.ZodObject<{
     actionId: string;
     tokenId: string;
     result: "pending" | "accepted" | "rejected";
-    shape: "line" | "cone" | "sphere" | "cube";
+    shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
     originCell: {
         x: number;
         y: number;
@@ -247,7 +247,7 @@ export declare const targetingTemplateSchema: z.ZodObject<{
 }, {
     actionId: string;
     tokenId: string;
-    shape: "line" | "cone" | "sphere" | "cube";
+    shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
     originCell: {
         x: number;
         y: number;

@@ -53,7 +53,7 @@ export declare const targetingSubmitSchema: z.ZodObject<{
     actionId: z.ZodString;
     sessionId: z.ZodString;
     tokenId: z.ZodString;
-    shape: z.ZodEnum<["line", "cone", "sphere", "cube"]>;
+    shape: z.ZodEnum<["line", "cone", "sphere", "cube", "cylinder"]>;
     originCell: z.ZodObject<{
         x: z.ZodNumber;
         y: z.ZodNumber;
@@ -80,7 +80,7 @@ export declare const targetingSubmitSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     actionId: string;
     tokenId: string;
-    shape: "line" | "cone" | "sphere" | "cube";
+    shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
     originCell: {
         x: number;
         y: number;
@@ -96,7 +96,7 @@ export declare const targetingSubmitSchema: z.ZodObject<{
 }, {
     actionId: string;
     tokenId: string;
-    shape: "line" | "cone" | "sphere" | "cube";
+    shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
     originCell: {
         x: number;
         y: number;
@@ -239,7 +239,7 @@ export declare const targetingResolvedEventSchema: z.ZodObject<{
 } & {
     payload: z.ZodObject<{
         tokenId: z.ZodString;
-        shape: z.ZodEnum<["line", "cone", "sphere", "cube"]>;
+        shape: z.ZodEnum<["line", "cone", "sphere", "cube", "cylinder"]>;
         affectedCells: z.ZodArray<z.ZodObject<{
             x: z.ZodNumber;
             y: z.ZodNumber;
@@ -252,14 +252,14 @@ export declare const targetingResolvedEventSchema: z.ZodObject<{
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         tokenId: string;
-        shape: "line" | "cone" | "sphere" | "cube";
+        shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
         affectedCells: {
             x: number;
             y: number;
         }[];
     }, {
         tokenId: string;
-        shape: "line" | "cone" | "sphere" | "cube";
+        shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
         affectedCells: {
             x: number;
             y: number;
@@ -272,7 +272,7 @@ export declare const targetingResolvedEventSchema: z.ZodObject<{
     encounterId: string;
     payload: {
         tokenId: string;
-        shape: "line" | "cone" | "sphere" | "cube";
+        shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
         affectedCells: {
             x: number;
             y: number;
@@ -287,7 +287,7 @@ export declare const targetingResolvedEventSchema: z.ZodObject<{
     encounterId: string;
     payload: {
         tokenId: string;
-        shape: "line" | "cone" | "sphere" | "cube";
+        shape: "line" | "cone" | "sphere" | "cube" | "cylinder";
         affectedCells: {
             x: number;
             y: number;

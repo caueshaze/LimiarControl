@@ -10,7 +10,7 @@ export const singleTargetRequestSchema = z.object({
   requiresEffect: z.boolean().default(false),
 });
 
-export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line", "cube"]);
+export const areaTargetShapeSchema = z.enum(["sphere", "cone", "line", "cube", "cylinder"]);
 
 export const areaTargetRequestSchema = z.object({
   actionId: z.string(),

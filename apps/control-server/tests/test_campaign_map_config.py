@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from app.api.routes.campaigns import (
+from app.api.routes.campaign_maps import (
     create_campaign_map_config,
     delete_campaign_map_config,
     update_campaign_map_config,
@@ -24,9 +24,9 @@ from app.schemas.campaign import (
 
 
 class CampaignMapConfigTests(unittest.TestCase):
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_create_campaign_map_config_persists_trimmed_payload(
         self,
         mock_require_gm,
@@ -79,9 +79,9 @@ class CampaignMapConfigTests(unittest.TestCase):
         session.refresh.assert_called_once()
         mock_assert_managed_asset_exists.assert_called_once()
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_update_campaign_map_config_replaces_previous_asset(
         self,
         mock_require_gm,
@@ -133,8 +133,8 @@ class CampaignMapConfigTests(unittest.TestCase):
             "/api/assets/campaigns/campaign-1/maps/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         )
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_delete_campaign_map_config_removes_managed_asset(
         self,
         mock_require_gm,
@@ -247,9 +247,9 @@ class CampaignMapConfigTests(unittest.TestCase):
     def test_decode_invalid_edge_obstacles_returns_empty_list(self):
         self.assertEqual(decode_edge_obstacles("not-json"), [])
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_create_campaign_map_config_persists_blocked_cells(
         self,
         mock_require_gm,
@@ -295,9 +295,9 @@ class CampaignMapConfigTests(unittest.TestCase):
         self.assertIn((5, 3), coords)
         self.assertIn((6, 3), coords)
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_create_campaign_map_config_persists_edge_obstacles(
         self,
         mock_require_gm,
@@ -349,9 +349,9 @@ class CampaignMapConfigTests(unittest.TestCase):
         self.assertEqual(decoded[0].direction, "E")
         mock_assert_managed_asset_exists.assert_called_once()
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_update_campaign_map_config_clears_blocked_cells_when_empty_list(
         self,
         mock_require_gm,
@@ -394,9 +394,9 @@ class CampaignMapConfigTests(unittest.TestCase):
         self.assertIsNone(entry.blocked_cells_json)
         self.assertEqual(result.blockedCells, [])
 
-    @patch("app.api.routes.campaigns.delete_managed_url_best_effort")
-    @patch("app.api.routes.campaigns.assert_managed_asset_exists")
-    @patch("app.api.routes.campaigns.require_gm")
+    @patch("app.api.routes.campaign_maps.delete_managed_url_best_effort")
+    @patch("app.api.routes.campaign_maps.assert_managed_asset_exists")
+    @patch("app.api.routes.campaign_maps.require_gm")
     def test_update_campaign_map_config_leaves_blocked_cells_unchanged_when_omitted(
         self,
         mock_require_gm,
