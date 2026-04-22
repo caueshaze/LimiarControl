@@ -52,6 +52,12 @@ from .combat_spells import (
     CombatSpellResult,
 )
 
+_combat_schema_types = {
+    "CombatConcentrationCheckResult": CombatConcentrationCheckResult,
+}
+CombatAttackResult.model_rebuild(_types_namespace=_combat_schema_types)
+CombatSpellResult.model_rebuild(_types_namespace=_combat_schema_types)
+
 __all__ = [
     "ActiveEffect",
     "ActiveEffectConditionType",

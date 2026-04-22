@@ -18,8 +18,10 @@ from .targeting_diagnostics import (
     TargetingDiagnostics,
 )
 from .targeting_result import SpatialMetadata, TargetingResult
+from .targeting_intent import WeaponAttackIntent
 from .unit_conversion import METERS_PER_CELL
 from .visibility import can_target_in_combat
+from .reach import resolve_weapon_attack_range_profile
 from .combat_targeting import (
     CombatTargetingService,
     _build_map_spatial_metadata,
@@ -76,6 +78,23 @@ class LimiarMapTargetingService(CombatTargetingService):
         if local_result.diagnostics:
             for k, v in local_result.diagnostics.checks.items():
                 diag.set_check(k, v)
+
+        if isinstance(intent, WeaponAttackIntent):
+            weapon_profile = resolve_weapon_attack_range_profile(
+                range_meters=intent.range_meters,
+                range_long_meters=intent.range_long_meters,
+                weapon_range_type=intent.weapon_range_type,
+                has_reach=intent.has_reach,
+            )
+            if weapon_profile.failure_reason is not None:
+                diag.set_check(CHECK_IN_RANGE, False)
+                diag.fail(weapon_profile.failure_reason)
+                result = TargetingResult.invalid(
+                    "Ranged weapon has no range configured. Cannot validate distance.",
+                    diagnostics=diag,
+                )
+                _log_diagnostics_debug(logger, intent, result)
+                return result
 
         range_cells = _derive_range_cells(intent)
         if range_cells is not None:

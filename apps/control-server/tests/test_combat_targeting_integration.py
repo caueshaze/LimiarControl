@@ -243,6 +243,39 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
         self.assertTrue(client.calls[0]["requires_sight"])
         self.assertTrue(client.calls[0]["requires_effect"])
 
+    def test_ranged_weapon_without_range_is_rejected_before_map_call(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapTargetingResponse(
+                is_valid=True,
+                reason=None,
+                session_id="session-123",
+                action_id="action-missing-range",
+                version=7,
+                source_token_id="token-source",
+                target_token_id="token-target",
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            WeaponAttackIntent(
+                session_id="session-123",
+                action_id="action-missing-range",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                weapon_range_type="ranged",
+            ),
+            state,
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("range configured", result.failure_reason)
+        self.assertEqual(client.calls, [])
+
     def test_map_enabled_and_invalid_targeting_returns_rejection(self) -> None:
         state = build_combat_state()
         client = StubLimiarMapClient(
@@ -676,6 +709,7 @@ class CombatTargetingIntegrationServiceTests(unittest.TestCase):
                 actor_ref_id="player-123",
                 actor_kind="player",
                 requested_target_ref_id="enemy-123",
+                range_meters=18,
                 weapon_range_type="ranged",
             ),
             state,

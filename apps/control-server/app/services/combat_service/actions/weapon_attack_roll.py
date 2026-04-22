@@ -33,8 +33,6 @@ class WeaponAttackRollMixin:
         attacker_data = cls._as_dict(attacker_model.state_json)
         if cls._as_dict(attacker_data.get("wildShape")).get("active"):
             raise CombatServiceError("Cannot use weapon attacks while in Wild Shape. Use wild-shape-attack instead.", 400)
-        was_overridden = cls._consume_turn_resource(attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit)
-        cls._clear_participant_pending_attack(attacker)
         attack_context = cls._build_player_attack_context(db, session_id, attacker["ref_id"], attacker_data, req.weapon_item_id)
         targeting_intent = WeaponAttackIntent(
             session_id=session_id,
@@ -59,7 +57,10 @@ class WeaponAttackRollMixin:
         target = next((participant for participant in state.participants if participant["ref_id"] == targeting_result.validated_primary_target_ref_id), None)
         if not target:
             raise CombatServiceError("Target not found in combat")
+        target_kind = "session_entity" if target.get("kind") == "entity" else target.get("kind")
         cls._assert_hostile_action_allowed(attacker, target, action_label="an attack")
+        was_overridden = cls._consume_turn_resource(attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit)
+        cls._clear_participant_pending_attack(attacker)
         _, target_ac, *_ = cls._get_stats(db, target["ref_id"], target["kind"], session_id)
         target_ac = (target_ac or 10) + cls._sum_numeric_effects(target, "temp_ac_bonus")
         cover = targeting_result.spatial_metadata.cover
@@ -105,7 +106,7 @@ class WeaponAttackRollMixin:
                 {
                     "type": "player_attack",
                     "target_ref_id": target["ref_id"],
-                    "target_kind": target["kind"],
+                    "target_kind": target_kind,
                     "target_display_name": target["display_name"],
                     "target_ac": target_ac,
                     "weapon_name": attack_context["name"],
@@ -155,7 +156,7 @@ class WeaponAttackRollMixin:
             "roll_result": roll_result,
             "target_ac": target_ac,
             "target_display_name": target["display_name"],
-            "target_kind": target["kind"],
+            "target_kind": target_kind,
             "weapon_name": attack_context["name"],
             "damage_dice": attack_context["damage_dice"],
             "damage_bonus": attack_context["damage_bonus"],

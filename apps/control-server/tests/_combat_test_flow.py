@@ -17,6 +17,7 @@ from app.schemas.combat import (
     CombatApplyDamageRequest,
     CombatApplyHealingRequest,
     CombatAttackRequest,
+    CombatAttackResult,
     CombatCastSpellRequest,
     CombatEntityActionRequest,
     CombatParticipant,
@@ -302,6 +303,7 @@ class CombatFlowTestsMixin:
                     self.assertEqual(res["damage"], 0)
                     self.assertFalse(res["damage_roll_required"])
                     self.assertNotIn("pending_attack", self.state.participants[0])
+                    self.assertFalse(CombatAttackResult.model_validate(res).is_hit)
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")
@@ -405,6 +407,22 @@ class CombatFlowTestsMixin:
         self.assertEqual(context["attack_bonus"], 6)
         self.assertTrue(context["is_ranged_weapon"])
 
+    def test_build_player_attack_context_rejects_non_current_weapon_request(self):
+        with self.assertRaises(CombatServiceError) as context:
+            CombatService._build_player_attack_context(
+                self.db,
+                "session-123",
+                "player-123",
+                {
+                    "level": 2,
+                    "abilities": {"strength": 10, "dexterity": 14},
+                    "currentWeaponId": "inv-current",
+                },
+                requested_weapon_item_id="inv-other",
+            )
+
+        self.assertIn("currently equipped weapon", str(context.exception))
+
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
@@ -459,6 +477,59 @@ class CombatFlowTestsMixin:
         self.assertEqual(res["roll_result"].roll_source, "manual")
         self.assertEqual(res["roll_result"].selected_roll, 17)
         self.assertEqual(res["target_ac"], 14)
+
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_attack_normalizes_legacy_entity_target_kind(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        self.state.use_map = False
+        self.state.local_distances = {
+            "player-123": {"enemy-123": 1.5},
+            "enemy-123": {"player-123": 1.5},
+        }
+        self.state.participants[1]["kind"] = "entity"
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"currentWeaponId": "inv-1"}
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            with patch(
+                "app.services.combat.CombatService._get_stats",
+                side_effect=[
+                    (attacker_state, 12, 16, 14, 2, 0),
+                    (MagicMock(), 14, 10, 10, 2, 0),
+                ],
+            ):
+                with patch(
+                    "app.services.combat.CombatService._build_player_attack_context",
+                    return_value={
+                        "name": "Longsword",
+                        "damage_dice": "1d8",
+                        "damage_bonus": 3,
+                        "attack_bonus": 5,
+                        "damage_type": "slashing",
+                        "weapon_range_type": "melee",
+                    },
+                ):
+                    res = await CombatService.attack(
+                        self.db,
+                        "session-123",
+                        CombatAttackRequest(
+                            target_ref_id="enemy-123",
+                            roll_source="manual",
+                            manual_roll=17,
+                        ),
+                        "user-xyz",
+                        True,
+                    )
+
+        self.assertEqual(res["target_kind"], "session_entity")
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")
@@ -619,6 +690,10 @@ class CombatFlowTestsMixin:
         self.assertEqual(res["damage_rolls"], [4])
         self.assertEqual(res["base_damage"], 4)
         self.assertEqual(res["damage_roll_source"], "manual")
+        validated = CombatAttackResult.model_validate(res)
+        self.assertTrue(validated.is_hit)
+        self.assertFalse(validated.damage_roll_required)
+        self.assertEqual(validated.target_kind, "session_entity")
         self.assertNotIn("pending_attack", self.state.participants[0])
         mock_apply_damage.assert_called_once_with(
             self.db,

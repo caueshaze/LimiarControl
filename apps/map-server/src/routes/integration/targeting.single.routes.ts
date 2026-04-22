@@ -33,7 +33,8 @@ export function registerSingleTargetingRoutes(
     }
 
     const { actionId, combatantId, targetCombatantId, rangeCells, requiresSight, requiresEffect } = parse.data;
-    if (encounter.actionTracker.has(actionId)) {
+    const isPreviewAction = actionId === "preview" || actionId.startsWith("preview:");
+    if (!isPreviewAction && encounter.actionTracker.has(actionId)) {
       request.log.info({ sessionId, actionId }, `${LOG_PREFIX} targeting duplicate_action`);
       return reply.status(200).send({
         isValid: true,
@@ -130,28 +131,30 @@ export function registerSingleTargetingRoutes(
       });
     }
 
-    encounter.actionTracker.record(actionId);
-    encounter.combatState = {
-      ...encounter.combatState,
-      version: nextEncounterVersion(encounter.combatState.version),
-    };
-    repository.updateCombatState(sessionId, encounter.combatState);
+    if (!isPreviewAction) {
+      encounter.actionTracker.record(actionId);
+      encounter.combatState = {
+        ...encounter.combatState,
+        version: nextEncounterVersion(encounter.combatState.version),
+      };
+      repository.updateCombatState(sessionId, encounter.combatState);
 
-    broadcastAuthoritativeEvent(broadcaster, "targeting.resolved", {
-      eventId: randomUUID(),
-      eventType: "targeting.resolved",
-      encounterId: sessionId,
-      version: encounter.combatState.version,
-      actionId,
-      payload: {
-        sourceTokenId: sourceToken.id,
-        targetTokenId: targetToken.id,
-        isValid: true,
-        reason: null,
-        cover,
-      },
-      replaySafe: true,
-    });
+      broadcastAuthoritativeEvent(broadcaster, "targeting.resolved", {
+        eventId: randomUUID(),
+        eventType: "targeting.resolved",
+        encounterId: sessionId,
+        version: encounter.combatState.version,
+        actionId,
+        payload: {
+          sourceTokenId: sourceToken.id,
+          targetTokenId: targetToken.id,
+          isValid: true,
+          reason: null,
+          cover,
+        },
+        replaySafe: true,
+      });
+    }
 
     return reply.status(200).send({
       isValid: true,
