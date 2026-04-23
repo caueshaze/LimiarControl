@@ -306,6 +306,12 @@ export class InMemoryEncounterRepository {
     return this.saveEncounter(encounter);
   }
 
+  clearTokens(sessionId: string): EncounterState {
+    const encounter = this.requireEncounter(sessionId);
+    encounter.tokens = [];
+    return this.saveEncounter(encounter);
+  }
+
   syncTokens(
     sessionId: string,
     updates: Array<{

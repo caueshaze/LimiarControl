@@ -26,7 +26,7 @@ class TargetingRequirementsTests(unittest.TestCase):
     def test_spell_metadata_is_authoritative_when_present(self) -> None:
         resolved = resolve_spell_targeting_requirements(
             {
-                "target_mode": "ranged",
+                "target_type": "ranged",
                 "spell_mode": "spell_attack",
                 "requires_target_sight": False,
                 "requires_target_effect": True,
@@ -43,7 +43,7 @@ class TargetingRequirementsTests(unittest.TestCase):
     def test_spell_metadata_supports_camel_case_sources(self) -> None:
         resolved = resolve_spell_targeting_requirements(
             {
-                "targetMode": "sphere",
+                "targetType": "ranged", "areaShape": "sphere",
                 "spellMode": "saving_throw",
                 "requiresTargetSight": True,
                 "requiresTargetEffect": False,
@@ -60,7 +60,7 @@ class TargetingRequirementsTests(unittest.TestCase):
     def test_spell_legacy_fallback_is_used_only_when_metadata_is_missing(self) -> None:
         resolved = resolve_spell_targeting_requirements(
             {
-                "target_mode": "ranged",
+                "target_type": "ranged",
                 "spell_mode": "spell_attack",
             }
         )
@@ -73,7 +73,7 @@ class TargetingRequirementsTests(unittest.TestCase):
     def test_partial_spell_metadata_only_falls_back_for_missing_fields(self) -> None:
         resolved = resolve_spell_targeting_requirements(
             {
-                "target_mode": "ranged",
+                "target_type": "ranged",
                 "spell_mode": "spell_attack",
                 "requires_target_sight": False,
             }

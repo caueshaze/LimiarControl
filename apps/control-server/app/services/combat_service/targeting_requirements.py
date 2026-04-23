@@ -108,8 +108,8 @@ def resolve_spell_targeting_requirements(
       heuristic defaults.
     """
 
-    target_mode = _normalize_lookup(
-        _read_optional_value(source, "target_mode", "targetMode")
+    target_type = _normalize_lookup(
+        _read_optional_value(source, "target_type", "targetType")
     )
     normalized_spell_mode = _normalize_lookup(
         spell_mode
@@ -121,12 +121,12 @@ def resolve_spell_targeting_requirements(
         requires_target_sight=_resolve_flag(
             source,
             names=("requires_target_sight", "requiresTargetSight"),
-            fallback=target_mode == "ranged" or normalized_spell_mode == "spell_attack",
+            fallback=target_type == "ranged" or normalized_spell_mode == "spell_attack",
         ),
         requires_target_effect=_resolve_flag(
             source,
             names=("requires_target_effect", "requiresTargetEffect"),
-            fallback=target_mode != "self" or normalized_spell_mode != "utility",
+            fallback=target_type != "self" or normalized_spell_mode != "utility",
         ),
         requires_point_sight=_resolve_flag(
             source,

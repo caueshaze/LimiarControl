@@ -82,7 +82,8 @@ class CampaignSpell(SQLModel, table=True):
     casting_time: Optional[str] = None
     range_meters: Optional[int] = None
     range_text: Optional[str] = None
-    target_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    area_shape: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     area_size_meters: Optional[int] = Field(
         default=None,
         sa_column=Column(Integer, nullable=True),

@@ -39,7 +39,8 @@ export type CombatSpellOption = {
   damageType: string | null;
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
-  targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
+  targetType?: "self" | "touch" | "ranged" | "special" | null;
+  areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   rangeMeters?: number | null;
   availableSlotLevels: number[];
   upcast?: SpellUpcast | null;

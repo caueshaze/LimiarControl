@@ -59,7 +59,7 @@ export const PlayerSpellCastDialog = ({
     spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null),
   );
   const [result, setResult] = useState<CombatSpellResult | null>(null);
-  const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.targetMode));
+  const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
 
   const {
@@ -127,10 +127,10 @@ export const PlayerSpellCastDialog = ({
 
   useEffect(() => {
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
-    setTargetingMode(createInitialTargetingMode(spell.targetMode));
+    setTargetingMode(createInitialTargetingMode(spell.areaShape));
     setError(null);
     handledSaveResolutionKeyRef.current = null;
-  }, [spell.fixedCastLevel, spell.id, spell.level, spell.targetMode]);
+  }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape]);
 
   useEffect(() => {
     if (!result?.pending_save_id || !actor.last_save_resolution) {

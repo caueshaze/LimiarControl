@@ -39,16 +39,28 @@ class CastingTimeType(str, Enum):
     SPECIAL = "special"
 
 
-class TargetMode(str, Enum):
+class TargetType(str, Enum):
+    """Delivery type — how the spell is aimed at its target(s).
+
+    Independent of area shape: a fireball is ``target_type=RANGED`` with
+    ``area_shape=SPHERE``; a shatter is ``RANGED`` + ``CUBE``; magic missile
+    is ``RANGED`` + ``area_shape=None``.
+    """
+
     SELF = "self"
     TOUCH = "touch"
     RANGED = "ranged"
+    SPECIAL = "special"
+
+
+class AreaShape(str, Enum):
+    """Area-of-effect geometry. ``None`` means single-target."""
+
     CONE = "cone"
     CUBE = "cube"
     SPHERE = "sphere"
     LINE = "line"
     CYLINDER = "cylinder"
-    SPECIAL = "special"
 
 
 class ResolutionType(str, Enum):
@@ -128,7 +140,8 @@ class BaseSpell(SQLModel, table=True):
     casting_time: Optional[str] = None  # editorial text, e.g. "1 action"
     range_meters: Optional[int] = None
     range_text: Optional[str] = None  # editorial only
-    target_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    area_shape: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     area_size_meters: Optional[int] = Field(
         default=None,
         sa_column=Column(Integer, nullable=True),

@@ -6,7 +6,8 @@ export {
   SpellSavingThrow,
   SpellSchool,
   SpellSource,
-  TargetMode,
+  AreaShape,
+  TargetType,
   UpcastMode,
 } from "./baseSpell.types";
 

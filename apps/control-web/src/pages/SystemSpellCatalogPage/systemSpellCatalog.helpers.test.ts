@@ -50,7 +50,7 @@ describe("systemSpellCatalog upcast helpers", () => {
       castingTime: "1 action",
       rangeMeters: 36,
       rangeText: "120 ft",
-      targetMode: "ranged",
+      targetType: "ranged",
       duration: "Instantaneous",
       componentsJson: ["V", "S"],
       materialComponentText: null,

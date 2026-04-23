@@ -22,7 +22,8 @@ export {
   localizeSpellClass,
   localizeSpellSchool,
   localizeSpellSource,
-  localizeTargetMode,
+  localizeAreaShape,
+  localizeTargetType,
   localizeUpcastMode,
 } from "./domain/spell";
 export { humanizeFallback as formatDomainFallbackLabel } from "./domain/shared";

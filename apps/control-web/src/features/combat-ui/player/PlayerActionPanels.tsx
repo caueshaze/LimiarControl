@@ -4,7 +4,7 @@ import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/pl
 import type { StandardActionType, TurnResources } from "../../../shared/api/combatRepo";
 import { getAbilityLabel } from "../../character-sheet/utils/abilityLabels";
 import { isCombatSpellActionCostAvailable } from "../spellAutomation";
-import { isAreaTargetMode } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import { isAreaShape } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import { RangeStatusBadge } from "../components/RangeStatusBadge";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import type {
@@ -93,7 +93,7 @@ export const PlayerActionPanels = ({
 }: Props) => {
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
-  const selectedSpellIsArea = isAreaTargetMode(selectedSpell?.targetMode);
+  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
   const canSpendSpellActionCost = isCombatSpellActionCostAvailable(
     selectedSpellActionCost,
     turnResources,

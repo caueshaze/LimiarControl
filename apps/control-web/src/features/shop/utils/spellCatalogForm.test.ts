@@ -97,7 +97,7 @@ describe("spellCatalogForm", () => {
       castingTimeType: "bonus_action",
       rangeMeters: "18",
       rangeText: "18 m",
-      targetMode: "sphere",
+      targetType: "ranged", areaShape: "sphere",
       resolutionType: "damage",
       damageDice: "3d6",
       damageType: "Lightning",
@@ -126,7 +126,7 @@ describe("spellCatalogForm", () => {
         castingTime: "1 bonus action",
         rangeMeters: 18,
         rangeText: "18 m",
-        targetMode: "sphere",
+        targetType: "ranged", areaShape: "sphere",
         resolutionType: "damage",
         damageDice: "3d6",
         damageType: "Lightning",
@@ -158,7 +158,7 @@ describe("spellCatalogForm", () => {
       createSpell({
         castingTimeType: "special",
         castingTime: "When an ally falls to 0 HP",
-        targetMode: "ranged",
+        targetType: "ranged",
         resolutionType: "heal",
         healDice: "2d4",
         requiresTargetSight: null,
@@ -176,7 +176,7 @@ describe("spellCatalogForm", () => {
 
     expect(state.castingTimeType).toBe("special");
     expect(state.castingTime).toBe("When an ally falls to 0 HP");
-    expect(state.targetMode).toBe("ranged");
+    expect(state.targetType).toBe("ranged");
     expect(state.resolutionType).toBe("heal");
     expect(state.healDice).toBe("2d4");
     expect(state.requiresTargetSight).toBeNull();
@@ -195,7 +195,7 @@ describe("spellCatalogForm", () => {
         createSpell({
           castingTimeType: "special",
           castingTime: "When an ally falls to 0 HP",
-          targetMode: "ranged",
+          targetType: "ranged",
           resolutionType: "heal",
           healDice: "2d4",
           requiresTargetSight: null,
@@ -214,7 +214,7 @@ describe("spellCatalogForm", () => {
 
     expect(payload.castingTimeType).toBe("special");
     expect(payload.castingTime).toBe("When an ally falls to 0 HP");
-    expect(payload.targetMode).toBe("ranged");
+    expect(payload.targetType).toBe("ranged");
     expect(payload.resolutionType).toBe("heal");
     expect(payload.damageDice).toBeNull();
     expect(payload.healDice).toBe("2d4");
@@ -243,7 +243,7 @@ describe("spellCatalogForm", () => {
 
   it("includes areaSizeMeters in the update payload when set", () => {
     const payload = buildSpellUpdatePayload({
-      ...createSpellEditorState(createSpell({ targetMode: "sphere", areaSizeMeters: 6 })),
+      ...createSpellEditorState(createSpell({ targetType: "ranged", areaShape: "sphere", areaSizeMeters: 6 })),
     });
     expect(payload.areaSizeMeters).toBe(6);
   });

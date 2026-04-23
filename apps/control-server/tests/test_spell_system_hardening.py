@@ -50,7 +50,6 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="magic_missile",
             resolution_type="damage",
-            target_mode="ranged",
             damage_dice="3d4+3",
         )
         self.assertEqual(meta.automation_mode, "generic_direct")
@@ -63,7 +62,7 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="fireball",
             resolution_type="damage",
-            target_mode="sphere",
+            area_shape="sphere",
             damage_dice="8d6",
             saving_throw="DEX",
         )
@@ -84,7 +83,6 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="animal_friendship",
             resolution_type="control",
-            target_mode="ranged",
             saving_throw="WIS",
             automation_registry=registry,
         )
@@ -98,7 +96,6 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="magic_missile",
             resolution_type="damage",
-            target_mode="ranged",
             damage_dice="3d4+3",
         )
         self.assertEqual(meta.automation_mode, "generic_direct")
@@ -108,7 +105,6 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="healing_word",
             resolution_type="heal",
-            target_mode="ranged",
             heal_dice="1d4",
         )
         self.assertEqual(meta.automation_mode, "generic_direct")
@@ -118,7 +114,6 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="goodberry",
             resolution_type="utility",
-            target_mode="touch",
         )
         self.assertEqual(meta.automation_mode, "generic_direct")
         self.assertEqual(meta.default_spell_mode, "utility")
@@ -128,7 +123,7 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="burning_hands",
             resolution_type="damage",
-            target_mode="cone",
+            area_shape="cone",
             damage_dice="3d6",
             saving_throw="DEX",
         )
@@ -139,7 +134,7 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="lightning_bolt",
             resolution_type="damage",
-            target_mode="line",
+            area_shape="line",
             damage_dice="8d6",
             saving_throw="DEX",
         )
@@ -150,7 +145,7 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="some_cylinder",
             resolution_type="damage",
-            target_mode="cylinder",
+            area_shape="cylinder",
         )
         self.assertEqual(meta.automation_mode, "generic_area")
 
@@ -158,7 +153,7 @@ class TestSpellAutomationMetadata(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="fireball",
             resolution_type="damage",
-            target_mode="sphere",
+            area_shape="sphere",
             damage_dice="8d6",
         )
         d = meta.to_api_dict()
@@ -175,7 +170,7 @@ class TestSpellAutomationMetadataFromCatalog(unittest.TestCase):
         spell = FakeCatalogEntry(
             canonical_key="fireball",
             resolution_type="damage",
-            target_mode="sphere",
+            area_shape="sphere",
             saving_throw="DEX",
             damage_dice="8d6",
             heal_dice=None,
@@ -189,7 +184,6 @@ class TestSpellAutomationMetadataFromCatalog(unittest.TestCase):
         spell = FakeCatalogEntry(
             canonical_key="animal_friendship",
             resolution_type="control",
-            target_mode="ranged",
             saving_throw="WIS",
             damage_dice=None,
             heal_dice=None,
@@ -249,7 +243,6 @@ class TestMagicMissileNoLongerInRegistry(unittest.TestCase):
         meta = resolve_spell_automation_metadata(
             canonical_key="magic_missile",
             resolution_type="damage",
-            target_mode="ranged",
             damage_dice="3d4+3",
             automation_registry=CombatSpellAutomationMixin._SPELL_AUTOMATION_REGISTRY,
         )

@@ -57,7 +57,8 @@ class SpellCastIntent:
         requested_target_ref_id — ref_id the actor is targeting
         spell_canonical_key — canonical key of the spell being cast
         spell_mode          — resolved cast mode (spell_attack, saving_throw, etc.)
-        target_mode         — TargetMode from the spell catalog (SELF, RANGED, CONE…)
+        target_type         — delivery type (self | touch | ranged | special)
+        area_shape          — AoE shape if any (sphere | cone | cube | line | cylinder | None)
         range_meters        — spell range in meters from the catalog (None = not set)
     """
     session_id: str
@@ -67,7 +68,8 @@ class SpellCastIntent:
     requested_target_ref_id: str
     spell_canonical_key: str
     spell_mode: str
-    target_mode: str | None = None
+    target_type: str | None = None
+    area_shape: str | None = None
     range_meters: int | None = None
     # Final target-facing requirements resolved from explicit spell metadata
     # or, for legacy records only, the temporary fallback helper.
@@ -88,7 +90,8 @@ class AreaTargetingIntent:
     # AoE radius / dimension in meters (Control domain). Converted to cells at the map boundary.
     size_meters: int
     range_meters: int | None = None
-    target_mode: str | None = None
+    target_type: str | None = None
+    area_shape: str | None = None
     origin_cell: dict[str, int] | None = None
     anchor_cell: dict[str, int] | None = None
     # Final point-facing requirements resolved from explicit spell metadata

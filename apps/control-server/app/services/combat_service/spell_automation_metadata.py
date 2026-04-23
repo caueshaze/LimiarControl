@@ -1,7 +1,7 @@
 """Spell automation metadata — single authoritative source.
 
 This module computes combat-facing spell metadata from:
-  1. Catalog fields (resolution_type, target_mode, saving_throw, damage_dice, etc.)
+  1. Catalog fields (resolution_type, area_shape, saving_throw, damage_dice, etc.)
   2. The special-handler registry in spell_automation.py
 
 Frontend and backend both consume this module's output.  Frontend must
@@ -64,7 +64,7 @@ _RESOLUTION_TYPE_TO_SPELL_MODE: dict[str, str] = {
     "debuff": "saving_throw",
 }
 
-_AREA_TARGET_MODES = frozenset({"cone", "cube", "sphere", "line", "cylinder"})
+_AREA_SHAPES = frozenset({"cone", "cube", "sphere", "line", "cylinder"})
 
 
 def _normalize_lookup(value: object) -> str:
@@ -75,7 +75,7 @@ def resolve_spell_automation_metadata(
     *,
     canonical_key: str | None = None,
     resolution_type: str | None = None,
-    target_mode: str | None = None,
+    area_shape: str | None = None,
     saving_throw: str | None = None,
     damage_dice: str | None = None,
     heal_dice: str | None = None,
@@ -92,7 +92,7 @@ def resolve_spell_automation_metadata(
     if automation_registry is not None and normalized_key:
         handler_spec = automation_registry.get(normalized_key)
 
-    is_area = _normalize_lookup(target_mode) in _AREA_TARGET_MODES
+    is_area = _normalize_lookup(area_shape) in _AREA_SHAPES
 
     if handler_spec is not None:
         return SpellAutomationMetadata(
@@ -132,7 +132,7 @@ def resolve_spell_automation_metadata_from_catalog(
     return resolve_spell_automation_metadata(
         canonical_key=getattr(catalog_entry, "canonical_key", None),
         resolution_type=getattr(catalog_entry, "resolution_type", None),
-        target_mode=getattr(catalog_entry, "target_mode", None),
+        area_shape=getattr(catalog_entry, "area_shape", None),
         saving_throw=getattr(catalog_entry, "saving_throw", None),
         damage_dice=getattr(catalog_entry, "damage_dice", None),
         heal_dice=getattr(catalog_entry, "heal_dice", None),

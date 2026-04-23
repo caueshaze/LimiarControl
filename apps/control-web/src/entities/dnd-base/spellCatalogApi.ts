@@ -6,9 +6,10 @@
  * that creationSpells.ts expects.
  */
 import type {
+  AreaShape,
   BaseSpell as ApiBaseSpell,
   ResolutionType,
-  TargetMode
+  TargetType
 } from "../base-spell/baseSpell.types";
 import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
 import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
@@ -32,7 +33,8 @@ export type BaseSpell = {
   ritual: boolean;
   description: string;
   resolutionType?: ResolutionType | null;
-  targetMode?: TargetMode | null;
+  targetType?: TargetType | null;
+  areaShape?: AreaShape | null;
   healDice?: string | null;
   damageType: string | null;
   savingThrow: string | null;
@@ -97,7 +99,8 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   ritual: api.ritual,
   description: api.descriptionEn,
   resolutionType: api.resolutionType ?? null,
-  targetMode: api.targetMode ?? null,
+  targetType: api.targetType ?? null,
+  areaShape: api.areaShape ?? null,
   healDice: api.healDice ?? null,
   damageType: api.damageType ?? null,
   savingThrow: api.savingThrow ?? null,

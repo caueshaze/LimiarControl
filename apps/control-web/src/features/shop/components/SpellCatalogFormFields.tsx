@@ -20,7 +20,8 @@ import {
     SPELL_CASTING_TIME_TYPE_OPTIONS,
     SPELL_LEVEL_OPTIONS,
     SPELL_SCHOOL_OPTIONS,
-    SPELL_TARGET_MODE_OPTIONS,
+    SPELL_AREA_SHAPE_OPTIONS,
+    SPELL_TARGET_TYPE_OPTIONS,
     type SpellCatalogEditorState,
     toggleSpellListValue,
 } from "../utils/spellCatalogForm";
@@ -69,6 +70,7 @@ export const SpellCatalogFormFields = ({
   const showUpcastMaxLevelField = Boolean(state.upcastMode);
   const showEffectScalingFields = state.upcastMode === "effect_scaling";
   const showExtraEffectFields = state.upcastMode === "extra_effect";
+  const showAreaSizeField = Boolean(state.areaShape);
 
   return (
     <>
@@ -200,26 +202,64 @@ export const SpellCatalogFormFields = ({
             className={fieldClassName}
           />
         </SpellCatalogField>
-        <SpellCatalogField label={t("catalog.spells.form.targetMode")}>
+        <SpellCatalogField label={t("catalog.spells.form.targetType")}>
           <select
-            value={state.targetMode}
+            value={state.targetType}
             onChange={(event) =>
               setState((current) => ({
                 ...current,
-                targetMode: event.target.value as SpellCatalogEditorState["targetMode"],
+                targetType: event.target.value as SpellCatalogEditorState["targetType"],
               }))
             }
             className={fieldClassName}
           >
             <option value="">{selectPlaceholder}</option>
-            {SPELL_TARGET_MODE_OPTIONS.map((targetMode) => (
-              <option key={targetMode} value={targetMode}>
-                {localizeSpellAdminValue(targetMode, locale)}
+            {SPELL_TARGET_TYPE_OPTIONS.map((targetType) => (
+              <option key={targetType} value={targetType}>
+                {localizeSpellAdminValue(targetType, locale)}
               </option>
             ))}
           </select>
         </SpellCatalogField>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <SpellCatalogField label={t("catalog.spells.form.areaShape")}>
+          <select
+            value={state.areaShape}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                areaShape: event.target.value as SpellCatalogEditorState["areaShape"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_AREA_SHAPE_OPTIONS.map((shape) => (
+              <option key={shape} value={shape}>
+                {localizeSpellAdminValue(shape, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+      </div>
+
+      {showAreaSizeField ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SpellCatalogField label={t("catalog.spells.form.areaSizeMeters")}>
+            <input
+              type="number"
+              min={0}
+              value={state.areaSizeMeters}
+              onChange={(event) =>
+                setState((current) => ({ ...current, areaSizeMeters: event.target.value }))
+              }
+              className={fieldClassName}
+            />
+          </SpellCatalogField>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <SpellCatalogField label={t("catalog.spells.rangeText")}>

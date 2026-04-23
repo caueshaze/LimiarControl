@@ -4,7 +4,7 @@ import { PlayerCombatParticipants } from "./player-combat-debug/PlayerCombatPart
 import { PlayerDeathSaveFeedbackCard } from "./player-combat-debug/PlayerDeathSaveFeedbackCard";
 import { PlayerSpellCastDialog } from "./player-combat-debug/PlayerSpellCastDialog";
 import { PlayerTurnActions } from "./player-combat-debug/PlayerTurnActions";
-import { isAreaTargetMode } from "./player-combat-debug/areaTargetingUi";
+import { isAreaShape } from "./player-combat-debug/areaTargetingUi";
 import type { PlayerCombatDebugPanelProps } from "./player-combat-debug/types";
 import { usePlayerCombatDebugState } from "./player-combat-debug/usePlayerCombatDebugState";
 
@@ -75,7 +75,7 @@ export const PlayerCombatDebugPanel = ({
     livingTargets.find((participant) => participant.ref_id === targetId) ??
     defeatedTargets.find((participant) => participant.ref_id === targetId) ??
     null;
-  const selectedSpellIsArea = isAreaTargetMode(selectedSpell?.targetMode);
+  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
 
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 shadow-xl">

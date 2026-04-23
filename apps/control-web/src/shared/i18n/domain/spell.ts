@@ -1,10 +1,11 @@
 import type {
+  AreaShape,
   CastingTimeType,
   ResolutionType,
   SaveSuccessOutcome,
   SpellSchool,
   SpellSource,
-  TargetMode,
+  TargetType,
   UpcastMode,
 } from "../../../entities/base-spell";
 import { localizeDamageAdminFallback } from "./damage";
@@ -40,16 +41,19 @@ const CASTING_TIME_TYPE_LABELS: Record<CastingTimeType, LabelEntry> = {
   special: label("Special", "Especial"),
 };
 
-const TARGET_MODE_LABELS: Record<TargetMode, LabelEntry> = {
+const TARGET_TYPE_LABELS: Record<TargetType, LabelEntry> = {
   self: label("Self", "Pessoal"),
   touch: label("Touch", "Toque"),
   ranged: label("Ranged", "À distância"),
+  special: label("Special", "Especial"),
+};
+
+const AREA_SHAPE_LABELS: Record<AreaShape, LabelEntry> = {
   cone: label("Cone", "Cone"),
   cube: label("Cube", "Cubo"),
   sphere: label("Sphere", "Esfera"),
   line: label("Line", "Linha"),
   cylinder: label("Cylinder", "Cilindro"),
-  special: label("Special", "Especial"),
 };
 
 const RESOLUTION_TYPE_LABELS: Record<ResolutionType, LabelEntry> = {
@@ -102,8 +106,11 @@ export const localizeSpellSchool = (value: SpellSchool, locale: LocaleLike) =>
 export const localizeCastingTimeType = (value: CastingTimeType, locale: LocaleLike) =>
   displayLabel(CASTING_TIME_TYPE_LABELS[value], locale);
 
-export const localizeTargetMode = (value: TargetMode, locale: LocaleLike) =>
-  displayLabel(TARGET_MODE_LABELS[value], locale);
+export const localizeTargetType = (value: TargetType, locale: LocaleLike) =>
+  displayLabel(TARGET_TYPE_LABELS[value], locale);
+
+export const localizeAreaShape = (value: AreaShape, locale: LocaleLike) =>
+  displayLabel(AREA_SHAPE_LABELS[value], locale);
 
 export const localizeResolutionType = (value: ResolutionType, locale: LocaleLike) =>
   displayLabel(RESOLUTION_TYPE_LABELS[value], locale);
@@ -128,7 +135,8 @@ export const localizeSpellAdminValue = (value: string, locale: LocaleLike) => {
     SPELL_ADMIN_VALUE_LABELS,
     SPELL_SCHOOL_LABELS as Record<string, LabelEntry>,
     CASTING_TIME_TYPE_LABELS as Record<string, LabelEntry>,
-    TARGET_MODE_LABELS as Record<string, LabelEntry>,
+    TARGET_TYPE_LABELS as Record<string, LabelEntry>,
+    AREA_SHAPE_LABELS as Record<string, LabelEntry>,
     RESOLUTION_TYPE_LABELS as Record<string, LabelEntry>,
     UPCAST_MODE_LABELS as Record<string, LabelEntry>,
     SAVE_SUCCESS_OUTCOME_LABELS as Record<string, LabelEntry>,

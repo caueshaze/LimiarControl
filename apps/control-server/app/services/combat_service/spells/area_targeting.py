@@ -83,8 +83,8 @@ class AreaTargetingMixin:
         cls,
         spell_context: dict[str, Any],
     ) -> dict[str, int | str] | None:
-        target_mode = cls._normalize_area_shape(spell_context.get("target_mode"))
-        if target_mode is None:
+        area_shape = cls._normalize_area_shape(spell_context.get("area_shape"))
+        if area_shape is None:
             return None
 
         range_meters = cls._safe_optional_int(spell_context.get("range_meters"))
@@ -94,7 +94,7 @@ class AreaTargetingMixin:
             return None
 
         return {
-            "shape": target_mode,
+            "shape": area_shape,
             "size_meters": area_size_meters,
             "range_meters": range_meters,
         }

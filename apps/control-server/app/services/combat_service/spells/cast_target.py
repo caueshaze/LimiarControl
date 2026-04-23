@@ -69,7 +69,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             requested_target_ref_id=req.target_ref_id,
             spell_canonical_key=spell_context["spell_canonical_key"],
             spell_mode=spell_context["spell_mode"],
-            target_mode=spell_context.get("target_mode"),
+            target_type=spell_context.get("target_type"),
+            area_shape=spell_context.get("area_shape"),
             range_meters=spell_context.get("range_meters"),
             requires_sight=bool(spell_context.get("requires_target_sight")),
             requires_effect=bool(spell_context.get("requires_target_effect")),
@@ -276,7 +277,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             db, session_id, attacker, attacker_model, req,
         )
         area_spell_spec = cls._resolve_supported_area_spell_spec(spell_context)
-        if cls._normalize_area_shape(spell_context.get("target_mode")) is not None:
+        if cls._normalize_area_shape(spell_context.get("area_shape")) is not None:
             if area_spell_spec is None:
                 raise CombatServiceError(
                     "This area spell is not configured for map targeting yet.", 400,

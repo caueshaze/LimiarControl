@@ -29,19 +29,24 @@ export const CastingTimeType = {
 export type CastingTimeType =
   (typeof CastingTimeType)[keyof typeof CastingTimeType];
 
-export const TargetMode = {
+export const TargetType = {
   SELF: "self",
   TOUCH: "touch",
   RANGED: "ranged",
+  SPECIAL: "special"
+} as const;
+
+export type TargetType = (typeof TargetType)[keyof typeof TargetType];
+
+export const AreaShape = {
   CONE: "cone",
   CUBE: "cube",
   SPHERE: "sphere",
   LINE: "line",
-  CYLINDER: "cylinder",
-  SPECIAL: "special"
+  CYLINDER: "cylinder"
 } as const;
 
-export type TargetMode = (typeof TargetMode)[keyof typeof TargetMode];
+export type AreaShape = (typeof AreaShape)[keyof typeof AreaShape];
 
 export const ResolutionType = {
   DAMAGE: "damage",
@@ -151,7 +156,8 @@ export type BaseSpell = {
   castingTime?: string | null;
   rangeMeters?: number | null;
   rangeText?: string | null;
-  targetMode?: TargetMode | null;
+  targetType?: TargetType | null;
+  areaShape?: AreaShape | null;
   /** AoE radius / side-length in meters (sphere/cone/line/cube). Null for non-area spells. */
   areaSizeMeters?: number | null;
   duration?: string | null;
@@ -218,7 +224,8 @@ export type BaseSpellWritePayload = {
   castingTime?: string | null;
   rangeMeters?: number | null;
   rangeText?: string | null;
-  targetMode?: TargetMode | null;
+  targetType?: TargetType | null;
+  areaShape?: AreaShape | null;
   areaSizeMeters?: number | null;
   duration?: string | null;
   componentsJson?: string[] | null;

@@ -1,4 +1,5 @@
 import type {
+  AreaShape,
   BaseSpell,
   CastingTimeType,
   ResolutionType,
@@ -7,10 +8,11 @@ import type {
   SpellSavingThrow,
   SpellSchool,
   SpellSource,
-  TargetMode,
+  TargetType,
   UpcastMode,
 } from "../../entities/base-spell";
 import {
+  AreaShape as AreaShapeValues,
   CastingTimeType as CastingTimeTypeValues,
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
@@ -18,7 +20,7 @@ import {
   SpellSavingThrow as SpellSavingThrowValues,
   SpellSchool as SpellSchoolValues,
   SpellSource as SpellSourceValues,
-  TargetMode as TargetModeValues,
+  TargetType as TargetTypeValues,
   UpcastMode as UpcastModeValues,
 } from "../../entities/base-spell";
 
@@ -38,7 +40,9 @@ export type FormState = {
   classesJson: string[];
   castingTimeType: CastingTimeType | "";
   rangeMeters: string;
-  targetMode: TargetMode | "";
+  targetType: TargetType | "";
+  areaShape: AreaShape | "";
+  areaSizeMeters: string;
   duration: string;
   componentsJson: string[];
   materialComponentText: string;
@@ -73,7 +77,8 @@ export const SYSTEM_OPTIONS = ["DND5E"] as const;
 export const LEVEL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 export const SCHOOL_OPTIONS = Object.values(SpellSchoolValues);
 export const CASTING_TIME_TYPE_OPTIONS = Object.values(CastingTimeTypeValues);
-export const TARGET_MODE_OPTIONS = Object.values(TargetModeValues);
+export const TARGET_TYPE_OPTIONS = Object.values(TargetTypeValues);
+export const AREA_SHAPE_OPTIONS = Object.values(AreaShapeValues);
 export const RESOLUTION_TYPE_OPTIONS = Object.values(ResolutionTypeValues);
 export const DAMAGE_TYPE_OPTIONS = Object.values(SpellDamageTypeValues);
 export const SAVING_THROW_OPTIONS = Object.values(SpellSavingThrowValues);

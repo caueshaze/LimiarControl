@@ -25,7 +25,8 @@ export type CombatSpellOption = {
   prepared: boolean;
   range: string;
   rangeMeters?: number | null;
-  targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
+  targetType?: "self" | "touch" | "ranged" | "special" | null;
+  areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   chargesCurrent?: number | null;
   chargesMax?: number | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;

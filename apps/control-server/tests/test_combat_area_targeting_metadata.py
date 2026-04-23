@@ -20,7 +20,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_metadata_sphere_returns_spec_from_area_size_meters(self):
         ctx = {
-            "target_mode": "sphere",
+            "target_type": "ranged", "area_shape": "sphere",
             "area_size_meters": 4,
             "range_meters": 30,
             "spell_canonical_key": "custom_nova",
@@ -33,7 +33,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_metadata_cone_returns_spec_from_area_size_meters(self):
         ctx = {
-            "target_mode": "cone",
+            "target_type": "ranged", "area_shape": "cone",
             "area_size_meters": 3,
             "range_meters": 0,
             "spell_canonical_key": "custom_cone_blast",
@@ -46,7 +46,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_metadata_cube_returns_spec_from_area_size_meters(self):
         ctx = {
-            "target_mode": "cube",
+            "target_type": "ranged", "area_shape": "cube",
             "area_size_meters": 3,
             "range_meters": 0,
             "spell_canonical_key": "custom_cube_wave",
@@ -58,7 +58,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_metadata_line_returns_spec_from_area_size_meters(self):
         ctx = {
-            "target_mode": "line",
+            "target_type": "ranged", "area_shape": "line",
             "area_size_meters": 20,
             "range_meters": None,
             "spell_canonical_key": "custom_lightning_bolt",
@@ -73,7 +73,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         """range_meters=0 must pass through; the range check is handled at
         the map boundary (0 → null → skip range validation)."""
         ctx = {
-            "target_mode": "cone",
+            "target_type": "ranged", "area_shape": "cone",
             "area_size_meters": 3,
             "range_meters": 0,
             "spell_canonical_key": "custom_breath_weapon",
@@ -86,7 +86,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         """If a spell has area_size_meters in its context, the hardcoded spec
         is ignored even if the canonical key is present in the fallback dict."""
         ctx = {
-            "target_mode": "sphere",
+            "target_type": "ranged", "area_shape": "sphere",
             "area_size_meters": 10,  # overrides hardcoded 6m for fireball
             "range_meters": 45,
             "spell_canonical_key": "fireball",
@@ -103,7 +103,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         """Any spell missing area_size_meters returns None regardless of canonical key."""
         for canonical_key in ("fireball", "burning_hands", "thunderwave", "custom_nova"):
             ctx = {
-                "target_mode": "sphere",
+                "target_type": "ranged", "area_shape": "sphere",
                 "area_size_meters": None,
                 "range_meters": 45,
                 "spell_canonical_key": canonical_key,
@@ -117,7 +117,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_non_area_target_mode_returns_none(self):
         ctx = {
-            "target_mode": "ranged",
+            "target_type": "ranged",
             "area_size_meters": 5,
             "range_meters": 18,
             "spell_canonical_key": "magic_missile",
@@ -127,7 +127,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_missing_target_mode_returns_none(self):
         ctx = {
-            "target_mode": None,
+            "target_type": None, "area_shape": None,
             "area_size_meters": 5,
             "range_meters": 18,
             "spell_canonical_key": "some_spell",
@@ -139,7 +139,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         """area_size_meters=0 is invalid; should fall through to legacy dict.
         If the spell is not in the dict either, returns None."""
         ctx = {
-            "target_mode": "sphere",
+            "target_type": "ranged", "area_shape": "sphere",
             "area_size_meters": 0,
             "range_meters": 30,
             "spell_canonical_key": "unknown_sphere_spell",
@@ -149,7 +149,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
 
     def test_unknown_spell_without_metadata_returns_none(self):
         ctx = {
-            "target_mode": "sphere",
+            "target_type": "ranged", "area_shape": "sphere",
             "area_size_meters": None,
             "range_meters": 18,
             "spell_canonical_key": "custom_unknown_sphere",
@@ -160,7 +160,7 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
     def test_metadata_cylinder_returns_spec_from_area_size_meters(self):
         """Cylinder uses a 2D circular map footprint with area_size_meters as radius."""
         ctx = {
-            "target_mode": "cylinder",
+            "target_type": "ranged", "area_shape": "cylinder",
             "area_size_meters": 5,
             "range_meters": 18,
             "spell_canonical_key": "some_cylinder_spell",

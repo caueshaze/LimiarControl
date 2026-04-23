@@ -4,7 +4,7 @@ import {
   buildAreaPreviewPayload,
   createInitialTargetingMode,
   getAnchorCombatantIdAtCell,
-  isAreaTargetMode,
+  isAreaShape,
   resolveActorOriginCell,
 } from "./areaTargetingUi";
 
@@ -19,13 +19,13 @@ const baseSpell = {
   damageType: "fire",
   savingThrow: "dexterity",
   availableSlotLevels: [3, 4, 5],
-  targetMode: "sphere" as const,
+  targetType: "ranged" as const, areaShape: "sphere" as const,
 };
 
 describe("areaTargetingUi", () => {
   it("recognizes fireball as area targeting", () => {
-    expect(isAreaTargetMode("sphere")).toBe(true);
-    expect(isAreaTargetMode("cylinder")).toBe(true);
+    expect(isAreaShape("sphere")).toBe(true);
+    expect(isAreaShape("cylinder")).toBe(true);
     expect(createInitialTargetingMode("sphere")).toBe("area_target_select");
     expect(createInitialTargetingMode("cylinder")).toBe("area_target_select");
     expect(createInitialTargetingMode("single")).toBe("single_target_select");

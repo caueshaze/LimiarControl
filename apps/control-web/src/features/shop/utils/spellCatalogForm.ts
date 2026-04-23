@@ -1,19 +1,21 @@
 import {
+  AreaShape as AreaShapeValues,
   CastingTimeType as CastingTimeTypeValues,
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
   SpellDamageType as SpellDamageTypeValues,
   SpellSavingThrow as SpellSavingThrowValues,
   SpellSchool,
-  TargetMode as TargetModeValues,
+  TargetType as TargetTypeValues,
   UpcastMode as UpcastModeValues,
+  type AreaShape,
   type BaseSpell,
   type CastingTimeType,
   type ResolutionType,
   type SaveSuccessOutcome,
   type SpellDamageType,
   type SpellSavingThrow,
-  type TargetMode,
+  type TargetType,
   type UpcastMode,
 } from "../../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
@@ -25,7 +27,8 @@ export const SPELL_SCHOOL_OPTIONS = Object.values(SpellSchool);
 
 export const SPELL_CASTING_TIME_TYPE_OPTIONS = Object.values(CastingTimeTypeValues);
 
-export const SPELL_TARGET_MODE_OPTIONS = Object.values(TargetModeValues);
+export const SPELL_TARGET_TYPE_OPTIONS = Object.values(TargetTypeValues);
+export const SPELL_AREA_SHAPE_OPTIONS = Object.values(AreaShapeValues);
 
 export const SPELL_RESOLUTION_TYPE_OPTIONS = Object.values(ResolutionTypeValues);
 
@@ -239,7 +242,8 @@ export const buildSpellUpdatePayload = (
   castingTime: deriveCastingTimeText(state.castingTimeType, state.castingTime),
   rangeMeters: toNullableInteger(state.rangeMeters),
   rangeText: toNullableText(state.rangeText),
-  targetMode: toNullableText(state.targetMode) as TargetMode | null,
+  targetType: toNullableText(state.targetType) as TargetType | null,
+  areaShape: toNullableText(state.areaShape) as AreaShape | null,
   areaSizeMeters: toNullableInteger(state.areaSizeMeters),
   duration: toNullableText(state.duration),
   componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
@@ -293,7 +297,8 @@ export type SpellCatalogEditorState = {
   castingTime: string;
   rangeMeters: string;
   rangeText: string;
-  targetMode: TargetMode | "";
+  targetType: TargetType | "";
+  areaShape: AreaShape | "";
   duration: string;
   componentsJson: string[];
   materialComponentText: string;
@@ -336,7 +341,8 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   castingTime: spell.castingTime ?? "",
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   rangeText: spell.rangeText ?? "",
-  targetMode: spell.targetMode ?? "",
+  targetType: spell.targetType ?? "",
+  areaShape: spell.areaShape ?? "",
   areaSizeMeters: spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "",
   duration: spell.duration ?? "",
   componentsJson: filterKnownSpellValues(spell.componentsJson, SPELL_COMPONENT_OPTION_SET),
@@ -382,7 +388,8 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   castingTime: "",
   rangeMeters: "",
   rangeText: "",
-  targetMode: "",
+  targetType: "",
+  areaShape: "",
   areaSizeMeters: "",
   duration: "",
   componentsJson: [],

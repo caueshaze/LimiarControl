@@ -404,7 +404,7 @@ class TestLocalServiceDiagnostics(unittest.TestCase):
                 requested_target_ref_id="enemy-1",
                 spell_canonical_key="mystery_spell",
                 spell_mode="spell_attack",
-                target_mode="ranged",
+                target_type="ranged",
                 range_meters=None,
             ),
             state,
