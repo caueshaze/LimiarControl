@@ -87,7 +87,6 @@ export const createEmptyForm = (): FormState => ({
   rangeMeters: "",
   targetType: "",
   areaShape: "",
-  areaSizeMeters: "",
   radiusMeters: "",
   lengthMeters: "",
   sideMeters: "",
@@ -133,25 +132,18 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   targetType: spell.targetType ?? "",
   areaShape: spell.areaShape ?? "",
-  areaSizeMeters: "",
   radiusMeters:
     spell.radiusMeters != null
       ? String(spell.radiusMeters)
-      : spell.areaShape === "sphere" || spell.areaShape === "cylinder"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   lengthMeters:
     spell.lengthMeters != null
       ? String(spell.lengthMeters)
-      : spell.areaShape === "cone" || spell.areaShape === "line"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   sideMeters:
     spell.sideMeters != null
       ? String(spell.sideMeters)
-      : spell.areaShape === "cube"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   duration: spell.duration ?? "",
   componentsJson: spell.componentsJson ?? [],
   materialComponentText: spell.materialComponentText ?? "",

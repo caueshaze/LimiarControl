@@ -121,7 +121,6 @@ export const catalogEnUSDictionary = {
   "catalog.spells.form.castingTimeText": "Casting text",
   "catalog.spells.form.targetType": "Target type",
   "catalog.spells.form.areaShape": "Area shape",
-  "catalog.spells.form.areaSizeMeters": "Area size (m)",
   "catalog.spells.form.radiusMeters": "Radius (m)",
   "catalog.spells.form.lengthMeters": "Length (m)",
   "catalog.spells.form.sideMeters": "Side (m)",

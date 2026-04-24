@@ -41,7 +41,6 @@ class BaseSpellWrite(BaseModel):
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
     areaShape: Optional[str] = None
-    areaSizeMeters: Optional[int] = None  # DEPRECATED — use radiusMeters / lengthMeters / sideMeters
     radiusMeters: Optional[float] = None  # sphere, cylinder
     lengthMeters: Optional[float] = None  # cone, line
     sideMeters: Optional[float] = None    # cube
@@ -121,15 +120,6 @@ class BaseSpellWrite(BaseModel):
             return None
         if value < 0:
             raise ValueError("rangeMeters cannot be negative")
-        return value
-
-    @field_validator("areaSizeMeters")
-    @classmethod
-    def validate_area_size_meters(cls, value: Optional[int]):
-        if value is None:
-            return None
-        if value < 1:
-            raise ValueError("areaSizeMeters must be at least 1")
         return value
 
     @field_validator("radiusMeters", "lengthMeters", "sideMeters")

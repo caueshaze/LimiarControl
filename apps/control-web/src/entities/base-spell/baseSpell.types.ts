@@ -158,8 +158,6 @@ export type BaseSpell = {
   rangeText?: string | null;
   targetType?: TargetType | null;
   areaShape?: AreaShape | null;
-  /** @deprecated Use radiusMeters, lengthMeters, or sideMeters. */
-  areaSizeMeters?: number | null;
   /** AoE radius in meters — sphere, cylinder. */
   radiusMeters?: number | null;
   /** AoE length in meters — cone, line. */
@@ -232,8 +230,6 @@ export type BaseSpellWritePayload = {
   rangeText?: string | null;
   targetType?: TargetType | null;
   areaShape?: AreaShape | null;
-  /** @deprecated Use radiusMeters, lengthMeters, or sideMeters. */
-  areaSizeMeters?: number | null;
   radiusMeters?: number | null;
   lengthMeters?: number | null;
   sideMeters?: number | null;

@@ -328,7 +328,6 @@ export type SpellCatalogEditorState = {
   healDice: string;
   savingThrow: string;
   saveSuccessOutcome: string;
-  areaSizeMeters: string; // kept for legacy hydration only; not sent in payload
   radiusMeters: string;
   lengthMeters: string;
   sideMeters: string;
@@ -364,25 +363,18 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   rangeText: spell.rangeText ?? "",
   targetType: spell.targetType ?? "",
   areaShape: spell.areaShape ?? "",
-  areaSizeMeters: "",
   radiusMeters:
     spell.radiusMeters != null
       ? String(spell.radiusMeters)
-      : spell.areaShape === "sphere" || spell.areaShape === "cylinder"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   lengthMeters:
     spell.lengthMeters != null
       ? String(spell.lengthMeters)
-      : spell.areaShape === "cone" || spell.areaShape === "line"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   sideMeters:
     spell.sideMeters != null
       ? String(spell.sideMeters)
-      : spell.areaShape === "cube"
-        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
-        : "",
+      : "",
   duration: spell.duration ?? "",
   componentsJson: filterKnownSpellValues(spell.componentsJson, SPELL_COMPONENT_OPTION_SET),
   materialComponentText: spell.materialComponentText ?? "",
@@ -429,7 +421,6 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   rangeText: "",
   targetType: "",
   areaShape: "",
-  areaSizeMeters: "",
   radiusMeters: "",
   lengthMeters: "",
   sideMeters: "",

@@ -32,7 +32,6 @@ _FIELD_MAP: dict[str, str] = {
     "rangeText": "range_text",
     "targetType": "target_type",
     "areaShape": "area_shape",
-    "areaSizeMeters": "area_size_meters",
     "radiusMeters": "radius_meters",
     "lengthMeters": "length_meters",
     "sideMeters": "side_meters",

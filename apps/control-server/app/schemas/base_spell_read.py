@@ -35,7 +35,6 @@ class BaseSpellRead(BaseModel):
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
     areaShape: Optional[str] = None
-    areaSizeMeters: Optional[int] = None  # DEPRECATED
     radiusMeters: Optional[float] = None
     lengthMeters: Optional[float] = None
     sideMeters: Optional[float] = None
