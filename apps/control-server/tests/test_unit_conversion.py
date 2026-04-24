@@ -90,7 +90,13 @@ class MetersToСellsConversionTests(unittest.TestCase):
         self.assertEqual(meters_to_cells(45), 30)
 
     def test_hail_of_thorns_radius_cells(self):
-        """Hail of Thorns: 5-ft radius → radiusMeters=1.5 → 1 cell."""
+        """Hail of Thorns: 5-ft burst = 1.5 m → 1 cell.
+
+        NOTE: hail_of_thorns does NOT carry areaShape in the catalog.
+        The area originates from the weapon hit target (auto-triggered),
+        not from a freely chosen anchor cell. This test only verifies
+        the math; the targeting guard lives in HailOfThornsGuardTests.
+        """
         self.assertEqual(meters_to_cells(1.5), 1)
 
     # ------------------------------------------------------------------
@@ -98,11 +104,13 @@ class MetersToСellsConversionTests(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_all_canonical_values_divide_evenly(self):
-        """Every canonical AoE dimension is an exact multiple of 1.5 m.
-        None of them should produce a fractional intermediate result.
+        """Every explicit AoE dimension in the seed catalog is an exact
+        multiple of 1.5 m. None should produce a fractional cell count.
+
+        Note: hail_of_thorns is intentionally absent — it has no areaShape
+        in the catalog (area triggers on hit, not via anchor selection).
         """
         canonical = {
-            "hail_of_thorns radius": 1.5,
             "burning_hands length": 4.5,
             "thunderwave side": 4.5,
             "fireball radius": 6.0,

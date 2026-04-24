@@ -347,10 +347,51 @@ class CanonicalSpellDimensionTests(unittest.TestCase):
         self.assertIsNotNone(spec)
         self.assertEqual(spec["size_meters"], 6.0)
 
-    def test_hail_of_thorns_sphere_1_5m(self):
-        """Hail of Thorns: 5-ft radius → radiusMeters=1.5 → size_meters=1.5."""
-        ctx = self._ctx("sphere", 0, radius_meters=1.5)
+class HailOfThornsGuardTests(unittest.TestCase):
+    """Hail of Thorns has a 5-ft (1.5m) burst on weapon hit, but the area
+    originates from the *hit target*, not from a freely chosen anchor cell.
+    The spell must NOT be pushed through the generic AoE targeting pipeline
+    (which requires an anchor cell selection by the player).
+
+    Guard: as long as hail_of_thorns carries no area_shape in the spell
+    context, _resolve_supported_area_spell_spec returns None and the cast
+    falls through to the single-target path.
+    """
+
+    def _hail_ctx(self) -> dict:
+        """Context matching the seed: targetType=self, no area_shape."""
+        return {
+            "target_type": "self",
+            "area_shape": None,
+            "radius_meters": None,
+            "length_meters": None,
+            "side_meters": None,
+            "area_size_meters": None,
+            "range_meters": 0,
+            "spell_canonical_key": "hail_of_thorns",
+        }
+
+    def test_hail_of_thorns_no_area_shape_returns_none_spec(self):
+        """Without area_shape the AoE resolver returns None → single-target cast."""
+        spec = CombatService._resolve_supported_area_spell_spec(self._hail_ctx())
+        self.assertIsNone(
+            spec,
+            "hail_of_thorns must not produce an area spec — it has no area_shape "
+            "in the catalog (AoE is auto-triggered on hit, not anchor-selected).",
+        )
+
+    def test_hail_of_thorns_accidental_area_shape_would_break(self):
+        """Regression guard: if area_shape were accidentally added to the catalog,
+        the resolver WOULD return a spec, which would force anchor selection.
+        This test documents the hazard so the next person understands why
+        area_shape must stay absent from hail_of_thorns."""
+        ctx = dict(self._hail_ctx())
+        ctx["area_shape"] = "sphere"
+        ctx["radius_meters"] = 1.5
         spec = CombatService._resolve_supported_area_spell_spec(ctx)
-        self.assertIsNotNone(spec)
-        self.assertEqual(spec["shape"], "sphere")
-        self.assertEqual(spec["size_meters"], 1.5)
+        # This DOES resolve — proof that adding areaShape would break the spell.
+        self.assertIsNotNone(
+            spec,
+            "If area_shape is set, the resolver produces a spec and the combat "
+            "pipeline demands an anchor cell — wrong behavior for hail_of_thorns.",
+        )
