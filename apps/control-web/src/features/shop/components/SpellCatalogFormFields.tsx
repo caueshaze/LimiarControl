@@ -70,7 +70,9 @@ export const SpellCatalogFormFields = ({
   const showUpcastMaxLevelField = Boolean(state.upcastMode);
   const showEffectScalingFields = state.upcastMode === "effect_scaling";
   const showExtraEffectFields = state.upcastMode === "extra_effect";
-  const showAreaSizeField = Boolean(state.areaShape);
+  const showRadiusField = state.areaShape === "sphere" || state.areaShape === "cylinder";
+  const showLengthField = state.areaShape === "cone" || state.areaShape === "line";
+  const showSideField = state.areaShape === "cube";
 
   return (
     <>
@@ -245,19 +247,47 @@ export const SpellCatalogFormFields = ({
         </SpellCatalogField>
       </div>
 
-      {showAreaSizeField ? (
+      {(showRadiusField || showLengthField || showSideField) ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <SpellCatalogField label={t("catalog.spells.form.areaSizeMeters")}>
-            <input
-              type="number"
-              min={1}
-              value={state.areaSizeMeters}
-              onChange={(event) =>
-                setState((current) => ({ ...current, areaSizeMeters: event.target.value }))
-              }
-              className={fieldClassName}
-            />
-          </SpellCatalogField>
+          {showRadiusField && (
+            <SpellCatalogField label={t("catalog.spells.form.radiusMeters")}>
+              <input
+                type="number"
+                min={1}
+                value={state.radiusMeters}
+                onChange={(event) =>
+                  setState((current) => ({ ...current, radiusMeters: event.target.value }))
+                }
+                className={fieldClassName}
+              />
+            </SpellCatalogField>
+          )}
+          {showLengthField && (
+            <SpellCatalogField label={t("catalog.spells.form.lengthMeters")}>
+              <input
+                type="number"
+                min={1}
+                value={state.lengthMeters}
+                onChange={(event) =>
+                  setState((current) => ({ ...current, lengthMeters: event.target.value }))
+                }
+                className={fieldClassName}
+              />
+            </SpellCatalogField>
+          )}
+          {showSideField && (
+            <SpellCatalogField label={t("catalog.spells.form.sideMeters")}>
+              <input
+                type="number"
+                min={1}
+                value={state.sideMeters}
+                onChange={(event) =>
+                  setState((current) => ({ ...current, sideMeters: event.target.value }))
+                }
+                className={fieldClassName}
+              />
+            </SpellCatalogField>
+          )}
         </div>
       ) : null}
 

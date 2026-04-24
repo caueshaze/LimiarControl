@@ -78,6 +78,34 @@ class AreaTargetingMixin:
             return normalized
         return None
 
+    # Maps area_shape to the explicit dimension field in the spell context dict.
+    _SHAPE_DIMENSION_FIELD: dict[str, str] = {
+        "sphere": "radius_meters",
+        "cylinder": "radius_meters",
+        "cone": "length_meters",
+        "line": "length_meters",
+        "cube": "side_meters",
+    }
+
+    @classmethod
+    def _resolve_dimension_for_shape(
+        cls,
+        spell_context: dict[str, Any],
+        area_shape: str,
+    ) -> int | None:
+        """Return the explicit dimension for the given area shape.
+
+        This is the ONLY function permitted to read the deprecated
+        ``area_size_meters`` key — and only as a last-resort fallback when all
+        new explicit fields are absent (spells seeded before the migration).
+        """
+        field_name = cls._SHAPE_DIMENSION_FIELD.get(area_shape)
+        if field_name:
+            explicit = cls._safe_optional_int(spell_context.get(field_name))
+            if explicit is not None:
+                return explicit
+        return cls._safe_optional_int(spell_context.get("area_size_meters"))
+
     @classmethod
     def _resolve_supported_area_spell_spec(
         cls,
@@ -88,14 +116,13 @@ class AreaTargetingMixin:
             return None
 
         range_meters = cls._safe_optional_int(spell_context.get("range_meters"))
-
-        area_size_meters = cls._safe_optional_int(spell_context.get("area_size_meters"))
-        if area_size_meters is None or area_size_meters <= 0:
+        dimension = cls._resolve_dimension_for_shape(spell_context, area_shape)
+        if dimension is None or dimension <= 0:
             return None
 
         return {
             "shape": area_shape,
-            "size_meters": area_size_meters,
+            "size_meters": dimension,
             "range_meters": range_meters,
         }
 

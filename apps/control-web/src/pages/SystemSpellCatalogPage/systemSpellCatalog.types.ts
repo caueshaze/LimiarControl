@@ -42,7 +42,10 @@ export type FormState = {
   rangeMeters: string;
   targetType: TargetType | "";
   areaShape: AreaShape | "";
-  areaSizeMeters: string;
+  areaSizeMeters: string; // kept for legacy hydration only
+  radiusMeters: string;
+  lengthMeters: string;
+  sideMeters: string;
   duration: string;
   componentsJson: string[];
   materialComponentText: string;

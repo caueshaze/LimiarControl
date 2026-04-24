@@ -170,3 +170,110 @@ class ResolveAreaSpellSpecTests(unittest.TestCase):
         self.assertEqual(spec["shape"], "cylinder")
         self.assertEqual(spec["size_meters"], 5)
         self.assertEqual(spec["range_meters"], 18)
+
+
+class ExplicitDimensionTests(unittest.TestCase):
+    """Tests for the new explicit dimension fields (radius_meters, length_meters, side_meters).
+
+    These verify that the new fields take precedence over the deprecated
+    area_size_meters fallback, and that the fallback still works when only
+    area_size_meters is present.
+    """
+
+    def test_sphere_explicit_radius_meters(self):
+        ctx = {
+            "area_shape": "sphere",
+            "radius_meters": 6,
+            "range_meters": 45,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "sphere")
+        self.assertEqual(spec["size_meters"], 6)
+
+    def test_cone_explicit_length_meters(self):
+        ctx = {
+            "area_shape": "cone",
+            "length_meters": 9,
+            "range_meters": 0,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cone")
+        self.assertEqual(spec["size_meters"], 9)
+
+    def test_cube_explicit_side_meters(self):
+        ctx = {
+            "area_shape": "cube",
+            "side_meters": 4,
+            "range_meters": 0,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cube")
+        self.assertEqual(spec["size_meters"], 4)
+
+    def test_cylinder_explicit_radius_meters(self):
+        ctx = {
+            "area_shape": "cylinder",
+            "radius_meters": 3,
+            "range_meters": 9,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cylinder")
+        self.assertEqual(spec["size_meters"], 3)
+
+    def test_explicit_takes_priority_over_area_size_meters(self):
+        """When both radius_meters and area_size_meters are set, the explicit
+        field wins."""
+        ctx = {
+            "area_shape": "sphere",
+            "radius_meters": 10,
+            "area_size_meters": 6,
+            "range_meters": 45,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["size_meters"], 10)
+
+    def test_all_new_fields_none_falls_back_to_area_size_meters(self):
+        """Legacy spells with only area_size_meters still resolve correctly."""
+        ctx = {
+            "area_shape": "sphere",
+            "radius_meters": None,
+            "length_meters": None,
+            "side_meters": None,
+            "area_size_meters": 6,
+            "range_meters": 45,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["size_meters"], 6)
+
+    def test_all_dimension_fields_none_returns_none(self):
+        """No dimension of any kind → spec is None."""
+        ctx = {
+            "area_shape": "sphere",
+            "radius_meters": None,
+            "length_meters": None,
+            "side_meters": None,
+            "area_size_meters": None,
+            "range_meters": 45,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNone(spec)
+
+    def test_wrong_shape_field_ignored_falls_back_correctly(self):
+        """If the wrong explicit field is set for the shape (shouldn't happen
+        in practice), fall back to area_size_meters."""
+        ctx = {
+            "area_shape": "sphere",
+            "radius_meters": None,
+            "side_meters": 4,       # side belongs to cube, not sphere
+            "area_size_meters": 6,
+            "range_meters": 45,
+        }
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["size_meters"], 6)  # fallback used

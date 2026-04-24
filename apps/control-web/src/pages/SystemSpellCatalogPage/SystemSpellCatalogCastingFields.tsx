@@ -26,7 +26,9 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
     value === "DND5E" ? "D&D 5e" : localizeSpellAdminValue(value, locale);
 
   const showMaterialComponent = form.componentsJson.includes("M");
-  const showAreaSize = Boolean(form.areaShape);
+  const showRadiusField = form.areaShape === "sphere" || form.areaShape === "cylinder";
+  const showLengthField = form.areaShape === "cone" || form.areaShape === "line";
+  const showSideField = form.areaShape === "cube";
 
   return (
     <>
@@ -119,23 +121,59 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
         </label>
       </div>
 
-      {showAreaSize && (
+      {(showRadiusField || showLengthField || showSideField) && (
         <div className="grid gap-4 md:grid-cols-3">
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Tamanho da área (m)
-            </span>
-            <input
-              type="number"
-              min={1}
-              value={form.areaSizeMeters}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, areaSizeMeters: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder="0"
-            />
-          </label>
+          {showRadiusField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Raio (m)
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={form.radiusMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, radiusMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 6"
+              />
+            </label>
+          )}
+          {showLengthField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Comprimento (m)
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={form.lengthMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, lengthMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 9"
+              />
+            </label>
+          )}
+          {showSideField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Lado (m)
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={form.sideMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, sideMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 4"
+              />
+            </label>
+          )}
         </div>
       )}
 

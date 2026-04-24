@@ -76,6 +76,9 @@ export const createEmptyForm = (): FormState => ({
   targetType: "",
   areaShape: "",
   areaSizeMeters: "",
+  radiusMeters: "",
+  lengthMeters: "",
+  sideMeters: "",
   duration: "",
   componentsJson: [],
   materialComponentText: "",
@@ -118,7 +121,25 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   targetType: spell.targetType ?? "",
   areaShape: spell.areaShape ?? "",
-  areaSizeMeters: spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "",
+  areaSizeMeters: "",
+  radiusMeters:
+    spell.radiusMeters != null
+      ? String(spell.radiusMeters)
+      : spell.areaShape === "sphere" || spell.areaShape === "cylinder"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  lengthMeters:
+    spell.lengthMeters != null
+      ? String(spell.lengthMeters)
+      : spell.areaShape === "cone" || spell.areaShape === "line"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  sideMeters:
+    spell.sideMeters != null
+      ? String(spell.sideMeters)
+      : spell.areaShape === "cube"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
   duration: spell.duration ?? "",
   componentsJson: spell.componentsJson ?? [],
   materialComponentText: spell.materialComponentText ?? "",
@@ -165,10 +186,20 @@ export const buildPayload = (
   if (rangeMeters.value !== undefined && rangeMeters.value < 0)
     return { error: "Alcance (m) não pode ser negativo." };
 
-  const areaSizeMeters = parseOptionalInteger(form.areaSizeMeters, "Tamanho da área (m)");
-  if (areaSizeMeters.error) return { error: areaSizeMeters.error };
-  if (areaSizeMeters.value !== undefined && areaSizeMeters.value < 1)
-    return { error: "Tamanho da área (m) deve ser pelo menos 1." };
+  const radiusMeters = parseOptionalInteger(form.radiusMeters, "Raio (m)");
+  if (radiusMeters.error) return { error: radiusMeters.error };
+  if (radiusMeters.value !== undefined && radiusMeters.value < 1)
+    return { error: "Raio (m) deve ser pelo menos 1." };
+
+  const lengthMeters = parseOptionalInteger(form.lengthMeters, "Comprimento (m)");
+  if (lengthMeters.error) return { error: lengthMeters.error };
+  if (lengthMeters.value !== undefined && lengthMeters.value < 1)
+    return { error: "Comprimento (m) deve ser pelo menos 1." };
+
+  const sideMeters = parseOptionalInteger(form.sideMeters, "Lado (m)");
+  if (sideMeters.error) return { error: sideMeters.error };
+  if (sideMeters.value !== undefined && sideMeters.value < 1)
+    return { error: "Lado (m) deve ser pelo menos 1." };
 
   const upcastFlat = parseOptionalInteger(form.upcastFlat, "Upcast flat");
   if (upcastFlat.error) return { error: upcastFlat.error };
@@ -225,7 +256,18 @@ export const buildPayload = (
       rangeText: deriveRangeText(form.targetType, form.rangeMeters),
       targetType: form.targetType || null,
       areaShape: form.areaShape || null,
-      areaSizeMeters: areaSizeMeters.value ?? null,
+      radiusMeters:
+        form.areaShape === "sphere" || form.areaShape === "cylinder"
+          ? radiusMeters.value ?? null
+          : null,
+      lengthMeters:
+        form.areaShape === "cone" || form.areaShape === "line"
+          ? lengthMeters.value ?? null
+          : null,
+      sideMeters:
+        form.areaShape === "cube"
+          ? sideMeters.value ?? null
+          : null,
       duration: normalizeOptionalText(form.duration) ?? null,
       componentsJson: form.componentsJson.length > 0 ? form.componentsJson : null,
       materialComponentText: form.componentsJson.includes("M")

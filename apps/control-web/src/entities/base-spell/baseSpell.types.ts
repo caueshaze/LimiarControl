@@ -158,8 +158,14 @@ export type BaseSpell = {
   rangeText?: string | null;
   targetType?: TargetType | null;
   areaShape?: AreaShape | null;
-  /** AoE radius / side-length in meters (sphere/cone/line/cube). Null for non-area spells. */
+  /** @deprecated Use radiusMeters, lengthMeters, or sideMeters. */
   areaSizeMeters?: number | null;
+  /** AoE radius in meters — sphere, cylinder. */
+  radiusMeters?: number | null;
+  /** AoE length in meters — cone, line. */
+  lengthMeters?: number | null;
+  /** AoE side length in meters — cube. */
+  sideMeters?: number | null;
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;
@@ -226,7 +232,11 @@ export type BaseSpellWritePayload = {
   rangeText?: string | null;
   targetType?: TargetType | null;
   areaShape?: AreaShape | null;
+  /** @deprecated Use radiusMeters, lengthMeters, or sideMeters. */
   areaSizeMeters?: number | null;
+  radiusMeters?: number | null;
+  lengthMeters?: number | null;
+  sideMeters?: number | null;
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;

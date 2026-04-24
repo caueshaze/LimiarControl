@@ -104,6 +104,7 @@ class CampaignSpellCreateRouteTests(unittest.TestCase):
             range_text="18 m",
             target_type=None, area_shape=None,
             area_size_meters=None,
+            radius_meters=None, length_meters=None, side_meters=None,
             duration="Instantaneous",
             components_json=["V", "S"],
             material_component_text=None,

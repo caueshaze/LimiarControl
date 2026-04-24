@@ -426,9 +426,9 @@
       "requiresPointSight": false,
       "requiresPointEffect": true,
       "coverAppliesToSave": "physical",
-      "areaSizeMeters": 4,
       "targetType": "ranged",
-      "areaShape": "cone"
+      "areaShape": "cone",
+      "lengthMeters": 4
     },
     {
       "system": "DND5E",
@@ -599,9 +599,9 @@
       "requiresPointSight": false,
       "requiresPointEffect": true,
       "coverAppliesToSave": "physical",
-      "areaSizeMeters": 6,
       "targetType": "ranged",
-      "areaShape": "sphere"
+      "areaShape": "sphere",
+      "radiusMeters": 6
     },
     {
       "system": "DND5E",
@@ -796,7 +796,8 @@
       "requiresPointSight": false,
       "requiresPointEffect": true,
       "targetType": "ranged",
-      "areaShape": "sphere"
+      "areaShape": "sphere",
+      "radiusMeters": 6
     },
     {
       "system": "DND5E",
@@ -869,7 +870,8 @@
       "requiresPointSight": false,
       "requiresPointEffect": true,
       "targetType": "ranged",
-      "areaShape": "sphere"
+      "areaShape": "sphere",
+      "radiusMeters": 6
     },
     {
       "system": "DND5E",
@@ -985,9 +987,9 @@
       "requiresPointSight": false,
       "requiresPointEffect": true,
       "coverAppliesToSave": "physical",
-      "areaSizeMeters": 4,
       "targetType": "ranged",
-      "areaShape": "cube"
+      "areaShape": "cube",
+      "sideMeters": 4
     },
     {
       "system": "DND5E",

@@ -87,7 +87,19 @@ class CampaignSpell(SQLModel, table=True):
     area_size_meters: Optional[int] = Field(
         default=None,
         sa_column=Column(Integer, nullable=True),
-    )  # AoE radius / side length in meters (sphere/cone/line/cube/cylinder)
+    )  # DEPRECATED — use radius_meters / length_meters / side_meters
+    radius_meters: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, nullable=True),
+    )  # AoE radius in meters — sphere, cylinder
+    length_meters: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, nullable=True),
+    )  # AoE length in meters — cone, line
+    side_meters: Optional[int] = Field(
+        default=None,
+        sa_column=Column(Integer, nullable=True),
+    )  # AoE side length in meters — cube
     duration: Optional[str] = None
     components_json: Optional[list[str]] = Field(
         default=None,
