@@ -262,7 +262,6 @@ class SpellContextResolveMixin:
             "target_type": getattr(catalog_spell, "target_type", None),
             "area_shape": getattr(catalog_spell, "area_shape", None),
             "range_meters": getattr(catalog_spell, "range_meters", None),
-            "area_size_meters": getattr(catalog_spell, "area_size_meters", None),
             "radius_meters": getattr(catalog_spell, "radius_meters", None),
             "length_meters": getattr(catalog_spell, "length_meters", None),
             "side_meters": getattr(catalog_spell, "side_meters", None),

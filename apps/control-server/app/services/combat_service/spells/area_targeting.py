@@ -104,20 +104,13 @@ class AreaTargetingMixin:
     ) -> float | None:
         """Return the explicit dimension for the given area shape.
 
-        This is the ONLY function permitted to read the deprecated
-        ``area_size_meters`` key — and only as a last-resort fallback when all
-        new explicit fields are absent (spells seeded before the migration).
-
-        Uses _safe_optional_number (not _safe_optional_int) so that float DB
-        values such as 4.5m and 1.5m are preserved without truncation.
+        Uses _safe_optional_number so that float DB values such as 4.5m
+        and 1.5m are preserved without truncation.
         """
         field_name = cls._SHAPE_DIMENSION_FIELD.get(area_shape)
         if field_name:
-            explicit = cls._safe_optional_number(spell_context.get(field_name))
-            if explicit is not None:
-                return explicit
-        # Legacy fallback: area_size_meters is always an integer column.
-        return cls._safe_optional_int(spell_context.get("area_size_meters"))
+            return cls._safe_optional_number(spell_context.get(field_name))
+        return None
 
     @classmethod
     def _resolve_supported_area_spell_spec(

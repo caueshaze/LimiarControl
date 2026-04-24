@@ -84,10 +84,6 @@ class CampaignSpell(SQLModel, table=True):
     range_text: Optional[str] = None
     target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     area_shape: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
-    area_size_meters: Optional[int] = Field(
-        default=None,
-        sa_column=Column(Integer, nullable=True),
-    )  # DEPRECATED — use radius_meters / length_meters / side_meters
     radius_meters: Optional[float] = Field(
         default=None,
         sa_column=Column(Float, nullable=True),
