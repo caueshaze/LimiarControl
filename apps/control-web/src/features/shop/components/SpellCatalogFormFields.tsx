@@ -250,7 +250,7 @@ export const SpellCatalogFormFields = ({
           <SpellCatalogField label={t("catalog.spells.form.areaSizeMeters")}>
             <input
               type="number"
-              min={0}
+              min={1}
               value={state.areaSizeMeters}
               onChange={(event) =>
                 setState((current) => ({ ...current, areaSizeMeters: event.target.value }))

@@ -167,8 +167,8 @@ export const buildPayload = (
 
   const areaSizeMeters = parseOptionalInteger(form.areaSizeMeters, "Tamanho da área (m)");
   if (areaSizeMeters.error) return { error: areaSizeMeters.error };
-  if (areaSizeMeters.value !== undefined && areaSizeMeters.value < 0)
-    return { error: "Tamanho da área (m) não pode ser negativo." };
+  if (areaSizeMeters.value !== undefined && areaSizeMeters.value < 1)
+    return { error: "Tamanho da área (m) deve ser pelo menos 1." };
 
   const upcastFlat = parseOptionalInteger(form.upcastFlat, "Upcast flat");
   if (upcastFlat.error) return { error: upcastFlat.error };

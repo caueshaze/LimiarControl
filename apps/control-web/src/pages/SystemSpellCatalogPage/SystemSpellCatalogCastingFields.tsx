@@ -127,7 +127,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
             </span>
             <input
               type="number"
-              min={0}
+              min={1}
               value={form.areaSizeMeters}
               onChange={(event) =>
                 setForm((c) => ({ ...c, areaSizeMeters: event.target.value }))

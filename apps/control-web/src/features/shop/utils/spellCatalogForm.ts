@@ -244,7 +244,7 @@ export const buildSpellUpdatePayload = (
   rangeText: toNullableText(state.rangeText),
   targetType: toNullableText(state.targetType) as TargetType | null,
   areaShape: toNullableText(state.areaShape) as AreaShape | null,
-  areaSizeMeters: toNullableInteger(state.areaSizeMeters),
+  areaSizeMeters: toNullableInteger(state.areaSizeMeters) || null,
   duration: toNullableText(state.duration),
   componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
   materialComponentText: state.componentsJson.includes("M")
