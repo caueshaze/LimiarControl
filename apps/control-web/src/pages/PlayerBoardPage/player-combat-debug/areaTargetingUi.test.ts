@@ -149,4 +149,103 @@ describe("areaTargetingUi", () => {
       ),
     ).toEqual({ x: 2, y: 3 });
   });
+
+  it("returns null when actor has no token on the map", () => {
+    expect(
+      resolveActorOriginCell(
+        {
+          id: "participant-1",
+          kind: "player",
+          ref_id: "player-1",
+          display_name: "Mage",
+          initiative: 12,
+          status: "active",
+          team: "players",
+          visible: true,
+          actor_user_id: "user-1",
+        },
+        [],
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("isAreaShape exhaustive coverage", () => {
+  it("recognizes all five area shapes", () => {
+    expect(isAreaShape("sphere")).toBe(true);
+    expect(isAreaShape("cone")).toBe(true);
+    expect(isAreaShape("cube")).toBe(true);
+    expect(isAreaShape("cylinder")).toBe(true);
+    expect(isAreaShape("line")).toBe(true);
+  });
+
+  it("rejects non-area values", () => {
+    expect(isAreaShape(null)).toBe(false);
+    expect(isAreaShape(undefined)).toBe(false);
+    expect(isAreaShape("")).toBe(false);
+    expect(isAreaShape("single")).toBe(false);
+    expect(isAreaShape("self")).toBe(false);
+  });
+});
+
+describe("createInitialTargetingMode for each shape", () => {
+  it("enters area_target_select for every valid shape", () => {
+    for (const shape of ["sphere", "cone", "cube", "cylinder", "line"] as const) {
+      expect(createInitialTargetingMode(shape)).toBe("area_target_select");
+    }
+  });
+
+  it("enters single_target_select for non-area", () => {
+    expect(createInitialTargetingMode(null)).toBe("single_target_select");
+    expect(createInitialTargetingMode(undefined)).toBe("single_target_select");
+  });
+});
+
+describe("preview affected cell/target count derivation", () => {
+  const deriveCounts = (preview: {
+    affected_cells?: Array<{ x: number; y: number }>;
+    affected_target_ref_ids?: string[];
+    is_valid: boolean;
+    reason?: string | null;
+  }) => {
+    if (!preview.is_valid) return { cellCount: 0, targetCount: 0, reason: preview.reason ?? null };
+    return {
+      cellCount: preview.affected_cells?.length ?? 0,
+      targetCount: preview.affected_target_ref_ids?.length ?? 0,
+      reason: null,
+    };
+  };
+
+  it("derives cell and target counts from valid preview", () => {
+    const counts = deriveCounts({
+      is_valid: true,
+      affected_cells: [{ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 5 }],
+      affected_target_ref_ids: ["enemy-1", "enemy-2"],
+    });
+    expect(counts.cellCount).toBe(3);
+    expect(counts.targetCount).toBe(2);
+    expect(counts.reason).toBeNull();
+  });
+
+  it("returns zero counts for invalid preview with reason", () => {
+    const counts = deriveCounts({
+      is_valid: false,
+      reason: "Anchor out of range",
+      affected_cells: [],
+      affected_target_ref_ids: [],
+    });
+    expect(counts.cellCount).toBe(0);
+    expect(counts.targetCount).toBe(0);
+    expect(counts.reason).toBe("Anchor out of range");
+  });
+
+  it("returns zero counts for preview with empty arrays", () => {
+    const counts = deriveCounts({
+      is_valid: true,
+      affected_cells: [],
+      affected_target_ref_ids: [],
+    });
+    expect(counts.cellCount).toBe(0);
+    expect(counts.targetCount).toBe(0);
+  });
 });

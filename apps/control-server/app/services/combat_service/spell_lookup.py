@@ -10,7 +10,7 @@ from app.services.base_spells import get_base_spell_by_canonical_key
 
 from .exceptions import CombatServiceError
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app.services.combat_service.core")
 
 
 class CombatSpellLookupMixin:

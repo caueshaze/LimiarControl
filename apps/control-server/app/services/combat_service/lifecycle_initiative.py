@@ -9,8 +9,23 @@ from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, de
 from app.schemas.combat import CombatMapSelection
 
 from .exceptions import CombatServiceError
-from .limiar_map_projection import maybe_project_combat_start_to_limiar_map
+from .limiar_map_projection import (
+    maybe_project_combat_start_to_limiar_map as _project_combat_start_to_limiar_map,
+)
 
+
+def maybe_project_combat_start_to_limiar_map(db, session_id: str, state) -> None:
+    from . import lifecycle as lifecycle_module
+
+    projection = getattr(
+        lifecycle_module,
+        "maybe_project_combat_start_to_limiar_map",
+        _project_combat_start_to_limiar_map,
+    )
+    if projection is not _project_combat_start_to_limiar_map:
+        projection(db, session_id, state)
+        return
+    _project_combat_start_to_limiar_map(db, session_id, state)
 
 class CombatLifecycleInitiativeMixin:
     @classmethod

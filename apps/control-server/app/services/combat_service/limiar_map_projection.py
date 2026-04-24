@@ -168,6 +168,14 @@ class LimiarMapCombatProjectionService:
         sync_entries, spawn_entries = build_sync_entries(
             db, session_id, state.participants, map_state,
         )
+        if not sync_entries and spawn_entries and map_state.tokens:
+            logger.info(
+                "LimiarMap syncTokens skipped for session_id=%s action_id=%s "
+                "(existing map tokens could not be linked confidently)",
+                session_id,
+                action_id,
+            )
+            return latest_map_state
         if not sync_entries and not spawn_entries:
             logger.info(
                 "LimiarMap syncTokens skipped for session_id=%s action_id=%s (no resolvable links)",

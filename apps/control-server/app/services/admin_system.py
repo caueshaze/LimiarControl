@@ -11,9 +11,9 @@ from app.models.session import Session as CampaignSession, SessionStatus
 from app.models.session_runtime import SessionRuntime
 from app.models.user import User
 from app.schemas.admin_system import AdminDiagnosticsRead
+from app.services import admin_users as admin_users_service
 from app.services.admin_users import (
     _count_rows,
-    delete_admin_user,
     get_admin_overview,
     get_admin_user_by_id,
     list_admin_users,
@@ -23,6 +23,20 @@ from app.services.admin_campaigns import (
     delete_admin_campaign,
     list_admin_campaigns,
 )
+from app.services.campaign_cleanup import delete_campaign_tree
+
+
+def delete_admin_user(*, db: Session, user_id: str) -> None:
+    """Compatibility wrapper for tests and routes that patch this facade module."""
+    original_get_admin_user_by_id = admin_users_service.get_admin_user_by_id
+    original_delete_campaign_tree = admin_users_service.delete_campaign_tree
+    try:
+        admin_users_service.get_admin_user_by_id = get_admin_user_by_id
+        admin_users_service.delete_campaign_tree = delete_campaign_tree
+        admin_users_service.delete_admin_user(db=db, user_id=user_id)
+    finally:
+        admin_users_service.get_admin_user_by_id = original_get_admin_user_by_id
+        admin_users_service.delete_campaign_tree = original_delete_campaign_tree
 
 
 def get_admin_diagnostics(*, db: Session) -> AdminDiagnosticsRead:

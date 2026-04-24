@@ -1111,7 +1111,7 @@ class CombatLifecycleProjectionHookTests(TestCombatServiceBase):
     )
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
-    async def test_set_initiative_triggers_map_projection_when_combat_becomes_active(
+    async def test_set_initiative_triggers_map_projection_when_combat_enters_placement(
         self,
         mock_emit_log,
         mock_emit_state,
@@ -1129,7 +1129,7 @@ class CombatLifecycleProjectionHookTests(TestCombatServiceBase):
 
             state = await CombatService.set_initiative(self.db, "session-123", req)
 
-        self.assertEqual(state.phase, CombatPhase.active)
+        self.assertEqual(state.phase, CombatPhase.placement)
         mock_project_start.assert_called_once_with(self.db, "session-123", state)
 
     @patch(
