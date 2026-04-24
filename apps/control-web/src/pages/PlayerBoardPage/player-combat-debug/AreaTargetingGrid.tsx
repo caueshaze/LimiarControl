@@ -1,16 +1,19 @@
+import { useMemo } from "react";
 import { CombatMapFrame } from "../../../features/combat-ui/map/CombatMapFrame";
 import type { CombatMapPreviewState, CombatParticipant } from "../../../shared/api/combatRepo";
-import type { GridCell } from "./areaTargetingUi";
+import { formatAffectedTargetNames, resolveAffectedTargetNames, type GridCell } from "./areaTargetingUi";
 
 type Props = {
   actor: CombatParticipant;
   anchorCell: GridCell | null;
+  canRevealHiddenTargets?: boolean;
   mapError: string | null;
   mapLoading: boolean;
   mapState: CombatMapPreviewState | null;
   originCell: GridCell | null;
+  participants: CombatParticipant[];
   previewAffectedCellCount: number;
-  previewAffectedTargetCount: number;
+  previewAffectedTargetRefIds: string[];
   previewCells: GridCell[];
   previewError: string | null;
   previewLoading: boolean;
@@ -23,12 +26,14 @@ type Props = {
 export const AreaTargetingGrid = ({
   actor,
   anchorCell,
+  canRevealHiddenTargets = false,
   mapError,
   mapLoading,
   mapState,
   originCell,
+  participants,
   previewAffectedCellCount,
-  previewAffectedTargetCount,
+  previewAffectedTargetRefIds,
   previewCells,
   previewError,
   previewLoading,
@@ -37,6 +42,18 @@ export const AreaTargetingGrid = ({
   sessionId,
   onCellSelected,
 }: Props) => {
+  const affectedTargetNames = useMemo(
+    () =>
+      resolveAffectedTargetNames({
+        affectedTargetRefIds: previewAffectedTargetRefIds,
+        canRevealHiddenTargets,
+        participants,
+        tokens: mapState?.tokens ?? [],
+      }),
+    [canRevealHiddenTargets, mapState?.tokens, participants, previewAffectedTargetRefIds],
+  );
+  const affectedTargetText = formatAffectedTargetNames(affectedTargetNames);
+
   if (mapLoading) {
     return <p className="mt-4 text-sm text-slate-400">Carregando mapa...</p>;
   }
@@ -59,10 +76,13 @@ export const AreaTargetingGrid = ({
           {previewLoading
             ? "Atualizando preview..."
             : previewValid
-              ? `${previewAffectedCellCount} celulas · ${previewAffectedTargetCount} alvos`
+              ? `${previewAffectedCellCount} celulas · ${affectedTargetNames.length} alvos`
               : previewReason ?? "Sem preview"}
         </span>
       </div>
+      {!previewLoading && previewValid ? (
+        <p className="text-xs text-slate-300">{affectedTargetText}</p>
+      ) : null}
       <CombatMapFrame
         sessionId={sessionId}
         title="Mapa tatico"

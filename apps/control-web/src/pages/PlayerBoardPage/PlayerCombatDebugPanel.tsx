@@ -190,6 +190,7 @@ export const PlayerCombatDebugPanel = ({
           actorParticipantId={currentParticipant.id}
           onClose={closeSpellDialog}
           onResolved={handleSpellResolved}
+          participants={state.participants}
           sessionId={sessionId}
           spell={selectedSpell}
           spellDamageType={spellDamageType}

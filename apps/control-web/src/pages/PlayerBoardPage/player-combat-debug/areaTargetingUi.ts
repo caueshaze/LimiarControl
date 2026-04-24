@@ -32,6 +32,47 @@ export const getAnchorCombatantIdAtCell = (
 ): string | null =>
   tokens.find((token) => token.position.x === anchorCell.x && token.position.y === anchorCell.y)?.combatant_id ?? null;
 
+type ResolveAffectedTargetNamesParams = {
+  affectedTargetRefIds: string[];
+  canRevealHiddenTargets?: boolean;
+  participants: CombatParticipant[];
+  tokens: CombatMapPreviewToken[];
+  unknownTargetLabel?: string;
+};
+
+export const resolveAffectedTargetNames = ({
+  affectedTargetRefIds,
+  canRevealHiddenTargets = false,
+  participants,
+  tokens,
+  unknownTargetLabel = "Alvo desconhecido",
+}: ResolveAffectedTargetNamesParams): string[] =>
+  affectedTargetRefIds.flatMap((targetRefId) => {
+    const participant = participants.find((candidate) => candidate.ref_id === targetRefId);
+    const mayRevealParticipant = Boolean(participant && (canRevealHiddenTargets || participant.visible !== false));
+
+    if (!participant) {
+      if (!canRevealHiddenTargets) {
+        return [unknownTargetLabel];
+      }
+      const tokenLabel = tokens.find((token) => token.combatant_id === targetRefId)?.label?.trim();
+      return [tokenLabel || unknownTargetLabel];
+    }
+
+    if (!mayRevealParticipant) {
+      return [];
+    }
+
+    const tokenLabel = tokens.find((token) => token.combatant_id === targetRefId)?.label?.trim();
+    const participantName = participant.display_name.trim();
+    return [tokenLabel || participantName || unknownTargetLabel];
+  });
+
+export const formatAffectedTargetNames = (
+  targetNames: string[],
+  emptyLabel = "Nenhum alvo afetado",
+): string => (targetNames.length > 0 ? `Afetados: ${targetNames.join(", ")}` : emptyLabel);
+
 type BuildAreaPayloadParams = {
   actorParticipantId: string;
   spell: CombatSpellOption;

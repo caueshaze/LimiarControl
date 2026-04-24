@@ -22,8 +22,10 @@ import { useAreaTargeting } from "./useAreaTargeting";
 type Props = {
   actor: CombatParticipant;
   actorParticipantId: string;
+  canRevealHiddenTargets?: boolean;
   onClose: () => void;
   onResolved?: (result: CombatSpellResult) => void | Promise<void>;
+  participants: CombatParticipant[];
   sessionId: string;
   spell: CombatSpellOption;
   spellDamageType: string;
@@ -37,8 +39,10 @@ type Props = {
 export const PlayerSpellCastDialog = ({
   actor,
   actorParticipantId,
+  canRevealHiddenTargets = false,
   onClose,
   onResolved,
+  participants,
   sessionId,
   spell,
   spellDamageType,
@@ -315,12 +319,14 @@ export const PlayerSpellCastDialog = ({
           <AreaTargetingGrid
             actor={actor}
             anchorCell={anchorCell}
+            canRevealHiddenTargets={canRevealHiddenTargets}
             mapError={mapError}
             mapLoading={mapLoading}
             mapState={mapState}
             originCell={originCell}
+            participants={participants}
             previewAffectedCellCount={preview?.affected_cells.length ?? 0}
-            previewAffectedTargetCount={preview?.affected_target_ref_ids.length ?? 0}
+            previewAffectedTargetRefIds={preview?.affected_target_ref_ids ?? []}
             previewCells={preview?.affected_cells ?? []}
             previewError={previewError}
             previewLoading={previewLoading}
