@@ -42,9 +42,9 @@ class BaseSpellWrite(BaseModel):
     targetType: Optional[str] = None
     areaShape: Optional[str] = None
     areaSizeMeters: Optional[int] = None  # DEPRECATED — use radiusMeters / lengthMeters / sideMeters
-    radiusMeters: Optional[int] = None  # sphere, cylinder
-    lengthMeters: Optional[int] = None  # cone, line
-    sideMeters: Optional[int] = None    # cube
+    radiusMeters: Optional[float] = None  # sphere, cylinder
+    lengthMeters: Optional[float] = None  # cone, line
+    sideMeters: Optional[float] = None    # cube
     duration: Optional[str] = None
     componentsJson: Optional[list[str]] = None
     materialComponentText: Optional[str] = None
@@ -134,11 +134,11 @@ class BaseSpellWrite(BaseModel):
 
     @field_validator("radiusMeters", "lengthMeters", "sideMeters")
     @classmethod
-    def validate_explicit_dimension(cls, value: Optional[int]):
+    def validate_explicit_dimension(cls, value: Optional[float]):
         if value is None:
             return None
-        if value < 1:
-            raise ValueError("Area dimension must be at least 1")
+        if value <= 0:
+            raise ValueError("Area dimension must be greater than 0")
         return value
 
     @field_validator("classesJson", mode="before")

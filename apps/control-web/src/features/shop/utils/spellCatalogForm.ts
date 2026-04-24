@@ -125,6 +125,13 @@ const toNullableInteger = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const toNullableFloat = (value: string) => {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 const filterKnownSpellValues = (values: readonly string[] | null | undefined, allowed: Set<string>) =>
   (values ?? []).filter((value) => allowed.has(value));
 
@@ -246,15 +253,15 @@ export const buildSpellUpdatePayload = (
   areaShape: toNullableText(state.areaShape) as AreaShape | null,
   radiusMeters:
     state.areaShape === "sphere" || state.areaShape === "cylinder"
-      ? toNullableInteger(state.radiusMeters) || null
+      ? toNullableFloat(state.radiusMeters)
       : null,
   lengthMeters:
     state.areaShape === "cone" || state.areaShape === "line"
-      ? toNullableInteger(state.lengthMeters) || null
+      ? toNullableFloat(state.lengthMeters)
       : null,
   sideMeters:
     state.areaShape === "cube"
-      ? toNullableInteger(state.sideMeters) || null
+      ? toNullableFloat(state.sideMeters)
       : null,
   duration: toNullableText(state.duration),
   componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,

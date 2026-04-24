@@ -428,7 +428,7 @@
       "coverAppliesToSave": "physical",
       "targetType": "ranged",
       "areaShape": "cone",
-      "lengthMeters": 4
+      "lengthMeters": 4.5
     },
     {
       "system": "DND5E",
@@ -989,7 +989,7 @@
       "coverAppliesToSave": "physical",
       "targetType": "ranged",
       "areaShape": "cube",
-      "sideMeters": 4
+      "sideMeters": 4.5
     },
     {
       "system": "DND5E",

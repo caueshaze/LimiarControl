@@ -56,6 +56,18 @@ export const parseOptionalInteger = (
   return { value: parsed };
 };
 
+export const parseOptionalPositiveFloat = (
+  value: string,
+  label: string,
+): { value?: number; error?: string } => {
+  const normalized = value.trim();
+  if (!normalized) return {};
+  const parsed = parseFloat(normalized);
+  if (!Number.isFinite(parsed))
+    return { error: `${label} precisa ser um número válido.` };
+  return { value: parsed };
+};
+
 export const toggleListValue = (current: string[], value: string) =>
   current.includes(value)
     ? current.filter((entry) => entry !== value)
@@ -186,20 +198,20 @@ export const buildPayload = (
   if (rangeMeters.value !== undefined && rangeMeters.value < 0)
     return { error: "Alcance (m) não pode ser negativo." };
 
-  const radiusMeters = parseOptionalInteger(form.radiusMeters, "Raio (m)");
+  const radiusMeters = parseOptionalPositiveFloat(form.radiusMeters, "Raio (m)");
   if (radiusMeters.error) return { error: radiusMeters.error };
-  if (radiusMeters.value !== undefined && radiusMeters.value < 1)
-    return { error: "Raio (m) deve ser pelo menos 1." };
+  if (radiusMeters.value !== undefined && radiusMeters.value <= 0)
+    return { error: "Raio (m) deve ser maior que 0." };
 
-  const lengthMeters = parseOptionalInteger(form.lengthMeters, "Comprimento (m)");
+  const lengthMeters = parseOptionalPositiveFloat(form.lengthMeters, "Comprimento (m)");
   if (lengthMeters.error) return { error: lengthMeters.error };
-  if (lengthMeters.value !== undefined && lengthMeters.value < 1)
-    return { error: "Comprimento (m) deve ser pelo menos 1." };
+  if (lengthMeters.value !== undefined && lengthMeters.value <= 0)
+    return { error: "Comprimento (m) deve ser maior que 0." };
 
-  const sideMeters = parseOptionalInteger(form.sideMeters, "Lado (m)");
+  const sideMeters = parseOptionalPositiveFloat(form.sideMeters, "Lado (m)");
   if (sideMeters.error) return { error: sideMeters.error };
-  if (sideMeters.value !== undefined && sideMeters.value < 1)
-    return { error: "Lado (m) deve ser pelo menos 1." };
+  if (sideMeters.value !== undefined && sideMeters.value <= 0)
+    return { error: "Lado (m) deve ser maior que 0." };
 
   const upcastFlat = parseOptionalInteger(form.upcastFlat, "Upcast flat");
   if (upcastFlat.error) return { error: upcastFlat.error };

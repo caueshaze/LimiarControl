@@ -253,7 +253,8 @@ export const SpellCatalogFormFields = ({
             <SpellCatalogField label={t("catalog.spells.form.radiusMeters")}>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={state.radiusMeters}
                 onChange={(event) =>
                   setState((current) => ({ ...current, radiusMeters: event.target.value }))
@@ -266,7 +267,8 @@ export const SpellCatalogFormFields = ({
             <SpellCatalogField label={t("catalog.spells.form.lengthMeters")}>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={state.lengthMeters}
                 onChange={(event) =>
                   setState((current) => ({ ...current, lengthMeters: event.target.value }))
@@ -279,7 +281,8 @@ export const SpellCatalogFormFields = ({
             <SpellCatalogField label={t("catalog.spells.form.sideMeters")}>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={state.sideMeters}
                 onChange={(event) =>
                   setState((current) => ({ ...current, sideMeters: event.target.value }))

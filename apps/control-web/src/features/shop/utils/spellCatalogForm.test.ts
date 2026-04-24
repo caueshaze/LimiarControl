@@ -269,9 +269,9 @@ describe("spellCatalogForm", () => {
 
   it("hydrates sideMeters from new field for cube", () => {
     const state = createSpellEditorState(
-      createSpell({ areaShape: "cube", sideMeters: 4, areaSizeMeters: null }),
+      createSpell({ areaShape: "cube", sideMeters: 4.5, areaSizeMeters: null }),
     );
-    expect(state.sideMeters).toBe("4");
+    expect(state.sideMeters).toBe("4.5");
   });
 
   it("buildSpellUpdatePayload emits radiusMeters for sphere", () => {
@@ -298,10 +298,10 @@ describe("spellCatalogForm", () => {
 
   it("buildSpellUpdatePayload emits sideMeters for cube", () => {
     const state = createSpellEditorState(
-      createSpell({ areaShape: "cube", sideMeters: 4, areaSizeMeters: null }),
+      createSpell({ areaShape: "cube", sideMeters: 4.5, areaSizeMeters: null }),
     );
     const payload = buildSpellUpdatePayload(state);
-    expect(payload.sideMeters).toBe(4);
+    expect(payload.sideMeters).toBe(4.5);
     expect(payload.radiusMeters).toBeNull();
     expect(payload.lengthMeters).toBeNull();
   });
@@ -320,5 +320,29 @@ describe("spellCatalogForm", () => {
     expect(state.lengthMeters).toBe("");
     expect(state.sideMeters).toBe("");
     expect(state.areaSizeMeters).toBe("");
+  });
+
+  it("buildSpellUpdatePayload never serializes areaSizeMeters", () => {
+    // New spells must not send the deprecated field — the backend still accepts
+    // it for compat, but the frontend should stop emitting it so the contract
+    // is explicit-fields-only going forward.
+    const withArea = buildSpellUpdatePayload(
+      createSpellEditorState(createSpell({ areaShape: "sphere", radiusMeters: 6 })),
+    );
+    expect(Object.prototype.hasOwnProperty.call(withArea, "areaSizeMeters")).toBe(false);
+
+    const noArea = buildSpellUpdatePayload(
+      createSpellEditorState(createSpell({ areaShape: null })),
+    );
+    expect(Object.prototype.hasOwnProperty.call(noArea, "areaSizeMeters")).toBe(false);
+  });
+
+  it("buildSpellUpdatePayload accepts decimal dimension (4.5m = 3 cells clean)", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cone", lengthMeters: 4.5, areaSizeMeters: null }),
+    );
+    expect(state.lengthMeters).toBe("4.5");
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.lengthMeters).toBe(4.5);
   });
 });

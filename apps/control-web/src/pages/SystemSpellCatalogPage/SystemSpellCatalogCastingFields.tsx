@@ -130,7 +130,8 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
               </span>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={form.radiusMeters}
                 onChange={(event) =>
                   setForm((c) => ({ ...c, radiusMeters: event.target.value }))
@@ -147,13 +148,14 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
               </span>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={form.lengthMeters}
                 onChange={(event) =>
                   setForm((c) => ({ ...c, lengthMeters: event.target.value }))
                 }
                 className={`${inputClassName} mt-2`}
-                placeholder="ex: 9"
+                placeholder="ex: 4.5"
               />
             </label>
           )}
@@ -164,13 +166,14 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
               </span>
               <input
                 type="number"
-                min={1}
+                min={0.5}
+                step={0.5}
                 value={form.sideMeters}
                 onChange={(event) =>
                   setForm((c) => ({ ...c, sideMeters: event.target.value }))
                 }
                 className={`${inputClassName} mt-2`}
-                placeholder="ex: 4"
+                placeholder="ex: 4.5"
               />
             </label>
           )}

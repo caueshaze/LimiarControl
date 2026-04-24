@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, Enum as SAEnum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Enum as SAEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -146,17 +146,17 @@ class BaseSpell(SQLModel, table=True):
         default=None,
         sa_column=Column(Integer, nullable=True),
     )  # DEPRECATED — use radius_meters / length_meters / side_meters
-    radius_meters: Optional[int] = Field(
+    radius_meters: Optional[float] = Field(
         default=None,
-        sa_column=Column(Integer, nullable=True),
+        sa_column=Column(Float, nullable=True),
     )  # AoE radius in meters — sphere, cylinder
-    length_meters: Optional[int] = Field(
+    length_meters: Optional[float] = Field(
         default=None,
-        sa_column=Column(Integer, nullable=True),
+        sa_column=Column(Float, nullable=True),
     )  # AoE length in meters — cone, line
-    side_meters: Optional[int] = Field(
+    side_meters: Optional[float] = Field(
         default=None,
-        sa_column=Column(Integer, nullable=True),
+        sa_column=Column(Float, nullable=True),
     )  # AoE side length in meters — cube
     duration: Optional[str] = None  # editorial text
     components_json: Optional[list[str]] = Field(
