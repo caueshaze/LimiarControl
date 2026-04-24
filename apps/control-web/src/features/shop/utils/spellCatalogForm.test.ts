@@ -97,7 +97,7 @@ describe("spellCatalogForm", () => {
       castingTimeType: "bonus_action",
       rangeMeters: "18",
       rangeText: "18 m",
-      targetMode: "sphere",
+      targetType: "ranged", areaShape: "sphere",
       resolutionType: "damage",
       damageDice: "3d6",
       damageType: "Lightning",
@@ -126,7 +126,7 @@ describe("spellCatalogForm", () => {
         castingTime: "1 bonus action",
         rangeMeters: 18,
         rangeText: "18 m",
-        targetMode: "sphere",
+        targetType: "ranged", areaShape: "sphere",
         resolutionType: "damage",
         damageDice: "3d6",
         damageType: "Lightning",
@@ -158,7 +158,7 @@ describe("spellCatalogForm", () => {
       createSpell({
         castingTimeType: "special",
         castingTime: "When an ally falls to 0 HP",
-        targetMode: "ranged",
+        targetType: "ranged",
         resolutionType: "heal",
         healDice: "2d4",
         requiresTargetSight: null,
@@ -176,7 +176,7 @@ describe("spellCatalogForm", () => {
 
     expect(state.castingTimeType).toBe("special");
     expect(state.castingTime).toBe("When an ally falls to 0 HP");
-    expect(state.targetMode).toBe("ranged");
+    expect(state.targetType).toBe("ranged");
     expect(state.resolutionType).toBe("heal");
     expect(state.healDice).toBe("2d4");
     expect(state.requiresTargetSight).toBeNull();
@@ -195,7 +195,7 @@ describe("spellCatalogForm", () => {
         createSpell({
           castingTimeType: "special",
           castingTime: "When an ally falls to 0 HP",
-          targetMode: "ranged",
+          targetType: "ranged",
           resolutionType: "heal",
           healDice: "2d4",
           requiresTargetSight: null,
@@ -214,7 +214,7 @@ describe("spellCatalogForm", () => {
 
     expect(payload.castingTimeType).toBe("special");
     expect(payload.castingTime).toBe("When an ally falls to 0 HP");
-    expect(payload.targetMode).toBe("ranged");
+    expect(payload.targetType).toBe("ranged");
     expect(payload.resolutionType).toBe("heal");
     expect(payload.damageDice).toBeNull();
     expect(payload.healDice).toBe("2d4");
@@ -241,27 +241,108 @@ describe("spellCatalogForm", () => {
     expect(normalizeSpellCanonicalKey(" Détect Magic!!! ")).toBe("detect_magic");
   });
 
-  it("includes areaSizeMeters in the update payload when set", () => {
-    const payload = buildSpellUpdatePayload({
-      ...createSpellEditorState(createSpell({ targetMode: "sphere", areaSizeMeters: 6 })),
-    });
-    expect(payload.areaSizeMeters).toBe(6);
-  });
+  // --- explicit dimension fields ---
 
-  it("sends null for areaSizeMeters when the field is empty", () => {
-    const payload = buildSpellUpdatePayload({
-      ...createSpellEditorState(createSpell({ areaSizeMeters: null })),
-    });
-    expect(payload.areaSizeMeters).toBeNull();
-  });
-
-  it("hydrates areaSizeMeters into editor state from an existing spell", () => {
-    const state = createSpellEditorState(createSpell({ areaSizeMeters: 4 }));
-    expect(state.areaSizeMeters).toBe("4");
-  });
-
-  it("initializes areaSizeMeters as empty string for new spells", () => {
-    const state = createEmptySpellEditorState();
+  it("hydrates radiusMeters from new field for sphere", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "sphere", radiusMeters: 6, areaSizeMeters: null }),
+    );
+    expect(state.radiusMeters).toBe("6");
     expect(state.areaSizeMeters).toBe("");
+  });
+
+  it("falls back to areaSizeMeters for sphere when radiusMeters is absent", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "sphere", radiusMeters: null, areaSizeMeters: 6 }),
+    );
+    expect(state.radiusMeters).toBe("6");
+  });
+
+  it("hydrates lengthMeters from new field for cone", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cone", lengthMeters: 9, areaSizeMeters: null }),
+    );
+    expect(state.lengthMeters).toBe("9");
+    expect(state.radiusMeters).toBe("");
+    expect(state.sideMeters).toBe("");
+  });
+
+  it("hydrates sideMeters from new field for cube", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cube", sideMeters: 4.5, areaSizeMeters: null }),
+    );
+    expect(state.sideMeters).toBe("4.5");
+  });
+
+  it("buildSpellUpdatePayload emits radiusMeters for sphere", () => {
+    const state = {
+      ...createSpellEditorState(
+        createSpell({ areaShape: "sphere", radiusMeters: 6, areaSizeMeters: null }),
+      ),
+    };
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.radiusMeters).toBe(6);
+    expect(payload.lengthMeters).toBeNull();
+    expect(payload.sideMeters).toBeNull();
+  });
+
+  it("buildSpellUpdatePayload emits lengthMeters for cone", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cone", lengthMeters: 9, areaSizeMeters: null }),
+    );
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.lengthMeters).toBe(9);
+    expect(payload.radiusMeters).toBeNull();
+    expect(payload.sideMeters).toBeNull();
+  });
+
+  it("buildSpellUpdatePayload emits sideMeters for cube", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cube", sideMeters: 4.5, areaSizeMeters: null }),
+    );
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.sideMeters).toBe(4.5);
+    expect(payload.radiusMeters).toBeNull();
+    expect(payload.lengthMeters).toBeNull();
+  });
+
+  it("buildSpellUpdatePayload emits null dimension fields when no areaShape", () => {
+    const state = createSpellEditorState(createSpell({ areaShape: null }));
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.radiusMeters).toBeNull();
+    expect(payload.lengthMeters).toBeNull();
+    expect(payload.sideMeters).toBeNull();
+  });
+
+  it("initializes all dimension fields as empty string for new spells", () => {
+    const state = createEmptySpellEditorState();
+    expect(state.radiusMeters).toBe("");
+    expect(state.lengthMeters).toBe("");
+    expect(state.sideMeters).toBe("");
+    expect(state.areaSizeMeters).toBe("");
+  });
+
+  it("buildSpellUpdatePayload never serializes areaSizeMeters", () => {
+    // New spells must not send the deprecated field — the backend still accepts
+    // it for compat, but the frontend should stop emitting it so the contract
+    // is explicit-fields-only going forward.
+    const withArea = buildSpellUpdatePayload(
+      createSpellEditorState(createSpell({ areaShape: "sphere", radiusMeters: 6 })),
+    );
+    expect(Object.prototype.hasOwnProperty.call(withArea, "areaSizeMeters")).toBe(false);
+
+    const noArea = buildSpellUpdatePayload(
+      createSpellEditorState(createSpell({ areaShape: null })),
+    );
+    expect(Object.prototype.hasOwnProperty.call(noArea, "areaSizeMeters")).toBe(false);
+  });
+
+  it("buildSpellUpdatePayload accepts decimal dimension (4.5m = 3 cells clean)", () => {
+    const state = createSpellEditorState(
+      createSpell({ areaShape: "cone", lengthMeters: 4.5, areaSizeMeters: null }),
+    );
+    expect(state.lengthMeters).toBe("4.5");
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.lengthMeters).toBe(4.5);
   });
 });

@@ -2,10 +2,11 @@ import re
 import unicodedata
 
 from app.models.base_spell import (
+    AreaShape,
     CastingTimeType,
     ResolutionType,
     SpellSource,
-    TargetMode,
+    TargetType,
     UpcastMode,
 )
 
@@ -47,7 +48,8 @@ SPELL_SAVE_SUCCESS_OUTCOME_MAP = {
 }
 
 CASTING_TIME_TYPE_MAP = {member.value: member.value for member in CastingTimeType}
-TARGET_MODE_MAP = {member.value: member.value for member in TargetMode}
+TARGET_TYPE_MAP = {member.value: member.value for member in TargetType}
+AREA_SHAPE_MAP = {member.value: member.value for member in AreaShape}
 RESOLUTION_TYPE_MAP = {member.value: member.value for member in ResolutionType}
 RESOLUTION_TYPE_MAP.update(
     {

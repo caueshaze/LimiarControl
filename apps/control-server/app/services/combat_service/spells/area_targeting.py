@@ -79,23 +79,63 @@ class AreaTargetingMixin:
         return None
 
     @classmethod
+    def _safe_optional_number(cls, value: object) -> float | None:
+        """Accept int or float dimension values; reject None, bool, and non-numeric types."""
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        return None
+
+    # Maps area_shape to the explicit dimension field in the spell context dict.
+    _SHAPE_DIMENSION_FIELD: dict[str, str] = {
+        "sphere": "radius_meters",
+        "cylinder": "radius_meters",
+        "cone": "length_meters",
+        "line": "length_meters",
+        "cube": "side_meters",
+    }
+
+    @classmethod
+    def _resolve_dimension_for_shape(
+        cls,
+        spell_context: dict[str, Any],
+        area_shape: str,
+    ) -> float | None:
+        """Return the explicit dimension for the given area shape.
+
+        This is the ONLY function permitted to read the deprecated
+        ``area_size_meters`` key — and only as a last-resort fallback when all
+        new explicit fields are absent (spells seeded before the migration).
+
+        Uses _safe_optional_number (not _safe_optional_int) so that float DB
+        values such as 4.5m and 1.5m are preserved without truncation.
+        """
+        field_name = cls._SHAPE_DIMENSION_FIELD.get(area_shape)
+        if field_name:
+            explicit = cls._safe_optional_number(spell_context.get(field_name))
+            if explicit is not None:
+                return explicit
+        # Legacy fallback: area_size_meters is always an integer column.
+        return cls._safe_optional_int(spell_context.get("area_size_meters"))
+
+    @classmethod
     def _resolve_supported_area_spell_spec(
         cls,
         spell_context: dict[str, Any],
     ) -> dict[str, int | str] | None:
-        target_mode = cls._normalize_area_shape(spell_context.get("target_mode"))
-        if target_mode is None:
+        area_shape = cls._normalize_area_shape(spell_context.get("area_shape"))
+        if area_shape is None:
             return None
 
         range_meters = cls._safe_optional_int(spell_context.get("range_meters"))
-
-        area_size_meters = cls._safe_optional_int(spell_context.get("area_size_meters"))
-        if area_size_meters is None or area_size_meters <= 0:
+        dimension = cls._resolve_dimension_for_shape(spell_context, area_shape)
+        if dimension is None or dimension <= 0:
             return None
 
         return {
-            "shape": target_mode,
-            "size_meters": area_size_meters,
+            "shape": area_shape,
+            "size_meters": dimension,
             "range_meters": range_meters,
         }
 

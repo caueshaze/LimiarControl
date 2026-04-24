@@ -85,7 +85,7 @@ def _spell_intent(
     target_ref_id: str = "enemy-1",
     *,
     range_meters: int | None = None,
-    target_mode: str | None = None,
+    target_type: str | None = None,
     spell_mode: str = "spell_attack",
     requires_sight: bool = False,
 ) -> SpellCastIntent:
@@ -97,7 +97,7 @@ def _spell_intent(
         requested_target_ref_id=target_ref_id,
         spell_canonical_key="test_spell",
         spell_mode=spell_mode,
-        target_mode=target_mode,
+        target_type=target_type,
         range_meters=range_meters,
         requires_sight=requires_sight,
         requires_effect=False,
@@ -134,12 +134,12 @@ class TestDeriveMaxRangeMeters(unittest.TestCase):
         )
 
     def test_self_target_mode_returns_none(self):
-        r, fail = derive_max_range_meters(target_mode="self")
+        r, fail = derive_max_range_meters(target_type="self")
         self.assertIsNone(r)
         self.assertIsNone(fail)
 
     def test_touch_target_mode_returns_1_5(self):
-        r, fail = derive_max_range_meters(target_mode="touch")
+        r, fail = derive_max_range_meters(target_type="touch")
         self.assertAlmostEqual(r, TOUCH_RANGE_METERS)
         self.assertIsNone(fail)
 
@@ -178,12 +178,12 @@ class TestDeriveMaxRangeMeters(unittest.TestCase):
         self.assertIsNone(fail)
 
     def test_spell_ranged_with_range(self):
-        r, fail = derive_max_range_meters(range_meters=36, target_mode="ranged")
+        r, fail = derive_max_range_meters(range_meters=36, target_type="ranged")
         self.assertEqual(r, 36.0)
         self.assertIsNone(fail)
 
     def test_ranged_spell_without_range_meters_fails_safely(self):
-        r, fail = derive_max_range_meters(target_mode="ranged")
+        r, fail = derive_max_range_meters(target_type="ranged")
         self.assertIsNone(r)
         self.assertEqual(fail, SPELL_RANGE_NOT_CONFIGURED)
 
@@ -341,7 +341,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={},
         )
-        intent = _spell_intent(target_mode="self", target_ref_id="player-1")
+        intent = _spell_intent(target_type="self", target_ref_id="player-1")
         result = svc.validate(intent, state)
         self.assertTrue(result.is_valid)
 
@@ -351,7 +351,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={"player-1": {"enemy-1": 1.5}},
         )
-        intent = _spell_intent(target_mode="touch", range_meters=None)
+        intent = _spell_intent(target_type="touch", range_meters=None)
         result = svc.validate(intent, state)
         self.assertTrue(result.is_valid)
         self.assertTrue(result.diagnostics.checks.get(CHECK_IN_RANGE))
@@ -362,7 +362,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={"player-1": {"enemy-1": 4.5}},
         )
-        intent = _spell_intent(target_mode="touch", range_meters=None)
+        intent = _spell_intent(target_type="touch", range_meters=None)
         result = svc.validate(intent, state)
         self.assertFalse(result.is_valid)
         self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
@@ -373,7 +373,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={"player-1": {"enemy-1": 30.0}},
         )
-        intent = _spell_intent(range_meters=36, target_mode="ranged")
+        intent = _spell_intent(range_meters=36, target_type="ranged")
         result = svc.validate(intent, state)
         self.assertTrue(result.is_valid)
         self.assertTrue(result.diagnostics.checks.get(CHECK_IN_RANGE))
@@ -384,7 +384,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={"player-1": {"enemy-1": 40.0}},
         )
-        intent = _spell_intent(range_meters=36, target_mode="ranged")
+        intent = _spell_intent(range_meters=36, target_type="ranged")
         result = svc.validate(intent, state)
         self.assertFalse(result.is_valid)
         self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
@@ -397,7 +397,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={},
         )
-        intent = _spell_intent(range_meters=36, target_mode="ranged")
+        intent = _spell_intent(range_meters=36, target_type="ranged")
         result = svc.validate(intent, state)
         self.assertFalse(result.is_valid)
         self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
@@ -409,7 +409,7 @@ class TestLocalSpellRangeValidation(unittest.TestCase):
             _make_participant("enemy-1", "session_entity"),
             local_distances={"player-1": {"enemy-1": 12.0}},
         )
-        intent = _spell_intent(range_meters=None, target_mode="ranged")
+        intent = _spell_intent(range_meters=None, target_type="ranged")
         result = svc.validate(intent, state)
         self.assertFalse(result.is_valid)
         self.assertIn(

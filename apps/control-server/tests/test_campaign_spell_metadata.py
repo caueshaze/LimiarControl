@@ -40,7 +40,8 @@ def _make_campaign_spell(**overrides) -> CampaignSpell:
     spell.casting_time = "1 action"
     spell.range_meters = 45
     spell.range_text = "150 ft"
-    spell.target_mode = "sphere"
+    spell.target_type = "ranged"
+    spell.area_shape = "sphere"
     spell.duration = "Instantaneous"
     spell.components_json = ["V", "S", "M"]
     spell.material_component_text = "a tiny ball of bat guano and sulfur"

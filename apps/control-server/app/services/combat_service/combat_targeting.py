@@ -223,7 +223,8 @@ def _resolve_single_target_requirements(
 
     resolved = resolve_spell_targeting_requirements(
         {
-            "target_mode": intent.target_mode,
+            "target_type": intent.target_type,
+            "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_target_sight": intent.requires_sight if isinstance(intent.requires_sight, bool) else None,
             "requires_target_effect": intent.requires_effect if isinstance(intent.requires_effect, bool) else None,
@@ -236,7 +237,8 @@ def _resolve_single_target_requirements(
 def _resolve_area_requires_sight(intent: AreaTargetingIntent) -> bool:
     resolved = resolve_spell_targeting_requirements(
         {
-            "target_mode": intent.target_mode,
+            "target_type": intent.target_type,
+            "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_point_sight": intent.requires_sight if isinstance(intent.requires_sight, bool) else None,
         },
@@ -248,7 +250,8 @@ def _resolve_area_requires_sight(intent: AreaTargetingIntent) -> bool:
 def _resolve_area_requires_effect(intent: AreaTargetingIntent) -> bool:
     resolved = resolve_spell_targeting_requirements(
         {
-            "target_mode": intent.target_mode,
+            "target_type": intent.target_type,
+            "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_point_effect": intent.requires_effect if isinstance(intent.requires_effect, bool) else None,
         },

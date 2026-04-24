@@ -1,15 +1,16 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { CastingTimeType, TargetMode } from "../../entities/base-spell";
+import type { AreaShape, CastingTimeType, TargetType } from "../../entities/base-spell";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { localizeSpellAdminValue } from "../../shared/i18n/domainLabels";
 import { toggleListValue } from "./systemSpellCatalog.helpers";
 import {
+  AREA_SHAPE_OPTIONS,
   CASTING_TIME_TYPE_OPTIONS,
   COMPONENT_OPTIONS,
   DURATION_OPTIONS,
   type FormState,
-  TARGET_MODE_OPTIONS,
+  TARGET_TYPE_OPTIONS,
   inputClassName,
 } from "./systemSpellCatalog.types";
 
@@ -25,6 +26,9 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
     value === "DND5E" ? "D&D 5e" : localizeSpellAdminValue(value, locale);
 
   const showMaterialComponent = form.componentsJson.includes("M");
+  const showRadiusField = form.areaShape === "sphere" || form.areaShape === "cylinder";
+  const showLengthField = form.areaShape === "cone" || form.areaShape === "line";
+  const showSideField = form.areaShape === "cube";
 
   return (
     <>
@@ -70,27 +74,111 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Target mode
+            Target type
           </span>
           <select
-            value={form.targetMode}
+            value={form.targetType}
             onChange={(event) =>
               setForm((c) => ({
                 ...c,
-                targetMode: event.target.value as TargetMode | "",
+                targetType: event.target.value as TargetType | "",
               }))
             }
             className={`${inputClassName} mt-2`}
           >
             <option value="">—</option>
-            {TARGET_MODE_OPTIONS.map((tm) => (
-              <option key={tm} value={tm}>
-                {formatSpellChoiceLabel(tm)}
+            {TARGET_TYPE_OPTIONS.map((tt) => (
+              <option key={tt} value={tt}>
+                {formatSpellChoiceLabel(tt)}
               </option>
             ))}
           </select>
         </label>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Area shape
+          </span>
+          <select
+            value={form.areaShape}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                areaShape: event.target.value as AreaShape | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {AREA_SHAPE_OPTIONS.map((shape) => (
+              <option key={shape} value={shape}>
+                {formatSpellChoiceLabel(shape)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {(showRadiusField || showLengthField || showSideField) && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {showRadiusField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Raio (m)
+              </span>
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={form.radiusMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, radiusMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 6"
+              />
+            </label>
+          )}
+          {showLengthField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Comprimento (m)
+              </span>
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={form.lengthMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, lengthMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 4.5"
+              />
+            </label>
+          )}
+          {showSideField && (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Lado (m)
+              </span>
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={form.sideMeters}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, sideMeters: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="ex: 4.5"
+              />
+            </label>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <label className="block">

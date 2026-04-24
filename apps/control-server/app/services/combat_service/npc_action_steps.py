@@ -132,7 +132,8 @@ class CombatNpcActionStepsMixin:
 
         spell_targeting = resolve_spell_targeting_requirements(
             {
-                "target_mode": resolved_action.get("targetMode"),
+                "target_type": resolved_action.get("targetType"),
+                "area_shape": resolved_action.get("areaShape"),
                 "spell_mode": action_kind,
                 "requires_target_sight": resolved_action.get("requiresTargetSight"),
                 "requires_target_effect": resolved_action.get("requiresTargetEffect"),
@@ -147,7 +148,8 @@ class CombatNpcActionStepsMixin:
             requested_target_ref_id=target_p["ref_id"],
             spell_canonical_key=resolved_action.get("spellCanonicalKey") or "",
             spell_mode=action_kind,
-            target_mode=resolved_action.get("targetMode"),
+            target_type=resolved_action.get("targetType"),
+            area_shape=resolved_action.get("areaShape"),
             range_meters=cls._safe_int(resolved_action.get("rangeMeters"), None),
             requires_sight=spell_targeting.requires_target_sight,
             requires_effect=spell_targeting.requires_target_effect,

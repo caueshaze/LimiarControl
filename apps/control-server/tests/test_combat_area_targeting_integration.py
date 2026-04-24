@@ -90,9 +90,10 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 heal_dice=None,
                 upcast_json=None,
                 casting_time_type="action",
-                target_mode="sphere",
+                target_type="ranged", area_shape="sphere",
                 range_meters=45,
                 area_size_meters=6,
+                radius_meters=6,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",
@@ -235,9 +236,10 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 heal_dice=None,
                 upcast_json=None,
                 casting_time_type="action",
-                target_mode="cylinder",
+                target_type="ranged", area_shape="cylinder",
                 range_meters=18,
                 area_size_meters=3,
+                radius_meters=3,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",

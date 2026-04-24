@@ -74,7 +74,7 @@ export const SpellCastDialogHeader = ({
       Fluxo: {spellMode.replace(/_/g, " ")}
       {spellMode !== "heal" && spellMode !== "utility" && spellDamageType ? ` · ${spellDamageType}` : ""}
       {spellMode === "saving_throw" && spellSaveAbility ? ` · save ${spellSaveAbility}` : ""}
-      {isAreaSpell && spell.targetMode ? ` · ${spell.targetMode}` : ""}
+      {isAreaSpell && spell.areaShape ? ` · ${spell.areaShape}` : ""}
     </p>
     <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">{actionCostLabel}</p>
     {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (

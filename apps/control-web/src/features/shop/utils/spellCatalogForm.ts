@@ -1,19 +1,21 @@
 import {
+  AreaShape as AreaShapeValues,
   CastingTimeType as CastingTimeTypeValues,
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
   SpellDamageType as SpellDamageTypeValues,
   SpellSavingThrow as SpellSavingThrowValues,
   SpellSchool,
-  TargetMode as TargetModeValues,
+  TargetType as TargetTypeValues,
   UpcastMode as UpcastModeValues,
+  type AreaShape,
   type BaseSpell,
   type CastingTimeType,
   type ResolutionType,
   type SaveSuccessOutcome,
   type SpellDamageType,
   type SpellSavingThrow,
-  type TargetMode,
+  type TargetType,
   type UpcastMode,
 } from "../../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
@@ -25,7 +27,8 @@ export const SPELL_SCHOOL_OPTIONS = Object.values(SpellSchool);
 
 export const SPELL_CASTING_TIME_TYPE_OPTIONS = Object.values(CastingTimeTypeValues);
 
-export const SPELL_TARGET_MODE_OPTIONS = Object.values(TargetModeValues);
+export const SPELL_TARGET_TYPE_OPTIONS = Object.values(TargetTypeValues);
+export const SPELL_AREA_SHAPE_OPTIONS = Object.values(AreaShapeValues);
 
 export const SPELL_RESOLUTION_TYPE_OPTIONS = Object.values(ResolutionTypeValues);
 
@@ -120,6 +123,13 @@ const toNullableInteger = (value: string) => {
   }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toNullableFloat = (value: string) => {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 const filterKnownSpellValues = (values: readonly string[] | null | undefined, allowed: Set<string>) =>
@@ -239,8 +249,20 @@ export const buildSpellUpdatePayload = (
   castingTime: deriveCastingTimeText(state.castingTimeType, state.castingTime),
   rangeMeters: toNullableInteger(state.rangeMeters),
   rangeText: toNullableText(state.rangeText),
-  targetMode: toNullableText(state.targetMode) as TargetMode | null,
-  areaSizeMeters: toNullableInteger(state.areaSizeMeters),
+  targetType: toNullableText(state.targetType) as TargetType | null,
+  areaShape: toNullableText(state.areaShape) as AreaShape | null,
+  radiusMeters:
+    state.areaShape === "sphere" || state.areaShape === "cylinder"
+      ? toNullableFloat(state.radiusMeters)
+      : null,
+  lengthMeters:
+    state.areaShape === "cone" || state.areaShape === "line"
+      ? toNullableFloat(state.lengthMeters)
+      : null,
+  sideMeters:
+    state.areaShape === "cube"
+      ? toNullableFloat(state.sideMeters)
+      : null,
   duration: toNullableText(state.duration),
   componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
   materialComponentText: state.componentsJson.includes("M")
@@ -293,7 +315,8 @@ export type SpellCatalogEditorState = {
   castingTime: string;
   rangeMeters: string;
   rangeText: string;
-  targetMode: TargetMode | "";
+  targetType: TargetType | "";
+  areaShape: AreaShape | "";
   duration: string;
   componentsJson: string[];
   materialComponentText: string;
@@ -305,7 +328,10 @@ export type SpellCatalogEditorState = {
   healDice: string;
   savingThrow: string;
   saveSuccessOutcome: string;
-  areaSizeMeters: string;
+  areaSizeMeters: string; // kept for legacy hydration only; not sent in payload
+  radiusMeters: string;
+  lengthMeters: string;
+  sideMeters: string;
   requiresTargetSight: boolean | null;
   requiresTargetEffect: boolean | null;
   requiresPointSight: boolean | null;
@@ -336,8 +362,27 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   castingTime: spell.castingTime ?? "",
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   rangeText: spell.rangeText ?? "",
-  targetMode: spell.targetMode ?? "",
-  areaSizeMeters: spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "",
+  targetType: spell.targetType ?? "",
+  areaShape: spell.areaShape ?? "",
+  areaSizeMeters: "",
+  radiusMeters:
+    spell.radiusMeters != null
+      ? String(spell.radiusMeters)
+      : spell.areaShape === "sphere" || spell.areaShape === "cylinder"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  lengthMeters:
+    spell.lengthMeters != null
+      ? String(spell.lengthMeters)
+      : spell.areaShape === "cone" || spell.areaShape === "line"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  sideMeters:
+    spell.sideMeters != null
+      ? String(spell.sideMeters)
+      : spell.areaShape === "cube"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
   duration: spell.duration ?? "",
   componentsJson: filterKnownSpellValues(spell.componentsJson, SPELL_COMPONENT_OPTION_SET),
   materialComponentText: spell.materialComponentText ?? "",
@@ -382,8 +427,12 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   castingTime: "",
   rangeMeters: "",
   rangeText: "",
-  targetMode: "",
+  targetType: "",
+  areaShape: "",
   areaSizeMeters: "",
+  radiusMeters: "",
+  lengthMeters: "",
+  sideMeters: "",
   duration: "",
   componentsJson: [],
   materialComponentText: "",

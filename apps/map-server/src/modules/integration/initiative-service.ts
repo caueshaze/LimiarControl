@@ -95,10 +95,16 @@ export class InitiativeService {
     }
 
     encounter.actionTracker.record(actionId);
+    // Tokens are combat-scoped: clear them so the next startCombat starts from a
+    // clean roster. Obstacles, battleMap, and edgeObstacles are map-scoped and
+    // survive across encounters.
+    this.repository.clearTokens(sessionId);
     this.repository.updateCombatState(sessionId, {
       ...encounter.combatState,
       status: "completed",
       activeCombatantId: null,
+      initiativeOrder: [],
+      turnIndex: 0,
       version: encounter.combatState.version + 1
     });
 

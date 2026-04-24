@@ -17,7 +17,8 @@ from .base_spell_constants import (
     SPELL_SAVE_SUCCESS_OUTCOME_MAP,
     SPELL_SAVING_THROW_MAP,
     SPELL_SOURCE_MAP,
-    TARGET_MODE_MAP,
+    AREA_SHAPE_MAP,
+    TARGET_TYPE_MAP,
     UPCAST_MODE_MAP,
     _CANONICAL_KEY_RE,
     _normalize_canonical_key,
@@ -38,8 +39,12 @@ class BaseSpellWrite(BaseModel):
     castingTime: Optional[str] = None
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
-    targetMode: Optional[str] = None
-    areaSizeMeters: Optional[int] = None
+    targetType: Optional[str] = None
+    areaShape: Optional[str] = None
+    areaSizeMeters: Optional[int] = None  # DEPRECATED — use radiusMeters / lengthMeters / sideMeters
+    radiusMeters: Optional[float] = None  # sphere, cylinder
+    lengthMeters: Optional[float] = None  # cone, line
+    sideMeters: Optional[float] = None    # cube
     duration: Optional[str] = None
     componentsJson: Optional[list[str]] = None
     materialComponentText: Optional[str] = None
@@ -125,6 +130,15 @@ class BaseSpellWrite(BaseModel):
             return None
         if value < 1:
             raise ValueError("areaSizeMeters must be at least 1")
+        return value
+
+    @field_validator("radiusMeters", "lengthMeters", "sideMeters")
+    @classmethod
+    def validate_explicit_dimension(cls, value: Optional[float]):
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("Area dimension must be greater than 0")
         return value
 
     @field_validator("classesJson", mode="before")
@@ -243,16 +257,28 @@ class BaseSpellWrite(BaseModel):
             raise ValueError(f"Unknown casting time type: {value}")
         return text
 
-    @field_validator("targetMode")
+    @field_validator("targetType")
     @classmethod
-    def normalize_target_mode(cls, value: Optional[str]):
+    def normalize_target_type(cls, value: Optional[str]):
         if value is None:
             return None
         text = value.strip()
         if not text:
             return None
-        if text not in TARGET_MODE_MAP:
-            raise ValueError(f"Unknown target mode: {value}")
+        if text not in TARGET_TYPE_MAP:
+            raise ValueError(f"Unknown target type: {value}")
+        return text
+
+    @field_validator("areaShape")
+    @classmethod
+    def normalize_area_shape(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in AREA_SHAPE_MAP:
+            raise ValueError(f"Unknown area shape: {value}")
         return text
 
     @field_validator("resolutionType")

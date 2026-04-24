@@ -33,8 +33,12 @@ class BaseSpellRead(BaseModel):
     castingTime: Optional[str] = None
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
-    targetMode: Optional[str] = None
-    areaSizeMeters: Optional[int] = None
+    targetType: Optional[str] = None
+    areaShape: Optional[str] = None
+    areaSizeMeters: Optional[int] = None  # DEPRECATED
+    radiusMeters: Optional[float] = None
+    lengthMeters: Optional[float] = None
+    sideMeters: Optional[float] = None
     duration: Optional[str] = None
     componentsJson: Optional[Any] = None
     materialComponentText: Optional[str] = None

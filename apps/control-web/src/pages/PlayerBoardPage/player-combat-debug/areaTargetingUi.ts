@@ -17,14 +17,14 @@ export type GridCell = {
   y: number;
 };
 
-const AREA_TARGET_MODES = new Set(["sphere", "cone", "line", "cube", "cylinder"]);
+const AREA_SHAPES = new Set(["sphere", "cone", "line", "cube", "cylinder"]);
 
-export const isAreaTargetMode = (targetMode?: string | null): boolean =>
-  typeof targetMode === "string" && AREA_TARGET_MODES.has(targetMode);
+export const isAreaShape = (areaShape?: string | null): boolean =>
+  typeof areaShape === "string" && AREA_SHAPES.has(areaShape);
 
 export const createInitialTargetingMode = (
-  targetMode?: string | null,
-): AreaTargetingMode => (isAreaTargetMode(targetMode) ? "area_target_select" : "single_target_select");
+  areaShape?: string | null,
+): AreaTargetingMode => (isAreaShape(areaShape) ? "area_target_select" : "single_target_select");
 
 export const getAnchorCombatantIdAtCell = (
   tokens: CombatMapPreviewToken[],

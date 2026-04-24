@@ -14,7 +14,7 @@ import { buildCombatParticipantViews, getCombatEffectLabel, getCombatStatusLabel
 import { PlayerAttackRollDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerAttackRollDialog";
 import { PlayerSpellCastDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerSpellCastDialog";
 import { PlayerBoardRollDialog } from "../../../pages/PlayerBoardPage/PlayerBoardRollDialog";
-import { isAreaTargetMode } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import { isAreaShape } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
@@ -166,7 +166,7 @@ export const PlayerCombatModeShell = ({
   );
 
   const myParticipant = combat.myParticipant;
-  const selectedSpellIsArea = isAreaTargetMode(selectedSpell?.targetMode);
+  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
   const [movementMode, setMovementMode] = useState(false);
   const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);

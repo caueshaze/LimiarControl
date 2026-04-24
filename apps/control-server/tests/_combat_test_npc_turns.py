@@ -570,7 +570,7 @@ class CombatNpcTurnTestsMixin:
                             damageBonus=0,
                             damageType="fire",
                             spellCanonicalKey="firebolt",
-                            targetMode="ranged",
+                            targetType="ranged",
                             spellMode="spell_attack",
                             rangeMeters=36,
                             requiresTargetSight=True,

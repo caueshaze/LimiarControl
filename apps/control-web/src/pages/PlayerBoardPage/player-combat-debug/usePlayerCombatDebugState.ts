@@ -21,7 +21,7 @@ import {
 } from "../../../features/combat-ui/spellAutomation";
 import { buildDragonbornBreathWeaponAction } from "../../../features/combat-ui/player/dragonbornBreathWeapon";
 import type { PlayerBoardStatusSummary } from "../playerBoard.types";
-import { isAreaTargetMode } from "./areaTargetingUi";
+import { isAreaShape } from "./areaTargetingUi";
 import type { CombatSpellOption, DeathSaveFeedback } from "./types";
 
 type Props = {
@@ -111,7 +111,8 @@ const buildSpellOptions = (
         ),
         suggestedMode,
         damageType: catalogSpell?.damageType ?? null,
-        targetMode: catalogSpell?.targetMode ?? null,
+        targetType: catalogSpell?.targetType ?? null,
+        areaShape: catalogSpell?.areaShape ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
         saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
         availableSlotLevels:
@@ -319,7 +320,7 @@ export const usePlayerCombatDebugState = ({
 
   const handleCast = async () => {
     if (!state || !selectedSpell) return;
-    if (!isAreaTargetMode(selectedSpell.targetMode) && !targetId) return;
+    if (!isAreaShape(selectedSpell.areaShape) && !targetId) return;
     setError(null);
     setLastSpellResult(null);
     setSpellDialogOpen(true);

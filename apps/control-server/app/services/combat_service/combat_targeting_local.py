@@ -85,8 +85,8 @@ class LocalCombatTargetingService(CombatTargetingService):
     * Ranged weapons: ``range_meters`` from the weapon metadata.
     * Ranged weapons without ``range_meters``: **fails** with
       ``weapon_range_not_configured``.
-    * Spells with ``target_mode="self"``: no range constraint.
-    * Spells with ``target_mode="touch"``: 1.5 m.
+    * Spells with ``target_type="self"``: no range constraint.
+    * Spells with ``target_type="touch"``: 1.5 m.
     * Spells with ``range_meters > 0``: uses that value.
 
     When ``skip_range_validation`` is *True* (used as a fallback inside
@@ -196,7 +196,7 @@ class LocalCombatTargetingService(CombatTargetingService):
                 range_meters=getattr(intent, "range_meters", None),
                 weapon_range_type=getattr(intent, "weapon_range_type", None),
                 has_reach=getattr(intent, "has_reach", False),
-                target_mode=getattr(intent, "target_mode", None),
+                target_type=getattr(intent, "target_type", None),
             )
 
         spatial_metadata = SpatialMetadata(targeting_authority="local")

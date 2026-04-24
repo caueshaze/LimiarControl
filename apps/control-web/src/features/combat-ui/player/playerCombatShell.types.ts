@@ -28,7 +28,8 @@ export type SpellOption = {
   range?: string | null;
   rangeMeters?: number | null;
   actionCost?: CombatActionCost | null;
-  targetMode?: "single" | "self" | "touch" | "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
+  targetType?: "self" | "touch" | "ranged" | "special" | null;
+  areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   sourceType?: "sheet" | "magic_item";
   sourceItemName?: string | null;
   inventoryItemId?: string | null;

@@ -21,9 +21,9 @@ const CASTING_TIME_LABELS: Record<CastingTimeType, string> = {
 const deriveCastingTime = (castingTimeType: CastingTimeType | ""): string | null =>
   castingTimeType ? (CASTING_TIME_LABELS[castingTimeType] ?? null) : null;
 
-const deriveRangeText = (targetMode: string, rangeMeters: string): string | null => {
-  if (targetMode === "self") return "Self";
-  if (targetMode === "touch") return "Touch";
+const deriveRangeText = (targetType: string, rangeMeters: string): string | null => {
+  if (targetType === "self") return "Self";
+  if (targetType === "touch") return "Touch";
   const meters = Number(rangeMeters);
   if (Number.isFinite(meters) && meters >= 0) return `${meters} m`;
   return null;
@@ -56,6 +56,18 @@ export const parseOptionalInteger = (
   return { value: parsed };
 };
 
+export const parseOptionalPositiveFloat = (
+  value: string,
+  label: string,
+): { value?: number; error?: string } => {
+  const normalized = value.trim();
+  if (!normalized) return {};
+  const parsed = parseFloat(normalized);
+  if (!Number.isFinite(parsed))
+    return { error: `${label} precisa ser um número válido.` };
+  return { value: parsed };
+};
+
 export const toggleListValue = (current: string[], value: string) =>
   current.includes(value)
     ? current.filter((entry) => entry !== value)
@@ -73,7 +85,12 @@ export const createEmptyForm = (): FormState => ({
   classesJson: [],
   castingTimeType: "action",
   rangeMeters: "",
-  targetMode: "",
+  targetType: "",
+  areaShape: "",
+  areaSizeMeters: "",
+  radiusMeters: "",
+  lengthMeters: "",
+  sideMeters: "",
   duration: "",
   componentsJson: [],
   materialComponentText: "",
@@ -114,7 +131,27 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   classesJson: spell.classesJson ?? [],
   castingTimeType: spell.castingTimeType ?? "",
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
-  targetMode: spell.targetMode ?? "",
+  targetType: spell.targetType ?? "",
+  areaShape: spell.areaShape ?? "",
+  areaSizeMeters: "",
+  radiusMeters:
+    spell.radiusMeters != null
+      ? String(spell.radiusMeters)
+      : spell.areaShape === "sphere" || spell.areaShape === "cylinder"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  lengthMeters:
+    spell.lengthMeters != null
+      ? String(spell.lengthMeters)
+      : spell.areaShape === "cone" || spell.areaShape === "line"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
+  sideMeters:
+    spell.sideMeters != null
+      ? String(spell.sideMeters)
+      : spell.areaShape === "cube"
+        ? (spell.areaSizeMeters != null ? String(spell.areaSizeMeters) : "")
+        : "",
   duration: spell.duration ?? "",
   componentsJson: spell.componentsJson ?? [],
   materialComponentText: spell.materialComponentText ?? "",
@@ -160,6 +197,21 @@ export const buildPayload = (
   if (rangeMeters.error) return { error: rangeMeters.error };
   if (rangeMeters.value !== undefined && rangeMeters.value < 0)
     return { error: "Alcance (m) não pode ser negativo." };
+
+  const radiusMeters = parseOptionalPositiveFloat(form.radiusMeters, "Raio (m)");
+  if (radiusMeters.error) return { error: radiusMeters.error };
+  if (radiusMeters.value !== undefined && radiusMeters.value <= 0)
+    return { error: "Raio (m) deve ser maior que 0." };
+
+  const lengthMeters = parseOptionalPositiveFloat(form.lengthMeters, "Comprimento (m)");
+  if (lengthMeters.error) return { error: lengthMeters.error };
+  if (lengthMeters.value !== undefined && lengthMeters.value <= 0)
+    return { error: "Comprimento (m) deve ser maior que 0." };
+
+  const sideMeters = parseOptionalPositiveFloat(form.sideMeters, "Lado (m)");
+  if (sideMeters.error) return { error: sideMeters.error };
+  if (sideMeters.value !== undefined && sideMeters.value <= 0)
+    return { error: "Lado (m) deve ser maior que 0." };
 
   const upcastFlat = parseOptionalInteger(form.upcastFlat, "Upcast flat");
   if (upcastFlat.error) return { error: upcastFlat.error };
@@ -213,8 +265,21 @@ export const buildPayload = (
       castingTimeType: form.castingTimeType || null,
       castingTime: deriveCastingTime(form.castingTimeType),
       rangeMeters: rangeMeters.value ?? null,
-      rangeText: deriveRangeText(form.targetMode, form.rangeMeters),
-      targetMode: form.targetMode || null,
+      rangeText: deriveRangeText(form.targetType, form.rangeMeters),
+      targetType: form.targetType || null,
+      areaShape: form.areaShape || null,
+      radiusMeters:
+        form.areaShape === "sphere" || form.areaShape === "cylinder"
+          ? radiusMeters.value ?? null
+          : null,
+      lengthMeters:
+        form.areaShape === "cone" || form.areaShape === "line"
+          ? lengthMeters.value ?? null
+          : null,
+      sideMeters:
+        form.areaShape === "cube"
+          ? sideMeters.value ?? null
+          : null,
       duration: normalizeOptionalText(form.duration) ?? null,
       componentsJson: form.componentsJson.length > 0 ? form.componentsJson : null,
       materialComponentText: form.componentsJson.includes("M")

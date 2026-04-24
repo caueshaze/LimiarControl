@@ -21,7 +21,8 @@ from app.models.base_spell import (
     ResolutionType,
     SpellSchool,
     SpellSource,
-    TargetMode,
+    AreaShape,
+    TargetType,
     UpcastMode,
 )
 from app.models.campaign import SystemType
@@ -58,7 +59,8 @@ def make_base_spell(**overrides):
         "casting_time": "1 action",
         "range_meters": 45,
         "range_text": "150 ft",
-        "target_mode": TargetMode.SPHERE.value,
+        "target_type": TargetType.RANGED.value,
+        "area_shape": AreaShape.SPHERE.value,
         "duration": "Instantaneous",
         "components_json": ["V", "S", "M"],
         "material_component_text": "a tiny ball of bat guano and sulfur",
@@ -165,9 +167,13 @@ class BaseSpellSchemaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._make_create(castingTimeType="instant")
 
-    def test_rejects_unknown_target_mode(self):
+    def test_rejects_unknown_target_type(self):
         with self.assertRaises(ValueError):
-            self._make_create(targetMode="area")
+            self._make_create(targetType="area")
+
+    def test_rejects_unknown_area_shape(self):
+        with self.assertRaises(ValueError):
+            self._make_create(areaShape="blob")
 
     def test_rejects_unknown_resolution_type(self):
         with self.assertRaises(ValueError):
@@ -407,7 +413,8 @@ class BaseSpellSerializerTests(unittest.TestCase):
         self.assertEqual(read.saveSuccessOutcome, "half_damage")
         self.assertEqual(read.damageDice, "8d6")
         self.assertEqual(read.damageType, "Fire")
-        self.assertEqual(read.targetMode, "sphere")
+        self.assertEqual(read.targetType, "ranged")
+        self.assertEqual(read.areaShape, "sphere")
         self.assertFalse(read.requiresTargetSight)
         self.assertFalse(read.requiresTargetEffect)
         self.assertFalse(read.requiresPointSight)
