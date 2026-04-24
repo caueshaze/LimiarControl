@@ -3,8 +3,10 @@ import {
   buildAreaCastPayload,
   buildAreaPreviewPayload,
   createInitialTargetingMode,
+  formatAffectedTargetNames,
   getAnchorCombatantIdAtCell,
   isAreaShape,
+  resolveAffectedTargetNames,
   resolveActorOriginCell,
 } from "./areaTargetingUi";
 
@@ -20,6 +22,18 @@ const baseSpell = {
   savingThrow: "dexterity",
   availableSlotLevels: [3, 4, 5],
   targetType: "ranged" as const, areaShape: "sphere" as const,
+};
+
+const baseParticipant = {
+  id: "participant-1",
+  kind: "session_entity" as const,
+  ref_id: "enemy-1",
+  display_name: "Goblin A",
+  initiative: 12,
+  status: "active" as const,
+  team: "enemies" as const,
+  visible: true,
+  actor_user_id: null,
 };
 
 describe("areaTargetingUi", () => {
@@ -247,5 +261,119 @@ describe("preview affected cell/target count derivation", () => {
     });
     expect(counts.cellCount).toBe(0);
     expect(counts.targetCount).toBe(0);
+  });
+});
+
+describe("affected target preview names", () => {
+  it("maps visible affected target refs to token names", () => {
+    const names = resolveAffectedTargetNames({
+      affectedTargetRefIds: ["enemy-1", "enemy-2"],
+      participants: [
+        baseParticipant,
+        {
+          ...baseParticipant,
+          id: "participant-2",
+          ref_id: "enemy-2",
+          display_name: "Orc Brute",
+        },
+      ],
+      tokens: [
+        {
+          token_id: "token-1",
+          label: "Goblin A",
+          position: { x: 5, y: 5 },
+          combatant_id: "enemy-1",
+          controller_type: "session_entity",
+        },
+        {
+          token_id: "token-2",
+          label: "Orc Brute",
+          position: { x: 6, y: 5 },
+          combatant_id: "enemy-2",
+          controller_type: "session_entity",
+        },
+      ],
+    });
+
+    expect(names).toEqual(["Goblin A", "Orc Brute"]);
+    expect(formatAffectedTargetNames(names)).toBe("Afetados: Goblin A, Orc Brute");
+  });
+
+  it("formats empty target lists without crashing", () => {
+    expect(
+      resolveAffectedTargetNames({
+        affectedTargetRefIds: [],
+        participants: [baseParticipant],
+        tokens: [],
+      }),
+    ).toEqual([]);
+    expect(formatAffectedTargetNames([])).toBe("Nenhum alvo afetado");
+  });
+
+  it("uses a safe fallback for unresolved target refs", () => {
+    const names = resolveAffectedTargetNames({
+      affectedTargetRefIds: ["missing-ref"],
+      participants: [baseParticipant],
+      tokens: [],
+    });
+
+    expect(names).toEqual(["Alvo desconhecido"]);
+    expect(formatAffectedTargetNames(names)).toBe("Afetados: Alvo desconhecido");
+  });
+
+  it("does not reveal hidden participants to players", () => {
+    const names = resolveAffectedTargetNames({
+      affectedTargetRefIds: ["enemy-1", "hidden-enemy"],
+      participants: [
+        baseParticipant,
+        {
+          ...baseParticipant,
+          id: "participant-hidden",
+          ref_id: "hidden-enemy",
+          display_name: "Hidden Assassin",
+          visible: false,
+        },
+      ],
+      tokens: [
+        {
+          token_id: "token-hidden",
+          label: "Hidden Assassin",
+          position: { x: 7, y: 5 },
+          combatant_id: "hidden-enemy",
+          controller_type: "session_entity",
+        },
+      ],
+    });
+
+    expect(names).toEqual(["Goblin A"]);
+    expect(names).toHaveLength(1);
+    expect(formatAffectedTargetNames(names)).toBe("Afetados: Goblin A");
+  });
+
+  it("allows GM views to reveal hidden affected target names", () => {
+    const names = resolveAffectedTargetNames({
+      affectedTargetRefIds: ["hidden-enemy"],
+      canRevealHiddenTargets: true,
+      participants: [
+        {
+          ...baseParticipant,
+          id: "participant-hidden",
+          ref_id: "hidden-enemy",
+          display_name: "Hidden Assassin",
+          visible: false,
+        },
+      ],
+      tokens: [
+        {
+          token_id: "token-hidden",
+          label: "Hidden Assassin",
+          position: { x: 7, y: 5 },
+          combatant_id: "hidden-enemy",
+          controller_type: "session_entity",
+        },
+      ],
+    });
+
+    expect(names).toEqual(["Hidden Assassin"]);
   });
 });

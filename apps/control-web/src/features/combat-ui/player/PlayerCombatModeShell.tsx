@@ -496,6 +496,7 @@ export const PlayerCombatModeShell = ({
               void onInventoryChanged?.();
             }
           }}
+          participants={combat.state.participants}
           sessionId={sessionId}
           spell={selectedSpell}
           spellDamageType={spellDamageType}
