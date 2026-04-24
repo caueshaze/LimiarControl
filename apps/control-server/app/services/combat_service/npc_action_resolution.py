@@ -228,39 +228,79 @@ class CombatNpcActionResolutionMixin:
             effective_dc = max(0, save_dc_base - resolve_cover_save_modifier(context["cover"])) if should_cover_apply_to_save(
                 resolved_action.get("coverAppliesToSave"), ability_name
             ) else save_dc_base
-            pending_save_id = cls._create_pending_save(
-                state,
-                target_p,
-                {
-                    "spell_name": action_name,
-                    "spell_canonical_key": resolved_action.get("spellCanonicalKey"),
-                    "attacker_ref_id": attacker["ref_id"],
-                    "attacker_participant_id": attacker["id"],
-                    "attacker_display_name": attacker["display_name"],
-                    "save_ability": ability_name,
-                    "save_dc": effective_dc,
-                    "effect_kind": "damage",
-                    "effect_bonus": damage_bonus,
-                    "effect_dice": damage_dice,
-                    "damage_type": damage_type,
-                    "save_success_outcome": save_success_outcome,
-                    "effect_roll_required": False,
-                    "cover": context["cover"],
-                    "target_ref_id": target_p["ref_id"],
-                    "target_kind": target_p["kind"],
-                    "target_display_name": target_p["display_name"],
-                    "concentration_roll_source": req.concentration_roll_source,
-                    "action_kind": action_kind,
-                },
+            save_mod = modify_saving_throw(target_p, ability_name)
+            roll_result = resolve_saving_throw(
+                cls._build_roll_actor_stats_for_save(
+                    db,
+                    session_id,
+                    target_p["ref_id"],
+                    target_p["kind"],
+                    target_p["display_name"],
+                ),
+                ability=ability_name,
+                advantage_mode=save_mod.result,
+                dc=effective_dc,
+                roll_source=req.roll_source,
+                manual_roll=req.manual_roll,
+                manual_rolls=req.manual_rolls,
             )
+            roll_result.is_gm_roll = is_gm
+            is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+            damage_rolls: list[int] = []
+            base_damage: int | None = None
+            damage = 0
+            new_hp = None
+            previous_hp = None
+            effect_msg = ""
+            concentration_check = None
+            if not is_saved or save_success_outcome == "half_damage":
+                damage_rolls, base_damage = cls._resolve_damage_roll(
+                    damage_dice or "",
+                    critical=False,
+                    roll_source=req.roll_source,
+                    manual_rolls=req.manual_rolls,
+                )
+                rolled_damage_total = max(0, (base_damage or 0) + damage_bonus)
+                damage = cls._resolve_save_damage_amount(
+                    rolled_damage_total,
+                    is_saved=is_saved,
+                    save_success_outcome=save_success_outcome,
+                )
+                if damage > 0:
+                    (
+                        new_hp,
+                        effect_msg,
+                        previous_hp,
+                        concentration_check,
+                    ) = cls._apply_damage_to_target(
+                        db,
+                        target_p["ref_id"],
+                        target_p["kind"],
+                        damage,
+                        damage_type=damage_type,
+                        is_crit=False,
+                        state=state,
+                    )
             context.update(
                 {
                     "save_dc": effective_dc,
                     "save_dc_base": save_dc_base,
+                    "save_roll": roll_result.total,
+                    "roll_total": roll_result.total,
+                    "roll_result": roll_result,
+                    "is_saved": is_saved,
                     "damage_dice": damage_dice,
                     "damage_bonus": damage_bonus,
+                    "damage": damage,
+                    "new_hp": new_hp,
+                    "previous_hp": previous_hp,
+                    "effect_msg": effect_msg,
+                    "concentration_check": concentration_check,
                     "save_success_outcome": save_success_outcome,
-                    "pending_save_id": pending_save_id,
+                    "damage_rolls": damage_rolls,
+                    "base_damage": base_damage,
+                    "damage_roll_source": req.roll_source,
+                    "save_mod": save_mod,
                 }
             )
             return context

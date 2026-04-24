@@ -132,4 +132,82 @@ describe("area targeting confirmation gate", () => {
     expect(canSubmitArea({ x: 5, y: 5 }, { x: 1, y: 1 }, { is_valid: false })).toBe(false);
     expect(canSubmitArea({ x: 5, y: 5 }, { x: 1, y: 1 }, { is_valid: true })).toBe(true);
   });
+
+  it("blocks when preview is invalid (is_valid: false)", () => {
+    expect(canSubmitArea({ x: 5, y: 5 }, { x: 1, y: 1 }, { is_valid: false })).toBe(false);
+  });
+
+  it("blocks when preview is null (still loading)", () => {
+    expect(canSubmitArea({ x: 5, y: 5 }, { x: 1, y: 1 }, null)).toBe(false);
+  });
+
+  it("blocks when anchor is cleared after a valid preview", () => {
+    expect(canSubmitArea(null, { x: 1, y: 1 }, { is_valid: true })).toBe(false);
+  });
+});
+
+describe("area preview/cast payload parity for cone and cube", () => {
+  const coneSpell = {
+    ...baseSpell,
+    canonicalKey: "burning_hands",
+    name: "Burning Hands",
+    level: 1,
+    areaShape: "cone" as const,
+  };
+
+  const cubeSpell = {
+    ...baseSpell,
+    canonicalKey: "thunderwave",
+    name: "Thunderwave",
+    level: 1,
+    areaShape: "cube" as const,
+  };
+
+  it("preview and cast payloads share targeting fields for cone", () => {
+    const commonArgs = {
+      actorParticipantId: "participant-1",
+      spell: coneSpell,
+      spellMode: "saving_throw" as const,
+      selectedSlotLevel: 1,
+      originCell: { x: 2, y: 2 },
+      anchorCell: { x: 3, y: 2 },
+      targetRefId: null,
+    };
+    const preview = buildAreaPreviewPayload(commonArgs);
+    const cast = buildAreaCastPayload({
+      ...commonArgs,
+      spellEffectDice: "3d6",
+      spellEffectBonus: 0,
+      spellDamageType: "fire",
+      spellSaveAbility: "dexterity",
+      concentrationRollSource: "system",
+    });
+    expect(cast.origin_cell).toEqual(preview.origin_cell);
+    expect(cast.anchor_cell).toEqual(preview.anchor_cell);
+    expect(cast.spell_canonical_key).toBe(preview.spell_canonical_key);
+  });
+
+  it("preview and cast payloads share targeting fields for cube", () => {
+    const commonArgs = {
+      actorParticipantId: "participant-1",
+      spell: cubeSpell,
+      spellMode: "saving_throw" as const,
+      selectedSlotLevel: 1,
+      originCell: { x: 5, y: 5 },
+      anchorCell: { x: 6, y: 6 },
+      targetRefId: null,
+    };
+    const preview = buildAreaPreviewPayload(commonArgs);
+    const cast = buildAreaCastPayload({
+      ...commonArgs,
+      spellEffectDice: "2d8",
+      spellEffectBonus: 0,
+      spellDamageType: "thunder",
+      spellSaveAbility: "constitution",
+      concentrationRollSource: "system",
+    });
+    expect(cast.origin_cell).toEqual(preview.origin_cell);
+    expect(cast.anchor_cell).toEqual(preview.anchor_cell);
+    expect(cast.spell_canonical_key).toBe(preview.spell_canonical_key);
+  });
 });

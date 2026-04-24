@@ -4,6 +4,11 @@ from app.schemas.combat import CombatMapSelection
 
 from .lifecycle_initiative import CombatLifecycleInitiativeMixin
 from .lifecycle_turns import CombatLifecycleTurnsMixin
+from .limiar_map_projection import (
+    maybe_project_combat_advance_to_limiar_map,
+    maybe_project_combat_end_to_limiar_map,
+    maybe_project_combat_start_to_limiar_map,
+)
 
 
 class CombatLifecycleMixin(CombatLifecycleInitiativeMixin, CombatLifecycleTurnsMixin):

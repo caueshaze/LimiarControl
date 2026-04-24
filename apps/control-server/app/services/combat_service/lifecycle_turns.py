@@ -3,7 +3,38 @@ from __future__ import annotations
 from app.models.combat import CombatPhase
 
 from .exceptions import CombatServiceError
-from .limiar_map_projection import maybe_project_combat_advance_to_limiar_map, maybe_project_combat_end_to_limiar_map
+from .limiar_map_projection import (
+    maybe_project_combat_advance_to_limiar_map as _project_combat_advance_to_limiar_map,
+    maybe_project_combat_end_to_limiar_map as _project_combat_end_to_limiar_map,
+)
+
+
+def maybe_project_combat_advance_to_limiar_map(session_id: str, state) -> None:
+    from . import lifecycle as lifecycle_module
+
+    projection = getattr(
+        lifecycle_module,
+        "maybe_project_combat_advance_to_limiar_map",
+        _project_combat_advance_to_limiar_map,
+    )
+    if projection is not _project_combat_advance_to_limiar_map:
+        projection(session_id, state)
+        return
+    _project_combat_advance_to_limiar_map(session_id, state)
+
+
+def maybe_project_combat_end_to_limiar_map(session_id: str, state) -> None:
+    from . import lifecycle as lifecycle_module
+
+    projection = getattr(
+        lifecycle_module,
+        "maybe_project_combat_end_to_limiar_map",
+        _project_combat_end_to_limiar_map,
+    )
+    if projection is not _project_combat_end_to_limiar_map:
+        projection(session_id, state)
+        return
+    _project_combat_end_to_limiar_map(session_id, state)
 
 
 class CombatLifecycleTurnsMixin:
