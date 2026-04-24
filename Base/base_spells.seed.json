@@ -677,7 +677,9 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "physical",
-      "targetType": "self"
+      "targetType": "self",
+      "areaShape": "sphere",
+      "radiusMeters": 1.5
     },
     {
       "system": "DND5E",

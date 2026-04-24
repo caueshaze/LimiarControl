@@ -12,16 +12,23 @@ from app.services.combat import CombatService
 
 
 class ResolveAreaSpellSpecTests(unittest.TestCase):
-    """Unit tests for _resolve_supported_area_spell_spec."""
+    """Unit tests for _resolve_supported_area_spell_spec.
+
+    Tests in this class that use ``area_size_meters`` are exercising the
+    *deprecated legacy fallback path* with arbitrary custom values (e.g. 4m).
+    They are NOT representative of real D&D spell dimensions — canonical
+    D&D values (4.5m, 6m, 1.5m) are verified in
+    ``ExplicitDimensionTests`` and ``test_unit_conversion.py``.
+    """
 
     # ------------------------------------------------------------------
-    # Metadata-driven path
+    # Legacy fallback path (deprecated area_size_meters, arbitrary values)
     # ------------------------------------------------------------------
 
     def test_metadata_sphere_returns_spec_from_area_size_meters(self):
         ctx = {
             "target_type": "ranged", "area_shape": "sphere",
-            "area_size_meters": 4,
+            "area_size_meters": 4,  # arbitrary legacy value, not a D&D canonical dimension
             "range_meters": 30,
             "spell_canonical_key": "custom_nova",
         }
@@ -277,3 +284,73 @@ class ExplicitDimensionTests(unittest.TestCase):
         spec = CombatService._resolve_supported_area_spell_spec(ctx)
         self.assertIsNotNone(spec)
         self.assertEqual(spec["size_meters"], 6)  # fallback used
+
+
+class CanonicalSpellDimensionTests(unittest.TestCase):
+    """Verify that _resolve_supported_area_spell_spec returns the correct
+    size_meters for every canonical D&D spell in the seed catalog.
+
+    These tests use the *new explicit fields only* (no area_size_meters).
+    Combined with test_unit_conversion.py they guarantee the full pipeline:
+
+        seed value → _resolve_dimension_for_shape → meters_to_cells → sizeCells
+    """
+
+    def _ctx(self, shape: str, range_meters: float | None, **dims) -> dict:
+        return {
+            "area_shape": shape,
+            "radius_meters": None,
+            "length_meters": None,
+            "side_meters": None,
+            "area_size_meters": None,
+            "range_meters": range_meters,
+            **dims,
+        }
+
+    def test_burning_hands_cone_4_5m(self):
+        """15-ft cone → lengthMeters=4.5 → size_meters=4.5."""
+        ctx = self._ctx("cone", 0, length_meters=4.5)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cone")
+        self.assertEqual(spec["size_meters"], 4.5)
+
+    def test_thunderwave_cube_4_5m(self):
+        """15-ft cube → sideMeters=4.5 → size_meters=4.5."""
+        ctx = self._ctx("cube", 0, side_meters=4.5)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "cube")
+        self.assertEqual(spec["size_meters"], 4.5)
+
+    def test_fireball_sphere_6m_range_45m(self):
+        """Fireball: 20-ft radius → radiusMeters=6, rangeMeters=45."""
+        ctx = self._ctx("sphere", 45, radius_meters=6.0)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "sphere")
+        self.assertEqual(spec["size_meters"], 6.0)
+        self.assertEqual(spec["range_meters"], 45)
+
+    def test_fog_cloud_sphere_6m_range_36m(self):
+        """Fog Cloud: 20-ft radius → radiusMeters=6, rangeMeters=36."""
+        ctx = self._ctx("sphere", 36, radius_meters=6.0)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["size_meters"], 6.0)
+        self.assertEqual(spec["range_meters"], 36)
+
+    def test_spike_growth_sphere_6m_range_45m(self):
+        """Spike Growth: 20-ft radius → radiusMeters=6, rangeMeters=45."""
+        ctx = self._ctx("sphere", 45, radius_meters=6.0)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["size_meters"], 6.0)
+
+    def test_hail_of_thorns_sphere_1_5m(self):
+        """Hail of Thorns: 5-ft radius → radiusMeters=1.5 → size_meters=1.5."""
+        ctx = self._ctx("sphere", 0, radius_meters=1.5)
+        spec = CombatService._resolve_supported_area_spell_spec(ctx)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec["shape"], "sphere")
+        self.assertEqual(spec["size_meters"], 1.5)
