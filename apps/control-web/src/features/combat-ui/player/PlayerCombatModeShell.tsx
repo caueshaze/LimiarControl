@@ -28,7 +28,7 @@ import type {
 } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
-import { CombatMapFrame } from "../map/CombatMapFrame";
+import { CombatMapFrame, toCombatMapFrameAreaEffects } from "../map/CombatMapFrame";
 import {
   formatMovementMeters,
   getMovementPreviewReasonLabel,
@@ -317,6 +317,7 @@ export const PlayerCombatModeShell = ({
           actor={userId ? { actorId: userId, actorType: "player" } : null}
           selectionMode={mapSelectionMode}
           previewCells={[]}
+          activeAreaEffects={toCombatMapFrameAreaEffects(combat.state?.active_area_effects)}
           selectedCell={movementEnabled ? movementSelectedCell : null}
           selectedTargetRefId={movementEnabled ? null : (targetId || null)}
           frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"

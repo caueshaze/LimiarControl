@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   battleMapSchema,
+  activeAreaEffectSchema,
   combatStateSchema,
   coordinateSchema,
   controllerTypeSchema,
@@ -87,6 +88,10 @@ export const syncTokensRequestSchema = z.object({
   tokens: z.array(tokenSyncEntrySchema).min(1),
 });
 
+export const syncActiveAreaEffectsRequestSchema = z.object({
+  activeAreaEffects: z.array(activeAreaEffectSchema),
+});
+
 export const integrationStateResponseSchema = z.object({
   sessionId: z.string(),
   version: z.number().int().nonnegative(),
@@ -95,6 +100,7 @@ export const integrationStateResponseSchema = z.object({
   tokens: z.array(tokenSchema),
   obstacles: z.array(obstacleSchema),
   edgeObstacles: z.array(edgeObstacleSchema).default([]),
+  activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
 });
 
 export const movementPreviewRequestSchema = z.object({
@@ -127,6 +133,7 @@ export type AdvanceTurnRequest = z.infer<typeof advanceTurnRequestSchema>;
 export type EndCombatRequest = z.infer<typeof endCombatRequestSchema>;
 export type TokenSyncEntry = z.infer<typeof tokenSyncEntrySchema>;
 export type SyncTokensRequest = z.infer<typeof syncTokensRequestSchema>;
+export type SyncActiveAreaEffectsRequest = z.infer<typeof syncActiveAreaEffectsRequestSchema>;
 export type IntegrationStateResponse = z.infer<typeof integrationStateResponseSchema>;
 export type MovementPreviewRequest = z.infer<typeof movementPreviewRequestSchema>;
 export type MovementPreviewResponse = z.infer<typeof movementPreviewResponseSchema>;

@@ -12,7 +12,7 @@ import { GmPendingReactionsPanel } from "./GmPendingReactionsPanel";
 import { GmPendingSavesPanel } from "./GmPendingSavesPanel";
 import { GmQuickActionsPanel } from "./GmQuickActionsPanel";
 import { useGmCombatShell } from "./useGmCombatShell";
-import { CombatMapFrame } from "../map/CombatMapFrame";
+import { CombatMapFrame, toCombatMapFrameAreaEffects } from "../map/CombatMapFrame";
 import { GmDistancesPanel } from "./GmDistancesPanel";
 import {
   formatMovementMeters,
@@ -197,6 +197,7 @@ export const GmCombatModeShell = ({
             actor={{ actorId: "gm-control", actorType: "gm" }}
             selectionMode={mapSelectionMode}
             previewCells={[]}
+            activeAreaEffects={toCombatMapFrameAreaEffects(shell.combat.state?.active_area_effects)}
             selectedCell={movementEnabled ? movementSelectedCell : null}
             selectedTargetRefId={
               movementEnabled ? null : shell.selectedTargetRefId || null

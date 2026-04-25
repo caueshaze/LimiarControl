@@ -115,6 +115,34 @@ class CombatMapPreviewObstacle(BaseModel):
     cover: str | None = None
 
 
+class CombatActiveAreaEffect(BaseModel):
+    id: str
+    source_spell_canonical_key: str | None = None
+    source_spell_name: str
+    caster_participant_id: str
+    caster_ref_id: str | None = None
+    caster_character_id: str | None = None
+    origin_point: CombatGridCell
+    anchor_cell: CombatGridCell
+    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"]
+    size_meters: float
+    radius_meters: float | None = None
+    length_meters: float | None = None
+    side_meters: float | None = None
+    affected_cells: list[CombatGridCell] = Field(default_factory=list)
+    effect_kind: str
+    duration: str | None = None
+    concentration_owner_participant_id: str | None = None
+    concentration_owner_ref_id: str | None = None
+    created_round: int | None = None
+    created_turn_index: int | None = None
+    obscurement: str | None = None
+    terrain_effect: str | None = None
+    movement_damage_dice: str | None = None
+    damage_type: str | None = None
+    damage_per_meters: float | None = None
+
+
 class CombatMapPreviewState(BaseModel):
     session_id: str
     version: int
@@ -122,6 +150,7 @@ class CombatMapPreviewState(BaseModel):
     grid_height: int
     tokens: list[CombatMapPreviewToken] = Field(default_factory=list)
     obstacles: list[CombatMapPreviewObstacle] = Field(default_factory=list)
+    active_area_effects: list[CombatActiveAreaEffect] = Field(default_factory=list)
 
 
 class CombatMapEnsureResponse(BaseModel):
@@ -216,6 +245,7 @@ class CombatSpellResult(BaseModel):
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     area_target_outcomes: list[CombatAreaTargetOutcome] = Field(default_factory=list)
     target_count: int = 0
+    active_area_effect: CombatActiveAreaEffect | None = None
     elemental_affinity_eligible: bool = False
     elemental_affinity_damage_type: str | None = None
     elemental_affinity_bonus: int | None = None

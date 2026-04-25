@@ -13,6 +13,8 @@ from app.services.roll_resolution import resolve_saving_throw
 
 from ..combat_targeting import get_combat_targeting_service
 from ..exceptions import CombatServiceError
+from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
+from ..persistent_area_effects import build_persistent_spell_area_effect
 from ..targeting_intent import AreaTargetingIntent
 
 
@@ -328,9 +330,30 @@ class CastAreaMixin:
             db.add(attacker_model)
             slot_spent = True
 
+        active_area_effect: dict[str, Any] | None = None
+        if spell_context.get("effect_timing") == "persistent":
+            try:
+                active_area_effect = build_persistent_spell_area_effect(
+                    state=state,
+                    attacker=attacker,
+                    spell_context=spell_context,
+                    area_spec=area_spec,
+                    targeting_result=targeting_result,
+                    origin_cell=req.origin_cell.model_dump() if req.origin_cell is not None else None,
+                    anchor_cell=req.anchor_cell.model_dump() if req.anchor_cell is not None else None,
+                )
+            except ValueError as exc:
+                raise CombatServiceError(str(exc), 400) from exc
+            state.active_area_effects = [
+                *(state.active_area_effects or []),
+                active_area_effect,
+            ]
+
         db.add(state)
         db.commit()
         db.refresh(state)
+        if active_area_effect is not None:
+            maybe_sync_active_area_effects_to_limiar_map(session_id, state)
 
         if slot_spent:
             target_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
@@ -389,6 +412,7 @@ class CastAreaMixin:
             "affected_cells": affected_cells,
             "area_target_outcomes": [],
             "target_count": len(affected_target_ref_ids),
+            "active_area_effect": active_area_effect,
             "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
             "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
             "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),

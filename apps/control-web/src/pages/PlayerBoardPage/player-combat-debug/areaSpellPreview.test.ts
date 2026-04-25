@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import { http } from "../../../shared/api/http";
+import { toCombatMapFrameAreaEffects } from "../../../features/combat-ui/map/CombatMapFrame";
 import { buildAreaCastPayload, buildAreaPreviewPayload } from "./areaTargetingUi";
 
 vi.mock("../../../shared/api/http", () => ({
@@ -143,6 +144,39 @@ describe("area targeting confirmation gate", () => {
 
   it("blocks when anchor is cleared after a valid preview", () => {
     expect(canSubmitArea(null, { x: 1, y: 1 }, { is_valid: true })).toBe(false);
+  });
+});
+
+describe("persistent area overlays", () => {
+  it("maps Control active area effects to embedded map overlay payloads", () => {
+    const effects = toCombatMapFrameAreaEffects([
+      {
+        id: "area_effect:1",
+        source_spell_canonical_key: "fog_cloud",
+        source_spell_name: "Fog Cloud",
+        caster_participant_id: "p1",
+        caster_ref_id: "player-1",
+        origin_point: { x: 10, y: 10 },
+        anchor_cell: { x: 10, y: 10 },
+        area_shape: "sphere",
+        size_meters: 6,
+        radius_meters: 6,
+        affected_cells: [{ x: 10, y: 10 }],
+        effect_kind: "obscurement",
+        obscurement: "heavily_obscured",
+      },
+    ]);
+
+    expect(effects).toEqual([
+      expect.objectContaining({
+        id: "area_effect:1",
+        sourceSpellCanonicalKey: "fog_cloud",
+        sourceSpellName: "Fog Cloud",
+        anchorCell: { x: 10, y: 10 },
+        affectedCells: [{ x: 10, y: 10 }],
+        effectKind: "obscurement",
+      }),
+    ]);
   });
 });
 

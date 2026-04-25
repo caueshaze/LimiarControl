@@ -37,6 +37,7 @@ from .combat_lifecycle import (
     CombatUpdateDistancesRequest,
 )
 from .combat_spells import (
+    CombatActiveAreaEffect,
     CombatAreaPreviewRequest,
     CombatAreaPreviewResponse,
     CombatAreaTargetOutcome,
@@ -65,6 +66,7 @@ __all__ = [
     "ActiveEffectDurationType",
     "ActiveEffectKind",
     "CombatActionCost",
+    "CombatActiveAreaEffect",
     "CombatApplyDamageRequest",
     "CombatApplyEffectRequest",
     "CombatApplyHealingRequest",

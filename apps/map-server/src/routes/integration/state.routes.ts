@@ -14,6 +14,7 @@ import {
   advanceTurnRequestSchema,
   endCombatRequestSchema,
   setInitiativeRequestSchema,
+  syncActiveAreaEffectsRequestSchema,
   singleTargetRequestSchema,
   startCombatRequestSchema,
   syncTokensRequestSchema
@@ -309,7 +310,28 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
       return reply.status(200).send(toIntegrationSnapshot(encounter));
     }
 
-    return reply.status(200).send(toIntegrationSnapshot(result.encounter));
+    const nextEncounter = repository.setActiveAreaEffects(sessionId, []);
+    return reply.status(200).send(toIntegrationSnapshot(nextEncounter));
+  });
+
+  app.put("/integration/sessions/:sessionId/area-effects", async (request, reply) => {
+    const { sessionId } = request.params as { sessionId: string };
+    const encounter = repository.getEncounter(sessionId);
+    if (!encounter) {
+      return err(reply, 404, "session_not_found", "Session not found");
+    }
+
+    const parse = syncActiveAreaEffectsRequestSchema.safeParse(request.body);
+    if (!parse.success) {
+      return reply.status(400).send({ message: "Invalid request body", errors: parse.error.errors });
+    }
+
+    const updated = repository.setActiveAreaEffects(sessionId, parse.data.activeAreaEffects);
+    request.log.info(
+      { sessionId, activeAreaEffects: parse.data.activeAreaEffects.length },
+      `${LOG_PREFIX} PUT area-effects`
+    );
+    return reply.status(200).send(toIntegrationSnapshot(updated));
   });
 
 }

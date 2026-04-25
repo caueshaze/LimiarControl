@@ -1,4 +1,4 @@
-import type { Coordinate, Token } from "@limiarmap/shared-contracts";
+import type { ActiveAreaEffect, Coordinate, Token } from "@limiarmap/shared-contracts";
 import { reconnectAs } from "./centrifugo-client";
 import {
   battleMapStore,
@@ -18,6 +18,7 @@ type EmbeddedMapContextMessage = {
     } | null;
     selectionMode?: EmbeddedSelectionMode;
     previewCells?: Coordinate[];
+    activeAreaEffects?: ActiveAreaEffect[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
     combatPhase?: EmbeddedCombatPhase | null;
@@ -86,6 +87,7 @@ export const isEmbeddedMapContextMessage = (
     actor?: { actorId?: unknown; actorType?: unknown } | null;
     selectionMode?: unknown;
     previewCells?: unknown;
+    activeAreaEffects?: unknown;
     selectedCell?: unknown;
     selectedTargetRefId?: unknown;
     combatPhase?: unknown;
@@ -103,6 +105,27 @@ export const isEmbeddedMapContextMessage = (
   const previewCellsValid =
     payload.previewCells == null ||
     (Array.isArray(payload.previewCells) && payload.previewCells.every(isCoordinate));
+  const activeAreaEffectsValid =
+    payload.activeAreaEffects == null ||
+    (Array.isArray(payload.activeAreaEffects) &&
+      payload.activeAreaEffects.every((effect) => {
+        if (!effect || typeof effect !== "object") return false;
+        const candidate = effect as {
+          id?: unknown;
+          sourceSpellName?: unknown;
+          anchorCell?: unknown;
+          areaShape?: unknown;
+          affectedCells?: unknown;
+        };
+        return (
+          typeof candidate.id === "string" &&
+          typeof candidate.sourceSpellName === "string" &&
+          isCoordinate(candidate.anchorCell) &&
+          typeof candidate.areaShape === "string" &&
+          Array.isArray(candidate.affectedCells) &&
+          candidate.affectedCells.every(isCoordinate)
+        );
+      }));
   const selectedCellValid =
     payload.selectedCell == null || isCoordinate(payload.selectedCell);
   const selectedTargetValid =
@@ -119,6 +142,7 @@ export const isEmbeddedMapContextMessage = (
     actorValid &&
     selectionModeValid &&
     previewCellsValid &&
+    activeAreaEffectsValid &&
     selectedCellValid &&
     selectedTargetValid &&
     combatPhaseValid
@@ -133,6 +157,7 @@ export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payl
   battleMapStore.setEmbeddedInteractionContext({
     selectionMode: message.selectionMode ?? "none",
     previewCells: message.previewCells ?? [],
+    activeAreaEffects: message.activeAreaEffects ?? [],
     selectedCell: message.selectedCell ?? null,
     selectedTargetRefId: message.selectedTargetRefId ?? null,
     combatPhase: message.combatPhase ?? null,

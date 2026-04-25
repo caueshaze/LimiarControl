@@ -29,6 +29,7 @@ export const combatStatusSchema = z.enum(["inactive", "active", "completed"]);
 export const targetingShapeSchema = z.enum(["line", "cone", "sphere", "cube", "cylinder"]);
 export const obstacleCoverSchema = z.enum(["none", "half", "threeQuarters", "full"]);
 export const obstaclePaintModeSchema = z.enum(["paint", "erase"]);
+export const activeAreaEffectKindSchema = z.enum(["obscurement", "hazard", "spell_area"]);
 export const battleMapSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -127,6 +128,33 @@ export const targetingTemplateSchema = z.object({
     affectedCells: z.array(coordinateSchema).default([]),
     result: actionResultSchema.default("pending"),
     rejectionReason: z.string().optional()
+});
+export const activeAreaEffectSchema = z.object({
+    id: z.string(),
+    sourceSpellCanonicalKey: z.string().nullable().optional(),
+    sourceSpellName: z.string(),
+    casterParticipantId: z.string(),
+    casterRefId: z.string().nullable().optional(),
+    casterCharacterId: z.string().nullable().optional(),
+    originPoint: coordinateSchema,
+    anchorCell: coordinateSchema,
+    areaShape: targetingShapeSchema,
+    sizeMeters: z.number().positive(),
+    radiusMeters: z.number().positive().nullable().optional(),
+    lengthMeters: z.number().positive().nullable().optional(),
+    sideMeters: z.number().positive().nullable().optional(),
+    affectedCells: z.array(coordinateSchema).default([]),
+    effectKind: activeAreaEffectKindSchema,
+    duration: z.string().nullable().optional(),
+    concentrationOwnerParticipantId: z.string().nullable().optional(),
+    concentrationOwnerRefId: z.string().nullable().optional(),
+    createdRound: z.number().int().nonnegative().nullable().optional(),
+    createdTurnIndex: z.number().int().nonnegative().nullable().optional(),
+    obscurement: z.string().nullable().optional(),
+    terrainEffect: z.string().nullable().optional(),
+    movementDamageDice: z.string().nullable().optional(),
+    damageType: z.string().nullable().optional(),
+    damagePerMeters: z.number().positive().nullable().optional()
 });
 export const realtimeActionEventSchema = z.object({
     eventId: z.string(),
