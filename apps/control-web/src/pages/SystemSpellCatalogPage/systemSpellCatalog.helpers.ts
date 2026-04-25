@@ -86,6 +86,12 @@ export const createEmptyForm = (): FormState => ({
   castingTimeType: "action",
   rangeMeters: "",
   targetType: "",
+  selectionType: "",
+  originType: "",
+  targetAnchor: "",
+  attackType: "",
+  rangeKind: "",
+  effectTiming: "",
   areaShape: "",
   radiusMeters: "",
   lengthMeters: "",
@@ -131,6 +137,12 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   castingTimeType: spell.castingTimeType ?? "",
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   targetType: spell.targetType ?? "",
+  selectionType: spell.selectionType ?? "",
+  originType: spell.originType ?? "",
+  targetAnchor: spell.targetAnchor ?? "",
+  attackType: spell.attackType ?? "",
+  rangeKind: spell.rangeKind ?? "",
+  effectTiming: spell.effectTiming ?? "",
   areaShape: spell.areaShape ?? "",
   radiusMeters:
     spell.radiusMeters != null
@@ -259,6 +271,12 @@ export const buildPayload = (
       rangeMeters: rangeMeters.value ?? null,
       rangeText: deriveRangeText(form.targetType, form.rangeMeters),
       targetType: form.targetType || null,
+      selectionType: form.selectionType || null,
+      originType: form.originType || null,
+      targetAnchor: form.targetAnchor || null,
+      attackType: form.attackType || null,
+      rangeKind: form.rangeKind || null,
+      effectTiming: form.effectTiming || null,
       areaShape: form.areaShape || null,
       radiusMeters:
         form.areaShape === "sphere" || form.areaShape === "cylinder"

@@ -21,7 +21,7 @@ import {
 } from "../../../features/combat-ui/spellAutomation";
 import { buildDragonbornBreathWeaponAction } from "../../../features/combat-ui/player/dragonbornBreathWeapon";
 import type { PlayerBoardStatusSummary } from "../playerBoard.types";
-import { isAreaShape } from "./areaTargetingUi";
+import { spellRequiresExternalTarget } from "./areaTargetingUi";
 import type { CombatSpellOption, DeathSaveFeedback } from "./types";
 
 type Props = {
@@ -87,6 +87,14 @@ const buildSpellOptions = (
           : (spell.canonicalKey ?? catalogSpell?.canonicalKey ?? null)
       );
       const suggestedMode: CombatSpellMode | null =
+        (catalogSpell?.attackType === "melee_spell" ||
+        catalogSpell?.attackType === "ranged_spell"
+          ? "spell_attack"
+          : null) ??
+        (catalogSpell?.effectTiming === "persistent" ||
+        catalogSpell?.effectTiming === "triggered"
+          ? "utility"
+          : null) ??
         (catalogSpell?.defaultSpellMode as
           | CombatSpellMode
           | null
@@ -94,8 +102,8 @@ const buildSpellOptions = (
         automation?.defaultSpellMode ??
         (catalogSpell?.savingThrow
           ? "saving_throw"
-          : catalogSpell?.damageType
-            ? "spell_attack"
+          : catalogSpell?.resolutionType === "damage" || catalogSpell?.damageType
+            ? "direct_damage"
             : null);
       return {
         id: spell.id,
@@ -112,6 +120,12 @@ const buildSpellOptions = (
         suggestedMode,
         damageType: catalogSpell?.damageType ?? null,
         targetType: catalogSpell?.targetType ?? null,
+        selectionType: catalogSpell?.selectionType ?? null,
+        originType: catalogSpell?.originType ?? null,
+        targetAnchor: catalogSpell?.targetAnchor ?? null,
+        attackType: catalogSpell?.attackType ?? null,
+        rangeKind: catalogSpell?.rangeKind ?? null,
+        effectTiming: catalogSpell?.effectTiming ?? null,
         areaShape: catalogSpell?.areaShape ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
         saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
@@ -320,7 +334,7 @@ export const usePlayerCombatDebugState = ({
 
   const handleCast = async () => {
     if (!state || !selectedSpell) return;
-    if (!isAreaShape(selectedSpell.areaShape) && !targetId) return;
+    if (spellRequiresExternalTarget(selectedSpell.selectionType, selectedSpell.areaShape) && !targetId) return;
     setError(null);
     setLastSpellResult(null);
     setSpellDialogOpen(true);

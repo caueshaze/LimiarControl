@@ -21,7 +21,13 @@ import {
     SPELL_LEVEL_OPTIONS,
     SPELL_SCHOOL_OPTIONS,
     SPELL_AREA_SHAPE_OPTIONS,
+    SPELL_ATTACK_TYPE_OPTIONS,
     SPELL_TARGET_TYPE_OPTIONS,
+    SPELL_EFFECT_TIMING_OPTIONS,
+    SPELL_ORIGIN_TYPE_OPTIONS,
+    SPELL_RANGE_KIND_OPTIONS,
+    SPELL_SELECTION_TYPE_OPTIONS,
+    SPELL_TARGET_ANCHOR_OPTIONS,
     type SpellCatalogEditorState,
     toggleSpellListValue,
 } from "../utils/spellCatalogForm";
@@ -219,6 +225,123 @@ export const SpellCatalogFormFields = ({
             {SPELL_TARGET_TYPE_OPTIONS.map((targetType) => (
               <option key={targetType} value={targetType}>
                 {localizeSpellAdminValue(targetType, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SpellCatalogField label={t("catalog.spells.form.selectionType")}>
+          <select
+            value={state.selectionType}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                selectionType: event.target.value as SpellCatalogEditorState["selectionType"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_SELECTION_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.originType")}>
+          <select
+            value={state.originType}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                originType: event.target.value as SpellCatalogEditorState["originType"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_ORIGIN_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.targetAnchor")}>
+          <select
+            value={state.targetAnchor}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                targetAnchor: event.target.value as SpellCatalogEditorState["targetAnchor"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_TARGET_ANCHOR_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.attackType")}>
+          <select
+            value={state.attackType}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                attackType: event.target.value as SpellCatalogEditorState["attackType"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_ATTACK_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.rangeKind")}>
+          <select
+            value={state.rangeKind}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                rangeKind: event.target.value as SpellCatalogEditorState["rangeKind"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_RANGE_KIND_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.effectTiming")}>
+          <select
+            value={state.effectTiming}
+            onChange={(event) =>
+              setState((current) => ({
+                ...current,
+                effectTiming: event.target.value as SpellCatalogEditorState["effectTiming"],
+              }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_EFFECT_TIMING_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {localizeSpellAdminValue(value, locale)}
               </option>
             ))}
           </select>

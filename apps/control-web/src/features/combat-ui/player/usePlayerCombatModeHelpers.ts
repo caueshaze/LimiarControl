@@ -64,14 +64,20 @@ export const buildSpellOptions = (
   ): CombatSpellMode | null => {
     const automation = getCombatSpellAutomation(canonicalKey);
     return (
+      (catalogSpell?.attackType === "melee_spell" || catalogSpell?.attackType === "ranged_spell"
+        ? "spell_attack"
+        : null) ??
+      (catalogSpell?.effectTiming === "persistent" || catalogSpell?.effectTiming === "triggered"
+        ? "utility"
+        : null) ??
       (catalogSpell?.defaultSpellMode as CombatSpellMode | null | undefined) ??
       automation?.defaultSpellMode ??
       (catalogSpell?.resolutionType === "heal"
         ? "heal"
-        : catalogSpell?.resolutionType === "damage" && catalogSpell?.savingThrow
-          ? "saving_throw"
+          : catalogSpell?.resolutionType === "damage" && catalogSpell?.savingThrow
+            ? "saving_throw"
           : catalogSpell?.resolutionType === "damage"
-            ? "spell_attack"
+            ? "direct_damage"
             : (catalogSpell?.resolutionType === "control" ||
                   catalogSpell?.resolutionType === "debuff") &&
                 catalogSpell?.savingThrow
@@ -107,6 +113,12 @@ export const buildSpellOptions = (
             range: catalogSpell?.range ?? "",
             rangeMeters: catalogSpell?.rangeMeters ?? null,
             targetType: catalogSpell?.targetType ?? null,
+            selectionType: catalogSpell?.selectionType ?? null,
+            originType: catalogSpell?.originType ?? null,
+            targetAnchor: catalogSpell?.targetAnchor ?? null,
+            attackType: catalogSpell?.attackType ?? null,
+            rangeKind: catalogSpell?.rangeKind ?? null,
+            effectTiming: catalogSpell?.effectTiming ?? null,
             areaShape: catalogSpell?.areaShape ?? null,
             saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
             savingThrow: catalogSpell?.savingThrow ?? null,
@@ -162,6 +174,12 @@ export const buildSpellOptions = (
         range: catalogSpell.range ?? "",
         rangeMeters: catalogSpell.rangeMeters ?? null,
         targetType: catalogSpell.targetType ?? null,
+        selectionType: catalogSpell.selectionType ?? null,
+        originType: catalogSpell.originType ?? null,
+        targetAnchor: catalogSpell.targetAnchor ?? null,
+        attackType: catalogSpell.attackType ?? null,
+        rangeKind: catalogSpell.rangeKind ?? null,
+        effectTiming: catalogSpell.effectTiming ?? null,
         areaShape: catalogSpell.areaShape ?? null,
         saveSuccessOutcome: catalogSpell.saveSuccessOutcome ?? null,
         savingThrow: catalogSpell.savingThrow ?? null,

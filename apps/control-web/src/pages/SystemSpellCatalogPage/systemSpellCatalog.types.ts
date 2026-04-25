@@ -4,10 +4,16 @@ import type {
   CastingTimeType,
   ResolutionType,
   SaveSuccessOutcome,
+  SpellAttackType,
   SpellDamageType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
   SpellSavingThrow,
   SpellSchool,
+  SpellSelectionType,
   SpellSource,
+  SpellTargetAnchor,
   TargetType,
   UpcastMode,
 } from "../../entities/base-spell";
@@ -16,10 +22,16 @@ import {
   CastingTimeType as CastingTimeTypeValues,
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
+  SpellAttackType as SpellAttackTypeValues,
   SpellDamageType as SpellDamageTypeValues,
+  SpellEffectTiming as SpellEffectTimingValues,
+  SpellOriginType as SpellOriginTypeValues,
+  SpellRangeKind as SpellRangeKindValues,
   SpellSavingThrow as SpellSavingThrowValues,
   SpellSchool as SpellSchoolValues,
+  SpellSelectionType as SpellSelectionTypeValues,
   SpellSource as SpellSourceValues,
+  SpellTargetAnchor as SpellTargetAnchorValues,
   TargetType as TargetTypeValues,
   UpcastMode as UpcastModeValues,
 } from "../../entities/base-spell";
@@ -41,6 +53,12 @@ export type FormState = {
   castingTimeType: CastingTimeType | "";
   rangeMeters: string;
   targetType: TargetType | "";
+  selectionType: SpellSelectionType | "";
+  originType: SpellOriginType | "";
+  targetAnchor: SpellTargetAnchor | "";
+  attackType: SpellAttackType | "";
+  rangeKind: SpellRangeKind | "";
+  effectTiming: SpellEffectTiming | "";
   areaShape: AreaShape | "";
   radiusMeters: string;
   lengthMeters: string;
@@ -80,6 +98,12 @@ export const LEVEL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 export const SCHOOL_OPTIONS = Object.values(SpellSchoolValues);
 export const CASTING_TIME_TYPE_OPTIONS = Object.values(CastingTimeTypeValues);
 export const TARGET_TYPE_OPTIONS = Object.values(TargetTypeValues);
+export const SELECTION_TYPE_OPTIONS = Object.values(SpellSelectionTypeValues);
+export const ORIGIN_TYPE_OPTIONS = Object.values(SpellOriginTypeValues);
+export const TARGET_ANCHOR_OPTIONS = Object.values(SpellTargetAnchorValues);
+export const ATTACK_TYPE_OPTIONS = Object.values(SpellAttackTypeValues);
+export const RANGE_KIND_OPTIONS = Object.values(SpellRangeKindValues);
+export const EFFECT_TIMING_OPTIONS = Object.values(SpellEffectTimingValues);
 export const AREA_SHAPE_OPTIONS = Object.values(AreaShapeValues);
 export const RESOLUTION_TYPE_OPTIONS = Object.values(ResolutionTypeValues);
 export const DAMAGE_TYPE_OPTIONS = Object.values(SpellDamageTypeValues);

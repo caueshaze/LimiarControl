@@ -9,6 +9,12 @@ import type {
   AreaShape,
   BaseSpell as ApiBaseSpell,
   ResolutionType,
+  SpellAttackType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
+  SpellSelectionType,
+  SpellTargetAnchor,
   TargetType
 } from "../base-spell/baseSpell.types";
 import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
@@ -34,6 +40,12 @@ export type BaseSpell = {
   description: string;
   resolutionType?: ResolutionType | null;
   targetType?: TargetType | null;
+  selectionType?: SpellSelectionType | null;
+  originType?: SpellOriginType | null;
+  targetAnchor?: SpellTargetAnchor | null;
+  attackType?: SpellAttackType | null;
+  rangeKind?: SpellRangeKind | null;
+  effectTiming?: SpellEffectTiming | null;
   areaShape?: AreaShape | null;
   healDice?: string | null;
   damageType: string | null;
@@ -100,6 +112,12 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   description: api.descriptionEn,
   resolutionType: api.resolutionType ?? null,
   targetType: api.targetType ?? null,
+  selectionType: api.selectionType ?? null,
+  originType: api.originType ?? null,
+  targetAnchor: api.targetAnchor ?? null,
+  attackType: api.attackType ?? null,
+  rangeKind: api.rangeKind ?? null,
+  effectTiming: api.effectTiming ?? null,
   areaShape: api.areaShape ?? null,
   healDice: api.healDice ?? null,
   damageType: api.damageType ?? null,

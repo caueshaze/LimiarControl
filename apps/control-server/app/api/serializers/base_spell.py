@@ -10,6 +10,11 @@ from app.services.combat_service.spell_automation_metadata import (
 )
 
 
+def _optional_str_attr(source: object, name: str) -> str | None:
+    value = getattr(source, name, None)
+    return value if isinstance(value, str) else None
+
+
 def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
     automation = resolve_spell_automation_metadata_from_catalog(
         spell,
@@ -32,6 +37,12 @@ def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
         rangeMeters=spell.range_meters,
         rangeText=spell.range_text,
         targetType=spell.target_type,
+        selectionType=_optional_str_attr(spell, "selection_type"),
+        originType=_optional_str_attr(spell, "origin_type"),
+        targetAnchor=_optional_str_attr(spell, "target_anchor"),
+        attackType=_optional_str_attr(spell, "attack_type"),
+        rangeKind=_optional_str_attr(spell, "range_kind"),
+        effectTiming=_optional_str_attr(spell, "effect_timing"),
         areaShape=spell.area_shape,
         radiusMeters=spell.radius_meters,
         lengthMeters=spell.length_meters,
@@ -84,6 +95,12 @@ def to_base_spell_seed_entry(spell: BaseSpell) -> BaseSpellCreate:
         rangeMeters=spell.range_meters,
         rangeText=spell.range_text,
         targetType=spell.target_type,
+        selectionType=_optional_str_attr(spell, "selection_type"),
+        originType=_optional_str_attr(spell, "origin_type"),
+        targetAnchor=_optional_str_attr(spell, "target_anchor"),
+        attackType=_optional_str_attr(spell, "attack_type"),
+        rangeKind=_optional_str_attr(spell, "range_kind"),
+        effectTiming=_optional_str_attr(spell, "effect_timing"),
         areaShape=spell.area_shape,
         radiusMeters=spell.radius_meters,
         lengthMeters=spell.length_meters,

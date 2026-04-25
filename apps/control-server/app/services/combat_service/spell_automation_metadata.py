@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from .spell_automation import SpellAutomationSpec
+from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
 # Spell execution pipeline classification.
@@ -79,6 +80,8 @@ def resolve_spell_automation_metadata(
     saving_throw: str | None = None,
     damage_dice: str | None = None,
     heal_dice: str | None = None,
+    attack_type: str | None = None,
+    effect_timing: str | None = None,
     automation_registry: dict[str, SpellAutomationSpec] | None = None,
 ) -> SpellAutomationMetadata:
     """Compute automation metadata from catalog fields and the handler registry.
@@ -103,9 +106,14 @@ def resolve_spell_automation_metadata(
             handler_key=handler_spec.handler_name or None,
         )
 
-    default_spell_mode = _RESOLUTION_TYPE_TO_SPELL_MODE.get(
-        resolution_type or "",
-    )
+    if attack_type in ("melee_spell", "ranged_spell"):
+        default_spell_mode = "spell_attack"
+    elif effect_timing in ("persistent", "triggered"):
+        default_spell_mode = "utility"
+    else:
+        default_spell_mode = _RESOLUTION_TYPE_TO_SPELL_MODE.get(
+            resolution_type or "",
+        )
 
     has_effect_dice = bool(
         (damage_dice and damage_dice.strip()) or (heal_dice and heal_dice.strip()),
@@ -129,6 +137,7 @@ def resolve_spell_automation_metadata_from_catalog(
     automation_registry: dict[str, SpellAutomationSpec] | None = None,
 ) -> SpellAutomationMetadata:
     """Convenience wrapper that reads fields from a BaseSpell/CampaignSpell model."""
+    semantics = resolve_spell_targeting_semantics(catalog_entry)
     return resolve_spell_automation_metadata(
         canonical_key=getattr(catalog_entry, "canonical_key", None),
         resolution_type=getattr(catalog_entry, "resolution_type", None),
@@ -136,5 +145,7 @@ def resolve_spell_automation_metadata_from_catalog(
         saving_throw=getattr(catalog_entry, "saving_throw", None),
         damage_dice=getattr(catalog_entry, "damage_dice", None),
         heal_dice=getattr(catalog_entry, "heal_dice", None),
+        attack_type=semantics.attack_type,
+        effect_timing=semantics.effect_timing,
         automation_registry=automation_registry,
     )

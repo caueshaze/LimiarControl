@@ -83,6 +83,12 @@ class CampaignSpell(SQLModel, table=True):
     range_meters: Optional[int] = None
     range_text: Optional[str] = None
     target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    selection_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    origin_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    target_anchor: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    attack_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    range_kind: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    effect_timing: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     area_shape: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     radius_meters: Optional[float] = Field(
         default=None,

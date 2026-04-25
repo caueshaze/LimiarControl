@@ -1,4 +1,12 @@
 import type { SpellUpcast } from "../../../entities/base-spell";
+import type {
+  SpellAttackType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
+  SpellSelectionType,
+  SpellTargetAnchor,
+} from "../../../entities/base-spell";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import type { CombatActionCost, CombatSpellMode } from "../../../shared/api/combatRepo";
 import type { PlayerBoardStatusSummary } from "../playerBoard.types";
@@ -40,6 +48,12 @@ export type CombatSpellOption = {
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
   targetType?: "self" | "touch" | "ranged" | "special" | null;
+  selectionType?: SpellSelectionType | null;
+  originType?: SpellOriginType | null;
+  targetAnchor?: SpellTargetAnchor | null;
+  attackType?: SpellAttackType | null;
+  rangeKind?: SpellRangeKind | null;
+  effectTiming?: SpellEffectTiming | null;
   areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   rangeMeters?: number | null;
   availableSlotLevels: number[];

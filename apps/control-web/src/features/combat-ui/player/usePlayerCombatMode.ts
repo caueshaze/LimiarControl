@@ -18,7 +18,7 @@ import {
 } from "./usePlayerCombatModeHelpers";
 import { buildDragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
 import { useConsumables } from "./useConsumables";
-import { isAreaShape } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import { spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import type {
   CombatSpellOption,
   DeathSaveFeedback,
@@ -203,7 +203,7 @@ export const usePlayerCombatMode = ({
 
   const handleCast = async () => {
     if (!combat.state || !selectedSpell) return;
-    if (!isAreaShape(selectedSpell.areaShape) && !targetId) return;
+    if (spellRequiresExternalTarget(selectedSpell.selectionType, selectedSpell.areaShape) && !targetId) return;
     setLastSpellResult(null);
     setSpellDialogOpen(true);
   };

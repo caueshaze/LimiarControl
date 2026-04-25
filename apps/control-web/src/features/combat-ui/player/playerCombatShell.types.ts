@@ -6,6 +6,7 @@ import type {
   CombatStandardActionResult,
   CombatState,
 } from "../../../shared/api/combatRepo";
+import type { SpellSelectionType } from "../../../entities/base-spell";
 import type { DragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
 
 export type AttackResult = CombatAttackResult;
@@ -29,6 +30,7 @@ export type SpellOption = {
   rangeMeters?: number | null;
   actionCost?: CombatActionCost | null;
   targetType?: "self" | "touch" | "ranged" | "special" | null;
+  selectionType?: SpellSelectionType | null;
   areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   sourceType?: "sheet" | "magic_item";
   sourceItemName?: string | null;

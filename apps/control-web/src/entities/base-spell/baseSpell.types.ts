@@ -38,6 +38,65 @@ export const TargetType = {
 
 export type TargetType = (typeof TargetType)[keyof typeof TargetType];
 
+export const SpellSelectionType = {
+  NONE: "none",
+  SELF: "self",
+  CREATURE: "creature",
+  OBJECT: "object",
+  CREATURE_OR_OBJECT: "creature_or_object",
+  POINT: "point",
+  DIRECTION: "direction"
+} as const;
+
+export type SpellSelectionType =
+  (typeof SpellSelectionType)[keyof typeof SpellSelectionType];
+
+export const SpellOriginType = {
+  CASTER: "caster",
+  SELECTED_TARGET: "selected_target",
+  SELECTED_POINT: "selected_point"
+} as const;
+
+export type SpellOriginType =
+  (typeof SpellOriginType)[keyof typeof SpellOriginType];
+
+export const SpellTargetAnchor = {
+  CASTER: "caster",
+  SELECTED_TARGET: "selected_target",
+  SELECTED_POINT: "selected_point",
+  TRIGGER_TARGET: "trigger_target"
+} as const;
+
+export type SpellTargetAnchor =
+  (typeof SpellTargetAnchor)[keyof typeof SpellTargetAnchor];
+
+export const SpellAttackType = {
+  NONE: "none",
+  MELEE_SPELL: "melee_spell",
+  RANGED_SPELL: "ranged_spell"
+} as const;
+
+export type SpellAttackType =
+  (typeof SpellAttackType)[keyof typeof SpellAttackType];
+
+export const SpellRangeKind = {
+  SELF: "self",
+  TOUCH: "touch",
+  DISTANCE: "distance"
+} as const;
+
+export type SpellRangeKind =
+  (typeof SpellRangeKind)[keyof typeof SpellRangeKind];
+
+export const SpellEffectTiming = {
+  IMMEDIATE: "immediate",
+  PERSISTENT: "persistent",
+  TRIGGERED: "triggered"
+} as const;
+
+export type SpellEffectTiming =
+  (typeof SpellEffectTiming)[keyof typeof SpellEffectTiming];
+
 export const AreaShape = {
   CONE: "cone",
   CUBE: "cube",
@@ -157,6 +216,12 @@ export type BaseSpell = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetType?: TargetType | null;
+  selectionType?: SpellSelectionType | null;
+  originType?: SpellOriginType | null;
+  targetAnchor?: SpellTargetAnchor | null;
+  attackType?: SpellAttackType | null;
+  rangeKind?: SpellRangeKind | null;
+  effectTiming?: SpellEffectTiming | null;
   areaShape?: AreaShape | null;
   /** AoE radius in meters — sphere, cylinder. */
   radiusMeters?: number | null;
@@ -229,6 +294,12 @@ export type BaseSpellWritePayload = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetType?: TargetType | null;
+  selectionType?: SpellSelectionType | null;
+  originType?: SpellOriginType | null;
+  targetAnchor?: SpellTargetAnchor | null;
+  attackType?: SpellAttackType | null;
+  rangeKind?: SpellRangeKind | null;
+  effectTiming?: SpellEffectTiming | null;
   areaShape?: AreaShape | null;
   radiusMeters?: number | null;
   lengthMeters?: number | null;

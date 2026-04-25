@@ -22,9 +22,32 @@ const AREA_SHAPES = new Set(["sphere", "cone", "line", "cube", "cylinder"]);
 export const isAreaShape = (areaShape?: string | null): boolean =>
   typeof areaShape === "string" && AREA_SHAPES.has(areaShape);
 
+export const requiresAreaTargetingSelection = (
+  selectionType?: string | null,
+  areaShape?: string | null,
+): boolean =>
+  (selectionType === "point" || selectionType === "direction") && isAreaShape(areaShape);
+
+export const spellRequiresExternalTarget = (
+  selectionType?: string | null,
+  areaShape?: string | null,
+): boolean => {
+  if (requiresAreaTargetingSelection(selectionType, areaShape)) {
+    return false;
+  }
+  if (selectionType === "none" || selectionType === "self") {
+    return false;
+  }
+  return true;
+};
+
 export const createInitialTargetingMode = (
   areaShape?: string | null,
-): AreaTargetingMode => (isAreaShape(areaShape) ? "area_target_select" : "single_target_select");
+  selectionType?: string | null,
+): AreaTargetingMode =>
+  requiresAreaTargetingSelection(selectionType, areaShape) || (!selectionType && isAreaShape(areaShape))
+    ? "area_target_select"
+    : "single_target_select";
 
 export const getAnchorCombatantIdAtCell = (
   tokens: CombatMapPreviewToken[],

@@ -1,6 +1,14 @@
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import type { SpellUpcast } from "../../../entities/base-spell";
+import type {
+  SpellAttackType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
+  SpellSelectionType,
+  SpellTargetAnchor,
+} from "../../../entities/base-spell";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import type { CombatActionCost, CombatSpellMode } from "../../../shared/api/combatRepo";
 import type { Locale } from "../../../shared/i18n";
@@ -26,6 +34,12 @@ export type CombatSpellOption = {
   range: string;
   rangeMeters?: number | null;
   targetType?: "self" | "touch" | "ranged" | "special" | null;
+  selectionType?: SpellSelectionType | null;
+  originType?: SpellOriginType | null;
+  targetAnchor?: SpellTargetAnchor | null;
+  attackType?: SpellAttackType | null;
+  rangeKind?: SpellRangeKind | null;
+  effectTiming?: SpellEffectTiming | null;
   areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   chargesCurrent?: number | null;
   chargesMax?: number | null;

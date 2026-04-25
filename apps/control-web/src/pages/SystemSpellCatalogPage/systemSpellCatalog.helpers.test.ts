@@ -34,6 +34,36 @@ describe("systemSpellCatalog upcast helpers", () => {
     });
   });
 
+  it("serializes spell targeting semantics into payloads", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "fireball";
+    form.nameEn = "Fireball";
+    form.descriptionEn = "A bright streak flashes to a point you choose.";
+    form.level = 3;
+    form.school = "evocation";
+    form.targetType = "ranged";
+    form.selectionType = "point";
+    form.originType = "selected_point";
+    form.targetAnchor = "selected_point";
+    form.attackType = "none";
+    form.rangeKind = "distance";
+    form.effectTiming = "immediate";
+
+    const result = buildPayload(form, true);
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload).toEqual(
+      expect.objectContaining({
+        selectionType: "point",
+        originType: "selected_point",
+        targetAnchor: "selected_point",
+        attackType: "none",
+        rangeKind: "distance",
+        effectTiming: "immediate",
+      }),
+    );
+  });
+
   it("hydrates the structured upcast back into the form state", () => {
     const spell: BaseSpell = {
       id: "spell-1",
@@ -51,6 +81,12 @@ describe("systemSpellCatalog upcast helpers", () => {
       rangeMeters: 36,
       rangeText: "120 ft",
       targetType: "ranged",
+      selectionType: "creature",
+      originType: "caster",
+      targetAnchor: "selected_target",
+      attackType: "none",
+      rangeKind: "distance",
+      effectTiming: "immediate",
       duration: "Instantaneous",
       componentsJson: ["V", "S"],
       materialComponentText: null,
@@ -81,5 +117,11 @@ describe("systemSpellCatalog upcast helpers", () => {
     expect(form.upcastDice).toBe("1d4+1");
     expect(form.upcastPerLevel).toBe("1");
     expect(form.upcastMaxLevel).toBe("9");
+    expect(form.selectionType).toBe("creature");
+    expect(form.originType).toBe("caster");
+    expect(form.targetAnchor).toBe("selected_target");
+    expect(form.attackType).toBe("none");
+    expect(form.rangeKind).toBe("distance");
+    expect(form.effectTiming).toBe("immediate");
   });
 });

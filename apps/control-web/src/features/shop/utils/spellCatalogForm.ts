@@ -4,8 +4,14 @@ import {
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
   SpellDamageType as SpellDamageTypeValues,
+  SpellAttackType as SpellAttackTypeValues,
+  SpellEffectTiming as SpellEffectTimingValues,
+  SpellOriginType as SpellOriginTypeValues,
+  SpellRangeKind as SpellRangeKindValues,
   SpellSavingThrow as SpellSavingThrowValues,
   SpellSchool,
+  SpellSelectionType as SpellSelectionTypeValues,
+  SpellTargetAnchor as SpellTargetAnchorValues,
   TargetType as TargetTypeValues,
   UpcastMode as UpcastModeValues,
   type AreaShape,
@@ -14,7 +20,13 @@ import {
   type ResolutionType,
   type SaveSuccessOutcome,
   type SpellDamageType,
+  type SpellAttackType,
+  type SpellEffectTiming,
+  type SpellOriginType,
+  type SpellRangeKind,
   type SpellSavingThrow,
+  type SpellSelectionType,
+  type SpellTargetAnchor,
   type TargetType,
   type UpcastMode,
 } from "../../../entities/base-spell";
@@ -28,6 +40,12 @@ export const SPELL_SCHOOL_OPTIONS = Object.values(SpellSchool);
 export const SPELL_CASTING_TIME_TYPE_OPTIONS = Object.values(CastingTimeTypeValues);
 
 export const SPELL_TARGET_TYPE_OPTIONS = Object.values(TargetTypeValues);
+export const SPELL_SELECTION_TYPE_OPTIONS = Object.values(SpellSelectionTypeValues);
+export const SPELL_ORIGIN_TYPE_OPTIONS = Object.values(SpellOriginTypeValues);
+export const SPELL_TARGET_ANCHOR_OPTIONS = Object.values(SpellTargetAnchorValues);
+export const SPELL_ATTACK_TYPE_OPTIONS = Object.values(SpellAttackTypeValues);
+export const SPELL_RANGE_KIND_OPTIONS = Object.values(SpellRangeKindValues);
+export const SPELL_EFFECT_TIMING_OPTIONS = Object.values(SpellEffectTimingValues);
 export const SPELL_AREA_SHAPE_OPTIONS = Object.values(AreaShapeValues);
 
 export const SPELL_RESOLUTION_TYPE_OPTIONS = Object.values(ResolutionTypeValues);
@@ -250,6 +268,12 @@ export const buildSpellUpdatePayload = (
   rangeMeters: toNullableInteger(state.rangeMeters),
   rangeText: toNullableText(state.rangeText),
   targetType: toNullableText(state.targetType) as TargetType | null,
+  selectionType: toNullableText(state.selectionType) as SpellSelectionType | null,
+  originType: toNullableText(state.originType) as SpellOriginType | null,
+  targetAnchor: toNullableText(state.targetAnchor) as SpellTargetAnchor | null,
+  attackType: toNullableText(state.attackType) as SpellAttackType | null,
+  rangeKind: toNullableText(state.rangeKind) as SpellRangeKind | null,
+  effectTiming: toNullableText(state.effectTiming) as SpellEffectTiming | null,
   areaShape: toNullableText(state.areaShape) as AreaShape | null,
   radiusMeters:
     state.areaShape === "sphere" || state.areaShape === "cylinder"
@@ -316,6 +340,12 @@ export type SpellCatalogEditorState = {
   rangeMeters: string;
   rangeText: string;
   targetType: TargetType | "";
+  selectionType: SpellSelectionType | "";
+  originType: SpellOriginType | "";
+  targetAnchor: SpellTargetAnchor | "";
+  attackType: SpellAttackType | "";
+  rangeKind: SpellRangeKind | "";
+  effectTiming: SpellEffectTiming | "";
   areaShape: AreaShape | "";
   duration: string;
   componentsJson: string[];
@@ -362,6 +392,12 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   rangeText: spell.rangeText ?? "",
   targetType: spell.targetType ?? "",
+  selectionType: spell.selectionType ?? "",
+  originType: spell.originType ?? "",
+  targetAnchor: spell.targetAnchor ?? "",
+  attackType: spell.attackType ?? "",
+  rangeKind: spell.rangeKind ?? "",
+  effectTiming: spell.effectTiming ?? "",
   areaShape: spell.areaShape ?? "",
   radiusMeters:
     spell.radiusMeters != null
@@ -420,6 +456,12 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   rangeMeters: "",
   rangeText: "",
   targetType: "",
+  selectionType: "",
+  originType: "",
+  targetAnchor: "",
+  attackType: "",
+  rangeKind: "",
+  effectTiming: "",
   areaShape: "",
   radiusMeters: "",
   lengthMeters: "",

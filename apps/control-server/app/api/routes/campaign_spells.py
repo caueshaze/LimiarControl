@@ -25,6 +25,11 @@ from app.services.combat_service.spell_automation_metadata import (
 router = APIRouter()
 
 
+def _optional_str_attr(source: object, name: str) -> str | None:
+    value = getattr(source, name, None)
+    return value if isinstance(value, str) else None
+
+
 def to_campaign_spell_read(
     spell: CampaignSpell,
     campaign: Campaign,
@@ -50,6 +55,12 @@ def to_campaign_spell_read(
         rangeMeters=spell.range_meters,
         rangeText=spell.range_text,
         targetType=spell.target_type,
+        selectionType=_optional_str_attr(spell, "selection_type"),
+        originType=_optional_str_attr(spell, "origin_type"),
+        targetAnchor=_optional_str_attr(spell, "target_anchor"),
+        attackType=_optional_str_attr(spell, "attack_type"),
+        rangeKind=_optional_str_attr(spell, "range_kind"),
+        effectTiming=_optional_str_attr(spell, "effect_timing"),
         areaShape=spell.area_shape,
         radiusMeters=spell.radius_meters,
         lengthMeters=spell.length_meters,
@@ -164,6 +175,12 @@ def update_spell(
         "rangeMeters": "range_meters",
         "rangeText": "range_text",
         "targetType": "target_type",
+        "selectionType": "selection_type",
+        "originType": "origin_type",
+        "targetAnchor": "target_anchor",
+        "attackType": "attack_type",
+        "rangeKind": "range_kind",
+        "effectTiming": "effect_timing",
         "areaShape": "area_shape",
         "radiusMeters": "radius_meters",
         "lengthMeters": "length_meters",
