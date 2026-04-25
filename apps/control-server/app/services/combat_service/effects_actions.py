@@ -97,7 +97,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
         cls._set_participant_effects(target, keep)
         removed_metadata = cls._get_effect_metadata(removed)
         if removed_metadata.get("concentration") is True and isinstance(removed_metadata.get("concentration_group"), str):
-            cls._remove_effect_group(state, concentration_group=removed_metadata["concentration_group"])
+            group_result = cls._remove_effect_group(state, concentration_group=removed_metadata["concentration_group"])
+            cls._sync_area_effects_if_changed(session_id, state, group_result["removed_area_effects"])
         flag_modified(state, "participants")
         db.add(state)
         db.commit()

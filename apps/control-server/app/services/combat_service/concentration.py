@@ -81,12 +81,47 @@ class CombatConcentrationMixin:
         cls._set_participant_effects(participant, effects)
 
     @classmethod
-    def _remove_effect_group(
+    def _remove_area_effects_for_concentration_group(
         cls,
         state: CombatState,
         *,
         concentration_group: str,
     ) -> list[dict]:
+        removed: list[dict] = []
+        remaining: list[dict] = []
+        for effect in state.active_area_effects or []:
+            if (
+                isinstance(effect, dict)
+                and effect.get("concentration_group") == concentration_group
+            ):
+                removed.append(effect)
+            else:
+                remaining.append(effect)
+        if removed:
+            state.active_area_effects = remaining
+        return removed
+
+    @classmethod
+    def _sync_area_effects_if_changed(
+        cls,
+        session_id: str,
+        state: CombatState,
+        area_removed: list[dict],
+    ) -> None:
+        if not area_removed:
+            return
+        flag_modified(state, "active_area_effects")
+        from .limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
+
+        maybe_sync_active_area_effects_to_limiar_map(session_id, state)
+
+    @classmethod
+    def _remove_effect_group(
+        cls,
+        state: CombatState,
+        *,
+        concentration_group: str,
+    ) -> dict:
         removed: list[dict] = []
         for participant in state.participants:
             effects = cls._get_participant_effects(participant)
@@ -106,7 +141,10 @@ class CombatConcentrationMixin:
                     continue
                 kept.append(effect)
             cls._set_participant_effects(participant, kept)
-        return removed
+        area_removed = cls._remove_area_effects_for_concentration_group(
+            state, concentration_group=concentration_group
+        )
+        return {"removed_effects": removed, "removed_area_effects": area_removed}
 
     @classmethod
     def _clear_concentration_for_source(
@@ -114,7 +152,7 @@ class CombatConcentrationMixin:
         state: CombatState,
         *,
         source_participant_id: str,
-    ) -> list[dict]:
+    ) -> dict:
         groups: set[str] = set()
         for participant in state.participants:
             for effect in cls._get_participant_effects(participant):
@@ -126,12 +164,16 @@ class CombatConcentrationMixin:
                 ):
                     groups.add(metadata["concentration_group"])
 
-        removed: list[dict] = []
+        all_removed: list[dict] = []
+        all_area_removed: list[dict] = []
         for group_id in groups:
-            removed.extend(
-                cls._remove_effect_group(state, concentration_group=group_id)
-            )
-        return removed
+            result = cls._remove_effect_group(state, concentration_group=group_id)
+            all_removed.extend(result["removed_effects"])
+            all_area_removed.extend(result["removed_area_effects"])
+        return {
+            "removed_effects": all_removed,
+            "removed_area_effects": all_area_removed,
+        }
 
     @classmethod
     def _clear_concentration_for_participant_status(
@@ -139,16 +181,22 @@ class CombatConcentrationMixin:
         state: CombatState | None,
         *,
         source_participant_id: str | None,
-    ) -> list[dict]:
+    ) -> dict:
+        empty = {"removed_effects": [], "removed_area_effects": []}
         if not state or not source_participant_id:
-            return []
-        removed = cls._clear_concentration_for_source(
+            return empty
+        result = cls._clear_concentration_for_source(
             state,
             source_participant_id=source_participant_id,
         )
-        if removed:
+        if result["removed_effects"]:
             flag_modified(state, "participants")
-        return removed
+        if result["removed_area_effects"]:
+            flag_modified(state, "active_area_effects")
+            from .limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
+
+            maybe_sync_active_area_effects_to_limiar_map(state.session_id, state)
+        return result
 
     @classmethod
     def _get_hunters_mark_effect_for_target(
@@ -271,12 +319,19 @@ class CombatConcentrationMixin:
         broken_effect_labels: list[str] = []
         source_spell_keys: set[str] = set()
         if not succeeded:
-            removed = cls._clear_concentration_for_source(
+            result = cls._clear_concentration_for_source(
                 state,
                 source_participant_id=target_participant.get("id", ""),
             )
+            removed = result["removed_effects"]
+            area_removed = result["removed_area_effects"]
             if removed:
                 flag_modified(state, "participants")
+            if area_removed:
+                flag_modified(state, "active_area_effects")
+                from .limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
+
+                maybe_sync_active_area_effects_to_limiar_map(session_id, state)
             for effect in removed:
                 label = effect.get("display_label")
                 if not isinstance(label, str) or not label.strip():
@@ -285,6 +340,13 @@ class CombatConcentrationMixin:
                     broken_effect_labels.append(label)
                 metadata = cls._get_effect_metadata(effect)
                 spell_key = metadata.get("source_spell_key")
+                if isinstance(spell_key, str) and spell_key.strip():
+                    source_spell_keys.add(spell_key)
+            for area_effect in area_removed:
+                label = area_effect.get("source_spell_name")
+                if isinstance(label, str) and label.strip() and label not in broken_effect_labels:
+                    broken_effect_labels.append(label)
+                spell_key = area_effect.get("source_spell_canonical_key")
                 if isinstance(spell_key, str) and spell_key.strip():
                     source_spell_keys.add(spell_key)
 

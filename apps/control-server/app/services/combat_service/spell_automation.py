@@ -174,9 +174,12 @@ class CombatSpellAutomationMixin:
         actor_user_id: str, is_gm: bool, req, state: CombatState,
         spell_context: dict, target_participant: dict,
     ) -> dict:
-        removed = cls._clear_concentration_for_source(
+        result = cls._clear_concentration_for_source(
             state,
             source_participant_id=attacker["id"],
+        )
+        cls._sync_area_effects_if_changed(
+            session_id, state, result["removed_area_effects"],
         )
         concentration_group = str(uuid4())
         spell_name = spell_context["spell_name"]
@@ -217,7 +220,7 @@ class CombatSpellAutomationMixin:
         flag_modified(state, "participants")
 
         summary_text = f"{spell_name} aplicada em {target_participant['display_name']}."
-        if removed:
+        if result["removed_effects"] or result["removed_area_effects"]:
             summary_text += " A concentração anterior terminou."
 
         return cls._base_spell_result(

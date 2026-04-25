@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.models.combat import CombatState
@@ -331,7 +332,18 @@ class CastAreaMixin:
             slot_spent = True
 
         active_area_effect: dict[str, Any] | None = None
+        concentration_group: str | None = None
         if spell_context.get("effect_timing") == "persistent":
+            if spell_context.get("concentration"):
+                prev = cls._clear_concentration_for_source(
+                    state, source_participant_id=attacker["id"],
+                )
+                if prev["removed_effects"]:
+                    flag_modified(state, "participants")
+                if prev["removed_area_effects"]:
+                    flag_modified(state, "active_area_effects")
+                    maybe_sync_active_area_effects_to_limiar_map(session_id, state)
+                concentration_group = str(uuid4())
             try:
                 active_area_effect = build_persistent_spell_area_effect(
                     state=state,
@@ -341,6 +353,7 @@ class CastAreaMixin:
                     targeting_result=targeting_result,
                     origin_cell=req.origin_cell.model_dump() if req.origin_cell is not None else None,
                     anchor_cell=req.anchor_cell.model_dump() if req.anchor_cell is not None else None,
+                    concentration_group=concentration_group,
                 )
             except ValueError as exc:
                 raise CombatServiceError(str(exc), 400) from exc
@@ -348,6 +361,23 @@ class CastAreaMixin:
                 *(state.active_area_effects or []),
                 active_area_effect,
             ]
+            if concentration_group:
+                cls._append_effect_to_participant(
+                    attacker,
+                    cls._build_active_effect(
+                        kind="spell_effect",
+                        source_participant_id=attacker["id"],
+                        duration_type="manual",
+                        metadata={
+                            "concentration": True,
+                            "concentration_group": concentration_group,
+                            "source_spell_key": spell_context["spell_canonical_key"],
+                            "concentration_area_effect_id": active_area_effect["id"],
+                        },
+                        display_label=spell_context["spell_name"],
+                    ),
+                )
+                flag_modified(state, "participants")
 
         db.add(state)
         db.commit()
