@@ -50,11 +50,15 @@ const FAILURE_PRIORITY: readonly string[] = Object.freeze([
   "target_not_found",
   "invalid_target_type",
   "target_out_of_reach",
+  "origin_heavily_obscured",
+  "target_heavily_obscured",
+  "point_heavily_obscured",
+  "line_of_sight_obscured",
   "no_line_of_sight",
   "no_line_of_effect",
   "not_visible",
   "self_target_not_allowed",
-  "map_unreachable",
+  "map_unreachable"
 ]);
 
 // ─── Detail builders ──────────────────────────────────────────────────────────
@@ -62,9 +66,10 @@ const FAILURE_PRIORITY: readonly string[] = Object.freeze([
 // Each builder receives the full metadata dict and returns up to 2 strings.
 // Builders must be pure — no side effects, no throws.
 
-type DetailBuilder = (
-  meta: Record<string, number | string | boolean>
-) => { details: string[]; context: Record<string, number | string | boolean> };
+type DetailBuilder = (meta: Record<string, number | string | boolean>) => {
+  details: string[];
+  context: Record<string, number | string | boolean>;
+};
 
 const DETAIL_BUILDERS: Record<string, DetailBuilder> = {
   target_out_of_reach: (meta) => {
@@ -87,37 +92,59 @@ const DETAIL_BUILDERS: Record<string, DetailBuilder> = {
 
   no_line_of_sight: () => ({
     details: ["Visão bloqueada por obstáculo"],
-    context: {},
+    context: {}
+  }),
+
+  origin_heavily_obscured: () => ({
+    details: ["Você está em área fortemente encoberta"],
+    context: { obscurement: "heavily_obscured" }
+  }),
+
+  target_heavily_obscured: () => ({
+    details: ["Alvo está em área fortemente encoberta"],
+    context: { obscurement: "heavily_obscured" }
+  }),
+
+  point_heavily_obscured: () => ({
+    details: ["Ponto está em área fortemente encoberta"],
+    context: { obscurement: "heavily_obscured" }
+  }),
+
+  line_of_sight_obscured: () => ({
+    details: ["Linha de visão atravessa área encoberta"],
+    context: { obscurement: "heavily_obscured" }
   }),
 
   no_line_of_effect: () => ({
     details: ["Efeito bloqueado por obstáculo"],
-    context: {},
+    context: {}
   }),
 
   not_visible: () => ({
     details: ["Alvo não pode ser visto"],
-    context: {},
+    context: {}
   }),
 
   blocked_by_condition: (meta) => {
     const condition =
       typeof meta.condition === "string" ? meta.condition : null;
     return {
-      details: [condition ? `Condição: ${condition}` : "Você está incapacitado"],
-      context: condition ? { condition } : {},
+      details: [
+        condition ? `Condição: ${condition}` : "Você está incapacitado"
+      ],
+      context: condition ? { condition } : {}
     };
   },
 
   map_unreachable: () => ({
     details: ["Reconecte ao mapa"],
-    context: {},
+    context: {}
   }),
 
   // Reasons with no useful extra detail — empty builders
   target_not_found: () => ({ details: [], context: {} }),
   invalid_target_type: () => ({ details: [], context: {} }),
-  self_target_not_allowed: () => ({ details: [], context: {} }),
+  self_target_not_allowed: () => ({ details: [], context: {} })
 };
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -136,14 +163,15 @@ export function buildFailureExplanation(
   if (diagnostics.failureReasons.length === 0) return null;
 
   const primary = _pickPrimaryReason(diagnostics.failureReasons);
-  const builder = DETAIL_BUILDERS[primary] ?? (() => ({ details: [], context: {} }));
+  const builder =
+    DETAIL_BUILDERS[primary] ?? (() => ({ details: [], context: {} }));
   const { details, context } = builder(diagnostics.metadata);
 
   return {
     primary: getFailureLabel(primary),
     details,
     context,
-    severity: getFailureSeverity(primary),
+    severity: getFailureSeverity(primary)
   };
 }
 

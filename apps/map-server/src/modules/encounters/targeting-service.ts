@@ -1,8 +1,12 @@
-import type { ControllerType, Coordinate, TargetingTemplate } from "@limiarmap/shared-contracts";
+import type {
+  ControllerType,
+  Coordinate,
+  TargetingTemplate
+} from "@limiarmap/shared-contracts";
 import {
   chebyshevDistance,
+  evaluateLineOfSight,
   hasLineOfEffect,
-  hasLineOfSight,
   nextEncounterVersion,
   resolveCone,
   resolveCube,
@@ -25,30 +29,70 @@ export class TargetingService {
   ) {
     const encounter = this.repository.requireEncounter(sessionId);
     if (encounter.actionTracker.has(template.actionId)) {
-      return { accepted: false, rejectionReason: "duplicate_action", encounter };
+      return {
+        accepted: false,
+        rejectionReason: "duplicate_action",
+        encounter
+      };
     }
 
-    const token = encounter.tokens.find((candidate) => candidate.id === template.tokenId);
+    const token = encounter.tokens.find(
+      (candidate) => candidate.id === template.tokenId
+    );
     if (!token) {
       return { accepted: false, rejectionReason: "unknown_token", encounter };
     }
 
-    if (!canSubmitTacticalAction(actorId, actorType, token, encounter.combatState)) {
-      return { accepted: false, rejectionReason: "unauthorized_action", encounter };
+    if (
+      !canSubmitTacticalAction(actorId, actorType, token, encounter.combatState)
+    ) {
+      return {
+        accepted: false,
+        rejectionReason: "unauthorized_action",
+        encounter
+      };
     }
 
-    if (chebyshevDistance(template.originCell, template.anchorCell) > template.rangeCells) {
+    if (
+      chebyshevDistance(template.originCell, template.anchorCell) >
+      template.rangeCells
+    ) {
       return { accepted: false, rejectionReason: "out_of_range", encounter };
     }
 
-    const { obstacles, edgeObstacles } = encounter;
+    const { obstacles, edgeObstacles, activeAreaEffects } = encounter;
 
-    if (options?.requiresSight && !hasLineOfSight(obstacles, template.originCell, template.anchorCell, edgeObstacles)) {
-      return { accepted: false, rejectionReason: "no_line_of_sight", encounter };
+    if (options?.requiresSight) {
+      const sight = evaluateLineOfSight(
+        obstacles,
+        template.originCell,
+        template.anchorCell,
+        edgeObstacles,
+        activeAreaEffects
+      );
+      if (!sight.ok) {
+        const reason =
+          sight.reason === "target_heavily_obscured"
+            ? "point_heavily_obscured"
+            : sight.reason;
+        return { accepted: false, rejectionReason: reason, encounter };
+      }
     }
 
-    if (options?.requiresEffect && !hasLineOfEffect(obstacles, template.originCell, template.anchorCell, edgeObstacles)) {
-      return { accepted: false, rejectionReason: "no_line_of_effect", encounter };
+    if (
+      options?.requiresEffect &&
+      !hasLineOfEffect(
+        obstacles,
+        template.originCell,
+        template.anchorCell,
+        edgeObstacles
+      )
+    ) {
+      return {
+        accepted: false,
+        rejectionReason: "no_line_of_effect",
+        encounter
+      };
     }
 
     // Phase 11: all shape resolvers now receive edgeObstacles so propagation
@@ -74,13 +118,28 @@ export class TargetingService {
         );
         break;
       case "sphere":
-        affectedCells = resolveSphere(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);
+        affectedCells = resolveSphere(
+          template.anchorCell,
+          template.sizeCells,
+          obstacles,
+          edgeObstacles
+        );
         break;
       case "cylinder":
-        affectedCells = resolveCylinder(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);
+        affectedCells = resolveCylinder(
+          template.anchorCell,
+          template.sizeCells,
+          obstacles,
+          edgeObstacles
+        );
         break;
       case "cube":
-        affectedCells = resolveCube(template.anchorCell, template.sizeCells, obstacles, edgeObstacles);
+        affectedCells = resolveCube(
+          template.anchorCell,
+          template.sizeCells,
+          obstacles,
+          edgeObstacles
+        );
         break;
     }
 
