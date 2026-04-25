@@ -41,6 +41,12 @@ def _make_campaign_spell(**overrides) -> CampaignSpell:
     spell.range_meters = 45
     spell.range_text = "150 ft"
     spell.target_type = "ranged"
+    spell.selection_type = "point"
+    spell.origin_type = "selected_point"
+    spell.target_anchor = "selected_point"
+    spell.attack_type = "none"
+    spell.range_kind = "distance"
+    spell.effect_timing = "immediate"
     spell.area_shape = "sphere"
     spell.duration = "Instantaneous"
     spell.components_json = ["V", "S", "M"]

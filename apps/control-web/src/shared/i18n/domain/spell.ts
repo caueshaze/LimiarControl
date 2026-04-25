@@ -3,8 +3,14 @@ import type {
   CastingTimeType,
   ResolutionType,
   SaveSuccessOutcome,
+  SpellAttackType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
   SpellSchool,
+  SpellSelectionType,
   SpellSource,
+  SpellTargetAnchor,
   TargetType,
   UpcastMode,
 } from "../../../entities/base-spell";
@@ -46,6 +52,47 @@ const TARGET_TYPE_LABELS: Record<TargetType, LabelEntry> = {
   touch: label("Touch", "Toque"),
   ranged: label("Ranged", "À distância"),
   special: label("Special", "Especial"),
+};
+
+const SPELL_SELECTION_TYPE_LABELS: Record<SpellSelectionType, LabelEntry> = {
+  none: label("None", "Nenhuma"),
+  self: label("Self", "Pessoal"),
+  creature: label("Creature", "Criatura"),
+  object: label("Object", "Objeto"),
+  creature_or_object: label("Creature or object", "Criatura ou objeto"),
+  point: label("Point", "Ponto"),
+  direction: label("Direction", "Direção"),
+};
+
+const SPELL_ORIGIN_TYPE_LABELS: Record<SpellOriginType, LabelEntry> = {
+  caster: label("Caster", "Conjurador"),
+  selected_target: label("Selected target", "Alvo selecionado"),
+  selected_point: label("Selected point", "Ponto selecionado"),
+};
+
+const SPELL_TARGET_ANCHOR_LABELS: Record<SpellTargetAnchor, LabelEntry> = {
+  caster: label("Caster", "Conjurador"),
+  selected_target: label("Selected target", "Alvo selecionado"),
+  selected_point: label("Selected point", "Ponto selecionado"),
+  trigger_target: label("Trigger target", "Alvo do gatilho"),
+};
+
+const SPELL_ATTACK_TYPE_LABELS: Record<SpellAttackType, LabelEntry> = {
+  none: label("None", "Nenhum"),
+  melee_spell: label("Melee spell", "Magia corpo a corpo"),
+  ranged_spell: label("Ranged spell", "Magia à distância"),
+};
+
+const SPELL_RANGE_KIND_LABELS: Record<SpellRangeKind, LabelEntry> = {
+  self: label("Self", "Pessoal"),
+  touch: label("Touch", "Toque"),
+  distance: label("Distance", "Distância"),
+};
+
+const SPELL_EFFECT_TIMING_LABELS: Record<SpellEffectTiming, LabelEntry> = {
+  immediate: label("Immediate", "Imediato"),
+  persistent: label("Persistent", "Persistente"),
+  triggered: label("Triggered", "Acionado"),
 };
 
 const AREA_SHAPE_LABELS: Record<AreaShape, LabelEntry> = {
@@ -136,6 +183,12 @@ export const localizeSpellAdminValue = (value: string, locale: LocaleLike) => {
     SPELL_SCHOOL_LABELS as Record<string, LabelEntry>,
     CASTING_TIME_TYPE_LABELS as Record<string, LabelEntry>,
     TARGET_TYPE_LABELS as Record<string, LabelEntry>,
+    SPELL_SELECTION_TYPE_LABELS as Record<string, LabelEntry>,
+    SPELL_ORIGIN_TYPE_LABELS as Record<string, LabelEntry>,
+    SPELL_TARGET_ANCHOR_LABELS as Record<string, LabelEntry>,
+    SPELL_ATTACK_TYPE_LABELS as Record<string, LabelEntry>,
+    SPELL_RANGE_KIND_LABELS as Record<string, LabelEntry>,
+    SPELL_EFFECT_TIMING_LABELS as Record<string, LabelEntry>,
     AREA_SHAPE_LABELS as Record<string, LabelEntry>,
     RESOLUTION_TYPE_LABELS as Record<string, LabelEntry>,
     UPCAST_MODE_LABELS as Record<string, LabelEntry>,

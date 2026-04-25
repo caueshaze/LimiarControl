@@ -568,4 +568,213 @@ describe("buildSpellOptions", () => {
 
     expect(options).toEqual([]);
   });
+
+  it("uses attackType rather than targetType/range to choose spell attack mode", () => {
+    seedSpellCatalogCache([
+      {
+        campaignSpellId: null,
+        canonicalKey: "thorn_whip",
+        name: "Thorn Whip",
+        level: 0,
+        school: "transmutation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "9 m",
+        rangeMeters: 9,
+        components: "V, S, M",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        targetType: "ranged",
+        selectionType: "creature",
+        attackType: "melee_spell",
+        rangeKind: "distance",
+        effectTiming: "immediate",
+        damageType: "Piercing",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Druid"],
+      },
+      {
+        campaignSpellId: null,
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "evocation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "36 m",
+        rangeMeters: 36,
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        targetType: "ranged",
+        selectionType: "creature",
+        attackType: "none",
+        rangeKind: "distance",
+        effectTiming: "immediate",
+        damageType: "Force",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Wizard"],
+      },
+    ]);
+
+    const options = buildSpellOptions({
+      spellcasting: {
+        ability: "wisdom",
+        mode: "known",
+        slots: { 1: { max: 1, used: 0 } },
+        spells: [
+          {
+            id: "spell-1",
+            name: "Thorn Whip",
+            canonicalKey: "thorn_whip",
+            campaignSpellId: null,
+            level: 0,
+            school: "transmutation",
+            prepared: true,
+            notes: "",
+          },
+          {
+            id: "spell-2",
+            name: "Magic Missile",
+            canonicalKey: "magic_missile",
+            campaignSpellId: null,
+            level: 1,
+            school: "evocation",
+            prepared: true,
+            notes: "",
+          },
+        ],
+      },
+    } as CharacterSheet);
+
+    expect(options).toEqual([
+      expect.objectContaining({
+        canonicalKey: "thorn_whip",
+        attackType: "melee_spell",
+        suggestedMode: "spell_attack",
+      }),
+      expect.objectContaining({
+        canonicalKey: "magic_missile",
+        attackType: "none",
+        suggestedMode: "direct_damage",
+      }),
+    ]);
+  });
+
+  it("routes persistent and triggered spell semantics to utility mode", () => {
+    seedSpellCatalogCache([
+      {
+        campaignSpellId: null,
+        canonicalKey: "spike_growth",
+        name: "Spike Growth",
+        level: 2,
+        school: "transmutation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "45 m",
+        rangeMeters: 45,
+        components: "V, S, M",
+        duration: "Concentration, up to 10 minutes",
+        concentration: true,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        targetType: "ranged",
+        selectionType: "point",
+        areaShape: "sphere",
+        attackType: "none",
+        rangeKind: "distance",
+        effectTiming: "persistent",
+        damageType: "Piercing",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Druid"],
+      },
+      {
+        campaignSpellId: null,
+        canonicalKey: "hail_of_thorns",
+        name: "Hail of Thorns",
+        level: 1,
+        school: "conjuration",
+        castingTimeType: "bonus_action",
+        castingTime: "1 bonus action",
+        range: "Self",
+        rangeMeters: 0,
+        components: "V",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        targetType: "self",
+        selectionType: "none",
+        attackType: "none",
+        rangeKind: "self",
+        effectTiming: "triggered",
+        damageType: "Piercing",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Ranger"],
+      },
+    ]);
+
+    const options = buildSpellOptions({
+      spellcasting: {
+        ability: "wisdom",
+        mode: "known",
+        slots: { 1: { max: 1, used: 0 }, 2: { max: 1, used: 0 } },
+        spells: [
+          {
+            id: "spell-1",
+            name: "Spike Growth",
+            canonicalKey: "spike_growth",
+            campaignSpellId: null,
+            level: 2,
+            school: "transmutation",
+            prepared: true,
+            notes: "",
+          },
+          {
+            id: "spell-2",
+            name: "Hail of Thorns",
+            canonicalKey: "hail_of_thorns",
+            campaignSpellId: null,
+            level: 1,
+            school: "conjuration",
+            prepared: true,
+            notes: "",
+          },
+        ],
+      },
+    } as CharacterSheet);
+
+    expect(options).toEqual([
+      expect.objectContaining({
+        canonicalKey: "hail_of_thorns",
+        selectionType: "none",
+        suggestedMode: "utility",
+      }),
+      expect.objectContaining({
+        canonicalKey: "spike_growth",
+        selectionType: "point",
+        suggestedMode: "utility",
+      }),
+    ]);
+  });
 });

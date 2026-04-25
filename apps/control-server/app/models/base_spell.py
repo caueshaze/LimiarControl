@@ -40,12 +40,7 @@ class CastingTimeType(str, Enum):
 
 
 class TargetType(str, Enum):
-    """Delivery type — how the spell is aimed at its target(s).
-
-    Independent of area shape: a fireball is ``target_type=RANGED`` with
-    ``area_shape=SPHERE``; a shatter is ``RANGED`` + ``CUBE``; magic missile
-    is ``RANGED`` + ``area_shape=None``.
-    """
+    """Legacy delivery type retained for catalog backfill compatibility."""
 
     SELF = "self"
     TOUCH = "touch"
@@ -61,6 +56,47 @@ class AreaShape(str, Enum):
     SPHERE = "sphere"
     LINE = "line"
     CYLINDER = "cylinder"
+
+
+class SpellSelectionType(str, Enum):
+    NONE = "none"
+    SELF = "self"
+    CREATURE = "creature"
+    OBJECT = "object"
+    CREATURE_OR_OBJECT = "creature_or_object"
+    POINT = "point"
+    DIRECTION = "direction"
+
+
+class SpellOriginType(str, Enum):
+    CASTER = "caster"
+    SELECTED_TARGET = "selected_target"
+    SELECTED_POINT = "selected_point"
+
+
+class SpellTargetAnchor(str, Enum):
+    CASTER = "caster"
+    SELECTED_TARGET = "selected_target"
+    SELECTED_POINT = "selected_point"
+    TRIGGER_TARGET = "trigger_target"
+
+
+class SpellAttackType(str, Enum):
+    NONE = "none"
+    MELEE_SPELL = "melee_spell"
+    RANGED_SPELL = "ranged_spell"
+
+
+class SpellRangeKind(str, Enum):
+    SELF = "self"
+    TOUCH = "touch"
+    DISTANCE = "distance"
+
+
+class SpellEffectTiming(str, Enum):
+    IMMEDIATE = "immediate"
+    PERSISTENT = "persistent"
+    TRIGGERED = "triggered"
 
 
 class ResolutionType(str, Enum):
@@ -141,6 +177,12 @@ class BaseSpell(SQLModel, table=True):
     range_meters: Optional[int] = None
     range_text: Optional[str] = None  # editorial only
     target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    selection_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    origin_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    target_anchor: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    attack_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    range_kind: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    effect_timing: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     area_shape: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     radius_meters: Optional[float] = Field(
         default=None,

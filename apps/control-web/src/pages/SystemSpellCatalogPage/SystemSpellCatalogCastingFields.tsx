@@ -1,14 +1,30 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { AreaShape, CastingTimeType, TargetType } from "../../entities/base-spell";
+import type {
+  AreaShape,
+  CastingTimeType,
+  SpellAttackType,
+  SpellEffectTiming,
+  SpellOriginType,
+  SpellRangeKind,
+  SpellSelectionType,
+  SpellTargetAnchor,
+  TargetType,
+} from "../../entities/base-spell";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { localizeSpellAdminValue } from "../../shared/i18n/domainLabels";
 import { toggleListValue } from "./systemSpellCatalog.helpers";
 import {
   AREA_SHAPE_OPTIONS,
+  ATTACK_TYPE_OPTIONS,
   CASTING_TIME_TYPE_OPTIONS,
   COMPONENT_OPTIONS,
   DURATION_OPTIONS,
+  EFFECT_TIMING_OPTIONS,
+  ORIGIN_TYPE_OPTIONS,
+  RANGE_KIND_OPTIONS,
+  SELECTION_TYPE_OPTIONS,
+  TARGET_ANCHOR_OPTIONS,
   type FormState,
   TARGET_TYPE_OPTIONS,
   inputClassName,
@@ -90,6 +106,148 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
             {TARGET_TYPE_OPTIONS.map((tt) => (
               <option key={tt} value={tt}>
                 {formatSpellChoiceLabel(tt)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Selection type
+          </span>
+          <select
+            value={form.selectionType}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                selectionType: event.target.value as SpellSelectionType | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {SELECTION_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Origin type
+          </span>
+          <select
+            value={form.originType}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                originType: event.target.value as SpellOriginType | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {ORIGIN_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Target anchor
+          </span>
+          <select
+            value={form.targetAnchor}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                targetAnchor: event.target.value as SpellTargetAnchor | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {TARGET_ANCHOR_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Attack type
+          </span>
+          <select
+            value={form.attackType}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                attackType: event.target.value as SpellAttackType | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {ATTACK_TYPE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Range kind
+          </span>
+          <select
+            value={form.rangeKind}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                rangeKind: event.target.value as SpellRangeKind | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {RANGE_KIND_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Effect timing
+          </span>
+          <select
+            value={form.effectTiming}
+            onChange={(event) =>
+              setForm((c) => ({
+                ...c,
+                effectTiming: event.target.value as SpellEffectTiming | "",
+              }))
+            }
+            className={`${inputClassName} mt-2`}
+          >
+            <option value="">—</option>
+            {EFFECT_TIMING_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {formatSpellChoiceLabel(value)}
               </option>
             ))}
           </select>

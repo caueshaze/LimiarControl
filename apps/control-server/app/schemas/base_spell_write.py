@@ -18,6 +18,12 @@ from .base_spell_constants import (
     SPELL_SAVING_THROW_MAP,
     SPELL_SOURCE_MAP,
     AREA_SHAPE_MAP,
+    SPELL_ATTACK_TYPE_MAP,
+    SPELL_EFFECT_TIMING_MAP,
+    SPELL_ORIGIN_TYPE_MAP,
+    SPELL_RANGE_KIND_MAP,
+    SPELL_SELECTION_TYPE_MAP,
+    SPELL_TARGET_ANCHOR_MAP,
     TARGET_TYPE_MAP,
     UPCAST_MODE_MAP,
     _CANONICAL_KEY_RE,
@@ -40,6 +46,12 @@ class BaseSpellWrite(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
+    selectionType: Optional[str] = None
+    originType: Optional[str] = None
+    targetAnchor: Optional[str] = None
+    attackType: Optional[str] = None
+    rangeKind: Optional[str] = None
+    effectTiming: Optional[str] = None
     areaShape: Optional[str] = None
     radiusMeters: Optional[float] = None  # sphere, cylinder
     lengthMeters: Optional[float] = None  # cone, line
@@ -257,6 +269,78 @@ class BaseSpellWrite(BaseModel):
             return None
         if text not in TARGET_TYPE_MAP:
             raise ValueError(f"Unknown target type: {value}")
+        return text
+
+    @field_validator("selectionType")
+    @classmethod
+    def normalize_selection_type(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_SELECTION_TYPE_MAP:
+            raise ValueError(f"Unknown selection type: {value}")
+        return text
+
+    @field_validator("originType")
+    @classmethod
+    def normalize_origin_type(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_ORIGIN_TYPE_MAP:
+            raise ValueError(f"Unknown origin type: {value}")
+        return text
+
+    @field_validator("targetAnchor")
+    @classmethod
+    def normalize_target_anchor(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_TARGET_ANCHOR_MAP:
+            raise ValueError(f"Unknown target anchor: {value}")
+        return text
+
+    @field_validator("attackType")
+    @classmethod
+    def normalize_attack_type(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_ATTACK_TYPE_MAP:
+            raise ValueError(f"Unknown attack type: {value}")
+        return text
+
+    @field_validator("rangeKind")
+    @classmethod
+    def normalize_range_kind(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_RANGE_KIND_MAP:
+            raise ValueError(f"Unknown range kind: {value}")
+        return text
+
+    @field_validator("effectTiming")
+    @classmethod
+    def normalize_effect_timing(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if text not in SPELL_EFFECT_TIMING_MAP:
+            raise ValueError(f"Unknown effect timing: {value}")
         return text
 
     @field_validator("areaShape")

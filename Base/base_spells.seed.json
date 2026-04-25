@@ -38,7 +38,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "physical",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -74,7 +80,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature_or_object",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -111,7 +123,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "touch"
+      "targetType": "touch",
+      "selectionType": "object",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -148,8 +166,14 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "coverAppliesToSave": "physical",
-      "targetType": "ranged"
+      "coverAppliesToSave": "none",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -192,7 +216,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "touch"
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -235,7 +265,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "none",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -271,7 +307,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -307,7 +349,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "touch"
+      "targetType": "touch",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -348,7 +396,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -382,7 +436,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
     },
     {
       "system": "DND5E",
@@ -428,7 +488,13 @@
       "coverAppliesToSave": "physical",
       "targetType": "ranged",
       "areaShape": "cone",
-      "lengthMeters": 4.5
+      "lengthMeters": 4.5,
+      "selectionType": "direction",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -467,7 +533,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -507,7 +579,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -553,7 +631,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "none",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -601,7 +685,13 @@
       "coverAppliesToSave": "physical",
       "targetType": "ranged",
       "areaShape": "sphere",
-      "radiusMeters": 6
+      "radiusMeters": 6,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -635,7 +725,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "none",
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "trigger_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
     },
     {
       "system": "DND5E",
@@ -677,7 +773,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "physical",
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "trigger_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
     },
     {
       "system": "DND5E",
@@ -718,7 +820,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "touch"
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -753,7 +861,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -797,7 +911,13 @@
       "requiresPointEffect": true,
       "targetType": "ranged",
       "areaShape": "sphere",
-      "radiusMeters": 6
+      "radiusMeters": 6,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -833,7 +953,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -871,7 +997,13 @@
       "requiresPointEffect": true,
       "targetType": "ranged",
       "areaShape": "sphere",
-      "radiusMeters": 6
+      "radiusMeters": 6,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -906,7 +1038,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "self"
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -941,7 +1079,13 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -989,7 +1133,13 @@
       "coverAppliesToSave": "physical",
       "targetType": "ranged",
       "areaShape": "cube",
-      "sideMeters": 4.5
+      "sideMeters": 4.5,
+      "selectionType": "direction",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -1032,7 +1182,13 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "coverAppliesToSave": "none",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -1066,7 +1222,13 @@
       "isSrd": true,
       "isActive": true,
       "source": "seed_json_bootstrap",
-      "targetType": "touch"
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -1103,7 +1265,13 @@
       "isSrd": true,
       "isActive": true,
       "source": "seed_json_bootstrap",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -1138,7 +1306,13 @@
       "isSrd": true,
       "isActive": true,
       "source": "seed_json_bootstrap",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -1175,7 +1349,13 @@
       "isSrd": true,
       "isActive": true,
       "source": "seed_json_bootstrap",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "melee_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -1210,7 +1390,13 @@
       "isSrd": true,
       "isActive": true,
       "source": "seed_json_bootstrap",
-      "targetType": "ranged"
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     }
   ]
 }

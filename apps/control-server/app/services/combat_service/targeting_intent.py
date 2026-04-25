@@ -69,6 +69,9 @@ class SpellCastIntent:
     spell_canonical_key: str
     spell_mode: str
     target_type: str | None = None
+    selection_type: str | None = None
+    attack_type: str | None = None
+    range_kind: str | None = None
     area_shape: str | None = None
     range_meters: int | None = None
     # Final target-facing requirements resolved from explicit spell metadata
@@ -91,6 +94,12 @@ class AreaTargetingIntent:
     size_meters: int
     range_meters: int | None = None
     target_type: str | None = None
+    selection_type: str | None = None
+    origin_type: str | None = None
+    target_anchor: str | None = None
+    attack_type: str | None = None
+    range_kind: str | None = None
+    effect_timing: str | None = None
     area_shape: str | None = None
     origin_cell: dict[str, int] | None = None
     anchor_cell: dict[str, int] | None = None

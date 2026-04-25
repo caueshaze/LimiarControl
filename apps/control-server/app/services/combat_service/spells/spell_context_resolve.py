@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.services.draconic_ancestry import resolve_elemental_affinity
 from app.services.magic_item_effects import get_magic_item_spell_key
+from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 from ..exceptions import CombatServiceError, _parse_dice
 from ..targeting_requirements import resolve_spell_targeting_requirements
@@ -93,6 +94,7 @@ class SpellContextResolveMixin:
     def _resolve_spell_mode_and_targeting(cls, req, catalog_spell, requested_canonical_key: str, spell_level: int, prof_bonus: int, spell_mod: int, source_kind: str) -> dict:
         catalog_resolution = getattr(catalog_spell, "resolution_type", None)
         catalog_spell_mode = cls._map_resolution_type_to_spell_mode(catalog_resolution)
+        targeting_semantics = resolve_spell_targeting_semantics(catalog_spell)
         automation_default_mode = cls._spell_default_mode_override(
             catalog_spell.canonical_key or requested_canonical_key
         )
@@ -103,6 +105,8 @@ class SpellContextResolveMixin:
         legacy_mode = "heal" if req.is_heal else ("spell_attack" if req.is_attack else None)
         spell_mode = (
             req.spell_mode
+            or ("spell_attack" if targeting_semantics.attack_type in ("melee_spell", "ranged_spell") else None)
+            or ("utility" if targeting_semantics.effect_timing in ("persistent", "triggered") else None)
             or automation_default_mode
             or catalog_spell_mode
             or legacy_mode
@@ -137,6 +141,7 @@ class SpellContextResolveMixin:
             "requires_effect_payload": requires_effect_payload,
             "slot_level": slot_level,
             "spell_mode": spell_mode,
+            "targeting_semantics": targeting_semantics,
             "targeting_requirements": targeting_requirements,
         }
 
@@ -260,6 +265,12 @@ class SpellContextResolveMixin:
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
             "spell_mode": resolved_mode["spell_mode"],
             "target_type": getattr(catalog_spell, "target_type", None),
+            "selection_type": resolved_mode["targeting_semantics"].selection_type,
+            "origin_type": resolved_mode["targeting_semantics"].origin_type,
+            "target_anchor": resolved_mode["targeting_semantics"].target_anchor,
+            "attack_type": resolved_mode["targeting_semantics"].attack_type,
+            "range_kind": resolved_mode["targeting_semantics"].range_kind,
+            "effect_timing": resolved_mode["targeting_semantics"].effect_timing,
             "area_shape": getattr(catalog_spell, "area_shape", None),
             "range_meters": getattr(catalog_spell, "range_meters", None),
             "radius_meters": getattr(catalog_spell, "radius_meters", None),

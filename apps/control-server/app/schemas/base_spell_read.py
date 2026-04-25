@@ -34,6 +34,12 @@ class BaseSpellRead(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
+    selectionType: Optional[str] = None
+    originType: Optional[str] = None
+    targetAnchor: Optional[str] = None
+    attackType: Optional[str] = None
+    rangeKind: Optional[str] = None
+    effectTiming: Optional[str] = None
     areaShape: Optional[str] = None
     radiusMeters: Optional[float] = None
     lengthMeters: Optional[float] = None

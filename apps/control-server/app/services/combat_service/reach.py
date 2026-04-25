@@ -293,6 +293,7 @@ def derive_max_range_meters(
     weapon_range_type: str | None = None,
     has_reach: bool = False,
     target_type: str | None = None,
+    range_kind: str | None = None,
 ) -> tuple[float | None, str | None]:
     """Derive the maximum allowed range in meters for a targeting intent.
 
@@ -303,6 +304,20 @@ def derive_max_range_meters(
     * ``failure_reason`` is a non-None canonical code when the intent
       carries *incomplete* range metadata that makes validation impossible.
     """
+    normalized_range_kind = (range_kind or "").strip().lower()
+    if normalized_range_kind == "self":
+        return (None, None)
+
+    if normalized_range_kind == "touch":
+        return (TOUCH_RANGE_METERS, None)
+
+    if normalized_range_kind == "distance":
+        if isinstance(range_meters, (int, float)):
+            if range_meters > 0:
+                return (float(range_meters), None)
+            return (TOUCH_RANGE_METERS, None)
+        return (None, SPELL_RANGE_NOT_CONFIGURED)
+
     if target_type == "self":
         return (None, None)
 

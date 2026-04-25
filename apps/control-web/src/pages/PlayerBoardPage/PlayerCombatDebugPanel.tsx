@@ -4,7 +4,10 @@ import { PlayerCombatParticipants } from "./player-combat-debug/PlayerCombatPart
 import { PlayerDeathSaveFeedbackCard } from "./player-combat-debug/PlayerDeathSaveFeedbackCard";
 import { PlayerSpellCastDialog } from "./player-combat-debug/PlayerSpellCastDialog";
 import { PlayerTurnActions } from "./player-combat-debug/PlayerTurnActions";
-import { isAreaShape } from "./player-combat-debug/areaTargetingUi";
+import {
+  requiresAreaTargetingSelection,
+  spellRequiresExternalTarget,
+} from "./player-combat-debug/areaTargetingUi";
 import type { PlayerCombatDebugPanelProps } from "./player-combat-debug/types";
 import { usePlayerCombatDebugState } from "./player-combat-debug/usePlayerCombatDebugState";
 
@@ -75,7 +78,8 @@ export const PlayerCombatDebugPanel = ({
     livingTargets.find((participant) => participant.ref_id === targetId) ??
     defeatedTargets.find((participant) => participant.ref_id === targetId) ??
     null;
-  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
+  const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
+  const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
 
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 shadow-xl">
@@ -184,7 +188,7 @@ export const PlayerCombatDebugPanel = ({
         />
       ) : null}
 
-      {spellDialogOpen && state.phase === "active" && currentParticipant && selectedSpell && (selectedTarget || selectedSpellIsArea) ? (
+      {spellDialogOpen && state.phase === "active" && currentParticipant && selectedSpell && (!selectedSpellNeedsTarget || selectedTarget || selectedSpellIsArea) ? (
         <PlayerSpellCastDialog
           actor={currentParticipant}
           actorParticipantId={currentParticipant.id}

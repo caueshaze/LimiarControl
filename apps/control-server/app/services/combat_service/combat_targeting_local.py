@@ -197,6 +197,7 @@ class LocalCombatTargetingService(CombatTargetingService):
                 weapon_range_type=getattr(intent, "weapon_range_type", None),
                 has_reach=getattr(intent, "has_reach", False),
                 target_type=getattr(intent, "target_type", None),
+                range_kind=getattr(intent, "range_kind", None),
             )
 
         spatial_metadata = SpatialMetadata(targeting_authority="local")

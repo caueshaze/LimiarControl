@@ -44,6 +44,12 @@ class CastAreaMixin:
             size_meters=cls._safe_int(area_spec.get("size_meters"), 0),
             range_meters=cls._safe_optional_int(area_spec.get("range_meters")),
             target_type=spell_context.get("target_type"),
+            selection_type=spell_context.get("selection_type"),
+            origin_type=spell_context.get("origin_type"),
+            target_anchor=spell_context.get("target_anchor"),
+            attack_type=spell_context.get("attack_type"),
+            range_kind=spell_context.get("range_kind"),
+            effect_timing=spell_context.get("effect_timing"),
             area_shape=spell_context.get("area_shape"),
             origin_cell=req.origin_cell.model_dump() if req.origin_cell is not None else None,
             anchor_cell=req.anchor_cell.model_dump() if req.anchor_cell is not None else None,
@@ -61,6 +67,21 @@ class CastAreaMixin:
             (p for p in state.participants if p["ref_id"] == req.target_ref_id),
             None,
         ) if isinstance(req.target_ref_id, str) else None
+
+        if spell_context.get("effect_timing") != "immediate":
+            return await cls._cast_non_immediate_area_spell(
+                db,
+                session_id,
+                req,
+                attacker=attacker,
+                attacker_model=attacker_model,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                state=state,
+                spell_context=spell_context,
+                area_spec=area_spec,
+                targeting_result=targeting_result,
+            )
 
         if spell_context["spell_mode"] != "saving_throw" or spell_context["effect_kind"] != "damage":
             raise CombatServiceError(
@@ -262,6 +283,112 @@ class CastAreaMixin:
             "affected_cells": list(targeting_result.spatial_metadata.affected_cells),
             "area_target_outcomes": area_target_outcomes,
             "target_count": target_count,
+            "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+        }
+
+    @classmethod
+    async def _cast_non_immediate_area_spell(
+        cls,
+        db: Session,
+        session_id: str,
+        req: CombatCastSpellRequest,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        state: CombatState,
+        spell_context: dict[str, Any],
+        area_spec: dict[str, int | str],
+        targeting_result,
+    ) -> dict[str, Any]:
+        action_cost = spell_context.get("action_cost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+
+        slot_spent = False
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            try:
+                consume_inventory_item_charge(inventory_item, source_item)
+            except ValueError as exc:
+                raise CombatServiceError(str(exc), 400) from exc
+            db.add(inventory_item)
+        elif isinstance(spell_context.get("slot_level"), int):
+            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
+            db.add(attacker_model)
+            slot_spent = True
+
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        if slot_spent:
+            target_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
+            await cls._emit_player_state_update(db, session_id, attacker["ref_id"], target_state)
+        await cls._emit_state(session_id, state)
+
+        affected_target_ref_ids = list(targeting_result.affected_target_ref_ids)
+        affected_cells = list(targeting_result.spatial_metadata.affected_cells)
+        timing_label = "persistente" if spell_context.get("effect_timing") == "persistent" else "acionado"
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_context['spell_name']} em area "
+            f"({area_spec['shape']}): efeito {timing_label} sem dano imediato."
+        )
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+        await cls._emit_log(session_id, {
+            "message": log_message,
+            "actorUserId": actor_user_id,
+            "source": "gm_override" if is_gm else "player_turn",
+            "is_override": was_overridden,
+            "overridden_resource": action_cost if was_overridden else None,
+        })
+
+        return {
+            "spell_name": spell_context["spell_name"],
+            "spell_canonical_key": spell_context["spell_canonical_key"],
+            "action_kind": spell_context["spell_mode"],
+            "effect_kind": spell_context["effect_kind"],
+            "damage": 0,
+            "healing": 0,
+            "damage_type": spell_context.get("damage_type"),
+            "is_critical": False,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": "Area effect",
+            "target_kind": "session_entity",
+            "save_ability": spell_context.get("save_ability"),
+            "save_dc": spell_context.get("save_dc"),
+            "save_success_outcome": spell_context.get("save_success_outcome"),
+            "effect_dice": spell_context.get("effect_dice"),
+            "effect_bonus": cls._safe_int(spell_context.get("effect_bonus"), 0),
+            "pending_spell_id": None,
+            "effect_roll_required": False,
+            "base_effect": None,
+            "action_cost": action_cost,
+            "summary_text": None,
+            "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "concentration_check": None,
+            "concentration_checks": [],
+            "area_shape": area_spec["shape"],
+            "affected_target_ref_ids": affected_target_ref_ids,
+            "affected_cells": affected_cells,
+            "area_target_outcomes": [],
+            "target_count": len(affected_target_ref_ids),
             "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
             "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
             "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),

@@ -14,7 +14,10 @@ import { buildCombatParticipantViews, getCombatEffectLabel, getCombatStatusLabel
 import { PlayerAttackRollDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerAttackRollDialog";
 import { PlayerSpellCastDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerSpellCastDialog";
 import { PlayerBoardRollDialog } from "../../../pages/PlayerBoardPage/PlayerBoardRollDialog";
-import { isAreaShape } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import {
+  requiresAreaTargetingSelection,
+  spellRequiresExternalTarget,
+} from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
@@ -166,7 +169,8 @@ export const PlayerCombatModeShell = ({
   );
 
   const myParticipant = combat.myParticipant;
-  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
+  const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
+  const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
   const [movementMode, setMovementMode] = useState(false);
   const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);
@@ -248,7 +252,7 @@ export const PlayerCombatModeShell = ({
     combat.state?.use_map !== false;
   const isTargetingAction =
     (activeActionPanel === "attack" && Boolean(playerStatus?.currentWeapon)) ||
-    (activeActionPanel === "spell" && Boolean(selectedSpell) && !selectedSpellIsArea);
+    (activeActionPanel === "spell" && Boolean(selectedSpell) && selectedSpellNeedsTarget);
 
   const mapSelectionMode =
     movementEnabled
@@ -485,7 +489,7 @@ export const PlayerCombatModeShell = ({
         />
       ) : null}
 
-      {spellDialogOpen && combat.state?.phase === "active" && combat.currentParticipant && selectedSpell && (selectedTarget || selectedSpellIsArea) ? (
+      {spellDialogOpen && combat.state?.phase === "active" && combat.currentParticipant && selectedSpell && (!selectedSpellNeedsTarget || selectedTarget || selectedSpellIsArea) ? (
         <PlayerSpellCastDialog
           actor={combat.currentParticipant}
           actorParticipantId={combat.currentParticipant.id}

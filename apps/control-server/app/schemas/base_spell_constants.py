@@ -6,6 +6,12 @@ from app.models.base_spell import (
     CastingTimeType,
     ResolutionType,
     SpellSource,
+    SpellAttackType,
+    SpellEffectTiming,
+    SpellOriginType,
+    SpellRangeKind,
+    SpellSelectionType,
+    SpellTargetAnchor,
     TargetType,
     UpcastMode,
 )
@@ -50,6 +56,12 @@ SPELL_SAVE_SUCCESS_OUTCOME_MAP = {
 CASTING_TIME_TYPE_MAP = {member.value: member.value for member in CastingTimeType}
 TARGET_TYPE_MAP = {member.value: member.value for member in TargetType}
 AREA_SHAPE_MAP = {member.value: member.value for member in AreaShape}
+SPELL_SELECTION_TYPE_MAP = {member.value: member.value for member in SpellSelectionType}
+SPELL_ORIGIN_TYPE_MAP = {member.value: member.value for member in SpellOriginType}
+SPELL_TARGET_ANCHOR_MAP = {member.value: member.value for member in SpellTargetAnchor}
+SPELL_ATTACK_TYPE_MAP = {member.value: member.value for member in SpellAttackType}
+SPELL_RANGE_KIND_MAP = {member.value: member.value for member in SpellRangeKind}
+SPELL_EFFECT_TIMING_MAP = {member.value: member.value for member in SpellEffectTiming}
 RESOLUTION_TYPE_MAP = {member.value: member.value for member in ResolutionType}
 RESOLUTION_TYPE_MAP.update(
     {

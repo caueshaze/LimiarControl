@@ -197,6 +197,10 @@ def _token_position_to_cell(token: object) -> dict[str, int] | None:
 
 def _derive_range_cells(intent: ActionIntent) -> int | None:
     if isinstance(intent, SpellCastIntent):
+        if intent.range_kind == "self":
+            return None
+        if intent.range_kind == "touch":
+            return meters_to_cells(1.5)
         if isinstance(intent.range_meters, (int, float)) and intent.range_meters > 0:
             return meters_to_cells(intent.range_meters)
         return None
@@ -224,6 +228,9 @@ def _resolve_single_target_requirements(
     resolved = resolve_spell_targeting_requirements(
         {
             "target_type": intent.target_type,
+            "selection_type": intent.selection_type,
+            "attack_type": intent.attack_type,
+            "range_kind": intent.range_kind,
             "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_target_sight": intent.requires_sight if isinstance(intent.requires_sight, bool) else None,
@@ -238,6 +245,12 @@ def _resolve_area_requires_sight(intent: AreaTargetingIntent) -> bool:
     resolved = resolve_spell_targeting_requirements(
         {
             "target_type": intent.target_type,
+            "selection_type": intent.selection_type,
+            "origin_type": intent.origin_type,
+            "target_anchor": intent.target_anchor,
+            "attack_type": intent.attack_type,
+            "range_kind": intent.range_kind,
+            "effect_timing": intent.effect_timing,
             "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_point_sight": intent.requires_sight if isinstance(intent.requires_sight, bool) else None,
@@ -251,6 +264,12 @@ def _resolve_area_requires_effect(intent: AreaTargetingIntent) -> bool:
     resolved = resolve_spell_targeting_requirements(
         {
             "target_type": intent.target_type,
+            "selection_type": intent.selection_type,
+            "origin_type": intent.origin_type,
+            "target_anchor": intent.target_anchor,
+            "attack_type": intent.attack_type,
+            "range_kind": intent.range_kind,
+            "effect_timing": intent.effect_timing,
             "area_shape": getattr(intent, "area_shape", None),
             "spell_mode": intent.spell_mode,
             "requires_point_effect": intent.requires_effect if isinstance(intent.requires_effect, bool) else None,

@@ -108,34 +108,43 @@ def resolve_spell_targeting_requirements(
       heuristic defaults.
     """
 
-    target_type = _normalize_lookup(
-        _read_optional_value(source, "target_type", "targetType")
-    )
+    target_type = _normalize_lookup(_read_optional_value(source, "target_type", "targetType"))
+    selection_type = _normalize_lookup(_read_optional_value(source, "selection_type", "selectionType"))
+    range_kind = _normalize_lookup(_read_optional_value(source, "range_kind", "rangeKind"))
     normalized_spell_mode = _normalize_lookup(
         spell_mode
         if spell_mode is not None
         else _read_optional_value(source, "spell_mode", "spellMode")
     )
+    has_selection_type = bool(selection_type)
+    target_selection = (
+        selection_type in {"creature", "object", "creature_or_object"}
+        if has_selection_type
+        else target_type != "self"
+    )
+    point_selection = selection_type in {"point", "direction"}
+    self_selection = selection_type in {"none", "self"} or (not has_selection_type and target_type == "self")
+    ranged_selection = range_kind == "distance" or target_type == "ranged"
 
     return TargetingRequirements(
         requires_target_sight=_resolve_flag(
             source,
             names=("requires_target_sight", "requiresTargetSight"),
-            fallback=target_type == "ranged" or normalized_spell_mode == "spell_attack",
+            fallback=target_selection and (ranged_selection or normalized_spell_mode == "spell_attack"),
         ),
         requires_target_effect=_resolve_flag(
             source,
             names=("requires_target_effect", "requiresTargetEffect"),
-            fallback=target_type != "self" or normalized_spell_mode != "utility",
+            fallback=target_selection and not self_selection,
         ),
         requires_point_sight=_resolve_flag(
             source,
             names=("requires_point_sight", "requiresPointSight"),
-            fallback=False,
+            fallback=False if not point_selection else range_kind == "distance",
         ),
         requires_point_effect=_resolve_flag(
             source,
             names=("requires_point_effect", "requiresPointEffect"),
-            fallback=True,
+            fallback=point_selection if has_selection_type else True,
         ),
     )

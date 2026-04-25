@@ -6,8 +6,10 @@ import {
   formatAffectedTargetNames,
   getAnchorCombatantIdAtCell,
   isAreaShape,
+  requiresAreaTargetingSelection,
   resolveAffectedTargetNames,
   resolveActorOriginCell,
+  spellRequiresExternalTarget,
 } from "./areaTargetingUi";
 
 const baseSpell = {
@@ -212,6 +214,37 @@ describe("createInitialTargetingMode for each shape", () => {
   it("enters single_target_select for non-area", () => {
     expect(createInitialTargetingMode(null)).toBe("single_target_select");
     expect(createInitialTargetingMode(undefined)).toBe("single_target_select");
+  });
+});
+
+describe("semantic targeting mode routing", () => {
+  it("uses selectionType point or direction to enter area target selection", () => {
+    expect(createInitialTargetingMode("sphere", "point")).toBe("area_target_select");
+    expect(createInitialTargetingMode("cone", "direction")).toBe("area_target_select");
+    expect(createInitialTargetingMode("cube", "direction")).toBe("area_target_select");
+  });
+
+  it("does not enter area target selection for self, none, or creature selection", () => {
+    expect(createInitialTargetingMode("sphere", "creature")).toBe("single_target_select");
+    expect(createInitialTargetingMode("sphere", "self")).toBe("single_target_select");
+    expect(createInitialTargetingMode("sphere", "none")).toBe("single_target_select");
+  });
+
+  it("requires map area targeting only for point/direction area spells", () => {
+    expect(requiresAreaTargetingSelection("point", "sphere")).toBe(true);
+    expect(requiresAreaTargetingSelection("direction", "cone")).toBe(true);
+    expect(requiresAreaTargetingSelection("point", null)).toBe(false);
+    expect(requiresAreaTargetingSelection("creature", "sphere")).toBe(false);
+  });
+
+  it("uses selectionType to decide whether an external target is required", () => {
+    expect(spellRequiresExternalTarget("creature", null)).toBe(true);
+    expect(spellRequiresExternalTarget("creature_or_object", null)).toBe(true);
+    expect(spellRequiresExternalTarget("object", null)).toBe(true);
+    expect(spellRequiresExternalTarget("point", "sphere")).toBe(false);
+    expect(spellRequiresExternalTarget("direction", "cone")).toBe(false);
+    expect(spellRequiresExternalTarget("self", null)).toBe(false);
+    expect(spellRequiresExternalTarget("none", null)).toBe(false);
   });
 });
 

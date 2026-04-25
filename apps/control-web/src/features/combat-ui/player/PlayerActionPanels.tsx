@@ -4,7 +4,7 @@ import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/pl
 import type { StandardActionType, TurnResources } from "../../../shared/api/combatRepo";
 import { getAbilityLabel } from "../../character-sheet/utils/abilityLabels";
 import { isCombatSpellActionCostAvailable } from "../spellAutomation";
-import { isAreaShape } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
+import { requiresAreaTargetingSelection, spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import { RangeStatusBadge } from "../components/RangeStatusBadge";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import type {
@@ -93,7 +93,8 @@ export const PlayerActionPanels = ({
 }: Props) => {
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
-  const selectedSpellIsArea = isAreaShape(selectedSpell?.areaShape);
+  const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
+  const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
   const canSpendSpellActionCost = isCombatSpellActionCostAvailable(
     selectedSpellActionCost,
     turnResources,
@@ -204,7 +205,7 @@ export const PlayerActionPanels = ({
             </div>
             <button
               type="button"
-              disabled={!canAct || !canSpendSpellActionCost || (!selectedSpellIsArea && !targetId) || !selectedSpell}
+              disabled={!canAct || !canSpendSpellActionCost || (selectedSpellNeedsTarget && !targetId) || !selectedSpell}
               onClick={() => {
                 void handleCast();
               }}

@@ -10,7 +10,7 @@ import { combatRepo } from "../../../shared/api/combatRepo";
 import {
   buildAreaPreviewPayload,
   getAnchorCombatantIdAtCell,
-  isAreaShape,
+  requiresAreaTargetingSelection,
   resolveActorOriginCell,
   type GridCell,
 } from "./areaTargetingUi";
@@ -45,7 +45,7 @@ export const useAreaTargeting = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const isAreaSpell = isAreaShape(spell.areaShape);
+  const isAreaSpell = requiresAreaTargetingSelection(spell.selectionType, spell.areaShape);
   const originCell = useMemo(
     () => (mapState ? resolveActorOriginCell(actor, mapState.tokens) : null),
     [actor, mapState],
@@ -61,7 +61,7 @@ export const useAreaTargeting = ({
     setPreview(null);
     setPreviewError(null);
     setMapError(null);
-  }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape]);
+  }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape, spell.selectionType]);
 
   useEffect(() => {
     if (!isAreaSpell || result) {
