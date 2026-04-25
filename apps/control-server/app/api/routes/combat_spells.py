@@ -83,13 +83,13 @@ def action_cast_spell_preview(
     "/sessions/{session_id}/combat/action/move/preview",
     response_model=CombatMovementPreviewResponse,
 )
-def action_move_preview(
+async def action_move_preview(
     session_id: str,
     req: CombatMovementPreviewRequest,
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return CombatService.preview_movement(
+    return await CombatService.preview_movement(
         db,
         session_id,
         req,
@@ -102,13 +102,13 @@ def action_move_preview(
     "/sessions/{session_id}/combat/action/move",
     response_model=CombatMovementPreviewResponse,
 )
-def action_move(
+async def action_move(
     session_id: str,
     req: CombatMovementPreviewRequest,
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    return CombatService.confirm_movement(
+    return await CombatService.confirm_movement(
         db,
         session_id,
         req,

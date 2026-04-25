@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import uuid4
 
 from sqlmodel import Session
@@ -10,12 +11,13 @@ from app.schemas.combat import (
     CombatMovementPreviewResponse,
 )
 from .exceptions import CombatServiceError
+from .movement_hazards import compute_movement_hazard_outcomes
 from .spells.area_targeting import AreaTargetingMixin
 
 
 class CombatMovementMixin(AreaTargetingMixin):
     @classmethod
-    def _preview_or_confirm_movement(
+    async def _preview_or_confirm_movement(
         cls,
         db: Session,
         session_id: str,
@@ -68,6 +70,16 @@ class CombatMovementMixin(AreaTargetingMixin):
                 503,
             ) from exc
 
+        if confirm and response.is_valid:
+            await cls._apply_movement_hazards(
+                db,
+                session_id=session_id,
+                state=state,
+                actor=actor,
+                response=response,
+                actor_user_id=actor_user_id,
+            )
+
         return CombatMovementPreviewResponse(
             is_valid=response.is_valid,
             reason=response.reason,
@@ -89,7 +101,93 @@ class CombatMovementMixin(AreaTargetingMixin):
         )
 
     @classmethod
-    def preview_movement(
+    async def _apply_movement_hazards(
+        cls,
+        db: Session,
+        *,
+        session_id: str,
+        state: Any,
+        actor: dict[str, Any],
+        response: Any,
+        actor_user_id: str,
+    ) -> None:
+        active_area_effects = (
+            state.active_area_effects if isinstance(state.active_area_effects, list) else []
+        )
+        if not active_area_effects:
+            return
+        path_cells = [{"x": cell.x, "y": cell.y} for cell in response.path]
+        outcomes = compute_movement_hazard_outcomes(active_area_effects, path_cells)
+        if not outcomes:
+            return
+
+        target_ref_id = actor.get("ref_id")
+        target_kind = actor.get("kind")
+        if not target_ref_id or target_kind not in ("player", "session_entity"):
+            return
+
+        previous_hp_player: int | None = None
+        previous_hp_entity: int | None = None
+        applied: list[tuple[dict[str, Any], int, str]] = []
+        for outcome in outcomes:
+            new_hp, effect_msg, previous_hp, _concentration = cls._apply_damage_to_target(
+                db,
+                target_ref_id,
+                target_kind,
+                outcome["damage"],
+                damage_type=outcome.get("damage_type"),
+                is_crit=False,
+                state=state,
+            )
+            if target_kind == "session_entity":
+                if previous_hp_entity is None:
+                    previous_hp_entity = previous_hp
+            else:
+                if previous_hp_player is None:
+                    previous_hp_player = previous_hp
+            applied.append((outcome, new_hp, effect_msg))
+
+        db.commit()
+
+        if target_kind == "player":
+            target_state, *_ = cls._get_stats(db, target_ref_id, target_kind, session_id)
+            await cls._emit_player_state_update(db, session_id, target_ref_id, target_state)
+        elif previous_hp_entity is not None:
+            await cls._emit_entity_hp_update(db, session_id, target_ref_id, previous_hp_entity)
+        if state:
+            await cls._emit_state(session_id, state)
+
+        actor_name = actor.get("display_name") or "Combatant"
+        for outcome, _new_hp, effect_msg in applied:
+            spell_name = outcome["source_spell_name"]
+            cells = outcome["cells_inside"]
+            damage = outcome["damage"]
+            damage_type = outcome.get("damage_type")
+            type_suffix = f" {damage_type}" if isinstance(damage_type, str) and damage_type else ""
+            cell_word = "cell" if cells == 1 else "cells"
+            message = (
+                f"{actor_name} took {damage}{type_suffix} damage from {spell_name} "
+                f"({cells} {cell_word} traversed).{effect_msg}"
+            )
+            await cls._emit_log(
+                session_id,
+                {
+                    "message": message,
+                    "source": "movement_hazard",
+                    "actorUserId": actor_user_id,
+                    "spellCanonicalKey": outcome.get("source_spell_canonical_key"),
+                    "effectId": outcome.get("effect_id"),
+                    "damage": damage,
+                    "damageType": damage_type,
+                    "diceExpression": outcome.get("dice_expression"),
+                    "damageInstances": outcome.get("damage_instances"),
+                    "cellsTraversed": cells,
+                    "metersTraversed": outcome.get("meters_inside"),
+                },
+            )
+
+    @classmethod
+    async def preview_movement(
         cls,
         db: Session,
         session_id: str,
@@ -98,7 +196,7 @@ class CombatMovementMixin(AreaTargetingMixin):
         actor_user_id: str,
         is_gm: bool,
     ) -> CombatMovementPreviewResponse:
-        return cls._preview_or_confirm_movement(
+        return await cls._preview_or_confirm_movement(
             db,
             session_id,
             req,
@@ -108,7 +206,7 @@ class CombatMovementMixin(AreaTargetingMixin):
         )
 
     @classmethod
-    def confirm_movement(
+    async def confirm_movement(
         cls,
         db: Session,
         session_id: str,
@@ -117,7 +215,7 @@ class CombatMovementMixin(AreaTargetingMixin):
         actor_user_id: str,
         is_gm: bool,
     ) -> CombatMovementPreviewResponse:
-        return cls._preview_or_confirm_movement(
+        return await cls._preview_or_confirm_movement(
             db,
             session_id,
             req,
