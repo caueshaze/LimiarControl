@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { BattleMap, CombatState, Obstacle, Token } from "@limiarmap/shared-contracts";
+import type {
+  ActiveAreaEffect,
+  BattleMap,
+  CombatState,
+  Obstacle,
+  Token
+} from "@limiarmap/shared-contracts";
 import { METERS_PER_CELL } from "@limiarmap/shared-contracts";
 import {
   computePathCost,
@@ -130,7 +136,11 @@ describe("movement rules", () => {
   });
 
   it("returns the cheapest path cost even when movement budget is exceeded", () => {
-    const tokenWith10: Token = { ...token, movementSpeedCells: 2, movementBudget: 10 };
+    const tokenWith10: Token = {
+      ...token,
+      movementSpeedCells: 2,
+      movementBudget: 10
+    };
 
     const result = findMovementPath(
       { map, obstacles: [], tokens: [tokenWith10] },
@@ -163,7 +173,12 @@ describe("movement rules", () => {
         movementCostMultiplier: 1
       }
     ];
-    const result = validateMovement({ map, obstacles, tokens: [token] }, token, [{ x: 2, y: 2 }], combatState);
+    const result = validateMovement(
+      { map, obstacles, tokens: [token] },
+      token,
+      [{ x: 2, y: 2 }],
+      combatState
+    );
     expect(result.accepted).toBe(false);
     expect(result.rejectionReason).toBe("blocked_path");
   });
@@ -183,7 +198,12 @@ describe("movement rules", () => {
       }
     ];
 
-    const result = validateMovement({ map, obstacles, tokens: [token] }, token, [{ x: 2, y: 2 }], combatState);
+    const result = validateMovement(
+      { map, obstacles, tokens: [token] },
+      token,
+      [{ x: 2, y: 2 }],
+      combatState
+    );
     expect(result.accepted).toBe(false);
     expect(result.rejectionReason).toBe("diagonal_clipped");
   });
@@ -199,43 +219,96 @@ describe("movement rules", () => {
         { x: 6, y: 1 },
         { x: 7, y: 1 }
       ];
-      const result = validateMovement({ map, obstacles: [], tokens: [token] }, token, path, combatState);
+      const result = validateMovement(
+        { map, obstacles: [], tokens: [token] },
+        token,
+        path,
+        combatState
+      );
       expect(result.accepted).toBe(true);
       expect(result.pathCostUnits).toBe(30);
     });
 
     it("accepts movement that exactly exhausts the budget", () => {
       // movementSpeedCells=4 cells → budget=20 path-cost units (4*5)
-      const tokenWith20: Token = { ...token, movementSpeedCells: 4, movementBudget: 20 };
+      const tokenWith20: Token = {
+        ...token,
+        movementSpeedCells: 4,
+        movementBudget: 20
+      };
       // 4 straight steps = 20 units
-      const path = [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 1 }];
-      const result = validateMovement({ map, obstacles: [], tokens: [tokenWith20] }, tokenWith20, path, combatState);
+      const path = [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 },
+        { x: 5, y: 1 }
+      ];
+      const result = validateMovement(
+        { map, obstacles: [], tokens: [tokenWith20] },
+        tokenWith20,
+        path,
+        combatState
+      );
       expect(result.accepted).toBe(true);
       expect(result.pathCostUnits).toBe(20);
     });
 
     it("rejects movement that exceeds remaining budget", () => {
       // movementSpeedCells=2 cells → budget=10 path-cost units (2*5)
-      const tokenWith10: Token = { ...token, movementSpeedCells: 2, movementBudget: 10 };
+      const tokenWith10: Token = {
+        ...token,
+        movementSpeedCells: 2,
+        movementBudget: 10
+      };
       // 3 straight steps = 15 units > 10 budget
-      const path = [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }];
-      const result = validateMovement({ map, obstacles: [], tokens: [tokenWith10] }, tokenWith10, path, combatState);
+      const path = [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ];
+      const result = validateMovement(
+        { map, obstacles: [], tokens: [tokenWith10] },
+        tokenWith10,
+        path,
+        combatState
+      );
       expect(result.accepted).toBe(false);
       expect(result.rejectionReason).toBe("movement_budget_exceeded");
     });
 
     it("respects reduced budget after a prior move", () => {
       // Simulate a token that already moved 20 units (10 path-cost units = 2 cells remaining)
-      const tokenAfterMove: Token = { ...token, movementBudget: 10, position: { x: 5, y: 1 } };
+      const tokenAfterMove: Token = {
+        ...token,
+        movementBudget: 10,
+        position: { x: 5, y: 1 }
+      };
       // 2 straight steps = 10 — exactly matches remaining budget
-      const path = [{ x: 6, y: 1 }, { x: 7, y: 1 }];
-      const valid = validateMovement({ map, obstacles: [], tokens: [tokenAfterMove] }, tokenAfterMove, path, combatState);
+      const path = [
+        { x: 6, y: 1 },
+        { x: 7, y: 1 }
+      ];
+      const valid = validateMovement(
+        { map, obstacles: [], tokens: [tokenAfterMove] },
+        tokenAfterMove,
+        path,
+        combatState
+      );
       expect(valid.accepted).toBe(true);
       expect(valid.pathCostUnits).toBe(10);
 
       // 3 steps = 15 — exceeds remaining budget
-      const path2 = [{ x: 6, y: 1 }, { x: 7, y: 1 }, { x: 8, y: 1 }];
-      const rejected = validateMovement({ map, obstacles: [], tokens: [tokenAfterMove] }, tokenAfterMove, path2, combatState);
+      const path2 = [
+        { x: 6, y: 1 },
+        { x: 7, y: 1 },
+        { x: 8, y: 1 }
+      ];
+      const rejected = validateMovement(
+        { map, obstacles: [], tokens: [tokenAfterMove] },
+        tokenAfterMove,
+        path2,
+        combatState
+      );
       expect(rejected.accepted).toBe(false);
       expect(rejected.rejectionReason).toBe("movement_budget_exceeded");
     });
@@ -244,7 +317,11 @@ describe("movement rules", () => {
 
 describe("reachable movement cells", () => {
   it("uses the remaining movement budget and excludes the origin cell", () => {
-    const reachable = findReachableCells({ map, obstacles: [], tokens: [token] }, token, combatState);
+    const reachable = findReachableCells(
+      { map, obstacles: [], tokens: [token] },
+      token,
+      combatState
+    );
 
     expect(reachable).not.toContainEqual({ x: 1, y: 1 });
     expect(reachable).toContainEqual({ x: 7, y: 1 });
@@ -282,7 +359,11 @@ describe("reachable movement cells", () => {
   });
 
   it("respects difficult terrain cost when computing reachable cells", () => {
-    const tightToken: Token = { ...token, movementSpeedCells: 1, movementBudget: 5 };
+    const tightToken: Token = {
+      ...token,
+      movementSpeedCells: 1,
+      movementBudget: 5
+    };
 
     const reachable = findReachableCells(
       { map, obstacles: [difficultTerrain], tokens: [tightToken] },
@@ -295,7 +376,11 @@ describe("reachable movement cells", () => {
   });
 
   it("respects alternating diagonal costs while expanding reach", () => {
-    const diagonalToken: Token = { ...token, movementSpeedCells: 2, movementBudget: 10 };
+    const diagonalToken: Token = {
+      ...token,
+      movementSpeedCells: 2,
+      movementBudget: 10
+    };
 
     const reachable = findReachableCells(
       { map, obstacles: [], tokens: [diagonalToken] },
@@ -315,7 +400,11 @@ describe("reachable movement cells", () => {
 const difficultTerrain: Obstacle = {
   id: "dt",
   battleMapId: "map",
-  cells: [{ x: 3, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 1 }],
+  cells: [
+    { x: 3, y: 1 },
+    { x: 4, y: 1 },
+    { x: 5, y: 1 }
+  ],
   blocksMovement: false,
   blocksEffect: false,
   blocksVision: false,
@@ -326,7 +415,12 @@ const difficultTerrain: Obstacle = {
 
 describe("difficult terrain — path-cost unit tests", () => {
   it("normal orthogonal step has base cost 5 (no terrain)", () => {
-    expect(computePathCost([{ x: 1, y: 1 }, { x: 2, y: 1 }])).toBe(5);
+    expect(
+      computePathCost([
+        { x: 1, y: 1 },
+        { x: 2, y: 1 }
+      ])
+    ).toBe(5);
   });
 
   it("orthogonal step into difficult terrain costs 10 (2× multiplier)", () => {
@@ -334,7 +428,13 @@ describe("difficult terrain — path-cost unit tests", () => {
     const multiplierAt = (cell: { x: number; y: number }) =>
       getMovementCostMultiplier(obstacles, cell);
     // step from (2,1) → (3,1): (3,1) is difficult terrain
-    const cost = computePathCost([{ x: 2, y: 1 }, { x: 3, y: 1 }], multiplierAt);
+    const cost = computePathCost(
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
+      multiplierAt
+    );
     expect(cost).toBe(10);
   });
 
@@ -348,7 +448,13 @@ describe("difficult terrain — path-cost unit tests", () => {
     const multiplierAt = (cell: { x: number; y: number }) =>
       getMovementCostMultiplier(obstacles, cell);
     // 1st diagonal (index 0) base = 5 → ×2 = 10
-    const cost = computePathCost([{ x: 2, y: 1 }, { x: 3, y: 2 }], multiplierAt);
+    const cost = computePathCost(
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 2 }
+      ],
+      multiplierAt
+    );
     expect(cost).toBe(10);
   });
 
@@ -358,18 +464,27 @@ describe("difficult terrain — path-cost unit tests", () => {
     const multiplierAt = (cell: { x: number; y: number }) =>
       getMovementCostMultiplier(obstacles, cell);
     const cost = computePathCost(
-      [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }],
+      [
+        { x: 1, y: 1 },
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ],
       multiplierAt
     );
     expect(cost).toBe(5 + 10 + 10);
   });
 
   it("getMovementCostMultiplier returns 1 for a cell with no terrain obstacle", () => {
-    expect(getMovementCostMultiplier([difficultTerrain], { x: 10, y: 10 })).toBe(1);
+    expect(
+      getMovementCostMultiplier([difficultTerrain], { x: 10, y: 10 })
+    ).toBe(1);
   });
 
   it("getMovementCostMultiplier returns 2 for a difficult terrain cell", () => {
-    expect(getMovementCostMultiplier([difficultTerrain], { x: 3, y: 1 })).toBe(2);
+    expect(getMovementCostMultiplier([difficultTerrain], { x: 3, y: 1 })).toBe(
+      2
+    );
   });
 
   it("getMovementCostMultiplier returns 1 for obstacles that have no multiplier (backward compat)", () => {
@@ -394,7 +509,11 @@ describe("difficult terrain — movement validation integration", () => {
     const result = validateMovement(
       { map, obstacles: [difficultTerrain], tokens: [token] },
       token,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ],
       combatState
     );
     // step (1,1)→(2,1) normal=5, (2,1)→(3,1) difficult=10, (3,1)→(4,1) difficult=10 → total 25
@@ -408,7 +527,10 @@ describe("difficult terrain — movement validation integration", () => {
     const result = validateMovement(
       { map, obstacles: [difficultTerrain], tokens: [tightToken] },
       tightToken,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
       combatState
     );
     expect(result.accepted).toBe(false);
@@ -420,7 +542,11 @@ describe("difficult terrain — movement validation integration", () => {
     const withoutTerrain = validateMovement(
       { map, obstacles: [], tokens: [token] },
       token,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ],
       combatState
     );
     expect(withoutTerrain.accepted).toBe(true);
@@ -431,7 +557,12 @@ describe("difficult terrain — movement validation integration", () => {
     const withTerrain = validateMovement(
       { map, obstacles: [difficultTerrain], tokens: [longToken] },
       longToken,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 },
+        { x: 5, y: 1 }
+      ],
       combatState
     );
     expect(withTerrain.accepted).toBe(false);
@@ -453,7 +584,10 @@ describe("difficult terrain — movement validation integration", () => {
     const result = validateMovement(
       { map, obstacles: [blockedWithMultiplier], tokens: [token] },
       token,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
       combatState
     );
     expect(result.accepted).toBe(false);
@@ -476,10 +610,225 @@ describe("difficult terrain — movement validation integration", () => {
     const result = validateMovement(
       { map, obstacles: [oldStyleObs], tokens: [token] },
       token,
-      [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }],
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ],
       combatState
     );
     expect(result.accepted).toBe(true);
     expect(result.pathCostUnits).toBe(15);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Active area effects (e.g. Spike Growth) as movement-affecting difficult terrain
+// ─────────────────────────────────────────────────────────────────────────────
+
+function spikeGrowthEffect(
+  cells: Array<{ x: number; y: number }>
+): ActiveAreaEffect {
+  return {
+    id: "aae_spike",
+    sourceSpellCanonicalKey: "spike_growth",
+    sourceSpellName: "Spike Growth",
+    casterParticipantId: "caster",
+    originPoint: cells[0]!,
+    anchorCell: cells[0]!,
+    areaShape: "sphere",
+    sizeMeters: 6,
+    affectedCells: cells,
+    effectKind: "hazard",
+    terrainEffect: "difficult_terrain",
+    movementDamageDice: "2d4",
+    damageType: "Piercing",
+    damagePerMeters: 1.5
+  };
+}
+
+function fogCloudEffect(
+  cells: Array<{ x: number; y: number }>
+): ActiveAreaEffect {
+  return {
+    id: "aae_fog",
+    sourceSpellCanonicalKey: "fog_cloud",
+    sourceSpellName: "Fog Cloud",
+    casterParticipantId: "caster",
+    originPoint: cells[0]!,
+    anchorCell: cells[0]!,
+    areaShape: "sphere",
+    sizeMeters: 6,
+    affectedCells: cells,
+    effectKind: "obscurement",
+    obscurement: "heavy"
+  };
+}
+
+describe("active area effects — Spike Growth difficult terrain", () => {
+  const spikeCells = [
+    { x: 3, y: 1 },
+    { x: 4, y: 1 },
+    { x: 5, y: 1 }
+  ];
+
+  it("path fully outside Spike Growth costs base cost only", () => {
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [],
+        tokens: [token],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      token,
+      [
+        { x: 1, y: 2 },
+        { x: 1, y: 3 },
+        { x: 1, y: 4 }
+      ],
+      combatState
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.pathCostUnits).toBe(15);
+  });
+
+  it("path partially through Spike Growth applies the multiplier on affected cells only", () => {
+    // (1,1)→(2,1) normal=5, (2,1)→(3,1) spike=10, (3,1)→(4,1) spike=10 → 25
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [],
+        tokens: [token],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      token,
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+        { x: 4, y: 1 }
+      ],
+      combatState
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.pathCostUnits).toBe(25);
+  });
+
+  it("path fully through Spike Growth pays the multiplier on every step", () => {
+    // (2,1)→(3,1)[10]→(4,1)[10]→(5,1)[10] = 30
+    const fromAdjacent: Token = { ...token, position: { x: 2, y: 1 } };
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [],
+        tokens: [fromAdjacent],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      fromAdjacent,
+      [
+        { x: 3, y: 1 },
+        { x: 4, y: 1 },
+        { x: 5, y: 1 }
+      ],
+      combatState
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.pathCostUnits).toBe(30);
+  });
+
+  it("does not double-apply when a cell is both obstacle difficult terrain and Spike Growth", () => {
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [difficultTerrain],
+        tokens: [token],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      token,
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
+      combatState
+    );
+    // (1,1)→(2,1) normal=5, (2,1)→(3,1) max(2,2)=2 → 10. Total = 15.
+    expect(result.accepted).toBe(true);
+    expect(result.pathCostUnits).toBe(15);
+  });
+
+  it("rejects movement when extra Spike Growth cost exceeds budget", () => {
+    const tightToken: Token = { ...token, movementBudget: 12 };
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [],
+        tokens: [tightToken],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      tightToken,
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
+      combatState
+    );
+    // 5 + 10 = 15 > 12
+    expect(result.accepted).toBe(false);
+    expect(result.rejectionReason).toBe("movement_budget_exceeded");
+  });
+
+  it("findMovementPath prefers a cheaper route around Spike Growth when one exists", () => {
+    // Spike Growth straight east of token blocks the cheap horizontal path; the
+    // engine should detour south of the spike row.
+    const result = findMovementPath(
+      {
+        map,
+        obstacles: [],
+        tokens: [token],
+        activeAreaEffects: [spikeGrowthEffect(spikeCells)]
+      },
+      token,
+      { x: 6, y: 1 },
+      combatState
+    );
+    expect(result.accepted).toBe(true);
+    // No path step should land on a Spike Growth cell.
+    for (const step of result.path) {
+      expect(spikeCells).not.toContainEqual(step);
+    }
+  });
+
+  it("Fog Cloud (obscurement) does not modify movement cost", () => {
+    const result = validateMovement(
+      {
+        map,
+        obstacles: [],
+        tokens: [token],
+        activeAreaEffects: [fogCloudEffect([{ x: 3, y: 1 }])]
+      },
+      token,
+      [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 }
+      ],
+      combatState
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.pathCostUnits).toBe(10);
+  });
+
+  it("getMovementCostMultiplier returns 2 inside a Spike Growth cell", () => {
+    expect(
+      getMovementCostMultiplier([], { x: 3, y: 1 }, [
+        spikeGrowthEffect(spikeCells)
+      ])
+    ).toBe(2);
+  });
+
+  it("getMovementCostMultiplier returns 1 outside Spike Growth", () => {
+    expect(
+      getMovementCostMultiplier([], { x: 9, y: 9 }, [
+        spikeGrowthEffect(spikeCells)
+      ])
+    ).toBe(1);
   });
 });

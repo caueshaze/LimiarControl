@@ -1,23 +1,64 @@
-import type { Coordinate, Obstacle, ObstacleCover } from "@limiarmap/shared-contracts";
+import type {
+  ActiveAreaEffect,
+  Coordinate,
+  Obstacle,
+  ObstacleCover
+} from "@limiarmap/shared-contracts";
 import { coordinateKey } from "../grid/coordinates";
 
-function hasObstacleAtCell(obstacles: Obstacle[], coordinate: Coordinate, predicate: (obstacle: Obstacle) => boolean): boolean {
+/**
+ * Multiplier applied to movement cost for cells covered by an active area
+ * effect whose `terrainEffect` marks them as difficult terrain (e.g. Spike
+ * Growth). Stacking with map-level difficult terrain is handled by `max`
+ * semantics in `getMovementCostMultiplier` — overlapping difficult terrains
+ * do not double-apply.
+ */
+const DIFFICULT_TERRAIN_MULTIPLIER = 2;
+
+function hasObstacleAtCell(
+  obstacles: Obstacle[],
+  coordinate: Coordinate,
+  predicate: (obstacle: Obstacle) => boolean
+): boolean {
   const key = coordinateKey(coordinate);
   return obstacles.some(
-    (obstacle) => predicate(obstacle) && obstacle.cells.some((cell) => coordinateKey(cell) === key)
+    (obstacle) =>
+      predicate(obstacle) &&
+      obstacle.cells.some((cell) => coordinateKey(cell) === key)
   );
 }
 
-export function blocksEffect(obstacles: Obstacle[], coordinate: Coordinate): boolean {
-  return hasObstacleAtCell(obstacles, coordinate, (obstacle) => obstacle.blocksEffect);
+export function blocksEffect(
+  obstacles: Obstacle[],
+  coordinate: Coordinate
+): boolean {
+  return hasObstacleAtCell(
+    obstacles,
+    coordinate,
+    (obstacle) => obstacle.blocksEffect
+  );
 }
 
-export function blocksVision(obstacles: Obstacle[], coordinate: Coordinate): boolean {
-  return hasObstacleAtCell(obstacles, coordinate, (obstacle) => obstacle.blocksVision);
+export function blocksVision(
+  obstacles: Obstacle[],
+  coordinate: Coordinate
+): boolean {
+  return hasObstacleAtCell(
+    obstacles,
+    coordinate,
+    (obstacle) => obstacle.blocksVision
+  );
 }
 
-export function clipsDiagonalMovement(obstacles: Obstacle[], coordinate: Coordinate): boolean {
-  return hasObstacleAtCell(obstacles, coordinate, (obstacle) => obstacle.clipsDiagonalMovement);
+export function clipsDiagonalMovement(
+  obstacles: Obstacle[],
+  coordinate: Coordinate
+): boolean {
+  return hasObstacleAtCell(
+    obstacles,
+    coordinate,
+    (obstacle) => obstacle.clipsDiagonalMovement
+  );
 }
 
 /**
@@ -32,7 +73,8 @@ export function clipsDiagonalMovement(obstacles: Obstacle[], coordinate: Coordin
  */
 export function getMovementCostMultiplier(
   obstacles: Obstacle[],
-  coordinate: Coordinate
+  coordinate: Coordinate,
+  activeAreaEffects: ActiveAreaEffect[] = []
 ): number {
   const key = coordinateKey(coordinate);
   let max = 1;
@@ -42,6 +84,14 @@ export function getMovementCostMultiplier(
       obstacle.cells.some((cell) => coordinateKey(cell) === key)
     ) {
       max = Math.max(max, obstacle.movementCostMultiplier);
+    }
+  }
+  for (const effect of activeAreaEffects) {
+    if (
+      effect.terrainEffect === "difficult_terrain" &&
+      effect.affectedCells.some((cell) => coordinateKey(cell) === key)
+    ) {
+      max = Math.max(max, DIFFICULT_TERRAIN_MULTIPLIER);
     }
   }
   return max;
@@ -58,7 +108,10 @@ export const COVER_RANK: Record<ObstacleCover, number> = {
   full: 3
 };
 
-export function getHighestCover(obstacles: Obstacle[], coordinate: Coordinate): ObstacleCover {
+export function getHighestCover(
+  obstacles: Obstacle[],
+  coordinate: Coordinate
+): ObstacleCover {
   let highestCover: ObstacleCover = "none";
   const key = coordinateKey(coordinate);
 

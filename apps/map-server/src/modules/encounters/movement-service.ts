@@ -32,7 +32,8 @@ export class MovementService {
       map: encounter.battleMap,
       obstacles: encounter.obstacles,
       edgeObstacles: encounter.edgeObstacles,
-      tokens: encounter.tokens
+      tokens: encounter.tokens,
+      activeAreaEffects: encounter.activeAreaEffects
     };
     const preview = findMovementPath(
       gridState,
@@ -229,7 +230,8 @@ export class MovementService {
       map: encounter.battleMap,
       obstacles: encounter.obstacles,
       edgeObstacles: encounter.edgeObstacles,
-      tokens: encounter.tokens
+      tokens: encounter.tokens,
+      activeAreaEffects: encounter.activeAreaEffects
     };
     const validation = validateMovement(
       gridState,
