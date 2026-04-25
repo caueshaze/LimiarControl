@@ -1,4 +1,11 @@
-import type { BattleMap, Coordinate, EdgeObstacle, Obstacle, Token } from "@limiarmap/shared-contracts";
+import type {
+  ActiveAreaEffect,
+  BattleMap,
+  Coordinate,
+  EdgeObstacle,
+  Obstacle,
+  Token
+} from "@limiarmap/shared-contracts";
 import { coordinateKey } from "./coordinates";
 
 export interface GridState {
@@ -6,9 +13,18 @@ export interface GridState {
   obstacles: Obstacle[];
   edgeObstacles?: EdgeObstacle[];
   tokens: Token[];
+  /**
+   * Persistent combat-state-only area effects (e.g. Spike Growth) that may
+   * influence movement cost or other tactical resolution. Map-level terrain
+   * lives on `obstacles`; these never mutate the campaign map.
+   */
+  activeAreaEffects?: ActiveAreaEffect[];
 }
 
-export function isInsideMap(gridState: GridState, coordinate: Coordinate): boolean {
+export function isInsideMap(
+  gridState: GridState,
+  coordinate: Coordinate
+): boolean {
   return (
     coordinate.x >= 0 &&
     coordinate.y >= 0 &&
@@ -17,17 +33,26 @@ export function isInsideMap(gridState: GridState, coordinate: Coordinate): boole
   );
 }
 
-export function isBlockedCell(gridState: GridState, coordinate: Coordinate): boolean {
+export function isBlockedCell(
+  gridState: GridState,
+  coordinate: Coordinate
+): boolean {
   const key = coordinateKey(coordinate);
   return gridState.obstacles.some(
     (obstacle) =>
-      obstacle.blocksMovement && obstacle.cells.some((cell) => coordinateKey(cell) === key)
+      obstacle.blocksMovement &&
+      obstacle.cells.some((cell) => coordinateKey(cell) === key)
   );
 }
 
-export function findOccupyingToken(gridState: GridState, coordinate: Coordinate): Token | undefined {
+export function findOccupyingToken(
+  gridState: GridState,
+  coordinate: Coordinate
+): Token | undefined {
   const key = coordinateKey(coordinate);
-  return gridState.tokens.find((token) => coordinateKey(token.position) === key);
+  return gridState.tokens.find(
+    (token) => coordinateKey(token.position) === key
+  );
 }
 
 /**
@@ -72,7 +97,11 @@ export function getEdgeBetweenCells(
 /**
  * Phase 10: Check if movement is blocked by an edge between two cells.
  */
-export function isEdgeBlocked(gridState: GridState, fromCell: Coordinate, toCell: Coordinate): boolean {
+export function isEdgeBlocked(
+  gridState: GridState,
+  fromCell: Coordinate,
+  toCell: Coordinate
+): boolean {
   const edge = getEdgeBetweenCells(gridState, fromCell, toCell);
   return edge?.blocksMovement ?? false;
 }
@@ -80,7 +109,11 @@ export function isEdgeBlocked(gridState: GridState, fromCell: Coordinate, toCell
 /**
  * Phase 10: Check if vision is blocked by an edge between two cells.
  */
-export function isEdgeBlockingVision(gridState: GridState, fromCell: Coordinate, toCell: Coordinate): boolean {
+export function isEdgeBlockingVision(
+  gridState: GridState,
+  fromCell: Coordinate,
+  toCell: Coordinate
+): boolean {
   const edge = getEdgeBetweenCells(gridState, fromCell, toCell);
   return edge?.blocksVision ?? false;
 }
@@ -88,7 +121,11 @@ export function isEdgeBlockingVision(gridState: GridState, fromCell: Coordinate,
 /**
  * Phase 10: Check if effects are blocked by an edge between two cells.
  */
-export function isEdgeBlockingEffect(gridState: GridState, fromCell: Coordinate, toCell: Coordinate): boolean {
+export function isEdgeBlockingEffect(
+  gridState: GridState,
+  fromCell: Coordinate,
+  toCell: Coordinate
+): boolean {
   const edge = getEdgeBetweenCells(gridState, fromCell, toCell);
   return edge?.blocksEffect ?? false;
 }
@@ -96,7 +133,11 @@ export function isEdgeBlockingEffect(gridState: GridState, fromCell: Coordinate,
 /**
  * Phase 10: Get edge cover value between two cells.
  */
-export function getEdgeCover(gridState: GridState, fromCell: Coordinate, toCell: Coordinate): "none" | "half" | "threeQuarters" | "full" {
+export function getEdgeCover(
+  gridState: GridState,
+  fromCell: Coordinate,
+  toCell: Coordinate
+): "none" | "half" | "threeQuarters" | "full" {
   const edge = getEdgeBetweenCells(gridState, fromCell, toCell);
   return edge?.cover ?? "none";
 }

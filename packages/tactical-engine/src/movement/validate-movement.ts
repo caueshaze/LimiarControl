@@ -1,6 +1,20 @@
-import type { CombatState, Coordinate, Token } from "@limiarmap/shared-contracts";
-import { findOccupyingToken, getEdgeBetweenCells, isBlockedCell, isEdgeBlocked, isInsideMap, type GridState } from "../grid/grid-state";
-import { clipsDiagonalMovement, getMovementCostMultiplier } from "../validation/obstacle-rules";
+import type {
+  CombatState,
+  Coordinate,
+  Token
+} from "@limiarmap/shared-contracts";
+import {
+  findOccupyingToken,
+  getEdgeBetweenCells,
+  isBlockedCell,
+  isEdgeBlocked,
+  isInsideMap,
+  type GridState
+} from "../grid/grid-state";
+import {
+  clipsDiagonalMovement,
+  getMovementCostMultiplier
+} from "../validation/obstacle-rules";
 import { computePathCost, isDiagonalStep, stepCost } from "./path-cost";
 
 export interface MovementValidationResult {
@@ -22,7 +36,10 @@ export function findReachableCells(
     return [];
   }
 
-  if (combatState?.status === "active" && token.combatantId !== combatState.activeCombatantId) {
+  if (
+    combatState?.status === "active" &&
+    token.combatantId !== combatState.activeCombatantId
+  ) {
     return [];
   }
 
@@ -39,7 +56,9 @@ export function findReachableCells(
       pathCostUnits: 0
     }
   ];
-  const bestByState = new Map<string, number>([[`${token.position.x}:${token.position.y}:0`, 0]]);
+  const bestByState = new Map<string, number>([
+    [`${token.position.x}:${token.position.y}:0`, 0]
+  ]);
   const visited = new Set<string>();
   const reachableByCoordinate = new Map<string, Coordinate>();
 
@@ -59,7 +78,8 @@ export function findReachableCells(
     visited.add(currentKey);
 
     const isOrigin =
-      current.coordinate.x === token.position.x && current.coordinate.y === token.position.y;
+      current.coordinate.x === token.position.x &&
+      current.coordinate.y === token.position.y;
     if (!isOrigin) {
       reachableByCoordinate.set(
         `${current.coordinate.x}:${current.coordinate.y}`,
@@ -77,7 +97,12 @@ export function findReachableCells(
           x: current.coordinate.x + xDelta,
           y: current.coordinate.y + yDelta
         };
-        const rejectionReason = getStepRejectionReason(gridState, token, current.coordinate, candidate);
+        const rejectionReason = getStepRejectionReason(
+          gridState,
+          token,
+          current.coordinate,
+          candidate
+        );
         if (rejectionReason) {
           continue;
         }
@@ -91,7 +116,11 @@ export function findReachableCells(
             current.coordinate,
             candidate,
             current.diagonalParity,
-            getMovementCostMultiplier(gridState.obstacles, candidate)
+            getMovementCostMultiplier(
+              gridState.obstacles,
+              candidate,
+              gridState.activeAreaEffects
+            )
           );
         if (nextCost > token.movementBudget) {
           continue;
@@ -140,8 +169,15 @@ function getStepRejectionReason(
       return "blocked_path";
     }
   } else if (xDelta === 1 && yDelta === 1) {
-    const cornerH = getEdgeBetweenCells(gridState, previous, { x: current.x, y: previous.y });
-    const cornerV = getEdgeBetweenCells(gridState, { x: current.x, y: previous.y }, current);
+    const cornerH = getEdgeBetweenCells(gridState, previous, {
+      x: current.x,
+      y: previous.y
+    });
+    const cornerV = getEdgeBetweenCells(
+      gridState,
+      { x: current.x, y: previous.y },
+      current
+    );
     if (cornerH?.blocksMovement || cornerV?.blocksMovement) {
       return "blocked_path";
     }
@@ -154,8 +190,14 @@ function getStepRejectionReason(
   if (
     xDelta === 1 &&
     yDelta === 1 &&
-    (clipsDiagonalMovement(gridState.obstacles, { x: current.x, y: previous.y }) ||
-      clipsDiagonalMovement(gridState.obstacles, { x: previous.x, y: current.y }))
+    (clipsDiagonalMovement(gridState.obstacles, {
+      x: current.x,
+      y: previous.y
+    }) ||
+      clipsDiagonalMovement(gridState.obstacles, {
+        x: previous.x,
+        y: current.y
+      }))
   ) {
     return "diagonal_clipped";
   }
@@ -178,15 +220,27 @@ export function validateMovement(
     return { accepted: false, pathCostUnits: 0, rejectionReason: "empty_path" };
   }
 
-  if (combatState?.status === "active" && token.combatantId !== combatState.activeCombatantId) {
-    return { accepted: false, pathCostUnits: 0, rejectionReason: "out_of_turn" };
+  if (
+    combatState?.status === "active" &&
+    token.combatantId !== combatState.activeCombatantId
+  ) {
+    return {
+      accepted: false,
+      pathCostUnits: 0,
+      rejectionReason: "out_of_turn"
+    };
   }
 
   const fullPath = [token.position, ...path];
   for (let index = 1; index < fullPath.length; index += 1) {
     const current = fullPath[index];
     const previous = fullPath[index - 1];
-    const rejectionReason = getStepRejectionReason(gridState, token, previous, current);
+    const rejectionReason = getStepRejectionReason(
+      gridState,
+      token,
+      previous,
+      current
+    );
     if (rejectionReason) {
       return { accepted: false, pathCostUnits: 0, rejectionReason };
     }
@@ -195,12 +249,19 @@ export function validateMovement(
   // Phase 7: terrain multipliers are applied per destination cell.
   // Blocked cells were already rejected above; this only affects traversable
   // cells whose movementCostMultiplier > 1 (e.g. difficult terrain = 2).
-  const pathCostUnits = computePathCost(
-    fullPath,
-    (cell) => getMovementCostMultiplier(gridState.obstacles, cell)
+  const pathCostUnits = computePathCost(fullPath, (cell) =>
+    getMovementCostMultiplier(
+      gridState.obstacles,
+      cell,
+      gridState.activeAreaEffects
+    )
   );
   if (pathCostUnits > token.movementBudget) {
-    return { accepted: false, pathCostUnits, rejectionReason: "movement_budget_exceeded" };
+    return {
+      accepted: false,
+      pathCostUnits,
+      rejectionReason: "movement_budget_exceeded"
+    };
   }
 
   return { accepted: true, pathCostUnits };
@@ -212,25 +273,56 @@ export function findMovementPath(
   destination: Coordinate,
   combatState?: CombatState
 ): MovementPathResult {
-  if (combatState?.status === "active" && token.combatantId !== combatState.activeCombatantId) {
-    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "out_of_turn" };
+  if (
+    combatState?.status === "active" &&
+    token.combatantId !== combatState.activeCombatantId
+  ) {
+    return {
+      accepted: false,
+      path: [],
+      pathCostUnits: 0,
+      rejectionReason: "out_of_turn"
+    };
   }
 
-  if (destination.x === token.position.x && destination.y === token.position.y) {
-    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "empty_path" };
+  if (
+    destination.x === token.position.x &&
+    destination.y === token.position.y
+  ) {
+    return {
+      accepted: false,
+      path: [],
+      pathCostUnits: 0,
+      rejectionReason: "empty_path"
+    };
   }
 
   if (!isInsideMap(gridState, destination)) {
-    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "outside_map" };
+    return {
+      accepted: false,
+      path: [],
+      pathCostUnits: 0,
+      rejectionReason: "outside_map"
+    };
   }
 
   if (isBlockedCell(gridState, destination)) {
-    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "blocked_path" };
+    return {
+      accepted: false,
+      path: [],
+      pathCostUnits: 0,
+      rejectionReason: "blocked_path"
+    };
   }
 
   const destinationOccupant = findOccupyingToken(gridState, destination);
   if (destinationOccupant && destinationOccupant.id !== token.id) {
-    return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "occupied_cell" };
+    return {
+      accepted: false,
+      path: [],
+      pathCostUnits: 0,
+      rejectionReason: "occupied_cell"
+    };
   }
 
   type SearchNode = {
@@ -246,7 +338,9 @@ export function findMovementPath(
       pathCostUnits: 0
     }
   ];
-  const bestByState = new Map<string, number>([[`${token.position.x}:${token.position.y}:0`, 0]]);
+  const bestByState = new Map<string, number>([
+    [`${token.position.x}:${token.position.y}:0`, 0]
+  ]);
   const previousByState = new Map<
     string,
     { previousKey: string; coordinate: Coordinate; diagonalParity: 0 | 1 }
@@ -269,7 +363,10 @@ export function findMovementPath(
     }
     visited.add(currentKey);
 
-    if (current.coordinate.x === destination.x && current.coordinate.y === destination.y) {
+    if (
+      current.coordinate.x === destination.x &&
+      current.coordinate.y === destination.y
+    ) {
       const fullPath: Coordinate[] = [current.coordinate];
       let cursorKey = currentKey;
       while (previousByState.has(cursorKey)) {
@@ -279,7 +376,12 @@ export function findMovementPath(
       }
       fullPath.reverse();
       const previewPath = fullPath.slice(1);
-      const validation = validateMovement(gridState, token, previewPath, combatState);
+      const validation = validateMovement(
+        gridState,
+        token,
+        previewPath,
+        combatState
+      );
       return {
         accepted: validation.accepted,
         path: previewPath,
@@ -298,7 +400,12 @@ export function findMovementPath(
           x: current.coordinate.x + xDelta,
           y: current.coordinate.y + yDelta
         };
-        const rejectionReason = getStepRejectionReason(gridState, token, current.coordinate, candidate);
+        const rejectionReason = getStepRejectionReason(
+          gridState,
+          token,
+          current.coordinate,
+          candidate
+        );
         if (rejectionReason) {
           continue;
         }
@@ -310,7 +417,11 @@ export function findMovementPath(
           current.coordinate,
           candidate,
           current.diagonalParity,
-          getMovementCostMultiplier(gridState.obstacles, candidate)
+          getMovementCostMultiplier(
+            gridState.obstacles,
+            candidate,
+            gridState.activeAreaEffects
+          )
         );
         const nextCost = current.pathCostUnits + cost;
         const nextKey = `${candidate.x}:${candidate.y}:${nextParity}`;

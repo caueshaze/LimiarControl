@@ -103,6 +103,137 @@ describe("integration movement preview", () => {
     await app.close();
   });
 
+  it("treats Spike Growth active area effects as difficult terrain in preview", async () => {
+    const { app, repository } = createApp();
+    registerIntegrationRoutes(app, repository);
+
+    await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-spike/combat/start",
+      payload: {
+        actionId: "start-spike-1",
+        combatants: [{ combatantId: "cmb_1", initiativeScore: 20 }],
+        battleMap: BASE_BATTLE_MAP
+      }
+    });
+    await app.inject({
+      method: "PUT",
+      url: "/integration/sessions/session-spike/tokens",
+      payload: { tokens: [{ tokenId: "tok_player", combatantId: "cmb_1" }] }
+    });
+
+    // Token starts at (4,4); Spike Growth covers (5,4) and (6,4).
+    await app.inject({
+      method: "PUT",
+      url: "/integration/sessions/session-spike/area-effects",
+      payload: {
+        activeAreaEffects: [
+          {
+            id: "aae_spike",
+            sourceSpellCanonicalKey: "spike_growth",
+            sourceSpellName: "Spike Growth",
+            casterParticipantId: "caster",
+            originPoint: { x: 5, y: 4 },
+            anchorCell: { x: 5, y: 4 },
+            areaShape: "sphere",
+            sizeMeters: 6,
+            affectedCells: [
+              { x: 5, y: 4 },
+              { x: 6, y: 4 }
+            ],
+            effectKind: "hazard",
+            terrainEffect: "difficult_terrain",
+            movementDamageDice: "2d4",
+            damageType: "Piercing",
+            damagePerMeters: 1.5
+          }
+        ]
+      }
+    });
+
+    // Straight path through Spike Growth: (4,4)→(5,4) costs 10, (5,4)→(6,4) costs 10. Total 20.
+    const through = await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-spike/movement/preview",
+      payload: {
+        actionId: "preview-spike-through",
+        combatantId: "cmb_1",
+        destinationCell: { x: 6, y: 4 }
+      }
+    });
+    expect(through.statusCode).toBe(200);
+    expect(through.json()).toMatchObject({
+      isValid: true,
+      pathCostUnits: 20,
+      remainingBudget: 10
+    });
+
+    await app.close();
+  });
+
+  it("does not let Fog Cloud (obscurement) modify movement cost", async () => {
+    const { app, repository } = createApp();
+    registerIntegrationRoutes(app, repository);
+
+    await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-fog/combat/start",
+      payload: {
+        actionId: "start-fog-1",
+        combatants: [{ combatantId: "cmb_1", initiativeScore: 20 }],
+        battleMap: BASE_BATTLE_MAP
+      }
+    });
+    await app.inject({
+      method: "PUT",
+      url: "/integration/sessions/session-fog/tokens",
+      payload: { tokens: [{ tokenId: "tok_player", combatantId: "cmb_1" }] }
+    });
+
+    await app.inject({
+      method: "PUT",
+      url: "/integration/sessions/session-fog/area-effects",
+      payload: {
+        activeAreaEffects: [
+          {
+            id: "aae_fog",
+            sourceSpellCanonicalKey: "fog_cloud",
+            sourceSpellName: "Fog Cloud",
+            casterParticipantId: "caster",
+            originPoint: { x: 5, y: 4 },
+            anchorCell: { x: 5, y: 4 },
+            areaShape: "sphere",
+            sizeMeters: 6,
+            affectedCells: [
+              { x: 5, y: 4 },
+              { x: 6, y: 4 }
+            ],
+            effectKind: "obscurement",
+            obscurement: "heavy"
+          }
+        ]
+      }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/integration/sessions/session-fog/movement/preview",
+      payload: {
+        actionId: "preview-fog-1",
+        combatantId: "cmb_1",
+        destinationCell: { x: 6, y: 4 }
+      }
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      isValid: true,
+      pathCostUnits: 10,
+      remainingBudget: 20
+    });
+
+    await app.close();
+  });
+
   it("rejects initial placement onto occupied, blocked, or out-of-bounds cells", async () => {
     const { app, repository } = createApp();
     registerIntegrationRoutes(app, repository);

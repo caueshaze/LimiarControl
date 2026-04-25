@@ -52,7 +52,7 @@ export function findReachableCells(gridState, token, combatState) {
                     ? (1 - current.diagonalParity)
                     : current.diagonalParity;
                 const nextCost = current.pathCostUnits +
-                    stepCost(current.coordinate, candidate, current.diagonalParity, getMovementCostMultiplier(gridState.obstacles, candidate));
+                    stepCost(current.coordinate, candidate, current.diagonalParity, getMovementCostMultiplier(gridState.obstacles, candidate, gridState.activeAreaEffects));
                 if (nextCost > token.movementBudget) {
                     continue;
                 }
@@ -124,7 +124,7 @@ export function validateMovement(gridState, token, path, combatState) {
             return { accepted: false, pathCostUnits: 0, rejectionReason };
         }
     }
-    const pathCostUnits = computePathCost(fullPath, (cell) => getMovementCostMultiplier(gridState.obstacles, cell));
+    const pathCostUnits = computePathCost(fullPath, (cell) => getMovementCostMultiplier(gridState.obstacles, cell, gridState.activeAreaEffects));
     if (pathCostUnits > token.movementBudget) {
         return { accepted: false, pathCostUnits, rejectionReason: "movement_budget_exceeded" };
     }
@@ -198,7 +198,7 @@ export function findMovementPath(gridState, token, destination, combatState) {
                 const nextParity = isDiagonalStep(current.coordinate, candidate)
                     ? (1 - current.diagonalParity)
                     : current.diagonalParity;
-                const cost = stepCost(current.coordinate, candidate, current.diagonalParity, getMovementCostMultiplier(gridState.obstacles, candidate));
+                const cost = stepCost(current.coordinate, candidate, current.diagonalParity, getMovementCostMultiplier(gridState.obstacles, candidate, gridState.activeAreaEffects));
                 const nextCost = current.pathCostUnits + cost;
                 const nextKey = `${candidate.x}:${candidate.y}:${nextParity}`;
                 const previousBest = bestByState.get(nextKey);
