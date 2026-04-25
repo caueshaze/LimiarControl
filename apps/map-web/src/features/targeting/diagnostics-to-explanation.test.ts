@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFailureExplanation,
-  type FailureExplanation,
+  type FailureExplanation
 } from "./diagnostics-to-explanation";
 import type { TacticalDiagnostics } from "../battle-map/battle-map-store";
 
@@ -15,7 +15,7 @@ function diag(
     isValid: failureReasons.length === 0,
     failureReasons,
     checks: {},
-    metadata,
+    metadata
   };
 }
 
@@ -23,7 +23,12 @@ function invalidDiag(
   reasons: string[],
   meta: Record<string, number | string | boolean> = {}
 ): TacticalDiagnostics {
-  return { isValid: false, failureReasons: reasons, checks: {}, metadata: meta };
+  return {
+    isValid: false,
+    failureReasons: reasons,
+    checks: {},
+    metadata: meta
+  };
 }
 
 // ─── Null / valid cases ───────────────────────────────────────────────────────
@@ -38,7 +43,7 @@ describe("buildFailureExplanation — valid / null cases", () => {
       isValid: true,
       failureReasons: ["target_out_of_reach"],
       checks: {},
-      metadata: {},
+      metadata: {}
     };
     expect(buildFailureExplanation(d)).toBeNull();
   });
@@ -48,7 +53,7 @@ describe("buildFailureExplanation — valid / null cases", () => {
       isValid: false,
       failureReasons: [],
       checks: {},
-      metadata: {},
+      metadata: {}
     };
     expect(buildFailureExplanation(d)).toBeNull();
   });
@@ -63,10 +68,14 @@ describe("buildFailureExplanation — primary label per failure reason", () => {
     ["target_out_of_reach", "Fora do alcance"],
     ["no_line_of_sight", "Sem linha de visão"],
     ["no_line_of_effect", "Bloqueado"],
+    ["origin_heavily_obscured", "Você está na neblina"],
+    ["target_heavily_obscured", "Alvo na neblina"],
+    ["point_heavily_obscured", "Ponto na neblina"],
+    ["line_of_sight_obscured", "Visão bloqueada por neblina"],
     ["not_visible", "Não visível"],
     ["blocked_by_condition", "Condição bloqueante"],
     ["self_target_not_allowed", "Não pode alvejar a si"],
-    ["map_unreachable", "Mapa indisponível"],
+    ["map_unreachable", "Mapa indisponível"]
   ];
 
   for (const [reason, expectedLabel] of cases) {
@@ -91,15 +100,24 @@ describe("buildFailureExplanation — primary label per failure reason", () => {
 describe("buildFailureExplanation — details from metadata", () => {
   it("target_out_of_reach with full metadata → 2 detail lines", () => {
     const result = buildFailureExplanation(
-      invalidDiag(["target_out_of_reach"], { distance_cells: 3, reach_cells: 1 })
+      invalidDiag(["target_out_of_reach"], {
+        distance_cells: 3,
+        reach_cells: 1
+      })
     );
-    expect(result!.details).toEqual(["Distância: 3 células", "Alcance: 1 célula"]);
+    expect(result!.details).toEqual([
+      "Distância: 3 células",
+      "Alcance: 1 célula"
+    ]);
     expect(result!.context).toEqual({ distance: 3, range: 1 });
   });
 
   it("target_out_of_reach with distance=1 → singular 'célula'", () => {
     const result = buildFailureExplanation(
-      invalidDiag(["target_out_of_reach"], { distance_cells: 1, reach_cells: 1 })
+      invalidDiag(["target_out_of_reach"], {
+        distance_cells: 1,
+        reach_cells: 1
+      })
     );
     expect(result!.details[0]).toBe("Distância: 1 célula");
     expect(result!.details[1]).toBe("Alcance: 1 célula");
@@ -114,7 +132,9 @@ describe("buildFailureExplanation — details from metadata", () => {
   });
 
   it("target_out_of_reach with no metadata → empty details", () => {
-    const result = buildFailureExplanation(invalidDiag(["target_out_of_reach"]));
+    const result = buildFailureExplanation(
+      invalidDiag(["target_out_of_reach"])
+    );
     expect(result!.details).toEqual([]);
     expect(result!.context).toEqual({});
   });
@@ -122,6 +142,41 @@ describe("buildFailureExplanation — details from metadata", () => {
   it("no_line_of_sight → fixed detail string", () => {
     const result = buildFailureExplanation(invalidDiag(["no_line_of_sight"]));
     expect(result!.details).toEqual(["Visão bloqueada por obstáculo"]);
+  });
+
+  it("target_heavily_obscured → wins over generic no_line_of_sight", () => {
+    const result = buildFailureExplanation(
+      invalidDiag(["no_line_of_sight", "target_heavily_obscured"])
+    );
+    expect(result!.primary).toBe("Alvo na neblina");
+    expect(result!.details).toEqual(["Alvo está em área fortemente encoberta"]);
+    expect(result!.context).toEqual({ obscurement: "heavily_obscured" });
+    expect(result!.severity).toBe("red");
+  });
+
+  it("origin_heavily_obscured → caster-side message", () => {
+    const result = buildFailureExplanation(
+      invalidDiag(["origin_heavily_obscured"])
+    );
+    expect(result!.details).toEqual(["Você está em área fortemente encoberta"]);
+  });
+
+  it("point_heavily_obscured → area selected-point message", () => {
+    const result = buildFailureExplanation(
+      invalidDiag(["point_heavily_obscured"])
+    );
+    expect(result!.details).toEqual([
+      "Ponto está em área fortemente encoberta"
+    ]);
+  });
+
+  it("line_of_sight_obscured → path-crossing message", () => {
+    const result = buildFailureExplanation(
+      invalidDiag(["line_of_sight_obscured"])
+    );
+    expect(result!.details).toEqual([
+      "Linha de visão atravessa área encoberta"
+    ]);
   });
 
   it("no_line_of_effect → fixed detail string", () => {
@@ -135,7 +190,9 @@ describe("buildFailureExplanation — details from metadata", () => {
   });
 
   it("blocked_by_condition without condition metadata → generic message", () => {
-    const result = buildFailureExplanation(invalidDiag(["blocked_by_condition"]));
+    const result = buildFailureExplanation(
+      invalidDiag(["blocked_by_condition"])
+    );
     expect(result!.details).toEqual(["Você está incapacitado"]);
     expect(result!.context).toEqual({});
   });
@@ -159,7 +216,9 @@ describe("buildFailureExplanation — details from metadata", () => {
   });
 
   it("self_target_not_allowed → no detail lines", () => {
-    const result = buildFailureExplanation(invalidDiag(["self_target_not_allowed"]));
+    const result = buildFailureExplanation(
+      invalidDiag(["self_target_not_allowed"])
+    );
     expect(result!.details).toEqual([]);
   });
 });
@@ -176,7 +235,7 @@ describe("buildFailureExplanation — severity", () => {
     ["target_not_found", "gray"],
     ["invalid_target_type", "gray"],
     ["self_target_not_allowed", "gray"],
-    ["map_unreachable", "gray"],
+    ["map_unreachable", "gray"]
   ];
 
   for (const [reason, expectedSeverity] of severityCases) {
@@ -244,7 +303,7 @@ describe("buildFailureExplanation — priority ordering", () => {
         "target_out_of_reach",
         "invalid_target_type",
         "target_not_found",
-        "blocked_by_condition",
+        "blocked_by_condition"
       ])
     );
     expect(result!.primary).toBe("Condição bloqueante");
@@ -266,7 +325,10 @@ describe("buildFailureExplanation — context", () => {
 
   it("reach metadata is reflected in context under canonical keys", () => {
     const result = buildFailureExplanation(
-      invalidDiag(["target_out_of_reach"], { distance_cells: 4, reach_cells: 2 })
+      invalidDiag(["target_out_of_reach"], {
+        distance_cells: 4,
+        reach_cells: 2
+      })
     );
     expect(result!.context.distance).toBe(4);
     expect(result!.context.range).toBe(2);

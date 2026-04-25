@@ -1,7 +1,49 @@
-import type { Coordinate, EdgeObstacle, Obstacle, ObstacleCover } from "@limiarmap/shared-contracts";
-import { blocksEffect, blocksVision, getHighestCover, COVER_RANK } from "./obstacle-rules";
+import type {
+  ActiveAreaEffect,
+  Coordinate,
+  EdgeObstacle,
+  Obstacle,
+  ObstacleCover
+} from "@limiarmap/shared-contracts";
+import {
+  blocksEffect,
+  blocksVision,
+  getHighestCover,
+  COVER_RANK
+} from "./obstacle-rules";
 import { traceLine } from "../targeting/line-trace";
 import { findEdgeBetween } from "../grid/grid-state";
+
+/**
+ * Returns true if `cell` is inside any active area effect that creates
+ * heavy obscurement (e.g. Fog Cloud). Effects without
+ * `effectKind === "obscurement"` or `obscurement !== "heavily_obscured"`
+ * are ignored, as are effects whose `affectedCells` list is empty.
+ */
+export function isCellHeavilyObscured(
+  cell: Coordinate,
+  activeAreaEffects: ActiveAreaEffect[] = []
+): boolean {
+  if (!activeAreaEffects.length) return false;
+  for (const effect of activeAreaEffects) {
+    if (effect.effectKind !== "obscurement") continue;
+    if (effect.obscurement !== "heavily_obscured") continue;
+    for (const affected of effect.affectedCells) {
+      if (affected.x === cell.x && affected.y === cell.y) return true;
+    }
+  }
+  return false;
+}
+
+export type LineOfSightFailureReason =
+  | "origin_heavily_obscured"
+  | "target_heavily_obscured"
+  | "line_of_sight_obscured"
+  | "no_line_of_sight";
+
+export type LineOfSightDiagnostic =
+  | { ok: true }
+  | { ok: false; reason: LineOfSightFailureReason };
 
 /**
  * Returns true if there is an unobstructed line of sight from `from` to `to`.
@@ -17,28 +59,63 @@ export function hasLineOfSight(
   obstacles: Obstacle[],
   from: Coordinate,
   to: Coordinate,
-  edgeObstacles: EdgeObstacle[] = []
+  edgeObstacles: EdgeObstacle[] = [],
+  activeAreaEffects: ActiveAreaEffect[] = []
 ): boolean {
+  return evaluateLineOfSight(
+    obstacles,
+    from,
+    to,
+    edgeObstacles,
+    activeAreaEffects
+  ).ok;
+}
+
+/**
+ * Diagnostic variant of {@link hasLineOfSight}. Returns either `{ ok: true }`
+ * or `{ ok: false, reason }` so callers can distinguish obstacle blockers from
+ * heavy obscurement (Fog Cloud and similar). Heavy-obscurement reasons take
+ * precedence over `no_line_of_sight` so the diagnostic surfaced to the user
+ * matches the actual cause.
+ *
+ * Heavy obscurement blocks sight when origin, target, or any traversed
+ * intermediate cell is inside a heavily obscured area effect. Edge obstacles
+ * and cell obstacles still report `no_line_of_sight`.
+ */
+export function evaluateLineOfSight(
+  obstacles: Obstacle[],
+  from: Coordinate,
+  to: Coordinate,
+  edgeObstacles: EdgeObstacle[] = [],
+  activeAreaEffects: ActiveAreaEffect[] = []
+): LineOfSightDiagnostic {
+  if (isCellHeavilyObscured(from, activeAreaEffects)) {
+    return { ok: false, reason: "origin_heavily_obscured" };
+  }
+  if (isCellHeavilyObscured(to, activeAreaEffects)) {
+    return { ok: false, reason: "target_heavily_obscured" };
+  }
+
   const intermediate = traceLine(from, to);
   const fullPath = [from, ...intermediate, to];
 
-  // Check cell obstacles for vision blocking
   for (const cell of intermediate) {
+    if (isCellHeavilyObscured(cell, activeAreaEffects)) {
+      return { ok: false, reason: "line_of_sight_obscured" };
+    }
     if (blocksVision(obstacles, cell)) {
-      return false;
+      return { ok: false, reason: "no_line_of_sight" };
     }
   }
 
-  // Phase 10: Check edge obstacles for vision blocking
-  // We need to check edges that the line crosses between consecutive cells
   for (let i = 0; i < fullPath.length - 1; i++) {
     const edge = findEdgeBetween(edgeObstacles, fullPath[i], fullPath[i + 1]);
     if (edge?.blocksVision) {
-      return false;
+      return { ok: false, reason: "no_line_of_sight" };
     }
   }
 
-  return true;
+  return { ok: true };
 }
 
 /**
@@ -129,7 +206,11 @@ export function evaluateCover(
   // consistent with the cell-cover policy of including the target cell.
   for (let i = 0; i < fullPath.length - 1; i++) {
     const edge = findEdgeBetween(edgeObstacles, fullPath[i], fullPath[i + 1]);
-    if (edge && edge.cover !== "none" && COVER_RANK[edge.cover] > COVER_RANK[highest]) {
+    if (
+      edge &&
+      edge.cover !== "none" &&
+      COVER_RANK[edge.cover] > COVER_RANK[highest]
+    ) {
       highest = edge.cover;
     }
     // Short-circuit: can't get higher than full

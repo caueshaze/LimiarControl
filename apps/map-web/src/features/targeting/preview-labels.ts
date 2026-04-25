@@ -24,6 +24,10 @@ const FAILURE_LABELS: Record<string, string> = {
   target_out_of_reach: "Fora do alcance",
   no_line_of_sight: "Sem linha de visão",
   no_line_of_effect: "Bloqueado",
+  origin_heavily_obscured: "Você está na neblina",
+  target_heavily_obscured: "Alvo na neblina",
+  point_heavily_obscured: "Ponto na neblina",
+  line_of_sight_obscured: "Visão bloqueada por neblina",
   not_visible: "Não visível",
   blocked_by_condition: "Condição bloqueante",
   self_target_not_allowed: "Não pode alvejar a si",
@@ -34,13 +38,17 @@ const FAILURE_SEVERITIES: Record<string, FailureSeverity> = {
   target_out_of_reach: "orange",
   no_line_of_sight: "red",
   no_line_of_effect: "red",
+  origin_heavily_obscured: "red",
+  target_heavily_obscured: "red",
+  point_heavily_obscured: "red",
+  line_of_sight_obscured: "red",
   blocked_by_condition: "purple",
   not_visible: "gray",
   target_not_found: "gray",
   invalid_target_type: "gray",
   area_targeting_unavailable: "gray",
   self_target_not_allowed: "gray",
-  map_unreachable: "gray",
+  map_unreachable: "gray"
 };
 
 /** Returns the PT-BR label for a single failure reason code. */
@@ -60,7 +68,9 @@ export function getFailureSeverity(reason: string): FailureSeverity {
  * Note: U2 code should prefer buildFailureExplanation() which applies the
  * canonical priority order instead of relying on list position.
  */
-export function getPrimaryFailureLabel(failureReasons: string[]): string | null {
+export function getPrimaryFailureLabel(
+  failureReasons: string[]
+): string | null {
   if (failureReasons.length === 0) return null;
   return getFailureLabel(failureReasons[0]);
 }

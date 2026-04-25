@@ -1254,5 +1254,157 @@ class MeleeReachRangeCellsTests(unittest.TestCase):
         self.assertEqual(player_client.calls[0]["range_cells"], 2)
 
 
+class FogCloudVisibilityIntegrationTests(unittest.TestCase):
+    """Verifies that synced Fog Cloud area effects propagate through map-backed
+    targeting validation. The map server enforces obscurement; control-server
+    surfaces the rejection clearly when ``requires_sight`` is set, and lets the
+    action through when sight is not required.
+    """
+
+    def tearDown(self) -> None:
+        combat_targeting.reset_combat_targeting_service()
+
+    def test_target_inside_fog_cloud_rejects_sight_required_attack(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapTargetingResponse(
+                is_valid=False,
+                reason="target_heavily_obscured",
+                session_id="session-123",
+                action_id="action-fog",
+                version=7,
+                source_token_id="token-source",
+                target_token_id="token-target",
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            WeaponAttackIntent(
+                session_id="session-123",
+                action_id="action-fog",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                weapon_range_type="melee",
+            ),
+            state,
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("target_heavily_obscured", result.failure_reason)
+        self.assertTrue(client.calls[0]["requires_sight"])
+
+    def test_origin_inside_fog_cloud_rejects_sight_required_attack(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapTargetingResponse(
+                is_valid=False,
+                reason="origin_heavily_obscured",
+                session_id="session-123",
+                action_id="action-fog-origin",
+                version=8,
+                source_token_id="token-source",
+                target_token_id="token-target",
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            WeaponAttackIntent(
+                session_id="session-123",
+                action_id="action-fog-origin",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                weapon_range_type="melee",
+            ),
+            state,
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("origin_heavily_obscured", result.failure_reason)
+
+    def test_no_sight_required_passes_through_fog_cloud(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapTargetingResponse(
+                is_valid=True,
+                reason=None,
+                session_id="session-123",
+                action_id="action-no-sight",
+                version=9,
+                source_token_id="token-source",
+                target_token_id="token-target",
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        # Melee weapons set requires_sight=False in the resolved profile.
+        result = service.validate(
+            WeaponAttackIntent(
+                session_id="session-123",
+                action_id="action-no-sight",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id="enemy-123",
+                weapon_range_type="melee",
+            ),
+            state,
+        )
+
+        self.assertTrue(result.is_valid)
+
+    def test_area_anchor_inside_fog_cloud_rejects_point_sight_required_spell(self) -> None:
+        state = build_combat_state()
+        client = StubLimiarMapClient(
+            response=LimiarMapAreaTargetingResponse(
+                is_valid=False,
+                reason="point_heavily_obscured",
+                session_id="session-123",
+                action_id="action-area-fog",
+                version=10,
+                shape="sphere",
+                source_token_id="token-source",
+                affected_cells=(),
+                affected_token_ids=(),
+                affected_combatant_ids=(),
+            )
+        )
+        service = LimiarMapTargetingService(
+            client, fallback_service=LocalCombatTargetingService()
+        )
+
+        result = service.validate(
+            AreaTargetingIntent(
+                session_id="session-123",
+                action_id="action-area-fog",
+                actor_ref_id="player-123",
+                actor_kind="player",
+                requested_target_ref_id=None,
+                spell_canonical_key="fireball",
+                spell_mode="damage",
+                shape="sphere",
+                size_meters=6,
+                range_meters=15,
+                origin_cell={"x": 0, "y": 0},
+                anchor_cell={"x": 4, "y": 0},
+                requires_sight=True,
+                requires_effect=False,
+            ),
+            state,
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("point_heavily_obscured", result.failure_reason)
+        self.assertTrue(client.area_calls[0]["requires_sight"])
+
+
 if __name__ == "__main__":
     unittest.main()
