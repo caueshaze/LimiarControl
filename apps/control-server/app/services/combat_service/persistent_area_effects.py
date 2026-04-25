@@ -41,6 +41,7 @@ def build_persistent_spell_area_effect(
     targeting_result: Any,
     origin_cell: dict[str, int] | None,
     anchor_cell: dict[str, int] | None,
+    concentration_group: str | None = None,
 ) -> dict[str, Any]:
     shape = str(area_spec["shape"])
     size_meters = _safe_float(area_spec.get("size_meters")) or 0.0
@@ -77,6 +78,7 @@ def build_persistent_spell_area_effect(
         else None,
         "created_round": state.round,
         "created_turn_index": state.current_turn_index,
+        "concentration_group": concentration_group,
     }
     effect.update(_metadata_for_spell(spell_context))
     return effect
