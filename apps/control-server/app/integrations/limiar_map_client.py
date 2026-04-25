@@ -48,6 +48,16 @@ class LimiarMapClient:
         )
         return parse_state_response(data)
 
+    def sync_active_area_effects(
+        self, session_id: str, payload: dict[str, Any]
+    ) -> LimiarMapStateResponse:
+        data = self._request_json(
+            "PUT",
+            f"/integration/sessions/{session_id}/area-effects",
+            json_payload=payload,
+        )
+        return parse_state_response(data)
+
     def start_combat(
         self, session_id: str, payload: dict[str, Any]
     ) -> LimiarMapStateResponse:

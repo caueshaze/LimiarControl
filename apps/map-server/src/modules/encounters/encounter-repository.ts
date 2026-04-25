@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  ActiveAreaEffect,
   BattleMap,
   CombatState,
   Coordinate,
@@ -17,6 +18,7 @@ export interface EncounterState {
   tokens: Token[];
   obstacles: Obstacle[];
   edgeObstacles: EdgeObstacle[];
+  activeAreaEffects: ActiveAreaEffect[];
   combatState: CombatState;
   actionTracker: ActionIdempotencyTracker;
 }
@@ -125,6 +127,7 @@ function createDemoEncounter(
     tokens,
     obstacles,
     edgeObstacles: [], // Phase 10: Initialize empty edge obstacles for backward compatibility
+    activeAreaEffects: [],
     combatState,
     actionTracker: new ActionIdempotencyTracker()
   };
@@ -230,6 +233,12 @@ export class InMemoryEncounterRepository {
   setEdgeObstacles(sessionId: string, edgeObstacles: EdgeObstacle[]): EncounterState {
     const encounter = this.requireEncounter(sessionId);
     encounter.edgeObstacles = edgeObstacles;
+    return this.saveEncounter(encounter);
+  }
+
+  setActiveAreaEffects(sessionId: string, activeAreaEffects: ActiveAreaEffect[]): EncounterState {
+    const encounter = this.requireEncounter(sessionId);
+    encounter.activeAreaEffects = activeAreaEffects;
     return this.saveEncounter(encounter);
   }
 

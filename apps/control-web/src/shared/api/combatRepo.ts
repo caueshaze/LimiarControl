@@ -121,6 +121,7 @@ export type CombatState = {
   participants: CombatParticipant[];
   use_map: boolean;
   local_distances: Record<string, Record<string, number>>;
+  active_area_effects?: CombatActiveAreaEffect[];
   created_at: string;
   updated_at?: string | null;
 };
@@ -306,6 +307,34 @@ export type CombatMapPreviewObstacle = {
   cover?: string | null;
 };
 
+export type CombatActiveAreaEffect = {
+  id: string;
+  source_spell_canonical_key?: string | null;
+  source_spell_name: string;
+  caster_participant_id: string;
+  caster_ref_id?: string | null;
+  caster_character_id?: string | null;
+  origin_point: { x: number; y: number };
+  anchor_cell: { x: number; y: number };
+  area_shape: "sphere" | "cone" | "line" | "cube" | "cylinder";
+  size_meters: number;
+  radius_meters?: number | null;
+  length_meters?: number | null;
+  side_meters?: number | null;
+  affected_cells: Array<{ x: number; y: number }>;
+  effect_kind: "obscurement" | "hazard" | "spell_area" | string;
+  duration?: string | null;
+  concentration_owner_participant_id?: string | null;
+  concentration_owner_ref_id?: string | null;
+  created_round?: number | null;
+  created_turn_index?: number | null;
+  obscurement?: string | null;
+  terrain_effect?: string | null;
+  movement_damage_dice?: string | null;
+  damage_type?: string | null;
+  damage_per_meters?: number | null;
+};
+
 export type CombatMapPreviewState = {
   session_id: string;
   version: number;
@@ -313,6 +342,7 @@ export type CombatMapPreviewState = {
   grid_height: number;
   tokens: CombatMapPreviewToken[];
   obstacles: CombatMapPreviewObstacle[];
+  active_area_effects?: CombatActiveAreaEffect[];
 };
 
 export type CombatMapEnsureResponse = {

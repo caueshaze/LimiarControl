@@ -13,7 +13,8 @@ export function toEncounterSnapshot(
     combatState: encounter.combatState,
     tokens: encounter.tokens,
     obstacles: encounter.obstacles,
-    edgeObstacles: encounter.edgeObstacles
+    edgeObstacles: encounter.edgeObstacles,
+    activeAreaEffects: encounter.activeAreaEffects
   };
 }
 
@@ -32,6 +33,7 @@ export function toIntegrationSnapshot(
     combatState: encounter.combatState,
     tokens: encounter.tokens,
     obstacles: encounter.obstacles,
-    edgeObstacles: encounter.edgeObstacles
+    edgeObstacles: encounter.edgeObstacles,
+    activeAreaEffects: encounter.activeAreaEffects
   };
 }

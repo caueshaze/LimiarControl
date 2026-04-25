@@ -101,6 +101,7 @@ class CombatLifecycleTurnsMixin:
         if not state:
             raise CombatServiceError("Combat not found", 404)
         state.phase = CombatPhase.ended
+        state.active_area_effects = []
         db.add(state)
         db.commit()
         db.refresh(state)

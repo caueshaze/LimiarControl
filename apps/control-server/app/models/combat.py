@@ -44,6 +44,10 @@ class CombatState(SQLModel, table=True):
         default_factory=dict,
         sa_column=Column(JSON, nullable=False, server_default="{}"),
     )
+    active_area_effects: list[dict] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default="[]"),
+    )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

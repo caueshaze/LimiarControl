@@ -276,6 +276,8 @@ class SpellContextResolveMixin:
             "radius_meters": getattr(catalog_spell, "radius_meters", None),
             "length_meters": getattr(catalog_spell, "length_meters", None),
             "side_meters": getattr(catalog_spell, "side_meters", None),
+            "duration": getattr(catalog_spell, "duration", None),
+            "concentration": getattr(catalog_spell, "concentration", None),
             "requires_target_sight": resolved_mode["targeting_requirements"].requires_target_sight,
             "requires_target_effect": resolved_mode["targeting_requirements"].requires_target_effect,
             "requires_point_sight": resolved_mode["targeting_requirements"].requires_point_sight,

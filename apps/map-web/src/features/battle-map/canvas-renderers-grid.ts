@@ -1,6 +1,7 @@
 import { Graphics } from "pixi.js";
 import type {
   Coordinate,
+  ActiveAreaEffect,
   EdgeDirection,
   GridCalibration,
   Obstacle,
@@ -65,6 +66,7 @@ export function drawCellFills(
   movementPreview: Coordinate[],
   targetingPreview: Coordinate[],
   embeddedPreview: Coordinate[],
+  embeddedActiveAreaEffects: ActiveAreaEffect[],
   embeddedSelectedCell: Coordinate | null
 ): void {
   gfx.clear();
@@ -73,6 +75,12 @@ export function drawCellFills(
   const movementSet = new Set(movementPreview.map(coordKey));
   const targetingSet = new Set(
     [...targetingPreview, ...embeddedPreview].map(coordKey)
+  );
+  const activeAreaCells = embeddedActiveAreaEffects.flatMap((effect) =>
+    effect.affectedCells.map((cell) => ({
+      cell,
+      effectKind: effect.effectKind,
+    }))
   );
 
   for (const [key, obs] of obstacleCellMap) {
@@ -142,6 +150,28 @@ export function drawCellFills(
     gfx
       .rect(x, y, w, h)
       .fill({ color: C.movPreview, alpha: C.movPreviewAlpha });
+  }
+
+  for (const entry of activeAreaCells) {
+    const coordHash = coordKey(entry.cell);
+    if (obstacleCellMap.has(coordHash) || movementSet.has(coordHash)) continue;
+    const { x, y, w, h } = cellRect(
+      entry.cell.x,
+      entry.cell.y,
+      cal,
+      gridW,
+      gridH,
+      canvasW,
+      canvasH
+    );
+    const isHazard = entry.effectKind === "hazard";
+    const color = isHazard ? 0xdc2626 : 0x94a3b8;
+    gfx.rect(x, y, w, h).fill({ color, alpha: isHazard ? 0.22 : 0.2 });
+    gfx.rect(x + 2, y + 2, w - 4, h - 4).stroke({
+      width: 1.2,
+      color: isHazard ? 0xfca5a5 : 0xe2e8f0,
+      alpha: 0.65,
+    });
   }
 
   if (embeddedSelectedCell) {

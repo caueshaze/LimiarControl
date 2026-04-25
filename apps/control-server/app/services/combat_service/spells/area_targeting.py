@@ -234,6 +234,7 @@ class AreaTargetingMixin:
                 }
                 for obstacle in map_state.obstacles
             ],
+            active_area_effects=list(state.active_area_effects or []),
         )
 
     @classmethod

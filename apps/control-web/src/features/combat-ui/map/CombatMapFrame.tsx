@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { combatRepo } from "../../../shared/api/combatRepo";
+import { combatRepo, type CombatActiveAreaEffect } from "../../../shared/api/combatRepo";
 
 export type CombatMapSelectionMode = "none" | "select-token" | "select-cell";
 
@@ -12,6 +12,65 @@ type MapActorContext = {
   actorId: string;
   actorType: "player" | "gm";
 };
+
+export type CombatMapFrameActiveAreaEffect = {
+  id: string;
+  sourceSpellCanonicalKey?: string | null;
+  sourceSpellName: string;
+  casterParticipantId: string;
+  casterRefId?: string | null;
+  casterCharacterId?: string | null;
+  originPoint: Coordinate;
+  anchorCell: Coordinate;
+  areaShape: "sphere" | "cone" | "line" | "cube" | "cylinder";
+  sizeMeters: number;
+  radiusMeters?: number | null;
+  lengthMeters?: number | null;
+  sideMeters?: number | null;
+  affectedCells: Coordinate[];
+  effectKind: string;
+  duration?: string | null;
+  concentrationOwnerParticipantId?: string | null;
+  concentrationOwnerRefId?: string | null;
+  createdRound?: number | null;
+  createdTurnIndex?: number | null;
+  obscurement?: string | null;
+  terrainEffect?: string | null;
+  movementDamageDice?: string | null;
+  damageType?: string | null;
+  damagePerMeters?: number | null;
+};
+
+export const toCombatMapFrameAreaEffects = (
+  effects?: CombatActiveAreaEffect[] | null,
+): CombatMapFrameActiveAreaEffect[] =>
+  (effects ?? []).map((effect) => ({
+    id: effect.id,
+    sourceSpellCanonicalKey: effect.source_spell_canonical_key,
+    sourceSpellName: effect.source_spell_name,
+    casterParticipantId: effect.caster_participant_id,
+    casterRefId: effect.caster_ref_id,
+    casterCharacterId: effect.caster_character_id,
+    originPoint: effect.origin_point,
+    anchorCell: effect.anchor_cell,
+    areaShape: effect.area_shape,
+    sizeMeters: effect.size_meters,
+    radiusMeters: effect.radius_meters,
+    lengthMeters: effect.length_meters,
+    sideMeters: effect.side_meters,
+    affectedCells: effect.affected_cells ?? [],
+    effectKind: effect.effect_kind,
+    duration: effect.duration,
+    concentrationOwnerParticipantId: effect.concentration_owner_participant_id,
+    concentrationOwnerRefId: effect.concentration_owner_ref_id,
+    createdRound: effect.created_round,
+    createdTurnIndex: effect.created_turn_index,
+    obscurement: effect.obscurement,
+    terrainEffect: effect.terrain_effect,
+    movementDamageDice: effect.movement_damage_dice,
+    damageType: effect.damage_type,
+    damagePerMeters: effect.damage_per_meters,
+  }));
 
 export type CombatMapTokenSelection = {
   tokenId: string;
@@ -34,6 +93,7 @@ type Props = {
   actor?: MapActorContext | null;
   selectionMode?: CombatMapSelectionMode;
   previewCells?: Coordinate[];
+  activeAreaEffects?: CombatMapFrameActiveAreaEffect[];
   selectedCell?: Coordinate | null;
   selectedTargetRefId?: string | null;
   className?: string;
@@ -93,6 +153,7 @@ export const CombatMapFrame = ({
   actor = null,
   selectionMode = "none",
   previewCells = [],
+  activeAreaEffects = [],
   selectedCell = null,
   selectedTargetRefId = null,
   className,
@@ -125,6 +186,7 @@ export const CombatMapFrame = ({
           actor,
           selectionMode,
           previewCells,
+          activeAreaEffects,
           selectedCell,
           selectedTargetRefId,
           combatPhase,
@@ -291,6 +353,7 @@ export const CombatMapFrame = ({
     frameLoaded,
     mapReady,
     previewCells,
+    activeAreaEffects,
     selectedCell,
     selectedTargetRefId,
     selectionMode,

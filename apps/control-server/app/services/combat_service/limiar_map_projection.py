@@ -24,6 +24,7 @@ from .limiar_map_projection_payloads import (
     _build_combatants_payload,
 )
 from .limiar_map_projection_sync import _sync_existing_map_turn
+from .persistent_area_effects import active_area_effects_for_map
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +258,21 @@ class LimiarMapCombatProjectionService:
         except LimiarMapClientError as exc:
             logger.warning("[conditions] sync failed session=%s participants=%d: %s", session_id, len(payload_tokens), exc)
 
+    def sync_active_area_effects_to_map(self, session_id: str, state: CombatState) -> None:
+        effects = active_area_effects_for_map(state)
+        try:
+            self._limiar_map_client.sync_active_area_effects(
+                session_id,
+                {"activeAreaEffects": effects},
+            )
+        except LimiarMapClientError as exc:
+            logger.warning(
+                "[area-effects] sync failed session=%s effects=%d: %s",
+                session_id,
+                len(effects),
+                exc,
+            )
+
     def project_combat_advance(self, session_id: str, state: CombatState) -> None:
         if state.phase not in (CombatPhase.active, "active"):
             return
@@ -361,3 +377,9 @@ def maybe_sync_conditions_to_limiar_map(session_id: str, state: CombatState) -> 
     if not settings.limiar_map_enabled or not state.use_map:
         return
     get_limiar_map_projection_service().sync_conditions_to_map(session_id, state)
+
+
+def maybe_sync_active_area_effects_to_limiar_map(session_id: str, state: CombatState) -> None:
+    if not settings.limiar_map_enabled or not state.use_map:
+        return
+    get_limiar_map_projection_service().sync_active_area_effects_to_map(session_id, state)

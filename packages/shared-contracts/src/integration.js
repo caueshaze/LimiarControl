@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
     battleMapSchema,
+    activeAreaEffectSchema,
     combatStateSchema,
     coordinateSchema,
     controllerTypeSchema,
@@ -72,6 +73,9 @@ export const tokenSyncEntrySchema = z.object({
 export const syncTokensRequestSchema = z.object({
     tokens: z.array(tokenSyncEntrySchema).min(1)
 });
+export const syncActiveAreaEffectsRequestSchema = z.object({
+    activeAreaEffects: z.array(activeAreaEffectSchema)
+});
 export const singleTargetRequestSchema = z.object({
     actionId: z.string(),
     combatantId: z.string(),
@@ -99,7 +103,8 @@ export const integrationStateResponseSchema = z.object({
     combatState: combatStateSchema,
     tokens: z.array(tokenSchema),
     obstacles: z.array(obstacleSchema),
-    edgeObstacles: z.array(edgeObstacleSchema).default([])
+    edgeObstacles: z.array(edgeObstacleSchema).default([]),
+    activeAreaEffects: z.array(activeAreaEffectSchema).default([])
 });
 export const singleTargetResponseSchema = z.object({
     isValid: z.boolean(),

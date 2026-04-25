@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   battleMapSchema,
+  activeAreaEffectSchema,
   combatStateSchema,
   edgeObstacleSchema,
   obstacleSchema,
@@ -13,7 +14,8 @@ export const encounterSnapshotResponseSchema = z.object({
   combatState: combatStateSchema,
   tokens: z.array(tokenSchema),
   obstacles: z.array(obstacleSchema),
-  edgeObstacles: z.array(edgeObstacleSchema).default([])
+  edgeObstacles: z.array(edgeObstacleSchema).default([]),
+  activeAreaEffects: z.array(activeAreaEffectSchema).default([])
 });
 
 export const resyncRequestSchema = z.object({
