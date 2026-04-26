@@ -91,7 +91,17 @@ class SpellContextResolveMixin:
         }
 
     @classmethod
-    def _resolve_spell_mode_and_targeting(cls, req, catalog_spell, requested_canonical_key: str, spell_level: int, prof_bonus: int, spell_mod: int, source_kind: str) -> dict:
+    def _resolve_spell_mode_and_targeting(
+        cls,
+        req,
+        catalog_spell,
+        requested_canonical_key: str,
+        spell_level: int,
+        prof_bonus: int,
+        spell_mod: int,
+        source_kind: str,
+        attacker_data: dict,
+    ) -> dict:
         catalog_resolution = getattr(catalog_spell, "resolution_type", None)
         catalog_spell_mode = cls._map_resolution_type_to_spell_mode(catalog_resolution)
         targeting_semantics = resolve_spell_targeting_semantics(catalog_spell)
@@ -108,9 +118,9 @@ class SpellContextResolveMixin:
             or ("spell_attack" if targeting_semantics.attack_type in ("melee_spell", "ranged_spell") else None)
             or ("utility" if targeting_semantics.effect_timing in ("persistent", "triggered") else None)
             or automation_default_mode
+            or ("saving_throw" if catalog_save_ability else None)
             or catalog_spell_mode
             or legacy_mode
-            or ("saving_throw" if catalog_save_ability else None)
         )
         if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal", "utility"):
             raise CombatServiceError("Spell cast mode is required for this spell.", 400)
@@ -131,6 +141,14 @@ class SpellContextResolveMixin:
                 slot_level = req.slot_level or spell_level
                 if slot_level < spell_level:
                     raise CombatServiceError("Spell slot level cannot be lower than the spell level.", 400)
+                spellcasting = cls._as_dict(attacker_data.get("spellcasting"))
+                slots = cls._as_dict(spellcasting.get("slots"))
+                slot_data = cls._as_dict(slots.get(str(slot_level)))
+                if cls._safe_int(slot_data.get("max"), 0) <= 0:
+                    raise CombatServiceError(
+                        f"Spell slot level {slot_level} is not available for this caster.",
+                        400,
+                    )
         action_cost = cls._resolve_spell_action_cost(
             getattr(catalog_spell, "casting_time_type", None)
         )
@@ -291,6 +309,7 @@ class SpellContextResolveMixin:
         resolved_mode: dict,
         resolved_math: dict,
         resolved_upcast: dict,
+        spell_level: int,
     ) -> dict:
         upcast_result = resolved_upcast["upcast_result"]
         base_max_targets = getattr(catalog_spell, "max_targets", None)
@@ -318,6 +337,7 @@ class SpellContextResolveMixin:
         return {
             "spell_name": source_context["spell_name"],
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
+            "spell_level": spell_level,
             "spell_mode": resolved_mode["spell_mode"],
             "target_type": getattr(catalog_spell, "target_type", None),
             "max_targets": effective_max_targets,
@@ -401,6 +421,7 @@ class SpellContextResolveMixin:
             prof_bonus,
             spell_mod,
             source_context["source_kind"],
+            attacker_data,
         )
         resolved_math = cls._resolve_spell_effect_math(
             req,
@@ -426,4 +447,5 @@ class SpellContextResolveMixin:
             resolved_mode=resolved_mode,
             resolved_math=resolved_math,
             resolved_upcast=resolved_upcast,
+            spell_level=catalog_context["spell_level"],
         )

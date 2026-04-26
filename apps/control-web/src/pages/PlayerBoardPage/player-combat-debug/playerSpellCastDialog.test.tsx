@@ -1,9 +1,18 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlayerSpellCastDialog, buildNonAreaSpellCastPayload } from "./PlayerSpellCastDialog";
+import {
+  PlayerSpellCastDialog,
+  buildNonAreaSpellCastPayload,
+  getEffectiveEffectInstanceContext,
+} from "./PlayerSpellCastDialog";
 import { reconcileEffectInstanceTargets, resolveEffectInstanceContext } from "./InstanceTargetSelector";
 
 let lastActionsProps: Record<string, unknown> | null = null;
+let resolvedSpellContextState = {
+  context: null as Record<string, unknown> | null,
+  error: null as string | null,
+  loading: false,
+};
 
 vi.mock("../../../shared/api/combatRepo", () => ({
   combatRepo: {
@@ -41,6 +50,10 @@ vi.mock("./useAreaTargeting", () => ({
     previewLoading: false,
     setAnchorCell: vi.fn(),
   }),
+}));
+
+vi.mock("./useResolvedSpellContext", () => ({
+  useResolvedSpellContext: () => resolvedSpellContextState,
 }));
 
 vi.mock("./SpellCastDialogHeader", () => ({
@@ -120,9 +133,24 @@ const baseProps = {
 describe("PlayerSpellCastDialog", () => {
   beforeEach(() => {
     lastActionsProps = null;
+    resolvedSpellContextState = {
+      context: null,
+      error: null,
+      loading: false,
+    };
   });
 
-  it("magia multi-instancia mostra InstanceTargetSelector", () => {
+  it("magia multi-instancia usa contexto pre-cast para mostrar InstanceTargetSelector", () => {
+    resolvedSpellContextState = {
+      context: {
+        effect_instance_count: 5,
+        effect_instance_dice: "1d4+1",
+        damage_preview: "5d4+5",
+      },
+      error: null,
+      loading: false,
+    };
+
     const markup = renderToStaticMarkup(
       <PlayerSpellCastDialog
         {...baseProps}
@@ -152,7 +180,17 @@ describe("PlayerSpellCastDialog", () => {
     expect(markup).toContain("Míssil 1");
   });
 
-  it("magia single-instance nao mostra InstanceTargetSelector", () => {
+  it("magia single-instance nao mostra InstanceTargetSelector quando o contexto pre-cast retorna 1 instancia", () => {
+    resolvedSpellContextState = {
+      context: {
+        effect_instance_count: 1,
+        effect_instance_dice: null,
+        damage_preview: "2d6",
+      },
+      error: null,
+      loading: false,
+    };
+
     const markup = renderToStaticMarkup(
       <PlayerSpellCastDialog
         {...baseProps}
@@ -173,6 +211,40 @@ describe("PlayerSpellCastDialog", () => {
     );
 
     expect(markup).not.toContain("Alvos por instância");
+  });
+
+  it("usa contexto pre-cast para renderizar Eldritch Blast nivel 5 com 2 linhas", () => {
+    resolvedSpellContextState = {
+      context: {
+        effect_instance_count: 2,
+        effect_instance_dice: "1d10",
+        damage_preview: "2d10",
+      },
+      error: null,
+      loading: false,
+    };
+
+    const markup = renderToStaticMarkup(
+      <PlayerSpellCastDialog
+        {...baseProps}
+        spell={{
+          id: "spell-3",
+          name: "Eldritch Blast",
+          canonicalKey: "eldritch_blast",
+          campaignSpellId: null,
+          level: 0,
+          prepared: true,
+          actionCost: "action",
+          suggestedMode: "spell_attack",
+          damageType: "Force",
+          savingThrow: null,
+          availableSlotLevels: [],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Feixe 1");
+    expect(markup).toContain("Feixe 2");
   });
 
   it("resolve Magic Missile slot 3 com 5 instancias e Eldritch Blast nivel 5 com 2", () => {
@@ -269,6 +341,69 @@ describe("PlayerSpellCastDialog", () => {
     ]);
   });
 
+  it("prefere o contexto backend e nao usa fallback local quando ele existe", () => {
+    expect(
+      getEffectiveEffectInstanceContext(
+        {
+          spell_id: "spell-1",
+          spell_name: "Magic Missile",
+          spell_level: 1,
+          resolution_type: "direct_damage",
+          requires_attack_roll: false,
+          requires_saving_throw: false,
+          effect_instance_count: 5,
+          effect_instance_dice: "1d4+1",
+          upcast_applied: true,
+          upcast_added_instances: 2,
+        },
+        {
+          instanceCount: 3,
+          instanceDice: "1d4+1",
+        },
+        true,
+      ),
+    ).toEqual({
+      instanceCount: 5,
+      instanceDice: "1d4+1",
+    });
+  });
+
+  it("queda do resolve-context usa fallback sem quebrar o dialogo", () => {
+    resolvedSpellContextState = {
+      context: null,
+      error: "resolve failed",
+      loading: false,
+    };
+
+    const markup = renderToStaticMarkup(
+      <PlayerSpellCastDialog
+        {...baseProps}
+        spell={{
+          id: "spell-1",
+          name: "Magic Missile",
+          canonicalKey: "magic_missile",
+          campaignSpellId: null,
+          level: 1,
+          prepared: true,
+          actionCost: "action",
+          suggestedMode: "direct_damage",
+          damageType: "Force",
+          savingThrow: null,
+          availableSlotLevels: [1, 2, 3],
+          upcast: {
+            mode: "additional_effect_instances",
+            dice: "1d4+1",
+            perLevel: 1,
+            baseEffectInstances: 3,
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Alvos por instância");
+    expect(markup).toContain("Míssil 1");
+  });
+
   it("submit de Magic Missile e Eldritch Blast inclui effect_instance_targets", () => {
     const multiPayload = buildNonAreaSpellCastPayload({
       actorParticipantId: actor.id,
@@ -341,6 +476,16 @@ describe("PlayerSpellCastDialog", () => {
   });
 
   it("submit fica invalido quando ha instancias sem alvo", () => {
+    resolvedSpellContextState = {
+      context: {
+        effect_instance_count: 5,
+        effect_instance_dice: "1d4+1",
+        damage_preview: "5d4+5",
+      },
+      error: null,
+      loading: false,
+    };
+
     renderToStaticMarkup(
       <PlayerSpellCastDialog
         {...baseProps}

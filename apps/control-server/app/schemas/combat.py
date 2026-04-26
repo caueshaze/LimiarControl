@@ -51,6 +51,8 @@ from .combat_spells import (
     CombatMapPreviewToken,
     CombatMovementPreviewRequest,
     CombatMovementPreviewResponse,
+    CombatResolveSpellContextRequest,
+    CombatResolvedSpellContext,
     CombatSpellResult,
 )
 
@@ -99,6 +101,8 @@ __all__ = [
     "CombatResolveDamageRequest",
     "CombatResolveSaveRequest",
     "CombatResolveSpellEffectRequest",
+    "CombatResolveSpellContextRequest",
+    "CombatResolvedSpellContext",
     "CombatReviveRequest",
     "CombatReviveResult",
     "CombatSetInitiativeParticipant",
