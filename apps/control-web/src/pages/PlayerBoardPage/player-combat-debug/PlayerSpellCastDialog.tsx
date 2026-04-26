@@ -30,6 +30,7 @@ import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
 import { SpellCastResultPanel } from "./SpellCastResultPanel";
+import { buildSpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
 import { useResolvedSpellContext } from "./useResolvedSpellContext";
@@ -206,6 +207,15 @@ export const PlayerSpellCastDialog = ({
     Boolean(resolvedSpellContextState.error) ||
     (!resolvedSpellContextState.loading && !resolvedSpellContextState.context);
   const spellContextReady = Boolean(resolvedSpellContextState.context) || allowLocalFallback;
+  const previewModel = buildSpellPreviewModel(
+    resolvedSpellContextState.context,
+    {
+      spell,
+      selectedSlotLevel,
+      spellMode,
+      spellEffectDice: spellEffectDice || null,
+    },
+  );
   const effectInstanceContext = getEffectiveEffectInstanceContext(
     resolvedSpellContextState.context,
     fallbackEffectInstanceContext,
@@ -451,14 +461,13 @@ export const PlayerSpellCastDialog = ({
           loading={loading}
           onConcentrationManualRollChange={setConcentrationManualRoll}
           onConcentrationRollModeChange={setConcentrationRollMode}
+          previewModel={previewModel}
           selectedSlotLevel={selectedSlotLevel}
           setSelectedSlotLevel={setSelectedSlotLevel}
           shouldShowConcentrationControl={shouldShowConcentrationControl}
           slotOptions={slotOptions}
           spell={spell}
-          spellDamageType={spellDamageType}
           spellMode={spellMode}
-          spellSaveAbility={spellSaveAbility}
           targetDisplayName={isMultiInstanceSpell ? "Múltiplos alvos" : target?.display_name ?? null}
           targetPreview={rangePreview}
         />

@@ -122,11 +122,15 @@ class CombatResolvedSpellContext(BaseModel):
     target_type: str | None = None
     selection_type: str | None = None
     area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    area_size_meters: float | None = None
+    range_meters: float | None = None
     resolution_type: Literal[
         "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
     ]
     requires_attack_roll: bool = False
     requires_saving_throw: bool = False
+    save_ability: AbilityName | None = None
+    damage_type: str | None = None
     damage_preview: str | None = None
     effect_instance_count: int = 1
     effect_instance_dice: str | None = None

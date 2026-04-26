@@ -69,8 +69,38 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         return state, attacker, attacker_model
 
     @classmethod
+    def _resolve_area_size_meters(cls, spell_context: dict) -> float | None:
+        area_shape = spell_context.get("area_shape")
+        if not area_shape:
+            return None
+        if area_shape in ("sphere", "cylinder"):
+            value = spell_context.get("radius_meters")
+        elif area_shape == "line":
+            value = spell_context.get("length_meters")
+        elif area_shape == "cube":
+            value = spell_context.get("side_meters")
+        elif area_shape == "cone":
+            value = (
+                spell_context.get("length_meters")
+                or spell_context.get("radius_meters")
+            )
+        else:
+            value = None
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
     def _build_resolved_spell_context_response(cls, req, spell_context: dict) -> dict:
         resolution_type = spell_context.get("spell_mode")
+        range_meters = spell_context.get("range_meters")
+        try:
+            range_meters_value = float(range_meters) if range_meters is not None else None
+        except (TypeError, ValueError):
+            range_meters_value = None
         return {
             "spell_id": req.spell_id or spell_context.get("spell_canonical_key"),
             "spell_canonical_key": spell_context.get("spell_canonical_key"),
@@ -82,9 +112,13 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "target_type": spell_context.get("target_type"),
             "selection_type": spell_context.get("selection_type"),
             "area_shape": spell_context.get("area_shape"),
+            "area_size_meters": cls._resolve_area_size_meters(spell_context),
+            "range_meters": range_meters_value,
             "resolution_type": resolution_type,
             "requires_attack_roll": resolution_type == "spell_attack",
             "requires_saving_throw": resolution_type == "saving_throw",
+            "save_ability": spell_context.get("save_ability"),
+            "damage_type": spell_context.get("damage_type"),
             "damage_preview": spell_context.get("effect_dice"),
             "effect_instance_count": cls._safe_int(
                 spell_context.get("effect_instance_count"),

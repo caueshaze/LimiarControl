@@ -1,0 +1,193 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
+import type { SpellPreviewModel } from "./spellPreviewModel";
+import type { CombatSpellOption } from "./types";
+
+vi.mock("../../../features/combat-ui/components/ConcentrationSaveControl", () => ({
+  ConcentrationSaveControl: () => <div>concentration</div>,
+}));
+
+vi.mock("../../../features/combat-ui/components/RangeStatusBadge", () => ({
+  RangeStatusBadge: () => <div>range badge</div>,
+}));
+
+const baseSpell: CombatSpellOption = {
+  id: "spell-1",
+  name: "Magic Missile",
+  canonicalKey: "magic_missile",
+  campaignSpellId: null,
+  level: 1,
+  prepared: true,
+  actionCost: "action",
+  suggestedMode: "direct_damage",
+  damageType: "Force",
+  savingThrow: null,
+  availableSlotLevels: [1, 2, 3],
+};
+
+const baseTargetingPreview = {
+  loading: false,
+  error: null,
+  diagnostics: null,
+  distanceMeters: null,
+  normalRangeMeters: null,
+  maxRangeMeters: null,
+  rangeStatus: "unknown" as const,
+  hasDisadvantage: false,
+  failureReasons: [],
+};
+
+const baseProps = {
+  actionCostLabel: "Action",
+  actorDisplayName: "Mage",
+  anchorCell: null,
+  concentrationManualRoll: "",
+  concentrationRollMode: "system" as const,
+  error: null,
+  isAreaSpell: false,
+  loading: false,
+  onConcentrationManualRollChange: () => undefined,
+  onConcentrationRollModeChange: () => undefined,
+  selectedSlotLevel: 3,
+  setSelectedSlotLevel: () => undefined,
+  shouldShowConcentrationControl: false,
+  slotOptions: [1, 2, 3],
+  spell: baseSpell,
+  spellMode: "direct_damage" as const,
+  targetDisplayName: "Goblin",
+  targetPreview: baseTargetingPreview,
+};
+
+const buildPreviewModel = (overrides: Partial<SpellPreviewModel>): SpellPreviewModel => ({
+  resolutionType: "direct_damage",
+  damagePreview: null,
+  damageType: null,
+  effectInstanceCount: 1,
+  effectInstanceDice: null,
+  targetType: null,
+  selectionType: null,
+  areaShape: null,
+  areaSizeMeters: null,
+  rangeMeters: null,
+  requiresAttackRoll: false,
+  requiresSavingThrow: false,
+  saveAbility: null,
+  source: "resolved",
+  ...overrides,
+});
+
+describe("SpellCastDialogHeader tactical preview", () => {
+  it("renders Magic Missile slot 3 preview from resolved context (5 instâncias, 5d4+5)", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        previewModel={buildPreviewModel({
+          damagePreview: "5d4+5",
+          damageType: "force",
+          effectInstanceCount: 5,
+          effectInstanceDice: "1d4+1",
+          rangeMeters: 36,
+          source: "resolved",
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Dano 5d4+5");
+    expect(markup).toContain("5 instâncias");
+    expect(markup).toContain("(1d4+1)");
+    expect(markup).toContain("alcance 36m");
+    expect(markup).toContain('data-preview-source="resolved"');
+  });
+
+  it("renders Eldritch Blast caster level 5 with 2 feixes from resolved context", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        previewModel={buildPreviewModel({
+          resolutionType: "spell_attack",
+          requiresAttackRoll: true,
+          damagePreview: "2d10",
+          damageType: "force",
+          effectInstanceCount: 2,
+          effectInstanceDice: "1d10",
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Dano 2d10");
+    expect(markup).toContain("2 instâncias");
+    expect(markup).toContain("(1d10)");
+    expect(markup).toContain("ataque");
+  });
+
+  it("renders Acid Splash as saving throw without instâncias", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Acid Splash", canonicalKey: "acid_splash", level: 0 }}
+        spellMode="saving_throw"
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          damagePreview: "2d6",
+          damageType: "acid",
+          effectInstanceCount: 1,
+        })}
+      />,
+    );
+
+    expect(markup).toContain("saving throw");
+    expect(markup).toContain("save dexterity");
+    expect(markup).toContain("Dano 2d6");
+    expect(markup).not.toContain("instâncias");
+  });
+
+  it("renders Fireball area shape and area size from resolved context", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          damagePreview: "8d6",
+          damageType: "fire",
+          areaShape: "sphere",
+          areaSizeMeters: 6,
+          rangeMeters: 45,
+        })}
+      />,
+    );
+
+    expect(markup).toContain("sphere");
+    expect(markup).toContain("raio 6m");
+    expect(markup).toContain("Dano 8d6");
+  });
+
+  it("falls back gracefully when resolve-context is unavailable (preview-source=fallback)", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        previewModel={buildPreviewModel({
+          source: "fallback",
+          damagePreview: "1d10",
+          damageType: "Force",
+          effectInstanceCount: 1,
+        })}
+      />,
+    );
+
+    expect(markup).toContain('data-preview-source="fallback"');
+    expect(markup).toContain("Dano 1d10");
+    // multi-instance preview must NOT show in fallback mode — fallback path
+    // would otherwise re-derive scaling we explicitly want to avoid.
+    expect(markup).not.toContain("instâncias");
+  });
+});
