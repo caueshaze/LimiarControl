@@ -123,6 +123,8 @@ export const buildSpellOptions = (
             saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
             savingThrow: catalogSpell?.savingThrow ?? null,
             suggestedMode: resolveSuggestedMode(canonicalKey, catalogSpell),
+            cantripScaling: catalogSpell?.cantripScaling ?? null,
+            characterLevel: playerSheet?.level ?? null,
             availableSlotLevels:
               spell.level > 0
                 ? availableSlotLevels.filter(
@@ -189,6 +191,8 @@ export const buildSpellOptions = (
           catalogSpell.canonicalKey,
           catalogSpell
         ),
+        cantripScaling: catalogSpell.cantripScaling ?? null,
+        characterLevel: playerSheet?.level ?? null,
         availableSlotLevels:
           magicEffect.castLevel > 0 ? [magicEffect.castLevel] : [],
         upcast: null

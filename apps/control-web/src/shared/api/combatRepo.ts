@@ -207,6 +207,10 @@ export type CombatAttackResult = {
 export type CombatCastSpellRequest = {
   actor_participant_id?: string | null;
   target_ref_id?: string | null;
+  effect_instance_targets?: Array<{
+    instance_index: number;
+    target_ref_id: string;
+  }> | null;
   origin_cell?: { x: number; y: number } | null;
   anchor_cell?: { x: number; y: number } | null;
   inventory_item_id?: string | null;
@@ -281,6 +285,20 @@ export type CombatSpellResult = {
     roll_result?: RollResult | null;
     damage_applied?: number | null;
     healing_applied?: number | null;
+    new_hp?: number | null;
+  }>;
+  effect_instance_outcomes?: Array<{
+    instance_index: number;
+    target_ref_id: string;
+    target_display_name: string;
+    target_kind: CombatParticipantKind;
+    damage?: number;
+    healing?: number;
+    is_hit?: boolean | null;
+    is_saved?: boolean | null;
+    is_critical?: boolean;
+    roll?: number | null;
+    roll_result?: RollResult | null;
     new_hp?: number | null;
   }>;
   target_count?: number;

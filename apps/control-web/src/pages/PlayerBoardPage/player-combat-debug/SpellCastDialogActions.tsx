@@ -12,6 +12,8 @@ type Props = {
   onSubmitCast: (payload?: { manual_roll?: number; roll_source?: "manual" | "system" }) => void;
   spellMode: string;
   spellOutOfRange: boolean;
+  submitDisabled?: boolean;
+  validationMessage?: string | null;
 };
 
 export const SpellCastDialogActions = ({
@@ -26,13 +28,15 @@ export const SpellCastDialogActions = ({
   onSubmitCast,
   spellMode,
   spellOutOfRange,
+  submitDisabled = false,
+  validationMessage = null,
 }: Props) => (
   <>
     {spellMode === "spell_attack" && !isAreaSpell && attackMode === "choose" ? (
       <div className="mt-5 grid grid-cols-2 gap-3">
         <button
           type="button"
-          disabled={spellOutOfRange}
+          disabled={spellOutOfRange || submitDisabled}
           onClick={() => onAttackModeChange("virtual")}
           className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500 disabled:opacity-40"
         >
@@ -40,7 +44,7 @@ export const SpellCastDialogActions = ({
         </button>
         <button
           type="button"
-          disabled={spellOutOfRange}
+          disabled={spellOutOfRange || submitDisabled}
           onClick={() => onAttackModeChange("manual")}
           className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
         >
@@ -53,7 +57,7 @@ export const SpellCastDialogActions = ({
       <div className="mt-5 flex gap-3">
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || submitDisabled}
           onClick={() => onSubmitCast({ roll_source: "system" })}
           className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
         >
@@ -77,7 +81,7 @@ export const SpellCastDialogActions = ({
             <button
               key={value}
               type="button"
-              disabled={loading}
+              disabled={loading || submitDisabled}
               onClick={() => onSubmitCast({ roll_source: "manual", manual_roll: value })}
               className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-3 text-center text-lg font-bold text-white transition-colors hover:border-fuchsia-500/50 hover:bg-slate-800 disabled:opacity-50"
             >
@@ -99,7 +103,7 @@ export const SpellCastDialogActions = ({
       <div className="mt-5 flex gap-3">
         <button
           type="button"
-          disabled={isAreaSpell ? !canSubmitArea || loading : loading || spellOutOfRange}
+          disabled={isAreaSpell ? !canSubmitArea || loading : loading || spellOutOfRange || submitDisabled}
           onClick={() => onSubmitCast()}
           className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
         >
@@ -122,6 +126,10 @@ export const SpellCastDialogActions = ({
           Cancelar
         </button>
       </div>
+    ) : null}
+
+    {!isAreaSpell && validationMessage ? (
+      <p className="mt-3 text-xs text-rose-300">{validationMessage}</p>
     ) : null}
 
     {onShowAreaHint ? (
