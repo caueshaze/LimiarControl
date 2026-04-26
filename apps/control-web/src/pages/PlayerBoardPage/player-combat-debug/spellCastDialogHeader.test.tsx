@@ -120,6 +120,30 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Motivo: fora do alcance");
   });
 
+  it("renderiza linha de visão bloqueada", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "blocked_line_of_sight" })}
+        previewModel={buildPreviewModel({})}
+      />,
+    );
+
+    expect(markup).toContain("Motivo: linha de visão bloqueada");
+  });
+
+  it("renderiza linha de efeito bloqueada", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "blocked_line_of_effect" })}
+        previewModel={buildPreviewModel({})}
+      />,
+    );
+
+    expect(markup).toContain("Motivo: linha de efeito bloqueada");
+  });
+
   it("renderiza status unknown como indisponível e não como erro", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
@@ -199,6 +223,32 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Feixe 1: válido");
     expect(markup).toContain("Feixe 2: inválido · fora do alcance");
     expect(markup).toContain("Preview tático: parcial");
+  });
+
+  it("renderiza reason por instância em multi-instância", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "partial",
+          effectInstanceCount: 2,
+          instanceStatuses: [
+            { instanceIndex: 1, targetRefId: "enemy-1", status: "valid", reason: null },
+            { instanceIndex: 2, targetRefId: "enemy-2", status: "invalid", reason: "blocked_line_of_sight" },
+          ],
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "spell_attack",
+          requiresAttackRoll: true,
+          effectInstanceCount: 2,
+          effectInstanceDice: "1d10",
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Feixe 2: inválido · linha de visão bloqueada");
   });
 
   it("renders Acid Splash as saving throw without instâncias", () => {

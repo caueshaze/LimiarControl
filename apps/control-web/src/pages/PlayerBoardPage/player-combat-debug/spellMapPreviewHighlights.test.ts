@@ -54,6 +54,40 @@ describe("buildSpellMapPreviewHighlights – single-target", () => {
     });
   });
 
+  it("preserva reason blocked_line_of_sight no highlight de alvo", () => {
+    const highlights = buildSpellMapPreviewHighlights(
+      {
+        ...baseSingleTarget,
+        status: "invalid",
+        reason: "blocked_line_of_sight",
+      },
+      "enemy-1",
+    );
+
+    expect(highlights[0]).toMatchObject({
+      kind: "target",
+      status: "invalid",
+      reason: "blocked_line_of_sight",
+    });
+  });
+
+  it("preserva reason blocked_line_of_effect no highlight de alvo", () => {
+    const highlights = buildSpellMapPreviewHighlights(
+      {
+        ...baseSingleTarget,
+        status: "invalid",
+        reason: "blocked_line_of_effect",
+      },
+      "enemy-1",
+    );
+
+    expect(highlights[0]).toMatchObject({
+      kind: "target",
+      status: "invalid",
+      reason: "blocked_line_of_effect",
+    });
+  });
+
   it("retorna lista vazia quando não há targetRefId", () => {
     const highlights = buildSpellMapPreviewHighlights(baseSingleTarget, null);
     expect(highlights).toHaveLength(0);
@@ -112,6 +146,42 @@ describe("buildSpellMapPreviewHighlights – multi-instância", () => {
     expect(highlights).toHaveLength(2);
     expect(highlights[0]).toMatchObject({ kind: "instance-target", status: "valid", targetRefId: "goblin-a", instanceIndex: 1 });
     expect(highlights[1]).toMatchObject({ kind: "instance-target", status: "invalid", targetRefId: "orc-b", instanceIndex: 2, reason: "out_of_range" });
+  });
+
+  it("instância inválida por linha de visão bloqueada mantém status invalid", () => {
+    const highlights = buildSpellMapPreviewHighlights({
+      ...baseSingleTarget,
+      status: "partial",
+      effectInstanceCount: 2,
+      instanceStatuses: [
+        { instanceIndex: 1, targetRefId: "goblin-a", status: "valid" },
+        { instanceIndex: 2, targetRefId: "orc-b", status: "invalid", reason: "blocked_line_of_sight" },
+      ],
+    });
+
+    expect(highlights[1]).toMatchObject({
+      kind: "instance-target",
+      status: "invalid",
+      reason: "blocked_line_of_sight",
+    });
+  });
+
+  it("instância inválida por linha de efeito bloqueada mantém status invalid", () => {
+    const highlights = buildSpellMapPreviewHighlights({
+      ...baseSingleTarget,
+      status: "partial",
+      effectInstanceCount: 2,
+      instanceStatuses: [
+        { instanceIndex: 1, targetRefId: "goblin-a", status: "valid" },
+        { instanceIndex: 2, targetRefId: "orc-b", status: "invalid", reason: "blocked_line_of_effect" },
+      ],
+    });
+
+    expect(highlights[1]).toMatchObject({
+      kind: "instance-target",
+      status: "invalid",
+      reason: "blocked_line_of_effect",
+    });
   });
 
   it("instâncias sem targetRefId são omitidas da lista", () => {

@@ -6,16 +6,23 @@ import type { SpellPreviewModel } from "./spellPreviewModel";
 
 export type SpellMapPreviewStatus = "valid" | "invalid" | "partial" | "unknown";
 
+export type SpellMapPreviewReason =
+  | "out_of_range"
+  | "blocked_line_of_sight"
+  | "blocked_line_of_effect"
+  | "missing_position"
+  | "missing_map_data";
+
 export type SpellInstanceMapStatus = {
   instanceIndex: number;
   targetRefId: string | null;
   status: SpellMapPreviewStatus;
-  reason?: string | null;
+  reason?: SpellMapPreviewReason | string | null;
 };
 
 export type SpellMapPreviewModel = {
   status: SpellMapPreviewStatus;
-  reason?: string | null;
+  reason?: SpellMapPreviewReason | string | null;
   affectedTargetCount?: number;
   affectedTargetNames?: string[];
   rangeMeters: number | null;
@@ -31,6 +38,31 @@ export type SpellMapTargetPosition = {
   displayName?: string | null;
 };
 
+type SpellSpatialUnavailableReason = Extract<
+  SpellMapPreviewReason,
+  "missing_position" | "missing_map_data"
+>;
+
+type SpellBaseSpatialValidation = {
+  inRange?: boolean | null;
+  hasLineOfSight?: boolean | null;
+  hasLineOfEffect?: boolean | null;
+  unavailableReason?: SpellSpatialUnavailableReason | null;
+};
+
+export type SpellTargetSpatialValidation = SpellBaseSpatialValidation & {
+  targetRefId: string;
+};
+
+export type SpellInstanceSpatialValidation = SpellBaseSpatialValidation & {
+  instanceIndex: number;
+  targetRefId: string;
+};
+
+export type SpellAreaSpatialValidation = SpellBaseSpatialValidation & {
+  originCell?: GridCell | null;
+};
+
 export type BuildSpellMapPreviewModelParams = {
   spellPreviewModel: SpellPreviewModel;
   casterPosition?: GridCell | null;
@@ -38,6 +70,11 @@ export type BuildSpellMapPreviewModelParams = {
   effectInstanceTargets?: EffectInstanceTargetInput[];
   existingAreaPreviewResult?: CombatAreaPreviewResponse | null;
   targetPositions?: SpellMapTargetPosition[];
+  spatialValidations?: {
+    targets?: SpellTargetSpatialValidation[];
+    instances?: SpellInstanceSpatialValidation[];
+    area?: SpellAreaSpatialValidation | null;
+  };
 };
 
 // Chebyshev distance matches the tactical engine (reach.py / coordinates.py):
@@ -52,6 +89,51 @@ const checkRange = (
 ): SpellMapPreviewStatus =>
   chebyshevMeters(casterPosition, targetCell) <= rangeMeters ? "valid" : "invalid";
 
+const toRangeValidation = (
+  casterPosition: GridCell | null | undefined,
+  targetCell: GridCell | null | undefined,
+  rangeMeters: number | null,
+): boolean | null => {
+  if (!casterPosition || !targetCell || rangeMeters == null) {
+    return null;
+  }
+  return checkRange(casterPosition, targetCell, rangeMeters) === "valid";
+};
+
+type SpatialOutcome = {
+  status: SpellMapPreviewStatus;
+  reason: SpellMapPreviewReason | null;
+};
+
+const resolveSpatialOutcome = ({
+  inRange,
+  hasLineOfSight,
+  hasLineOfEffect,
+  unavailableReason,
+}: SpellBaseSpatialValidation): SpatialOutcome => {
+  if (unavailableReason) {
+    return { status: "unknown", reason: unavailableReason };
+  }
+
+  if (inRange == null) {
+    return { status: "unknown", reason: "missing_position" };
+  }
+
+  if (!inRange) {
+    return { status: "invalid", reason: "out_of_range" };
+  }
+
+  if (hasLineOfSight === false) {
+    return { status: "invalid", reason: "blocked_line_of_sight" };
+  }
+
+  if (hasLineOfEffect === false) {
+    return { status: "invalid", reason: "blocked_line_of_effect" };
+  }
+
+  return { status: "valid", reason: null };
+};
+
 export const buildSpellMapPreviewModel = ({
   spellPreviewModel,
   casterPosition,
@@ -59,6 +141,7 @@ export const buildSpellMapPreviewModel = ({
   effectInstanceTargets,
   existingAreaPreviewResult,
   targetPositions,
+  spatialValidations,
 }: BuildSpellMapPreviewModelParams): SpellMapPreviewModel => {
   const { effectInstanceCount, rangeMeters, areaShape, areaSizeMeters } = spellPreviewModel;
 
@@ -71,6 +154,27 @@ export const buildSpellMapPreviewModel = ({
 
   // Area spells delegate to the backend area preview result
   if (areaShape) {
+    if (spatialValidations?.area) {
+      const outcome = resolveSpatialOutcome({
+        inRange: spatialValidations.area.inRange ?? null,
+        hasLineOfSight: spatialValidations.area.hasLineOfSight ?? null,
+        hasLineOfEffect: spatialValidations.area.hasLineOfEffect ?? null,
+        unavailableReason: spatialValidations.area.unavailableReason ?? null,
+      });
+      return {
+        ...base,
+        status: outcome.status,
+        reason: outcome.reason,
+        affectedTargetCount: existingAreaPreviewResult?.affected_target_ref_ids.length ?? 0,
+        affectedTargetNames: existingAreaPreviewResult?.affected_target_ref_ids
+          .map(
+            (targetRefId) =>
+              targetPositions?.find((position) => position.refId === targetRefId)?.displayName ?? null,
+          )
+          .filter((name): name is string => Boolean(name)),
+      };
+    }
+
     if (existingAreaPreviewResult) {
       return {
         ...base,
@@ -85,13 +189,14 @@ export const buildSpellMapPreviewModel = ({
           .filter((name): name is string => Boolean(name)),
       };
     }
-    return { ...base, status: "unknown" };
+    return { ...base, status: "unknown", reason: "missing_map_data" };
   }
 
   // Multi-instance spells (Magic Missile, Eldritch Blast, etc.)
   if (effectInstanceCount > 1) {
     const targets = effectInstanceTargets ?? [];
     const positions = targetPositions ?? [];
+    const validations = spatialValidations?.instances ?? [];
 
     const instanceStatuses: SpellInstanceMapStatus[] = Array.from(
       { length: effectInstanceCount },
@@ -99,22 +204,32 @@ export const buildSpellMapPreviewModel = ({
         const instanceIndex = i + 1;
         const entry = targets.find((t) => t.instance_index === instanceIndex);
         const targetRefId = entry?.target_ref_id ?? null;
+        const validation = validations.find(
+          (candidate) =>
+            candidate.instanceIndex === instanceIndex && candidate.targetRefId === targetRefId,
+        );
 
-        if (!targetRefId || !casterPosition || rangeMeters == null) {
-          return { instanceIndex, targetRefId, status: "unknown" as SpellMapPreviewStatus };
+        if (!targetRefId) {
+          return {
+            instanceIndex,
+            targetRefId,
+            status: "unknown" as SpellMapPreviewStatus,
+            reason: "missing_position",
+          };
         }
 
         const targetCell = positions.find((p) => p.refId === targetRefId)?.cell;
-        if (!targetCell) {
-          return { instanceIndex, targetRefId, status: "unknown" as SpellMapPreviewStatus };
-        }
-
-        const status = checkRange(casterPosition, targetCell, rangeMeters);
+        const outcome = resolveSpatialOutcome({
+          inRange: validation?.inRange ?? toRangeValidation(casterPosition, targetCell, rangeMeters),
+          hasLineOfSight: validation?.hasLineOfSight ?? null,
+          hasLineOfEffect: validation?.hasLineOfEffect ?? null,
+          unavailableReason: validation?.unavailableReason ?? null,
+        });
         return {
           instanceIndex,
           targetRefId,
-          status,
-          reason: status === "invalid" ? "out_of_range" : null,
+          status: outcome.status,
+          reason: outcome.reason,
         };
       },
     );
@@ -138,19 +253,23 @@ export const buildSpellMapPreviewModel = ({
   }
 
   // Single-target
-  if (!selectedTargetRefId || !casterPosition || rangeMeters == null) {
-    return { ...base, status: "unknown" };
+  if (!selectedTargetRefId) {
+    return { ...base, status: "unknown", reason: "missing_position" };
   }
 
+  const validation = spatialValidations?.targets?.find(
+    (candidate) => candidate.targetRefId === selectedTargetRefId,
+  );
   const targetCell = targetPositions?.find((p) => p.refId === selectedTargetRefId)?.cell;
-  if (!targetCell) {
-    return { ...base, status: "unknown" };
-  }
-
-  const status = checkRange(casterPosition, targetCell, rangeMeters);
+  const outcome = resolveSpatialOutcome({
+    inRange: validation?.inRange ?? toRangeValidation(casterPosition, targetCell, rangeMeters),
+    hasLineOfSight: validation?.hasLineOfSight ?? null,
+    hasLineOfEffect: validation?.hasLineOfEffect ?? null,
+    unavailableReason: validation?.unavailableReason ?? null,
+  });
   return {
     ...base,
-    status,
-    reason: status === "invalid" ? "out_of_range" : null,
+    status: outcome.status,
+    reason: outcome.reason,
   };
 };

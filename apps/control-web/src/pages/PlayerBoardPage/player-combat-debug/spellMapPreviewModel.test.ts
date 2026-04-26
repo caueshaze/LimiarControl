@@ -51,7 +51,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
     });
 
     expect(model.status).toBe("invalid");
-    expect(model.reason).toBeTruthy();
+    expect(model.reason).toBe("out_of_range");
   });
 
   it("returns unknown when casterPosition is absent", () => {
@@ -62,6 +62,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
   });
 
   it("returns unknown when targetRefId is absent", () => {
@@ -72,6 +73,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
   });
 
   it("returns unknown when target position is not in targetPositions list", () => {
@@ -82,6 +84,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       targetPositions: [],
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
   });
 
   it("returns unknown when rangeMeters is null (range unresolved)", () => {
@@ -92,6 +95,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
   });
 
   it("returns unknown when all spatial data is absent", () => {
@@ -99,6 +103,7 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       spellPreviewModel: baseSingleTargetModel,
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
   });
 
   it("always uses effectInstanceCount from SpellPreviewModel without recalculating", () => {
@@ -107,6 +112,51 @@ describe("buildSpellMapPreviewModel – single-target", () => {
       spellPreviewModel: { ...baseSingleTargetModel, effectInstanceCount: 1 },
     });
     expect(model.effectInstanceCount).toBe(1);
+  });
+
+  it("returns invalid when target is in range and line of sight is blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", hasLineOfSight: false }],
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_sight");
+  });
+
+  it("returns invalid when target is in range and line of effect is blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", hasLineOfSight: true, hasLineOfEffect: false }],
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_effect");
+  });
+
+  it("prioritizes out_of_range over line of sight failure", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_OUT_OF_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", hasLineOfSight: false }],
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("out_of_range");
   });
 });
 
@@ -183,6 +233,7 @@ describe("buildSpellMapPreviewModel – Magic Missile slot 3 (effectInstanceCoun
     expect(model.status).toBe("unknown");
     expect(model.instanceStatuses).toHaveLength(5);
     expect(model.instanceStatuses?.every((s) => s.status === "unknown")).toBe(true);
+    expect(model.instanceStatuses?.every((s) => s.reason === "missing_position")).toBe(true);
   });
 
   it("returns valid when all 5 instances target in-range enemies", () => {
@@ -243,6 +294,66 @@ describe("buildSpellMapPreviewModel – Magic Missile slot 3 (effectInstanceCoun
 
     expect(model.status).toBe("partial");
   });
+
+  it("returns partial when one instance target has line of effect blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: magicMissileSlot3,
+      casterPosition: CASTER,
+      effectInstanceTargets: [
+        { instance_index: 1, target_ref_id: "near-a" },
+        { instance_index: 2, target_ref_id: "near-a" },
+        { instance_index: 3, target_ref_id: "blocked-b" },
+        { instance_index: 4, target_ref_id: "blocked-b" },
+        { instance_index: 5, target_ref_id: "near-c" },
+      ],
+      targetPositions: [
+        { refId: "near-a", cell: TARGET_IN_RANGE },
+        { refId: "blocked-b", cell: TARGET_IN_RANGE },
+        { refId: "near-c", cell: TARGET_IN_RANGE },
+      ],
+      spatialValidations: {
+        instances: [
+          { instanceIndex: 3, targetRefId: "blocked-b", hasLineOfSight: true, hasLineOfEffect: false },
+          { instanceIndex: 4, targetRefId: "blocked-b", hasLineOfSight: true, hasLineOfEffect: false },
+        ],
+      },
+    });
+
+    expect(model.status).toBe("partial");
+    expect(model.instanceStatuses?.[2]).toMatchObject({
+      status: "invalid",
+      reason: "blocked_line_of_effect",
+    });
+    expect(model.instanceStatuses?.[3]).toMatchObject({
+      status: "invalid",
+      reason: "blocked_line_of_effect",
+    });
+  });
+
+  it("returns invalid when all instances are line-of-sight blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: magicMissileSlot3,
+      casterPosition: CASTER,
+      effectInstanceTargets: Array.from({ length: 5 }, (_, index) => ({
+        instance_index: index + 1,
+        target_ref_id: `enemy-${index + 1}`,
+      })),
+      targetPositions: Array.from({ length: 5 }, (_, index) => ({
+        refId: `enemy-${index + 1}`,
+        cell: TARGET_IN_RANGE,
+      })),
+      spatialValidations: {
+        instances: Array.from({ length: 5 }, (_, index) => ({
+          instanceIndex: index + 1,
+          targetRefId: `enemy-${index + 1}`,
+          hasLineOfSight: false,
+        })),
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.instanceStatuses?.every((status) => status.reason === "blocked_line_of_sight")).toBe(true);
+  });
 });
 
 describe("buildSpellMapPreviewModel – Eldritch Blast level 5 (effectInstanceCount = 2)", () => {
@@ -286,6 +397,31 @@ describe("buildSpellMapPreviewModel – Eldritch Blast level 5 (effectInstanceCo
     expect(model.instanceStatuses?.every((s) => s.status === "valid")).toBe(true);
     expect(model.status).toBe("valid");
   });
+
+  it("returns partial when one beam is line-of-sight blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: eldritchBlastLvl5,
+      casterPosition: CASTER,
+      effectInstanceTargets: [
+        { instance_index: 1, target_ref_id: "e1" },
+        { instance_index: 2, target_ref_id: "e2" },
+      ],
+      targetPositions: [
+        { refId: "e1", cell: { x: 10, y: 0 } },
+        { refId: "e2", cell: { x: 10, y: 0 } },
+      ],
+      spatialValidations: {
+        instances: [{ instanceIndex: 2, targetRefId: "e2", hasLineOfSight: false }],
+      },
+    });
+
+    expect(model.status).toBe("partial");
+    expect(model.instanceStatuses?.[0]).toMatchObject({ status: "valid", reason: null });
+    expect(model.instanceStatuses?.[1]).toMatchObject({
+      status: "invalid",
+      reason: "blocked_line_of_sight",
+    });
+  });
 });
 
 describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
@@ -320,6 +456,7 @@ describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
       casterPosition: CASTER,
     });
     expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_map_data");
   });
 
   it("uses existing area preview result as validity source", () => {
@@ -370,6 +507,54 @@ describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
       },
     });
     expect(model.instanceStatuses).toBeUndefined();
+  });
+
+  it("returns invalid when area origin is out of range", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: fireballModel,
+      spatialValidations: {
+        area: {
+          originCell: { x: 40, y: 0 },
+          inRange: false,
+        },
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("out_of_range");
+  });
+
+  it("returns invalid when area origin has line of sight blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: fireballModel,
+      spatialValidations: {
+        area: {
+          originCell: { x: 5, y: 5 },
+          inRange: true,
+          hasLineOfSight: false,
+        },
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_sight");
+  });
+
+  it("returns invalid when area origin has line of effect blocked", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: fireballModel,
+      spatialValidations: {
+        area: {
+          originCell: { x: 5, y: 5 },
+          inRange: true,
+          hasLineOfSight: true,
+          hasLineOfEffect: false,
+        },
+      },
+    });
+
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_effect");
   });
 });
 

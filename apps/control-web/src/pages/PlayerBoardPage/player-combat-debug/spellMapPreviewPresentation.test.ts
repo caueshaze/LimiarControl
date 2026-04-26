@@ -16,9 +16,33 @@ describe("spellMapPreviewPresentation", () => {
     expect(formatSpellMapPreviewReason("out_of_range", "invalid")).toBe("fora do alcance");
   });
 
+  it("reason blocked_line_of_sight vira linha de visão bloqueada", () => {
+    expect(formatSpellMapPreviewReason("blocked_line_of_sight", "invalid")).toBe(
+      "linha de visão bloqueada",
+    );
+  });
+
+  it("reason blocked_line_of_effect vira linha de efeito bloqueada", () => {
+    expect(formatSpellMapPreviewReason("blocked_line_of_effect", "invalid")).toBe(
+      "linha de efeito bloqueada",
+    );
+  });
+
   it("unknown vira mensagem amigável", () => {
     expect(formatSpellMapPreviewReason(null, "unknown")).toBe(
       "Dados de posição insuficientes para validar o preview no mapa",
+    );
+  });
+
+  it("reason missing_position vira dados de posição insuficientes", () => {
+    expect(formatSpellMapPreviewReason("missing_position", "unknown")).toBe(
+      "dados de posição insuficientes",
+    );
+  });
+
+  it("reason missing_map_data vira dados do mapa insuficientes", () => {
+    expect(formatSpellMapPreviewReason("missing_map_data", "unknown")).toBe(
+      "dados do mapa insuficientes",
     );
   });
 

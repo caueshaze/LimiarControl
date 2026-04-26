@@ -34,13 +34,23 @@ import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
 import { SpellCastResultPanel } from "./SpellCastResultPanel";
-import { buildSpellMapPreviewModel } from "./spellMapPreviewModel";
+import {
+  buildSpellMapPreviewModel,
+  type SpellInstanceSpatialValidation,
+} from "./spellMapPreviewModel";
 import { buildSpellMapPreviewHighlights } from "./spellMapPreviewHighlights";
 import type { SpellMapHighlight } from "../../../features/combat-ui/map/CombatMapFrame";
 import { buildSpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
 import { useResolvedSpellContext } from "./useResolvedSpellContext";
+import {
+  buildInstanceSpatialValidations,
+  buildSingleTargetSpatialValidations,
+  buildUniqueTargetRefIds,
+  createPreviewRequestGate,
+  fetchPreviewValidationsByTargetRefId,
+} from "./spellPreviewSpatialValidations";
 
 type Props = {
   actor: CombatParticipant;
@@ -178,8 +188,12 @@ export const PlayerSpellCastDialog = ({
   const [effectInstanceTargets, setEffectInstanceTargets] = useState<EffectInstanceTargetInput[]>([]);
   const [result, setResult] = useState<CombatSpellResult | null>(null);
   const [spellMapState, setSpellMapState] = useState<Awaited<ReturnType<typeof combatRepo.getMapState>> | null>(null);
+  const [multiInstanceSpatialValidations, setMultiInstanceSpatialValidations] = useState<
+    SpellInstanceSpatialValidation[]
+  >([]);
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
+  const multiPreviewRequestGateRef = useRef(createPreviewRequestGate());
 
   const {
     anchorCell,
@@ -237,16 +251,20 @@ export const PlayerSpellCastDialog = ({
     effectInstanceTargets,
     effectInstanceContext.instanceCount,
   );
+  const normalizedEffectInstanceTargetsSignature = normalizedEffectInstanceTargets
+    .map((entry) => `${entry.instance_index}:${entry.target_ref_id}`)
+    .join("|");
   const effectInstanceTargetsComplete = hasCompleteEffectInstanceTargets(
     effectInstanceTargets,
     effectInstanceContext.instanceCount,
   );
+  const previewRangeMeters = previewModel.rangeMeters ?? spell.rangeMeters ?? null;
   const rangePreview = useTargetingPreview({
     sessionId,
     actorRefId: actor.ref_id,
     targetRefId: target?.ref_id ?? null,
     actionType: "spell",
-    normalRangeMeters: spell.rangeMeters ?? null,
+    normalRangeMeters: previewRangeMeters,
     longRangeMeters: null,
     enabled: !isAreaSpell && !isMultiInstanceSpell && !!target,
   });
@@ -299,6 +317,10 @@ export const PlayerSpellCastDialog = ({
       };
     }) ?? [];
   const casterPosition = effectiveMapState ? resolveActorOriginCell(actor, effectiveMapState.tokens) : null;
+  const singleTargetSpatialValidations =
+    !isAreaSpell && !isMultiInstanceSpell
+      ? buildSingleTargetSpatialValidations(rangePreview, target?.ref_id ?? null)
+      : undefined;
   const mapPreviewModel = buildSpellMapPreviewModel({
     spellPreviewModel: previewModel,
     casterPosition,
@@ -306,6 +328,11 @@ export const PlayerSpellCastDialog = ({
     effectInstanceTargets: normalizedEffectInstanceTargets,
     existingAreaPreviewResult: preview,
     targetPositions,
+    spatialValidations: {
+      targets: singleTargetSpatialValidations,
+      instances: multiInstanceSpatialValidations,
+      area: null,
+    },
   });
 
   const instanceStatusSignature =
@@ -347,6 +374,8 @@ export const PlayerSpellCastDialog = ({
 
   useEffect(() => {
     if (!isMultiInstanceSpell) {
+      multiPreviewRequestGateRef.current.issue();
+      setMultiInstanceSpatialValidations([]);
       setEffectInstanceTargets([]);
       return;
     }
@@ -355,6 +384,43 @@ export const PlayerSpellCastDialog = ({
       reconcileEffectInstanceTargets(current, effectInstanceContext.instanceCount, target?.ref_id),
     );
   }, [effectInstanceContext.instanceCount, isMultiInstanceSpell, target?.ref_id]);
+
+  useEffect(() => {
+    if (!isMultiInstanceSpell) {
+      return;
+    }
+
+    const requestId = multiPreviewRequestGateRef.current.issue();
+    const uniqueTargetRefIds = buildUniqueTargetRefIds(
+      normalizedEffectInstanceTargets.map((entry) => entry.target_ref_id),
+    );
+
+    if (uniqueTargetRefIds.length === 0) {
+      setMultiInstanceSpatialValidations([]);
+      return;
+    }
+
+    void fetchPreviewValidationsByTargetRefId({
+      actorRefId: actor.ref_id,
+      previewAction: combatRepo.previewAction,
+      rangeMeters: previewRangeMeters,
+      sessionId,
+      targetRefIds: uniqueTargetRefIds,
+    }).then((validationsByTargetRefId) => {
+      if (!multiPreviewRequestGateRef.current.isCurrent(requestId)) {
+        return;
+      }
+      setMultiInstanceSpatialValidations(
+        buildInstanceSpatialValidations(normalizedEffectInstanceTargets, validationsByTargetRefId),
+      );
+    });
+  }, [
+    actor.ref_id,
+    isMultiInstanceSpell,
+    normalizedEffectInstanceTargetsSignature,
+    previewRangeMeters,
+    sessionId,
+  ]);
 
   useEffect(() => {
     let cancelled = false;

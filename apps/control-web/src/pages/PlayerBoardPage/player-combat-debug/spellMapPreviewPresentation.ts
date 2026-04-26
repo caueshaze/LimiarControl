@@ -26,8 +26,14 @@ export const formatSpellMapPreviewReason = (
   switch (reason) {
     case "out_of_range":
       return "fora do alcance";
+    case "blocked_line_of_sight":
+      return "linha de visão bloqueada";
+    case "blocked_line_of_effect":
+      return "linha de efeito bloqueada";
     case "missing_position":
-      return UNKNOWN_MESSAGE;
+      return "dados de posição insuficientes";
+    case "missing_map_data":
+      return "dados do mapa insuficientes";
     default:
       return reason;
   }
