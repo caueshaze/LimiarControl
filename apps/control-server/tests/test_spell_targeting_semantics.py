@@ -250,6 +250,57 @@ class SpellContextTargetingSemanticsTests(unittest.TestCase):
                 self.assertEqual(resolved["spell_mode"], expected_mode)
 
 
+class SpellCantripScalingTests(unittest.TestCase):
+    def test_character_level_scaling_uses_cantrip_breakpoints(self) -> None:
+        cases = {
+            1: "1d6",
+            4: "1d6",
+            5: "2d6",
+            10: "2d6",
+            11: "3d6",
+            16: "3d6",
+            17: "4d6",
+            20: "4d6",
+        }
+
+        for caster_level, expected in cases.items():
+            with self.subTest(caster_level=caster_level):
+                self.assertEqual(
+                    CombatService._apply_character_level_cantrip_scaling(
+                        spell_level=0,
+                        caster_level=caster_level,
+                        effect_dice="1d6",
+                    ),
+                    expected,
+                )
+
+    def test_character_level_scaling_does_not_apply_to_leveled_spells(self) -> None:
+        self.assertEqual(
+            CombatService._apply_character_level_cantrip_scaling(
+                spell_level=1,
+                caster_level=17,
+                effect_dice="1d6",
+            ),
+            "1d6",
+        )
+
+    def test_structured_additional_targets_upcast_adds_configured_dice(self) -> None:
+        result = CombatService._apply_structured_spell_upcast(
+            spell_level=1,
+            slot_level=3,
+            effect_kind="damage",
+            effect_dice="3d4+3",
+            effect_bonus=0,
+            upcast={"mode": "additional_targets", "dice": "1d4+1", "perLevel": 1},
+        )
+
+        self.assertEqual(result["effect_dice"], "5d4+5")
+        self.assertEqual(result["upcast_levels"], 2)
+        self.assertEqual(result["upcast_added_instances"], 2)
+        self.assertEqual(result["upcast_instance_effect_dice"], "1d4+1")
+        self.assertTrue(result["upcast_applied"])
+
+
 class SpellTargetingSeedTests(unittest.TestCase):
     def test_seed_contains_required_targeting_overrides(self) -> None:
         seed_path = Path(__file__).resolve().parents[3] / "Base" / "base_spells.seed.json"
@@ -259,6 +310,7 @@ class SpellTargetingSeedTests(unittest.TestCase):
         }
 
         expected = {
+            "acid_splash": ("creature", "none", "immediate"),
             "fire_bolt": ("creature_or_object", "ranged_spell", "immediate"),
             "thorn_whip": ("creature", "melee_spell", "immediate"),
             "fireball": ("point", "none", "immediate"),
@@ -277,5 +329,11 @@ class SpellTargetingSeedTests(unittest.TestCase):
                 self.assertEqual(entry["selectionType"], selection_type)
                 self.assertEqual(entry["attackType"], attack_type)
                 self.assertEqual(entry["effectTiming"], effect_timing)
+
+        acid_splash = spells["acid_splash"]
+        self.assertEqual(acid_splash["maxTargets"], 2)
+        self.assertNotIn("areaShape", acid_splash)
+
+        self.assertEqual(spells["magic_missile"]["maxTargets"], 3)
 
         self.assertEqual(spells["sacred_flame"]["coverAppliesToSave"], "none")

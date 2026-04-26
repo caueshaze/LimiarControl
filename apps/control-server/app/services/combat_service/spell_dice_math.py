@@ -117,6 +117,8 @@ class CombatSpellDiceMathMixin:
                 "effect_bonus": effect_bonus,
                 "upcast_levels": 0,
                 "upcast_applied": False,
+                "upcast_added_instances": 0,
+                "upcast_instance_effect_dice": None,
             }
 
         mode = str(upcast.get("mode") or "").strip()
@@ -126,6 +128,8 @@ class CombatSpellDiceMathMixin:
                 "effect_bonus": effect_bonus,
                 "upcast_levels": 0,
                 "upcast_applied": False,
+                "upcast_added_instances": 0,
+                "upcast_instance_effect_dice": None,
             }
 
         max_level = upcast.get("maxLevel")
@@ -141,6 +145,8 @@ class CombatSpellDiceMathMixin:
                 "effect_bonus": effect_bonus,
                 "upcast_levels": 0,
                 "upcast_applied": False,
+                "upcast_added_instances": 0,
+                "upcast_instance_effect_dice": None,
             }
 
         per_level = upcast.get("perLevel")
@@ -150,25 +156,38 @@ class CombatSpellDiceMathMixin:
         dice = upcast.get("dice") if isinstance(upcast.get("dice"), str) else None
         flat = upcast.get("flat") if isinstance(upcast.get("flat"), int) else 0
 
-        if mode == "add_heal" and effect_kind != "healing":
+        if mode in {"extra_heal_dice", "add_heal"} and effect_kind != "healing":
             return {
                 "effect_dice": effect_dice,
                 "effect_bonus": effect_bonus,
                 "upcast_levels": 0,
                 "upcast_applied": False,
+                "upcast_added_instances": 0,
+                "upcast_instance_effect_dice": None,
             }
-        if mode == "add_damage" and effect_kind == "healing":
+        if mode in {"extra_damage_dice", "add_damage"} and effect_kind == "healing":
             return {
                 "effect_dice": effect_dice,
                 "effect_bonus": effect_bonus,
                 "upcast_levels": 0,
                 "upcast_applied": False,
+                "upcast_added_instances": 0,
+                "upcast_instance_effect_dice": None,
             }
 
         next_effect_dice = effect_dice
         next_effect_bonus = effect_bonus
+        added_instances = 0
+        instance_effect_dice = None
 
-        if mode in {"add_damage", "add_heal", "increase_targets"}:
+        if mode in {
+            "extra_damage_dice",
+            "extra_heal_dice",
+            "additional_targets",
+            "add_damage",
+            "add_heal",
+            "increase_targets",
+        }:
             if dice:
                 next_effect_dice = cls._merge_dice_expressions(
                     effect_dice,
@@ -177,6 +196,9 @@ class CombatSpellDiceMathMixin:
                 )
             if flat:
                 next_effect_bonus += flat * repeats
+            if mode in {"additional_targets", "increase_targets"}:
+                added_instances = repeats
+                instance_effect_dice = dice
 
         return {
             "effect_dice": next_effect_dice,
@@ -184,7 +206,32 @@ class CombatSpellDiceMathMixin:
             "upcast_levels": extra_levels,
             "upcast_applied": next_effect_dice != effect_dice
             or next_effect_bonus != effect_bonus,
+            "upcast_added_instances": added_instances,
+            "upcast_instance_effect_dice": instance_effect_dice,
         }
+
+    @classmethod
+    def _apply_character_level_cantrip_scaling(
+        cls,
+        *,
+        spell_level: int,
+        caster_level: int | None,
+        effect_dice: str | None,
+    ) -> str | None:
+        if spell_level != 0 or caster_level is None or caster_level < 5:
+            return effect_dice
+        count, sides, modifier = _parse_dice(effect_dice or "")
+        if count <= 0 or sides <= 0:
+            return effect_dice
+
+        multiplier = 1
+        if caster_level >= 17:
+            multiplier = 4
+        elif caster_level >= 11:
+            multiplier = 3
+        elif caster_level >= 5:
+            multiplier = 2
+        return cls._build_dice_expression(count * multiplier, sides, modifier)
 
     @classmethod
     def _normalize_save_success_outcome(cls, value: object) -> str | None:

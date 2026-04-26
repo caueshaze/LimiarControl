@@ -18,7 +18,9 @@ describe("systemSpellCatalog upcast helpers", () => {
     form.resolutionType = "heal";
     form.healDice = "1d8";
     form.upcastMode = "extra_heal_dice";
-    form.upcastDice = "1d8";
+    form.upcastDiceCount = "1";
+    form.upcastDieSize = "8";
+    form.upcastFixedBonus = "";
     form.upcastPerLevel = "1";
     form.upcastMaxLevel = "9";
 
@@ -81,6 +83,7 @@ describe("systemSpellCatalog upcast helpers", () => {
       rangeMeters: 36,
       rangeText: "120 ft",
       targetType: "ranged",
+      maxTargets: 3,
       selectionType: "creature",
       originType: "caster",
       targetAnchor: "selected_target",
@@ -117,6 +120,10 @@ describe("systemSpellCatalog upcast helpers", () => {
     expect(form.upcastDice).toBe("1d4+1");
     expect(form.upcastPerLevel).toBe("1");
     expect(form.upcastMaxLevel).toBe("9");
+    expect(form.maxTargets).toBe("3");
+    expect(form.damageDiceCount).toBe("3");
+    expect(form.damageDieSize).toBe("4");
+    expect(form.damageFixedBonus).toBe("3");
     expect(form.selectionType).toBe("creature");
     expect(form.originType).toBe("caster");
     expect(form.targetAnchor).toBe("selected_target");

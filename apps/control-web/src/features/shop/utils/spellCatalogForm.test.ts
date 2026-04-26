@@ -23,6 +23,7 @@ const createSpell = (overrides: Partial<BaseSpell> = {}): BaseSpell => ({
   castingTime: "1 action",
   rangeMeters: 36,
   rangeText: "36 m",
+  maxTargets: null,
   duration: "Instantaneous",
   componentsJson: ["V", "S", "M"],
   materialComponentText: "A bit of phosphorus.",
@@ -97,9 +98,13 @@ describe("spellCatalogForm", () => {
       castingTimeType: "bonus_action",
       rangeMeters: "18",
       rangeText: "18 m",
-      targetType: "ranged", areaShape: "sphere",
+      targetType: "ranged",
+      maxTargets: "3",
+      areaShape: "sphere",
       resolutionType: "damage",
-      damageDice: "3d6",
+      damageDiceCount: "3",
+      damageDieSize: "6",
+      damageFixedBonus: "",
       damageType: "Lightning",
       savingThrow: "DEX",
       saveSuccessOutcome: "half_damage",
@@ -108,7 +113,9 @@ describe("spellCatalogForm", () => {
       requiresPointSight: true,
       requiresPointEffect: false,
       upcastMode: "extra_damage_dice",
-      upcastDice: "1d6",
+      upcastDiceCount: "1",
+      upcastDieSize: "6",
+      upcastFixedBonus: "",
       upcastPerLevel: "1",
       upcastMaxLevel: "5",
     });
@@ -126,7 +133,9 @@ describe("spellCatalogForm", () => {
         castingTime: "1 bonus action",
         rangeMeters: 18,
         rangeText: "18 m",
-        targetType: "ranged", areaShape: "sphere",
+        targetType: "ranged",
+        maxTargets: 3,
+        areaShape: "sphere",
         resolutionType: "damage",
         damageDice: "3d6",
         damageType: "Lightning",
@@ -159,6 +168,7 @@ describe("spellCatalogForm", () => {
         castingTimeType: "special",
         castingTime: "When an ally falls to 0 HP",
         targetType: "ranged",
+        maxTargets: 2,
         resolutionType: "heal",
         healDice: "2d4",
         requiresTargetSight: null,
@@ -177,6 +187,7 @@ describe("spellCatalogForm", () => {
     expect(state.castingTimeType).toBe("special");
     expect(state.castingTime).toBe("When an ally falls to 0 HP");
     expect(state.targetType).toBe("ranged");
+    expect(state.maxTargets).toBe("2");
     expect(state.resolutionType).toBe("heal");
     expect(state.healDice).toBe("2d4");
     expect(state.requiresTargetSight).toBeNull();
@@ -196,6 +207,7 @@ describe("spellCatalogForm", () => {
           castingTimeType: "special",
           castingTime: "When an ally falls to 0 HP",
           targetType: "ranged",
+          maxTargets: 2,
           resolutionType: "heal",
           healDice: "2d4",
           requiresTargetSight: null,
@@ -215,6 +227,7 @@ describe("spellCatalogForm", () => {
     expect(payload.castingTimeType).toBe("special");
     expect(payload.castingTime).toBe("When an ally falls to 0 HP");
     expect(payload.targetType).toBe("ranged");
+    expect(payload.maxTargets).toBe(2);
     expect(payload.resolutionType).toBe("heal");
     expect(payload.damageDice).toBeNull();
     expect(payload.healDice).toBe("2d4");

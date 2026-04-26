@@ -31,6 +31,7 @@ _FIELD_MAP: dict[str, str] = {
     "rangeMeters": "range_meters",
     "rangeText": "range_text",
     "targetType": "target_type",
+    "maxTargets": "max_targets",
     "selectionType": "selection_type",
     "originType": "origin_type",
     "targetAnchor": "target_anchor",

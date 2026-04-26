@@ -24,6 +24,8 @@ import {
     SPELL_ATTACK_TYPE_OPTIONS,
     SPELL_TARGET_TYPE_OPTIONS,
     SPELL_EFFECT_TIMING_OPTIONS,
+    SPELL_DICE_COUNT_OPTIONS,
+    SPELL_DIE_SIZE_OPTIONS,
     SPELL_ORIGIN_TYPE_OPTIONS,
     SPELL_RANGE_KIND_OPTIONS,
     SPELL_SELECTION_TYPE_OPTIONS,
@@ -67,7 +69,8 @@ export const SpellCatalogFormFields = ({
   const showHealFields = state.resolutionType === "heal";
   const showUpcastDiceField =
     state.upcastMode === "extra_damage_dice" ||
-    state.upcastMode === "extra_heal_dice";
+    state.upcastMode === "extra_heal_dice" ||
+    state.upcastMode === "additional_targets";
   const showUpcastFlatField =
     state.upcastMode === "extra_damage_dice" ||
     state.upcastMode === "extra_heal_dice" ||
@@ -228,6 +231,18 @@ export const SpellCatalogFormFields = ({
               </option>
             ))}
           </select>
+        </SpellCatalogField>
+        <SpellCatalogField label={t("catalog.spells.form.maxTargets")}>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={state.maxTargets}
+            onChange={(event) =>
+              setState((current) => ({ ...current, maxTargets: event.target.value }))
+            }
+            className={fieldClassName}
+          />
         </SpellCatalogField>
       </div>
 

@@ -46,6 +46,7 @@ class BaseSpellWrite(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
+    maxTargets: Optional[int] = None
     selectionType: Optional[str] = None
     originType: Optional[str] = None
     targetAnchor: Optional[str] = None
@@ -132,6 +133,15 @@ class BaseSpellWrite(BaseModel):
             return None
         if value < 0:
             raise ValueError("rangeMeters cannot be negative")
+        return value
+
+    @field_validator("maxTargets")
+    @classmethod
+    def validate_max_targets(cls, value: Optional[int]):
+        if value is None:
+            return None
+        if value < 1:
+            raise ValueError("maxTargets must be at least 1")
         return value
 
     @field_validator("radiusMeters", "lengthMeters", "sideMeters")

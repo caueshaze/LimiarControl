@@ -3,6 +3,8 @@ import type { Locale, LocaleKey } from "../../../shared/i18n";
 import { localizeSpellAdminValue } from "../../../shared/i18n/domainLabels";
 import { SpellCatalogField } from "./SpellCatalogEditorControls";
 import {
+    SPELL_DICE_COUNT_OPTIONS,
+    SPELL_DIE_SIZE_OPTIONS,
     SPELL_UPCAST_MODE_OPTIONS,
     type SpellCatalogEditorState,
 } from "../utils/spellCatalogForm";
@@ -58,24 +60,73 @@ export const SpellUpcastFields = ({
           ))}
         </select>
       </SpellCatalogField>
-      {showUpcastDiceField ? (
-        <SpellCatalogField label={t("catalog.spells.form.upcastDice")}>
-          <input
-            value={state.upcastDice}
+    </div>
+
+    {showUpcastDiceField ? (
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SpellCatalogField
+          label={t("catalog.spells.form.upcastDiceCount")}
+          help={t("catalog.spells.form.upcastDiceCountHelp")}
+        >
+          <select
+            value={state.upcastDiceCount}
             onChange={(event) =>
-              setState((current) => ({ ...current, upcastDice: event.target.value }))
+              setState((current) => ({ ...current, upcastDiceCount: event.target.value }))
             }
             className={fieldClassName}
-            placeholder="1d6"
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_DICE_COUNT_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField
+          label={t("catalog.spells.form.upcastDieSize")}
+          help={t("catalog.spells.form.upcastDieSizeHelp")}
+        >
+          <select
+            value={state.upcastDieSize}
+            onChange={(event) =>
+              setState((current) => ({ ...current, upcastDieSize: event.target.value }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_DIE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                d{size}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField
+          label={t("catalog.spells.form.upcastFixedBonus")}
+          help={t("catalog.spells.form.upcastFixedBonusHelp")}
+        >
+          <input
+            type="number"
+            step={1}
+            value={state.upcastFixedBonus}
+            onChange={(event) =>
+              setState((current) => ({ ...current, upcastFixedBonus: event.target.value }))
+            }
+            className={fieldClassName}
+            placeholder="0"
           />
         </SpellCatalogField>
-      ) : null}
-    </div>
+      </div>
+    ) : null}
 
     {showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField ? (
       <div className="grid gap-4 sm:grid-cols-3">
         {showUpcastFlatField ? (
-          <SpellCatalogField label={t("catalog.spells.form.upcastFlat")}>
+          <SpellCatalogField
+            label={t("catalog.spells.form.upcastFlat")}
+            help={t("catalog.spells.form.upcastFlatHelp")}
+          >
             <input
               type="number"
               min={0}
@@ -89,7 +140,10 @@ export const SpellUpcastFields = ({
           </SpellCatalogField>
         ) : null}
         {showUpcastPerLevelField ? (
-          <SpellCatalogField label={t("catalog.spells.form.upcastPerLevel")}>
+          <SpellCatalogField
+            label={t("catalog.spells.form.upcastPerLevel")}
+            help={t("catalog.spells.form.upcastPerLevelHelp")}
+          >
             <input
               type="number"
               min={1}
@@ -103,7 +157,10 @@ export const SpellUpcastFields = ({
           </SpellCatalogField>
         ) : null}
         {showUpcastMaxLevelField ? (
-          <SpellCatalogField label={t("catalog.spells.form.upcastMaxLevel")}>
+          <SpellCatalogField
+            label={t("catalog.spells.form.upcastMaxLevel")}
+            help={t("catalog.spells.form.upcastMaxLevelHelp")}
+          >
             <input
               type="number"
               min={1}

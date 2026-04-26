@@ -14,6 +14,8 @@ import {
 } from "../../shared/i18n/domainLabels";
 import {
   DAMAGE_TYPE_OPTIONS,
+  DICE_COUNT_OPTIONS,
+  DIE_SIZE_OPTIONS,
   type FormState,
   RESOLUTION_TYPE_OPTIONS,
   SAVE_SUCCESS_OUTCOME_OPTIONS,
@@ -26,6 +28,17 @@ type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
 };
+
+const FieldHelpIcon = ({ text }: { text: string }) => (
+  <span className="group relative inline-flex" tabIndex={0} aria-label={text}>
+    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-500/60 text-[10px] font-bold leading-none text-slate-400 transition group-hover:border-violet-300/70 group-hover:text-violet-100 group-focus-visible:border-violet-300/70 group-focus-visible:text-violet-100">
+      i
+    </span>
+    <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-[11px] normal-case leading-5 text-slate-100 shadow-xl group-hover:block group-focus-visible:block">
+      {text}
+    </span>
+  </span>
+);
 
 export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => {
   const { locale, t } = useLocale();
@@ -43,7 +56,8 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
   const showHealFields = form.resolutionType === "heal";
   const showUpcastDiceField =
     form.upcastMode === "extra_damage_dice" ||
-    form.upcastMode === "extra_heal_dice";
+    form.upcastMode === "extra_heal_dice" ||
+    form.upcastMode === "additional_targets";
   const showUpcastFlatField =
     form.upcastMode === "extra_damage_dice" ||
     form.upcastMode === "extra_heal_dice" ||
@@ -131,18 +145,63 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
       </div>
 
       {showDamageFields && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-4">
           <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Damage dice
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Dice count</span>
+              <FieldHelpIcon text="Quantidade de dados do efeito base. Ex.: 3 em 3d4+3." />
             </span>
-            <input
-              value={form.damageDice}
+            <select
+              value={form.damageDiceCount}
               onChange={(event) =>
-                setForm((c) => ({ ...c, damageDice: event.target.value }))
+                setForm((c) => ({ ...c, damageDiceCount: event.target.value }))
               }
               className={`${inputClassName} mt-2`}
-              placeholder="8d6"
+            >
+              <option value="">—</option>
+              {DICE_COUNT_OPTIONS.map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Die</span>
+              <FieldHelpIcon text="Tipo do dado do efeito base. Ex.: d4." />
+            </span>
+            <select
+              value={form.damageDieSize}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, damageDieSize: event.target.value }))
+              }
+              className={`${inputClassName} mt-2`}
+            >
+              <option value="">—</option>
+              {DIE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  d{size}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Fixed bonus</span>
+              <FieldHelpIcon text="Bônus fixo somado ao efeito base. Ex.: +3 em 3d4+3." />
+            </span>
+            <input
+              type="number"
+              step={1}
+              value={form.damageFixedBonus}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, damageFixedBonus: event.target.value }))
+              }
+              className={`${inputClassName} mt-2`}
+              placeholder="0"
             />
           </label>
 
@@ -211,29 +270,78 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           </select>
         </label>
 
-        {showUpcastDiceField ? (
+      </div>
+
+      {showUpcastDiceField ? (
+        <div className="grid gap-4 md:grid-cols-3">
           <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Upcast dice
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Upcast dice count</span>
+              <FieldHelpIcon text="Dados por incremento ou instância extra. Ex.: 1 em 1d4+1." />
             </span>
-            <input
-              value={form.upcastDice}
+            <select
+              value={form.upcastDiceCount}
               onChange={(event) =>
-                setForm((c) => ({ ...c, upcastDice: event.target.value }))
+                setForm((c) => ({ ...c, upcastDiceCount: event.target.value }))
               }
               className={`${inputClassName} mt-2`}
-              placeholder="1d6"
+            >
+              <option value="">—</option>
+              {DICE_COUNT_OPTIONS.map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Upcast die</span>
+              <FieldHelpIcon text="Dado do incremento de upcast. Ex.: d4." />
+            </span>
+            <select
+              value={form.upcastDieSize}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, upcastDieSize: event.target.value }))
+              }
+              className={`${inputClassName} mt-2`}
+            >
+              <option value="">—</option>
+              {DIE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  d{size}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              <span>Upcast fixed bonus</span>
+              <FieldHelpIcon text="Bônus por incremento. Ex.: +1 por míssil extra." />
+            </span>
+            <input
+              type="number"
+              step={1}
+              value={form.upcastFixedBonus}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, upcastFixedBonus: event.target.value }))
+              }
+              className={`${inputClassName} mt-2`}
+              placeholder="0"
             />
           </label>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {(showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField) ? (
         <div className="grid gap-4 md:grid-cols-3">
           {showUpcastFlatField ? (
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Upcast flat
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Upcast flat</span>
+                <FieldHelpIcon text="Bônus fixo sem dado; use para escalas numéricas simples." />
               </span>
               <input
                 value={form.upcastFlat}
@@ -248,8 +356,9 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
           {showUpcastPerLevelField ? (
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Upcast por nível
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Upcast por nível</span>
+                <FieldHelpIcon text="Incrementos por slot acima do nível base. Normalmente 1." />
               </span>
               <input
                 value={form.upcastPerLevel}
@@ -264,8 +373,9 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
           {showUpcastMaxLevelField ? (
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Nível máximo do slot
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Nível máximo do slot</span>
+                <FieldHelpIcon text="Limite de escala; vazio usa qualquer slot válido." />
               </span>
               <input
                 value={form.upcastMaxLevel}

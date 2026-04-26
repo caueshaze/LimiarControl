@@ -53,6 +53,7 @@ export type FormState = {
   castingTimeType: CastingTimeType | "";
   rangeMeters: string;
   targetType: TargetType | "";
+  maxTargets: string;
   selectionType: SpellSelectionType | "";
   originType: SpellOriginType | "";
   targetAnchor: SpellTargetAnchor | "";
@@ -72,10 +73,16 @@ export type FormState = {
   savingThrow: SpellSavingThrow | "";
   saveSuccessOutcome: SaveSuccessOutcome | "";
   damageDice: string;
+  damageDiceCount: string;
+  damageDieSize: string;
+  damageFixedBonus: string;
   damageType: SpellDamageType | "";
   healDice: string;
   upcastMode: UpcastMode | "";
   upcastDice: string;
+  upcastDiceCount: string;
+  upcastDieSize: string;
+  upcastFixedBonus: string;
   upcastFlat: string;
   upcastPerLevel: string;
   upcastMaxLevel: string;
@@ -110,6 +117,8 @@ export const DAMAGE_TYPE_OPTIONS = Object.values(SpellDamageTypeValues);
 export const SAVING_THROW_OPTIONS = Object.values(SpellSavingThrowValues);
 export const SAVE_SUCCESS_OUTCOME_OPTIONS = Object.values(SaveSuccessOutcomeValues);
 export const UPCAST_MODE_OPTIONS = Object.values(UpcastModeValues);
+export const DICE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+export const DIE_SIZE_OPTIONS = [4, 6, 8, 10, 12] as const;
 export const SOURCE_OPTIONS = Object.values(SpellSourceValues);
 export const DURATION_OPTIONS = [
   "Instantaneous",

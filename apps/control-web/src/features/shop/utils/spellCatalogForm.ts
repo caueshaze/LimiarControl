@@ -89,6 +89,8 @@ export const SPELL_SAVING_THROW_OPTIONS = [
 ] as const;
 
 export const SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS = ["none", "half_damage"] as const;
+export const SPELL_DICE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+export const SPELL_DIE_SIZE_OPTIONS = [4, 6, 8, 10, 12] as const;
 
 export const SPELL_UPCAST_MODE_OPTIONS = Object.values(UpcastModeValues);
 
@@ -141,6 +143,35 @@ const toNullableInteger = (value: string) => {
   }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseDiceParts = (value?: string | null) => {
+  const match = value?.trim().match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?$/i);
+  if (!match) {
+    return { count: "", size: "", bonus: "" };
+  }
+  const sign = match[3] === "-" ? "-" : "";
+  return {
+    count: match[1] ?? "",
+    size: match[2] ?? "",
+    bonus: match[4] ? `${sign}${match[4]}` : "",
+  };
+};
+
+const buildDiceExpression = (count: string, size: string, bonus: string) => {
+  const parsedCount = toNullableInteger(count);
+  const parsedSize = toNullableInteger(size);
+  const parsedBonus = toNullableInteger(bonus);
+  if (!parsedCount || !parsedSize || parsedCount < 1 || parsedSize < 1) {
+    return null;
+  }
+  let expression = `${parsedCount}d${parsedSize}`;
+  if (parsedBonus && parsedBonus > 0) {
+    expression += `+${parsedBonus}`;
+  } else if (parsedBonus && parsedBonus < 0) {
+    expression += `${parsedBonus}`;
+  }
+  return expression;
 };
 
 const toNullableFloat = (value: string) => {
@@ -202,7 +233,11 @@ const buildStructuredUpcast = (
 
   return {
     mode: state.upcastMode,
-    dice: toNullableText(state.upcastDice),
+    dice: buildDiceExpression(
+      state.upcastDiceCount,
+      state.upcastDieSize,
+      state.upcastFixedBonus,
+    ),
     flat: toNullablePositiveInteger(state.upcastFlat),
     perLevel: toNullablePositiveInteger(state.upcastPerLevel, 1),
     maxLevel: toNullablePositiveInteger(state.upcastMaxLevel),
@@ -268,6 +303,7 @@ export const buildSpellUpdatePayload = (
   rangeMeters: toNullableInteger(state.rangeMeters),
   rangeText: toNullableText(state.rangeText),
   targetType: toNullableText(state.targetType) as TargetType | null,
+  maxTargets: toNullableInteger(state.maxTargets),
   selectionType: toNullableText(state.selectionType) as SpellSelectionType | null,
   originType: toNullableText(state.originType) as SpellOriginType | null,
   targetAnchor: toNullableText(state.targetAnchor) as SpellTargetAnchor | null,
@@ -295,7 +331,14 @@ export const buildSpellUpdatePayload = (
   concentration: state.concentration,
   ritual: state.ritual,
   resolutionType: toNullableText(state.resolutionType) as ResolutionType | null,
-  damageDice: state.resolutionType === "damage" ? toNullableText(state.damageDice) : null,
+  damageDice:
+    state.resolutionType === "damage"
+      ? buildDiceExpression(
+          state.damageDiceCount,
+          state.damageDieSize,
+          state.damageFixedBonus,
+        )
+      : null,
   damageType:
     state.resolutionType === "damage"
       ? (toNullableText(state.damageType) as SpellDamageType | null)
@@ -340,6 +383,7 @@ export type SpellCatalogEditorState = {
   rangeMeters: string;
   rangeText: string;
   targetType: TargetType | "";
+  maxTargets: string;
   selectionType: SpellSelectionType | "";
   originType: SpellOriginType | "";
   targetAnchor: SpellTargetAnchor | "";
@@ -354,6 +398,9 @@ export type SpellCatalogEditorState = {
   ritual: boolean;
   resolutionType: ResolutionType | "";
   damageDice: string;
+  damageDiceCount: string;
+  damageDieSize: string;
+  damageFixedBonus: string;
   damageType: string;
   healDice: string;
   savingThrow: string;
@@ -367,6 +414,9 @@ export type SpellCatalogEditorState = {
   requiresPointEffect: boolean | null;
   upcastMode: UpcastMode | "";
   upcastDice: string;
+  upcastDiceCount: string;
+  upcastDieSize: string;
+  upcastFixedBonus: string;
   upcastFlat: string;
   upcastPerLevel: string;
   upcastMaxLevel: string;
@@ -379,6 +429,18 @@ export type SpellCatalogEditorState = {
 };
 
 export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorState => ({
+  ...(() => {
+    const damageParts = parseDiceParts(spell.damageDice);
+    const upcastParts = parseDiceParts(spell.upcast?.dice);
+    return {
+      damageDiceCount: damageParts.count,
+      damageDieSize: damageParts.size,
+      damageFixedBonus: damageParts.bonus,
+      upcastDiceCount: upcastParts.count,
+      upcastDieSize: upcastParts.size,
+      upcastFixedBonus: upcastParts.bonus,
+    };
+  })(),
   canonicalKey: spell.canonicalKey,
   nameEn: spell.nameEn,
   namePt: spell.namePt ?? "",
@@ -392,6 +454,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   rangeText: spell.rangeText ?? "",
   targetType: spell.targetType ?? "",
+  maxTargets: spell.maxTargets != null ? String(spell.maxTargets) : "",
   selectionType: spell.selectionType ?? "",
   originType: spell.originType ?? "",
   targetAnchor: spell.targetAnchor ?? "",
@@ -456,6 +519,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   rangeMeters: "",
   rangeText: "",
   targetType: "",
+  maxTargets: "",
   selectionType: "",
   originType: "",
   targetAnchor: "",
@@ -473,6 +537,9 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   ritual: false,
   resolutionType: "",
   damageDice: "",
+  damageDiceCount: "",
+  damageDieSize: "",
+  damageFixedBonus: "",
   damageType: "",
   healDice: "",
   savingThrow: "",
@@ -483,6 +550,9 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   requiresPointEffect: null,
   upcastMode: "",
   upcastDice: "",
+  upcastDiceCount: "",
+  upcastDieSize: "",
+  upcastFixedBonus: "",
   upcastFlat: "",
   upcastPerLevel: "1",
   upcastMaxLevel: "",

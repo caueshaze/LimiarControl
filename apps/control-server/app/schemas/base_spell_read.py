@@ -34,6 +34,7 @@ class BaseSpellRead(BaseModel):
     rangeMeters: Optional[int] = None
     rangeText: Optional[str] = None
     targetType: Optional[str] = None
+    maxTargets: Optional[int] = None
     selectionType: Optional[str] = None
     originType: Optional[str] = None
     targetAnchor: Optional[str] = None

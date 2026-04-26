@@ -177,6 +177,7 @@ class BaseSpell(SQLModel, table=True):
     range_meters: Optional[int] = None
     range_text: Optional[str] = None  # editorial only
     target_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    max_targets: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
     selection_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     origin_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     target_anchor: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))

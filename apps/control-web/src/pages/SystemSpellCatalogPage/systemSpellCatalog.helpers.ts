@@ -68,6 +68,36 @@ export const parseOptionalPositiveFloat = (
   return { value: parsed };
 };
 
+const parseDiceParts = (value?: string | null) => {
+  const match = value?.trim().match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?$/i);
+  if (!match) {
+    return { count: "", size: "", bonus: "" };
+  }
+  const sign = match[3] === "-" ? "-" : "";
+  return {
+    count: match[1] ?? "",
+    size: match[2] ?? "",
+    bonus: match[4] ? `${sign}${match[4]}` : "",
+  };
+};
+
+const buildDiceExpression = (count: string, size: string, bonus: string) => {
+  const parsedCount = parseOptionalInteger(count, "Quantidade de dados").value;
+  const parsedSize = parseOptionalInteger(size, "Dado").value;
+  const parsedBonus = parseOptionalInteger(bonus, "Bonus fixo").value;
+  if (!parsedCount || !parsedSize || parsedCount < 1 || parsedSize < 1) {
+    return null;
+  }
+
+  let expression = `${parsedCount}d${parsedSize}`;
+  if (parsedBonus && parsedBonus > 0) {
+    expression += `+${parsedBonus}`;
+  } else if (parsedBonus && parsedBonus < 0) {
+    expression += `${parsedBonus}`;
+  }
+  return expression;
+};
+
 export const toggleListValue = (current: string[], value: string) =>
   current.includes(value)
     ? current.filter((entry) => entry !== value)
@@ -86,6 +116,7 @@ export const createEmptyForm = (): FormState => ({
   castingTimeType: "action",
   rangeMeters: "",
   targetType: "",
+  maxTargets: "",
   selectionType: "",
   originType: "",
   targetAnchor: "",
@@ -105,10 +136,16 @@ export const createEmptyForm = (): FormState => ({
   savingThrow: "",
   saveSuccessOutcome: "",
   damageDice: "",
+  damageDiceCount: "",
+  damageDieSize: "",
+  damageFixedBonus: "",
   damageType: "",
   healDice: "",
   upcastMode: "",
   upcastDice: "",
+  upcastDiceCount: "",
+  upcastDieSize: "",
+  upcastFixedBonus: "",
   upcastFlat: "",
   upcastPerLevel: "1",
   upcastMaxLevel: "",
@@ -125,6 +162,18 @@ export const createEmptyForm = (): FormState => ({
 });
 
 export const formFromSpell = (spell: BaseSpell): FormState => ({
+  ...(() => {
+    const damageParts = parseDiceParts(spell.damageDice);
+    const upcastParts = parseDiceParts(spell.upcast?.dice);
+    return {
+      damageDiceCount: damageParts.count,
+      damageDieSize: damageParts.size,
+      damageFixedBonus: damageParts.bonus,
+      upcastDiceCount: upcastParts.count,
+      upcastDieSize: upcastParts.size,
+      upcastFixedBonus: upcastParts.bonus,
+    };
+  })(),
   system: spell.system,
   canonicalKey: spell.canonicalKey,
   nameEn: spell.nameEn,
@@ -137,6 +186,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   castingTimeType: spell.castingTimeType ?? "",
   rangeMeters: spell.rangeMeters != null ? String(spell.rangeMeters) : "",
   targetType: spell.targetType ?? "",
+  maxTargets: spell.maxTargets != null ? String(spell.maxTargets) : "",
   selectionType: spell.selectionType ?? "",
   originType: spell.originType ?? "",
   targetAnchor: spell.targetAnchor ?? "",
@@ -202,6 +252,11 @@ export const buildPayload = (
   if (rangeMeters.value !== undefined && rangeMeters.value < 0)
     return { error: "Alcance (m) não pode ser negativo." };
 
+  const maxTargets = parseOptionalInteger(form.maxTargets, "Max targets");
+  if (maxTargets.error) return { error: maxTargets.error };
+  if (maxTargets.value !== undefined && maxTargets.value < 1)
+    return { error: "Max targets deve ser pelo menos 1." };
+
   const radiusMeters = parseOptionalPositiveFloat(form.radiusMeters, "Raio (m)");
   if (radiusMeters.error) return { error: radiusMeters.error };
   if (radiusMeters.value !== undefined && radiusMeters.value <= 0)
@@ -232,6 +287,15 @@ export const buildPayload = (
     form.resolutionType === "debuff";
   const showSaveSuccessOutcome = showDamage && Boolean(form.savingThrow);
 
+  if (
+    showDamage &&
+    !buildDiceExpression(
+      form.damageDiceCount,
+      form.damageDieSize,
+      form.damageFixedBonus,
+    )
+  )
+    return { error: "Dados de dano são obrigatórios para resolutionType damage." };
   if (showHealDice && !form.healDice.trim())
     return { error: "Heal dice é obrigatório para resolutionType heal." };
   if (form.upcastMode === "extra_damage_dice" && !showDamage)
@@ -240,7 +304,11 @@ export const buildPayload = (
     return { error: "Upcast extra_heal_dice exige resolutionType heal." };
   if (
     (form.upcastMode === "extra_damage_dice" || form.upcastMode === "extra_heal_dice" || form.upcastMode === "flat_bonus")
-    && !normalizeOptionalText(form.upcastDice)
+    && !buildDiceExpression(
+      form.upcastDiceCount,
+      form.upcastDieSize,
+      form.upcastFixedBonus,
+    )
     && upcastFlat.value == null
   ) {
     return { error: "Upcast de dado/bônus exige dice ou flat." };
@@ -271,6 +339,7 @@ export const buildPayload = (
       rangeMeters: rangeMeters.value ?? null,
       rangeText: deriveRangeText(form.targetType, form.rangeMeters),
       targetType: form.targetType || null,
+      maxTargets: maxTargets.value ?? null,
       selectionType: form.selectionType || null,
       originType: form.originType || null,
       targetAnchor: form.targetAnchor || null,
@@ -300,13 +369,23 @@ export const buildPayload = (
       resolutionType: form.resolutionType || null,
       savingThrow: showSavingThrow ? form.savingThrow || null : null,
       saveSuccessOutcome: showSaveSuccessOutcome ? form.saveSuccessOutcome || null : null,
-      damageDice: showDamage ? normalizeOptionalText(form.damageDice) ?? null : null,
+      damageDice: showDamage
+        ? buildDiceExpression(
+            form.damageDiceCount,
+            form.damageDieSize,
+            form.damageFixedBonus,
+          )
+        : null,
       damageType: showDamage ? form.damageType || null : null,
       healDice: showHealDice ? normalizeOptionalText(form.healDice) ?? null : null,
       upcast: form.upcastMode
         ? {
             mode: form.upcastMode,
-            dice: normalizeOptionalText(form.upcastDice) ?? null,
+            dice: buildDiceExpression(
+              form.upcastDiceCount,
+              form.upcastDieSize,
+              form.upcastFixedBonus,
+            ),
             flat: upcastFlat.value ?? null,
             perLevel: upcastPerLevel.value ?? 1,
             maxLevel: upcastMaxLevel.value ?? null,

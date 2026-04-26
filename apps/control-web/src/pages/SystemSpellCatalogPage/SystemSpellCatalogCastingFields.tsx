@@ -110,6 +110,23 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
             ))}
           </select>
         </label>
+
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Max targets
+          </span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={form.maxTargets}
+            onChange={(event) =>
+              setForm((c) => ({ ...c, maxTargets: event.target.value }))
+            }
+            className={`${inputClassName} mt-2`}
+            placeholder="1"
+          />
+        </label>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

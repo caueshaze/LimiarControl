@@ -60,6 +60,7 @@ def make_base_spell(**overrides):
         "range_meters": 45,
         "range_text": "150 ft",
         "target_type": TargetType.RANGED.value,
+        "max_targets": 1,
         "area_shape": AreaShape.SPHERE.value,
         "duration": "Instantaneous",
         "components_json": ["V", "S", "M"],
@@ -414,6 +415,7 @@ class BaseSpellSerializerTests(unittest.TestCase):
         self.assertEqual(read.damageDice, "8d6")
         self.assertEqual(read.damageType, "Fire")
         self.assertEqual(read.targetType, "ranged")
+        self.assertEqual(read.maxTargets, 1)
         self.assertEqual(read.areaShape, "sphere")
         self.assertFalse(read.requiresTargetSight)
         self.assertFalse(read.requiresTargetEffect)
@@ -450,6 +452,7 @@ class BaseSpellSerializerTests(unittest.TestCase):
         self.assertFalse(entry.requiresTargetEffect)
         self.assertFalse(entry.requiresPointSight)
         self.assertTrue(entry.requiresPointEffect)
+        self.assertEqual(entry.maxTargets, 1)
         self.assertIsNotNone(entry.upcast)
         self.assertEqual(entry.upcast.mode, "extra_damage_dice")
 

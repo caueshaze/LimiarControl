@@ -7,7 +7,9 @@ import {
 } from "../../../shared/i18n/domainLabels";
 import { SpellCatalogField } from "./SpellCatalogEditorControls";
 import {
+  SPELL_DICE_COUNT_OPTIONS,
   SPELL_DAMAGE_TYPE_OPTIONS,
+  SPELL_DIE_SIZE_OPTIONS,
   SPELL_RESOLUTION_TYPE_OPTIONS,
   SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS,
   SPELL_SAVING_THROW_OPTIONS,
@@ -100,15 +102,58 @@ export const SpellCatalogResolutionFields = ({
     </div>
 
     {showDamageFields ? (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SpellCatalogField label={t("catalog.spells.form.damageDice")}>
-          <input
-            value={state.damageDice}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <SpellCatalogField
+          label={t("catalog.spells.form.damageDiceCount")}
+          help={t("catalog.spells.form.damageDiceCountHelp")}
+        >
+          <select
+            value={state.damageDiceCount}
             onChange={(event) =>
-              setState((current) => ({ ...current, damageDice: event.target.value }))
+              setState((current) => ({ ...current, damageDiceCount: event.target.value }))
             }
             className={fieldClassName}
-            placeholder="8d6"
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_DICE_COUNT_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField
+          label={t("catalog.spells.form.damageDieSize")}
+          help={t("catalog.spells.form.damageDieSizeHelp")}
+        >
+          <select
+            value={state.damageDieSize}
+            onChange={(event) =>
+              setState((current) => ({ ...current, damageDieSize: event.target.value }))
+            }
+            className={fieldClassName}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {SPELL_DIE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                d{size}
+              </option>
+            ))}
+          </select>
+        </SpellCatalogField>
+        <SpellCatalogField
+          label={t("catalog.spells.form.damageFixedBonus")}
+          help={t("catalog.spells.form.damageFixedBonusHelp")}
+        >
+          <input
+            type="number"
+            step={1}
+            value={state.damageFixedBonus}
+            onChange={(event) =>
+              setState((current) => ({ ...current, damageFixedBonus: event.target.value }))
+            }
+            className={fieldClassName}
+            placeholder="0"
           />
         </SpellCatalogField>
         <SpellCatalogField label={t("catalog.spells.form.damageType")}>

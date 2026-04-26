@@ -40,6 +40,7 @@ export type BaseSpell = {
   description: string;
   resolutionType?: ResolutionType | null;
   targetType?: TargetType | null;
+  maxTargets?: number | null;
   selectionType?: SpellSelectionType | null;
   originType?: SpellOriginType | null;
   targetAnchor?: SpellTargetAnchor | null;
@@ -112,6 +113,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   description: api.descriptionEn,
   resolutionType: api.resolutionType ?? null,
   targetType: api.targetType ?? null,
+  maxTargets: api.maxTargets ?? null,
   selectionType: api.selectionType ?? null,
   originType: api.originType ?? null,
   targetAnchor: api.targetAnchor ?? null,

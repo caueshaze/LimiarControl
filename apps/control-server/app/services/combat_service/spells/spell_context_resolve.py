@@ -230,15 +230,21 @@ class SpellContextResolveMixin:
         effect_kind: str | None,
         slot_level: int | None,
         spell_level: int,
+        caster_level: int | None,
     ) -> dict:
         structured_upcast = cls._get_structured_spell_upcast(
             getattr(catalog_spell, "upcast_json", None)
+        )
+        scaled_effect_dice = cls._apply_character_level_cantrip_scaling(
+            spell_level=spell_level,
+            caster_level=caster_level,
+            effect_dice=effect_dice,
         )
         upcast_result = cls._apply_structured_spell_upcast(
             spell_level=spell_level,
             slot_level=slot_level,
             effect_kind=effect_kind,
-            effect_dice=effect_dice,
+            effect_dice=scaled_effect_dice,
             effect_bonus=effect_bonus,
             upcast=structured_upcast,
         )
@@ -260,11 +266,22 @@ class SpellContextResolveMixin:
         resolved_upcast: dict,
     ) -> dict:
         upcast_result = resolved_upcast["upcast_result"]
+        base_max_targets = getattr(catalog_spell, "max_targets", None)
+        upcast_added_instances = cls._safe_int(
+            upcast_result.get("upcast_added_instances"), 0
+        )
+        effective_max_targets = (
+            base_max_targets + upcast_added_instances
+            if isinstance(base_max_targets, int)
+            else None
+        )
         return {
             "spell_name": source_context["spell_name"],
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
             "spell_mode": resolved_mode["spell_mode"],
             "target_type": getattr(catalog_spell, "target_type", None),
+            "max_targets": effective_max_targets,
+            "base_max_targets": base_max_targets,
             "selection_type": resolved_mode["targeting_semantics"].selection_type,
             "origin_type": resolved_mode["targeting_semantics"].origin_type,
             "target_anchor": resolved_mode["targeting_semantics"].target_anchor,
@@ -298,6 +315,8 @@ class SpellContextResolveMixin:
             "upcast": resolved_upcast["structured_upcast"],
             "upcast_applied": bool(upcast_result.get("upcast_applied")),
             "upcast_levels": cls._safe_int(upcast_result.get("upcast_levels"), 0),
+            "upcast_added_instances": upcast_added_instances,
+            "upcast_instance_effect_dice": upcast_result.get("upcast_instance_effect_dice"),
             "elemental_affinity_eligible": bool(resolved_upcast["elemental_affinity"].get("eligible")),
             "elemental_affinity_damage_type": resolved_upcast["elemental_affinity"].get("damageType"),
             "elemental_affinity_bonus": resolved_upcast["elemental_affinity"].get("bonus"),
@@ -355,6 +374,7 @@ class SpellContextResolveMixin:
             resolved_math["effect_kind"],
             resolved_mode["slot_level"],
             catalog_context["spell_level"],
+            cls._safe_int(attacker_data.get("level"), 1),
         )
         return cls._build_spell_context_response(
             catalog_spell=catalog_context["catalog_spell"],

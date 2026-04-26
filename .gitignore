@@ -56,3 +56,4 @@ coverage/
 htmlcov/
 historico_commits.txt
 CLAUDE.md
+.codex

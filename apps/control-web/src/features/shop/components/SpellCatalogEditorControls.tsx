@@ -1,15 +1,29 @@
 import type { ReactNode } from "react";
 
+export const SpellCatalogFieldHelp = ({ text }: { text: string }) => (
+  <span className="group relative inline-flex" tabIndex={0} aria-label={text}>
+    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-500/60 text-[10px] font-bold leading-none text-slate-400 transition group-hover:border-violet-300/70 group-hover:text-violet-100 group-focus-visible:border-violet-300/70 group-focus-visible:text-violet-100">
+      i
+    </span>
+    <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-[11px] normal-case leading-5 text-slate-100 shadow-xl group-hover:block group-focus-visible:block">
+      {text}
+    </span>
+  </span>
+);
+
 export const SpellCatalogField = ({
+  help,
   label,
   children,
 }: {
+  help?: string;
   label: string;
   children: ReactNode;
 }) => (
   <label className="space-y-2">
-    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-      {label}
+    <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+      <span>{label}</span>
+      {help ? <SpellCatalogFieldHelp text={help} /> : null}
     </span>
     {children}
   </label>

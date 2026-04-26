@@ -216,6 +216,7 @@ export type BaseSpell = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetType?: TargetType | null;
+  maxTargets?: number | null;
   selectionType?: SpellSelectionType | null;
   originType?: SpellOriginType | null;
   targetAnchor?: SpellTargetAnchor | null;
@@ -294,6 +295,7 @@ export type BaseSpellWritePayload = {
   rangeMeters?: number | null;
   rangeText?: string | null;
   targetType?: TargetType | null;
+  maxTargets?: number | null;
   selectionType?: SpellSelectionType | null;
   originType?: SpellOriginType | null;
   targetAnchor?: SpellTargetAnchor | null;
