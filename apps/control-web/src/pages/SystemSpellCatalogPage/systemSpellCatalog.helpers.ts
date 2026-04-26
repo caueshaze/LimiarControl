@@ -155,6 +155,19 @@ export const createEmptyForm = (): FormState => ({
   upcastUnlockKey: "",
   upcastUnlockSummary: "",
   upcastUnlockEditorial: "",
+  cantripScalingMode: "character_level",
+  cantripLevel1DiceCount: "1",
+  cantripLevel1DieSize: "6",
+  cantripLevel1FixedBonus: "",
+  cantripLevel5DiceCount: "2",
+  cantripLevel5DieSize: "6",
+  cantripLevel5FixedBonus: "",
+  cantripLevel11DiceCount: "3",
+  cantripLevel11DieSize: "6",
+  cantripLevel11FixedBonus: "",
+  cantripLevel17DiceCount: "4",
+  cantripLevel17DieSize: "6",
+  cantripLevel17FixedBonus: "",
   source: SpellSourceValues.ADMIN_PANEL,
   sourceRef: "",
   isSrd: false,
@@ -165,6 +178,13 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   ...(() => {
     const damageParts = parseDiceParts(spell.damageDice);
     const upcastParts = parseDiceParts(spell.upcast?.dice);
+    const thresholdDice = (level: number) =>
+      spell.cantripScaling?.thresholds.find((entry) => entry.characterLevel === level)
+        ?.damage.dice;
+    const cantripLevel1Parts = parseDiceParts(thresholdDice(1));
+    const cantripLevel5Parts = parseDiceParts(thresholdDice(5));
+    const cantripLevel11Parts = parseDiceParts(thresholdDice(11));
+    const cantripLevel17Parts = parseDiceParts(thresholdDice(17));
     return {
       damageDiceCount: damageParts.count,
       damageDieSize: damageParts.size,
@@ -172,6 +192,18 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
       upcastDiceCount: upcastParts.count,
       upcastDieSize: upcastParts.size,
       upcastFixedBonus: upcastParts.bonus,
+      cantripLevel1DiceCount: cantripLevel1Parts.count,
+      cantripLevel1DieSize: cantripLevel1Parts.size,
+      cantripLevel1FixedBonus: cantripLevel1Parts.bonus,
+      cantripLevel5DiceCount: cantripLevel5Parts.count,
+      cantripLevel5DieSize: cantripLevel5Parts.size,
+      cantripLevel5FixedBonus: cantripLevel5Parts.bonus,
+      cantripLevel11DiceCount: cantripLevel11Parts.count,
+      cantripLevel11DieSize: cantripLevel11Parts.size,
+      cantripLevel11FixedBonus: cantripLevel11Parts.bonus,
+      cantripLevel17DiceCount: cantripLevel17Parts.count,
+      cantripLevel17DieSize: cantripLevel17Parts.size,
+      cantripLevel17FixedBonus: cantripLevel17Parts.bonus,
     };
   })(),
   system: spell.system,
@@ -228,6 +260,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   upcastUnlockKey: spell.upcast?.unlockKey ?? "",
   upcastUnlockSummary: spell.upcast?.unlockSummary ?? "",
   upcastUnlockEditorial: spell.upcast?.unlockEditorial ?? "",
+  cantripScalingMode: spell.cantripScaling?.mode ?? "",
   source: spell.source ?? SpellSourceValues.ADMIN_PANEL,
   sourceRef: spell.sourceRef ?? "",
   isSrd: spell.isSrd,
@@ -298,11 +331,14 @@ export const buildPayload = (
     return { error: "Dados de dano são obrigatórios para resolutionType damage." };
   if (showHealDice && !form.healDice.trim())
     return { error: "Heal dice é obrigatório para resolutionType heal." };
-  if (form.upcastMode === "extra_damage_dice" && !showDamage)
+  const shouldValidateUpcast = form.level > 0 && Boolean(form.upcastMode);
+  if (shouldValidateUpcast && form.upcastMode === "extra_damage_dice" && !showDamage)
     return { error: "Upcast extra_damage_dice exige resolutionType damage." };
-  if (form.upcastMode === "extra_heal_dice" && !showHealDice)
+  if (shouldValidateUpcast && form.upcastMode === "extra_heal_dice" && !showHealDice)
     return { error: "Upcast extra_heal_dice exige resolutionType heal." };
   if (
+    shouldValidateUpcast
+    &&
     (form.upcastMode === "extra_damage_dice" || form.upcastMode === "extra_heal_dice" || form.upcastMode === "flat_bonus")
     && !buildDiceExpression(
       form.upcastDiceCount,
@@ -313,13 +349,13 @@ export const buildPayload = (
   ) {
     return { error: "Upcast de dado/bônus exige dice ou flat." };
   }
-  if (form.upcastMode === "flat_bonus" && !form.upcastFlat.trim())
+  if (shouldValidateUpcast && form.upcastMode === "flat_bonus" && !form.upcastFlat.trim())
     return { error: "Upcast flat_bonus exige valor flat." };
-  if (form.upcastMode === "effect_scaling") {
+  if (shouldValidateUpcast && form.upcastMode === "effect_scaling") {
     if (!form.upcastScalingKey.trim()) return { error: "effect_scaling exige scaling key." };
     if (!form.upcastScalingSummary.trim()) return { error: "effect_scaling exige scaling summary." };
   }
-  if (form.upcastMode === "extra_effect") {
+  if (shouldValidateUpcast && form.upcastMode === "extra_effect") {
     if (!form.upcastUnlockKey.trim()) return { error: "extra_effect exige unlock key." };
     if (!form.upcastUnlockSummary.trim()) return { error: "extra_effect exige unlock summary." };
   }
@@ -378,7 +414,7 @@ export const buildPayload = (
         : null,
       damageType: showDamage ? form.damageType || null : null,
       healDice: showHealDice ? normalizeOptionalText(form.healDice) ?? null : null,
-      upcast: form.upcastMode
+      upcast: form.level > 0 && form.upcastMode
         ? {
             mode: form.upcastMode,
             dice: buildDiceExpression(
@@ -401,6 +437,54 @@ export const buildPayload = (
             } : {}),
           }
         : null,
+      cantripScaling:
+        form.level === 0 && form.cantripScalingMode === "character_level"
+          ? {
+              mode: "character_level",
+              thresholds: [
+                {
+                  characterLevel: 1,
+                  damage: {
+                    dice: buildDiceExpression(
+                      form.cantripLevel1DiceCount,
+                      form.cantripLevel1DieSize,
+                      form.cantripLevel1FixedBonus,
+                    ),
+                  },
+                },
+                {
+                  characterLevel: 5,
+                  damage: {
+                    dice: buildDiceExpression(
+                      form.cantripLevel5DiceCount,
+                      form.cantripLevel5DieSize,
+                      form.cantripLevel5FixedBonus,
+                    ),
+                  },
+                },
+                {
+                  characterLevel: 11,
+                  damage: {
+                    dice: buildDiceExpression(
+                      form.cantripLevel11DiceCount,
+                      form.cantripLevel11DieSize,
+                      form.cantripLevel11FixedBonus,
+                    ),
+                  },
+                },
+                {
+                  characterLevel: 17,
+                  damage: {
+                    dice: buildDiceExpression(
+                      form.cantripLevel17DiceCount,
+                      form.cantripLevel17DieSize,
+                      form.cantripLevel17FixedBonus,
+                    ),
+                  },
+                },
+              ].filter((entry) => entry.damage.dice),
+            }
+          : null,
       source: form.source,
       sourceRef: normalizeOptionalText(form.sourceRef) ?? null,
       isSrd: form.isSrd,

@@ -102,7 +102,7 @@ describe("systemSpellCatalog upcast helpers", () => {
       damageType: "Force",
       healDice: null,
       upcast: {
-        mode: "additional_targets",
+        mode: "additional_effect_instances",
         dice: "1d4+1",
         perLevel: 1,
         maxLevel: 9,
@@ -116,7 +116,7 @@ describe("systemSpellCatalog upcast helpers", () => {
 
     const form = formFromSpell(spell);
 
-    expect(form.upcastMode).toBe("additional_targets");
+    expect(form.upcastMode).toBe("additional_effect_instances");
     expect(form.upcastDice).toBe("1d4+1");
     expect(form.upcastPerLevel).toBe("1");
     expect(form.upcastMaxLevel).toBe("9");
@@ -130,5 +130,33 @@ describe("systemSpellCatalog upcast helpers", () => {
     expect(form.attackType).toBe("none");
     expect(form.rangeKind).toBe("distance");
     expect(form.effectTiming).toBe("immediate");
+  });
+
+  it("builds cantrip scaling separately from upcast", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "acid_splash";
+    form.nameEn = "Acid Splash";
+    form.descriptionEn = "A bubble of acid.";
+    form.level = 0;
+    form.school = "conjuration";
+    form.resolutionType = "damage";
+    form.damageDiceCount = "1";
+    form.damageDieSize = "6";
+    form.damageType = "Acid";
+    form.upcastMode = "extra_damage_dice";
+
+    const result = buildPayload(form, true);
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload?.upcast).toBeNull();
+    expect(result.payload?.cantripScaling).toEqual({
+      mode: "character_level",
+      thresholds: [
+        { characterLevel: 1, damage: { dice: "1d6" } },
+        { characterLevel: 5, damage: { dice: "2d6" } },
+        { characterLevel: 11, damage: { dice: "3d6" } },
+        { characterLevel: 17, damage: { dice: "4d6" } },
+      ],
+    });
   });
 });

@@ -160,6 +160,10 @@ class CampaignSpell(SQLModel, table=True):
     )
     upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     upcast_value: Optional[str] = None
+    cantrip_scaling_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     # --- Metadata ---
     source: Optional[str] = None

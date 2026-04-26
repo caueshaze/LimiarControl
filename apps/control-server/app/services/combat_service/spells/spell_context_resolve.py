@@ -234,11 +234,15 @@ class SpellContextResolveMixin:
     ) -> dict:
         structured_upcast = cls._get_structured_spell_upcast(
             getattr(catalog_spell, "upcast_json", None)
+        ) if spell_level > 0 else None
+        structured_cantrip_scaling = cls._get_structured_cantrip_scaling(
+            getattr(catalog_spell, "cantrip_scaling_json", None)
         )
         scaled_effect_dice = cls._apply_character_level_cantrip_scaling(
             spell_level=spell_level,
             caster_level=caster_level,
             effect_dice=effect_dice,
+            cantrip_scaling=structured_cantrip_scaling,
         )
         upcast_result = cls._apply_structured_spell_upcast(
             spell_level=spell_level,
@@ -251,6 +255,7 @@ class SpellContextResolveMixin:
         elemental_affinity = resolve_elemental_affinity(attacker_data, damage_type)
         return {
             "elemental_affinity": elemental_affinity,
+            "cantrip_scaling": structured_cantrip_scaling,
             "structured_upcast": structured_upcast,
             "upcast_result": upcast_result,
         }
@@ -313,6 +318,7 @@ class SpellContextResolveMixin:
             "slot_level": resolved_mode["slot_level"],
             "action_cost": resolved_mode["action_cost"],
             "upcast": resolved_upcast["structured_upcast"],
+            "cantrip_scaling": resolved_upcast["cantrip_scaling"],
             "upcast_applied": bool(upcast_result.get("upcast_applied")),
             "upcast_levels": cls._safe_int(upcast_result.get("upcast_levels"), 0),
             "upcast_added_instances": upcast_added_instances,

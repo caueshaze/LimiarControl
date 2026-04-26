@@ -30,6 +30,35 @@
       "saveSuccessOutcome": "none",
       "damageDice": "1d6",
       "damageType": "Acid",
+      "cantripScaling": {
+        "mode": "character_level",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d6"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d6"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d6"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d6"
+            }
+          }
+        ]
+      },
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
@@ -386,7 +415,7 @@
       "damageDice": "3d4+3",
       "damageType": "Force",
       "upcast": {
-        "mode": "additional_targets",
+        "mode": "additional_effect_instances",
         "dice": "1d4+1",
         "perLevel": 1
       },

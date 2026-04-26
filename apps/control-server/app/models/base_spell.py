@@ -112,6 +112,7 @@ class UpcastMode(str, Enum):
     EXTRA_DAMAGE_DICE = "extra_damage_dice"
     EXTRA_HEAL_DICE = "extra_heal_dice"
     FLAT_BONUS = "flat_bonus"
+    ADDITIONAL_EFFECT_INSTANCES = "additional_effect_instances"
     ADDITIONAL_TARGETS = "additional_targets"
     DURATION_SCALING = "duration_scaling"
     EFFECT_SCALING = "effect_scaling"
@@ -256,6 +257,10 @@ class BaseSpell(SQLModel, table=True):
     )
     upcast_mode: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     upcast_value: Optional[str] = None  # e.g. "1d8" for add_dice
+    cantrip_scaling_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     # --- Metadata ---
     source: Optional[str] = None

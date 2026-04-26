@@ -22,6 +22,7 @@ export type {
   BaseSpellAlias,
   BaseSpellFilters,
   BaseSpellWritePayload,
+  SpellCantripScaling,
   SpellUpcast,
   SpellAttackType as SpellAttackTypeValue,
   SpellEffectTiming as SpellEffectTimingValue,

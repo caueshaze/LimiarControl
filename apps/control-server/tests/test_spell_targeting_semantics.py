@@ -270,9 +270,28 @@ class SpellCantripScalingTests(unittest.TestCase):
                         spell_level=0,
                         caster_level=caster_level,
                         effect_dice="1d6",
+                        cantrip_scaling={
+                            "mode": "character_level",
+                            "thresholds": [
+                                {"characterLevel": 1, "damage": {"dice": "1d6"}},
+                                {"characterLevel": 5, "damage": {"dice": "2d6"}},
+                                {"characterLevel": 11, "damage": {"dice": "3d6"}},
+                                {"characterLevel": 17, "damage": {"dice": "4d6"}},
+                            ],
+                        },
                     ),
                     expected,
                 )
+
+    def test_cantrip_scaling_requires_explicit_catalog_config(self) -> None:
+        self.assertEqual(
+            CombatService._apply_character_level_cantrip_scaling(
+                spell_level=0,
+                caster_level=17,
+                effect_dice="1d6",
+            ),
+            "1d6",
+        )
 
     def test_character_level_scaling_does_not_apply_to_leveled_spells(self) -> None:
         self.assertEqual(
@@ -284,14 +303,14 @@ class SpellCantripScalingTests(unittest.TestCase):
             "1d6",
         )
 
-    def test_structured_additional_targets_upcast_adds_configured_dice(self) -> None:
+    def test_structured_additional_effect_instances_upcast_adds_configured_dice(self) -> None:
         result = CombatService._apply_structured_spell_upcast(
             spell_level=1,
             slot_level=3,
             effect_kind="damage",
             effect_dice="3d4+3",
             effect_bonus=0,
-            upcast={"mode": "additional_targets", "dice": "1d4+1", "perLevel": 1},
+            upcast={"mode": "additional_effect_instances", "dice": "1d4+1", "perLevel": 1},
         )
 
         self.assertEqual(result["effect_dice"], "5d4+5")
@@ -333,7 +352,20 @@ class SpellTargetingSeedTests(unittest.TestCase):
         acid_splash = spells["acid_splash"]
         self.assertEqual(acid_splash["maxTargets"], 2)
         self.assertNotIn("areaShape", acid_splash)
+        self.assertNotIn("upcast", acid_splash)
+        self.assertEqual(
+            [
+                threshold["damage"]["dice"]
+                for threshold in acid_splash["cantripScaling"]["thresholds"]
+            ],
+            ["1d6", "2d6", "3d6", "4d6"],
+        )
 
         self.assertEqual(spells["magic_missile"]["maxTargets"], 3)
+        self.assertEqual(
+            spells["magic_missile"]["upcast"]["mode"],
+            "additional_effect_instances",
+        )
+        self.assertNotIn("cantripScaling", spells["magic_missile"])
 
         self.assertEqual(spells["sacred_flame"]["coverAppliesToSave"], "none")

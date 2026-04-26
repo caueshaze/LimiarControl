@@ -165,6 +165,8 @@ export const catalogEnUSDictionary = {
   "catalog.spells.form.upcastPerLevelHelp": "How many increments are added per slot level above the spell level. Usually 1.",
   "catalog.spells.form.upcastMaxLevel": "Max slot level",
   "catalog.spells.form.upcastMaxLevelHelp": "Caps the slot level used for scaling. Empty means no cap.",
+  "catalog.spells.form.cantripScalingMode": "Scaling mode",
+  "catalog.spells.form.cantripScalingThresholds": "Character level thresholds",
   "catalog.spells.form.upcastScalingKey": "Scaling key",
   "catalog.spells.form.upcastScalingSummary": "Scaling summary",
   "catalog.spells.form.upcastScalingEditorial": "Scaling editorial note",

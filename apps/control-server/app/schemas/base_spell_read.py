@@ -8,6 +8,7 @@ from app.models.base_spell import SpellSchool
 from app.models.campaign import SystemType
 
 from .base_spell_upcast import SpellUpcastConfig
+from .base_spell_cantrip_scaling import SpellCantripScalingConfig
 
 
 class BaseSpellAliasRead(BaseModel):
@@ -68,6 +69,7 @@ class BaseSpellRead(BaseModel):
     upcast: Optional[SpellUpcastConfig] = None
     upcastMode: Optional[str] = None
     upcastValue: Optional[str] = None
+    cantripScaling: Optional[SpellCantripScalingConfig] = None
 
     automationMode: Optional[str] = None
     defaultSpellMode: Optional[str] = None

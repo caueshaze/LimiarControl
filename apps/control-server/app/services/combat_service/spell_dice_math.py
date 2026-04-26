@@ -50,6 +50,31 @@ class CombatSpellDiceMathMixin:
         return normalized
 
     @classmethod
+    def _get_structured_cantrip_scaling(cls, raw_scaling: object) -> dict | None:
+        if not isinstance(raw_scaling, dict):
+            return None
+        if raw_scaling.get("mode") != "character_level":
+            return None
+        thresholds = raw_scaling.get("thresholds")
+        if not isinstance(thresholds, list):
+            return None
+        normalized_thresholds: list[dict[str, object]] = []
+        for threshold in thresholds:
+            if not isinstance(threshold, dict):
+                continue
+            character_level = threshold.get("characterLevel")
+            damage = threshold.get("damage")
+            dice = damage.get("dice") if isinstance(damage, dict) else None
+            if isinstance(character_level, int) and isinstance(dice, str) and dice.strip():
+                normalized_thresholds.append(
+                    {"characterLevel": character_level, "damage": {"dice": dice.strip()}}
+                )
+        if not normalized_thresholds:
+            return None
+        normalized_thresholds.sort(key=lambda entry: int(entry["characterLevel"]))
+        return {"mode": "character_level", "thresholds": normalized_thresholds}
+
+    @classmethod
     def _build_dice_expression(
         cls, count: int, sides: int, modifier: int
     ) -> str | None:
@@ -183,6 +208,7 @@ class CombatSpellDiceMathMixin:
         if mode in {
             "extra_damage_dice",
             "extra_heal_dice",
+            "additional_effect_instances",
             "additional_targets",
             "add_damage",
             "add_heal",
@@ -196,7 +222,11 @@ class CombatSpellDiceMathMixin:
                 )
             if flat:
                 next_effect_bonus += flat * repeats
-            if mode in {"additional_targets", "increase_targets"}:
+            if mode in {
+                "additional_effect_instances",
+                "additional_targets",
+                "increase_targets",
+            }:
                 added_instances = repeats
                 instance_effect_dice = dice
 
@@ -217,21 +247,30 @@ class CombatSpellDiceMathMixin:
         spell_level: int,
         caster_level: int | None,
         effect_dice: str | None,
+        cantrip_scaling: dict | None = None,
     ) -> str | None:
-        if spell_level != 0 or caster_level is None or caster_level < 5:
+        if spell_level != 0 or caster_level is None:
             return effect_dice
-        count, sides, modifier = _parse_dice(effect_dice or "")
-        if count <= 0 or sides <= 0:
-            return effect_dice
+        if isinstance(cantrip_scaling, dict):
+            selected_dice = effect_dice
+            for threshold in cantrip_scaling.get("thresholds", []):
+                if not isinstance(threshold, dict):
+                    continue
+                threshold_level = threshold.get("characterLevel")
+                damage = threshold.get("damage")
+                dice = damage.get("dice") if isinstance(damage, dict) else None
+                if (
+                    isinstance(threshold_level, int)
+                    and caster_level >= threshold_level
+                    and isinstance(dice, str)
+                    and dice.strip()
+                ):
+                    selected_dice = dice.strip()
+            return selected_dice
 
-        multiplier = 1
-        if caster_level >= 17:
-            multiplier = 4
-        elif caster_level >= 11:
-            multiplier = 3
-        elif caster_level >= 5:
-            multiplier = 2
-        return cls._build_dice_expression(count * multiplier, sides, modifier)
+        if cantrip_scaling is None:
+            return effect_dice
+        return effect_dice
 
     @classmethod
     def _normalize_save_success_outcome(cls, value: object) -> str | None:
