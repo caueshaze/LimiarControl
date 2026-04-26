@@ -262,9 +262,13 @@ export type CombatResolvedSpellContext = {
   target_type?: string | null;
   selection_type?: string | null;
   area_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
+  area_size_meters?: number | null;
+  range_meters?: number | null;
   resolution_type: CombatSpellMode;
   requires_attack_roll: boolean;
   requires_saving_throw: boolean;
+  save_ability?: string | null;
+  damage_type?: string | null;
   damage_preview?: string | null;
   effect_instance_count: number;
   effect_instance_dice?: string | null;

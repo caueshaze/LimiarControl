@@ -171,6 +171,12 @@ class ResolveSpellContextTests(unittest.TestCase):
         self.assertEqual(result["effect_instance_count"], 3)
         self.assertEqual(result["effect_instance_dice"], "1d4+1")
         self.assertEqual(result["damage_preview"], "3d4+3")
+        self.assertEqual(result["target_type"], "ranged")
+        self.assertIsNone(result["area_shape"])
+        self.assertIsNone(result["area_size_meters"])
+        self.assertEqual(result["range_meters"], 36)
+        self.assertEqual(result["damage_type"], "force")
+        self.assertIsNone(result["save_ability"])
 
     def test_resolves_magic_missile_slot_3_effect_instance_count_5(self):
         result = self._resolve(
@@ -252,6 +258,51 @@ class ResolveSpellContextTests(unittest.TestCase):
         self.assertEqual(result["effect_instance_count"], 1)
         self.assertIsNone(result["effect_instance_dice"])
         self.assertEqual(result["damage_preview"], "2d6")
+        self.assertEqual(result["save_ability"], "dexterity")
+        self.assertEqual(result["damage_type"], "acid")
+
+    def test_resolves_fireball_exposes_area_shape_and_area_size_meters(self):
+        self.attacker_state.state_json["spellcasting"]["spells"].append(
+            {
+                "name": "Fireball",
+                "canonicalKey": "fireball",
+                "level": 3,
+                "prepared": True,
+            }
+        )
+
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="fireball",
+                spell_mode="saving_throw",
+                slot_level=3,
+            ),
+            _catalog_spell(
+                canonical_key="fireball",
+                name_en="Fireball",
+                name_pt="Bola de Fogo",
+                level=3,
+                damage_dice="8d6",
+                damage_type="Fire",
+                saving_throw="DEX",
+                save_success_outcome="half_damage",
+                upcast_json=None,
+                cantrip_scaling_json=None,
+                target_type="ranged",
+                selection_type="point",
+                area_shape="sphere",
+                range_meters=45,
+                radius_meters=6,
+                max_targets=None,
+            ),
+        )
+
+        self.assertEqual(result["area_shape"], "sphere")
+        self.assertEqual(result["area_size_meters"], 6)
+        self.assertEqual(result["range_meters"], 45)
+        self.assertEqual(result["save_ability"], "dexterity")
+        self.assertEqual(result["damage_type"], "fire")
 
     def test_resolve_spell_context_does_not_alter_combat_state(self):
         self.state.participants[0]["pending_attack"] = {"id": "pending-1"}

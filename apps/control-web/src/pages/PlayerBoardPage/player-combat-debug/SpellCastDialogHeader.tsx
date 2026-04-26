@@ -3,6 +3,7 @@ import { RangeStatusBadge } from "../../../features/combat-ui/components/RangeSt
 import type { TargetingPreviewResult } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import type { CombatSpellMode } from "../../../shared/api/combatRepo";
 import type { GridCell } from "./areaTargetingUi";
+import type { SpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 
 type Props = {
@@ -16,16 +17,50 @@ type Props = {
   loading: boolean;
   onConcentrationManualRollChange: (value: string) => void;
   onConcentrationRollModeChange: (value: "system" | "manual") => void;
+  previewModel: SpellPreviewModel;
   selectedSlotLevel: number | null;
   setSelectedSlotLevel: (value: number) => void;
   shouldShowConcentrationControl: boolean;
   slotOptions: number[];
   spell: CombatSpellOption;
-  spellDamageType: string;
   spellMode: CombatSpellMode;
-  spellSaveAbility: string;
   targetDisplayName?: string | null;
   targetPreview: TargetingPreviewResult;
+};
+
+const formatRangeMeters = (meters: number | null): string | null =>
+  meters === null ? null : `${Number.isInteger(meters) ? meters : meters.toFixed(1)}m`;
+
+const formatAreaSizeMeters = (
+  shape: SpellPreviewModel["areaShape"],
+  meters: number | null,
+): string | null => {
+  if (!shape || meters === null) return null;
+  const formatted = Number.isInteger(meters) ? `${meters}m` : `${meters.toFixed(1)}m`;
+  if (shape === "sphere" || shape === "cylinder") return `raio ${formatted}`;
+  if (shape === "line") return `comprimento ${formatted}`;
+  if (shape === "cube") return `lado ${formatted}`;
+  if (shape === "cone") return `cone ${formatted}`;
+  return formatted;
+};
+
+const formatResolutionType = (
+  resolutionType: SpellPreviewModel["resolutionType"],
+): string => {
+  switch (resolutionType) {
+    case "spell_attack":
+      return "ataque";
+    case "saving_throw":
+      return "saving throw";
+    case "direct_damage":
+      return "dano direto";
+    case "heal":
+      return "cura";
+    case "utility":
+      return "efeito";
+    default:
+      return "—";
+  }
 };
 
 export const SpellCastDialogHeader = ({
@@ -39,87 +74,125 @@ export const SpellCastDialogHeader = ({
   loading,
   onConcentrationManualRollChange,
   onConcentrationRollModeChange,
+  previewModel,
   selectedSlotLevel,
   setSelectedSlotLevel,
   shouldShowConcentrationControl,
   slotOptions,
   spell,
-  spellDamageType,
   spellMode,
-  spellSaveAbility,
   targetDisplayName,
   targetPreview,
-}: Props) => (
-  <>
-    <p className="text-xs uppercase tracking-[0.3em] text-fuchsia-200">Magia</p>
-    <h2 className="mt-3 text-2xl font-semibold text-white">{spell.name}</h2>
-    <p className="mt-2 text-sm text-slate-300">
-      {isAreaSpell
-        ? `Origem: ${actorDisplayName}${anchorCell ? ` · Ancora: (${anchorCell.x}, ${anchorCell.y})` : ""}`
-        : (
-          <>
-            Alvo: <span className="font-semibold text-white">{targetDisplayName ?? "Nenhum"}</span>
-          </>
-        )}
-    </p>
-    {spell.sourceType === "magic_item" && spell.sourceItemName ? (
+}: Props) => {
+  const flowDamageType =
+    spellMode !== "heal" && spellMode !== "utility" && previewModel.damageType
+      ? previewModel.damageType
+      : null;
+  const flowSaveAbility =
+    previewModel.requiresSavingThrow && previewModel.saveAbility ? previewModel.saveAbility : null;
+  const flowAreaShape = isAreaSpell && previewModel.areaShape ? previewModel.areaShape : null;
+  const showInstanceCount =
+    previewModel.effectInstanceCount > 1 && previewModel.source === "resolved";
+  const rangeLabel = formatRangeMeters(previewModel.rangeMeters);
+  const areaSizeLabel = isAreaSpell
+    ? formatAreaSizeMeters(previewModel.areaShape, previewModel.areaSizeMeters)
+    : null;
+  const resolutionLabel = formatResolutionType(previewModel.resolutionType);
+
+  return (
+    <>
+      <p className="text-xs uppercase tracking-[0.3em] text-fuchsia-200">Magia</p>
+      <h2 className="mt-3 text-2xl font-semibold text-white">{spell.name}</h2>
+      <p className="mt-2 text-sm text-slate-300">
+        {isAreaSpell
+          ? `Origem: ${actorDisplayName}${anchorCell ? ` · Ancora: (${anchorCell.x}, ${anchorCell.y})` : ""}`
+          : (
+            <>
+              Alvo: <span className="font-semibold text-white">{targetDisplayName ?? "Nenhum"}</span>
+            </>
+          )}
+      </p>
+      {spell.sourceType === "magic_item" && spell.sourceItemName ? (
+        <p className="mt-1 text-sm text-slate-400">
+          Item: <span className="font-semibold text-white">{spell.sourceItemName}</span>
+          {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
+            ? ` · ${spell.chargesCurrent}/${spell.chargesMax}`
+            : ""}
+        </p>
+      ) : null}
       <p className="mt-1 text-sm text-slate-400">
-        Item: <span className="font-semibold text-white">{spell.sourceItemName}</span>
-        {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
-          ? ` · ${spell.chargesCurrent}/${spell.chargesMax}`
-          : ""}
+        Fluxo: {resolutionLabel}
+        {flowDamageType ? ` · ${flowDamageType}` : ""}
+        {flowSaveAbility ? ` · save ${flowSaveAbility}` : ""}
+        {flowAreaShape ? ` · ${flowAreaShape}` : ""}
       </p>
-    ) : null}
-    <p className="mt-1 text-sm text-slate-400">
-      Fluxo: {spellMode.replace(/_/g, " ")}
-      {spellMode !== "heal" && spellMode !== "utility" && spellDamageType ? ` · ${spellDamageType}` : ""}
-      {spellMode === "saving_throw" && spellSaveAbility ? ` · save ${spellSaveAbility}` : ""}
-      {isAreaSpell && spell.areaShape ? ` · ${spell.areaShape}` : ""}
-    </p>
-    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">{actionCostLabel}</p>
-    {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
-      <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">
-        Item cast level: {spell.fixedCastLevel}
-      </p>
-    ) : null}
-    {spell.level > 0 && spell.sourceType !== "magic_item" ? (
-      <label className="mt-4 block">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-          Slot level
+      <p
+        className="mt-2 text-xs text-slate-300"
+        data-testid="spell-tactical-preview"
+        data-preview-source={previewModel.source}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">
+          Preview
         </span>
-        <select
-          value={selectedSlotLevel ?? spell.level}
-          onChange={(event) => setSelectedSlotLevel(Number.parseInt(event.target.value, 10))}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400"
-        >
-          {slotOptions.map((slotLevel) => (
-            <option key={slotLevel} value={slotLevel}>
-              {slotLevel}
-            </option>
-          ))}
-        </select>
-      </label>
-    ) : null}
-    {shouldShowConcentrationControl ? (
-      <div className="mt-4">
-        <ConcentrationSaveControl
-          disabled={loading}
-          manualValue={concentrationManualRoll}
-          mode={concentrationRollMode}
-          onManualValueChange={onConcentrationManualRollChange}
-          onModeChange={onConcentrationRollModeChange}
-        />
-      </div>
-    ) : null}
-    {!isAreaSpell ? (
-      <div className="mt-4">
-        <RangeStatusBadge preview={targetPreview} />
-      </div>
-    ) : null}
-    {error ? (
-      <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-        {error}
-      </div>
-    ) : null}
-  </>
-);
+        <span className="ml-2 text-slate-200">
+          {previewModel.damagePreview ? `Dano ${previewModel.damagePreview}` : "Sem dano direto"}
+        </span>
+        {showInstanceCount ? (
+          <span className="ml-2 text-fuchsia-100">
+            · {previewModel.effectInstanceCount} instâncias
+            {previewModel.effectInstanceDice ? ` (${previewModel.effectInstanceDice})` : ""}
+          </span>
+        ) : null}
+        {areaSizeLabel ? <span className="ml-2 text-slate-300">· {areaSizeLabel}</span> : null}
+        {rangeLabel && !isAreaSpell ? (
+          <span className="ml-2 text-slate-300">· alcance {rangeLabel}</span>
+        ) : null}
+      </p>
+      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">{actionCostLabel}</p>
+      {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
+        <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">
+          Item cast level: {spell.fixedCastLevel}
+        </p>
+      ) : null}
+      {spell.level > 0 && spell.sourceType !== "magic_item" ? (
+        <label className="mt-4 block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Slot level
+          </span>
+          <select
+            value={selectedSlotLevel ?? spell.level}
+            onChange={(event) => setSelectedSlotLevel(Number.parseInt(event.target.value, 10))}
+            className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400"
+          >
+            {slotOptions.map((slotLevel) => (
+              <option key={slotLevel} value={slotLevel}>
+                {slotLevel}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {shouldShowConcentrationControl ? (
+        <div className="mt-4">
+          <ConcentrationSaveControl
+            disabled={loading}
+            manualValue={concentrationManualRoll}
+            mode={concentrationRollMode}
+            onManualValueChange={onConcentrationManualRollChange}
+            onModeChange={onConcentrationRollModeChange}
+          />
+        </div>
+      ) : null}
+      {!isAreaSpell ? (
+        <div className="mt-4">
+          <RangeStatusBadge preview={targetPreview} />
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : null}
+    </>
+  );
+};
