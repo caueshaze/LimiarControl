@@ -249,3 +249,6 @@ class CombatSpellResult(BaseModel):
     elemental_affinity_eligible: bool = False
     elemental_affinity_damage_type: str | None = None
     elemental_affinity_bonus: int | None = None
+    effect_instance_count: int | None = None
+    effect_instance_dice: str | None = None
+    base_effect_instance_count: int | None = None

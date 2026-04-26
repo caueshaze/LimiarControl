@@ -197,4 +197,7 @@ class SpellResponseMixin:
                 "elemental_affinity_damage_type"
             ),
             "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+            "effect_instance_count": spell_context.get("effect_instance_count"),
+            "effect_instance_dice": spell_context.get("effect_instance_dice"),
+            "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
         }

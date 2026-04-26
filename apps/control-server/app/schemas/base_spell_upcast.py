@@ -24,6 +24,7 @@ class SpellUpcastConfig(BaseModel):
     flat: Optional[int] = Field(default=None, ge=0)
     perLevel: int = Field(default=1, ge=1)
     maxLevel: Optional[int] = Field(default=None, ge=1, le=9)
+    baseEffectInstances: Optional[int] = Field(default=None, ge=1)
     scalingKey: Optional[str] = None
     scalingSummary: Optional[str] = None
     scalingEditorial: Optional[str] = None
@@ -70,6 +71,8 @@ class SpellUpcastConfig(BaseModel):
             raise ValueError(f"Upcast mode '{self.mode}' requires dice and/or flat.")
         if self.mode == "flat_bonus" and self.flat is None:
             raise ValueError("Upcast mode 'flat_bonus' requires a flat value.")
+        if self.baseEffectInstances is not None and self.mode != "additional_effect_instances":
+            raise ValueError("baseEffectInstances is only valid for 'additional_effect_instances' mode.")
         if self.maxLevel is not None and self.maxLevel < 1:
             raise ValueError("Structured upcast maxLevel must be at least 1.")
         if self.mode == "effect_scaling":
