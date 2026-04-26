@@ -10,6 +10,37 @@ from ..exceptions import CombatServiceError
 class SpellResponseMixin:
 
     @classmethod
+    def _build_multi_instance_log_message(
+        cls,
+        *,
+        attacker: dict,
+        spell_context: dict,
+        outcomes: list[dict],
+        was_overridden: bool,
+        action_cost: str,
+    ) -> str:
+        spell_name = spell_context["spell_name"]
+        damage_type = spell_context.get("damage_type") or "energia"
+        n = len(outcomes)
+
+        lines = [f"{attacker['display_name']} conjurou {spell_name}: {n} instâncias."]
+        for o in outcomes:
+            idx = o["instance_index"]
+            name = o["target_display_name"]
+            dmg = o["damage"]
+            if o.get("is_hit") is False:
+                lines.append(f"  Instância {idx} → {name}: errou.")
+            elif dmg > 0:
+                lines.append(f"  Instância {idx} → {name}: {dmg} de dano de {damage_type}.")
+            else:
+                lines.append(f"  Instância {idx} → {name}: sem dano.")
+
+        log_message = "\n".join(lines)
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+        return log_message
+
+    @classmethod
     def _build_cast_log_message(
         cls,
         *,
@@ -200,4 +231,5 @@ class SpellResponseMixin:
             "effect_instance_count": spell_context.get("effect_instance_count"),
             "effect_instance_dice": spell_context.get("effect_instance_dice"),
             "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
+            "effect_instance_outcomes": [],
         }
