@@ -250,7 +250,7 @@ describe("spellCatalogForm", () => {
     });
   });
 
-  it("emits cantrip scaling only for cantrips", () => {
+  it("emits cantrip scaling only for cantrips (damage_dice)", () => {
     const payload = buildSpellUpdatePayload({
       ...createEmptySpellEditorState(),
       level: 0,
@@ -258,12 +258,14 @@ describe("spellCatalogForm", () => {
       damageDiceCount: "1",
       damageDieSize: "6",
       damageType: "Acid",
+      cantripScalingEffectType: "damage_dice",
       upcastMode: "extra_damage_dice",
     });
 
     expect(payload.upcast).toBeNull();
     expect(payload.cantripScaling).toEqual({
-      mode: "character_level",
+      scalingMode: "character_level",
+      scalingEffectType: "damage_dice",
       thresholds: [
         { characterLevel: 1, damage: { dice: "1d6" } },
         { characterLevel: 5, damage: { dice: "2d6" } },
@@ -271,6 +273,94 @@ describe("spellCatalogForm", () => {
         { characterLevel: 17, damage: { dice: "4d6" } },
       ],
     });
+  });
+
+  it("emits effect_instances cantrip scaling for Eldritch Blast pattern", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      level: 0,
+      resolutionType: "damage",
+      damageDiceCount: "1",
+      damageDieSize: "10",
+      damageType: "Force",
+      cantripScalingMode: "character_level",
+      cantripScalingEffectType: "effect_instances",
+      cantripLevel1InstanceCount: "1",
+      cantripLevel1InstanceDiceCount: "1",
+      cantripLevel1InstanceDieSize: "10",
+      cantripLevel1InstanceFixedBonus: "",
+      cantripLevel5InstanceCount: "2",
+      cantripLevel5InstanceDiceCount: "1",
+      cantripLevel5InstanceDieSize: "10",
+      cantripLevel5InstanceFixedBonus: "",
+      cantripLevel11InstanceCount: "3",
+      cantripLevel11InstanceDiceCount: "1",
+      cantripLevel11InstanceDieSize: "10",
+      cantripLevel11InstanceFixedBonus: "",
+      cantripLevel17InstanceCount: "4",
+      cantripLevel17InstanceDiceCount: "1",
+      cantripLevel17InstanceDieSize: "10",
+      cantripLevel17InstanceFixedBonus: "",
+    });
+
+    expect(payload.upcast).toBeNull();
+    expect(payload.cantripScaling).toEqual({
+      scalingMode: "character_level",
+      scalingEffectType: "effect_instances",
+      thresholds: [
+        { characterLevel: 1, instances: 1, instanceDamage: { dice: "1d10" } },
+        { characterLevel: 5, instances: 2, instanceDamage: { dice: "1d10" } },
+        { characterLevel: 11, instances: 3, instanceDamage: { dice: "1d10" } },
+        { characterLevel: 17, instances: 4, instanceDamage: { dice: "1d10" } },
+      ],
+    });
+  });
+
+  it("hydrates effect_instances cantrip scaling from an existing spell", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        level: 0,
+        cantripScaling: {
+          scalingMode: "character_level",
+          scalingEffectType: "effect_instances",
+          thresholds: [
+            { characterLevel: 1, instances: 1, instanceDamage: { dice: "1d10" } },
+            { characterLevel: 5, instances: 2, instanceDamage: { dice: "1d10" } },
+            { characterLevel: 11, instances: 3, instanceDamage: { dice: "1d10" } },
+            { characterLevel: 17, instances: 4, instanceDamage: { dice: "1d10" } },
+          ],
+        },
+      }),
+    );
+
+    expect(state.cantripScalingMode).toBe("character_level");
+    expect(state.cantripScalingEffectType).toBe("effect_instances");
+    expect(state.cantripLevel5InstanceCount).toBe("2");
+    expect(state.cantripLevel11InstanceCount).toBe("3");
+    expect(state.cantripLevel17InstanceCount).toBe("4");
+    expect(state.cantripLevel1InstanceDiceCount).toBe("1");
+    expect(state.cantripLevel1InstanceDieSize).toBe("10");
+  });
+
+  it("does not emit cantripScaling for leveled spells (Magic Missile regression)", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      level: 1,
+      resolutionType: "damage",
+      damageDiceCount: "3",
+      damageDieSize: "4",
+      damageFixedBonus: "3",
+      damageType: "Force",
+      upcastMode: "additional_effect_instances",
+      upcastDiceCount: "1",
+      upcastDieSize: "4",
+      upcastFixedBonus: "1",
+      upcastPerLevel: "1",
+    });
+
+    expect(payload.cantripScaling).toBeNull();
+    expect(payload.upcast?.mode).toBe("additional_effect_instances");
+    expect(payload.upcast?.dice).toBe("1d4+1");
   });
 
   it("keeps canonical key normalization deterministic", () => {

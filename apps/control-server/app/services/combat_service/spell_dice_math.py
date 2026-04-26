@@ -53,26 +53,56 @@ class CombatSpellDiceMathMixin:
     def _get_structured_cantrip_scaling(cls, raw_scaling: object) -> dict | None:
         if not isinstance(raw_scaling, dict):
             return None
-        if raw_scaling.get("mode") != "character_level":
+        # Accept both legacy "mode" and new "scalingMode"
+        scaling_mode = raw_scaling.get("scalingMode") or raw_scaling.get("mode")
+        if scaling_mode != "character_level":
             return None
         thresholds = raw_scaling.get("thresholds")
         if not isinstance(thresholds, list):
             return None
+
+        # Infer scalingEffectType
+        raw_effect_type = raw_scaling.get("scalingEffectType")
+        if not isinstance(raw_effect_type, str):
+            has_instances = any(
+                isinstance(t, dict) and ("instances" in t or "instanceDamage" in t)
+                for t in thresholds
+            )
+            raw_effect_type = "effect_instances" if has_instances else "damage_dice"
+        scaling_effect_type = raw_effect_type
+
         normalized_thresholds: list[dict[str, object]] = []
         for threshold in thresholds:
             if not isinstance(threshold, dict):
                 continue
             character_level = threshold.get("characterLevel")
-            damage = threshold.get("damage")
-            dice = damage.get("dice") if isinstance(damage, dict) else None
-            if isinstance(character_level, int) and isinstance(dice, str) and dice.strip():
-                normalized_thresholds.append(
-                    {"characterLevel": character_level, "damage": {"dice": dice.strip()}}
-                )
+            if not isinstance(character_level, int):
+                continue
+            if scaling_effect_type == "effect_instances":
+                instances = threshold.get("instances")
+                instance_damage = threshold.get("instanceDamage")
+                dice = instance_damage.get("dice") if isinstance(instance_damage, dict) else None
+                if isinstance(instances, int) and instances >= 1 and isinstance(dice, str) and dice.strip():
+                    normalized_thresholds.append({
+                        "characterLevel": character_level,
+                        "instances": instances,
+                        "instanceDamage": {"dice": dice.strip()},
+                    })
+            else:
+                damage = threshold.get("damage")
+                dice = damage.get("dice") if isinstance(damage, dict) else None
+                if isinstance(dice, str) and dice.strip():
+                    normalized_thresholds.append(
+                        {"characterLevel": character_level, "damage": {"dice": dice.strip()}}
+                    )
         if not normalized_thresholds:
             return None
         normalized_thresholds.sort(key=lambda entry: int(entry["characterLevel"]))
-        return {"mode": "character_level", "thresholds": normalized_thresholds}
+        return {
+            "scalingMode": "character_level",
+            "scalingEffectType": scaling_effect_type,
+            "thresholds": normalized_thresholds,
+        }
 
     @classmethod
     def _build_dice_expression(
@@ -251,26 +281,41 @@ class CombatSpellDiceMathMixin:
     ) -> str | None:
         if spell_level != 0 or caster_level is None:
             return effect_dice
-        if isinstance(cantrip_scaling, dict):
-            selected_dice = effect_dice
-            for threshold in cantrip_scaling.get("thresholds", []):
-                if not isinstance(threshold, dict):
-                    continue
-                threshold_level = threshold.get("characterLevel")
+        if not isinstance(cantrip_scaling, dict):
+            return effect_dice
+
+        scaling_effect_type = cantrip_scaling.get("scalingEffectType", "damage_dice")
+        selected_dice = effect_dice
+        selected_instances: int | None = None
+        instance_dice: str | None = None
+
+        for threshold in cantrip_scaling.get("thresholds", []):
+            if not isinstance(threshold, dict):
+                continue
+            threshold_level = threshold.get("characterLevel")
+            if not isinstance(threshold_level, int) or caster_level < threshold_level:
+                continue
+            if scaling_effect_type == "effect_instances":
+                instances = threshold.get("instances")
+                inst_dmg = threshold.get("instanceDamage")
+                dice = inst_dmg.get("dice") if isinstance(inst_dmg, dict) else None
+                if isinstance(instances, int) and isinstance(dice, str) and dice.strip():
+                    selected_instances = instances
+                    instance_dice = dice.strip()
+            else:
                 damage = threshold.get("damage")
                 dice = damage.get("dice") if isinstance(damage, dict) else None
-                if (
-                    isinstance(threshold_level, int)
-                    and caster_level >= threshold_level
-                    and isinstance(dice, str)
-                    and dice.strip()
-                ):
+                if isinstance(dice, str) and dice.strip():
                     selected_dice = dice.strip()
-            return selected_dice
 
-        if cantrip_scaling is None:
-            return effect_dice
-        return effect_dice
+        if scaling_effect_type == "effect_instances" and selected_instances is not None and instance_dice:
+            # Derive aggregate expression for display/simple resolution
+            count, sides, mod = _parse_dice(instance_dice)
+            total_count = count * selected_instances
+            total_mod = mod * selected_instances
+            return cls._build_dice_expression(total_count, sides, total_mod)
+
+        return selected_dice
 
     @classmethod
     def _normalize_save_success_outcome(cls, value: object) -> str | None:

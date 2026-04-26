@@ -1,5 +1,6 @@
 import {
   AreaShape as AreaShapeValues,
+  CantripScalingEffectType as CantripScalingEffectTypeValues,
   CastingTimeType as CastingTimeTypeValues,
   ResolutionType as ResolutionTypeValues,
   SaveSuccessOutcome as SaveSuccessOutcomeValues,
@@ -16,6 +17,8 @@ import {
   UpcastMode as UpcastModeValues,
   type AreaShape,
   type BaseSpell,
+  type CantripScalingEffectType,
+  type CantripScalingThresholdInstances,
   type CastingTimeType,
   type ResolutionType,
   type SaveSuccessOutcome,
@@ -93,6 +96,7 @@ export const SPELL_DICE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] 
 export const SPELL_DIE_SIZE_OPTIONS = [4, 6, 8, 10, 12] as const;
 
 export const SPELL_UPCAST_MODE_OPTIONS = Object.values(UpcastModeValues);
+export const SPELL_CANTRIP_SCALING_EFFECT_TYPE_OPTIONS = Object.values(CantripScalingEffectTypeValues);
 
 const SPELL_CLASS_OPTION_SET = new Set<string>(SPELL_CLASS_OPTIONS);
 const SPELL_COMPONENT_OPTION_SET = new Set<string>(SPELL_COMPONENT_OPTIONS);
@@ -264,7 +268,7 @@ const buildStructuredUpcast = (
   };
 };
 
-const buildCantripScalingThreshold = (
+const buildCantripDamageThreshold = (
   characterLevel: number,
   count: string,
   size: string,
@@ -274,39 +278,62 @@ const buildCantripScalingThreshold = (
   return dice ? { characterLevel, damage: { dice } } : null;
 };
 
+const buildCantripInstanceThreshold = (
+  characterLevel: number,
+  instanceCount: string,
+  diceCount: string,
+  dieSize: string,
+  fixedBonus: string,
+) => {
+  const parsedInstances = toNullablePositiveInteger(instanceCount);
+  const dice = buildDiceExpression(diceCount, dieSize, fixedBonus);
+  if (!parsedInstances || parsedInstances < 1 || !dice) return null;
+  return { characterLevel, instances: parsedInstances, instanceDamage: { dice } };
+};
+
 const buildStructuredCantripScaling = (
   state: SpellCatalogEditorState,
 ): BaseSpellUpdatePayload["cantripScaling"] => {
   if (state.level !== 0 || state.cantripScalingMode !== "character_level") {
     return null;
   }
-  const thresholds = [
-    buildCantripScalingThreshold(
-      1,
-      state.cantripLevel1DiceCount,
-      state.cantripLevel1DieSize,
-      state.cantripLevel1FixedBonus,
+
+  const effectType: CantripScalingEffectType =
+    state.cantripScalingEffectType === "effect_instances" ? "effect_instances" : "damage_dice";
+
+  const LEVELS = [
+    { level: 1, countKey: "cantripLevel1DiceCount" as const, dieKey: "cantripLevel1DieSize" as const, bonusKey: "cantripLevel1FixedBonus" as const, instanceCountKey: "cantripLevel1InstanceCount" as const, instanceDiceCountKey: "cantripLevel1InstanceDiceCount" as const, instanceDieSizeKey: "cantripLevel1InstanceDieSize" as const, instanceBonusKey: "cantripLevel1InstanceFixedBonus" as const },
+    { level: 5, countKey: "cantripLevel5DiceCount" as const, dieKey: "cantripLevel5DieSize" as const, bonusKey: "cantripLevel5FixedBonus" as const, instanceCountKey: "cantripLevel5InstanceCount" as const, instanceDiceCountKey: "cantripLevel5InstanceDiceCount" as const, instanceDieSizeKey: "cantripLevel5InstanceDieSize" as const, instanceBonusKey: "cantripLevel5InstanceFixedBonus" as const },
+    { level: 11, countKey: "cantripLevel11DiceCount" as const, dieKey: "cantripLevel11DieSize" as const, bonusKey: "cantripLevel11FixedBonus" as const, instanceCountKey: "cantripLevel11InstanceCount" as const, instanceDiceCountKey: "cantripLevel11InstanceDiceCount" as const, instanceDieSizeKey: "cantripLevel11InstanceDieSize" as const, instanceBonusKey: "cantripLevel11InstanceFixedBonus" as const },
+    { level: 17, countKey: "cantripLevel17DiceCount" as const, dieKey: "cantripLevel17DieSize" as const, bonusKey: "cantripLevel17FixedBonus" as const, instanceCountKey: "cantripLevel17InstanceCount" as const, instanceDiceCountKey: "cantripLevel17InstanceDiceCount" as const, instanceDieSizeKey: "cantripLevel17InstanceDieSize" as const, instanceBonusKey: "cantripLevel17InstanceFixedBonus" as const },
+  ];
+
+  if (effectType === "effect_instances") {
+    const thresholds = LEVELS.map((l) =>
+      buildCantripInstanceThreshold(
+        l.level,
+        state[l.instanceCountKey],
+        state[l.instanceDiceCountKey],
+        state[l.instanceDieSizeKey],
+        state[l.instanceBonusKey],
+      ),
+    ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+    return thresholds.length > 0
+      ? { scalingMode: "character_level", scalingEffectType: "effect_instances", thresholds }
+      : null;
+  }
+
+  const thresholds = LEVELS.map((l) =>
+    buildCantripDamageThreshold(
+      l.level,
+      state[l.countKey],
+      state[l.dieKey],
+      state[l.bonusKey],
     ),
-    buildCantripScalingThreshold(
-      5,
-      state.cantripLevel5DiceCount,
-      state.cantripLevel5DieSize,
-      state.cantripLevel5FixedBonus,
-    ),
-    buildCantripScalingThreshold(
-      11,
-      state.cantripLevel11DiceCount,
-      state.cantripLevel11DieSize,
-      state.cantripLevel11FixedBonus,
-    ),
-    buildCantripScalingThreshold(
-      17,
-      state.cantripLevel17DiceCount,
-      state.cantripLevel17DieSize,
-      state.cantripLevel17FixedBonus,
-    ),
-  ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-  return thresholds.length > 0 ? { mode: "character_level", thresholds } : null;
+  ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  return thresholds.length > 0
+    ? { scalingMode: "character_level", scalingEffectType: "damage_dice", thresholds }
+    : null;
 };
 
 export const getUnsupportedSpellEditorValues = (spell: BaseSpell) => {
@@ -473,6 +500,8 @@ export type SpellCatalogEditorState = {
   upcastUnlockSummary: string;
   upcastUnlockEditorial: string;
   cantripScalingMode: "" | "character_level";
+  cantripScalingEffectType: "" | CantripScalingEffectType;
+  // damage_dice threshold fields
   cantripLevel1DiceCount: string;
   cantripLevel1DieSize: string;
   cantripLevel1FixedBonus: string;
@@ -485,19 +514,67 @@ export type SpellCatalogEditorState = {
   cantripLevel17DiceCount: string;
   cantripLevel17DieSize: string;
   cantripLevel17FixedBonus: string;
+  // effect_instances threshold fields
+  cantripLevel1InstanceCount: string;
+  cantripLevel1InstanceDiceCount: string;
+  cantripLevel1InstanceDieSize: string;
+  cantripLevel1InstanceFixedBonus: string;
+  cantripLevel5InstanceCount: string;
+  cantripLevel5InstanceDiceCount: string;
+  cantripLevel5InstanceDieSize: string;
+  cantripLevel5InstanceFixedBonus: string;
+  cantripLevel11InstanceCount: string;
+  cantripLevel11InstanceDiceCount: string;
+  cantripLevel11InstanceDieSize: string;
+  cantripLevel11InstanceFixedBonus: string;
+  cantripLevel17InstanceCount: string;
+  cantripLevel17InstanceDiceCount: string;
+  cantripLevel17InstanceDieSize: string;
+  cantripLevel17InstanceFixedBonus: string;
 };
 
 export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorState => ({
   ...(() => {
     const damageParts = parseDiceParts(spell.damageDice);
     const upcastParts = parseDiceParts(spell.upcast?.dice);
-    const thresholdDice = (level: number) =>
-      spell.cantripScaling?.thresholds.find((entry) => entry.characterLevel === level)
-        ?.damage.dice;
+
+    const effectType = spell.cantripScaling?.scalingEffectType ?? "damage_dice";
+
+    const thresholdDice = (level: number) => {
+      const threshold = spell.cantripScaling?.thresholds.find(
+        (entry) => entry.characterLevel === level,
+      );
+      return (threshold as { damage?: { dice: string } } | undefined)?.damage?.dice;
+    };
     const cantripLevel1Parts = parseDiceParts(thresholdDice(1));
     const cantripLevel5Parts = parseDiceParts(thresholdDice(5));
     const cantripLevel11Parts = parseDiceParts(thresholdDice(11));
     const cantripLevel17Parts = parseDiceParts(thresholdDice(17));
+
+    const instanceThreshold = (level: number): CantripScalingThresholdInstances | undefined => {
+      const threshold = spell.cantripScaling?.thresholds.find(
+        (entry) => entry.characterLevel === level,
+      );
+      if (threshold && "instances" in threshold) {
+        return threshold as CantripScalingThresholdInstances;
+      }
+      return undefined;
+    };
+    const instInfo = (level: number) => {
+      const t = instanceThreshold(level);
+      const diceParts = parseDiceParts(t?.instanceDamage?.dice);
+      return {
+        instanceCount: t?.instances != null ? String(t.instances) : "",
+        instanceDiceCount: diceParts.count,
+        instanceDieSize: diceParts.size,
+        instanceFixedBonus: diceParts.bonus,
+      };
+    };
+    const inst1 = instInfo(1);
+    const inst5 = instInfo(5);
+    const inst11 = instInfo(11);
+    const inst17 = instInfo(17);
+
     return {
       damageDiceCount: damageParts.count,
       damageDieSize: damageParts.size,
@@ -505,6 +582,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
       upcastDiceCount: upcastParts.count,
       upcastDieSize: upcastParts.size,
       upcastFixedBonus: upcastParts.bonus,
+      cantripScalingEffectType: effectType,
       cantripLevel1DiceCount: cantripLevel1Parts.count,
       cantripLevel1DieSize: cantripLevel1Parts.size,
       cantripLevel1FixedBonus: cantripLevel1Parts.bonus,
@@ -517,6 +595,22 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
       cantripLevel17DiceCount: cantripLevel17Parts.count,
       cantripLevel17DieSize: cantripLevel17Parts.size,
       cantripLevel17FixedBonus: cantripLevel17Parts.bonus,
+      cantripLevel1InstanceCount: inst1.instanceCount,
+      cantripLevel1InstanceDiceCount: inst1.instanceDiceCount,
+      cantripLevel1InstanceDieSize: inst1.instanceDieSize,
+      cantripLevel1InstanceFixedBonus: inst1.instanceFixedBonus,
+      cantripLevel5InstanceCount: inst5.instanceCount,
+      cantripLevel5InstanceDiceCount: inst5.instanceDiceCount,
+      cantripLevel5InstanceDieSize: inst5.instanceDieSize,
+      cantripLevel5InstanceFixedBonus: inst5.instanceFixedBonus,
+      cantripLevel11InstanceCount: inst11.instanceCount,
+      cantripLevel11InstanceDiceCount: inst11.instanceDiceCount,
+      cantripLevel11InstanceDieSize: inst11.instanceDieSize,
+      cantripLevel11InstanceFixedBonus: inst11.instanceFixedBonus,
+      cantripLevel17InstanceCount: inst17.instanceCount,
+      cantripLevel17InstanceDiceCount: inst17.instanceDiceCount,
+      cantripLevel17InstanceDieSize: inst17.instanceDieSize,
+      cantripLevel17InstanceFixedBonus: inst17.instanceFixedBonus,
     };
   })(),
   canonicalKey: spell.canonicalKey,
@@ -581,7 +675,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   upcastUnlockKey: spell.upcast?.unlockKey ?? "",
   upcastUnlockSummary: spell.upcast?.unlockSummary ?? "",
   upcastUnlockEditorial: spell.upcast?.unlockEditorial ?? "",
-  cantripScalingMode: spell.cantripScaling?.mode ?? "",
+  cantripScalingMode: (spell.cantripScaling?.scalingMode ?? spell.cantripScaling?.mode) ? "character_level" : "",
 });
 
 export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
@@ -642,6 +736,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   upcastUnlockSummary: "",
   upcastUnlockEditorial: "",
   cantripScalingMode: "character_level",
+  cantripScalingEffectType: "damage_dice",
   cantripLevel1DiceCount: "1",
   cantripLevel1DieSize: "6",
   cantripLevel1FixedBonus: "",
@@ -654,4 +749,20 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   cantripLevel17DiceCount: "4",
   cantripLevel17DieSize: "6",
   cantripLevel17FixedBonus: "",
+  cantripLevel1InstanceCount: "1",
+  cantripLevel1InstanceDiceCount: "1",
+  cantripLevel1InstanceDieSize: "10",
+  cantripLevel1InstanceFixedBonus: "",
+  cantripLevel5InstanceCount: "2",
+  cantripLevel5InstanceDiceCount: "1",
+  cantripLevel5InstanceDieSize: "10",
+  cantripLevel5InstanceFixedBonus: "",
+  cantripLevel11InstanceCount: "3",
+  cantripLevel11InstanceDiceCount: "1",
+  cantripLevel11InstanceDieSize: "10",
+  cantripLevel11InstanceFixedBonus: "",
+  cantripLevel17InstanceCount: "4",
+  cantripLevel17InstanceDiceCount: "1",
+  cantripLevel17InstanceDieSize: "10",
+  cantripLevel17InstanceFixedBonus: "",
 });

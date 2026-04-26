@@ -31,7 +31,6 @@
       "damageDice": "1d6",
       "damageType": "Acid",
       "cantripScaling": {
-        "mode": "character_level",
         "thresholds": [
           {
             "characterLevel": 1,
@@ -57,7 +56,9 @@
               "dice": "4d6"
             }
           }
-        ]
+        ],
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice"
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
@@ -1343,7 +1344,41 @@
       "targetAnchor": "selected_target",
       "attackType": "ranged_spell",
       "rangeKind": "distance",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "effect_instances",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "instances": 1,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "instances": 2,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "instances": 3,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "instances": 4,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          }
+        ]
+      }
     },
     {
       "system": "DND5E",

@@ -205,6 +205,37 @@ class BaseSpellSchemaTests(unittest.TestCase):
         self.assertEqual(spell.upcast.dice, "1d8")
 
     def test_cantrip_accepts_cantrip_scaling_and_rejects_upcast(self):
+        # New format with scalingMode + scalingEffectType
+        spell = self._make_create(
+            canonicalKey="acid_splash",
+            level=0,
+            savingThrow="DEX",
+            saveSuccessOutcome="none",
+            damageDice="1d6",
+            damageType="Acid",
+            cantripScaling={
+                "scalingMode": "character_level",
+                "scalingEffectType": "damage_dice",
+                "thresholds": [
+                    {"characterLevel": 1, "damage": {"dice": "1d6"}},
+                    {"characterLevel": 5, "damage": {"dice": "2d6"}},
+                    {"characterLevel": 11, "damage": {"dice": "3d6"}},
+                    {"characterLevel": 17, "damage": {"dice": "4d6"}},
+                ],
+            },
+        )
+        self.assertIsInstance(spell.cantripScaling, SpellCantripScalingConfig)
+        self.assertEqual(spell.cantripScaling.scalingMode, "character_level")
+        self.assertEqual(spell.cantripScaling.scalingEffectType, "damage_dice")
+        self.assertIsNone(spell.upcast)
+
+        with self.assertRaises(ValueError):
+            self._make_create(
+                level=0,
+                upcast={"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
+            )
+
+    def test_cantrip_accepts_legacy_mode_field_and_normalizes(self):
         spell = self._make_create(
             canonicalKey="acid_splash",
             level=0,
@@ -217,18 +248,61 @@ class BaseSpellSchemaTests(unittest.TestCase):
                 "thresholds": [
                     {"characterLevel": 1, "damage": {"dice": "1d6"}},
                     {"characterLevel": 5, "damage": {"dice": "2d6"}},
-                    {"characterLevel": 11, "damage": {"dice": "3d6"}},
-                    {"characterLevel": 17, "damage": {"dice": "4d6"}},
                 ],
             },
         )
         self.assertIsInstance(spell.cantripScaling, SpellCantripScalingConfig)
-        self.assertIsNone(spell.upcast)
+        self.assertEqual(spell.cantripScaling.scalingMode, "character_level")
+        self.assertEqual(spell.cantripScaling.scalingEffectType, "damage_dice")
 
+    def test_cantrip_effect_instances_scaling(self):
+        spell = self._make_create(
+            canonicalKey="eldritch_blast",
+            level=0,
+            damageDice="1d10",
+            damageType="Force",
+            cantripScaling={
+                "scalingMode": "character_level",
+                "scalingEffectType": "effect_instances",
+                "thresholds": [
+                    {"characterLevel": 1, "instances": 1, "instanceDamage": {"dice": "1d10"}},
+                    {"characterLevel": 5, "instances": 2, "instanceDamage": {"dice": "1d10"}},
+                    {"characterLevel": 11, "instances": 3, "instanceDamage": {"dice": "1d10"}},
+                    {"characterLevel": 17, "instances": 4, "instanceDamage": {"dice": "1d10"}},
+                ],
+            },
+        )
+        self.assertIsInstance(spell.cantripScaling, SpellCantripScalingConfig)
+        self.assertEqual(spell.cantripScaling.scalingEffectType, "effect_instances")
+        self.assertEqual(spell.cantripScaling.thresholds[1].instances, 2)
+        self.assertEqual(spell.cantripScaling.thresholds[1].instanceDamage.dice, "1d10")
+
+    def test_effect_instances_threshold_requires_instances_and_instance_damage(self):
         with self.assertRaises(ValueError):
             self._make_create(
                 level=0,
-                upcast={"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
+                damageDice="1d10",
+                cantripScaling={
+                    "scalingMode": "character_level",
+                    "scalingEffectType": "effect_instances",
+                    "thresholds": [
+                        {"characterLevel": 1, "damage": {"dice": "1d10"}},
+                    ],
+                },
+            )
+
+    def test_damage_dice_threshold_requires_damage_field(self):
+        with self.assertRaises(ValueError):
+            self._make_create(
+                level=0,
+                damageDice="1d6",
+                cantripScaling={
+                    "scalingMode": "character_level",
+                    "scalingEffectType": "damage_dice",
+                    "thresholds": [
+                        {"characterLevel": 1, "instances": 1, "instanceDamage": {"dice": "1d6"}},
+                    ],
+                },
             )
 
     def test_leveled_spell_rejects_cantrip_scaling(self):

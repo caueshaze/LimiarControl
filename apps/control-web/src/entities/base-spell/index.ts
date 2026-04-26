@@ -1,4 +1,5 @@
 export {
+  CantripScalingEffectType,
   CastingTimeType,
   ResolutionType,
   SaveSuccessOutcome,
@@ -22,6 +23,10 @@ export type {
   BaseSpellAlias,
   BaseSpellFilters,
   BaseSpellWritePayload,
+  CantripScalingEffectType as CantripScalingEffectTypeValue,
+  CantripScalingThreshold,
+  CantripScalingThresholdDamage,
+  CantripScalingThresholdInstances,
   SpellCantripScaling,
   SpellUpcast,
   SpellAttackType as SpellAttackTypeValue,
