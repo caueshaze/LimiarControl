@@ -6,7 +6,9 @@ from uuid import uuid4
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.inventory import InventoryItem
-from app.services.roll_resolution import resolve_saving_throw
+from app.schemas.roll import RollActorStats
+from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
+from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 from app.services.magic_item_effects import (
     consume_inventory_item_charge,
     get_inventory_item_charges_current,
@@ -55,6 +57,347 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             db, attacker["ref_id"], attacker["kind"], session_id
         )
         return state, attacker, attacker_model
+
+    @classmethod
+    def _validate_instance_targets(cls, *, req, spell_context, state):
+        raw = getattr(req, "effect_instance_targets", None)
+        if not raw:
+            return None
+
+        instance_count = spell_context.get("effect_instance_count", 1)
+        if instance_count <= 1:
+            raise CombatServiceError(
+                "effect_instance_targets is only supported for multi-instance spells.", 400
+            )
+
+        indices = set()
+        for t in raw:
+            idx = t.instance_index
+            if idx < 1 or idx > instance_count:
+                raise CombatServiceError(
+                    f"Instance index {idx} is out of range (1..{instance_count}).", 400
+                )
+            if idx in indices:
+                raise CombatServiceError(
+                    f"Duplicate instance index: {idx}.", 400
+                )
+            indices.add(idx)
+
+        missing = set(range(1, instance_count + 1)) - indices
+        if missing:
+            sorted_missing = sorted(missing)
+            raise CombatServiceError(
+                f"Missing instance target assignments: {', '.join(str(m) for m in sorted_missing)}.", 400
+            )
+
+        participants_by_ref = {p["ref_id"]: p for p in state.participants}
+        validated = []
+        for t in raw:
+            participant = participants_by_ref.get(t.target_ref_id)
+            if participant is None:
+                raise CombatServiceError(
+                    f"Invalid target_ref_id for instance {t.instance_index}: {t.target_ref_id}.", 400
+                )
+            validated.append({
+                "instance_index": t.instance_index,
+                "target_ref_id": t.target_ref_id,
+                "participant": participant,
+            })
+
+        return validated
+
+    @classmethod
+    def _resolve_instance_direct(cls, db, state, attacker, target_p, spell_context, req):
+        instance_dice = spell_context.get("effect_instance_dice")
+        if not instance_dice:
+            raise CombatServiceError(
+                "Multi-instance spell is missing effect_instance_dice.", 400
+            )
+        effect_kind = spell_context.get("effect_kind") or "damage"
+        damage_type = spell_context.get("damage_type")
+
+        _, total = cls._resolve_damage_roll(instance_dice, roll_source="system")
+        amount = max(0, total)
+
+        new_hp = None
+        previous_hp = None
+        if amount > 0:
+            new_hp, _, previous_hp, _ = cls._apply_spell_effect(
+                db, state,
+                target_p["ref_id"], target_p["kind"],
+                effect_kind, amount,
+                damage_type=damage_type,
+                concentration_roll_source=req.concentration_roll_source,
+                concentration_manual_roll=req.concentration_manual_roll,
+            )
+
+        return {
+            "target_ref_id": target_p["ref_id"],
+            "target_display_name": target_p.get("display_name", ""),
+            "target_kind": target_p.get("kind", "session_entity"),
+            "damage": amount if effect_kind != "healing" else 0,
+            "healing": amount if effect_kind == "healing" else 0,
+            "is_hit": None,
+            "is_saved": None,
+            "is_critical": False,
+            "roll": None,
+            "roll_result": None,
+            "new_hp": new_hp,
+            "previous_hp": previous_hp,
+        }
+
+    @classmethod
+    def _resolve_instance_attack(cls, db, session_id, state, attacker, target_p, spell_context, req, is_gm):
+        instance_dice = spell_context.get("effect_instance_dice")
+        if not instance_dice:
+            raise CombatServiceError(
+                "Multi-instance spell is missing effect_instance_dice.", 400
+            )
+        effect_kind = spell_context.get("effect_kind") or "damage"
+        damage_type = spell_context.get("damage_type")
+        attack_bonus = cls._safe_int(spell_context.get("attack_bonus"), 0)
+
+        _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        target_ac = target_ac or 10
+
+        adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
+        has_adv = req.has_advantage or bool(adv_ctx.advantage_sources)
+        has_dis = req.has_disadvantage or bool(adv_ctx.disadvantage_sources)
+        adv_mode = (
+            "advantage" if has_adv and not has_dis
+            else "disadvantage" if has_dis and not has_adv
+            else "normal"
+        )
+
+        roll_result = resolve_attack_base(
+            RollActorStats(
+                display_name=attacker["display_name"],
+                abilities={},
+                actor_kind="player",
+                actor_ref_id=attacker["ref_id"],
+            ),
+            advantage_mode=adv_mode,
+            bonus_override=attack_bonus,
+            target_ac=target_ac,
+            roll_source="system",
+        )
+        roll_result.is_gm_roll = is_gm
+        roll_result.roll_source = "system"
+
+        is_critical = roll_result.selected_roll == 20
+        is_hit = bool(roll_result.success)
+
+        damage = 0
+        healing = 0
+        new_hp = None
+        previous_hp = None
+
+        if is_hit:
+            _, total = cls._resolve_damage_roll(instance_dice, critical=is_critical, roll_source="system")
+            amount = max(0, total)
+            if amount > 0:
+                new_hp, _, previous_hp, _ = cls._apply_spell_effect(
+                    db, state,
+                    target_p["ref_id"], target_p["kind"],
+                    effect_kind, amount,
+                    damage_type=damage_type,
+                    is_critical=is_critical,
+                    concentration_roll_source=req.concentration_roll_source,
+                    concentration_manual_roll=req.concentration_manual_roll,
+                )
+                if effect_kind == "healing":
+                    healing = amount
+                else:
+                    damage = amount
+        else:
+            flag_modified(state, "participants")
+
+        return {
+            "target_ref_id": target_p["ref_id"],
+            "target_display_name": target_p.get("display_name", ""),
+            "target_kind": target_p.get("kind", "session_entity"),
+            "damage": damage,
+            "healing": healing,
+            "is_hit": is_hit,
+            "is_saved": None,
+            "is_critical": is_critical,
+            "roll": roll_result.total,
+            "roll_result": roll_result,
+            "new_hp": new_hp,
+            "previous_hp": previous_hp,
+        }
+
+    @classmethod
+    async def _resolve_multi_instance_cast(
+        cls, db, session_id, req, state, attacker, attacker_model,
+        spell_context, actor_user_id, is_gm, validated_targets,
+    ):
+        slot_spent = False
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            remaining_charges = get_inventory_item_charges_current(inventory_item, source_item)
+            if isinstance(remaining_charges, int) and remaining_charges <= 0:
+                raise CombatServiceError("This item has no charges remaining.", 400)
+
+        action_cost = spell_context.get("action_cost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker, action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            try:
+                consume_inventory_item_charge(inventory_item, source_item)
+            except ValueError as exc:
+                raise CombatServiceError(str(exc), 400) from exc
+            db.add(inventory_item)
+        elif isinstance(spell_context.get("slot_level"), int):
+            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
+            db.add(attacker_model)
+            slot_spent = True
+
+        spell_mode = spell_context["spell_mode"]
+        is_hostile = spell_mode in ("spell_attack", "saving_throw", "direct_damage")
+        if is_hostile:
+            seen = set()
+            for vt in validated_targets:
+                ref_id = vt["target_ref_id"]
+                if ref_id not in seen:
+                    cls._assert_hostile_action_allowed(
+                        attacker, vt["participant"], action_label="a hostile spell",
+                    )
+                    seen.add(ref_id)
+
+        logger.info(
+            "[cast_spell] pipeline=multi_instance spell=%s instances=%d session=%s actor=%s",
+            spell_context["spell_canonical_key"],
+            len(validated_targets),
+            session_id,
+            attacker.get("ref_id"),
+        )
+
+        outcomes = []
+        entity_previous_hp_map = {}
+
+        for vt in validated_targets:
+            target_p = vt["participant"]
+
+            if spell_mode == "spell_attack":
+                outcome = cls._resolve_instance_attack(
+                    db, session_id, state, attacker, target_p, spell_context, req, is_gm,
+                )
+            else:
+                outcome = cls._resolve_instance_direct(
+                    db, state, attacker, target_p, spell_context, req,
+                )
+
+            outcome["instance_index"] = vt["instance_index"]
+            outcomes.append(outcome)
+
+            ref_id = vt["target_ref_id"]
+            if ref_id not in entity_previous_hp_map and outcome.get("previous_hp") is not None:
+                entity_previous_hp_map[ref_id] = outcome["previous_hp"]
+
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        player_state_ids = set()
+        if slot_spent:
+            player_state_ids.add(attacker["ref_id"])
+
+        for outcome in outcomes:
+            if outcome["damage"] > 0 or outcome["healing"] > 0:
+                if outcome["target_kind"] == "player":
+                    player_state_ids.add(outcome["target_ref_id"])
+
+        for player_ref_id in player_state_ids:
+            target_state, *_ = cls._get_stats(db, player_ref_id, "player", session_id)
+            await cls._emit_player_state_update(db, session_id, player_ref_id, target_state)
+
+        for ref_id, prev_hp in entity_previous_hp_map.items():
+            target_p_entity = next(
+                (p for p in state.participants if p["ref_id"] == ref_id), None,
+            )
+            if target_p_entity and target_p_entity.get("kind") == "session_entity":
+                await cls._emit_entity_hp_update(db, session_id, ref_id, prev_hp)
+
+        await cls._emit_state(session_id, state)
+
+        log_message = cls._build_multi_instance_log_message(
+            attacker=attacker,
+            spell_context=spell_context,
+            outcomes=outcomes,
+            was_overridden=was_overridden,
+            action_cost=action_cost,
+        )
+        await cls._emit_log(session_id, {
+            "message": log_message,
+            "actorUserId": actor_user_id,
+            "source": "gm_override" if is_gm else "player_turn",
+            "is_override": was_overridden,
+            "overridden_resource": action_cost if was_overridden else None,
+        })
+
+        total_damage = sum(o["damage"] for o in outcomes)
+        total_healing = sum(o["healing"] for o in outcomes)
+        first_outcome = outcomes[0] if outcomes else None
+
+        return {
+            "spell_name": spell_context["spell_name"],
+            "spell_canonical_key": spell_context["spell_canonical_key"],
+            "action_kind": spell_mode,
+            "effect_kind": spell_context.get("effect_kind"),
+            "damage": total_damage,
+            "healing": total_healing,
+            "damage_type": spell_context.get("damage_type"),
+            "is_critical": None,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": first_outcome["target_display_name"] if first_outcome else "",
+            "target_kind": first_outcome["target_kind"] if first_outcome else "session_entity",
+            "save_ability": spell_context.get("save_ability"),
+            "save_dc": spell_context.get("save_dc"),
+            "save_success_outcome": spell_context.get("save_success_outcome"),
+            "effect_dice": spell_context.get("effect_instance_dice"),
+            "effect_bonus": 0,
+            "pending_spell_id": None,
+            "pending_save_id": None,
+            "effect_roll_required": False,
+            "effect_rolls": [],
+            "base_effect": None,
+            "effect_roll_source": None,
+            "action_cost": action_cost,
+            "summary_text": None,
+            "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "concentration_check": None,
+            "concentration_checks": [],
+            "area_shape": None,
+            "affected_target_ref_ids": [],
+            "affected_cells": [],
+            "area_target_outcomes": [],
+            "target_count": len(validated_targets),
+            "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+            "effect_instance_count": spell_context.get("effect_instance_count"),
+            "effect_instance_dice": spell_context.get("effect_instance_dice"),
+            "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
+            "effect_instance_outcomes": outcomes,
+        }
 
     @classmethod
     async def _resolve_cast_resolution(
@@ -434,6 +777,14 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         spell_context = cls._resolve_player_spell_context(
             db, session_id, attacker, attacker_model, req,
         )
+        validated_targets = cls._validate_instance_targets(
+            req=req, spell_context=spell_context, state=state,
+        )
+        if validated_targets is not None:
+            return await cls._resolve_multi_instance_cast(
+                db, session_id, req, state, attacker, attacker_model,
+                spell_context, actor_user_id, is_gm, validated_targets,
+            )
         area_spell_spec = cls._resolve_supported_area_spell_spec(spell_context)
         if cls._normalize_area_shape(spell_context.get("area_shape")) is not None:
             if area_spell_spec is None:

@@ -45,6 +45,11 @@ class CombatAttackResult(BaseModel):
     concentration_check: "CombatConcentrationCheckResult | None" = None
 
 
+class EffectInstanceTarget(BaseModel):
+    instance_index: int = Field(ge=1)
+    target_ref_id: str
+
+
 class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str | None = None
@@ -78,6 +83,7 @@ class CombatCastSpellRequest(BaseModel):
     concentration_roll_source: RollSource = "system"
     concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
     override_resource_limit: bool = False
+    effect_instance_targets: list[EffectInstanceTarget] | None = None
 
 
 class CombatGridCell(BaseModel):
@@ -203,6 +209,21 @@ class CombatMovementPreviewResponse(BaseModel):
     map_version: int | None = None
 
 
+class EffectInstanceOutcome(BaseModel):
+    instance_index: int
+    target_ref_id: str
+    target_display_name: str
+    target_kind: Literal["player", "session_entity"]
+    damage: int = 0
+    healing: int = 0
+    is_hit: bool | None = None
+    is_saved: bool | None = None
+    is_critical: bool = False
+    roll: int | None = None
+    roll_result: RollResult | None = None
+    new_hp: int | None = None
+
+
 class CombatSpellResult(BaseModel):
     spell_name: str
     spell_canonical_key: str | None = None
@@ -252,3 +273,4 @@ class CombatSpellResult(BaseModel):
     effect_instance_count: int | None = None
     effect_instance_dice: str | None = None
     base_effect_instance_count: int | None = None
+    effect_instance_outcomes: list[EffectInstanceOutcome] = Field(default_factory=list)
