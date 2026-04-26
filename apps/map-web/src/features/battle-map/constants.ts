@@ -71,7 +71,13 @@ export const C = {
   previewTargetValid: 0x22dd88,
   previewTargetValidAlpha: 0.9,
   previewTargetInvalid: 0xff4444,
-  previewTargetInvalidAlpha: 0.85
+  previewTargetInvalidAlpha: 0.85,
+
+  // Spell preview highlights — partial (orange) / unknown (slate, skipped by renderers)
+  spellHighlightPartial: 0xf97316,
+  spellHighlightPartialAlpha: 0.75,
+  spellHighlightUnknown: 0x475569,
+  spellHighlightUnknownAlpha: 0.25
 };
 
 export const COVER_RANK: Record<Obstacle["cover"], number> = {

@@ -3,7 +3,8 @@ import { reconnectAs } from "./centrifugo-client";
 import {
   battleMapStore,
   type EmbeddedCombatPhase,
-  type EmbeddedSelectionMode
+  type EmbeddedSelectionMode,
+  type SpellMapHighlight
 } from "../features/battle-map/battle-map-store";
 
 type MapActorType = "player" | "gm";
@@ -22,6 +23,7 @@ type EmbeddedMapContextMessage = {
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
     combatPhase?: EmbeddedCombatPhase | null;
+    spellHighlights?: SpellMapHighlight[];
   };
 };
 
@@ -91,6 +93,7 @@ export const isEmbeddedMapContextMessage = (
     selectedCell?: unknown;
     selectedTargetRefId?: unknown;
     combatPhase?: unknown;
+    spellHighlights?: unknown;
   };
 
   const actorValid =
@@ -161,6 +164,7 @@ export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payl
     selectedCell: message.selectedCell ?? null,
     selectedTargetRefId: message.selectedTargetRefId ?? null,
     combatPhase: message.combatPhase ?? null,
+    spellHighlights: message.spellHighlights ?? [],
   });
 }
 

@@ -37,6 +37,16 @@ export interface TokenMovementRejectionState {
   exceededBy?: number;
 }
 
+export type SpellMapHighlightKind = "target" | "instance-target" | "area-cell";
+export type SpellMapHighlightStatus = "valid" | "invalid" | "partial" | "unknown";
+export type SpellMapHighlight = {
+  kind: SpellMapHighlightKind;
+  status: SpellMapHighlightStatus;
+  targetRefId?: string | null;
+  instanceIndex?: number | null;
+  reason?: string | null;
+};
+
 export interface BattleMapUIState {
   selectedTokenId?: string;
   placingTokenId: string | null;
@@ -48,6 +58,7 @@ export interface BattleMapUIState {
   embeddedSelectedCell?: Coordinate;
   embeddedSelectedTargetRefId?: string;
   embeddedCombatPhase?: EmbeddedCombatPhase;
+  embeddedSpellHighlights: SpellMapHighlight[];
   message?: string;
   isGridEditMode: boolean;
   isObstaclePaintMode: boolean;

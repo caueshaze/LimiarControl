@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AbilityName,
   AdvantageMode,
@@ -28,7 +28,7 @@ import type {
 } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
-import { CombatMapFrame, toCombatMapFrameAreaEffects } from "../map/CombatMapFrame";
+import { CombatMapFrame, toCombatMapFrameAreaEffects, type SpellMapHighlight } from "../map/CombatMapFrame";
 import {
   formatMovementMeters,
   getMovementPreviewReasonLabel,
@@ -171,6 +171,10 @@ export const PlayerCombatModeShell = ({
   const myParticipant = combat.myParticipant;
   const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
   const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
+  const [spellMapHighlights, setSpellMapHighlights] = useState<SpellMapHighlight[]>([]);
+  const handleMapPreviewChange = useCallback((highlights: SpellMapHighlight[]) => {
+    setSpellMapHighlights(highlights);
+  }, []);
   const [movementMode, setMovementMode] = useState(false);
   const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);
@@ -320,6 +324,7 @@ export const PlayerCombatModeShell = ({
           activeAreaEffects={toCombatMapFrameAreaEffects(combat.state?.active_area_effects)}
           selectedCell={movementEnabled ? movementSelectedCell : null}
           selectedTargetRefId={movementEnabled ? null : (targetId || null)}
+          spellHighlights={spellMapHighlights}
           frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
           onCellSelected={(selection) => {
             if (!movementEnabled) {
@@ -495,6 +500,7 @@ export const PlayerCombatModeShell = ({
           actor={combat.currentParticipant}
           actorParticipantId={combat.currentParticipant.id}
           onClose={closeSpellDialog}
+          onMapPreviewChange={handleMapPreviewChange}
           onResolved={(result) => {
             setLastSpellResult(result);
             if (result.inventory_refresh_required) {

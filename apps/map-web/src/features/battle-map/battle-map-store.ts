@@ -17,6 +17,7 @@ import type {
   BattleMapUIState,
   EmbeddedCombatPhase,
   EmbeddedSelectionMode,
+  SpellMapHighlight,
   TokenMovementRejectionState
 } from "./battle-map-store.types";
 
@@ -26,7 +27,8 @@ export type {
   TokenMovementRejectionState,
   BattleMapUIState,
   EmbeddedCombatPhase,
-  EmbeddedSelectionMode
+  EmbeddedSelectionMode,
+  SpellMapHighlight
 } from "./battle-map-store.types";
 
 type Listener = () => void;
@@ -39,6 +41,7 @@ class BattleMapStore {
     embeddedSelectionMode: "none",
     embeddedPreview: [],
     embeddedActiveAreaEffects: [],
+    embeddedSpellHighlights: [],
     isGridEditMode: false,
     isObstaclePaintMode: false,
     obstacleBrushRadius: 1,
@@ -108,6 +111,7 @@ class BattleMapStore {
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
     combatPhase?: EmbeddedCombatPhase | null;
+    spellHighlights?: SpellMapHighlight[];
   }): void {
     this.set({
       embeddedSelectionMode: ctx.selectionMode,
@@ -115,14 +119,15 @@ class BattleMapStore {
       embeddedActiveAreaEffects: ctx.activeAreaEffects ?? [],
       embeddedSelectedCell: ctx.selectedCell ?? undefined,
       embeddedSelectedTargetRefId: ctx.selectedTargetRefId ?? undefined,
-      embeddedCombatPhase: ctx.combatPhase ?? undefined
+      embeddedCombatPhase: ctx.combatPhase ?? undefined,
+      embeddedSpellHighlights: ctx.spellHighlights ?? [],
     });
   }
 
   setEmbeddedSelectedCell(c?: Coordinate | null): void { this.set({ embeddedSelectedCell: c ?? undefined }); }
 
   clearEmbeddedInteraction(): void {
-    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedActiveAreaEffects: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined, embeddedCombatPhase: undefined });
+    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedActiveAreaEffects: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined, embeddedCombatPhase: undefined, embeddedSpellHighlights: [] });
   }
 
   setTokenMovementRejection(rejection: TokenMovementRejectionState): void {

@@ -5,6 +5,7 @@ import {
 } from "../../../features/combat-ui/map/CombatMapFrame";
 import type { CombatMapPreviewState, CombatParticipant } from "../../../shared/api/combatRepo";
 import { formatAffectedTargetNames, resolveAffectedTargetNames, type GridCell } from "./areaTargetingUi";
+import type { SpellMapHighlight } from "../../../features/combat-ui/map/CombatMapFrame";
 
 type Props = {
   actor: CombatParticipant;
@@ -23,6 +24,7 @@ type Props = {
   previewReason: string | null;
   previewValid: boolean;
   sessionId: string;
+  spellHighlights?: SpellMapHighlight[];
   onCellSelected: (cell: GridCell) => void;
 };
 
@@ -43,6 +45,7 @@ export const AreaTargetingGrid = ({
   previewReason,
   previewValid,
   sessionId,
+  spellHighlights,
   onCellSelected,
 }: Props) => {
   const affectedTargetNames = useMemo(
@@ -102,6 +105,7 @@ export const AreaTargetingGrid = ({
         previewCells={previewCells}
         activeAreaEffects={toCombatMapFrameAreaEffects(mapState.active_area_effects)}
         selectedCell={anchorCell}
+        spellHighlights={spellHighlights ?? []}
         className="rounded-2xl border border-white/10 bg-slate-950/70 p-3"
         frameClassName="h-[420px] w-full border-0 bg-slate-950"
         onCellSelected={({ cell }) => onCellSelected(cell)}

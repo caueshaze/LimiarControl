@@ -56,6 +56,7 @@ export function useBattleMapPixi(params: {
     cellFillsGfxRef: useRef<Graphics | null>(null),
     edgeObstaclesGfxRef: useRef<Graphics | null>(null),
     tokenContainerRef: useRef<Container | null>(null),
+    spellHighlightContainerRef: useRef<Container | null>(null),
     tacticalOverlayContainerRef: useRef<Container | null>(null),
     editHandlesContainerRef: useRef<Container | null>(null),
     hudContainerRef: useRef<Container | null>(null)

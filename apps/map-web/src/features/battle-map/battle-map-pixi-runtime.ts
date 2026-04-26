@@ -10,7 +10,7 @@ import { getEdgeBrushPreset, getObstacleBrushPreset } from "./obstacle-presets";
 import { HttpClient } from "../../services/http-client";
 import { postEmbeddedCellHovered, postEmbeddedCellSelected, postEmbeddedTokenSelected } from "../../services/embedded-map-bridge";
 import { buildFailureExplanation } from "../targeting/diagnostics-to-explanation";
-import { drawCellFills, drawEdgeObstacles, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
+import { drawCellFills, drawEdgeObstacles, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
 import { canControlToken, canInteractWithToken, computePath, getSelectionBlockedMessage, pixelToGrid } from "./utils";
 
 type Snapshot = {
@@ -29,6 +29,7 @@ export type BattleMapPixiRefs = {
   cellFillsGfxRef: MutableRefObject<Graphics | null>;
   edgeObstaclesGfxRef: MutableRefObject<Graphics | null>;
   tokenContainerRef: MutableRefObject<Container | null>;
+  spellHighlightContainerRef: MutableRefObject<Container | null>;
   tacticalOverlayContainerRef: MutableRefObject<Container | null>;
   editHandlesContainerRef: MutableRefObject<Container | null>;
   hudContainerRef: MutableRefObject<Container | null>;
@@ -46,10 +47,12 @@ export function attachPixiLayers(app: Application, refs: BattleMapPixiRefs): voi
   const gridGfx = new Graphics();
   const edgeObstaclesGfx = new Graphics();
   const tokenContainer = new Container();
+  const spellHighlightContainer = new Container();
   const tacticalOverlayContainer = new Container();
   const editHandlesContainer = new Container();
   const hudContainer = new Container();
 
+  spellHighlightContainer.eventMode = "none";
   tacticalOverlayContainer.eventMode = "none";
   editHandlesContainer.eventMode = "passive";
   hudContainer.eventMode = "none";
@@ -59,6 +62,7 @@ export function attachPixiLayers(app: Application, refs: BattleMapPixiRefs): voi
   app.stage.addChild(gridGfx);
   app.stage.addChild(edgeObstaclesGfx);
   app.stage.addChild(tokenContainer);
+  app.stage.addChild(spellHighlightContainer);
   app.stage.addChild(tacticalOverlayContainer);
   app.stage.addChild(editHandlesContainer);
   app.stage.addChild(hudContainer);
@@ -68,6 +72,7 @@ export function attachPixiLayers(app: Application, refs: BattleMapPixiRefs): voi
   refs.gridGfxRef.current = gridGfx;
   refs.edgeObstaclesGfxRef.current = edgeObstaclesGfx;
   refs.tokenContainerRef.current = tokenContainer;
+  refs.spellHighlightContainerRef.current = spellHighlightContainer;
   refs.tacticalOverlayContainerRef.current = tacticalOverlayContainer;
   refs.editHandlesContainerRef.current = editHandlesContainer;
   refs.hudContainerRef.current = hudContainer;
@@ -228,6 +233,7 @@ export function buildDrawFunction(
     }
     if (refs.edgeObstaclesGfxRef.current) drawEdgeObstacles(refs.edgeObstaclesGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.edgeObstacles ?? []);
     if (refs.tokenContainerRef.current) drawTokenLayer(refs.tokenContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, selectedTokenId, uiState.embeddedSelectedTargetRefId ?? null, encounter.combatState.activeCombatantId);
+    if (refs.spellHighlightContainerRef.current) drawSpellHighlightRings(refs.spellHighlightContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.embeddedSpellHighlights);
     if (refs.tacticalOverlayContainerRef.current) drawTacticalTokenOverlay(refs.tacticalOverlayContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.tacticalPreview);
     if (refs.editHandlesContainerRef.current) {
       drawEditHandles(refs.editHandlesContainerRef.current, calibration, screen.width, screen.height, uiState.isGridEditMode, Boolean(uiState.pendingGridCalibrationActionId), (mode, clientX, clientY) => {
@@ -251,6 +257,7 @@ export function resetPixiRefs(refs: BattleMapPixiRefs): void {
   refs.cellFillsGfxRef.current = null;
   refs.edgeObstaclesGfxRef.current = null;
   refs.tokenContainerRef.current = null;
+  refs.spellHighlightContainerRef.current = null;
   refs.tacticalOverlayContainerRef.current = null;
   refs.editHandlesContainerRef.current = null;
   refs.hudContainerRef.current = null;
