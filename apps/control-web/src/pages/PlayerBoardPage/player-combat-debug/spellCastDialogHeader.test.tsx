@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
+import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 
@@ -47,6 +48,7 @@ const baseProps = {
   error: null,
   isAreaSpell: false,
   loading: false,
+  mapPreviewModel: null,
   onConcentrationManualRollChange: () => undefined,
   onConcentrationRollModeChange: () => undefined,
   selectedSlotLevel: 3,
@@ -77,11 +79,74 @@ const buildPreviewModel = (overrides: Partial<SpellPreviewModel>): SpellPreviewM
   ...overrides,
 });
 
+const buildMapPreviewModel = (
+  overrides: Partial<SpellMapPreviewModel>,
+): SpellMapPreviewModel => ({
+  status: "unknown",
+  reason: null,
+  affectedTargetCount: undefined,
+  affectedTargetNames: undefined,
+  rangeMeters: 36,
+  areaShape: null,
+  areaSizeMeters: null,
+  effectInstanceCount: 1,
+  instanceStatuses: undefined,
+  ...overrides,
+});
+
 describe("SpellCastDialogHeader tactical preview", () => {
+  it("renderiza status válido", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({ status: "valid" })}
+        previewModel={buildPreviewModel({})}
+      />,
+    );
+
+    expect(markup).toContain("Preview tático: válido");
+  });
+
+  it("renderiza status inválido com reason", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "out_of_range" })}
+        previewModel={buildPreviewModel({})}
+      />,
+    );
+
+    expect(markup).toContain("Preview tático: inválido");
+    expect(markup).toContain("Motivo: fora do alcance");
+  });
+
+  it("renderiza status unknown como indisponível e não como erro", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({ status: "unknown" })}
+        previewModel={buildPreviewModel({})}
+      />,
+    );
+
+    expect(markup).toContain("Preview tático: indisponível");
+    expect(markup).toContain("Dados de posição insuficientes para validar o preview no mapa");
+  });
+
   it("renders Magic Missile slot 3 preview from resolved context (5 instâncias, 5d4+5)", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
         {...baseProps}
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          effectInstanceCount: 5,
+          instanceStatuses: Array.from({ length: 5 }, (_, offset) => ({
+            instanceIndex: offset + 1,
+            targetRefId: "enemy-1",
+            status: "valid",
+            reason: null,
+          })),
+        })}
         previewModel={buildPreviewModel({
           damagePreview: "5d4+5",
           damageType: "force",
@@ -97,6 +162,8 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("5 instâncias");
     expect(markup).toContain("(1d4+1)");
     expect(markup).toContain("alcance 36m");
+    expect(markup).toContain("Míssil 1: válido");
+    expect(markup).toContain("Míssil 5: válido");
     expect(markup).toContain('data-preview-source="resolved"');
   });
 
@@ -106,6 +173,14 @@ describe("SpellCastDialogHeader tactical preview", () => {
         {...baseProps}
         spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
         spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "partial",
+          effectInstanceCount: 2,
+          instanceStatuses: [
+            { instanceIndex: 1, targetRefId: "enemy-1", status: "valid", reason: null },
+            { instanceIndex: 2, targetRefId: "enemy-2", status: "invalid", reason: "out_of_range" },
+          ],
+        })}
         previewModel={buildPreviewModel({
           resolutionType: "spell_attack",
           requiresAttackRoll: true,
@@ -121,6 +196,9 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("2 instâncias");
     expect(markup).toContain("(1d10)");
     expect(markup).toContain("ataque");
+    expect(markup).toContain("Feixe 1: válido");
+    expect(markup).toContain("Feixe 2: inválido · fora do alcance");
+    expect(markup).toContain("Preview tático: parcial");
   });
 
   it("renders Acid Splash as saving throw without instâncias", () => {
@@ -129,6 +207,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
         {...baseProps}
         spell={{ ...baseSpell, name: "Acid Splash", canonicalKey: "acid_splash", level: 0 }}
         spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "valid", rangeMeters: 18 })}
         previewModel={buildPreviewModel({
           resolutionType: "saving_throw",
           requiresSavingThrow: true,
@@ -153,6 +232,14 @@ describe("SpellCastDialogHeader tactical preview", () => {
         isAreaSpell
         spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
         spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          rangeMeters: 45,
+          areaShape: "sphere",
+          areaSizeMeters: 6,
+          affectedTargetCount: 3,
+          affectedTargetNames: ["Goblin A", "Goblin B", "Orc C"],
+        })}
         previewModel={buildPreviewModel({
           resolutionType: "saving_throw",
           requiresSavingThrow: true,
@@ -169,12 +256,15 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("sphere");
     expect(markup).toContain("raio 6m");
     expect(markup).toContain("Dano 8d6");
+    expect(markup).toContain("Afetados: 3");
+    expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
   });
 
   it("falls back gracefully when resolve-context is unavailable (preview-source=fallback)", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
         {...baseProps}
+        mapPreviewModel={null}
         previewModel={buildPreviewModel({
           source: "fallback",
           damagePreview: "1d10",

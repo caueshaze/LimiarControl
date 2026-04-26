@@ -2,7 +2,13 @@ import { ConcentrationSaveControl } from "../../../features/combat-ui/components
 import { RangeStatusBadge } from "../../../features/combat-ui/components/RangeStatusBadge";
 import type { TargetingPreviewResult } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import type { CombatSpellMode } from "../../../shared/api/combatRepo";
+import { getInstanceLabel } from "./InstanceTargetSelector";
 import type { GridCell } from "./areaTargetingUi";
+import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
+import {
+  formatSpellMapPreviewReason,
+  formatSpellMapPreviewStatus,
+} from "./spellMapPreviewPresentation";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 
@@ -15,6 +21,7 @@ type Props = {
   error: string | null;
   isAreaSpell: boolean;
   loading: boolean;
+  mapPreviewModel: SpellMapPreviewModel | null;
   onConcentrationManualRollChange: (value: string) => void;
   onConcentrationRollModeChange: (value: "system" | "manual") => void;
   previewModel: SpellPreviewModel;
@@ -42,6 +49,13 @@ const formatAreaSizeMeters = (
   if (shape === "cube") return `lado ${formatted}`;
   if (shape === "cone") return `cone ${formatted}`;
   return formatted;
+};
+
+const MAP_PREVIEW_STYLES: Record<SpellMapPreviewModel["status"], string> = {
+  valid: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+  invalid: "border-rose-500/30 bg-rose-500/10 text-rose-100",
+  partial: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+  unknown: "border-slate-600/50 bg-slate-900/40 text-slate-200",
 };
 
 const formatResolutionType = (
@@ -72,6 +86,7 @@ export const SpellCastDialogHeader = ({
   error,
   isAreaSpell,
   loading,
+  mapPreviewModel,
   onConcentrationManualRollChange,
   onConcentrationRollModeChange,
   previewModel,
@@ -98,6 +113,9 @@ export const SpellCastDialogHeader = ({
     ? formatAreaSizeMeters(previewModel.areaShape, previewModel.areaSizeMeters)
     : null;
   const resolutionLabel = formatResolutionType(previewModel.resolutionType);
+  const mapPreviewReason = mapPreviewModel
+    ? formatSpellMapPreviewReason(mapPreviewModel.reason, mapPreviewModel.status)
+    : null;
 
   return (
     <>
@@ -148,6 +166,53 @@ export const SpellCastDialogHeader = ({
           <span className="ml-2 text-slate-300">· alcance {rangeLabel}</span>
         ) : null}
       </p>
+      {mapPreviewModel ? (
+        <div
+          className={`mt-4 rounded-2xl border px-4 py-3 ${MAP_PREVIEW_STYLES[mapPreviewModel.status]}`}
+          data-testid="spell-map-preview"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]">
+            Preview tático: {formatSpellMapPreviewStatus(mapPreviewModel.status)}
+          </p>
+          {mapPreviewReason ? (
+            <p className="mt-1 text-sm">Motivo: {mapPreviewReason}</p>
+          ) : null}
+          {mapPreviewModel.rangeMeters != null ? (
+            <p className="mt-2 text-xs opacity-90">Alcance: {formatRangeMeters(mapPreviewModel.rangeMeters)}</p>
+          ) : null}
+          {mapPreviewModel.areaShape ? (
+            <p className="mt-1 text-xs opacity-90">
+              Área: {mapPreviewModel.areaShape}
+              {mapPreviewModel.areaSizeMeters != null
+                ? `, ${formatAreaSizeMeters(mapPreviewModel.areaShape as SpellPreviewModel["areaShape"], mapPreviewModel.areaSizeMeters)}`
+                : ""}
+            </p>
+          ) : null}
+          {typeof mapPreviewModel.affectedTargetCount === "number" ? (
+            <p className="mt-1 text-xs opacity-90">Afetados: {mapPreviewModel.affectedTargetCount}</p>
+          ) : null}
+          {mapPreviewModel.affectedTargetNames?.length ? (
+            <p className="mt-1 text-xs opacity-90">Alvos: {mapPreviewModel.affectedTargetNames.join(", ")}</p>
+          ) : null}
+          {mapPreviewModel.instanceStatuses?.length ? (
+            <div className="mt-2 space-y-1 text-xs">
+              {mapPreviewModel.instanceStatuses.map((instanceStatus) => {
+                const instanceReason = formatSpellMapPreviewReason(
+                  instanceStatus.reason,
+                  instanceStatus.status,
+                );
+                return (
+                  <p key={`${instanceStatus.instanceIndex}:${instanceStatus.targetRefId ?? "none"}`}>
+                    {getInstanceLabel(spell.canonicalKey, instanceStatus.instanceIndex)}:{" "}
+                    {formatSpellMapPreviewStatus(instanceStatus.status)}
+                    {instanceReason ? ` · ${instanceReason}` : ""}
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">{actionCostLabel}</p>
       {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
         <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">

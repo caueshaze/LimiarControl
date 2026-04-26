@@ -28,6 +28,7 @@ export type SpellMapPreviewModel = {
 export type SpellMapTargetPosition = {
   refId: string;
   cell: GridCell;
+  displayName?: string | null;
 };
 
 export type BuildSpellMapPreviewModelParams = {
@@ -76,6 +77,12 @@ export const buildSpellMapPreviewModel = ({
         status: existingAreaPreviewResult.is_valid ? "valid" : "invalid",
         reason: existingAreaPreviewResult.reason ?? null,
         affectedTargetCount: existingAreaPreviewResult.affected_target_ref_ids.length,
+        affectedTargetNames: existingAreaPreviewResult.affected_target_ref_ids
+          .map(
+            (targetRefId) =>
+              targetPositions?.find((position) => position.refId === targetRefId)?.displayName ?? null,
+          )
+          .filter((name): name is string => Boolean(name)),
       };
     }
     return { ...base, status: "unknown" };
@@ -107,7 +114,7 @@ export const buildSpellMapPreviewModel = ({
           instanceIndex,
           targetRefId,
           status,
-          reason: status === "invalid" ? "Alvo fora do alcance" : null,
+          reason: status === "invalid" ? "out_of_range" : null,
         };
       },
     );
@@ -144,6 +151,6 @@ export const buildSpellMapPreviewModel = ({
   return {
     ...base,
     status,
-    reason: status === "invalid" ? "Alvo fora do alcance" : null,
+    reason: status === "invalid" ? "out_of_range" : null,
   };
 };

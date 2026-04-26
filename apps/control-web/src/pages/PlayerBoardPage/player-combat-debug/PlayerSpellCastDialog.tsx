@@ -16,7 +16,11 @@ import {
   getDamageRollSides,
   formatDamageDiceExpression,
 } from "../../../shared/utils/diceExpression";
-import { buildAreaCastPayload, createInitialTargetingMode } from "./areaTargetingUi";
+import {
+  buildAreaCastPayload,
+  createInitialTargetingMode,
+  resolveActorOriginCell,
+} from "./areaTargetingUi";
 import { AreaTargetingGrid } from "./AreaTargetingGrid";
 import {
   hasCompleteEffectInstanceTargets,
@@ -30,6 +34,7 @@ import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
 import { SpellCastResultPanel } from "./SpellCastResultPanel";
+import { buildSpellMapPreviewModel } from "./spellMapPreviewModel";
 import { buildSpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
@@ -168,6 +173,7 @@ export const PlayerSpellCastDialog = ({
   );
   const [effectInstanceTargets, setEffectInstanceTargets] = useState<EffectInstanceTargetInput[]>([]);
   const [result, setResult] = useState<CombatSpellResult | null>(null);
+  const [spellMapState, setSpellMapState] = useState<Awaited<ReturnType<typeof combatRepo.getMapState>> | null>(null);
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
 
@@ -277,6 +283,26 @@ export const PlayerSpellCastDialog = ({
       : spellMode === "utility"
         ? "efeito"
         : "dano";
+  const effectiveMapState = mapState ?? spellMapState;
+  const targetPositions = effectiveMapState?.tokens
+    .filter((token) => token.combatant_id && token.position)
+    .map((token) => {
+      const participant = participants.find((entry) => entry.ref_id === token.combatant_id);
+      return {
+        refId: token.combatant_id ?? "",
+        cell: token.position,
+        displayName: participant?.display_name ?? token.label,
+      };
+    }) ?? [];
+  const casterPosition = effectiveMapState ? resolveActorOriginCell(actor, effectiveMapState.tokens) : null;
+  const mapPreviewModel = buildSpellMapPreviewModel({
+    spellPreviewModel: previewModel,
+    casterPosition,
+    selectedTargetRefId: target?.ref_id ?? null,
+    effectInstanceTargets: normalizedEffectInstanceTargets,
+    existingAreaPreviewResult: preview,
+    targetPositions,
+  });
 
   useEffect(() => {
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
@@ -296,6 +322,33 @@ export const PlayerSpellCastDialog = ({
       reconcileEffectInstanceTargets(current, effectInstanceContext.instanceCount, target?.ref_id),
     );
   }, [effectInstanceContext.instanceCount, isMultiInstanceSpell, target?.ref_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (result) {
+      return;
+    }
+
+    combatRepo
+      .getMapState(sessionId, actorParticipantId)
+      .then((nextMapState) => {
+        if (cancelled) {
+          return;
+        }
+        setSpellMapState(nextMapState);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setSpellMapState(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [actorParticipantId, result, sessionId]);
 
   useEffect(() => {
     if (!result?.pending_save_id || !actor.last_save_resolution) {
@@ -459,6 +512,7 @@ export const PlayerSpellCastDialog = ({
           error={error}
           isAreaSpell={isAreaSpell}
           loading={loading}
+          mapPreviewModel={mapPreviewModel}
           onConcentrationManualRollChange={setConcentrationManualRoll}
           onConcentrationRollModeChange={setConcentrationRollMode}
           previewModel={previewModel}
