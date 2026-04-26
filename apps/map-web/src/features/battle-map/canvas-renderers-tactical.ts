@@ -9,7 +9,7 @@ import type {
   GridCalibration,
   Token
 } from "@limiarmap/shared-contracts";
-import type { TacticalPreviewState } from "./battle-map-store";
+import type { TacticalPreviewState, SpellMapHighlight, SpellMapHighlightStatus } from "./battle-map-store";
 import type { FailureExplanation } from "../targeting/diagnostics-to-explanation";
 import { C } from "./constants";
 import { cellRect } from "./utils";
@@ -79,6 +79,69 @@ export function drawTacticalTokenOverlay(
   ring.x = cx;
   ring.y = cy;
   container.addChild(ring);
+}
+
+const STATUS_PRIORITY: Record<SpellMapHighlightStatus, number> = {
+  invalid: 3,
+  partial: 2,
+  valid: 1,
+  unknown: 0,
+};
+
+const resolveRingStyle = (status: SpellMapHighlightStatus): { color: number; alpha: number } | null => {
+  switch (status) {
+    case "valid":
+      return { color: C.previewTargetValid, alpha: C.previewTargetValidAlpha };
+    case "invalid":
+      return { color: C.previewTargetInvalid, alpha: C.previewTargetInvalidAlpha };
+    case "partial":
+      return { color: C.spellHighlightPartial, alpha: C.spellHighlightPartialAlpha };
+    case "unknown":
+      return null;
+  }
+};
+
+export function drawSpellHighlightRings(
+  container: Container,
+  tokens: Token[],
+  cal: GridCalibration,
+  gridW: number,
+  gridH: number,
+  canvasW: number,
+  canvasH: number,
+  highlights: SpellMapHighlight[],
+): void {
+  container.removeChildren();
+
+  // Group highlights by targetRefId, resolving worst status per token
+  const statusByRef = new Map<string, SpellMapHighlightStatus>();
+  for (const h of highlights) {
+    if (!h.targetRefId) continue;
+    const current = statusByRef.get(h.targetRefId);
+    if (!current || STATUS_PRIORITY[h.status] > STATUS_PRIORITY[current]) {
+      statusByRef.set(h.targetRefId, h.status);
+    }
+  }
+
+  for (const [refId, status] of statusByRef) {
+    const style = resolveRingStyle(status);
+    if (!style) continue;
+
+    const token = tokens.find((t) => t.combatantId === refId);
+    if (!token) continue;
+
+    const { x, y, w, h } = cellRect(token.position.x, token.position.y, cal, gridW, gridH, canvasW, canvasH);
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const radius = Math.min(w, h) * 0.36;
+
+    const ring = new Graphics();
+    // Slightly larger + thinner than tactical overlay ring to distinguish preview from selection
+    ring.circle(0, 0, radius + 7).stroke({ width: 2, color: style.color, alpha: style.alpha });
+    ring.x = cx;
+    ring.y = cy;
+    container.addChild(ring);
+  }
 }
 
 const SEVERITY_STYLES = {

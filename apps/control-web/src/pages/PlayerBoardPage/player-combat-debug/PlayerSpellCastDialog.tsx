@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
 import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import type {
@@ -35,6 +35,8 @@ import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
 import { SpellCastResultPanel } from "./SpellCastResultPanel";
 import { buildSpellMapPreviewModel } from "./spellMapPreviewModel";
+import { buildSpellMapPreviewHighlights } from "./spellMapPreviewHighlights";
+import type { SpellMapHighlight } from "../../../features/combat-ui/map/CombatMapFrame";
 import { buildSpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
@@ -45,6 +47,7 @@ type Props = {
   actorParticipantId: string;
   canRevealHiddenTargets?: boolean;
   onClose: () => void;
+  onMapPreviewChange?: (highlights: SpellMapHighlight[]) => void;
   onResolved?: (result: CombatSpellResult) => void | Promise<void>;
   participants: CombatParticipant[];
   sessionId: string;
@@ -150,6 +153,7 @@ export const PlayerSpellCastDialog = ({
   actorParticipantId,
   canRevealHiddenTargets = false,
   onClose,
+  onMapPreviewChange,
   onResolved,
   participants,
   sessionId,
@@ -303,6 +307,22 @@ export const PlayerSpellCastDialog = ({
     existingAreaPreviewResult: preview,
     targetPositions,
   });
+
+  // Derive map highlights from the preview model. Deps are the primitive fields
+  // that drive content changes, plus effectInstanceTargets (state) for per-instance changes.
+  const highlights = useMemo(
+    () => buildSpellMapPreviewHighlights(mapPreviewModel, target?.ref_id ?? null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mapPreviewModel.status, mapPreviewModel.reason, mapPreviewModel.areaShape, effectInstanceTargets, target?.ref_id],
+  );
+
+  useEffect(() => {
+    onMapPreviewChange?.(highlights);
+  }, [highlights, onMapPreviewChange]);
+
+  useEffect(() => {
+    return () => onMapPreviewChange?.([]);
+  }, [onMapPreviewChange]);
 
   useEffect(() => {
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
@@ -559,6 +579,7 @@ export const PlayerSpellCastDialog = ({
             previewReason={preview?.reason ?? null}
             previewValid={Boolean(preview?.is_valid)}
             sessionId={sessionId}
+            spellHighlights={highlights}
             onCellSelected={(cell) => {
               setAnchorCell(cell);
               setTargetingMode("confirming");

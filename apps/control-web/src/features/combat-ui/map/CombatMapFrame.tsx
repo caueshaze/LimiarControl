@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { combatRepo, type CombatActiveAreaEffect } from "../../../shared/api/combatRepo";
+import type { SpellMapHighlight } from "../../../pages/PlayerBoardPage/player-combat-debug/spellMapPreviewHighlights";
 
 export type CombatMapSelectionMode = "none" | "select-token" | "select-cell";
 
@@ -85,6 +86,8 @@ export type CombatMapCellSelection = {
   combatantId: string | null;
 };
 
+export type { SpellMapHighlight };
+
 type Props = {
   sessionId: string;
   title: string;
@@ -96,6 +99,7 @@ type Props = {
   activeAreaEffects?: CombatMapFrameActiveAreaEffect[];
   selectedCell?: Coordinate | null;
   selectedTargetRefId?: string | null;
+  spellHighlights?: SpellMapHighlight[];
   className?: string;
   frameClassName?: string;
   onCellSelected?: (selection: CombatMapCellSelection) => void;
@@ -156,6 +160,7 @@ export const CombatMapFrame = ({
   activeAreaEffects = [],
   selectedCell = null,
   selectedTargetRefId = null,
+  spellHighlights = [],
   className,
   frameClassName,
   onCellSelected,
@@ -190,6 +195,7 @@ export const CombatMapFrame = ({
           selectedCell,
           selectedTargetRefId,
           combatPhase,
+          spellHighlights,
         },
       },
       "*",
@@ -358,6 +364,7 @@ export const CombatMapFrame = ({
     selectedTargetRefId,
     selectionMode,
     sessionId,
+    spellHighlights,
   ]);
 
   return (
