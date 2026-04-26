@@ -22,6 +22,8 @@ export type TargetingPreviewState = {
   failureReasons: string[];
 };
 
+export type TargetingPreviewResult = TargetingPreviewState;
+
 export type UseTargetingPreviewOptions = {
   sessionId: string;
   actorRefId: string | null | undefined;
