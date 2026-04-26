@@ -146,14 +146,35 @@ export type SpellUpcast = {
   unlockEditorial?: string | null;
 };
 
+export const CantripScalingEffectType = {
+  DAMAGE_DICE: "damage_dice",
+  EFFECT_INSTANCES: "effect_instances",
+} as const;
+
+export type CantripScalingEffectType =
+  (typeof CantripScalingEffectType)[keyof typeof CantripScalingEffectType];
+
+export type CantripScalingThresholdDamage = {
+  characterLevel: number;
+  damage: { dice: string };
+};
+
+export type CantripScalingThresholdInstances = {
+  characterLevel: number;
+  instances: number;
+  instanceDamage: { dice: string };
+};
+
+export type CantripScalingThreshold =
+  | CantripScalingThresholdDamage
+  | CantripScalingThresholdInstances;
+
 export type SpellCantripScaling = {
-  mode: "character_level";
-  thresholds: Array<{
-    characterLevel: number;
-    damage: {
-      dice: string;
-    };
-  }>;
+  /** "mode" is the legacy field; new records use "scalingMode". */
+  mode?: "character_level";
+  scalingMode?: "character_level";
+  scalingEffectType: CantripScalingEffectType;
+  thresholds: CantripScalingThreshold[];
 };
 
 export const SpellSource = {

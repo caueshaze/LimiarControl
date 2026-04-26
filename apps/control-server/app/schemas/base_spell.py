@@ -27,7 +27,9 @@ from .base_spell_constants import (
 )
 from .base_spell_read import BaseSpellAliasRead, BaseSpellRead
 from .base_spell_cantrip_scaling import (
+    CantripInstanceDamage,
     CantripScalingDamage,
+    CantripScalingEffectType,
     CantripScalingMode,
     CantripScalingThreshold,
     SpellCantripScalingConfig,
@@ -76,7 +78,9 @@ __all__ = [
     "BaseSpellSeedDocument",
     "BaseSpellUpdate",
     "BaseSpellWrite",
+    "CantripInstanceDamage",
     "CantripScalingDamage",
+    "CantripScalingEffectType",
     "CantripScalingMode",
     "CantripScalingThreshold",
     "SpellCantripScalingConfig",
