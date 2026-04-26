@@ -31,6 +31,7 @@ from app.schemas.base_spell import (
     BaseSpellSeedDocument,
     BaseSpellUpdate,
     SpellUpcastConfig,
+    SpellCantripScalingConfig,
 )
 from app.services.base_spell_seeds import (
     bootstrap_base_spells_if_empty,
@@ -80,6 +81,7 @@ def make_base_spell(**overrides):
         "upcast_json": {"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
         "upcast_mode": UpcastMode.EXTRA_DAMAGE_DICE.value,
         "upcast_value": "1d6",
+        "cantrip_scaling_json": None,
         "source": SpellSource.SEED_JSON_BOOTSTRAP.value,
         "source_ref": None,
         "is_srd": True,
@@ -201,6 +203,44 @@ class BaseSpellSchemaTests(unittest.TestCase):
         self.assertIsNotNone(spell.upcast)
         self.assertEqual(spell.upcast.mode, "extra_heal_dice")
         self.assertEqual(spell.upcast.dice, "1d8")
+
+    def test_cantrip_accepts_cantrip_scaling_and_rejects_upcast(self):
+        spell = self._make_create(
+            canonicalKey="acid_splash",
+            level=0,
+            savingThrow="DEX",
+            saveSuccessOutcome="none",
+            damageDice="1d6",
+            damageType="Acid",
+            cantripScaling={
+                "mode": "character_level",
+                "thresholds": [
+                    {"characterLevel": 1, "damage": {"dice": "1d6"}},
+                    {"characterLevel": 5, "damage": {"dice": "2d6"}},
+                    {"characterLevel": 11, "damage": {"dice": "3d6"}},
+                    {"characterLevel": 17, "damage": {"dice": "4d6"}},
+                ],
+            },
+        )
+        self.assertIsInstance(spell.cantripScaling, SpellCantripScalingConfig)
+        self.assertIsNone(spell.upcast)
+
+        with self.assertRaises(ValueError):
+            self._make_create(
+                level=0,
+                upcast={"mode": "extra_damage_dice", "dice": "1d6", "perLevel": 1},
+            )
+
+    def test_leveled_spell_rejects_cantrip_scaling(self):
+        with self.assertRaises(ValueError):
+            self._make_create(
+                cantripScaling={
+                    "mode": "character_level",
+                    "thresholds": [
+                        {"characterLevel": 1, "damage": {"dice": "1d6"}},
+                    ],
+                },
+            )
 
     def test_legacy_upcast_fields_are_normalized_to_structured_upcast(self):
         spell = self._make_create(

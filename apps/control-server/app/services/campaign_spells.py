@@ -56,6 +56,7 @@ _FIELD_MAP: dict[str, str] = {
     "upcast": "upcast_json",
     "upcastMode": "upcast_mode",
     "upcastValue": "upcast_value",
+    "cantripScaling": "cantrip_scaling_json",
     "sourceRef": "source_ref",
     "isSrd": "is_srd",
 }
@@ -139,6 +140,7 @@ def seed_campaign_spells(
                 upcast_json=base_spell.upcast_json,
                 upcast_mode=base_spell.upcast_mode,
                 upcast_value=base_spell.upcast_value,
+                cantrip_scaling_json=base_spell.cantrip_scaling_json,
                 requires_target_sight=base_spell.requires_target_sight,
                 requires_target_effect=base_spell.requires_target_effect,
                 requires_point_sight=base_spell.requires_point_sight,

@@ -58,6 +58,7 @@ _FIELD_MAP: dict[str, str] = {
     "upcast": "upcast_json",
     "upcastMode": "upcast_mode",
     "upcastValue": "upcast_value",
+    "cantripScaling": "cantrip_scaling_json",
     "sourceRef": "source_ref",
     "isSrd": "is_srd",
     "isActive": "is_active",

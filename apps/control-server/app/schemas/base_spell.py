@@ -26,6 +26,12 @@ from .base_spell_constants import (
     _normalize_canonical_key,
 )
 from .base_spell_read import BaseSpellAliasRead, BaseSpellRead
+from .base_spell_cantrip_scaling import (
+    CantripScalingDamage,
+    CantripScalingMode,
+    CantripScalingThreshold,
+    SpellCantripScalingConfig,
+)
 from .base_spell_upcast import (
     SpellUpcastConfig,
     SpellUpcastMode,
@@ -70,6 +76,10 @@ __all__ = [
     "BaseSpellSeedDocument",
     "BaseSpellUpdate",
     "BaseSpellWrite",
+    "CantripScalingDamage",
+    "CantripScalingMode",
+    "CantripScalingThreshold",
+    "SpellCantripScalingConfig",
     "SpellUpcastConfig",
     "SpellUpcastMode",
     "_build_structured_upcast_from_legacy",

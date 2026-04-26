@@ -30,6 +30,7 @@ from .base_spell_constants import (
     _normalize_canonical_key,
 )
 from .base_spell_upcast import SpellUpcastConfig, _build_structured_upcast_from_legacy
+from .base_spell_cantrip_scaling import SpellCantripScalingConfig
 
 
 class BaseSpellWrite(BaseModel):
@@ -80,6 +81,7 @@ class BaseSpellWrite(BaseModel):
     upcast: Optional[SpellUpcastConfig] = None
     upcastMode: Optional[str] = None
     upcastValue: Optional[str] = None
+    cantripScaling: Optional[SpellCantripScalingConfig] = None
 
     source: Optional[str] = None
     sourceRef: Optional[str] = None
@@ -454,6 +456,8 @@ class BaseSpellWrite(BaseModel):
         if self.upcastMode == "none":
             self.upcastValue = None
         if self.upcast is not None:
+            if self.level == 0:
+                raise ValueError("Cantrips cannot use upcast; use cantripScaling.")
             if self.upcast.mode == "extra_heal_dice" and rt != "heal":
                 raise ValueError(
                     "Upcast 'extra_heal_dice' requires resolutionType 'heal'."
@@ -462,6 +466,8 @@ class BaseSpellWrite(BaseModel):
                 raise ValueError(
                     "Upcast 'extra_damage_dice' requires resolutionType 'damage'."
                 )
+        if self.cantripScaling is not None and self.level is not None and self.level > 0:
+            raise ValueError("Only cantrips can use cantripScaling.")
 
         return self
 

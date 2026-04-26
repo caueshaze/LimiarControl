@@ -10,6 +10,7 @@ SpellUpcastMode = Literal[
     "extra_damage_dice",
     "extra_heal_dice",
     "flat_bonus",
+    "additional_effect_instances",
     "additional_targets",
     "duration_scaling",
     "effect_scaling",
@@ -60,7 +61,11 @@ class SpellUpcastConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_upcast_shape(self):
-        needs_dice_or_flat = {"extra_damage_dice", "extra_heal_dice"}
+        needs_dice_or_flat = {
+            "extra_damage_dice",
+            "extra_heal_dice",
+            "additional_effect_instances",
+        }
         if self.mode in needs_dice_or_flat and self.dice is None and self.flat is None:
             raise ValueError(f"Upcast mode '{self.mode}' requires dice and/or flat.")
         if self.mode == "flat_bonus" and self.flat is None:
@@ -96,6 +101,7 @@ def _build_structured_upcast_from_legacy(
     NEW_MODES_NEEDING_DICE: set[str] = {"extra_damage_dice", "extra_heal_dice"}
     NEW_MODES_NEEDING_FLAT: set[str] = {"flat_bonus"}
     NEW_MODES_NO_DICE: set[str] = {
+        "additional_effect_instances",
         "additional_targets",
         "duration_scaling",
         "effect_scaling",

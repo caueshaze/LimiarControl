@@ -165,6 +165,8 @@ export const catalogPtBRDictionary = {
   "catalog.spells.form.upcastPerLevelHelp": "Quantos incrementos entram por nível de slot acima do nível base. Normalmente 1.",
   "catalog.spells.form.upcastMaxLevel": "Nível máximo do slot",
   "catalog.spells.form.upcastMaxLevelHelp": "Limita o slot considerado na escala. Vazio significa sem limite.",
+  "catalog.spells.form.cantripScalingMode": "Modo de escala",
+  "catalog.spells.form.cantripScalingThresholds": "Limites por nível do personagem",
   "catalog.spells.form.upcastScalingKey": "Chave de escala",
   "catalog.spells.form.upcastScalingSummary": "Resumo da escala",
   "catalog.spells.form.upcastScalingEditorial": "Nota editorial da escala",

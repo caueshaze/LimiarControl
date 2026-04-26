@@ -78,6 +78,7 @@ UPCAST_MODE_MAP.update(
         "add_damage": "add_damage",
         "add_heal": "add_heal",
         "increase_targets": "increase_targets",
+        "additional_effect_instances": "additional_effect_instances",
         "increase_duration": "increase_duration",
         "custom": "custom",
     }

@@ -250,6 +250,29 @@ describe("spellCatalogForm", () => {
     });
   });
 
+  it("emits cantrip scaling only for cantrips", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      level: 0,
+      resolutionType: "damage",
+      damageDiceCount: "1",
+      damageDieSize: "6",
+      damageType: "Acid",
+      upcastMode: "extra_damage_dice",
+    });
+
+    expect(payload.upcast).toBeNull();
+    expect(payload.cantripScaling).toEqual({
+      mode: "character_level",
+      thresholds: [
+        { characterLevel: 1, damage: { dice: "1d6" } },
+        { characterLevel: 5, damage: { dice: "2d6" } },
+        { characterLevel: 11, damage: { dice: "3d6" } },
+        { characterLevel: 17, damage: { dice: "4d6" } },
+      ],
+    });
+  });
+
   it("keeps canonical key normalization deterministic", () => {
     expect(normalizeSpellCanonicalKey(" Détect Magic!!! ")).toBe("detect_magic");
   });

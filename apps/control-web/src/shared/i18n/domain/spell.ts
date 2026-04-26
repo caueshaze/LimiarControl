@@ -125,6 +125,7 @@ const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {
   extra_damage_dice: label("Extra damage dice", "Dados de dano extras"),
   extra_heal_dice: label("Extra heal dice", "Dados de cura extras"),
   flat_bonus: label("Flat bonus", "Bônus fixo"),
+  additional_effect_instances: label("Additional effect instances", "Instâncias extras de efeito"),
   additional_targets: label("Additional targets", "Alvos adicionais"),
   duration_scaling: label("Duration scaling", "Escalada de duração"),
   effect_scaling: label("Effect scaling", "Escalada de efeito"),

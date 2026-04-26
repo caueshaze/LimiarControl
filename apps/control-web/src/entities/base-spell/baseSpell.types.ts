@@ -123,6 +123,7 @@ export const UpcastMode = {
   EXTRA_DAMAGE_DICE: "extra_damage_dice",
   EXTRA_HEAL_DICE: "extra_heal_dice",
   FLAT_BONUS: "flat_bonus",
+  ADDITIONAL_EFFECT_INSTANCES: "additional_effect_instances",
   ADDITIONAL_TARGETS: "additional_targets",
   DURATION_SCALING: "duration_scaling",
   EFFECT_SCALING: "effect_scaling",
@@ -143,6 +144,16 @@ export type SpellUpcast = {
   unlockKey?: string | null;
   unlockSummary?: string | null;
   unlockEditorial?: string | null;
+};
+
+export type SpellCantripScaling = {
+  mode: "character_level";
+  thresholds: Array<{
+    characterLevel: number;
+    damage: {
+      dice: string;
+    };
+  }>;
 };
 
 export const SpellSource = {
@@ -254,6 +265,7 @@ export type BaseSpell = {
 
   // Upcast
   upcast?: SpellUpcast | null;
+  cantripScaling?: SpellCantripScaling | null;
 
   // Automation metadata (computed by backend — not stored in DB)
   automationMode?: string | null;
@@ -322,6 +334,7 @@ export type BaseSpellWritePayload = {
   requiresPointSight?: boolean | null;
   requiresPointEffect?: boolean | null;
   upcast?: SpellUpcast | null;
+  cantripScaling?: SpellCantripScaling | null;
   source?: SpellSource | null;
   sourceRef?: string | null;
   isSrd?: boolean;

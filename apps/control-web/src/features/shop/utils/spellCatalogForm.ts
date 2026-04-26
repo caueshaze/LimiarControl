@@ -227,7 +227,7 @@ const supportsSavingThrow = (resolutionType: SpellCatalogEditorState["resolution
 const buildStructuredUpcast = (
   state: SpellCatalogEditorState,
 ): BaseSpellUpdatePayload["upcast"] => {
-  if (!state.upcastMode) {
+  if (state.level === 0 || !state.upcastMode) {
     return null;
   }
 
@@ -262,6 +262,51 @@ const buildStructuredUpcast = (
         ? toNullableText(state.upcastUnlockEditorial)
         : null,
   };
+};
+
+const buildCantripScalingThreshold = (
+  characterLevel: number,
+  count: string,
+  size: string,
+  bonus: string,
+) => {
+  const dice = buildDiceExpression(count, size, bonus);
+  return dice ? { characterLevel, damage: { dice } } : null;
+};
+
+const buildStructuredCantripScaling = (
+  state: SpellCatalogEditorState,
+): BaseSpellUpdatePayload["cantripScaling"] => {
+  if (state.level !== 0 || state.cantripScalingMode !== "character_level") {
+    return null;
+  }
+  const thresholds = [
+    buildCantripScalingThreshold(
+      1,
+      state.cantripLevel1DiceCount,
+      state.cantripLevel1DieSize,
+      state.cantripLevel1FixedBonus,
+    ),
+    buildCantripScalingThreshold(
+      5,
+      state.cantripLevel5DiceCount,
+      state.cantripLevel5DieSize,
+      state.cantripLevel5FixedBonus,
+    ),
+    buildCantripScalingThreshold(
+      11,
+      state.cantripLevel11DiceCount,
+      state.cantripLevel11DieSize,
+      state.cantripLevel11FixedBonus,
+    ),
+    buildCantripScalingThreshold(
+      17,
+      state.cantripLevel17DiceCount,
+      state.cantripLevel17DieSize,
+      state.cantripLevel17FixedBonus,
+    ),
+  ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  return thresholds.length > 0 ? { mode: "character_level", thresholds } : null;
 };
 
 export const getUnsupportedSpellEditorValues = (spell: BaseSpell) => {
@@ -356,6 +401,7 @@ export const buildSpellUpdatePayload = (
   requiresPointSight: toNullableBoolean(state.requiresPointSight),
   requiresPointEffect: toNullableBoolean(state.requiresPointEffect),
   upcast: buildStructuredUpcast(state),
+  cantripScaling: buildStructuredCantripScaling(state),
 });
 
 export const buildSpellCreatePayload = (
@@ -426,12 +472,32 @@ export type SpellCatalogEditorState = {
   upcastUnlockKey: string;
   upcastUnlockSummary: string;
   upcastUnlockEditorial: string;
+  cantripScalingMode: "" | "character_level";
+  cantripLevel1DiceCount: string;
+  cantripLevel1DieSize: string;
+  cantripLevel1FixedBonus: string;
+  cantripLevel5DiceCount: string;
+  cantripLevel5DieSize: string;
+  cantripLevel5FixedBonus: string;
+  cantripLevel11DiceCount: string;
+  cantripLevel11DieSize: string;
+  cantripLevel11FixedBonus: string;
+  cantripLevel17DiceCount: string;
+  cantripLevel17DieSize: string;
+  cantripLevel17FixedBonus: string;
 };
 
 export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorState => ({
   ...(() => {
     const damageParts = parseDiceParts(spell.damageDice);
     const upcastParts = parseDiceParts(spell.upcast?.dice);
+    const thresholdDice = (level: number) =>
+      spell.cantripScaling?.thresholds.find((entry) => entry.characterLevel === level)
+        ?.damage.dice;
+    const cantripLevel1Parts = parseDiceParts(thresholdDice(1));
+    const cantripLevel5Parts = parseDiceParts(thresholdDice(5));
+    const cantripLevel11Parts = parseDiceParts(thresholdDice(11));
+    const cantripLevel17Parts = parseDiceParts(thresholdDice(17));
     return {
       damageDiceCount: damageParts.count,
       damageDieSize: damageParts.size,
@@ -439,6 +505,18 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
       upcastDiceCount: upcastParts.count,
       upcastDieSize: upcastParts.size,
       upcastFixedBonus: upcastParts.bonus,
+      cantripLevel1DiceCount: cantripLevel1Parts.count,
+      cantripLevel1DieSize: cantripLevel1Parts.size,
+      cantripLevel1FixedBonus: cantripLevel1Parts.bonus,
+      cantripLevel5DiceCount: cantripLevel5Parts.count,
+      cantripLevel5DieSize: cantripLevel5Parts.size,
+      cantripLevel5FixedBonus: cantripLevel5Parts.bonus,
+      cantripLevel11DiceCount: cantripLevel11Parts.count,
+      cantripLevel11DieSize: cantripLevel11Parts.size,
+      cantripLevel11FixedBonus: cantripLevel11Parts.bonus,
+      cantripLevel17DiceCount: cantripLevel17Parts.count,
+      cantripLevel17DieSize: cantripLevel17Parts.size,
+      cantripLevel17FixedBonus: cantripLevel17Parts.bonus,
     };
   })(),
   canonicalKey: spell.canonicalKey,
@@ -503,6 +581,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   upcastUnlockKey: spell.upcast?.unlockKey ?? "",
   upcastUnlockSummary: spell.upcast?.unlockSummary ?? "",
   upcastUnlockEditorial: spell.upcast?.unlockEditorial ?? "",
+  cantripScalingMode: spell.cantripScaling?.mode ?? "",
 });
 
 export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
@@ -562,4 +641,17 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   upcastUnlockKey: "",
   upcastUnlockSummary: "",
   upcastUnlockEditorial: "",
+  cantripScalingMode: "character_level",
+  cantripLevel1DiceCount: "1",
+  cantripLevel1DieSize: "6",
+  cantripLevel1FixedBonus: "",
+  cantripLevel5DiceCount: "2",
+  cantripLevel5DieSize: "6",
+  cantripLevel5FixedBonus: "",
+  cantripLevel11DiceCount: "3",
+  cantripLevel11DieSize: "6",
+  cantripLevel11FixedBonus: "",
+  cantripLevel17DiceCount: "4",
+  cantripLevel17DieSize: "6",
+  cantripLevel17FixedBonus: "",
 });

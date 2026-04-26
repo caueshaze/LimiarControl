@@ -57,6 +57,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
   const showUpcastDiceField =
     form.upcastMode === "extra_damage_dice" ||
     form.upcastMode === "extra_heal_dice" ||
+    form.upcastMode === "additional_effect_instances" ||
     form.upcastMode === "additional_targets";
   const showUpcastFlatField =
     form.upcastMode === "extra_damage_dice" ||
@@ -246,6 +247,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         </label>
       )}
 
+      {form.level > 0 ? (
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
@@ -271,8 +273,9 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         </label>
 
       </div>
+      ) : null}
 
-      {showUpcastDiceField ? (
+      {form.level > 0 && showUpcastDiceField ? (
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
@@ -335,7 +338,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         </div>
       ) : null}
 
-      {(showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField) ? (
+      {form.level > 0 && (showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField) ? (
         <div className="grid gap-4 md:grid-cols-3">
           {showUpcastFlatField ? (
             <label className="block">
@@ -390,7 +393,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         </div>
       ) : null}
 
-      {showEffectScalingFields && (
+      {form.level > 0 && showEffectScalingFields && (
         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-400/70">
             Effect scaling — o que escala ao upcasting
@@ -439,7 +442,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         </div>
       )}
 
-      {showExtraEffectFields && (
+      {form.level > 0 && showExtraEffectFields && (
         <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4 space-y-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-400/70">
             Extra effect — o que é destravado ao upcasting
@@ -487,6 +490,103 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           </label>
         </div>
       )}
+
+      {form.level === 0 ? (
+        <div className="space-y-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Scaling mode
+              </span>
+              <select
+                value={form.cantripScalingMode}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    cantripScalingMode: event.target.value as FormState["cantripScalingMode"],
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                <option value="character_level">Character level</option>
+              </select>
+            </label>
+          </div>
+          {form.cantripScalingMode === "character_level" ? (
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Character level thresholds
+              </p>
+              {[
+                [1, "cantripLevel1DiceCount", "cantripLevel1DieSize", "cantripLevel1FixedBonus"],
+                [5, "cantripLevel5DiceCount", "cantripLevel5DieSize", "cantripLevel5FixedBonus"],
+                [11, "cantripLevel11DiceCount", "cantripLevel11DieSize", "cantripLevel11FixedBonus"],
+                [17, "cantripLevel17DiceCount", "cantripLevel17DieSize", "cantripLevel17FixedBonus"],
+              ].map(([level, countKey, dieKey, bonusKey]) => (
+                <div key={level} className="grid gap-4 md:grid-cols-[90px_repeat(3,minmax(0,1fr))]">
+                  <div className="flex items-end pb-3 text-xs font-semibold text-slate-300">
+                    Nível {level}
+                  </div>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Damage dice count
+                    </span>
+                    <select
+                      value={form[countKey as keyof FormState] as string}
+                      onChange={(event) =>
+                        setForm((c) => ({ ...c, [countKey as string]: event.target.value }))
+                      }
+                      className={`${inputClassName} mt-2`}
+                    >
+                      <option value="">—</option>
+                      {DICE_COUNT_OPTIONS.map((count) => (
+                        <option key={count} value={count}>
+                          {count}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Damage die
+                    </span>
+                    <select
+                      value={form[dieKey as keyof FormState] as string}
+                      onChange={(event) =>
+                        setForm((c) => ({ ...c, [dieKey as string]: event.target.value }))
+                      }
+                      className={`${inputClassName} mt-2`}
+                    >
+                      <option value="">—</option>
+                      {DIE_SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          d{size}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Fixed bonus
+                    </span>
+                    <input
+                      type="number"
+                      step={1}
+                      value={form[bonusKey as keyof FormState] as string}
+                      onChange={(event) =>
+                        setForm((c) => ({ ...c, [bonusKey as string]: event.target.value }))
+                      }
+                      className={`${inputClassName} mt-2`}
+                      placeholder="0"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 };

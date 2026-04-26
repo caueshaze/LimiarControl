@@ -12,6 +12,7 @@ import {
   SpellCatalogToggleChip,
 } from "./SpellCatalogEditorControls";
 import { SpellUpcastFields } from "./SpellUpcastFields";
+import { SpellCantripScalingFields } from "./SpellCantripScalingFields";
 import { SpellCatalogResolutionFields } from "./SpellCatalogResolutionFields";
 import { SpellCatalogTargetingRequirements } from "./SpellCatalogTargetingRequirements";
 import {
@@ -70,6 +71,7 @@ export const SpellCatalogFormFields = ({
   const showUpcastDiceField =
     state.upcastMode === "extra_damage_dice" ||
     state.upcastMode === "extra_heal_dice" ||
+    state.upcastMode === "additional_effect_instances" ||
     state.upcastMode === "additional_targets";
   const showUpcastFlatField =
     state.upcastMode === "extra_damage_dice" ||
@@ -501,19 +503,28 @@ export const SpellCatalogFormFields = ({
         parseBooleanSelectValue={parseBooleanSelectValue}
       />
 
-      <SpellUpcastFields
-        state={state}
-        setState={setState}
-        t={t}
-        locale={locale}
-        selectPlaceholder={selectPlaceholder}
-        showUpcastDiceField={showUpcastDiceField}
-        showUpcastFlatField={showUpcastFlatField}
-        showUpcastPerLevelField={showUpcastPerLevelField}
-        showUpcastMaxLevelField={showUpcastMaxLevelField}
-        showEffectScalingFields={showEffectScalingFields}
-        showExtraEffectFields={showExtraEffectFields}
-      />
+      {state.level > 0 ? (
+        <SpellUpcastFields
+          state={state}
+          setState={setState}
+          t={t}
+          locale={locale}
+          selectPlaceholder={selectPlaceholder}
+          showUpcastDiceField={showUpcastDiceField}
+          showUpcastFlatField={showUpcastFlatField}
+          showUpcastPerLevelField={showUpcastPerLevelField}
+          showUpcastMaxLevelField={showUpcastMaxLevelField}
+          showEffectScalingFields={showEffectScalingFields}
+          showExtraEffectFields={showExtraEffectFields}
+        />
+      ) : (
+        <SpellCantripScalingFields
+          state={state}
+          setState={setState}
+          t={t}
+          selectPlaceholder={selectPlaceholder}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <SpellCatalogField label={t("catalog.spells.form.descriptionEn")}>
