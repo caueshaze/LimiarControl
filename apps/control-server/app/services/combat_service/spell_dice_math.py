@@ -278,11 +278,22 @@ class CombatSpellDiceMathMixin:
         caster_level: int | None,
         effect_dice: str | None,
         cantrip_scaling: dict | None = None,
-    ) -> str | None:
+    ) -> dict[str, object]:
+        """Returns {"effect_dice", "cantrip_instance_count", "cantrip_instance_dice"}.
+
+        effect_dice is always the aggregated dice expression for display/roll resolution.
+        cantrip_instance_count and cantrip_instance_dice are populated only for
+        effect_instances cantrips so consumers can dispatch per-instance rolls.
+        """
+        _no_change: dict[str, object] = {
+            "effect_dice": effect_dice,
+            "cantrip_instance_count": None,
+            "cantrip_instance_dice": None,
+        }
         if spell_level != 0 or caster_level is None:
-            return effect_dice
+            return _no_change
         if not isinstance(cantrip_scaling, dict):
-            return effect_dice
+            return _no_change
 
         scaling_effect_type = cantrip_scaling.get("scalingEffectType", "damage_dice")
         selected_dice = effect_dice
@@ -309,13 +320,16 @@ class CombatSpellDiceMathMixin:
                     selected_dice = dice.strip()
 
         if scaling_effect_type == "effect_instances" and selected_instances is not None and instance_dice:
-            # Derive aggregate expression for display/simple resolution
             count, sides, mod = _parse_dice(instance_dice)
             total_count = count * selected_instances
             total_mod = mod * selected_instances
-            return cls._build_dice_expression(total_count, sides, total_mod)
+            return {
+                "effect_dice": cls._build_dice_expression(total_count, sides, total_mod),
+                "cantrip_instance_count": selected_instances,
+                "cantrip_instance_dice": instance_dice,
+            }
 
-        return selected_dice
+        return {"effect_dice": selected_dice, "cantrip_instance_count": None, "cantrip_instance_dice": None}
 
     @classmethod
     def _normalize_save_success_outcome(cls, value: object) -> str | None:

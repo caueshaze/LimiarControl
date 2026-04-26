@@ -238,7 +238,7 @@ class SpellContextResolveMixin:
         structured_cantrip_scaling = cls._get_structured_cantrip_scaling(
             getattr(catalog_spell, "cantrip_scaling_json", None)
         )
-        scaled_effect_dice = cls._apply_character_level_cantrip_scaling(
+        cantrip_result = cls._apply_character_level_cantrip_scaling(
             spell_level=spell_level,
             caster_level=caster_level,
             effect_dice=effect_dice,
@@ -248,7 +248,7 @@ class SpellContextResolveMixin:
             spell_level=spell_level,
             slot_level=slot_level,
             effect_kind=effect_kind,
-            effect_dice=scaled_effect_dice,
+            effect_dice=cantrip_result["effect_dice"],
             effect_bonus=effect_bonus,
             upcast=structured_upcast,
         )
@@ -256,6 +256,8 @@ class SpellContextResolveMixin:
         return {
             "elemental_affinity": elemental_affinity,
             "cantrip_scaling": structured_cantrip_scaling,
+            "cantrip_instance_count": cantrip_result["cantrip_instance_count"],
+            "cantrip_instance_dice": cantrip_result["cantrip_instance_dice"],
             "structured_upcast": structured_upcast,
             "upcast_result": upcast_result,
         }
@@ -280,6 +282,17 @@ class SpellContextResolveMixin:
             if isinstance(base_max_targets, int)
             else None
         )
+        cantrip_instance_count = resolved_upcast.get("cantrip_instance_count")
+        cantrip_instance_dice = resolved_upcast.get("cantrip_instance_dice")
+        if cantrip_instance_count is not None:
+            effect_instance_count = cantrip_instance_count
+            effect_instance_dice = cantrip_instance_dice
+        elif upcast_added_instances > 0:
+            effect_instance_count = 1 + upcast_added_instances
+            effect_instance_dice = upcast_result.get("upcast_instance_effect_dice")
+        else:
+            effect_instance_count = 1
+            effect_instance_dice = None
         return {
             "spell_name": source_context["spell_name"],
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
@@ -323,6 +336,8 @@ class SpellContextResolveMixin:
             "upcast_levels": cls._safe_int(upcast_result.get("upcast_levels"), 0),
             "upcast_added_instances": upcast_added_instances,
             "upcast_instance_effect_dice": upcast_result.get("upcast_instance_effect_dice"),
+            "effectInstanceCount": effect_instance_count,
+            "effectInstanceDice": effect_instance_dice,
             "elemental_affinity_eligible": bool(resolved_upcast["elemental_affinity"].get("eligible")),
             "elemental_affinity_damage_type": resolved_upcast["elemental_affinity"].get("damageType"),
             "elemental_affinity_bonus": resolved_upcast["elemental_affinity"].get("bonus"),

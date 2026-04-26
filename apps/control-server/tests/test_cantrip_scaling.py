@@ -179,6 +179,15 @@ class CantripScalingDiceMathTests(unittest.TestCase):
     """Tests for _apply_character_level_cantrip_scaling."""
 
     def _apply(self, spell_level, caster_level, effect_dice, cantrip_scaling):
+        result = CombatSpellDiceMathMixin._apply_character_level_cantrip_scaling(
+            spell_level=spell_level,
+            caster_level=caster_level,
+            effect_dice=effect_dice,
+            cantrip_scaling=cantrip_scaling,
+        )
+        return result["effect_dice"]
+
+    def _apply_full(self, spell_level, caster_level, effect_dice, cantrip_scaling):
         return CombatSpellDiceMathMixin._apply_character_level_cantrip_scaling(
             spell_level=spell_level,
             caster_level=caster_level,
@@ -277,6 +286,81 @@ class CantripScalingDiceMathTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["scalingMode"], "character_level")
         self.assertEqual(result["scalingEffectType"], "damage_dice")
+
+    # --- cantrip_instance_count / cantrip_instance_dice in return dict ---
+
+    def test_eldritch_blast_level_1_instance_count_is_1(self):
+        result = self._apply_full(0, 1, "1d10", self.ELDRITCH_BLAST_SCALING)
+        self.assertEqual(result["cantrip_instance_count"], 1)
+        self.assertEqual(result["cantrip_instance_dice"], "1d10")
+
+    def test_eldritch_blast_level_5_instance_count_is_2(self):
+        result = self._apply_full(0, 5, "1d10", self.ELDRITCH_BLAST_SCALING)
+        self.assertEqual(result["cantrip_instance_count"], 2)
+        self.assertEqual(result["cantrip_instance_dice"], "1d10")
+
+    def test_eldritch_blast_level_11_instance_count_is_3(self):
+        result = self._apply_full(0, 11, "1d10", self.ELDRITCH_BLAST_SCALING)
+        self.assertEqual(result["cantrip_instance_count"], 3)
+
+    def test_eldritch_blast_level_17_instance_count_is_4(self):
+        result = self._apply_full(0, 17, "1d10", self.ELDRITCH_BLAST_SCALING)
+        self.assertEqual(result["cantrip_instance_count"], 4)
+
+    def test_acid_splash_has_no_instance_metadata(self):
+        result = self._apply_full(0, 5, "1d6", self.ACID_SPLASH_SCALING)
+        self.assertIsNone(result["cantrip_instance_count"])
+        self.assertIsNone(result["cantrip_instance_dice"])
+
+    def test_no_scaling_returns_none_instance_metadata(self):
+        result = self._apply_full(0, 5, "1d6", None)
+        self.assertIsNone(result["cantrip_instance_count"])
+        self.assertIsNone(result["cantrip_instance_dice"])
+
+    def test_leveled_spell_returns_none_instance_metadata(self):
+        result = self._apply_full(1, 5, "1d10", self.ELDRITCH_BLAST_SCALING)
+        self.assertIsNone(result["cantrip_instance_count"])
+        self.assertIsNone(result["cantrip_instance_dice"])
+
+    # --- effectInstanceCount resolution logic ---
+
+    def test_effect_instance_count_cantrip_effect_instances(self):
+        """Cantrip effect_instances: effectInstanceCount = cantrip_instance_count."""
+        result = self._apply_full(0, 5, "1d10", self.ELDRITCH_BLAST_SCALING)
+        cantrip_instance_count = result["cantrip_instance_count"]
+        cantrip_instance_dice = result["cantrip_instance_dice"]
+        # Mirrors _build_spell_context_response logic
+        effect_instance_count = cantrip_instance_count if cantrip_instance_count is not None else 1
+        effect_instance_dice = cantrip_instance_dice
+        self.assertEqual(effect_instance_count, 2)
+        self.assertEqual(effect_instance_dice, "1d10")
+
+    def test_effect_instance_count_upcast_instances(self):
+        """Leveled upcast with additional_effect_instances: effectInstanceCount = 1 + added."""
+        upcast_result = CombatSpellDiceMathMixin._apply_structured_spell_upcast(
+            spell_level=1,
+            slot_level=3,
+            effect_kind="damage",
+            effect_dice="3d4+3",
+            effect_bonus=3,
+            upcast={"mode": "additional_effect_instances", "dice": "1d4+1", "perLevel": 1},
+        )
+        added = upcast_result["upcast_added_instances"]
+        # cantrip_instance_count is None for leveled spells, so effectInstanceCount = 1 + added
+        effect_instance_count = 1 + added
+        effect_instance_dice = upcast_result["upcast_instance_effect_dice"]
+        self.assertEqual(effect_instance_count, 3)
+        self.assertEqual(effect_instance_dice, "1d4+1")
+
+    def test_effect_instance_count_no_instances_defaults_to_1(self):
+        """Non-instance spell: effectInstanceCount = 1, effectInstanceDice = None."""
+        result = self._apply_full(0, 5, "3d8", self.ACID_SPLASH_SCALING)
+        cantrip_instance_count = result["cantrip_instance_count"]
+        effect_instance_count = cantrip_instance_count if cantrip_instance_count is not None else 1
+        self.assertEqual(effect_instance_count, 1)
+        self.assertIsNone(result["cantrip_instance_dice"])
+
+    # --- get_structured_cantrip_scaling normalization ---
 
     def test_get_structured_preserves_effect_instances(self):
         raw = {
