@@ -287,6 +287,9 @@ export type CombatSpellResult = {
   elemental_affinity_eligible?: boolean;
   elemental_affinity_damage_type?: string | null;
   elemental_affinity_bonus?: number | null;
+  effect_instance_count?: number | null;
+  effect_instance_dice?: string | null;
+  base_effect_instance_count?: number | null;
 };
 
 export type CombatMapPreviewToken = {
