@@ -1,6 +1,10 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
-import { formatSpellEffectBreakdown, getOutcomeLabel } from "./spellCastHelpers";
+import {
+  formatEffectInstanceOutcome,
+  formatSpellEffectBreakdown,
+  getOutcomeLabel,
+} from "./spellCastHelpers";
 
 type EffectMode = "choose" | "manual" | "virtual";
 
@@ -38,6 +42,7 @@ export const SpellCastResultPanel = ({
 }: Props) => {
   const pendingEffect = Boolean(result.effect_roll_required && result.pending_spell_id);
   const outcomeLabel = getOutcomeLabel(result);
+  const hasEffectInstanceOutcomes = Boolean(result.effect_instance_outcomes?.length);
 
   return (
     <div className="mt-5 space-y-4">
@@ -73,7 +78,16 @@ export const SpellCastResultPanel = ({
                   : `${result.spell_name} causou ${result.damage} de dano em ${result.target_display_name}.`}
         </p>
 
-        {!pendingEffect && (result.damage > 0 || result.healing > 0) ? (
+        {!pendingEffect && hasEffectInstanceOutcomes ? (
+          <div className="mt-3 space-y-2 text-xs text-slate-300">
+            {result.effect_instance_outcomes?.map((outcome) => (
+              <p key={`${outcome.instance_index}:${outcome.target_ref_id}`}>
+                {formatEffectInstanceOutcome(result, outcome)}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        {!pendingEffect && !hasEffectInstanceOutcomes && (result.damage > 0 || result.healing > 0) ? (
           <p className="mt-2 text-xs text-slate-300">{formatSpellEffectBreakdown(result)}</p>
         ) : null}
         {result.area_shape ? (
@@ -89,7 +103,7 @@ export const SpellCastResultPanel = ({
         {!pendingEffect && result.concentration_check?.summary_text ? (
           <p className="mt-2 text-xs text-amber-100">{result.concentration_check.summary_text}</p>
         ) : null}
-        {!pendingEffect && result.new_hp != null ? (
+        {!pendingEffect && !hasEffectInstanceOutcomes && result.new_hp != null ? (
           <p className="mt-2 text-xs text-slate-400">PV atuais do alvo: {result.new_hp}</p>
         ) : null}
       </div>

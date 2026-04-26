@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
 import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
-import type { CombatParticipant, CombatSpellMode, CombatSpellResult } from "../../../shared/api/combatRepo";
+import type {
+  CombatCastSpellRequest,
+  CombatParticipant,
+  CombatSpellMode,
+  CombatSpellResult,
+} from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
 import { useTargetingPreview } from "../../../features/combat-ui/hooks/useTargetingPreview";
@@ -12,6 +17,14 @@ import {
 } from "../../../shared/utils/diceExpression";
 import { buildAreaCastPayload, createInitialTargetingMode } from "./areaTargetingUi";
 import { AreaTargetingGrid } from "./AreaTargetingGrid";
+import {
+  hasCompleteEffectInstanceTargets,
+  InstanceTargetSelector,
+  normalizeEffectInstanceTargets,
+  reconcileEffectInstanceTargets,
+  resolveEffectInstanceContext,
+  type EffectInstanceTargetInput,
+} from "./InstanceTargetSelector";
 import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
@@ -35,6 +48,69 @@ type Props = {
   spellSaveAbility: AbilityName | "";
   target?: CombatParticipant | null;
 };
+
+const MULTI_INSTANCE_TARGET_ERROR = "Escolha um alvo para cada instância da magia.";
+
+type BuildNonAreaSpellCastPayloadParams = {
+  actorParticipantId: string;
+  concentrationManualRoll: number | null;
+  concentrationRollMode: "system" | "manual";
+  effectInstanceTargets: EffectInstanceTargetInput[];
+  isMultiInstanceSpell: boolean;
+  manualRoll?: number | null;
+  parsedBonus: number;
+  rollSource?: "manual" | "system";
+  selectedSlotLevel: number | null;
+  spell: CombatSpellOption;
+  spellDamageType: string;
+  spellEffectDice: string;
+  spellMode: CombatSpellMode;
+  spellSaveAbility: AbilityName | "";
+  targetRefId?: string | null;
+};
+
+export const buildNonAreaSpellCastPayload = ({
+  actorParticipantId,
+  concentrationManualRoll,
+  concentrationRollMode,
+  effectInstanceTargets,
+  isMultiInstanceSpell,
+  manualRoll = null,
+  parsedBonus,
+  rollSource = "system",
+  selectedSlotLevel,
+  spell,
+  spellDamageType,
+  spellEffectDice,
+  spellMode,
+  spellSaveAbility,
+  targetRefId = null,
+}: BuildNonAreaSpellCastPayloadParams): CombatCastSpellRequest => ({
+  actor_participant_id: actorParticipantId,
+  target_ref_id: isMultiInstanceSpell ? effectInstanceTargets[0]?.target_ref_id ?? targetRefId ?? null : targetRefId,
+  effect_instance_targets: isMultiInstanceSpell ? effectInstanceTargets : null,
+  spell_canonical_key: spell.canonicalKey,
+  spell_id: spell.canonicalKey,
+  campaign_spell_id: spell.campaignSpellId ?? null,
+  spell_mode: spellMode,
+  slot_level:
+    spell.sourceType === "magic_item"
+      ? spell.fixedCastLevel ?? spell.level ?? null
+      : spell.level > 0
+        ? selectedSlotLevel ?? spell.level
+        : null,
+  inventory_item_id: spell.sourceType === "magic_item" ? spell.inventoryItemId ?? null : null,
+  roll_source: rollSource,
+  manual_roll: manualRoll,
+  damage_dice: spellMode === "heal" ? null : spellEffectDice || null,
+  damage_bonus: spellMode === "heal" ? null : parsedBonus,
+  heal_dice: spellMode === "heal" ? spellEffectDice || null : null,
+  heal_bonus: spellMode === "heal" ? parsedBonus : null,
+  damage_type: spellMode === "heal" ? null : spellDamageType || null,
+  save_ability: spellMode === "saving_throw" ? spellSaveAbility || null : null,
+  concentration_roll_source: concentrationRollMode,
+  concentration_manual_roll: concentrationManualRoll,
+});
 
 export const PlayerSpellCastDialog = ({
   actor,
@@ -62,6 +138,7 @@ export const PlayerSpellCastDialog = ({
   const [selectedSlotLevel, setSelectedSlotLevel] = useState<number | null>(
     spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null),
   );
+  const [effectInstanceTargets, setEffectInstanceTargets] = useState<EffectInstanceTargetInput[]>([]);
   const [result, setResult] = useState<CombatSpellResult | null>(null);
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
@@ -88,6 +165,17 @@ export const PlayerSpellCastDialog = ({
     spell,
     spellMode,
   });
+  const effectInstanceContext = resolveEffectInstanceContext(spell, selectedSlotLevel);
+  const isMultiInstanceSpell = !isAreaSpell && effectInstanceContext.instanceCount > 1;
+  const selectableParticipants = participants.filter((participant) => participant.id !== actor.id);
+  const normalizedEffectInstanceTargets = normalizeEffectInstanceTargets(
+    effectInstanceTargets,
+    effectInstanceContext.instanceCount,
+  );
+  const effectInstanceTargetsComplete = hasCompleteEffectInstanceTargets(
+    effectInstanceTargets,
+    effectInstanceContext.instanceCount,
+  );
   const rangePreview = useTargetingPreview({
     sessionId,
     actorRefId: actor.ref_id,
@@ -95,9 +183,9 @@ export const PlayerSpellCastDialog = ({
     actionType: "spell",
     normalRangeMeters: spell.rangeMeters ?? null,
     longRangeMeters: null,
-    enabled: !isAreaSpell && !!target,
+    enabled: !isAreaSpell && !isMultiInstanceSpell && !!target,
   });
-  const spellOutOfRange = !isAreaSpell && rangePreview.rangeStatus === "out";
+  const spellOutOfRange = !isAreaSpell && !isMultiInstanceSpell && rangePreview.rangeStatus === "out";
   const targetHasConcentration = target ? participantHasActiveConcentration(target) : false;
   const shouldShowConcentrationControl = targetHasConcentration && spellMode !== "heal" && spellMode !== "utility";
   const slotOptions =
@@ -132,9 +220,21 @@ export const PlayerSpellCastDialog = ({
   useEffect(() => {
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
     setTargetingMode(createInitialTargetingMode(spell.areaShape, spell.selectionType));
+    setEffectInstanceTargets([]);
     setError(null);
     handledSaveResolutionKeyRef.current = null;
   }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape, spell.selectionType]);
+
+  useEffect(() => {
+    if (!isMultiInstanceSpell) {
+      setEffectInstanceTargets([]);
+      return;
+    }
+
+    setEffectInstanceTargets((current) =>
+      reconcileEffectInstanceTargets(current, effectInstanceContext.instanceCount, target?.ref_id),
+    );
+  }, [effectInstanceContext.instanceCount, isMultiInstanceSpell, target?.ref_id]);
 
   useEffect(() => {
     if (!result?.pending_save_id || !actor.last_save_resolution) {
@@ -195,6 +295,11 @@ export const PlayerSpellCastDialog = ({
       : null;
 
   const submitCast = async (payload?: { manual_roll?: number; roll_source?: "manual" | "system" }) => {
+    if (isMultiInstanceSpell && !effectInstanceTargetsComplete) {
+      setError(MULTI_INSTANCE_TARGET_ERROR);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -225,31 +330,23 @@ export const PlayerSpellCastDialog = ({
                 manual_roll: payload?.manual_roll ?? null,
               };
             })()
-          : {
-              actor_participant_id: actorParticipantId,
-              target_ref_id: target?.ref_id,
-              spell_canonical_key: spell.canonicalKey,
-              spell_id: spell.canonicalKey,
-              campaign_spell_id: spell.campaignSpellId ?? null,
-              spell_mode: spellMode,
-              slot_level:
-                spell.sourceType === "magic_item"
-                  ? spell.fixedCastLevel ?? spell.level ?? null
-                  : spell.level > 0
-                    ? selectedSlotLevel ?? spell.level
-                    : null,
-              inventory_item_id: spell.sourceType === "magic_item" ? spell.inventoryItemId ?? null : null,
-              roll_source: payload?.roll_source ?? "system",
-              manual_roll: payload?.manual_roll ?? null,
-              damage_dice: spellMode === "heal" ? null : spellEffectDice || null,
-              damage_bonus: spellMode === "heal" ? null : parsedBonus,
-              heal_dice: spellMode === "heal" ? spellEffectDice || null : null,
-              heal_bonus: spellMode === "heal" ? parsedBonus : null,
-              damage_type: spellMode === "heal" ? null : spellDamageType || null,
-              save_ability: spellMode === "saving_throw" ? spellSaveAbility || null : null,
-              concentration_roll_source: concentrationRollMode,
-              concentration_manual_roll: resolveConcentrationManualRoll(),
-            },
+          : buildNonAreaSpellCastPayload({
+              actorParticipantId,
+              concentrationManualRoll: resolveConcentrationManualRoll(),
+              concentrationRollMode,
+              effectInstanceTargets: normalizedEffectInstanceTargets,
+              isMultiInstanceSpell,
+              manualRoll: payload?.manual_roll ?? null,
+              parsedBonus,
+              rollSource: payload?.roll_source ?? "system",
+              selectedSlotLevel,
+              spell,
+              spellDamageType,
+              spellEffectDice,
+              spellMode,
+              spellSaveAbility,
+              targetRefId: target?.ref_id ?? null,
+            }),
       );
       setResult(resolved);
       setManualEffectRolls([]);
@@ -311,9 +408,24 @@ export const PlayerSpellCastDialog = ({
           spellDamageType={spellDamageType}
           spellMode={spellMode}
           spellSaveAbility={spellSaveAbility}
-          targetDisplayName={target?.display_name ?? null}
+          targetDisplayName={isMultiInstanceSpell ? "Múltiplos alvos" : target?.display_name ?? null}
           targetPreview={rangePreview}
         />
+
+        {!result && isMultiInstanceSpell ? (
+          <InstanceTargetSelector
+            disabled={loading}
+            instanceCount={effectInstanceContext.instanceCount}
+            instanceDice={effectInstanceContext.instanceDice}
+            participants={selectableParticipants}
+            spellCanonicalKey={spell.canonicalKey}
+            value={normalizedEffectInstanceTargets}
+            onChange={(nextValue) => {
+              setEffectInstanceTargets(nextValue);
+              setError(null);
+            }}
+          />
+        ) : null}
 
         {!result && isAreaSpell ? (
           <AreaTargetingGrid
@@ -395,6 +507,8 @@ export const PlayerSpellCastDialog = ({
             }}
             spellMode={spellMode}
             spellOutOfRange={spellOutOfRange}
+            submitDisabled={isMultiInstanceSpell && !effectInstanceTargetsComplete}
+            validationMessage={isMultiInstanceSpell && !effectInstanceTargetsComplete ? MULTI_INSTANCE_TARGET_ERROR : null}
           />
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
-import type { SpellUpcast } from "../../../entities/base-spell";
+import type { SpellCantripScaling, SpellUpcast } from "../../../entities/base-spell";
 import type {
   SpellAttackType,
   SpellEffectTiming,
@@ -48,6 +48,8 @@ export type CombatSpellOption = {
   suggestedMode: CombatSpellMode | null;
   availableSlotLevels: number[];
   upcast?: SpellUpcast | null;
+  cantripScaling?: SpellCantripScaling | null;
+  characterLevel?: number | null;
 };
 
 export type CombatConsumableOption = {

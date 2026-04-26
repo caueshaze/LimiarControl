@@ -11,6 +11,7 @@ import type {
   ResolutionType,
   SpellAttackType,
   SpellEffectTiming,
+  SpellCantripScaling,
   SpellOriginType,
   SpellRangeKind,
   SpellSelectionType,
@@ -57,6 +58,7 @@ export type BaseSpell = {
   requiresPointSight?: boolean | null;
   requiresPointEffect?: boolean | null;
   upcast?: ApiBaseSpell["upcast"];
+  cantripScaling?: SpellCantripScaling | null;
   classes: string[];
 };
 
@@ -130,6 +132,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   requiresPointSight: api.requiresPointSight ?? null,
   requiresPointEffect: api.requiresPointEffect ?? null,
   upcast: api.upcast ?? null,
+  cantripScaling: api.cantripScaling ?? null,
   classes: api.classesJson ?? []
 });
 

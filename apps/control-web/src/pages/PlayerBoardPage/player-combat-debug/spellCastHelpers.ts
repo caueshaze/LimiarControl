@@ -1,5 +1,6 @@
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
 import { formatDamageDiceExpression } from "../../../shared/utils/diceExpression";
+import { getInstanceLabel } from "./InstanceTargetSelector";
 
 export const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
 
@@ -50,3 +51,37 @@ export const getOutcomeLabel = (result: CombatSpellResult) =>
           : result.effect_kind === "healing"
             ? "Cura"
             : "Resultado";
+
+export const formatEffectInstanceOutcome = (
+  result: CombatSpellResult,
+  outcome: NonNullable<CombatSpellResult["effect_instance_outcomes"]>[number],
+) => {
+  const label = getInstanceLabel(result.spell_canonical_key, outcome.instance_index);
+  const details: string[] = [];
+
+  if (outcome.is_hit === true) {
+    details.push(outcome.is_critical ? "acerto critico" : "acerto");
+  } else if (outcome.is_hit === false) {
+    details.push("erro");
+  }
+
+  if (outcome.is_saved === true) {
+    details.push("save passou");
+  } else if (outcome.is_saved === false) {
+    details.push("save falhou");
+  }
+
+  if (typeof outcome.damage === "number" && outcome.damage > 0) {
+    details.push(`${outcome.damage} dano`);
+  }
+
+  if (typeof outcome.healing === "number" && outcome.healing > 0) {
+    details.push(`${outcome.healing} cura`);
+  }
+
+  if (typeof outcome.new_hp === "number") {
+    details.push(`PV ${outcome.new_hp}`);
+  }
+
+  return `${label} -> ${outcome.target_display_name}: ${details.length > 0 ? details.join(", ") : "sem efeito"}`;
+};

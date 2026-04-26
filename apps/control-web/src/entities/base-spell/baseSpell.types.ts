@@ -137,6 +137,7 @@ export type SpellUpcast = {
   dice?: string | null;
   flat?: number | null;
   perLevel?: number | null;
+  baseEffectInstances?: number | null;
   maxLevel?: number | null;
   scalingKey?: string | null;
   scalingSummary?: string | null;

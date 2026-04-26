@@ -129,6 +129,8 @@ const buildSpellOptions = (
         areaShape: catalogSpell?.areaShape ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
         saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
+        cantripScaling: catalogSpell?.cantripScaling ?? null,
+        characterLevel: playerSheet?.level ?? null,
         availableSlotLevels:
           spell.level > 0
             ? availableSlotLevels.filter(
