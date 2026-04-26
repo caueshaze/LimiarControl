@@ -418,7 +418,8 @@
       "upcast": {
         "mode": "additional_effect_instances",
         "dice": "1d4+1",
-        "perLevel": 1
+        "perLevel": 1,
+        "baseEffectInstances": 3
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,

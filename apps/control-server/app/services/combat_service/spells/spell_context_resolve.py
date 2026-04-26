@@ -252,12 +252,32 @@ class SpellContextResolveMixin:
             effect_bonus=effect_bonus,
             upcast=structured_upcast,
         )
+        base_effect_instance_count: int | None = None
+        base_effect_instance_dice: str | None = None
+        if isinstance(structured_upcast, dict) and structured_upcast.get("mode") == "additional_effect_instances":
+            raw_base = structured_upcast.get("baseEffectInstances")
+            base_effect_instance_count = raw_base if isinstance(raw_base, int) and raw_base >= 1 else None
+            inst_dice = structured_upcast.get("dice")
+            base_effect_instance_dice = inst_dice if isinstance(inst_dice, str) else None
+            if base_effect_instance_count is None and base_effect_instance_dice and effect_dice:
+                # Fallback: derive base count from aggregate/instance dice ratio.
+                # TODO: prefer explicit baseEffectInstances in seed over this derivation.
+                inst_c, inst_s, inst_mod = _parse_dice(base_effect_instance_dice)
+                base_c, base_s, base_mod = _parse_dice(effect_dice)
+                if (
+                    inst_c > 0 and inst_s == base_s and base_c > 0
+                    and base_c % inst_c == 0
+                    and (inst_mod == 0 or base_mod == (base_c // inst_c) * inst_mod)
+                ):
+                    base_effect_instance_count = base_c // inst_c
         elemental_affinity = resolve_elemental_affinity(attacker_data, damage_type)
         return {
             "elemental_affinity": elemental_affinity,
             "cantrip_scaling": structured_cantrip_scaling,
             "cantrip_instance_count": cantrip_result["cantrip_instance_count"],
             "cantrip_instance_dice": cantrip_result["cantrip_instance_dice"],
+            "base_effect_instance_count": base_effect_instance_count,
+            "base_effect_instance_dice": base_effect_instance_dice,
             "structured_upcast": structured_upcast,
             "upcast_result": upcast_result,
         }
@@ -284,12 +304,14 @@ class SpellContextResolveMixin:
         )
         cantrip_instance_count = resolved_upcast.get("cantrip_instance_count")
         cantrip_instance_dice = resolved_upcast.get("cantrip_instance_dice")
+        base_effect_instance_count = resolved_upcast.get("base_effect_instance_count")
+        base_effect_instance_dice = resolved_upcast.get("base_effect_instance_dice")
         if cantrip_instance_count is not None:
             effect_instance_count = cantrip_instance_count
             effect_instance_dice = cantrip_instance_dice
-        elif upcast_added_instances > 0:
-            effect_instance_count = 1 + upcast_added_instances
-            effect_instance_dice = upcast_result.get("upcast_instance_effect_dice")
+        elif base_effect_instance_count is not None:
+            effect_instance_count = base_effect_instance_count + upcast_added_instances
+            effect_instance_dice = base_effect_instance_dice
         else:
             effect_instance_count = 1
             effect_instance_dice = None
@@ -338,6 +360,7 @@ class SpellContextResolveMixin:
             "upcast_instance_effect_dice": upcast_result.get("upcast_instance_effect_dice"),
             "effectInstanceCount": effect_instance_count,
             "effectInstanceDice": effect_instance_dice,
+            "baseEffectInstanceCount": base_effect_instance_count,
             "elemental_affinity_eligible": bool(resolved_upcast["elemental_affinity"].get("eligible")),
             "elemental_affinity_damage_type": resolved_upcast["elemental_affinity"].get("damageType"),
             "elemental_affinity_bonus": resolved_upcast["elemental_affinity"].get("bonus"),

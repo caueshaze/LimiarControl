@@ -47,6 +47,9 @@ class CombatSpellDiceMathMixin:
         max_level = raw_upcast.get("maxLevel")
         if isinstance(max_level, int) and max_level > 0:
             normalized["maxLevel"] = max_level
+        base_instances = raw_upcast.get("baseEffectInstances")
+        if isinstance(base_instances, int) and base_instances >= 1:
+            normalized["baseEffectInstances"] = base_instances
         return normalized
 
     @classmethod
