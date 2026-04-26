@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { combatRepo, type CombatActiveAreaEffect } from "../../../shared/api/combatRepo";
-import type { SpellMapHighlight } from "../../../pages/PlayerBoardPage/player-combat-debug/spellMapPreviewHighlights";
+import type { SpellMapHighlight } from "./combatMapHighlight.types";
 
 export type CombatMapSelectionMode = "none" | "select-token" | "select-cell";
 

@@ -139,6 +139,8 @@ export const isEmbeddedMapContextMessage = (
     payload.combatPhase === "placement" ||
     payload.combatPhase === "active" ||
     payload.combatPhase === "ended";
+  const spellHighlightsValid =
+    payload.spellHighlights == null || Array.isArray(payload.spellHighlights);
 
   return (
     typeof payload.sessionId === "string" &&
@@ -148,7 +150,8 @@ export const isEmbeddedMapContextMessage = (
     activeAreaEffectsValid &&
     selectedCellValid &&
     selectedTargetValid &&
-    combatPhaseValid
+    combatPhaseValid &&
+    spellHighlightsValid
   );
 };
 
@@ -164,7 +167,7 @@ export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payl
     selectedCell: message.selectedCell ?? null,
     selectedTargetRefId: message.selectedTargetRefId ?? null,
     combatPhase: message.combatPhase ?? null,
-    spellHighlights: message.spellHighlights ?? [],
+    spellHighlights: Array.isArray(message.spellHighlights) ? message.spellHighlights : [],
   });
 }
 

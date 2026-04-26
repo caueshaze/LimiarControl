@@ -1,16 +1,7 @@
 import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
+import type { SpellMapHighlight } from "../../../features/combat-ui/map/combatMapHighlight.types";
 
-export type SpellMapHighlightKind = "target" | "instance-target" | "area-cell";
-
-export type SpellMapHighlightStatus = "valid" | "invalid" | "partial" | "unknown";
-
-export type SpellMapHighlight = {
-  kind: SpellMapHighlightKind;
-  status: SpellMapHighlightStatus;
-  targetRefId?: string | null;
-  instanceIndex?: number | null;
-  reason?: string | null;
-};
+export type { SpellMapHighlightKind, SpellMapHighlightStatus, SpellMapHighlight } from "../../../features/combat-ui/map/combatMapHighlight.types";
 
 export function buildSpellMapPreviewHighlights(
   model: SpellMapPreviewModel,

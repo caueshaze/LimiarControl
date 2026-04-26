@@ -308,12 +308,25 @@ export const PlayerSpellCastDialog = ({
     targetPositions,
   });
 
-  // Derive map highlights from the preview model. Deps are the primitive fields
-  // that drive content changes, plus effectInstanceTargets (state) for per-instance changes.
+  const instanceStatusSignature =
+    mapPreviewModel.instanceStatuses
+      ?.map((s) => `${s.instanceIndex}:${s.targetRefId ?? ""}:${s.status}:${s.reason ?? ""}`)
+      .join("|") ?? "";
+
+  const affectedSignature = `${mapPreviewModel.affectedTargetCount ?? ""}:${mapPreviewModel.affectedTargetNames?.join("|") ?? ""}`;
+
   const highlights = useMemo(
     () => buildSpellMapPreviewHighlights(mapPreviewModel, target?.ref_id ?? null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mapPreviewModel.status, mapPreviewModel.reason, mapPreviewModel.areaShape, effectInstanceTargets, target?.ref_id],
+    [
+      mapPreviewModel.status,
+      mapPreviewModel.reason,
+      mapPreviewModel.areaShape,
+      effectInstanceTargets,
+      target?.ref_id,
+      instanceStatusSignature,
+      affectedSignature,
+    ],
   );
 
   useEffect(() => {

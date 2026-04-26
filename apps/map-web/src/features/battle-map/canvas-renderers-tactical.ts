@@ -123,6 +123,9 @@ export function drawSpellHighlightRings(
     }
   }
 
+  // TODO(spell-preview): area-cell highlights are emitted by buildSpellMapPreviewHighlights
+  // but this renderer only draws token rings (highlights with targetRefId). Cell footprint
+  // rendering should be added as a dedicated pass in drawCellFills, not here.
   for (const [refId, status] of statusByRef) {
     const style = resolveRingStyle(status);
     if (!style) continue;
@@ -135,6 +138,8 @@ export function drawSpellHighlightRings(
     const cy = y + h / 2;
     const radius = Math.min(w, h) * 0.36;
 
+    // TODO(perf): consider reusing Graphics instances via pool instead of recreating
+    // per-token per-redraw for encounters with many highlighted targets.
     const ring = new Graphics();
     // Slightly larger + thinner than tactical overlay ring to distinguish preview from selection
     ring.circle(0, 0, radius + 7).stroke({ width: 2, color: style.color, alpha: style.alpha });
