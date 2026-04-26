@@ -373,9 +373,12 @@ describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
   });
 });
 
-describe("buildSpellMapPreviewModel – METERS_PER_CELL boundary", () => {
-  it("uses METERS_PER_CELL from useTargetingPreview for distance calculation", () => {
-    // A target exactly at range boundary: cells = rangeMeters / METERS_PER_CELL
+describe("buildSpellMapPreviewModel – Chebyshev distance boundary", () => {
+  // The tactical engine uses Chebyshev distance: max(|dx|, |dy|), the
+  // king-move metric where diagonals cost the same as cardinals.
+  // These tests guard against accidental regression to Euclidean.
+
+  it("target exactly at axial range boundary is valid", () => {
     const rangeMeters = 30;
     const exactCells = rangeMeters / METERS_PER_CELL; // 20 cells
     const model = buildSpellMapPreviewModel({
@@ -387,7 +390,7 @@ describe("buildSpellMapPreviewModel – METERS_PER_CELL boundary", () => {
     expect(model.status).toBe("valid");
   });
 
-  it("treats target one cell beyond range boundary as invalid", () => {
+  it("target one cell beyond axial range boundary is invalid", () => {
     const rangeMeters = 30;
     const beyondCells = rangeMeters / METERS_PER_CELL + 1; // 21 cells = 31.5m
     const model = buildSpellMapPreviewModel({
@@ -395,6 +398,31 @@ describe("buildSpellMapPreviewModel – METERS_PER_CELL boundary", () => {
       casterPosition: CASTER,
       selectedTargetRefId: "e1",
       targetPositions: [{ refId: "e1", cell: { x: beyondCells, y: 0 } }],
+    });
+    expect(model.status).toBe("invalid");
+  });
+
+  it("diagonal target at Chebyshev boundary is valid (would be invalid with Euclidean)", () => {
+    // (20, 20): Chebyshev = max(20,20) = 20 cells = 30m → valid at range 30m.
+    // Euclidean would be sqrt(20²+20²) ≈ 28.28 cells = 42.43m → invalid.
+    const rangeMeters = 30;
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: { ...baseSingleTargetModel, rangeMeters },
+      casterPosition: CASTER,
+      selectedTargetRefId: "e1",
+      targetPositions: [{ refId: "e1", cell: { x: 20, y: 20 } }],
+    });
+    expect(model.status).toBe("valid");
+  });
+
+  it("diagonal target one Chebyshev cell beyond boundary is invalid", () => {
+    // (21, 21): Chebyshev = 21 cells = 31.5m > 30m → invalid.
+    const rangeMeters = 30;
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: { ...baseSingleTargetModel, rangeMeters },
+      casterPosition: CASTER,
+      selectedTargetRefId: "e1",
+      targetPositions: [{ refId: "e1", cell: { x: 21, y: 21 } }],
     });
     expect(model.status).toBe("invalid");
   });

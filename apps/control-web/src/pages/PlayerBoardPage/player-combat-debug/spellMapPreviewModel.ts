@@ -39,15 +39,17 @@ export type BuildSpellMapPreviewModelParams = {
   targetPositions?: SpellMapTargetPosition[];
 };
 
-const euclideanMeters = (a: GridCell, b: GridCell): number =>
-  Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2) * METERS_PER_CELL;
+// Chebyshev distance matches the tactical engine (reach.py / coordinates.py):
+// max(|dx|, |dy|) — king-moves on the grid, same as D&D diagonal-equals-cardinal.
+const chebyshevMeters = (a: GridCell, b: GridCell): number =>
+  Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * METERS_PER_CELL;
 
 const checkRange = (
   casterPosition: GridCell,
   targetCell: GridCell,
   rangeMeters: number,
 ): SpellMapPreviewStatus =>
-  euclideanMeters(casterPosition, targetCell) <= rangeMeters ? "valid" : "invalid";
+  chebyshevMeters(casterPosition, targetCell) <= rangeMeters ? "valid" : "invalid";
 
 export const buildSpellMapPreviewModel = ({
   spellPreviewModel,
