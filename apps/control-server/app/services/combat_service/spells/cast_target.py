@@ -26,7 +26,16 @@ logger = logging.getLogger(__name__)
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     @classmethod
-    def _validate_cast_prerequisites(cls, db, session_id, req, actor_user_id, is_gm):
+    def _validate_cast_prerequisites(
+        cls,
+        db,
+        session_id,
+        req,
+        actor_user_id,
+        is_gm,
+        *,
+        clear_pending_attack: bool = True,
+    ):
         state = cls.get_state(db, session_id)
         cls._require_active(state)
         attacker = cls._resolve_actor_participant(
@@ -48,15 +57,70 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         if cls._as_dict(attacker_data_check.get("wildShape")).get("active"):
             raise CombatServiceError("Cannot cast spells while in Wild Shape.", 400)
 
-        had_pending = isinstance(attacker.get("pending_attack"), dict)
-        cls._clear_participant_pending_attack(attacker)
-        if had_pending:
-            flag_modified(state, "participants")
+        if clear_pending_attack:
+            had_pending = isinstance(attacker.get("pending_attack"), dict)
+            cls._clear_participant_pending_attack(attacker)
+            if had_pending:
+                flag_modified(state, "participants")
 
         attacker_model, _, _, _, _, _ = cls._get_stats(
             db, attacker["ref_id"], attacker["kind"], session_id
         )
         return state, attacker, attacker_model
+
+    @classmethod
+    def _build_resolved_spell_context_response(cls, req, spell_context: dict) -> dict:
+        resolution_type = spell_context.get("spell_mode")
+        return {
+            "spell_id": req.spell_id or spell_context.get("spell_canonical_key"),
+            "spell_canonical_key": spell_context.get("spell_canonical_key"),
+            "campaign_spell_id": req.campaign_spell_id,
+            "inventory_item_id": spell_context.get("inventory_item_id"),
+            "spell_name": spell_context["spell_name"],
+            "spell_level": cls._safe_int(spell_context.get("spell_level"), 0),
+            "slot_level": spell_context.get("slot_level"),
+            "target_type": spell_context.get("target_type"),
+            "selection_type": spell_context.get("selection_type"),
+            "area_shape": spell_context.get("area_shape"),
+            "resolution_type": resolution_type,
+            "requires_attack_roll": resolution_type == "spell_attack",
+            "requires_saving_throw": resolution_type == "saving_throw",
+            "damage_preview": spell_context.get("effect_dice"),
+            "effect_instance_count": cls._safe_int(
+                spell_context.get("effect_instance_count"),
+                1,
+            ),
+            "effect_instance_dice": spell_context.get("effect_instance_dice"),
+            "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
+            "upcast_applied": bool(spell_context.get("upcast_applied")),
+            "upcast_added_instances": cls._safe_int(
+                spell_context.get("upcast_added_instances"),
+                0,
+            ),
+            "upcast_instance_effect_dice": spell_context.get("upcast_instance_effect_dice"),
+        }
+
+    @classmethod
+    def resolve_spell_context(
+        cls,
+        db,
+        session_id: str,
+        req,
+        actor_user_id: str,
+        is_gm: bool,
+    ) -> dict:
+        _, attacker, attacker_model = cls._validate_cast_prerequisites(
+            db,
+            session_id,
+            req,
+            actor_user_id,
+            is_gm,
+            clear_pending_attack=False,
+        )
+        spell_context = cls._resolve_player_spell_context(
+            db, session_id, attacker, attacker_model, req,
+        )
+        return cls._build_resolved_spell_context_response(req, spell_context)
 
     @classmethod
     def _validate_instance_targets(cls, *, req, spell_context, state):

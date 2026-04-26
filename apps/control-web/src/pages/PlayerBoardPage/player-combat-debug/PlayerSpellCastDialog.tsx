@@ -4,6 +4,7 @@ import { participantHasActiveConcentration } from "../../../features/combat-ui/c
 import type {
   CombatCastSpellRequest,
   CombatParticipant,
+  CombatResolvedSpellContext,
   CombatSpellMode,
   CombatSpellResult,
 } from "../../../shared/api/combatRepo";
@@ -31,6 +32,7 @@ import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
 import { SpellCastResultPanel } from "./SpellCastResultPanel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
+import { useResolvedSpellContext } from "./useResolvedSpellContext";
 
 type Props = {
   actor: CombatParticipant;
@@ -50,6 +52,11 @@ type Props = {
 };
 
 const MULTI_INSTANCE_TARGET_ERROR = "Escolha um alvo para cada instância da magia.";
+
+type EffectInstanceContext = {
+  instanceCount: number;
+  instanceDice: string | null;
+};
 
 type BuildNonAreaSpellCastPayloadParams = {
   actorParticipantId: string;
@@ -112,6 +119,26 @@ export const buildNonAreaSpellCastPayload = ({
   concentration_manual_roll: concentrationManualRoll,
 });
 
+export const getEffectiveEffectInstanceContext = (
+  resolvedContext: CombatResolvedSpellContext | null,
+  fallbackContext: EffectInstanceContext,
+  allowFallback: boolean,
+): EffectInstanceContext => {
+  if (resolvedContext) {
+    return {
+      instanceCount: Math.max(1, resolvedContext.effect_instance_count),
+      instanceDice: resolvedContext.effect_instance_dice ?? null,
+    };
+  }
+
+  return allowFallback
+    ? fallbackContext
+    : {
+        instanceCount: 1,
+        instanceDice: null,
+      };
+};
+
 export const PlayerSpellCastDialog = ({
   actor,
   actorParticipantId,
@@ -165,7 +192,25 @@ export const PlayerSpellCastDialog = ({
     spell,
     spellMode,
   });
-  const effectInstanceContext = resolveEffectInstanceContext(spell, selectedSlotLevel);
+  const fallbackEffectInstanceContext = resolveEffectInstanceContext(spell, selectedSlotLevel);
+  const resolvedSpellContextState = useResolvedSpellContext({
+    actorParticipantId,
+    selectedSlotLevel,
+    sessionId,
+    spell,
+    spellMode,
+  });
+  // Keep the local derivation only as a temporary defense when the pre-cast
+  // backend contract is unavailable; the resolved backend context is preferred.
+  const allowLocalFallback =
+    Boolean(resolvedSpellContextState.error) ||
+    (!resolvedSpellContextState.loading && !resolvedSpellContextState.context);
+  const spellContextReady = Boolean(resolvedSpellContextState.context) || allowLocalFallback;
+  const effectInstanceContext = getEffectiveEffectInstanceContext(
+    resolvedSpellContextState.context,
+    fallbackEffectInstanceContext,
+    allowLocalFallback,
+  );
   const isMultiInstanceSpell = !isAreaSpell && effectInstanceContext.instanceCount > 1;
   const selectableParticipants = participants.filter((participant) => participant.id !== actor.id);
   const normalizedEffectInstanceTargets = normalizeEffectInstanceTargets(
@@ -203,12 +248,18 @@ export const PlayerSpellCastDialog = ({
     anchorCell && mapState
       ? mapState.tokens.find((token) => token.position.x === anchorCell.x && token.position.y === anchorCell.y)?.combatant_id ?? null
       : null;
-  const effectDiceLabel =
-    formatDamageDiceExpression(result?.effect_dice ?? spellEffectDice, Boolean(result?.is_critical)) ??
+  const effectDiceSource =
     result?.effect_dice ??
+    (spellEffectDice || resolvedSpellContextState.context?.damage_preview || null);
+  const effectDiceLabel =
+    formatDamageDiceExpression(
+      effectDiceSource,
+      Boolean(result?.is_critical),
+    ) ??
+    effectDiceSource ??
     spellEffectDice;
-  const effectRollCount = getDamageRollCount(result?.effect_dice ?? spellEffectDice, Boolean(result?.is_critical));
-  const effectRollSides = getDamageRollSides(result?.effect_dice ?? spellEffectDice);
+  const effectRollCount = getDamageRollCount(effectDiceSource, Boolean(result?.is_critical));
+  const effectRollSides = getDamageRollSides(effectDiceSource);
   const effectRollValues = Array.from({ length: effectRollSides }, (_, i) => i + 1);
   const effectKindLabel =
     result?.effect_kind === "healing" || spellMode === "heal"
@@ -507,8 +558,14 @@ export const PlayerSpellCastDialog = ({
             }}
             spellMode={spellMode}
             spellOutOfRange={spellOutOfRange}
-            submitDisabled={isMultiInstanceSpell && !effectInstanceTargetsComplete}
-            validationMessage={isMultiInstanceSpell && !effectInstanceTargetsComplete ? MULTI_INSTANCE_TARGET_ERROR : null}
+            submitDisabled={!spellContextReady || (isMultiInstanceSpell && !effectInstanceTargetsComplete)}
+            validationMessage={
+              !spellContextReady
+                ? "Resolvendo contexto da magia..."
+                : isMultiInstanceSpell && !effectInstanceTargetsComplete
+                  ? MULTI_INSTANCE_TARGET_ERROR
+                  : null
+            }
           />
         ) : null}
       </div>

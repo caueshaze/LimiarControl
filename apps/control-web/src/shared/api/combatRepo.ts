@@ -240,6 +240,40 @@ export type CombatCastSpellRequest = {
   override_resource_limit?: boolean;
 };
 
+export type CombatResolveSpellContextRequest = {
+  actor_participant_id?: string | null;
+  target_ref_id?: string | null;
+  inventory_item_id?: string | null;
+  spell_id?: string | null;
+  spell_canonical_key?: string | null;
+  campaign_spell_id?: string | null;
+  spell_mode?: CombatSpellMode | null;
+  slot_level?: number | null;
+};
+
+export type CombatResolvedSpellContext = {
+  spell_id?: string | null;
+  spell_canonical_key?: string | null;
+  campaign_spell_id?: string | null;
+  inventory_item_id?: string | null;
+  spell_name: string;
+  spell_level: number;
+  slot_level?: number | null;
+  target_type?: string | null;
+  selection_type?: string | null;
+  area_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
+  resolution_type: CombatSpellMode;
+  requires_attack_roll: boolean;
+  requires_saving_throw: boolean;
+  damage_preview?: string | null;
+  effect_instance_count: number;
+  effect_instance_dice?: string | null;
+  base_effect_instance_count?: number | null;
+  upcast_applied: boolean;
+  upcast_added_instances: number;
+  upcast_instance_effect_dice?: string | null;
+};
+
 export type CombatSpellResult = {
   spell_name: string;
   spell_canonical_key?: string | null;
@@ -643,6 +677,11 @@ export const combatRepo = {
     http.post<CombatSpellResult>(
       `/sessions/${sessionId}/combat/action/cast`,
       payload
+    ),
+  resolveSpellContext: (sessionId: string, payload: CombatResolveSpellContextRequest) =>
+    http.post<CombatResolvedSpellContext>(
+      `/sessions/${sessionId}/combat/spells/resolve-context`,
+      payload,
     ),
   ensureMap: (sessionId: string) =>
     http.post<CombatMapEnsureResponse>(

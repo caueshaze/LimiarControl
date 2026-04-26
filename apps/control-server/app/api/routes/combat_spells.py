@@ -11,6 +11,8 @@ from app.schemas.combat import (
     CombatMapPreviewState,
     CombatMovementPreviewRequest,
     CombatMovementPreviewResponse,
+    CombatResolveSpellContextRequest,
+    CombatResolvedSpellContext,
     CombatResolveSpellEffectRequest,
     CombatSpellResult,
 )
@@ -71,6 +73,25 @@ def action_cast_spell_preview(
     user: User = Depends(get_current_user),
 ):
     return CombatService.preview_area_spell_targeting(
+        db,
+        session_id,
+        req,
+        user.id,
+        _is_session_gm(db, session_id, user),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spells/resolve-context",
+    response_model=CombatResolvedSpellContext,
+)
+def resolve_spell_context(
+    session_id: str,
+    req: CombatResolveSpellContextRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return CombatService.resolve_spell_context(
         db,
         session_id,
         req,

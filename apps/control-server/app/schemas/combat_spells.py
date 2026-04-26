@@ -86,6 +86,56 @@ class CombatCastSpellRequest(BaseModel):
     effect_instance_targets: list[EffectInstanceTarget] | None = None
 
 
+class CombatResolveSpellContextRequest(BaseModel):
+    actor_participant_id: Optional[str] = None
+    target_ref_id: str | None = None
+    inventory_item_id: str | None = None
+    spell_id: str | None = None
+    spell_canonical_key: str | None = None
+    campaign_spell_id: str | None = None
+    spell_mode: (
+        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+        | None
+    ) = None
+    slot_level: Optional[int] = None
+    dice_expression: Optional[str] = None
+    is_heal: bool = False
+    is_attack: bool = False
+    damage_dice: str | None = None
+    damage_bonus: int | None = None
+    heal_dice: str | None = None
+    heal_bonus: int | None = None
+    damage_type: str | None = None
+    save_ability: AbilityName | None = None
+    save_dc: int | None = Field(default=None, ge=1)
+    spell_attack_bonus: int | None = None
+
+
+class CombatResolvedSpellContext(BaseModel):
+    spell_id: str | None = None
+    spell_canonical_key: str | None = None
+    campaign_spell_id: str | None = None
+    inventory_item_id: str | None = None
+    spell_name: str
+    spell_level: int
+    slot_level: int | None = None
+    target_type: str | None = None
+    selection_type: str | None = None
+    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    resolution_type: Literal[
+        "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
+    ]
+    requires_attack_roll: bool = False
+    requires_saving_throw: bool = False
+    damage_preview: str | None = None
+    effect_instance_count: int = 1
+    effect_instance_dice: str | None = None
+    base_effect_instance_count: int | None = None
+    upcast_applied: bool = False
+    upcast_added_instances: int = 0
+    upcast_instance_effect_dice: str | None = None
+
+
 class CombatGridCell(BaseModel):
     x: int = Field(ge=0)
     y: int = Field(ge=0)
