@@ -32,6 +32,14 @@ def _req(**overrides):
     return SimpleNamespace(**base)
 
 
+def _attacker_data_with_full_slots():
+    return {
+        "spellcasting": {
+            "slots": {str(level): {"used": 0, "max": 1} for level in range(1, 10)},
+        },
+    }
+
+
 class SpellTargetingSemanticsTests(unittest.TestCase):
     def assert_semantics(self, source, expected: dict[str, str]) -> None:
         resolved = resolve_spell_targeting_semantics(source)
@@ -193,6 +201,7 @@ class SpellContextTargetingSemanticsTests(unittest.TestCase):
             2,
             3,
             "spellcasting",
+            _attacker_data_with_full_slots(),
         )
 
         self.assertEqual(resolved["spell_mode"], "spell_attack")
@@ -215,6 +224,7 @@ class SpellContextTargetingSemanticsTests(unittest.TestCase):
             2,
             3,
             "spellcasting",
+            _attacker_data_with_full_slots(),
         )
 
         self.assertEqual(resolved["spell_mode"], "direct_damage")
@@ -246,6 +256,7 @@ class SpellContextTargetingSemanticsTests(unittest.TestCase):
                     2,
                     3,
                     "spellcasting",
+                    _attacker_data_with_full_slots(),
                 )
                 self.assertEqual(resolved["spell_mode"], expected_mode)
 
@@ -265,43 +276,44 @@ class SpellCantripScalingTests(unittest.TestCase):
 
         for caster_level, expected in cases.items():
             with self.subTest(caster_level=caster_level):
-                self.assertEqual(
-                    CombatService._apply_character_level_cantrip_scaling(
-                        spell_level=0,
-                        caster_level=caster_level,
-                        effect_dice="1d6",
-                        cantrip_scaling={
-                            "mode": "character_level",
-                            "thresholds": [
-                                {"characterLevel": 1, "damage": {"dice": "1d6"}},
-                                {"characterLevel": 5, "damage": {"dice": "2d6"}},
-                                {"characterLevel": 11, "damage": {"dice": "3d6"}},
-                                {"characterLevel": 17, "damage": {"dice": "4d6"}},
-                            ],
-                        },
-                    ),
-                    expected,
+                result = CombatService._apply_character_level_cantrip_scaling(
+                    spell_level=0,
+                    caster_level=caster_level,
+                    effect_dice="1d6",
+                    cantrip_scaling={
+                        "scalingMode": "character_level",
+                        "scalingEffectType": "damage_dice",
+                        "thresholds": [
+                            {"characterLevel": 1, "damage": {"dice": "1d6"}},
+                            {"characterLevel": 5, "damage": {"dice": "2d6"}},
+                            {"characterLevel": 11, "damage": {"dice": "3d6"}},
+                            {"characterLevel": 17, "damage": {"dice": "4d6"}},
+                        ],
+                    },
                 )
+                self.assertEqual(result["effect_dice"], expected)
+                self.assertIsNone(result["cantrip_instance_count"])
+                self.assertIsNone(result["cantrip_instance_dice"])
 
     def test_cantrip_scaling_requires_explicit_catalog_config(self) -> None:
-        self.assertEqual(
-            CombatService._apply_character_level_cantrip_scaling(
-                spell_level=0,
-                caster_level=17,
-                effect_dice="1d6",
-            ),
-            "1d6",
+        result = CombatService._apply_character_level_cantrip_scaling(
+            spell_level=0,
+            caster_level=17,
+            effect_dice="1d6",
         )
+        self.assertEqual(result["effect_dice"], "1d6")
+        self.assertIsNone(result["cantrip_instance_count"])
+        self.assertIsNone(result["cantrip_instance_dice"])
 
     def test_character_level_scaling_does_not_apply_to_leveled_spells(self) -> None:
-        self.assertEqual(
-            CombatService._apply_character_level_cantrip_scaling(
-                spell_level=1,
-                caster_level=17,
-                effect_dice="1d6",
-            ),
-            "1d6",
+        result = CombatService._apply_character_level_cantrip_scaling(
+            spell_level=1,
+            caster_level=17,
+            effect_dice="1d6",
         )
+        self.assertEqual(result["effect_dice"], "1d6")
+        self.assertIsNone(result["cantrip_instance_count"])
+        self.assertIsNone(result["cantrip_instance_dice"])
 
     def test_structured_additional_effect_instances_upcast_adds_configured_dice(self) -> None:
         result = CombatService._apply_structured_spell_upcast(
