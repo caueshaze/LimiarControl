@@ -6,6 +6,13 @@ import type { SpellPreviewModel } from "./spellPreviewModel";
 
 export type SpellMapPreviewStatus = "valid" | "invalid" | "partial" | "unknown";
 
+export type SpellCoverRank = "none" | "half" | "three_quarters" | "unknown";
+
+export type SpellCoverPreview = {
+  rank: SpellCoverRank;
+  bonus: number | null;
+};
+
 export type SpellMapPreviewReason =
   | "out_of_range"
   | "blocked_line_of_sight"
@@ -18,6 +25,7 @@ export type SpellInstanceMapStatus = {
   targetRefId: string | null;
   status: SpellMapPreviewStatus;
   reason?: SpellMapPreviewReason | string | null;
+  cover?: SpellCoverPreview | null;
 };
 
 export type SpellMapPreviewModel = {
@@ -30,6 +38,7 @@ export type SpellMapPreviewModel = {
   areaSizeMeters: number | null;
   effectInstanceCount: number;
   instanceStatuses?: SpellInstanceMapStatus[];
+  cover?: SpellCoverPreview | null;
 };
 
 export type SpellMapTargetPosition = {
@@ -48,6 +57,7 @@ type SpellBaseSpatialValidation = {
   hasLineOfSight?: boolean | null;
   hasLineOfEffect?: boolean | null;
   unavailableReason?: SpellSpatialUnavailableReason | null;
+  cover?: SpellCoverPreview | null;
 };
 
 export type SpellTargetSpatialValidation = SpellBaseSpatialValidation & {
@@ -230,6 +240,7 @@ export const buildSpellMapPreviewModel = ({
           targetRefId,
           status: outcome.status,
           reason: outcome.reason,
+          cover: validation?.cover ?? null,
         };
       },
     );
@@ -271,5 +282,6 @@ export const buildSpellMapPreviewModel = ({
     ...base,
     status: outcome.status,
     reason: outcome.reason,
+    cover: validation?.cover ?? null,
   };
 };

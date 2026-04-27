@@ -3,6 +3,7 @@ import {
   buildAreaSpatialValidationFromPreview,
   buildInstanceSpatialValidations,
   buildSingleTargetSpatialValidations,
+  buildSpellCoverPreviewFromDiagnostics,
   buildSpellPreviewFanoutKey,
   buildTargetSpatialValidationFromPreview,
   buildUniqueTargetRefIds,
@@ -75,6 +76,7 @@ describe("spellPreviewSpatialValidations", () => {
         hasLineOfSight: null,
         hasLineOfEffect: null,
         unavailableReason: "missing_map_data",
+        cover: null,
       },
     ]);
   });
@@ -377,5 +379,50 @@ describe("area spatial validation", () => {
     const previewAction = vi.fn().mockRejectedValue(new Error("network error"));
     const result = await fetchAreaSpatialValidation({ actorRefId: "player:1", anchorCell: ANCHOR_CELL, previewAction, rangeMeters: 36, sessionId: "s1" });
     expect(result).toMatchObject({ originCell: ANCHOR_CELL, unavailableReason: "missing_map_data", inRange: null });
+  });
+});
+
+describe("buildSpellCoverPreviewFromDiagnostics", () => {
+  it("half cover → rank half, bonus 2", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({
+      isValid: true, failureReasons: [], checks: {}, metadata: { cover: "half" },
+    })).toEqual({ rank: "half", bonus: 2 });
+  });
+
+  it("three_quarters cover → rank three_quarters, bonus 5", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({
+      isValid: true, failureReasons: [], checks: {}, metadata: { cover: "three_quarters" },
+    })).toEqual({ rank: "three_quarters", bonus: 5 });
+  });
+
+  it("none cover → null (não exibir cover)", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({
+      isValid: true, failureReasons: [], checks: {}, metadata: { cover: "none" },
+    })).toBeNull();
+  });
+
+  it("ausência de cover → null", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({ isValid: true, failureReasons: [], checks: {}, metadata: {} })).toBeNull();
+  });
+
+  it("diagnostics null → null", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics(null)).toBeNull();
+  });
+
+  it("buildTargetSpatialValidationFromPreview inclui cover quando presente", () => {
+    const result = buildTargetSpatialValidationFromPreview({
+      diagnostics: { isValid: true, failureReasons: [], checks: { in_range: true }, metadata: { cover: "half" } },
+      targetRefId: "enemy-1",
+    });
+    expect(result.cover).toEqual({ rank: "half", bonus: 2 });
+  });
+
+  it("failureReasons continuam mapeando LoS mesmo com cover presente", () => {
+    const result = buildTargetSpatialValidationFromPreview({
+      diagnostics: { isValid: false, failureReasons: ["no_line_of_sight"], checks: { in_range: true }, metadata: { cover: "half" } },
+      targetRefId: "enemy-1",
+    });
+    expect(result.hasLineOfSight).toBe(false);
+    expect(result.cover).toEqual({ rank: "half", bonus: 2 });
   });
 });

@@ -5,6 +5,7 @@ import type {
 } from "../../../shared/api/combatRepo";
 import type {
   SpellAreaSpatialValidation,
+  SpellCoverPreview,
   SpellInstanceSpatialValidation,
   SpellTargetSpatialValidation,
 } from "./spellMapPreviewModel";
@@ -79,6 +80,16 @@ const deriveRangeCheck = (
   return null;
 };
 
+export const buildSpellCoverPreviewFromDiagnostics = (
+  diagnostics: TacticalDiagnosticsPayload | null,
+): SpellCoverPreview | null => {
+  const coverValue = diagnostics?.metadata?.["cover"];
+  if (!coverValue || typeof coverValue !== "string" || coverValue === "none") return null;
+  if (coverValue === "half") return { rank: "half", bonus: 2 };
+  if (coverValue === "three_quarters") return { rank: "three_quarters", bonus: 5 };
+  return { rank: "unknown", bonus: null };
+};
+
 export const buildTargetSpatialValidationFromPreview = ({
   diagnostics,
   rangeStatus,
@@ -102,6 +113,7 @@ export const buildTargetSpatialValidationFromPreview = ({
         ? false
         : null,
     unavailableReason,
+    cover: buildSpellCoverPreviewFromDiagnostics(diagnostics),
   };
 };
 

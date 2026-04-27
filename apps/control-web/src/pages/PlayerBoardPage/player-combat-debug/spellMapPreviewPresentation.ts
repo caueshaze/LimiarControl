@@ -1,4 +1,4 @@
-import type { SpellMapPreviewModel, SpellMapPreviewStatus } from "./spellMapPreviewModel";
+import type { SpellCoverPreview, SpellMapPreviewModel, SpellMapPreviewStatus } from "./spellMapPreviewModel";
 
 const UNKNOWN_MESSAGE = "Dados de posição insuficientes para validar o preview no mapa";
 
@@ -13,6 +13,27 @@ export const formatSpellMapPreviewStatus = (status: SpellMapPreviewStatus): stri
     default:
       return "indisponível";
   }
+};
+
+export type SpellCoverContext = "attack" | "save" | "other";
+
+export const resolveCoverContext = (spellMode: string | null | undefined): SpellCoverContext => {
+  if (spellMode === "spell_attack") return "attack";
+  if (spellMode === "saving_throw") return "save";
+  return "other";
+};
+
+export const formatSpellCoverPreview = (
+  cover: SpellCoverPreview | null | undefined,
+  context: SpellCoverContext,
+): string | null => {
+  if (!cover || cover.rank === "none" || cover.rank === "unknown") return null;
+  if (context === "other") return null;
+  const rankLabel = cover.rank === "half" ? "meia" : "três-quartos";
+  const modifier = cover.bonus ?? 0;
+  if (context === "attack") return `Cobertura: ${rankLabel} (+${modifier} AC)`;
+  if (context === "save") return `Cobertura: ${rankLabel} (-${modifier} DC efetiva)`;
+  return null;
 };
 
 export const formatAreaOriginPreviewLabel = (
