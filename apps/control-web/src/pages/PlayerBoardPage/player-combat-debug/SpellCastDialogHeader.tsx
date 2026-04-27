@@ -6,6 +6,7 @@ import { getInstanceLabel } from "./InstanceTargetSelector";
 import type { GridCell } from "./areaTargetingUi";
 import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
 import {
+  formatAreaOriginPreviewLabel,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
 } from "./spellMapPreviewPresentation";
@@ -172,9 +173,11 @@ export const SpellCastDialogHeader = ({
           data-testid="spell-map-preview"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.18em]">
-            Preview tático: {formatSpellMapPreviewStatus(mapPreviewModel.status)}
+            {isAreaSpell
+              ? formatAreaOriginPreviewLabel(mapPreviewModel)
+              : `Preview tático: ${formatSpellMapPreviewStatus(mapPreviewModel.status)}`}
           </p>
-          {mapPreviewReason ? (
+          {!isAreaSpell && mapPreviewReason ? (
             <p className="mt-1 text-sm">Motivo: {mapPreviewReason}</p>
           ) : null}
           {mapPreviewModel.rangeMeters != null ? (

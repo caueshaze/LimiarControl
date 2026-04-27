@@ -1,4 +1,4 @@
-import type { SpellMapPreviewStatus } from "./spellMapPreviewModel";
+import type { SpellMapPreviewModel, SpellMapPreviewStatus } from "./spellMapPreviewModel";
 
 const UNKNOWN_MESSAGE = "Dados de posição insuficientes para validar o preview no mapa";
 
@@ -12,6 +12,35 @@ export const formatSpellMapPreviewStatus = (status: SpellMapPreviewStatus): stri
       return "parcial";
     default:
       return "indisponível";
+  }
+};
+
+export const formatAreaOriginPreviewLabel = (
+  model: Pick<SpellMapPreviewModel, "status" | "reason">,
+): string => {
+  switch (model.reason) {
+    case "out_of_range":
+      return "Origem da área: fora do alcance";
+    case "blocked_line_of_sight":
+      return "Origem da área: linha de visão bloqueada";
+    case "blocked_line_of_effect":
+      return "Origem da área: linha de efeito bloqueada";
+    case "missing_position":
+      return "Origem da área: dados de posição insuficientes";
+    case "missing_map_data":
+      return "Origem da área: dados do mapa insuficientes";
+    default:
+      break;
+  }
+  switch (model.status) {
+    case "valid":
+      return "Origem da área: válida";
+    case "invalid":
+      return "Origem da área: inválida";
+    case "unknown":
+      return "Origem da área: dados insuficientes";
+    default:
+      return "Origem da área: indisponível";
   }
 };
 

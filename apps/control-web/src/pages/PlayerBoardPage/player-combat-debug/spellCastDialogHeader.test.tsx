@@ -310,6 +310,107 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
   });
 
+  it("Fireball válida mostra Origem da área: válida", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "valid", areaShape: "sphere", areaSizeMeters: 6 })}
+        previewModel={buildPreviewModel({ areaShape: "sphere", areaSizeMeters: 6 })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: válida");
+    expect(markup).not.toContain("Preview tático:");
+  });
+
+  it("Fireball fora de alcance mostra Origem da área: fora do alcance", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "out_of_range", areaShape: "sphere" })}
+        previewModel={buildPreviewModel({ areaShape: "sphere", areaSizeMeters: 6 })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: fora do alcance");
+    expect(markup).not.toContain("Motivo:");
+  });
+
+  it("Fireball com LoS bloqueada mostra Origem da área: linha de visão bloqueada", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "blocked_line_of_sight", areaShape: "sphere" })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: linha de visão bloqueada");
+  });
+
+  it("Fireball com LoE bloqueada mostra Origem da área: linha de efeito bloqueada", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "invalid", reason: "blocked_line_of_effect", areaShape: "sphere" })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: linha de efeito bloqueada");
+  });
+
+  it("Fireball unknown mostra Origem da área: dados insuficientes", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({ status: "unknown", reason: "missing_map_data", areaShape: "sphere" })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: dados do mapa insuficientes");
+    expect(markup).not.toContain("Preview tático:");
+  });
+
+  it("Fireball inválida com affected targets mostra reason da origem e lista de alvos", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "invalid",
+          reason: "blocked_line_of_sight",
+          areaShape: "sphere",
+          affectedTargetCount: 3,
+          affectedTargetNames: ["Goblin A", "Goblin B", "Orc C"],
+        })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: linha de visão bloqueada");
+    expect(markup).toContain("Afetados: 3");
+    expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
+  });
+
   it("falls back gracefully when resolve-context is unavailable (preview-source=fallback)", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
