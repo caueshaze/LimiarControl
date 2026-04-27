@@ -4,6 +4,7 @@ import type {
   TacticalDiagnosticsPayload,
 } from "../../../shared/api/combatRepo";
 import type {
+  SpellAreaSpatialValidation,
   SpellInstanceSpatialValidation,
   SpellTargetSpatialValidation,
 } from "./spellMapPreviewModel";
@@ -197,6 +198,79 @@ export const fetchPreviewValidationsByTargetRefId = async ({
   );
 
   return new Map(entries);
+};
+
+type PositionalPreviewAction = (
+  sessionId: string,
+  payload: {
+    source_ref_id: string;
+    target_position: { x: number; y: number };
+    action_type: "spell";
+    reach_cells: number;
+  },
+) => Promise<CombatPreviewResponse>;
+
+export const buildAreaSpatialValidationFromPreview = ({
+  diagnostics,
+  rangeStatus,
+  originCell,
+  unavailableReason = null,
+}: {
+  diagnostics: TacticalDiagnosticsPayload | null;
+  rangeStatus?: RangeStatus;
+  originCell: { x: number; y: number };
+  unavailableReason?: "missing_position" | "missing_map_data" | null;
+}): SpellAreaSpatialValidation => {
+  const failureReasons = diagnostics?.failureReasons ?? [];
+  const primaryFailure = resolvePrimaryFailureReason(failureReasons);
+
+  return {
+    originCell,
+    inRange: deriveRangeCheck(diagnostics, rangeStatus),
+    hasLineOfSight:
+      primaryFailure === "no_line_of_sight"
+        ? false
+        : primaryFailure === "no_line_of_effect" || primaryFailure === "full_cover"
+          ? true
+          : null,
+    hasLineOfEffect:
+      primaryFailure === "no_line_of_effect" || primaryFailure === "full_cover" ? false : null,
+    unavailableReason,
+  };
+};
+
+export const fetchAreaSpatialValidation = async ({
+  actorRefId,
+  anchorCell,
+  previewAction,
+  rangeMeters,
+  sessionId,
+}: {
+  actorRefId: string;
+  anchorCell: { x: number; y: number };
+  previewAction: PositionalPreviewAction;
+  rangeMeters: number | null;
+  sessionId: string;
+}): Promise<SpellAreaSpatialValidation> => {
+  const reachCells = rangeMeters != null ? metersToCells(rangeMeters) : 1;
+  try {
+    const response = await previewAction(sessionId, {
+      source_ref_id: actorRefId,
+      target_position: anchorCell,
+      action_type: "spell",
+      reach_cells: reachCells,
+    });
+    return buildAreaSpatialValidationFromPreview({
+      diagnostics: response.diagnostics ?? null,
+      originCell: anchorCell,
+    });
+  } catch {
+    return buildAreaSpatialValidationFromPreview({
+      diagnostics: null,
+      originCell: anchorCell,
+      unavailableReason: "missing_map_data",
+    });
+  }
 };
 
 export type PreviewFanoutCacheEntry = {

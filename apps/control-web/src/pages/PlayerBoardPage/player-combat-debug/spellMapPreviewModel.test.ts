@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { METERS_PER_CELL } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import { buildSpellMapPreviewModel } from "./spellMapPreviewModel";
+import type { SpellAreaSpatialValidation } from "./spellMapPreviewModel";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 
 // Base SpellPreviewModel representing a resolved backend context
@@ -610,5 +611,102 @@ describe("buildSpellMapPreviewModel – Chebyshev distance boundary", () => {
       targetPositions: [{ refId: "e1", cell: { x: 21, y: 21 } }],
     });
     expect(model.status).toBe("invalid");
+  });
+});
+
+const baseAreaModel: SpellPreviewModel = {
+  resolutionType: "direct_damage",
+  damagePreview: "8d6",
+  damageType: "fire",
+  effectInstanceCount: 1,
+  effectInstanceDice: null,
+  targetType: "area",
+  selectionType: "point",
+  areaShape: "sphere",
+  areaSizeMeters: 6,
+  rangeMeters: 36,
+  requiresAttackRoll: false,
+  requiresSavingThrow: true,
+  saveAbility: "dexterity",
+  source: "resolved",
+};
+
+const ANCHOR = { x: 10, y: 0 };
+
+const areaPreviewResult = {
+  is_valid: true,
+  reason: null,
+  shape: "sphere" as const,
+  affected_cells: [{ x: 9, y: 0 }, { x: 10, y: 0 }, { x: 11, y: 0 }],
+  affected_target_ref_ids: ["goblin-a", "goblin-b"],
+  affected_token_ids: ["t1", "t2"],
+};
+
+describe("buildSpellMapPreviewModel – área com spatialValidations.area", () => {
+  const buildAreaModel = (area: SpellAreaSpatialValidation | null) =>
+    buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: areaPreviewResult,
+      spatialValidations: { area },
+    });
+
+  it("área totalmente válida retorna valid", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null });
+    expect(model.status).toBe("valid");
+    expect(model.reason).toBeNull();
+  });
+
+  it("inRange false retorna invalid / out_of_range", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: false, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null });
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("out_of_range");
+  });
+
+  it("hasLineOfSight false retorna invalid / blocked_line_of_sight", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: true, hasLineOfSight: false, hasLineOfEffect: null, unavailableReason: null });
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_sight");
+  });
+
+  it("hasLineOfEffect false retorna invalid / blocked_line_of_effect", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: true, hasLineOfSight: null, hasLineOfEffect: false, unavailableReason: null });
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("blocked_line_of_effect");
+  });
+
+  it("unavailableReason missing_map_data retorna unknown", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: null, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: "missing_map_data" });
+    expect(model.status).toBe("unknown");
+  });
+
+  it("inRange null sem unavailableReason retorna unknown / missing_position", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: null, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null });
+    expect(model.status).toBe("unknown");
+    expect(model.reason).toBe("missing_position");
+  });
+
+  it("spatialValidations.area tem prioridade sobre existingAreaPreviewResult para status", () => {
+    const invalidArea: SpellAreaSpatialValidation = { originCell: ANCHOR, inRange: false, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null };
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: { ...areaPreviewResult, is_valid: true },
+      spatialValidations: { area: invalidArea },
+    });
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("out_of_range");
+  });
+
+  it("existingAreaPreviewResult ainda fornece affectedTargetCount quando spatialValidations.area existe", () => {
+    const model = buildAreaModel({ originCell: ANCHOR, inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null });
+    expect(model.affectedTargetCount).toBe(2);
+  });
+
+  it("sem spatialValidations.area, existingAreaPreviewResult é usado como fallback", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: areaPreviewResult,
+    });
+    expect(model.status).toBe("valid");
+    expect(model.affectedTargetCount).toBe(2);
   });
 });

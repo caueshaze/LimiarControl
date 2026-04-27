@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildAreaSpatialValidationFromPreview,
   buildInstanceSpatialValidations,
   buildSingleTargetSpatialValidations,
   buildSpellPreviewFanoutKey,
   buildTargetSpatialValidationFromPreview,
   buildUniqueTargetRefIds,
   createPreviewRequestGate,
+  fetchAreaSpatialValidation,
   fetchPreviewValidationsByTargetRefId,
   fetchPreviewValidationsWithCache,
 } from "./spellPreviewSpatialValidations";
@@ -306,5 +308,74 @@ describe("fetchPreviewValidationsWithCache", () => {
     expect(buildSpellPreviewFanoutKey({ ...base, spellId: "eldritch_blast" })).not.toBe(buildSpellPreviewFanoutKey(base));
     expect(buildSpellPreviewFanoutKey({ ...base, targetRefId: "orc-b" })).not.toBe(buildSpellPreviewFanoutKey(base));
     expect(buildSpellPreviewFanoutKey({ ...base, slotLevel: null })).not.toBe(buildSpellPreviewFanoutKey(base));
+  });
+});
+
+const ANCHOR_CELL = { x: 10, y: 5 };
+
+describe("area spatial validation", () => {
+  it("buildAreaSpatialValidationFromPreview: no_line_of_sight → hasLineOfSight false", () => {
+    const result = buildAreaSpatialValidationFromPreview({
+      diagnostics: { isValid: false, failureReasons: ["no_line_of_sight"], checks: { in_range: true }, metadata: {} },
+      originCell: ANCHOR_CELL,
+    });
+    expect(result).toMatchObject({ originCell: ANCHOR_CELL, inRange: true, hasLineOfSight: false, hasLineOfEffect: null, unavailableReason: null });
+  });
+
+  it("buildAreaSpatialValidationFromPreview: no_line_of_effect → hasLineOfEffect false, hasLineOfSight true", () => {
+    const result = buildAreaSpatialValidationFromPreview({
+      diagnostics: { isValid: false, failureReasons: ["no_line_of_effect"], checks: { in_range: true }, metadata: {} },
+      originCell: ANCHOR_CELL,
+    });
+    expect(result).toMatchObject({ hasLineOfSight: true, hasLineOfEffect: false });
+  });
+
+  it("buildAreaSpatialValidationFromPreview: full_cover → hasLineOfEffect false (não LoS)", () => {
+    const result = buildAreaSpatialValidationFromPreview({
+      diagnostics: { isValid: false, failureReasons: ["full_cover"], checks: { in_range: true }, metadata: {} },
+      originCell: ANCHOR_CELL,
+    });
+    expect(result).toMatchObject({ hasLineOfSight: true, hasLineOfEffect: false });
+  });
+
+  it("buildAreaSpatialValidationFromPreview: unavailableReason passa através e originCell preservado", () => {
+    const result = buildAreaSpatialValidationFromPreview({
+      diagnostics: null,
+      originCell: ANCHOR_CELL,
+      unavailableReason: "missing_map_data",
+    });
+    expect(result).toMatchObject({ originCell: ANCHOR_CELL, unavailableReason: "missing_map_data", inRange: null });
+  });
+
+  it("fetchAreaSpatialValidation: preview válido retorna inRange true com originCell correto", async () => {
+    const previewAction = vi.fn().mockResolvedValue({
+      diagnostics: { isValid: true, failureReasons: [], checks: { in_range: true }, metadata: {} },
+      effectiveReachCells: 24,
+      aoeCells: [],
+    });
+    const result = await fetchAreaSpatialValidation({
+      actorRefId: "player:1",
+      anchorCell: ANCHOR_CELL,
+      previewAction,
+      rangeMeters: 36,
+      sessionId: "session-1",
+    });
+    expect(result).toMatchObject({ originCell: ANCHOR_CELL, inRange: true, unavailableReason: null });
+  });
+
+  it("fetchAreaSpatialValidation: LoS bloqueada → hasLineOfSight false", async () => {
+    const previewAction = vi.fn().mockResolvedValue({
+      diagnostics: { isValid: false, failureReasons: ["no_line_of_sight"], checks: { in_range: true }, metadata: {} },
+      effectiveReachCells: 24,
+      aoeCells: [],
+    });
+    const result = await fetchAreaSpatialValidation({ actorRefId: "player:1", anchorCell: ANCHOR_CELL, previewAction, rangeMeters: 36, sessionId: "s1" });
+    expect(result).toMatchObject({ hasLineOfSight: false, unavailableReason: null });
+  });
+
+  it("fetchAreaSpatialValidation: erro de network → unavailableReason missing_map_data, sem throw", async () => {
+    const previewAction = vi.fn().mockRejectedValue(new Error("network error"));
+    const result = await fetchAreaSpatialValidation({ actorRefId: "player:1", anchorCell: ANCHOR_CELL, previewAction, rangeMeters: 36, sessionId: "s1" });
+    expect(result).toMatchObject({ originCell: ANCHOR_CELL, unavailableReason: "missing_map_data", inRange: null });
   });
 });
