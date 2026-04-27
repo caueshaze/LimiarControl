@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
+from app.core.config import settings
+from app.integrations import LimiarMapClientError
 from app.models.combat import CombatState
 from app.models.inventory import InventoryItem
 from app.schemas.combat import CombatCastSpellRequest
@@ -13,13 +16,64 @@ from app.services.magic_item_effects import consume_inventory_item_charge
 from app.services.roll_resolution import resolve_saving_throw
 
 from ..combat_targeting import get_combat_targeting_service
+from ..cover_modifiers import resolve_cover_save_dc, should_cover_apply_to_save
 from ..exceptions import CombatServiceError
 from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
 from ..persistent_area_effects import build_persistent_spell_area_effect
 from ..targeting_intent import AreaTargetingIntent
 
+logger = logging.getLogger(__name__)
+
 
 class CastAreaMixin:
+    @classmethod
+    def _get_area_per_target_cover(
+        cls,
+        *,
+        session_id: str,
+        action_id: str,
+        actor_ref_id: str,
+        target_ref_ids: list[str],
+        use_map: bool,
+    ) -> dict[str, str | None]:
+        """Return cover from actor position to each affected area target.
+
+        Used when cover_applies_to_save warrants per-target DC reduction.
+        Any target whose lookup fails maps to None so the cast continues at
+        the base DC (defensive default — cover is a bonus, not a blocker).
+
+        TODO: Replace N individual calls with a batch endpoint once the map
+        API exposes one (follow-up: Batch area target spatial metadata lookup).
+        """
+        if not target_ref_ids:
+            return {}
+        if not use_map or not settings.limiar_map_enabled:
+            return {ref_id: None for ref_id in target_ref_ids}
+        client = cls._build_limiar_map_client()
+        result: dict[str, str | None] = {}
+        for target_ref_id in target_ref_ids:
+            try:
+                response = client.validate_single_target(
+                    session_id=session_id,
+                    action_id=f"{action_id}:cover:{target_ref_id}",
+                    combatant_id=actor_ref_id,
+                    target_combatant_id=target_ref_id,
+                    range_cells=None,
+                    requires_sight=False,
+                    requires_effect=False,
+                )
+                result[target_ref_id] = response.cover
+            except LimiarMapClientError as exc:
+                logger.warning(
+                    "Cover lookup failed for area target session_id=%s "
+                    "target_ref_id=%s (%s); falling back to base DC",
+                    session_id,
+                    target_ref_id,
+                    exc,
+                )
+                result[target_ref_id] = None
+        return result
+
     @classmethod
     async def _cast_area_spell(
         cls,
@@ -133,28 +187,44 @@ class CastAreaMixin:
                 spell_canonical_key=spell_context["spell_canonical_key"],
                 target_participant=target_participant,
             )
+        cover_applies_to_save = spell_context.get("cover_applies_to_save")
+        per_target_cover: dict[str, str | None] = {}
+        if should_cover_apply_to_save(cover_applies_to_save):
+            per_target_cover = cls._get_area_per_target_cover(
+                session_id=session_id,
+                action_id=f"area-cover:{uuid4()}",
+                actor_ref_id=attacker["ref_id"],
+                target_ref_ids=[p["ref_id"] for p in affected_participants],
+                use_map=state.use_map,
+            )
+
+        base_save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
         area_target_outcomes: list[dict[str, Any]] = []
         target_results_for_pending: list[dict[str, Any]] = []
         for target_participant in affected_participants:
-            # Area targeting currently exposes only aggregate area metadata, not
-            # per-target cover. Do not invent a shared cover rank for all
-            # affected targets; follow up once targeting can return per-target
-            # spatial metadata for area saves.
+            target_ref_id = target_participant["ref_id"]
+            target_cover = per_target_cover.get(target_ref_id)
+            effective_dc, _ = resolve_cover_save_dc(
+                base_save_dc,
+                target_cover,
+                cover_applies_to_save,
+                spell_context.get("save_ability"),
+            )
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
                     db,
                     session_id,
-                    target_participant["ref_id"],
+                    target_ref_id,
                     target_participant["kind"],
                     target_participant["display_name"],
                 ),
                 ability=spell_context["save_ability"],
-                dc=cls._safe_int(spell_context.get("save_dc"), 0),
+                dc=effective_dc,
             )
             roll_result.is_gm_roll = is_gm
             is_saved = bool(roll_result.success)
             outcome = {
-                "target_ref_id": target_participant["ref_id"],
+                "target_ref_id": target_ref_id,
                 "target_display_name": target_participant["display_name"],
                 "target_kind": target_participant["kind"],
                 "is_saved": is_saved,
@@ -163,6 +233,8 @@ class CastAreaMixin:
                 "damage_applied": None,
                 "healing_applied": None,
                 "new_hp": None,
+                "cover": target_cover,
+                "effective_dc": effective_dc,
             }
             area_target_outcomes.append(outcome)
             target_results_for_pending.append(
