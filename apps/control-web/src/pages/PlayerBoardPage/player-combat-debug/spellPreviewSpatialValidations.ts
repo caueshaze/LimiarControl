@@ -199,6 +199,97 @@ export const fetchPreviewValidationsByTargetRefId = async ({
   return new Map(entries);
 };
 
+export type PreviewFanoutCacheEntry = {
+  result: SpellTargetSpatialValidation;
+};
+
+export function buildSpellPreviewFanoutKey(input: {
+  sessionId: string;
+  actorRefId: string;
+  spellId: string;
+  slotLevel: number | null;
+  targetRefId: string;
+}): string {
+  return [
+    input.sessionId,
+    input.actorRefId,
+    input.spellId,
+    input.slotLevel ?? "none",
+    input.targetRefId,
+  ].join("|");
+}
+
+export async function fetchPreviewValidationsWithCache({
+  actorRefId,
+  buildKey,
+  cache,
+  inFlight,
+  previewAction,
+  rangeMeters,
+  sessionId,
+  targetRefIds,
+}: {
+  actorRefId: string;
+  buildKey: (targetRefId: string) => string;
+  cache: Map<string, PreviewFanoutCacheEntry>;
+  inFlight: Map<string, Promise<SpellTargetSpatialValidation>>;
+  previewAction: PreviewAction;
+  rangeMeters: number | null;
+  sessionId: string;
+  targetRefIds: readonly string[];
+}): Promise<Map<string, SpellTargetSpatialValidation>> {
+  const reachCells = rangeMeters != null ? metersToCells(rangeMeters) : 1;
+  const uniqueTargetRefIds = buildUniqueTargetRefIds(targetRefIds);
+
+  const entries = await Promise.all(
+    uniqueTargetRefIds.map(async (targetRefId): Promise<readonly [string, SpellTargetSpatialValidation]> => {
+      const key = buildKey(targetRefId);
+
+      const cached = cache.get(key);
+      if (cached) {
+        return [targetRefId, cached.result] as const;
+      }
+
+      const existing = inFlight.get(key);
+      if (existing) {
+        return [targetRefId, await existing] as const;
+      }
+
+      const promise: Promise<SpellTargetSpatialValidation> = previewAction(sessionId, {
+        source_ref_id: actorRefId,
+        target_ref_id: targetRefId,
+        action_type: "spell",
+        reach_cells: reachCells,
+      })
+        .then((response) => {
+          const result = buildTargetSpatialValidationFromPreview({
+            diagnostics: response.diagnostics ?? null,
+            targetRefId,
+          });
+          if (!result.unavailableReason) {
+            cache.set(key, { result });
+          }
+          return result;
+        })
+        .catch(() =>
+          buildTargetSpatialValidationFromPreview({
+            diagnostics: null,
+            targetRefId,
+            unavailableReason: "missing_map_data",
+          }),
+        )
+        .finally(() => {
+          inFlight.delete(key);
+        });
+
+      inFlight.set(key, promise);
+      return [targetRefId, await promise] as const;
+    }),
+  );
+
+  return new Map(entries);
+}
+
 export const createPreviewRequestGate = () => {
   let currentRequestId = 0;
 

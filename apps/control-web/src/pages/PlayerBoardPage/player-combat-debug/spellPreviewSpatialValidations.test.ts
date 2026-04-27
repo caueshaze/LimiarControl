@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildInstanceSpatialValidations,
   buildSingleTargetSpatialValidations,
+  buildSpellPreviewFanoutKey,
   buildTargetSpatialValidationFromPreview,
   buildUniqueTargetRefIds,
   createPreviewRequestGate,
   fetchPreviewValidationsByTargetRefId,
+  fetchPreviewValidationsWithCache,
 } from "./spellPreviewSpatialValidations";
 
 describe("spellPreviewSpatialValidations", () => {
@@ -193,5 +195,116 @@ describe("spellPreviewSpatialValidations", () => {
 
     expect(gate.isCurrent(first)).toBe(false);
     expect(gate.isCurrent(second)).toBe(true);
+  });
+});
+
+const okResponse = {
+  diagnostics: { isValid: true, failureReasons: [], checks: { in_range: true }, metadata: {} },
+  effectiveReachCells: 24,
+  aoeCells: [],
+};
+
+const baseArgs = {
+  actorRefId: "player:1",
+  rangeMeters: 36,
+  sessionId: "session-1",
+};
+
+describe("fetchPreviewValidationsWithCache", () => {
+  it("cache hit: segunda chamada com mesma chave não dispara request real", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    const previewAction = vi.fn().mockResolvedValue(okResponse);
+    const buildKey = (t: string) => `ctx|${t}`;
+
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    expect(previewAction).toHaveBeenCalledTimes(1);
+
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    expect(previewAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("in-flight dedupe: duas chamadas simultâneas com mesma chave disparam apenas uma request", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    let resolveRequest!: (v: typeof okResponse) => void;
+    const requestPromise = new Promise<typeof okResponse>((res) => { resolveRequest = res; });
+    const previewAction = vi.fn(() => requestPromise);
+    const buildKey = (t: string) => `ctx|${t}`;
+
+    const p1 = fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    const p2 = fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+
+    resolveRequest(okResponse);
+    const [r1, r2] = await Promise.all([p1, p2]);
+
+    expect(previewAction).toHaveBeenCalledTimes(1);
+    expect(r1.get("enemy-1")?.inRange).toBe(true);
+    expect(r2.get("enemy-1")?.inRange).toBe(true);
+  });
+
+  it("cache invalidation por slot: chave diferente re-fetcha", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    const previewAction = vi.fn().mockResolvedValue(okResponse);
+
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey: (t) => `slot1|${t}`, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey: (t) => `slot2|${t}`, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+
+    expect(previewAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("cache invalidation por spell: chave diferente re-fetcha", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    const previewAction = vi.fn().mockResolvedValue(okResponse);
+
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey: (t) => `spellA|${t}`, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey: (t) => `spellB|${t}`, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+
+    expect(previewAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("falha não envenena cache: segunda chamada com mesma chave após falha dispara nova request", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    const buildKey = (t: string) => `ctx|${t}`;
+    const previewAction = vi.fn()
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce(okResponse);
+
+    const first = await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    expect(first.get("enemy-1")?.unavailableReason).toBe("missing_map_data");
+    expect(cache.size).toBe(0);
+
+    const second = await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1"] });
+    expect(second.get("enemy-1")?.unavailableReason).toBeNull();
+    expect(previewAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("falha parcial não afeta outros targets: target ok vai ao cache, target falho não", async () => {
+    const cache = new Map();
+    const inFlight = new Map();
+    const buildKey = (t: string) => `ctx|${t}`;
+    const previewAction = vi.fn(async (_: string, payload: { target_ref_id: string }) => {
+      if (payload.target_ref_id === "enemy-2") throw new Error("fail");
+      return okResponse;
+    });
+
+    const result = await fetchPreviewValidationsWithCache({ ...baseArgs, buildKey, cache, inFlight, previewAction, targetRefIds: ["enemy-1", "enemy-2"] });
+
+    expect(result.get("enemy-1")?.unavailableReason).toBeNull();
+    expect(result.get("enemy-2")?.unavailableReason).toBe("missing_map_data");
+    expect(cache.has("ctx|enemy-1")).toBe(true);
+    expect(cache.has("ctx|enemy-2")).toBe(false);
+  });
+
+  it("buildSpellPreviewFanoutKey gera chaves distintas para slot, spell e target diferentes", () => {
+    const base = { sessionId: "s1", actorRefId: "p1", spellId: "magic_missile", slotLevel: 2, targetRefId: "goblin-a" };
+
+    expect(buildSpellPreviewFanoutKey({ ...base, slotLevel: 3 })).not.toBe(buildSpellPreviewFanoutKey(base));
+    expect(buildSpellPreviewFanoutKey({ ...base, spellId: "eldritch_blast" })).not.toBe(buildSpellPreviewFanoutKey(base));
+    expect(buildSpellPreviewFanoutKey({ ...base, targetRefId: "orc-b" })).not.toBe(buildSpellPreviewFanoutKey(base));
+    expect(buildSpellPreviewFanoutKey({ ...base, slotLevel: null })).not.toBe(buildSpellPreviewFanoutKey(base));
   });
 });
