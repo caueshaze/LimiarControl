@@ -159,6 +159,10 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
         self.assertEqual(second_result["affected_target_ref_ids"], ["player-123", "enemy-123"])
         self.assertEqual(second_result["target_count"], 2)
         self.assertEqual(
+            [call.kwargs["dc"] for call in mock_resolve_saving_throw.call_args_list],
+            [15, 15],
+        )
+        self.assertEqual(
             [outcome["damage_applied"] for outcome in second_result["area_target_outcomes"]],
             [24, 48],
         )

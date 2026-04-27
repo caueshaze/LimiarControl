@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.combat_service.cover_modifiers import resolve_cover_save_modifier, should_cover_apply_to_save
+from app.services.combat_service.cover_modifiers import resolve_cover_save_dc
 
 from .spell_resolution_common import SpellResolutionCommonMixin, SpellResolutionResult
 
@@ -30,7 +30,12 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
         result = SpellResolutionResult()
         result.cover = targeting_result.spatial_metadata.cover
         save_dc_base = cls._safe_int(spell_context.get("save_dc"), 0)
-        result.effective_dc = max(0, save_dc_base - resolve_cover_save_modifier(result.cover)) if should_cover_apply_to_save(spell_context.get("cover_applies_to_save"), spell_context.get("save_ability")) else save_dc_base
+        result.effective_dc, _ = resolve_cover_save_dc(
+            save_dc_base,
+            result.cover,
+            spell_context.get("cover_applies_to_save"),
+            spell_context.get("save_ability"),
+        )
 
         result.roll_result = cast_target_module.resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(db, session_id, target_p["ref_id"], target_p["kind"], target_p["display_name"]),

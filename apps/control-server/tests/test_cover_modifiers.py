@@ -1,5 +1,5 @@
 """
-Tests for cover modifier logic (Phase 4 & 5: mechanical cover effects).
+Tests for cover modifier logic (attack cover + save-cover metadata).
 
 Covers:
 - Core logic: each cover level produces the correct AC modifier (Phase 4)
@@ -7,7 +7,7 @@ Covers:
 - cover_label: human-readable strings for UI feedback
 - Integration: modifier flows into weapon/spell attack resolution via targeting result
 - Save modifier: cover reduces effective DC for physical/spatial saving throw spells (Phase 5)
-- should_cover_apply_to_save: metadata-first with DEX-fallback heuristic
+- should_cover_apply_to_save: metadata-first without heuristic fallback
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from app.services.combat_service.cover_modifiers import (
     COVER_SAVE_RULE_VALUES,
     cover_label,
     resolve_cover_modifier,
+    resolve_cover_save_dc,
     resolve_cover_save_modifier,
     should_cover_apply_to_save,
 )
@@ -217,17 +218,15 @@ class ShouldCoverApplyToSaveTests(unittest.TestCase):
     def test_none_metadata_does_not_apply_for_dexterity_save(self) -> None:
         self.assertFalse(should_cover_apply_to_save("none", "dexterity"))
 
-    # --- Fallback heuristic (no metadata) ---
+    def test_no_metadata_dex_ability_does_not_apply_cover(self) -> None:
+        self.assertFalse(should_cover_apply_to_save(None, "dex"))
 
-    def test_no_metadata_dex_ability_applies_cover(self) -> None:
-        self.assertTrue(should_cover_apply_to_save(None, "dex"))
+    def test_no_metadata_dexterity_ability_does_not_apply_cover(self) -> None:
+        self.assertFalse(should_cover_apply_to_save(None, "dexterity"))
 
-    def test_no_metadata_dexterity_ability_applies_cover(self) -> None:
-        self.assertTrue(should_cover_apply_to_save(None, "dexterity"))
-
-    def test_no_metadata_dexterity_case_insensitive(self) -> None:
-        self.assertTrue(should_cover_apply_to_save(None, "DEX"))
-        self.assertTrue(should_cover_apply_to_save(None, "Dexterity"))
+    def test_no_metadata_dexterity_case_insensitive_does_not_apply_cover(self) -> None:
+        self.assertFalse(should_cover_apply_to_save(None, "DEX"))
+        self.assertFalse(should_cover_apply_to_save(None, "Dexterity"))
 
     def test_no_metadata_wis_ability_does_not_apply_cover(self) -> None:
         self.assertFalse(should_cover_apply_to_save(None, "wis"))
@@ -255,9 +254,13 @@ class CoverSaveIntegrationTests(unittest.TestCase):
         cover_applies_to_save: str | None,
         save_ability: str | None = None,
     ) -> int:
-        if should_cover_apply_to_save(cover_applies_to_save, save_ability):
-            return max(0, base_dc - resolve_cover_save_modifier(cover))
-        return base_dc
+        effective_dc, _ = resolve_cover_save_dc(
+            base_dc,
+            cover,
+            cover_applies_to_save,
+            save_ability,
+        )
+        return effective_dc
 
     def test_fireball_half_cover_reduces_dc_by_two(self) -> None:
         # fireball → "physical", DEX save; half cover reduces DC 15 to 13
@@ -296,14 +299,27 @@ class CoverSaveIntegrationTests(unittest.TestCase):
         effective = self._effective_dc(14, "half", "physical", "con")
         self.assertEqual(effective, 12)
 
-    def test_fallback_dex_save_no_metadata_gets_cover(self) -> None:
-        # Legacy catalog entry (no metadata); DEX save assumed physical
+    def test_null_metadata_dex_save_does_not_get_cover(self) -> None:
         effective = self._effective_dc(14, "half", None, "dex")
-        self.assertEqual(effective, 12)
+        self.assertEqual(effective, 14)
 
     def test_fallback_wis_save_no_metadata_does_not_get_cover(self) -> None:
         effective = self._effective_dc(14, "half", None, "wis")
         self.assertEqual(effective, 14)
+
+    def test_unknown_metadata_does_not_get_cover(self) -> None:
+        effective = self._effective_dc(14, "half", "unexpected", "dexterity")
+        self.assertEqual(effective, 14)
+
+    def test_resolve_cover_save_dc_returns_modifier_for_half_cover(self) -> None:
+        effective, modifier = resolve_cover_save_dc(15, "half", "physical", "dexterity")
+        self.assertEqual(effective, 13)
+        self.assertEqual(modifier, 2)
+
+    def test_resolve_cover_save_dc_returns_modifier_for_three_quarters_cover(self) -> None:
+        effective, modifier = resolve_cover_save_dc(15, "threeQuarters", "physical", "dexterity")
+        self.assertEqual(effective, 10)
+        self.assertEqual(modifier, 5)
 
 
 if __name__ == "__main__":

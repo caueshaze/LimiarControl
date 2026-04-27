@@ -1205,6 +1205,260 @@ class CombatFlowTestsMixin:
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
+    @patch("app.services.combat_service.spells.cast_target.resolve_saving_throw")
+    async def test_player_saving_throw_spell_uses_cover_adjusted_dc_for_physical_saves(
+        self,
+        mock_resolve_saving_throw,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "abilities": {"charisma": 18},
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Fireball",
+                            "canonicalKey": "fireball",
+                            "level": 3,
+                            "prepared": True,
+                        }
+                    ],
+                    "slots": {"3": {"used": 0, "max": 1}},
+                }
+            },
+        )
+        target_roll_stats = RollActorStats(
+            display_name="Goblin",
+            abilities={"dexterity": 10},
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+        )
+        save_roll = RollResult(
+            event_id="roll-physical-cover",
+            roll_type="save",
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+            actor_display_name="Goblin",
+            rolls=[13],
+            selected_roll=13,
+            advantage_mode="normal",
+            modifier_used=0,
+            override_used=False,
+            formula="1d20 + 0",
+            total=13,
+            ability="dexterity",
+            dc=13,
+            success=True,
+            timestamp=datetime.now(timezone.utc),
+        )
+        mock_resolve_saving_throw.return_value = save_roll
+        targeting_result = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-123",
+            affected_target_ref_ids=["enemy-123"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(cover="half"),
+        )
+
+        with patch(
+            "app.services.combat.CombatService.get_state", return_value=self.state
+        ), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="fireball",
+                name_en="Fireball",
+                name_pt="Bola de Fogo",
+                level=3,
+                resolution_type="saving_throw",
+                saving_throw="dexterity",
+                save_success_outcome="half_damage",
+                damage_type="fire",
+                damage_dice="8d6",
+                heal_dice=None,
+                cover_applies_to_save="physical",
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 12, 10, 10, 3, 4),
+        ), patch(
+            "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+            return_value=target_roll_stats,
+        ), patch(
+            "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
+            return_value=MagicMock(validate=MagicMock(return_value=targeting_result)),
+        ):
+            first_result = await CombatService.cast_spell(
+                self.db,
+                "session-123",
+                CombatCastSpellRequest(
+                    actor_participant_id="p1",
+                    target_ref_id="enemy-123",
+                    spell_canonical_key="fireball",
+                ),
+                "user-1",
+                False,
+            )
+
+            self.assertTrue(first_result["is_saved"])
+            self.assertEqual(first_result["save_dc"], 13)
+            self.assertTrue(first_result["effect_roll_required"])
+            self.assertIsNotNone(first_result["pending_spell_id"])
+            self.assertEqual(mock_resolve_saving_throw.call_args.kwargs["dc"], 13)
+
+            with patch(
+                "app.services.combat.CombatService._apply_damage_to_target",
+                return_value=(8, "", 20, None),
+            ) as mock_apply_damage:
+                second_result = await CombatService.cast_spell_effect(
+                    self.db,
+                    "session-123",
+                    CombatResolveSpellEffectRequest(
+                        actor_participant_id="p1",
+                        pending_spell_id=first_result["pending_spell_id"],
+                        roll_source="manual",
+                        manual_rolls=[6, 6, 6, 6, 6, 6, 6, 6],
+                    ),
+                    "user-1",
+                    False,
+                )
+
+        self.assertTrue(second_result["is_saved"])
+        self.assertEqual(second_result["save_dc"], 13)
+        self.assertEqual(second_result["base_effect"], 48)
+        self.assertEqual(second_result["damage"], 24)
+        mock_apply_damage.assert_called_once_with(
+            self.db,
+            "enemy-123",
+            "session_entity",
+            24,
+            damage_type="fire",
+            is_crit=False,
+            state=self.state,
+        )
+        mock_emit_state.assert_awaited()
+
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    @patch("app.services.combat_service.spells.cast_target.resolve_saving_throw")
+    async def test_player_saving_throw_spell_does_not_apply_cover_without_metadata(
+        self,
+        mock_resolve_saving_throw,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "abilities": {"charisma": 18},
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Acid Splash",
+                            "canonicalKey": "acid_splash",
+                            "level": 0,
+                            "prepared": True,
+                        }
+                    ]
+                }
+            },
+        )
+        target_roll_stats = RollActorStats(
+            display_name="Goblin",
+            abilities={"dexterity": 10},
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+        )
+        save_roll = RollResult(
+            event_id="roll-no-cover-metadata",
+            roll_type="save",
+            actor_kind="session_entity",
+            actor_ref_id="enemy-123",
+            actor_display_name="Goblin",
+            rolls=[13],
+            selected_roll=13,
+            advantage_mode="normal",
+            modifier_used=0,
+            override_used=False,
+            formula="1d20 + 0",
+            total=13,
+            ability="dexterity",
+            dc=15,
+            success=False,
+            timestamp=datetime.now(timezone.utc),
+        )
+        mock_resolve_saving_throw.return_value = save_roll
+        targeting_result = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-123",
+            affected_target_ref_ids=["enemy-123"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(cover="half"),
+        )
+
+        with patch(
+            "app.services.combat.CombatService.get_state", return_value=self.state
+        ), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="acid_splash",
+                name_en="Acid Splash",
+                name_pt=None,
+                level=0,
+                resolution_type="saving_throw",
+                saving_throw="dexterity",
+                save_success_outcome="none",
+                damage_type="acid",
+                damage_dice="1d6",
+                heal_dice=None,
+                cover_applies_to_save=None,
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 12, 10, 10, 3, 4),
+        ), patch(
+            "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+            return_value=target_roll_stats,
+        ), patch(
+            "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
+            return_value=MagicMock(validate=MagicMock(return_value=targeting_result)),
+        ):
+            result = await CombatService.cast_spell(
+                self.db,
+                "session-123",
+                CombatCastSpellRequest(
+                    actor_participant_id="p1",
+                    target_ref_id="enemy-123",
+                    spell_canonical_key="acid_splash",
+                ),
+                "user-1",
+                False,
+            )
+
+        self.assertFalse(result["is_saved"])
+        self.assertEqual(result["save_dc"], 15)
+        self.assertEqual(mock_resolve_saving_throw.call_args.kwargs["dc"], 15)
+        self.assertIsNotNone(result["pending_spell_id"])
+
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_entity_hp_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
     @patch(
         "app.services.combat.CombatService._apply_healing_to_target",
         return_value=(5, " (Revived!)", 0),

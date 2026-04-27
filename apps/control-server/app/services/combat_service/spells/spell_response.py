@@ -186,6 +186,12 @@ class SpellResponseMixin:
             if automation_result is not None
             else effect_bonus
         )
+        if automation_result is not None:
+            response_save_dc = automation_result.get("save_dc")
+        elif spell_mode == "saving_throw":
+            response_save_dc = result.effective_dc
+        else:
+            response_save_dc = spell_context.get("save_dc")
 
         return {
             "spell_name": spell_context["spell_name"],
@@ -205,7 +211,7 @@ class SpellResponseMixin:
             "target_display_name": target_display_name,
             "target_kind": target_kind,
             "save_ability": spell_context.get("save_ability"),
-            "save_dc": spell_context.get("save_dc"),
+            "save_dc": response_save_dc,
             "save_success_outcome": save_success_outcome,
             "effect_dice": effect_dice,
             "effect_bonus": resp_effect_bonus,

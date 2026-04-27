@@ -136,6 +136,10 @@ class CastAreaMixin:
         area_target_outcomes: list[dict[str, Any]] = []
         target_results_for_pending: list[dict[str, Any]] = []
         for target_participant in affected_participants:
+            # Area targeting currently exposes only aggregate area metadata, not
+            # per-target cover. Do not invent a shared cover rank for all
+            # affected targets; follow up once targeting can return per-target
+            # spatial metadata for area saves.
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
                     db,
