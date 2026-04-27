@@ -50,10 +50,11 @@ import {
   buildSpellPreviewFanoutKey,
   buildUniqueTargetRefIds,
   createPreviewRequestGate,
+  fetchAreaSpatialValidation,
   fetchPreviewValidationsWithCache,
   type PreviewFanoutCacheEntry,
 } from "./spellPreviewSpatialValidations";
-import type { SpellTargetSpatialValidation } from "./spellMapPreviewModel";
+import type { SpellAreaSpatialValidation, SpellTargetSpatialValidation } from "./spellMapPreviewModel";
 
 type Props = {
   actor: CombatParticipant;
@@ -197,8 +198,10 @@ export const PlayerSpellCastDialog = ({
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
   const multiPreviewRequestGateRef = useRef(createPreviewRequestGate());
+  const areaPreviewRequestGateRef = useRef(createPreviewRequestGate());
   const previewCacheRef = useRef(new Map<string, PreviewFanoutCacheEntry>());
   const previewInFlightRef = useRef(new Map<string, Promise<SpellTargetSpatialValidation>>());
+  const [areaSpatialValidation, setAreaSpatialValidation] = useState<SpellAreaSpatialValidation | null>(null);
 
   const {
     anchorCell,
@@ -336,7 +339,7 @@ export const PlayerSpellCastDialog = ({
     spatialValidations: {
       targets: singleTargetSpatialValidations,
       instances: multiInstanceSpatialValidations,
-      area: null,
+      area: isAreaSpell ? areaSpatialValidation : null,
     },
   });
 
@@ -375,6 +378,8 @@ export const PlayerSpellCastDialog = ({
     setEffectInstanceTargets([]);
     setError(null);
     handledSaveResolutionKeyRef.current = null;
+    setAreaSpatialValidation(null);
+    areaPreviewRequestGateRef.current.issue();
     previewCacheRef.current.clear();
     previewInFlightRef.current.clear();
   }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape, spell.selectionType]);
@@ -440,6 +445,26 @@ export const PlayerSpellCastDialog = ({
     sessionId,
     spell.canonicalKey,
   ]);
+
+  useEffect(() => {
+    if (!isAreaSpell || !anchorCell) {
+      setAreaSpatialValidation(null);
+      return;
+    }
+
+    const requestId = areaPreviewRequestGateRef.current.issue();
+
+    void fetchAreaSpatialValidation({
+      actorRefId: actor.ref_id,
+      anchorCell,
+      previewAction: combatRepo.previewAction,
+      rangeMeters: previewRangeMeters,
+      sessionId,
+    }).then((validation) => {
+      if (!areaPreviewRequestGateRef.current.isCurrent(requestId)) return;
+      setAreaSpatialValidation(validation);
+    });
+  }, [actor.ref_id, anchorCell, isAreaSpell, previewRangeMeters, sessionId]);
 
   useEffect(() => {
     let cancelled = false;
