@@ -47,10 +47,13 @@ import { useResolvedSpellContext } from "./useResolvedSpellContext";
 import {
   buildInstanceSpatialValidations,
   buildSingleTargetSpatialValidations,
+  buildSpellPreviewFanoutKey,
   buildUniqueTargetRefIds,
   createPreviewRequestGate,
-  fetchPreviewValidationsByTargetRefId,
+  fetchPreviewValidationsWithCache,
+  type PreviewFanoutCacheEntry,
 } from "./spellPreviewSpatialValidations";
+import type { SpellTargetSpatialValidation } from "./spellMapPreviewModel";
 
 type Props = {
   actor: CombatParticipant;
@@ -194,6 +197,8 @@ export const PlayerSpellCastDialog = ({
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
   const multiPreviewRequestGateRef = useRef(createPreviewRequestGate());
+  const previewCacheRef = useRef(new Map<string, PreviewFanoutCacheEntry>());
+  const previewInFlightRef = useRef(new Map<string, Promise<SpellTargetSpatialValidation>>());
 
   const {
     anchorCell,
@@ -370,6 +375,8 @@ export const PlayerSpellCastDialog = ({
     setEffectInstanceTargets([]);
     setError(null);
     handledSaveResolutionKeyRef.current = null;
+    previewCacheRef.current.clear();
+    previewInFlightRef.current.clear();
   }, [spell.fixedCastLevel, spell.id, spell.level, spell.areaShape, spell.selectionType]);
 
   useEffect(() => {
@@ -400,8 +407,18 @@ export const PlayerSpellCastDialog = ({
       return;
     }
 
-    void fetchPreviewValidationsByTargetRefId({
+    void fetchPreviewValidationsWithCache({
       actorRefId: actor.ref_id,
+      buildKey: (targetRefId) =>
+        buildSpellPreviewFanoutKey({
+          sessionId,
+          actorRefId: actor.ref_id,
+          spellId: spell.canonicalKey,
+          slotLevel: selectedSlotLevel,
+          targetRefId,
+        }),
+      cache: previewCacheRef.current,
+      inFlight: previewInFlightRef.current,
       previewAction: combatRepo.previewAction,
       rangeMeters: previewRangeMeters,
       sessionId,
@@ -419,7 +436,9 @@ export const PlayerSpellCastDialog = ({
     isMultiInstanceSpell,
     normalizedEffectInstanceTargetsSignature,
     previewRangeMeters,
+    selectedSlotLevel,
     sessionId,
+    spell.canonicalKey,
   ]);
 
   useEffect(() => {
