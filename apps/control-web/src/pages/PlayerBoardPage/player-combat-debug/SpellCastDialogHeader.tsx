@@ -119,7 +119,7 @@ export const SpellCastDialogHeader = ({
   const mapPreviewReason = mapPreviewModel
     ? formatSpellMapPreviewReason(mapPreviewModel.reason, mapPreviewModel.status)
     : null;
-  const coverContext = resolveCoverContext(spellMode);
+  const coverContext = resolveCoverContext(spellMode, previewModel.coverAppliesToSave);
   const coverLabel = mapPreviewModel?.cover
     ? formatSpellCoverPreview(mapPreviewModel.cover, coverContext)
     : null;

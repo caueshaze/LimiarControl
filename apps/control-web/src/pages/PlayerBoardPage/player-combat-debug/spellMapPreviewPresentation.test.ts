@@ -90,7 +90,10 @@ describe("formatSpellCoverPreview", () => {
 
 describe("resolveCoverContext", () => {
   it("spell_attack → attack", () => { expect(resolveCoverContext("spell_attack")).toBe("attack"); });
-  it("saving_throw → save", () => { expect(resolveCoverContext("saving_throw")).toBe("save"); });
+  it("saving_throw + coverAppliesToSave true → save", () => { expect(resolveCoverContext("saving_throw", true)).toBe("save"); });
+  it("saving_throw + coverAppliesToSave false → other", () => { expect(resolveCoverContext("saving_throw", false)).toBe("other"); });
+  it("saving_throw + coverAppliesToSave null → other", () => { expect(resolveCoverContext("saving_throw", null)).toBe("other"); });
+  it("saving_throw + coverAppliesToSave undefined → other", () => { expect(resolveCoverContext("saving_throw")).toBe("other"); });
   it("direct_damage → other", () => { expect(resolveCoverContext("direct_damage")).toBe("other"); });
   it("null → other", () => { expect(resolveCoverContext(null)).toBe("other"); });
 });

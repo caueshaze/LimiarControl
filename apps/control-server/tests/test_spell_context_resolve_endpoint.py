@@ -322,6 +322,63 @@ class ResolveSpellContextTests(unittest.TestCase):
             {"id": "pending-1"},
         )
 
+    def test_resolves_cover_applies_to_save_physical_is_exposed(self):
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="acid_splash",
+                spell_mode="saving_throw",
+            ),
+            _catalog_spell(
+                canonical_key="acid_splash",
+                name_en="Acid Splash",
+                name_pt="Acid Splash",
+                level=0,
+                damage_dice="1d6",
+                damage_type="Acid",
+                saving_throw="DEX",
+                cover_applies_to_save="physical",
+                upcast_json=None,
+            ),
+        )
+
+        self.assertEqual(result["cover_applies_to_save"], "physical")
+
+    def test_resolves_cover_applies_to_save_null_is_exposed_as_none(self):
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="magic_missile",
+                spell_mode="direct_damage",
+                slot_level=1,
+            ),
+            _catalog_spell(),
+        )
+
+        self.assertIsNone(result["cover_applies_to_save"])
+
+    def test_resolves_cover_applies_to_save_none_rule_is_exposed(self):
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="acid_splash",
+                spell_mode="saving_throw",
+            ),
+            _catalog_spell(
+                canonical_key="acid_splash",
+                name_en="Acid Splash",
+                name_pt="Acid Splash",
+                level=0,
+                damage_dice="1d6",
+                damage_type="Acid",
+                saving_throw="DEX",
+                cover_applies_to_save="none",
+                upcast_json=None,
+            ),
+        )
+
+        self.assertEqual(result["cover_applies_to_save"], "none")
+
     def test_invalid_slot_returns_clear_error(self):
         with self.assertRaises(CombatServiceError) as context:
             self._resolve(

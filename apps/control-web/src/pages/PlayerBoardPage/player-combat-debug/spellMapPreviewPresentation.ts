@@ -17,9 +17,12 @@ export const formatSpellMapPreviewStatus = (status: SpellMapPreviewStatus): stri
 
 export type SpellCoverContext = "attack" | "save" | "other";
 
-export const resolveCoverContext = (spellMode: string | null | undefined): SpellCoverContext => {
+export const resolveCoverContext = (
+  spellMode: string | null | undefined,
+  coverAppliesToSave?: boolean | null,
+): SpellCoverContext => {
   if (spellMode === "spell_attack") return "attack";
-  if (spellMode === "saving_throw") return "save";
+  if (spellMode === "saving_throw" && coverAppliesToSave === true) return "save";
   return "other";
 };
 

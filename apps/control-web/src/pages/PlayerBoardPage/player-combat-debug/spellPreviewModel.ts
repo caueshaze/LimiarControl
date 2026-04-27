@@ -16,6 +16,7 @@ export type SpellPreviewModel = {
   requiresAttackRoll: boolean;
   requiresSavingThrow: boolean;
   saveAbility: string | null;
+  coverAppliesToSave: boolean | null;
   source: "resolved" | "fallback";
 };
 
@@ -77,6 +78,7 @@ export const buildSpellPreviewModel = (
       requiresAttackRoll: Boolean(resolvedContext.requires_attack_roll),
       requiresSavingThrow: Boolean(resolvedContext.requires_saving_throw),
       saveAbility: normalizeString(resolvedContext.save_ability),
+      coverAppliesToSave: resolvedContext.cover_applies_to_save === "physical" ? true : resolvedContext.cover_applies_to_save === "none" ? false : null,
       source: "resolved",
     };
   }
@@ -99,6 +101,7 @@ export const buildSpellPreviewModel = (
     requiresAttackRoll: fallback.spellMode === "spell_attack",
     requiresSavingThrow: fallback.spellMode === "saving_throw",
     saveAbility: normalizeString(fallback.spell.savingThrow ?? null),
+    coverAppliesToSave: null,
     source: "fallback",
   };
 };

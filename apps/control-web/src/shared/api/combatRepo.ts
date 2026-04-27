@@ -276,6 +276,7 @@ export type CombatResolvedSpellContext = {
   upcast_applied: boolean;
   upcast_added_instances: number;
   upcast_instance_effect_dice?: string | null;
+  cover_applies_to_save?: string | null;
 };
 
 export type CombatSpellResult = {

@@ -271,4 +271,57 @@ describe("buildSpellPreviewModel", () => {
     expect(model.rangeMeters).toBe(45);
     expect(model.saveAbility).toBe("dexterity");
   });
+
+  it("normalizes coverAppliesToSave to true when physical", () => {
+    const model = buildSpellPreviewModel(
+      {
+        ...resolvedContextDefaults,
+        resolution_type: "saving_throw",
+        requires_saving_throw: true,
+        cover_applies_to_save: "physical",
+      },
+      { spell: baseFallbackSpell, selectedSlotLevel: 1, spellMode: "saving_throw", spellEffectDice: null },
+    );
+
+    expect(model.coverAppliesToSave).toBe(true);
+  });
+
+  it("normalizes coverAppliesToSave to false when none", () => {
+    const model = buildSpellPreviewModel(
+      {
+        ...resolvedContextDefaults,
+        resolution_type: "saving_throw",
+        requires_saving_throw: true,
+        cover_applies_to_save: "none",
+      },
+      { spell: baseFallbackSpell, selectedSlotLevel: 1, spellMode: "saving_throw", spellEffectDice: null },
+    );
+
+    expect(model.coverAppliesToSave).toBe(false);
+  });
+
+  it("normalizes coverAppliesToSave to null when absent", () => {
+    const model = buildSpellPreviewModel(
+      {
+        ...resolvedContextDefaults,
+        resolution_type: "saving_throw",
+        requires_saving_throw: true,
+      },
+      { spell: baseFallbackSpell, selectedSlotLevel: 1, spellMode: "saving_throw", spellEffectDice: null },
+    );
+
+    expect(model.coverAppliesToSave).toBeNull();
+  });
+
+  it("fallback model has coverAppliesToSave null", () => {
+    const model = buildSpellPreviewModel(null, {
+      spell: baseFallbackSpell,
+      selectedSlotLevel: 1,
+      spellMode: "direct_damage",
+      spellEffectDice: "1d4+1",
+    });
+
+    expect(model.source).toBe("fallback");
+    expect(model.coverAppliesToSave).toBeNull();
+  });
 });

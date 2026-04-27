@@ -138,6 +138,7 @@ class CombatResolvedSpellContext(BaseModel):
     upcast_applied: bool = False
     upcast_added_instances: int = 0
     upcast_instance_effect_dice: str | None = None
+    cover_applies_to_save: str | None = None
 
 
 class CombatGridCell(BaseModel):
