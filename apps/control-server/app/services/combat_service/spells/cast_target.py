@@ -149,6 +149,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 0,
             ),
             "upcast_instance_effect_dice": spell_context.get("upcast_instance_effect_dice"),
+            "cover_applies_to_save": spell_context.get("cover_applies_to_save"),
         }
 
     @classmethod

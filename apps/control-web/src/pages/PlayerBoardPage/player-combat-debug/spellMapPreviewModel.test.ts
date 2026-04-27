@@ -19,6 +19,7 @@ const baseSingleTargetModel: SpellPreviewModel = {
   requiresAttackRoll: false,
   requiresSavingThrow: false,
   saveAbility: null,
+  coverAppliesToSave: null,
   source: "resolved",
 };
 
@@ -176,6 +177,7 @@ describe("buildSpellMapPreviewModel – Acid Splash (saving throw, single-instan
     requiresAttackRoll: false,
     requiresSavingThrow: true,
     saveAbility: "dexterity",
+    coverAppliesToSave: null,
     source: "resolved",
   };
 
@@ -213,6 +215,7 @@ describe("buildSpellMapPreviewModel – Magic Missile slot 3 (effectInstanceCoun
     requiresAttackRoll: false,
     requiresSavingThrow: false,
     saveAbility: null,
+    coverAppliesToSave: null,
     source: "resolved",
   };
 
@@ -372,6 +375,7 @@ describe("buildSpellMapPreviewModel – Eldritch Blast level 5 (effectInstanceCo
     requiresAttackRoll: true,
     requiresSavingThrow: false,
     saveAbility: null,
+    coverAppliesToSave: null,
     source: "resolved",
   };
 
@@ -440,6 +444,7 @@ describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
     requiresAttackRoll: false,
     requiresSavingThrow: true,
     saveAbility: "dexterity",
+    coverAppliesToSave: null,
     source: "resolved",
   };
 
@@ -628,6 +633,7 @@ const baseAreaModel: SpellPreviewModel = {
   requiresAttackRoll: false,
   requiresSavingThrow: true,
   saveAbility: "dexterity",
+  coverAppliesToSave: null,
   source: "resolved",
 };
 

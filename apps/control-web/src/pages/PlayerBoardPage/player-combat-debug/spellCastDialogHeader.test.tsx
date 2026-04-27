@@ -75,6 +75,7 @@ const buildPreviewModel = (overrides: Partial<SpellPreviewModel>): SpellPreviewM
   requiresAttackRoll: false,
   requiresSavingThrow: false,
   saveAbility: null,
+  coverAppliesToSave: null,
   source: "resolved",
   ...overrides,
 });
@@ -497,6 +498,94 @@ describe("SpellCastDialogHeader tactical preview", () => {
           cover: { rank: "half", bonus: 2 },
         })}
         previewModel={buildPreviewModel({ resolutionType: "direct_damage" })}
+      />,
+    );
+
+    expect(markup).not.toContain("Cobertura:");
+  });
+
+  it("saving throw com coverAppliesToSave true e half cover mostra -2 DC efetiva", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Ice Knife Shards", canonicalKey: "ice_knife_shards", level: 1 }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          coverAppliesToSave: true,
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Cobertura: meia (-2 DC efetiva)");
+  });
+
+  it("saving throw com coverAppliesToSave true e three_quarters cover mostra -5 DC efetiva", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Ice Knife Shards", canonicalKey: "ice_knife_shards", level: 1 }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "three_quarters", bonus: 5 },
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          coverAppliesToSave: true,
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Cobertura: três-quartos (-5 DC efetiva)");
+  });
+
+  it("saving throw com coverAppliesToSave false não mostra cover", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Acid Splash", canonicalKey: "acid_splash", level: 0 }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          coverAppliesToSave: false,
+        })}
+      />,
+    );
+
+    expect(markup).not.toContain("Cobertura:");
+  });
+
+  it("Acid Splash sem coverAppliesToSave true não mostra cover", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Acid Splash", canonicalKey: "acid_splash", level: 0 }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          coverAppliesToSave: null,
+        })}
       />,
     );
 
