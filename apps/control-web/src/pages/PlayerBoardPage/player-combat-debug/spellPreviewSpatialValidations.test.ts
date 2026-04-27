@@ -389,10 +389,22 @@ describe("buildSpellCoverPreviewFromDiagnostics", () => {
     })).toEqual({ rank: "half", bonus: 2 });
   });
 
-  it("three_quarters cover → rank three_quarters, bonus 5", () => {
+  it("threeQuarters (formato real do backend) → rank three_quarters, bonus 5", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({
+      isValid: true, failureReasons: [], checks: {}, metadata: { cover: "threeQuarters" },
+    })).toEqual({ rank: "three_quarters", bonus: 5 });
+  });
+
+  it("three_quarters (formato legado) ainda funciona", () => {
     expect(buildSpellCoverPreviewFromDiagnostics({
       isValid: true, failureReasons: [], checks: {}, metadata: { cover: "three_quarters" },
     })).toEqual({ rank: "three_quarters", bonus: 5 });
+  });
+
+  it("full cover → null (bloqueio de LoE já é tratado por failureReasons, não como bônus visual)", () => {
+    expect(buildSpellCoverPreviewFromDiagnostics({
+      isValid: false, failureReasons: ["full_cover"], checks: {}, metadata: { cover: "full" },
+    })).toBeNull();
   });
 
   it("none cover → null (não exibir cover)", () => {

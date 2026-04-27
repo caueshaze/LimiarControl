@@ -86,8 +86,10 @@ export const buildSpellCoverPreviewFromDiagnostics = (
   const coverValue = diagnostics?.metadata?.["cover"];
   if (!coverValue || typeof coverValue !== "string" || coverValue === "none") return null;
   if (coverValue === "half") return { rank: "half", bonus: 2 };
-  if (coverValue === "three_quarters") return { rank: "three_quarters", bonus: 5 };
-  return { rank: "unknown", bonus: null };
+  if (coverValue === "threeQuarters" || coverValue === "three_quarters") return { rank: "three_quarters", bonus: 5 };
+  // "full" cover blocks the action entirely (handled via failureReasons → blocked_line_of_effect),
+  // so it must not appear as a visual AC bonus in the preview.
+  return null;
 };
 
 export const buildTargetSpatialValidationFromPreview = ({
