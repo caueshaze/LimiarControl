@@ -1,11 +1,10 @@
-"""
-Single source of truth for cover modifier logic.
+"""Single source of truth for cover modifier logic.
 
-Attack-roll cover (Phase 4):
+Attack-roll cover:
   - cover adds to the defender's effective AC
   - half → +2 AC | threeQuarters → +5 AC
 
-Saving throw cover (Phase 5):
+Saving throw cover:
   - cover reduces the effective DC seen by the defender
   - same numeric values as attack cover (half → -2 DC | threeQuarters → -5 DC)
   - only applies when the spell/action explicitly allows it via metadata
@@ -17,12 +16,9 @@ Cover levels:
   full          → blocked before resolution; modifier is irrelevant here
 
 Metadata-driven save cover (coverAppliesToSave field on BaseSpell):
-  "physical" → cover applies  (spatial, projectile, blast, or wave effects)
-  "none"     → cover does not apply (mental, control, self-emanation, etc.)
-  None/unset → use fallback heuristic (see should_cover_apply_to_save)
-
-The fallback heuristic is intentionally conservative and temporary.
-It should be removed once all spell catalog entries carry explicit metadata.
+  "physical" → cover applies
+  "none"     → cover does not apply
+  None/unset/unknown → cover does not apply
 """
 from __future__ import annotations
 
@@ -93,28 +89,32 @@ def should_cover_apply_to_save(
     """Return True if cover should modify the saving throw DC for this effect.
 
     Explicit metadata (coverAppliesToSave on the spell/action) is authoritative.
-    When metadata is absent the fallback heuristic applies.
+    Missing or unknown metadata disables save-cover adjustments.
 
     Args:
         cover_applies_to_save: Value from BaseSpell.cover_applies_to_save.
             "physical" → cover applies.
             "none"     → cover does not apply.
-            None       → fall back to heuristic.
-        save_ability: Normalized ability name ("dexterity", "strength", etc.).
-            Used only by the fallback when metadata is absent.
+            None       → cover does not apply.
+        save_ability: Unused legacy parameter kept for call-site compatibility.
 
     Returns:
         True if cover should be applied; False otherwise.
     """
-    # Explicit metadata is authoritative — check first.
+    del save_ability
     if cover_applies_to_save == COVER_SAVE_RULE_PHYSICAL:
         return True
-    if cover_applies_to_save == COVER_SAVE_RULE_NONE:
-        return False
+    return False
 
-    # --- Fallback heuristic (legacy safety net) ----------------------------
-    # All base spells and newly created campaign spells carry explicit metadata
-    # after migration 0052/0053.  This path is reached only for campaign spells
-    # that were created before those migrations and have not been updated.
-    # It must not be extended; remove once such records are no longer reachable.
-    return (save_ability or "").lower() in ("dex", "dexterity")
+
+def resolve_cover_save_dc(
+    save_dc: int,
+    cover: str | None,
+    cover_applies_to_save: str | None,
+    save_ability: str | None = None,
+) -> tuple[int, int]:
+    """Return ``(effective_dc, cover_modifier)`` for a saving throw effect."""
+    if not should_cover_apply_to_save(cover_applies_to_save, save_ability):
+        return save_dc, 0
+    modifier = resolve_cover_save_modifier(cover)
+    return max(0, save_dc - modifier), modifier

@@ -14,8 +14,7 @@ from app.services.combat_service.condition_effects import (
 )
 from app.services.combat_service.cover_modifiers import (
     resolve_cover_modifier,
-    resolve_cover_save_modifier,
-    should_cover_apply_to_save,
+    resolve_cover_save_dc,
 )
 from app.services.combat_service.visibility import resolve_target_visibility
 
@@ -225,9 +224,12 @@ class CombatNpcActionResolutionMixin:
             save_success_outcome = cls._normalize_save_success_outcome(resolved_action.get("saveSuccessOutcome")) or "none"
             if not ability_name or save_dc_base <= 0:
                 raise CombatServiceError("Saving throw actions require save ability and save DC.")
-            effective_dc = max(0, save_dc_base - resolve_cover_save_modifier(context["cover"])) if should_cover_apply_to_save(
-                resolved_action.get("coverAppliesToSave"), ability_name
-            ) else save_dc_base
+            effective_dc, _ = resolve_cover_save_dc(
+                save_dc_base,
+                context["cover"],
+                resolved_action.get("coverAppliesToSave"),
+                ability_name,
+            )
             save_mod = modify_saving_throw(target_p, ability_name)
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
