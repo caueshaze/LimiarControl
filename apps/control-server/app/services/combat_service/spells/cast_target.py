@@ -16,12 +16,28 @@ from app.services.magic_item_effects import (
 
 from ..combat_targeting import get_combat_targeting_service
 from ..exceptions import CombatServiceError
+from ..targeting_diagnostics import NO_LINE_OF_EFFECT, NO_LINE_OF_SIGHT, NOT_VISIBLE, TARGET_OUT_OF_REACH
 from ..targeting_intent import SpellCastIntent
+from ..targeting_result import TargetingResult
 from .cast_target_commit import CastTargetCommitMixin
 from .cast_target_effect import CastTargetEffectMixin
 from .spell_resolution import SpellResolutionResult
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
+    diag = result.diagnostics
+    if diag:
+        if TARGET_OUT_OF_REACH in diag.failure_reasons:
+            return "is out of range"
+        if NO_LINE_OF_SIGHT in diag.failure_reasons:
+            return "has blocked line of sight"
+        if NO_LINE_OF_EFFECT in diag.failure_reasons:
+            return "has blocked line of effect"
+        if NOT_VISIBLE in diag.failure_reasons:
+            return "is not visible"
+    return result.failure_reason or "cannot be targeted"
 
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
@@ -203,6 +219,61 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             })
 
         return validated
+
+    @classmethod
+    def _validate_instance_spatial_targets(
+        cls,
+        *,
+        state,
+        attacker: dict,
+        spell_context: dict,
+        validated_targets: list[dict],
+        session_id: str,
+    ) -> None:
+        """Validate range/LoS/LoE for each unique targetRefId before consuming any resources.
+
+        Deduplicates validation by targetRefId — each unique target is validated once.
+        Raises CombatServiceError with instance_index and reason on first failure.
+        """
+        targeting_service = get_combat_targeting_service(state.use_map)
+
+        unique_ref_to_first_instance: dict[str, int] = {}
+        for vt in validated_targets:
+            ref_id = vt["target_ref_id"]
+            if ref_id not in unique_ref_to_first_instance:
+                unique_ref_to_first_instance[ref_id] = vt["instance_index"]
+
+        for target_ref_id, first_instance_index in unique_ref_to_first_instance.items():
+            intent = SpellCastIntent(
+                session_id=session_id,
+                action_id=f"targeting-instance:{first_instance_index}",
+                actor_ref_id=attacker["ref_id"],
+                actor_kind=attacker["kind"],
+                requested_target_ref_id=target_ref_id,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                spell_mode=spell_context["spell_mode"],
+                target_type=spell_context.get("target_type"),
+                selection_type=spell_context.get("selection_type"),
+                attack_type=spell_context.get("attack_type"),
+                range_kind=spell_context.get("range_kind"),
+                area_shape=spell_context.get("area_shape"),
+                range_meters=spell_context.get("range_meters"),
+                requires_sight=bool(spell_context.get("requires_target_sight")),
+                requires_effect=bool(spell_context.get("requires_target_effect")),
+            )
+            result = targeting_service.validate(intent, state)
+
+            if not result.is_valid:
+                participant = next(
+                    (vt["participant"] for vt in validated_targets if vt["target_ref_id"] == target_ref_id),
+                    None,
+                )
+                target_label = (participant or {}).get("display_name") or target_ref_id
+                reason_phrase = _resolve_instance_spatial_error_phrase(result)
+                raise CombatServiceError(
+                    f"Instance {first_instance_index} target {target_label} {reason_phrase}.",
+                    status_code=400,
+                )
 
     @classmethod
     def _resolve_instance_direct(cls, db, state, attacker, target_p, spell_context, req):
@@ -879,6 +950,13 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             req=req, spell_context=spell_context, state=state,
         )
         if validated_targets is not None:
+            cls._validate_instance_spatial_targets(
+                state=state,
+                attacker=attacker,
+                spell_context=spell_context,
+                validated_targets=validated_targets,
+                session_id=session_id,
+            )
             return await cls._resolve_multi_instance_cast(
                 db, session_id, req, state, attacker, attacker_model,
                 spell_context, actor_user_id, is_gm, validated_targets,
