@@ -1,5 +1,8 @@
 import { METERS_PER_CELL } from "../../../features/combat-ui/hooks/useTargetingPreview";
-import type { CombatAreaPreviewResponse } from "../../../shared/api/combatRepo";
+import type {
+  AreaPreviewAffectedTargetSpatialMetadata,
+  CombatAreaPreviewResponse,
+} from "../../../shared/api/combatRepo";
 import type { GridCell } from "./areaTargetingUi";
 import type { EffectInstanceTargetInput } from "./InstanceTargetSelector";
 import type { SpellPreviewModel } from "./spellPreviewModel";
@@ -28,11 +31,21 @@ export type SpellInstanceMapStatus = {
   cover?: SpellCoverPreview | null;
 };
 
+export type AreaTargetSpatialMetadata = {
+  targetRefId: string;
+  targetDisplayName: string | null;
+  cover: string | null;
+  baseSaveDc: number | null;
+  effectiveSaveDc: number | null;
+  coverModifier: number;
+};
+
 export type SpellMapPreviewModel = {
   status: SpellMapPreviewStatus;
   reason?: SpellMapPreviewReason | string | null;
   affectedTargetCount?: number;
   affectedTargetNames?: string[];
+  affectedTargetSpatialMetadata?: AreaTargetSpatialMetadata[];
   rangeMeters: number | null;
   areaShape: string | null;
   areaSizeMeters: number | null;
@@ -91,6 +104,20 @@ export type BuildSpellMapPreviewModelParams = {
 // max(|dx|, |dy|) — king-moves on the grid, same as D&D diagonal-equals-cardinal.
 const chebyshevMeters = (a: GridCell, b: GridCell): number =>
   Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * METERS_PER_CELL;
+
+const toAreaTargetSpatialMetadata = (
+  raw?: AreaPreviewAffectedTargetSpatialMetadata[],
+): AreaTargetSpatialMetadata[] | undefined => {
+  if (!raw || raw.length === 0) return undefined;
+  return raw.map((item) => ({
+    targetRefId: item.target_ref_id,
+    targetDisplayName: item.target_display_name ?? null,
+    cover: item.cover ?? null,
+    baseSaveDc: item.base_save_dc ?? null,
+    effectiveSaveDc: item.effective_save_dc ?? null,
+    coverModifier: item.cover_modifier ?? 0,
+  }));
+};
 
 const checkRange = (
   casterPosition: GridCell,
@@ -182,6 +209,9 @@ export const buildSpellMapPreviewModel = ({
               targetPositions?.find((position) => position.refId === targetRefId)?.displayName ?? null,
           )
           .filter((name): name is string => Boolean(name)),
+        affectedTargetSpatialMetadata: toAreaTargetSpatialMetadata(
+          existingAreaPreviewResult?.affected_target_spatial_metadata,
+        ),
       };
     }
 
@@ -197,6 +227,9 @@ export const buildSpellMapPreviewModel = ({
               targetPositions?.find((position) => position.refId === targetRefId)?.displayName ?? null,
           )
           .filter((name): name is string => Boolean(name)),
+        affectedTargetSpatialMetadata: toAreaTargetSpatialMetadata(
+          existingAreaPreviewResult.affected_target_spatial_metadata,
+        ),
       };
     }
     return { ...base, status: "unknown", reason: "missing_map_data" };

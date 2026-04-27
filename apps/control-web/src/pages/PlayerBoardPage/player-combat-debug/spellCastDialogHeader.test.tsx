@@ -87,6 +87,7 @@ const buildMapPreviewModel = (
   reason: null,
   affectedTargetCount: undefined,
   affectedTargetNames: undefined,
+  affectedTargetSpatialMetadata: undefined,
   rangeMeters: 36,
   areaShape: null,
   areaSizeMeters: null,
@@ -611,5 +612,113 @@ describe("SpellCastDialogHeader tactical preview", () => {
     // multi-instance preview must NOT show in fallback mode — fallback path
     // would otherwise re-derive scaling we explicitly want to avoid.
     expect(markup).not.toContain("instâncias");
+  });
+});
+
+describe("SpellCastDialogHeader – DC por alvo (area spatial metadata)", () => {
+  const areaMetadata = [
+    { targetRefId: "goblin-a", targetDisplayName: "Goblin A", cover: null, baseSaveDc: 15, effectiveSaveDc: 15, coverModifier: 0 },
+    { targetRefId: "goblin-b", targetDisplayName: "Goblin B", cover: "half", baseSaveDc: 15, effectiveSaveDc: 13, coverModifier: 2 },
+    { targetRefId: "orc-c", targetDisplayName: "Orc C", cover: "three_quarters", baseSaveDc: 15, effectiveSaveDc: 10, coverModifier: 5 },
+  ];
+
+  const renderAreaWithMetadata = (metadata: typeof areaMetadata | undefined, overrides?: Partial<typeof baseProps>) =>
+    renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          areaShape: "sphere",
+          areaSizeMeters: 6,
+          affectedTargetCount: 3,
+          affectedTargetNames: ["Goblin A", "Goblin B", "Orc C"],
+          affectedTargetSpatialMetadata: metadata,
+        })}
+        previewModel={buildPreviewModel({
+          resolutionType: "saving_throw",
+          requiresSavingThrow: true,
+          saveAbility: "dexterity",
+          areaShape: "sphere",
+          areaSizeMeters: 6,
+          rangeMeters: 45,
+        })}
+        {...overrides}
+      />,
+    );
+
+  it("renders DC por alvo section with metadata", () => {
+    const markup = renderAreaWithMetadata(areaMetadata);
+
+    expect(markup).toContain("DC por alvo:");
+    expect(markup).toContain("Goblin A: DC 15");
+    expect(markup).toContain("Goblin B: meia cobertura, DC efetiva 13");
+    expect(markup).toContain("Orc C: três-quartos, DC efetiva 10");
+  });
+
+  it("target without cover renders plain DC", () => {
+    const markup = renderAreaWithMetadata([
+      { targetRefId: "goblin-a", targetDisplayName: "Goblin A", cover: null, baseSaveDc: 15, effectiveSaveDc: 15, coverModifier: 0 },
+    ]);
+
+    expect(markup).toContain("Goblin A: DC 15");
+    expect(markup).not.toContain("DC efetiva");
+  });
+
+  it("target with half cover renders cover label and effective DC", () => {
+    const markup = renderAreaWithMetadata([
+      { targetRefId: "goblin-b", targetDisplayName: "Goblin B", cover: "half", baseSaveDc: 15, effectiveSaveDc: 13, coverModifier: 2 },
+    ]);
+
+    expect(markup).toContain("Goblin B: meia cobertura, DC efetiva 13");
+  });
+
+  it("affectedTargetCount and affectedTargetNames still visible alongside metadata", () => {
+    const markup = renderAreaWithMetadata(areaMetadata);
+
+    expect(markup).toContain("Afetados: 3");
+    expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
+  });
+
+  it("no DC por alvo section when metadata is undefined", () => {
+    const markup = renderAreaWithMetadata(undefined);
+
+    expect(markup).not.toContain("DC por alvo:");
+  });
+
+  it("no DC por alvo section when metadata is empty array", () => {
+    const markup = renderAreaWithMetadata([]);
+
+    expect(markup).not.toContain("DC por alvo:");
+  });
+
+  it("invalid origin still shows DC per target if metadata exists", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", level: 3, areaShape: "sphere", selectionType: "point" }}
+        spellMode="saving_throw"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "invalid",
+          reason: "blocked_line_of_sight",
+          areaShape: "sphere",
+          areaSizeMeters: 6,
+          affectedTargetCount: 2,
+          affectedTargetNames: ["Goblin A", "Goblin B"],
+          affectedTargetSpatialMetadata: [
+            { targetRefId: "goblin-a", targetDisplayName: "Goblin A", cover: null, baseSaveDc: 15, effectiveSaveDc: 15, coverModifier: 0 },
+            { targetRefId: "goblin-b", targetDisplayName: "Goblin B", cover: "half", baseSaveDc: 15, effectiveSaveDc: 13, coverModifier: 2 },
+          ],
+        })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Origem da área: linha de visão bloqueada");
+    expect(markup).toContain("DC por alvo:");
+    expect(markup).toContain("Goblin A: DC 15");
   });
 });
