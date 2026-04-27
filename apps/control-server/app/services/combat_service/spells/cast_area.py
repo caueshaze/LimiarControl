@@ -8,7 +8,6 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.integrations import LimiarMapClientError
 from app.models.combat import CombatState
 from app.models.inventory import InventoryItem
 from app.schemas.combat import CombatCastSpellRequest
@@ -21,6 +20,7 @@ from ..exceptions import CombatServiceError
 from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
 from ..persistent_area_effects import build_persistent_spell_area_effect
 from ..targeting_intent import AreaTargetingIntent
+from .area_spatial_metadata import get_area_per_target_cover
 
 logger = logging.getLogger(__name__)
 
@@ -38,41 +38,22 @@ class CastAreaMixin:
     ) -> dict[str, str | None]:
         """Return cover from actor position to each affected area target.
 
-        Used when cover_applies_to_save warrants per-target DC reduction.
-        Any target whose lookup fails maps to None so the cast continues at
-        the base DC (defensive default — cover is a bonus, not a blocker).
-
-        TODO: Replace N individual calls with a batch endpoint once the map
-        API exposes one (follow-up: Batch area target spatial metadata lookup).
+        Thin wrapper that handles the use_map / settings guard and client
+        creation, then delegates to the shared get_area_per_target_cover
+        helper so both the cast path and the preview path use identical logic.
         """
         if not target_ref_ids:
             return {}
         if not use_map or not settings.limiar_map_enabled:
             return {ref_id: None for ref_id in target_ref_ids}
         client = cls._build_limiar_map_client()
-        result: dict[str, str | None] = {}
-        for target_ref_id in target_ref_ids:
-            try:
-                response = client.validate_single_target(
-                    session_id=session_id,
-                    action_id=f"{action_id}:cover:{target_ref_id}",
-                    combatant_id=actor_ref_id,
-                    target_combatant_id=target_ref_id,
-                    range_cells=None,
-                    requires_sight=False,
-                    requires_effect=False,
-                )
-                result[target_ref_id] = response.cover
-            except LimiarMapClientError as exc:
-                logger.warning(
-                    "Cover lookup failed for area target session_id=%s "
-                    "target_ref_id=%s (%s); falling back to base DC",
-                    session_id,
-                    target_ref_id,
-                    exc,
-                )
-                result[target_ref_id] = None
-        return result
+        return get_area_per_target_cover(
+            client=client,
+            session_id=session_id,
+            action_id=action_id,
+            actor_ref_id=actor_ref_id,
+            target_ref_ids=target_ref_ids,
+        )
 
     @classmethod
     async def _cast_area_spell(

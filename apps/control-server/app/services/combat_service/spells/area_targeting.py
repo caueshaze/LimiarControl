@@ -58,6 +58,7 @@ from app.services.roll_resolution import resolve_attack_base, resolve_saving_thr
 from app.schemas.roll import RollActorStats, RollResult
 
 from ..combat_targeting import get_combat_targeting_service
+from ..cover_modifiers import resolve_cover_save_dc, should_cover_apply_to_save
 from ..exceptions import CombatServiceError, _parse_dice
 from ..targeting_requirements import (
     resolve_spell_targeting_requirements,
@@ -65,6 +66,7 @@ from ..targeting_requirements import (
 )
 from ..targeting_intent import AreaTargetingIntent, SpellCastIntent, WeaponAttackIntent
 from ..unit_conversion import meters_to_cells
+from .area_spatial_metadata import build_area_affected_target_spatial_metadata, get_area_per_target_cover
 
 
 
@@ -323,6 +325,41 @@ class AreaTargetingMixin:
                 503,
             ) from exc
 
+        affected_target_ref_ids = list(preview.affected_combatant_ids)
+
+        cover_applies_to_save = spell_context.get("cover_applies_to_save")
+        raw_save_dc = spell_context.get("save_dc")
+        base_save_dc = (
+            cls._safe_int(raw_save_dc, 0)
+            if isinstance(raw_save_dc, (int, float)) and not isinstance(raw_save_dc, bool)
+            else None
+        )
+        affected_target_spatial_metadata: list[dict] = []
+        if (
+            should_cover_apply_to_save(cover_applies_to_save)
+            and base_save_dc is not None
+            and affected_target_ref_ids
+        ):
+            name_by_ref: dict[str, str | None] = {
+                p["ref_id"]: p.get("display_name")
+                for p in state.participants
+                if isinstance(p.get("ref_id"), str)
+            }
+            cover_by_ref = get_area_per_target_cover(
+                client=client,
+                session_id=session_id,
+                action_id=f"preview-cover:{uuid4()}",
+                actor_ref_id=attacker["ref_id"],
+                target_ref_ids=affected_target_ref_ids,
+            )
+            affected_target_spatial_metadata = build_area_affected_target_spatial_metadata(
+                affected_ref_ids=affected_target_ref_ids,
+                name_by_ref=name_by_ref,
+                cover_by_ref=cover_by_ref,
+                base_save_dc=base_save_dc,
+                cover_applies_to_save=cover_applies_to_save,
+            )
+
         return {
             "is_valid": preview.is_valid,
             "reason": preview.reason,
@@ -331,7 +368,8 @@ class AreaTargetingMixin:
                 {"x": cell.x, "y": cell.y}
                 for cell in preview.affected_cells
             ],
-            "affected_target_ref_ids": list(preview.affected_combatant_ids),
+            "affected_target_ref_ids": affected_target_ref_ids,
             "affected_token_ids": list(preview.affected_token_ids),
             "map_version": preview.version,
+            "affected_target_spatial_metadata": affected_target_spatial_metadata,
         }
