@@ -7,8 +7,10 @@ import type { GridCell } from "./areaTargetingUi";
 import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
 import {
   formatAreaOriginPreviewLabel,
+  formatSpellCoverPreview,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
+  resolveCoverContext,
 } from "./spellMapPreviewPresentation";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
@@ -117,6 +119,10 @@ export const SpellCastDialogHeader = ({
   const mapPreviewReason = mapPreviewModel
     ? formatSpellMapPreviewReason(mapPreviewModel.reason, mapPreviewModel.status)
     : null;
+  const coverContext = resolveCoverContext(spellMode);
+  const coverLabel = mapPreviewModel?.cover
+    ? formatSpellCoverPreview(mapPreviewModel.cover, coverContext)
+    : null;
 
   return (
     <>
@@ -183,6 +189,9 @@ export const SpellCastDialogHeader = ({
           {mapPreviewModel.rangeMeters != null ? (
             <p className="mt-2 text-xs opacity-90">Alcance: {formatRangeMeters(mapPreviewModel.rangeMeters)}</p>
           ) : null}
+          {coverLabel ? (
+            <p className="mt-1 text-xs opacity-90">{coverLabel}</p>
+          ) : null}
           {mapPreviewModel.areaShape ? (
             <p className="mt-1 text-xs opacity-90">
               Área: {mapPreviewModel.areaShape}
@@ -204,11 +213,15 @@ export const SpellCastDialogHeader = ({
                   instanceStatus.reason,
                   instanceStatus.status,
                 );
+                const instanceCoverLabel = instanceStatus.cover
+                  ? formatSpellCoverPreview(instanceStatus.cover, coverContext)
+                  : null;
                 return (
                   <p key={`${instanceStatus.instanceIndex}:${instanceStatus.targetRefId ?? "none"}`}>
                     {getInstanceLabel(spell.canonicalKey, instanceStatus.instanceIndex)}:{" "}
                     {formatSpellMapPreviewStatus(instanceStatus.status)}
                     {instanceReason ? ` · ${instanceReason}` : ""}
+                    {instanceCoverLabel ? ` · ${instanceCoverLabel}` : ""}
                   </p>
                 );
               })}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { METERS_PER_CELL } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import { buildSpellMapPreviewModel } from "./spellMapPreviewModel";
-import type { SpellAreaSpatialValidation } from "./spellMapPreviewModel";
+import type { SpellAreaSpatialValidation, SpellCoverPreview } from "./spellMapPreviewModel";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 
 // Base SpellPreviewModel representing a resolved backend context
@@ -708,5 +708,88 @@ describe("buildSpellMapPreviewModel – área com spatialValidations.area", () =
     });
     expect(model.status).toBe("valid");
     expect(model.affectedTargetCount).toBe(2);
+  });
+});
+
+const halfCover: SpellCoverPreview = { rank: "half", bonus: 2 };
+const threeQuartersCover: SpellCoverPreview = { rank: "three_quarters", bonus: 5 };
+
+describe("buildSpellMapPreviewModel – cover metadata", () => {
+  it("single-target preserva half cover no modelo", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: halfCover }],
+      },
+    });
+    expect(model.status).toBe("valid");
+    expect(model.cover).toEqual(halfCover);
+  });
+
+  it("single-target preserva three_quarters cover no modelo", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: threeQuartersCover }],
+      },
+    });
+    expect(model.cover).toEqual(threeQuartersCover);
+  });
+
+  it("cover não altera status valid para invalid", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_IN_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: halfCover }],
+      },
+    });
+    expect(model.status).toBe("valid");
+    expect(model.reason).toBeNull();
+  });
+
+  it("cover não sobrescreve reason out_of_range", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseSingleTargetModel,
+      casterPosition: CASTER,
+      selectedTargetRefId: "enemy-1",
+      targetPositions: [{ refId: "enemy-1", cell: TARGET_OUT_OF_RANGE }],
+      spatialValidations: {
+        targets: [{ targetRefId: "enemy-1", inRange: false, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: halfCover }],
+      },
+    });
+    expect(model.status).toBe("invalid");
+    expect(model.reason).toBe("out_of_range");
+  });
+
+  it("multi-instância preserva cover por instância", () => {
+    const multiInstanceModel: SpellPreviewModel = { ...baseSingleTargetModel, effectInstanceCount: 2 };
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: multiInstanceModel,
+      effectInstanceTargets: [
+        { instance_index: 1, target_ref_id: "enemy-1" },
+        { instance_index: 2, target_ref_id: "enemy-2" },
+      ],
+      targetPositions: [
+        { refId: "enemy-1", cell: TARGET_IN_RANGE },
+        { refId: "enemy-2", cell: TARGET_IN_RANGE },
+      ],
+      spatialValidations: {
+        instances: [
+          { instanceIndex: 1, targetRefId: "enemy-1", inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: halfCover },
+          { instanceIndex: 2, targetRefId: "enemy-2", inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null, cover: threeQuartersCover },
+        ],
+      },
+    });
+    expect(model.instanceStatuses?.[0].cover).toEqual(halfCover);
+    expect(model.instanceStatuses?.[1].cover).toEqual(threeQuartersCover);
   });
 });

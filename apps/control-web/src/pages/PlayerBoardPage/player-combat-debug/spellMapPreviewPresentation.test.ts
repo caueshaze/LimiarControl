@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   formatAreaOriginPreviewLabel,
+  formatSpellCoverPreview,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
+  resolveCoverContext,
 } from "./spellMapPreviewPresentation";
 
 describe("spellMapPreviewPresentation", () => {
@@ -50,6 +52,47 @@ describe("spellMapPreviewPresentation", () => {
   it("preserva reason humana quando já vier formatada", () => {
     expect(formatSpellMapPreviewReason("Fora do alcance", "invalid")).toBe("Fora do alcance");
   });
+});
+
+describe("formatSpellCoverPreview", () => {
+  it("half cover + attack → Cobertura: meia (+2 AC)", () => {
+    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "attack")).toBe("Cobertura: meia (+2 AC)");
+  });
+
+  it("three_quarters cover + attack → Cobertura: três-quartos (+5 AC)", () => {
+    expect(formatSpellCoverPreview({ rank: "three_quarters", bonus: 5 }, "attack")).toBe("Cobertura: três-quartos (+5 AC)");
+  });
+
+  it("half cover + save → Cobertura: meia (-2 DC efetiva)", () => {
+    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "save")).toBe("Cobertura: meia (-2 DC efetiva)");
+  });
+
+  it("three_quarters cover + save → Cobertura: três-quartos (-5 DC efetiva)", () => {
+    expect(formatSpellCoverPreview({ rank: "three_quarters", bonus: 5 }, "save")).toBe("Cobertura: três-quartos (-5 DC efetiva)");
+  });
+
+  it("half cover + other (direct damage) → null", () => {
+    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "other")).toBeNull();
+  });
+
+  it("none cover → null", () => {
+    expect(formatSpellCoverPreview({ rank: "none", bonus: null }, "attack")).toBeNull();
+  });
+
+  it("unknown cover → null", () => {
+    expect(formatSpellCoverPreview({ rank: "unknown", bonus: null }, "attack")).toBeNull();
+  });
+
+  it("null cover → null", () => {
+    expect(formatSpellCoverPreview(null, "attack")).toBeNull();
+  });
+});
+
+describe("resolveCoverContext", () => {
+  it("spell_attack → attack", () => { expect(resolveCoverContext("spell_attack")).toBe("attack"); });
+  it("saving_throw → save", () => { expect(resolveCoverContext("saving_throw")).toBe("save"); });
+  it("direct_damage → other", () => { expect(resolveCoverContext("direct_damage")).toBe("other"); });
+  it("null → other", () => { expect(resolveCoverContext(null)).toBe("other"); });
 });
 
 describe("formatAreaOriginPreviewLabel", () => {

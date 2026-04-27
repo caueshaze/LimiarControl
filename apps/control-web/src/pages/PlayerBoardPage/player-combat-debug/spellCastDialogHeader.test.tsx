@@ -411,6 +411,98 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
   });
 
+  it("Eldritch Blast single-target com half cover mostra +2 AC", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({ resolutionType: "spell_attack", requiresAttackRoll: true })}
+      />,
+    );
+
+    expect(markup).toContain("Cobertura: meia (+2 AC)");
+  });
+
+  it("Eldritch Blast single-target com three_quarters cover mostra +5 AC", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "three_quarters", bonus: 5 },
+        })}
+        previewModel={buildPreviewModel({ resolutionType: "spell_attack", requiresAttackRoll: true })}
+      />,
+    );
+
+    expect(markup).toContain("Cobertura: três-quartos (+5 AC)");
+  });
+
+  it("Eldritch Blast multi-instância mostra cover por feixe", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          effectInstanceCount: 2,
+          instanceStatuses: [
+            { instanceIndex: 1, targetRefId: "enemy-1", status: "valid", reason: null, cover: { rank: "half", bonus: 2 } },
+            { instanceIndex: 2, targetRefId: "enemy-2", status: "valid", reason: null, cover: null },
+          ],
+        })}
+        previewModel={buildPreviewModel({ resolutionType: "spell_attack", effectInstanceCount: 2, source: "resolved" })}
+      />,
+    );
+
+    expect(markup).toContain("Feixe 1: válido · Cobertura: meia (+2 AC)");
+    expect(markup).not.toContain("Feixe 2: válido · Cobertura");
+  });
+
+  it("spell inválida por LoS mantém reason e não transforma cover em reason", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Eldritch Blast", canonicalKey: "eldritch_blast", level: 0 }}
+        spellMode="spell_attack"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "invalid",
+          reason: "blocked_line_of_sight",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({ resolutionType: "spell_attack" })}
+      />,
+    );
+
+    expect(markup).toContain("Motivo: linha de visão bloqueada");
+    // cover is shown even when invalid (it's metadata, not a reason)
+    expect(markup).toContain("Cobertura: meia (+2 AC)");
+  });
+
+  it("Magic Missile não mostra cover como modificador AC/DC (direct_damage)", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spellMode="direct_damage"
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          cover: { rank: "half", bonus: 2 },
+        })}
+        previewModel={buildPreviewModel({ resolutionType: "direct_damage" })}
+      />,
+    );
+
+    expect(markup).not.toContain("Cobertura:");
+  });
+
   it("falls back gracefully when resolve-context is unavailable (preview-source=fallback)", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
