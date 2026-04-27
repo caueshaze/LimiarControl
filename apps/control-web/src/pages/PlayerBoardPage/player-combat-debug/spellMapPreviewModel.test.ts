@@ -799,3 +799,104 @@ describe("buildSpellMapPreviewModel – cover metadata", () => {
     expect(model.instanceStatuses?.[1].cover).toEqual(threeQuartersCover);
   });
 });
+
+describe("buildSpellMapPreviewModel – area spatial metadata propagation", () => {
+  const metadataPayload = [
+    { target_ref_id: "goblin-a", target_display_name: "Goblin A", cover: "half", base_save_dc: 15, effective_save_dc: 13, cover_modifier: 2 },
+    { target_ref_id: "orc-b", target_display_name: "Orc B", cover: null, base_save_dc: 15, effective_save_dc: 15, cover_modifier: 0 },
+  ];
+
+  it("fallback path: existingAreaPreviewResult com metadata popula affectedTargetSpatialMetadata", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: {
+        ...areaPreviewResult,
+        affected_target_spatial_metadata: metadataPayload,
+      },
+    });
+
+    expect(model.affectedTargetSpatialMetadata).toHaveLength(2);
+    expect(model.affectedTargetSpatialMetadata?.[0]).toEqual({
+      targetRefId: "goblin-a",
+      targetDisplayName: "Goblin A",
+      cover: "half",
+      baseSaveDc: 15,
+      effectiveSaveDc: 13,
+      coverModifier: 2,
+    });
+    expect(model.affectedTargetSpatialMetadata?.[1]).toEqual({
+      targetRefId: "orc-b",
+      targetDisplayName: "Orc B",
+      cover: null,
+      baseSaveDc: 15,
+      effectiveSaveDc: 15,
+      coverModifier: 0,
+    });
+  });
+
+  it("spatialValidations.area path: metadata é propagada quando area validation existe", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: {
+        ...areaPreviewResult,
+        affected_target_spatial_metadata: metadataPayload,
+      },
+      spatialValidations: {
+        area: { originCell: ANCHOR, inRange: true, hasLineOfSight: null, hasLineOfEffect: null, unavailableReason: null },
+      },
+    });
+
+    expect(model.affectedTargetSpatialMetadata).toHaveLength(2);
+    expect(model.affectedTargetSpatialMetadata?.[0].targetRefId).toBe("goblin-a");
+  });
+
+  it("empty metadata array → affectedTargetSpatialMetadata is undefined", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: {
+        ...areaPreviewResult,
+        affected_target_spatial_metadata: [],
+      },
+    });
+
+    expect(model.affectedTargetSpatialMetadata).toBeUndefined();
+  });
+
+  it("missing metadata field → affectedTargetSpatialMetadata is undefined", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: areaPreviewResult,
+    });
+
+    expect(model.affectedTargetSpatialMetadata).toBeUndefined();
+  });
+
+  it("metadata does not alter status or reason", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: {
+        ...areaPreviewResult,
+        affected_target_spatial_metadata: metadataPayload,
+      },
+    });
+
+    expect(model.status).toBe("valid");
+    expect(model.reason).toBeNull();
+  });
+
+  it("metadata does not alter affectedTargetCount or affectedTargetNames", () => {
+    const model = buildSpellMapPreviewModel({
+      spellPreviewModel: baseAreaModel,
+      existingAreaPreviewResult: {
+        ...areaPreviewResult,
+        affected_target_spatial_metadata: metadataPayload,
+      },
+      targetPositions: [
+        { refId: "goblin-a", cell: { x: 9, y: 0 }, displayName: "Goblin A" },
+      ],
+    });
+
+    expect(model.affectedTargetCount).toBe(2);
+    expect(model.affectedTargetNames).toEqual(["Goblin A"]);
+  });
+});

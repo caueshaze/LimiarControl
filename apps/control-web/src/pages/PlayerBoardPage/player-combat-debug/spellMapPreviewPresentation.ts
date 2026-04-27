@@ -1,4 +1,4 @@
-import type { SpellCoverPreview, SpellMapPreviewModel, SpellMapPreviewStatus } from "./spellMapPreviewModel";
+import type { AreaTargetSpatialMetadata, SpellCoverPreview, SpellMapPreviewModel, SpellMapPreviewStatus } from "./spellMapPreviewModel";
 
 const UNKNOWN_MESSAGE = "Dados de posição insuficientes para validar o preview no mapa";
 
@@ -90,4 +90,26 @@ export const formatSpellMapPreviewReason = (
     default:
       return reason;
   }
+};
+
+export const formatAreaTargetCoverRank = (cover: string | null | undefined): string | null => {
+  if (cover === "half") return "meia cobertura";
+  if (cover === "three_quarters" || cover === "threeQuarters") return "três-quartos";
+  return null;
+};
+
+export const formatAreaTargetEffectiveDcLine = (
+  item: AreaTargetSpatialMetadata,
+): string | null => {
+  const dc = item.effectiveSaveDc ?? item.baseSaveDc;
+  if (dc == null) return null;
+
+  const name = item.targetDisplayName ?? item.targetRefId;
+  const coverLabel =
+    item.coverModifier > 0 ? formatAreaTargetCoverRank(item.cover) : null;
+
+  if (coverLabel) {
+    return `${name}: ${coverLabel}, DC efetiva ${dc}`;
+  }
+  return `${name}: DC ${dc}`;
 };

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { AreaTargetSpatialMetadata } from "./spellMapPreviewModel";
 import {
   formatAreaOriginPreviewLabel,
+  formatAreaTargetCoverRank,
+  formatAreaTargetEffectiveDcLine,
   formatSpellCoverPreview,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
@@ -129,5 +132,107 @@ describe("formatAreaOriginPreviewLabel", () => {
 
   it("invalid sem reason conhecido → Origem da área: inválida", () => {
     expect(formatAreaOriginPreviewLabel({ status: "invalid", reason: null })).toBe("Origem da área: inválida");
+  });
+});
+
+describe("formatAreaTargetCoverRank", () => {
+  it("half → meia cobertura", () => {
+    expect(formatAreaTargetCoverRank("half")).toBe("meia cobertura");
+  });
+
+  it("three_quarters → três-quartos", () => {
+    expect(formatAreaTargetCoverRank("three_quarters")).toBe("três-quartos");
+  });
+
+  it("threeQuarters (camelCase) → três-quartos", () => {
+    expect(formatAreaTargetCoverRank("threeQuarters")).toBe("três-quartos");
+  });
+
+  it("none → null", () => {
+    expect(formatAreaTargetCoverRank("none")).toBeNull();
+  });
+
+  it("full → null", () => {
+    expect(formatAreaTargetCoverRank("full")).toBeNull();
+  });
+
+  it("null → null", () => {
+    expect(formatAreaTargetCoverRank(null)).toBeNull();
+  });
+
+  it("unknown value → null", () => {
+    expect(formatAreaTargetCoverRank("unknown_value")).toBeNull();
+  });
+});
+
+describe("formatAreaTargetEffectiveDcLine", () => {
+  const base = (overrides: Partial<AreaTargetSpatialMetadata>): AreaTargetSpatialMetadata => ({
+    targetRefId: "goblin-a",
+    targetDisplayName: "Goblin A",
+    cover: null,
+    baseSaveDc: null,
+    effectiveSaveDc: null,
+    coverModifier: 0,
+    ...overrides,
+  });
+
+  it("no cover, effective DC 15 → Goblin A: DC 15", () => {
+    expect(formatAreaTargetEffectiveDcLine(base({ effectiveSaveDc: 15 }))).toBe("Goblin A: DC 15");
+  });
+
+  it("half cover, modifier 2, effective DC 13 → Goblin B: meia cobertura, DC efetiva 13", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ targetRefId: "goblin-b", targetDisplayName: "Goblin B", cover: "half", coverModifier: 2, effectiveSaveDc: 13 }),
+      ),
+    ).toBe("Goblin B: meia cobertura, DC efetiva 13");
+  });
+
+  it("three_quarters cover, modifier 5, effective DC 10 → Orc C: três-quartos, DC efetiva 10", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ targetRefId: "orc-c", targetDisplayName: "Orc C", cover: "three_quarters", coverModifier: 5, effectiveSaveDc: 10 }),
+      ),
+    ).toBe("Orc C: três-quartos, DC efetiva 10");
+  });
+
+  it("threeQuarters (camel) → same três-quartos label", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ cover: "threeQuarters", coverModifier: 5, effectiveSaveDc: 10 }),
+      ),
+    ).toBe("Goblin A: três-quartos, DC efetiva 10");
+  });
+
+  it("full cover + modifier 0 → no cover label, plain DC", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ cover: "full", coverModifier: 0, effectiveSaveDc: 15 }),
+      ),
+    ).toBe("Goblin A: DC 15");
+  });
+
+  it("missing effective DC, base DC 15 → Goblin A: DC 15", () => {
+    expect(formatAreaTargetEffectiveDcLine(base({ baseSaveDc: 15 }))).toBe("Goblin A: DC 15");
+  });
+
+  it("both DCs null → null", () => {
+    expect(formatAreaTargetEffectiveDcLine(base({}))).toBeNull();
+  });
+
+  it("missing display name → fallback to targetRefId", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ targetDisplayName: null, effectiveSaveDc: 12 }),
+      ),
+    ).toBe("goblin-a: DC 12");
+  });
+
+  it("coverModifier 0 with cover half → no cover label", () => {
+    expect(
+      formatAreaTargetEffectiveDcLine(
+        base({ cover: "half", coverModifier: 0, effectiveSaveDc: 13 }),
+      ),
+    ).toBe("Goblin A: DC 13");
   });
 });

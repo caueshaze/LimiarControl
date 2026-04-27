@@ -7,6 +7,7 @@ import type { GridCell } from "./areaTargetingUi";
 import type { SpellMapPreviewModel } from "./spellMapPreviewModel";
 import {
   formatAreaOriginPreviewLabel,
+  formatAreaTargetEffectiveDcLine,
   formatSpellCoverPreview,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
@@ -205,6 +206,15 @@ export const SpellCastDialogHeader = ({
           ) : null}
           {mapPreviewModel.affectedTargetNames?.length ? (
             <p className="mt-1 text-xs opacity-90">Alvos: {mapPreviewModel.affectedTargetNames.join(", ")}</p>
+          ) : null}
+          {mapPreviewModel.affectedTargetSpatialMetadata?.length ? (
+            <div className="mt-2 space-y-0.5 text-xs opacity-90">
+              <p className="font-semibold">DC por alvo:</p>
+              {mapPreviewModel.affectedTargetSpatialMetadata.map((item) => {
+                const line = formatAreaTargetEffectiveDcLine(item);
+                return line ? <p key={item.targetRefId}>{line}</p> : null;
+              })}
+            </div>
           ) : null}
           {mapPreviewModel.instanceStatuses?.length ? (
             <div className="mt-2 space-y-1 text-xs">
