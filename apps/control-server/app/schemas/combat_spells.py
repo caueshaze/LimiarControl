@@ -236,6 +236,15 @@ class CombatAreaPreviewRequest(BaseModel):
     slot_level: Optional[int] = None
 
 
+class AreaPreviewAffectedTargetSpatialMetadata(BaseModel):
+    target_ref_id: str
+    target_display_name: str | None = None
+    cover: str | None = None
+    base_save_dc: int | None = None
+    effective_save_dc: int | None = None
+    cover_modifier: int = 0
+
+
 class CombatAreaPreviewResponse(BaseModel):
     is_valid: bool
     reason: str | None = None
@@ -244,6 +253,9 @@ class CombatAreaPreviewResponse(BaseModel):
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_token_ids: list[str] = Field(default_factory=list)
     map_version: int | None = None
+    affected_target_spatial_metadata: list[AreaPreviewAffectedTargetSpatialMetadata] = Field(
+        default_factory=list
+    )
 
 
 class CombatMovementPreviewRequest(BaseModel):

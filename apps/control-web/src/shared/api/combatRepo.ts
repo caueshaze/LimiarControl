@@ -450,6 +450,15 @@ export type CombatAreaPreviewRequest = {
   slot_level?: number | null;
 };
 
+export type AreaPreviewAffectedTargetSpatialMetadata = {
+  target_ref_id: string;
+  target_display_name?: string | null;
+  cover?: string | null;
+  base_save_dc?: number | null;
+  effective_save_dc?: number | null;
+  cover_modifier?: number;
+};
+
 export type CombatAreaPreviewResponse = {
   is_valid: boolean;
   reason?: string | null;
@@ -458,6 +467,7 @@ export type CombatAreaPreviewResponse = {
   affected_target_ref_ids: string[];
   affected_token_ids: string[];
   map_version?: number | null;
+  affected_target_spatial_metadata?: AreaPreviewAffectedTargetSpatialMetadata[];
 };
 
 export type CombatMovementPreviewRequest = {
