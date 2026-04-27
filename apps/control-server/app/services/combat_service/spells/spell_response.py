@@ -28,8 +28,15 @@ class SpellResponseMixin:
             idx = o["instance_index"]
             name = o["target_display_name"]
             dmg = o["damage"]
+            o_cover_modifier = o.get("cover_modifier", 0)
+            o_cover = o.get("cover")
             if o.get("is_hit") is False:
-                lines.append(f"  Instância {idx} → {name}: errou.")
+                if o_cover_modifier > 0 and o_cover and cover_label(o_cover):
+                    lines.append(
+                        f"  Instância {idx} → {name}: {o.get('roll', '?')} vs AC efetiva {o.get('effective_ac')} (base {o.get('base_ac')} + {cover_label(o_cover)}) - errou."
+                    )
+                else:
+                    lines.append(f"  Instância {idx} → {name}: errou.")
             elif dmg > 0:
                 lines.append(f"  Instância {idx} → {name}: {dmg} de dano de {damage_type}.")
             else:
@@ -58,9 +65,10 @@ class SpellResponseMixin:
         if isinstance(custom_log_message, str) and custom_log_message.strip():
             log_message = custom_log_message.strip()
         elif spell_mode == "spell_attack":
-            cover_text = (
-                f" ({cover_label(result.cover)})" if cover_label(result.cover) else ""
-            )
+            if result.cover_modifier > 0 and cover_label(result.cover):
+                cover_text = f" (AC efetiva {result.target_ac or 10}, base {result.base_ac} + {cover_label(result.cover)})"
+            else:
+                cover_text = ""
             adv_text = ""
             if result.adv_ctx is not None and (
                 result.adv_ctx.advantage_sources or result.adv_ctx.disadvantage_sources
@@ -71,10 +79,11 @@ class SpellResponseMixin:
                 vis_text = (
                     f" [Target not directly visible: {result.vis_ctx.describe()}]"
                 )
+            ac_display = f"AC {result.target_ac or 10}" if not cover_text else ""
             if result.is_hit:
                 log_message = (
                     f"{attacker['display_name']} conjurou {spell_context['spell_name']} em {target_p['display_name']}: "
-                    f"{result.roll_total} total vs AC {result.target_ac or 10}{cover_text}{adv_text}{vis_text} - acerto."
+                    f"{result.roll_total} total vs {ac_display}{cover_text}{adv_text}{vis_text} - acerto."
                 )
                 if result.pending_spell_id:
                     log_message += " Efeito pendente."
@@ -87,7 +96,7 @@ class SpellResponseMixin:
             else:
                 log_message = (
                     f"{attacker['display_name']} conjurou {spell_context['spell_name']} em {target_p['display_name']}: "
-                    f"{result.roll_total} total vs AC {result.target_ac or 10}{cover_text}{adv_text}{vis_text} - errou."
+                    f"{result.roll_total} total vs {ac_display}{cover_text}{adv_text}{vis_text} - errou."
                 )
         elif spell_mode == "saving_throw":
             if result.pending_save_id:
@@ -97,12 +106,14 @@ class SpellResponseMixin:
                 )
             else:
                 save_text = "passou" if result.is_saved else "falhou"
-                cover_text = (
-                    f" ({cover_label(result.cover)})" if cover_label(result.cover) else ""
-                )
+                if result.cover_modifier > 0 and cover_label(result.cover):
+                    cover_text = f" (CD efetiva {result.effective_dc}, base {result.base_save_dc} - {cover_label(result.cover)})"
+                else:
+                    cover_text = ""
+                dc_display = f"CD {result.effective_dc}" if not cover_text else ""
                 log_message = (
                     f"{attacker['display_name']} lancou {spell_context['spell_name']} em {target_p['display_name']}: "
-                    f"alvo {save_text} no save de {spell_context['save_ability']} contra CD {result.effective_dc}{cover_text}."
+                    f"alvo {save_text} no save de {spell_context['save_ability']} contra {dc_display}{cover_text}."
                 )
             if result.pending_spell_id:
                 if result.is_saved and save_success_outcome == "half_damage":
@@ -208,6 +219,10 @@ class SpellResponseMixin:
             "roll": result.roll_total,
             "roll_result": result.roll_result,
             "target_ac": result.target_ac,
+            "cover": result.cover if isinstance(result.cover, str) else None,
+            "base_ac": result.base_ac,
+            "base_save_dc": result.base_save_dc,
+            "cover_modifier": result.cover_modifier,
             "target_display_name": target_display_name,
             "target_kind": target_kind,
             "save_ability": spell_context.get("save_ability"),

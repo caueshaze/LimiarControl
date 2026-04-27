@@ -244,7 +244,6 @@ class CombatNpcActionResolutionMixin:
                 dc=effective_dc,
                 roll_source=req.roll_source,
                 manual_roll=req.manual_roll,
-                manual_rolls=req.manual_rolls,
             )
             roll_result.is_gm_roll = is_gm
             is_saved = False if save_mod.auto_fail else bool(roll_result.success)

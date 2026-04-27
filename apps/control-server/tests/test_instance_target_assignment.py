@@ -416,6 +416,46 @@ class MultiInstanceLogMessageTests(unittest.TestCase):
         )
         self.assertTrue(msg.startswith("[OVERRIDE:"))
 
+    def test_miss_with_cover_shows_effective_ac(self):
+        outcomes = [
+            {
+                "instance_index": 1,
+                "target_display_name": "Goblin A",
+                "damage": 0,
+                "is_hit": False,
+                "roll": 16,
+                "cover": "half",
+                "base_ac": 15,
+                "effective_ac": 17,
+                "cover_modifier": 2,
+            },
+        ]
+        msg = CombatService._build_multi_instance_log_message(
+            attacker={"display_name": "Hero"},
+            spell_context={"spell_name": "Eldritch Blast", "damage_type": "Force"},
+            outcomes=outcomes,
+            was_overridden=False,
+            action_cost="action",
+        )
+        self.assertIn("AC efetiva 17", msg)
+        self.assertIn("base 15", msg)
+        self.assertIn("Half Cover", msg)
+        self.assertIn("errou", msg)
+
+    def test_miss_without_cover_shows_simple_format(self):
+        outcomes = [
+            {"instance_index": 1, "target_display_name": "Goblin A", "damage": 0, "is_hit": False},
+        ]
+        msg = CombatService._build_multi_instance_log_message(
+            attacker={"display_name": "Hero"},
+            spell_context={"spell_name": "Eldritch Blast", "damage_type": "Force"},
+            outcomes=outcomes,
+            was_overridden=False,
+            action_cost="action",
+        )
+        self.assertIn("errou", msg)
+        self.assertNotIn("AC efetiva", msg)
+
 
 class EffectInstanceTargetSchemaTests(unittest.TestCase):
     def test_valid_target(self):
@@ -466,6 +506,36 @@ class EffectInstanceOutcomeSchemaTests(unittest.TestCase):
         self.assertTrue(o.is_hit)
         self.assertEqual(o.new_hp, 3)
 
+    def test_outcome_with_cover_fields(self):
+        from app.schemas.combat_spells import EffectInstanceOutcome
+        o = EffectInstanceOutcome(
+            instance_index=1,
+            target_ref_id="entity:goblin-a",
+            target_display_name="Goblin A",
+            target_kind="session_entity",
+            cover="half",
+            base_ac=15,
+            effective_ac=17,
+            cover_modifier=2,
+        )
+        self.assertEqual(o.cover, "half")
+        self.assertEqual(o.base_ac, 15)
+        self.assertEqual(o.effective_ac, 17)
+        self.assertEqual(o.cover_modifier, 2)
+
+    def test_outcome_cover_fields_default_to_none_and_zero(self):
+        from app.schemas.combat_spells import EffectInstanceOutcome
+        o = EffectInstanceOutcome(
+            instance_index=1,
+            target_ref_id="entity:goblin-a",
+            target_display_name="Goblin A",
+            target_kind="session_entity",
+        )
+        self.assertIsNone(o.cover)
+        self.assertIsNone(o.base_ac)
+        self.assertIsNone(o.effective_ac)
+        self.assertEqual(o.cover_modifier, 0)
+
 
 class CombatSpellResultInstanceOutcomesTests(unittest.TestCase):
     def test_result_has_empty_outcomes_by_default(self):
@@ -477,6 +547,34 @@ class CombatSpellResultInstanceOutcomesTests(unittest.TestCase):
             target_kind="session_entity",
         )
         self.assertEqual(r.effect_instance_outcomes, [])
+
+    def test_result_cover_fields_default(self):
+        from app.schemas.combat_spells import CombatSpellResult
+        r = CombatSpellResult(
+            spell_name="Fireball",
+            action_kind="saving_throw",
+            target_display_name="Area target",
+            target_kind="session_entity",
+        )
+        self.assertIsNone(r.cover)
+        self.assertIsNone(r.base_ac)
+        self.assertIsNone(r.base_save_dc)
+        self.assertEqual(r.cover_modifier, 0)
+
+    def test_result_with_cover_metadata(self):
+        from app.schemas.combat_spells import CombatSpellResult
+        r = CombatSpellResult(
+            spell_name="Eldritch Blast",
+            action_kind="spell_attack",
+            target_display_name="Goblin",
+            target_kind="session_entity",
+            cover="half",
+            base_ac=15,
+            cover_modifier=2,
+        )
+        self.assertEqual(r.cover, "half")
+        self.assertEqual(r.base_ac, 15)
+        self.assertEqual(r.cover_modifier, 2)
 
     def test_result_with_instance_outcomes(self):
         from app.schemas.combat_spells import CombatSpellResult, EffectInstanceOutcome

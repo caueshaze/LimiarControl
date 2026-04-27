@@ -322,5 +322,52 @@ class CoverSaveIntegrationTests(unittest.TestCase):
         self.assertEqual(modifier, 5)
 
 
+class CoverLabelInLogTests(unittest.TestCase):
+    """Tests for cover_label used in enhanced log messages."""
+
+    def test_cover_label_half(self):
+        self.assertEqual(cover_label("half"), "Half Cover")
+
+    def test_cover_label_three_quarters(self):
+        self.assertEqual(cover_label("threeQuarters"), "Three-Quarters Cover")
+
+    def test_cover_label_none_returns_none(self):
+        self.assertIsNone(cover_label(None))
+
+    def test_cover_label_none_string_returns_none(self):
+        self.assertIsNone(cover_label("none"))
+
+    def test_cover_label_full_returns_none(self):
+        self.assertIsNone(cover_label("full"))
+
+
+class SpellResolutionResultCoverFieldsTests(unittest.TestCase):
+    """Tests that SpellResolutionResult dataclass accepts the new cover fields."""
+
+    def test_defaults(self):
+        from app.services.combat_service.spells.spell_resolution_common import SpellResolutionResult
+        result = SpellResolutionResult()
+        self.assertIsNone(result.base_ac)
+        self.assertIsNone(result.base_save_dc)
+        self.assertEqual(result.cover_modifier, 0)
+
+    def test_set_cover_fields(self):
+        from app.services.combat_service.spells.spell_resolution_common import SpellResolutionResult
+        result = SpellResolutionResult(
+            target_ac=17,
+            base_ac=15,
+            cover="half",
+            cover_modifier=2,
+            effective_dc=13,
+            base_save_dc=15,
+        )
+        self.assertEqual(result.base_ac, 15)
+        self.assertEqual(result.target_ac, 17)
+        self.assertEqual(result.cover, "half")
+        self.assertEqual(result.cover_modifier, 2)
+        self.assertEqual(result.base_save_dc, 15)
+        self.assertEqual(result.effective_dc, 13)
+
+
 if __name__ == "__main__":
     unittest.main()

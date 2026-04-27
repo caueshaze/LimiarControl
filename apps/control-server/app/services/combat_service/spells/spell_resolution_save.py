@@ -29,9 +29,9 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
 
         result = SpellResolutionResult()
         result.cover = targeting_result.spatial_metadata.cover
-        save_dc_base = cls._safe_int(spell_context.get("save_dc"), 0)
-        result.effective_dc, _ = resolve_cover_save_dc(
-            save_dc_base,
+        result.base_save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
+        result.effective_dc, result.cover_modifier = resolve_cover_save_dc(
+            result.base_save_dc,
             result.cover,
             spell_context.get("cover_applies_to_save"),
             spell_context.get("save_ability"),

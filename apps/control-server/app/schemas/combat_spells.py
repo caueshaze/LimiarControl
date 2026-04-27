@@ -156,6 +156,10 @@ class CombatAreaTargetOutcome(BaseModel):
     damage_applied: int | None = None
     healing_applied: int | None = None
     new_hp: int | None = None
+    cover: str | None = None
+    base_save_dc: int | None = None
+    effective_save_dc: int | None = None
+    cover_modifier: int = 0
 
 
 class CombatMapPreviewToken(BaseModel):
@@ -289,6 +293,10 @@ class EffectInstanceOutcome(BaseModel):
     roll: int | None = None
     roll_result: RollResult | None = None
     new_hp: int | None = None
+    cover: str | None = None
+    base_ac: int | None = None
+    effective_ac: int | None = None
+    cover_modifier: int = 0
 
 
 class CombatSpellResult(BaseModel):
@@ -308,6 +316,10 @@ class CombatSpellResult(BaseModel):
     roll: Optional[int] = None
     roll_result: RollResult | None = None
     target_ac: int | None = None
+    cover: str | None = None
+    base_ac: int | None = None
+    base_save_dc: int | None = None
+    cover_modifier: int = 0
     target_display_name: str
     target_kind: Literal["player", "session_entity"]
     save_ability: AbilityName | None = None

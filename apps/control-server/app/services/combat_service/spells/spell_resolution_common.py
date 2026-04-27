@@ -16,7 +16,10 @@ class SpellResolutionResult:
     is_hit: bool | None = None
     is_saved: bool | None = None
     target_ac: int | None = None
+    base_ac: int | None = None
+    base_save_dc: int | None = None
     cover: object = None
+    cover_modifier: int = 0
     effective_dc: int = 0
     pending_spell_id: str | None = None
     pending_save_id: str | None = None

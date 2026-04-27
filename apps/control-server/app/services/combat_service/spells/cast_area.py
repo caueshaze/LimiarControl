@@ -15,7 +15,7 @@ from app.services.magic_item_effects import consume_inventory_item_charge
 from app.services.roll_resolution import resolve_saving_throw
 
 from ..combat_targeting import get_combat_targeting_service
-from ..cover_modifiers import resolve_cover_save_dc, should_cover_apply_to_save
+from ..cover_modifiers import cover_label, resolve_cover_modifier, resolve_cover_save_dc, resolve_cover_save_modifier, should_cover_apply_to_save
 from ..exceptions import CombatServiceError
 from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
 from ..persistent_area_effects import build_persistent_spell_area_effect
@@ -215,7 +215,9 @@ class CastAreaMixin:
                 "healing_applied": None,
                 "new_hp": None,
                 "cover": target_cover,
-                "effective_dc": effective_dc,
+                "effective_save_dc": effective_dc,
+                "base_save_dc": base_save_dc,
+                "cover_modifier": resolve_cover_save_modifier(target_cover) if should_cover_apply_to_save(cover_applies_to_save) else 0,
             }
             area_target_outcomes.append(outcome)
             target_results_for_pending.append(
@@ -292,11 +294,26 @@ class CastAreaMixin:
 
         target_count = len(area_target_outcomes)
         area_label = f"Area ({target_count} alvo{'s' if target_count != 1 else ''})"
-        log_message = (
+        log_lines = [
             f"{attacker['display_name']} lancou {spell_context['spell_name']} em area "
-            f"({area_spec['shape']}): {target_count} alvo{'s' if target_count != 1 else ''} afetado{'s' if target_count != 1 else ''}. "
-            "Efeito pendente."
-        )
+            f"({area_spec['shape']}): {target_count} alvo{'s' if target_count != 1 else ''} afetado{'s' if target_count != 1 else ''}.",
+        ]
+        for area_outcome in area_target_outcomes:
+            save_text = "passou" if area_outcome["is_saved"] else "falhou"
+            outcome_dc = area_outcome["effective_save_dc"]
+            outcome_cover = area_outcome.get("cover")
+            outcome_modifier = area_outcome.get("cover_modifier", 0)
+            if outcome_modifier > 0 and outcome_cover:
+                clabel = cover_label(outcome_cover)
+                log_lines.append(
+                    f"  {area_outcome['target_display_name']}: save {area_outcome['roll']} vs DC efetiva {outcome_dc} (base {base_save_dc} - {clabel}), {save_text}."
+                )
+            else:
+                log_lines.append(
+                    f"  {area_outcome['target_display_name']}: save {area_outcome['roll']} vs DC {outcome_dc}, {save_text}."
+                )
+        log_lines.append("Efeito pendente.")
+        log_message = "\n".join(log_lines)
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
 

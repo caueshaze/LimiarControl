@@ -340,9 +340,11 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         damage_type = spell_context.get("damage_type")
         attack_bonus = cls._safe_int(spell_context.get("attack_bonus"), 0)
 
-        _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        _, target_ac_raw, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
         cover = targeting_result.spatial_metadata.cover if targeting_result else None
-        target_ac = (target_ac or 10) + resolve_cover_modifier(cover)
+        cover_modifier = resolve_cover_modifier(cover)
+        base_ac = target_ac_raw if target_ac_raw is not None else 10
+        target_ac = base_ac + cover_modifier
 
         adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
         has_adv = req.has_advantage or bool(adv_ctx.advantage_sources)
@@ -409,6 +411,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "roll_result": roll_result,
             "new_hp": new_hp,
             "previous_hp": previous_hp,
+            "cover": cover,
+            "base_ac": base_ac,
+            "effective_ac": target_ac,
+            "cover_modifier": cover_modifier,
         }
 
     @classmethod

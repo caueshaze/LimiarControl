@@ -78,6 +78,7 @@ class CombatEntitySpellActionMixin:
                 "saveSuccessOutcome": cls._normalize_save_success_outcome(base_spell.save_success_outcome) or "none",
                 "damageDice": upcast_result.get("effect_dice"),
                 "damageBonus": cls._safe_int(upcast_result.get("effect_bonus"), damage_bonus if isinstance(damage_bonus, int) else 0),
+                "coverAppliesToSave": getattr(base_spell, "cover_applies_to_save", None),
             })
             return resolved
         if action.kind == "heal":

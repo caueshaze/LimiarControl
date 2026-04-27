@@ -505,22 +505,38 @@ class CombatNpcTurnTestsMixin:
                     ),
                 ):
                     with patch(
-                        "app.services.combat.CombatService._get_stats",
-                        return_value=(SessionEntity(id="enemy-456", session_id="session-123", campaign_entity_id="ce-2", current_hp=5), 10, 10, 10, 2, 0),
+                        "app.services.combat.CombatService._resolve_entity_combat_action",
+                        return_value={
+                            "name": "Fire Breath",
+                            "kind": "saving_throw",
+                            "saveAbility": "dexterity",
+                            "saveDc": 15,
+                            "damageDice": "2d6",
+                            "damageBonus": 0,
+                            "damageType": "fire",
+                            "saveSuccessOutcome": "none",
+                            "coverAppliesToSave": "physical",
+                            "actionCost": "action",
+                        },
                     ):
-                        res = await CombatService.entity_action(
-                            self.db,
-                            "session-123",
-                            CombatEntityActionRequest(
-                                actor_participant_id="e1",
-                                target_ref_id="enemy-456",
-                                combat_action_id="fire_breath",
-                                roll_source="manual",
-                                manual_roll=14,
-                            ),
-                            "gm-user",
-                            True,
-                        )
+                        with patch(
+                            "app.services.combat.CombatService._get_stats",
+                            return_value=(SessionEntity(id="enemy-456", session_id="session-123", campaign_entity_id="ce-2", current_hp=5), 10, 10, 10, 2, 0),
+                        ):
+                            res = await CombatService.entity_action(
+                                self.db,
+                                "session-123",
+                                CombatEntityActionRequest(
+                                    actor_participant_id="e1",
+                                    target_ref_id="enemy-456",
+                                    combat_action_id="fire_breath",
+                                    roll_source="manual",
+                                    manual_roll=14,
+                                    manual_rolls=[3, 3],
+                                ),
+                                "gm-user",
+                                True,
+                            )
 
         # Verify the save succeeded (roll 14 vs DC 13 = base DC 15 - half cover 2)
         self.assertTrue(res["is_saved"], f"Save failed: roll={res.get('save_roll')}, save_dc={res.get('save_dc')}, is_saved={res.get('is_saved')}")

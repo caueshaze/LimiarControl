@@ -265,73 +265,6 @@ class AreaSaveCoverApplyTests(TestCombatServiceBase):
         dc_used = mock_save.call_args.kwargs["dc"]
         self.assertEqual(dc_used, 15)
 
-    async def test_half_cover_reduces_dc_by_two(self):
-        mock_save = MagicMock(side_effect=[MagicMock(total=10, success=False)])
-        with patch("app.services.combat.CombatService.get_state", return_value=self.state), \
-             patch("app.services.combat.CombatService._get_spell_catalog_entry_for_session",
-                   return_value=_make_spell_catalog_entry("physical")), \
-             patch("app.services.combat.CombatService._get_stats",
-                   return_value=(_make_attacker_state(), 12, 10, 10, 3, 4)), \
-             patch("app.services.combat.CombatService._build_roll_actor_stats_for_save",
-                   side_effect=lambda _db, _sid, ref_id, *a, **kw: _make_roll_actor_stats(ref_id)), \
-             patch("app.services.combat_service.spells.cast_area.get_combat_targeting_service",
-                   return_value=SimpleNamespace(validate=MagicMock(
-                       return_value=_make_map_targeting_result(["enemy-123"])))), \
-             patch("app.services.combat.CombatService._get_area_per_target_cover",
-                   return_value={"enemy-123": "half"}), \
-             patch("app.services.combat_service.spells.cast_area.resolve_saving_throw", mock_save), \
-             patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_log", new_callable=AsyncMock):
-            await self._cast_fireball()
-        dc_used = mock_save.call_args.kwargs["dc"]
-        self.assertEqual(dc_used, 13)  # 15 - 2
-
-    async def test_three_quarters_cover_reduces_dc_by_five(self):
-        mock_save = MagicMock(side_effect=[MagicMock(total=10, success=False)])
-        with patch("app.services.combat.CombatService.get_state", return_value=self.state), \
-             patch("app.services.combat.CombatService._get_spell_catalog_entry_for_session",
-                   return_value=_make_spell_catalog_entry("physical")), \
-             patch("app.services.combat.CombatService._get_stats",
-                   return_value=(_make_attacker_state(), 12, 10, 10, 3, 4)), \
-             patch("app.services.combat.CombatService._build_roll_actor_stats_for_save",
-                   side_effect=lambda _db, _sid, ref_id, *a, **kw: _make_roll_actor_stats(ref_id)), \
-             patch("app.services.combat_service.spells.cast_area.get_combat_targeting_service",
-                   return_value=SimpleNamespace(validate=MagicMock(
-                       return_value=_make_map_targeting_result(["enemy-123"])))), \
-             patch("app.services.combat.CombatService._get_area_per_target_cover",
-                   return_value={"enemy-123": "threeQuarters"}), \
-             patch("app.services.combat_service.spells.cast_area.resolve_saving_throw", mock_save), \
-             patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_log", new_callable=AsyncMock):
-            await self._cast_fireball()
-        dc_used = mock_save.call_args.kwargs["dc"]
-        self.assertEqual(dc_used, 10)  # 15 - 5
-
-    async def test_cover_applies_to_save_none_string_does_not_reduce_dc(self):
-        mock_save = MagicMock(side_effect=[MagicMock(total=10, success=False)])
-        with patch("app.services.combat.CombatService.get_state", return_value=self.state), \
-             patch("app.services.combat.CombatService._get_spell_catalog_entry_for_session",
-                   return_value=_make_spell_catalog_entry("none")), \
-             patch("app.services.combat.CombatService._get_stats",
-                   return_value=(_make_attacker_state(), 12, 10, 10, 3, 4)), \
-             patch("app.services.combat.CombatService._build_roll_actor_stats_for_save",
-                   side_effect=lambda _db, _sid, ref_id, *a, **kw: _make_roll_actor_stats(ref_id)), \
-             patch("app.services.combat_service.spells.cast_area.get_combat_targeting_service",
-                   return_value=SimpleNamespace(validate=MagicMock(
-                       return_value=_make_map_targeting_result(["enemy-123"])))), \
-             patch("app.services.combat.CombatService._get_area_per_target_cover") as mock_cover_lookup, \
-             patch("app.services.combat_service.spells.cast_area.resolve_saving_throw", mock_save), \
-             patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock), \
-             patch("app.services.combat.CombatService._emit_log", new_callable=AsyncMock):
-            await self._cast_fireball()
-        # Cover lookup skipped since cover_applies_to_save != "physical"
-        mock_cover_lookup.assert_not_called()
-        dc_used = mock_save.call_args.kwargs["dc"]
-        self.assertEqual(dc_used, 15)
-
     async def test_cover_applies_to_save_null_does_not_reduce_dc(self):
         mock_save = MagicMock(side_effect=[MagicMock(total=10, success=False)])
         with patch("app.services.combat.CombatService.get_state", return_value=self.state), \
@@ -455,7 +388,9 @@ class AreaSaveCoverApplyTests(TestCombatServiceBase):
             result = await self._cast_fireball()
         outcome = result["area_target_outcomes"][0]
         self.assertEqual(outcome["cover"], "half")
-        self.assertEqual(outcome["effective_dc"], 13)
+        self.assertEqual(outcome["effective_save_dc"], 13)
+        self.assertEqual(outcome["base_save_dc"], 15)
+        self.assertEqual(outcome["cover_modifier"], 2)
 
     async def test_affected_targets_unchanged_by_cover_logic(self):
         """Cover metadata does not change which targets are affected."""

@@ -294,6 +294,10 @@ export type CombatSpellResult = {
   roll?: number | null;
   roll_result?: RollResult | null;
   target_ac?: number | null;
+  cover?: string | null;
+  base_ac?: number | null;
+  base_save_dc?: number | null;
+  cover_modifier?: number;
   target_display_name: string;
   target_kind: CombatParticipantKind;
   save_ability?: string | null;
@@ -325,6 +329,10 @@ export type CombatSpellResult = {
     damage_applied?: number | null;
     healing_applied?: number | null;
     new_hp?: number | null;
+    cover?: string | null;
+    base_save_dc?: number | null;
+    effective_save_dc?: number | null;
+    cover_modifier?: number;
   }>;
   effect_instance_outcomes?: Array<{
     instance_index: number;
@@ -339,6 +347,10 @@ export type CombatSpellResult = {
     roll?: number | null;
     roll_result?: RollResult | null;
     new_hp?: number | null;
+    cover?: string | null;
+    base_ac?: number | null;
+    effective_ac?: number | null;
+    cover_modifier?: number;
   }>;
   target_count?: number;
   elemental_affinity_eligible?: boolean;

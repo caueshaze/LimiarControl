@@ -31,9 +31,11 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
         targeting_result,
     ) -> SpellResolutionResult:
         result = SpellResolutionResult()
-        _, result.target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        _, base_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
         result.cover = targeting_result.spatial_metadata.cover
-        result.target_ac = (result.target_ac or 10) + resolve_cover_modifier(result.cover)
+        result.cover_modifier = resolve_cover_modifier(result.cover)
+        result.base_ac = base_ac if base_ac is not None else 10
+        result.target_ac = result.base_ac + result.cover_modifier
         result.adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
         result.vis_ctx = resolve_target_visibility(attacker, target_p, has_line_of_sight=bool(targeting_result.spatial_metadata.has_line_of_sight or True))
         has_adv = req.has_advantage or bool(result.adv_ctx.advantage_sources)
