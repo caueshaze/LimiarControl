@@ -1,11 +1,13 @@
-"""Tests for per-instance spatial validation in multi-instance spell casts.
+"""Tests for per-instance spatial validation and cover application in multi-instance spell casts.
 
 Covers:
   - _validate_instance_spatial_targets validates range/LoS/LoE per unique target
+  - _validate_instance_spatial_targets returns dict[str, TargetingResult] for cover reuse
   - Deduplication: each unique targetRefId validated once, even with multiple instances
   - First instance_index using a failing target is cited in the error
   - CombatServiceError raised before resource consumption
   - Correct error phrase for each failure reason
+  - _resolve_instance_attack applies cover from TargetingResult to effective AC
 """
 
 from __future__ import annotations
@@ -72,12 +74,14 @@ def _make_validated_target(instance_index: int, target_ref_id: str, display_name
     }
 
 
-def _valid_result(target_ref_id: str = "entity:goblin-a") -> TargetingResult:
+def _valid_result(target_ref_id: str = "entity:goblin-a", cover: str | None = None) -> TargetingResult:
+    from app.services.combat_service.targeting_result import SpatialMetadata
     return TargetingResult(
         is_valid=True,
         validated_primary_target_ref_id=target_ref_id,
         affected_target_ref_ids=[target_ref_id],
         target_kind="session_entity",
+        spatial_metadata=SpatialMetadata(cover=cover),
     )
 
 
@@ -95,7 +99,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
             "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
             return_value=mock_service or MagicMock(validate=MagicMock(return_value=_valid_result())),
         ):
-            CombatService._validate_instance_spatial_targets(
+            return CombatService._validate_instance_spatial_targets(
                 state=state,
                 attacker=_build_attacker(),
                 spell_context=spell_context,
@@ -259,3 +263,122 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
                         session_id="session-1",
                     )
                 mock_resolve.assert_not_called()
+
+
+class ValidateInstanceSpatialTargetsReturnTests(unittest.TestCase):
+    def test_returns_dict_keyed_by_target_ref_id(self):
+        targets = [
+            _make_validated_target(1, "entity:goblin-a", "Goblin A"),
+            _make_validated_target(2, "entity:goblin-b", "Goblin B"),
+        ]
+        mock_svc = MagicMock()
+        mock_svc.validate.side_effect = [
+            _valid_result("entity:goblin-a"),
+            _valid_result("entity:goblin-b"),
+        ]
+        with patch(
+            "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
+            return_value=mock_svc,
+        ):
+            result = CombatService._validate_instance_spatial_targets(
+                state=_build_state(),
+                attacker=_build_attacker(),
+                spell_context=_build_spell_context(),
+                validated_targets=targets,
+                session_id="session-1",
+            )
+        self.assertIn("entity:goblin-a", result)
+        self.assertIn("entity:goblin-b", result)
+        self.assertTrue(result["entity:goblin-a"].is_valid)
+
+    def test_returns_targeting_result_with_cover_metadata(self):
+        targets = [_make_validated_target(1, "entity:goblin-a", "Goblin A")]
+        mock_svc = MagicMock(validate=MagicMock(return_value=_valid_result("entity:goblin-a", cover="half")))
+        with patch(
+            "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
+            return_value=mock_svc,
+        ):
+            result = CombatService._validate_instance_spatial_targets(
+                state=_build_state(),
+                attacker=_build_attacker(),
+                spell_context=_build_spell_context(),
+                validated_targets=targets,
+                session_id="session-1",
+            )
+        self.assertEqual(result["entity:goblin-a"].spatial_metadata.cover, "half")
+
+
+class ResolveInstanceAttackCoverTests(unittest.TestCase):
+    def _build_spell_context_attack(self):
+        return {
+            "effect_instance_count": 2,
+            "effect_instance_dice": "1d10",
+            "spell_mode": "spell_attack",
+            "spell_canonical_key": "eldritch_blast",
+            "spell_name": "Eldritch Blast",
+            "effect_kind": "damage",
+            "damage_type": "Force",
+            "attack_bonus": 5,
+        }
+
+    def _build_target(self):
+        return {
+            "ref_id": "entity:goblin-a",
+            "kind": "session_entity",
+            "display_name": "Goblin A",
+        }
+
+    def _make_req(self):
+        from types import SimpleNamespace
+        return SimpleNamespace(has_advantage=False, has_disadvantage=False, roll_source="system", manual_roll=None)
+
+    def _call_with_cover(self, cover: str | None, base_ac: int = 15):
+        from app.services.combat_service.targeting_result import SpatialMetadata
+        targeting_result = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="entity:goblin-a",
+            affected_target_ref_ids=["entity:goblin-a"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(cover=cover),
+        )
+        with patch.object(CombatService, "_get_stats", return_value=(None, base_ac, None, None, None)):
+            with patch(
+                "app.services.combat_service.spells.cast_target.resolve_attack_base"
+            ) as mock_resolve:
+                mock_resolve.return_value = MagicMock(success=False, total=10, roll=10, modifier=5)
+                CombatService._resolve_instance_attack(
+                    None, "session-1", _build_state(), _build_attacker(),
+                    self._build_target(), self._build_spell_context_attack(),
+                    self._make_req(), False,
+                    targeting_result=targeting_result,
+                )
+                return mock_resolve.call_args
+
+    def test_no_cover_uses_base_ac(self):
+        call_args = self._call_with_cover(None, base_ac=15)
+        self.assertEqual(call_args.kwargs["target_ac"], 15)
+
+    def test_half_cover_adds_2_to_ac(self):
+        call_args = self._call_with_cover("half", base_ac=15)
+        self.assertEqual(call_args.kwargs["target_ac"], 17)
+
+    def test_three_quarters_cover_adds_5_to_ac(self):
+        call_args = self._call_with_cover("threeQuarters", base_ac=15)
+        self.assertEqual(call_args.kwargs["target_ac"], 20)
+
+    def test_none_cover_string_does_not_add_bonus(self):
+        call_args = self._call_with_cover("none", base_ac=15)
+        self.assertEqual(call_args.kwargs["target_ac"], 15)
+
+    def test_no_targeting_result_uses_base_ac(self):
+        with patch.object(CombatService, "_get_stats", return_value=(None, 14, None, None, None)):
+            with patch(
+                "app.services.combat_service.spells.cast_target.resolve_attack_base"
+            ) as mock_resolve:
+                mock_resolve.return_value = MagicMock(success=False, total=10, roll=10, modifier=5)
+                CombatService._resolve_instance_attack(
+                    None, "session-1", _build_state(), _build_attacker(),
+                    self._build_target(), self._build_spell_context_attack(),
+                    self._make_req(), False,
+                )
+                self.assertEqual(mock_resolve.call_args.kwargs["target_ac"], 14)

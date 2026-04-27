@@ -15,6 +15,7 @@ from app.services.magic_item_effects import (
 )
 
 from ..combat_targeting import get_combat_targeting_service
+from ..cover_modifiers import resolve_cover_modifier
 from ..exceptions import CombatServiceError
 from ..targeting_diagnostics import NO_LINE_OF_EFFECT, NO_LINE_OF_SIGHT, NOT_VISIBLE, TARGET_OUT_OF_REACH
 from ..targeting_intent import SpellCastIntent
@@ -229,11 +230,13 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         spell_context: dict,
         validated_targets: list[dict],
         session_id: str,
-    ) -> None:
+    ) -> dict[str, TargetingResult]:
         """Validate range/LoS/LoE for each unique targetRefId before consuming any resources.
 
         Deduplicates validation by targetRefId — each unique target is validated once.
         Raises CombatServiceError with instance_index and reason on first failure.
+        Returns a dict of TargetingResult keyed by target_ref_id so that cover metadata
+        can be reused downstream (e.g. in _resolve_instance_attack) without re-validating.
         """
         targeting_service = get_combat_targeting_service(state.use_map)
 
@@ -242,6 +245,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             ref_id = vt["target_ref_id"]
             if ref_id not in unique_ref_to_first_instance:
                 unique_ref_to_first_instance[ref_id] = vt["instance_index"]
+
+        results_by_ref: dict[str, TargetingResult] = {}
 
         for target_ref_id, first_instance_index in unique_ref_to_first_instance.items():
             intent = SpellCastIntent(
@@ -274,6 +279,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                     f"Instance {first_instance_index} target {target_label} {reason_phrase}.",
                     status_code=400,
                 )
+
+            results_by_ref[target_ref_id] = result
+
+        return results_by_ref
 
     @classmethod
     def _resolve_instance_direct(cls, db, state, attacker, target_p, spell_context, req):
@@ -316,7 +325,11 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         }
 
     @classmethod
-    def _resolve_instance_attack(cls, db, session_id, state, attacker, target_p, spell_context, req, is_gm):
+    def _resolve_instance_attack(
+        cls, db, session_id, state, attacker, target_p, spell_context, req, is_gm,
+        *,
+        targeting_result: TargetingResult | None = None,
+    ):
         instance_dice = spell_context.get("effect_instance_dice")
         if not instance_dice:
             raise CombatServiceError(
@@ -327,7 +340,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         attack_bonus = cls._safe_int(spell_context.get("attack_bonus"), 0)
 
         _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
-        target_ac = target_ac or 10
+        cover = targeting_result.spatial_metadata.cover if targeting_result else None
+        target_ac = (target_ac or 10) + resolve_cover_modifier(cover)
 
         adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
         has_adv = req.has_advantage or bool(adv_ctx.advantage_sources)
@@ -400,6 +414,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     async def _resolve_multi_instance_cast(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm, validated_targets,
+        *,
+        spatial_results_by_target_ref: dict[str, TargetingResult] | None = None,
     ):
         slot_spent = False
         if spell_context.get("source_kind") == "magic_item":
@@ -460,8 +476,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             target_p = vt["participant"]
 
             if spell_mode == "spell_attack":
+                instance_targeting_result = (spatial_results_by_target_ref or {}).get(
+                    vt["target_ref_id"]
+                )
                 outcome = cls._resolve_instance_attack(
                     db, session_id, state, attacker, target_p, spell_context, req, is_gm,
+                    targeting_result=instance_targeting_result,
                 )
             else:
                 outcome = cls._resolve_instance_direct(
@@ -950,7 +970,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             req=req, spell_context=spell_context, state=state,
         )
         if validated_targets is not None:
-            cls._validate_instance_spatial_targets(
+            spatial_results_by_target_ref = cls._validate_instance_spatial_targets(
                 state=state,
                 attacker=attacker,
                 spell_context=spell_context,
@@ -960,6 +980,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             return await cls._resolve_multi_instance_cast(
                 db, session_id, req, state, attacker, attacker_model,
                 spell_context, actor_user_id, is_gm, validated_targets,
+                spatial_results_by_target_ref=spatial_results_by_target_ref,
             )
         area_spell_spec = cls._resolve_supported_area_spell_spec(spell_context)
         if cls._normalize_area_shape(spell_context.get("area_shape")) is not None:
