@@ -32,7 +32,7 @@ export const formatSpellCoverPreview = (
 ): string | null => {
   if (!cover || cover.rank === "none" || cover.rank === "unknown") return null;
   if (context === "other") return null;
-  const rankLabel = cover.rank === "half" ? "meia" : "três-quartos";
+  const rankLabel = cover.rank === "half" ? "meia cobertura" : "três-quartos";
   const modifier = cover.bonus ?? 0;
   if (context === "attack") return `Cobertura: ${rankLabel} (+${modifier} AC)`;
   if (context === "save") return `Cobertura: ${rankLabel} (-${modifier} DC efetiva)`;
@@ -112,4 +112,11 @@ export const formatAreaTargetEffectiveDcLine = (
     return `${name}: ${coverLabel}, DC efetiva ${dc}`;
   }
   return `${name}: DC ${dc}`;
+};
+
+export const formatTargetList = (names: string[], max = 5): string => {
+  if (names.length <= max) return names.join(", ");
+  const visible = names.slice(0, max);
+  const hiddenCount = names.length - max;
+  return `${visible.join(", ")} +${hiddenCount} outros`;
 };

@@ -323,6 +323,8 @@ class CombatSpellResult(BaseModel):
     target_display_name: str
     target_kind: Literal["player", "session_entity"]
     save_ability: AbilityName | None = None
+    # Effective DC after cover modifier (cover already factored in at response time).
+    # Area spells expose per-target base_save_dc + effective_save_dc via CombatAreaTargetOutcome.
     save_dc: int | None = None
     save_success_outcome: Literal["none", "half_damage"] | None = None
     effect_dice: str | None = None

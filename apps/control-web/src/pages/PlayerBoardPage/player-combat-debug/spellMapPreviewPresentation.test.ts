@@ -58,16 +58,22 @@ describe("spellMapPreviewPresentation", () => {
 });
 
 describe("formatSpellCoverPreview", () => {
-  it("half cover + attack → Cobertura: meia (+2 AC)", () => {
-    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "attack")).toBe("Cobertura: meia (+2 AC)");
+  it("half cover + attack → Cobertura: meia cobertura (+2 AC)", () => {
+    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "attack")).toBe(
+      "Cobertura: meia cobertura (+2 AC)",
+    );
   });
 
-  it("three_quarters cover + attack → Cobertura: três-quartos (+5 AC)", () => {
-    expect(formatSpellCoverPreview({ rank: "three_quarters", bonus: 5 }, "attack")).toBe("Cobertura: três-quartos (+5 AC)");
+  it("three quarters cover + attack → Cobertura: três-quartos (+5 AC)", () => {
+    expect(
+      formatSpellCoverPreview({ rank: "three_quarters", bonus: 5 }, "attack"),
+    ).toBe("Cobertura: três-quartos (+5 AC)");
   });
 
-  it("half cover + save → Cobertura: meia (-2 DC efetiva)", () => {
-    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "save")).toBe("Cobertura: meia (-2 DC efetiva)");
+  it("half cover + save → Cobertura: meia cobertura (-2 DC efetiva)", () => {
+    expect(formatSpellCoverPreview({ rank: "half", bonus: 2 }, "save")).toBe(
+      "Cobertura: meia cobertura (-2 DC efetiva)",
+    );
   });
 
   it("three_quarters cover + save → Cobertura: três-quartos (-5 DC efetiva)", () => {

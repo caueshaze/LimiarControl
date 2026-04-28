@@ -465,6 +465,7 @@ export type CombatAreaPreviewRequest = {
 export type AreaPreviewAffectedTargetSpatialMetadata = {
   target_ref_id: string;
   target_display_name?: string | null;
+  /** Canonical values: "none" | "half" | "threeQuarters" | "full" | null */
   cover?: string | null;
   base_save_dc?: number | null;
   effective_save_dc?: number | null;

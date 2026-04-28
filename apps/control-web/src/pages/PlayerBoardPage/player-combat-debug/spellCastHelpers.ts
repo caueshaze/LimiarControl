@@ -59,16 +59,35 @@ export const formatEffectInstanceOutcome = (
   const label = getInstanceLabel(result.spell_canonical_key, outcome.instance_index);
   const details: string[] = [];
 
+  const coverLabel = outcome.cover === "half" ? "meia cobertura" : outcome.cover === "three_quarters" || outcome.cover === "threeQuarters" ? "três-quartos" : null;
+
   if (outcome.is_hit === true) {
-    details.push(outcome.is_critical ? "acerto critico" : "acerto");
+    details.push(outcome.is_critical ? "acerto crítico" : "acerto");
   } else if (outcome.is_hit === false) {
-    details.push("erro");
+    if (outcome.effective_ac) {
+      const coverPart = coverLabel ? ` (${coverLabel})` : "";
+      details.push(`erro contra AC efetiva ${outcome.effective_ac}${coverPart}`);
+    } else {
+      details.push("erro");
+    }
   }
 
   if (outcome.is_saved === true) {
-    details.push("save passou");
+    if (outcome.effective_save_dc && outcome.effective_save_dc !== outcome.base_save_dc) {
+      details.push(`passou no save DC efetiva ${outcome.effective_save_dc}`);
+    } else if (outcome.base_save_dc) {
+      details.push(`passou no save DC ${outcome.base_save_dc}`);
+    } else {
+      details.push("passou no save");
+    }
   } else if (outcome.is_saved === false) {
-    details.push("save falhou");
+    if (outcome.effective_save_dc && outcome.effective_save_dc !== outcome.base_save_dc) {
+      details.push(`falhou no save DC efetiva ${outcome.effective_save_dc}`);
+    } else if (outcome.base_save_dc) {
+      details.push(`falhou no save DC ${outcome.base_save_dc}`);
+    } else {
+      details.push("falhou no save");
+    }
   }
 
   if (typeof outcome.damage === "number" && outcome.damage > 0) {
@@ -84,4 +103,47 @@ export const formatEffectInstanceOutcome = (
   }
 
   return `${label} -> ${outcome.target_display_name}: ${details.length > 0 ? details.join(", ") : "sem efeito"}`;
+};
+
+export const formatAreaTargetOutcome = (
+  outcome: NonNullable<CombatSpellResult["area_target_outcomes"]>[number],
+) => {
+  const details: string[] = [];
+  const coverLabel = outcome.cover === "half" ? "meia cobertura" : outcome.cover === "three_quarters" || outcome.cover === "threeQuarters" ? "três-quartos" : null;
+
+  if (coverLabel && outcome.cover_modifier && outcome.cover_modifier > 0) {
+    details.push(coverLabel);
+  }
+
+  if (outcome.is_saved === true) {
+    if (outcome.effective_save_dc && outcome.effective_save_dc !== outcome.base_save_dc) {
+      details.push(`passou no save DC efetiva ${outcome.effective_save_dc}`);
+    } else if (outcome.base_save_dc) {
+      details.push(`passou no save DC ${outcome.base_save_dc}`);
+    } else {
+      details.push("passou no save");
+    }
+  } else if (outcome.is_saved === false) {
+    if (outcome.effective_save_dc && outcome.effective_save_dc !== outcome.base_save_dc) {
+      details.push(`falhou no save DC efetiva ${outcome.effective_save_dc}`);
+    } else if (outcome.base_save_dc) {
+      details.push(`falhou no save DC ${outcome.base_save_dc}`);
+    } else {
+      details.push("falhou no save");
+    }
+  }
+
+  if (typeof outcome.damage_applied === "number" && outcome.damage_applied > 0) {
+    details.push(`${outcome.damage_applied} dano`);
+  }
+
+  if (typeof outcome.healing_applied === "number" && outcome.healing_applied > 0) {
+    details.push(`${outcome.healing_applied} cura`);
+  }
+
+  if (typeof outcome.new_hp === "number") {
+    details.push(`PV ${outcome.new_hp}`);
+  }
+
+  return `${outcome.target_display_name}: ${details.length > 0 ? details.join(", ") : "sem efeito"}`;
 };

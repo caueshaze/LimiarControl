@@ -1,6 +1,7 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
 import {
+  formatAreaTargetOutcome,
   formatEffectInstanceOutcome,
   formatSpellEffectBreakdown,
   getOutcomeLabel,
@@ -43,6 +44,7 @@ export const SpellCastResultPanel = ({
   const pendingEffect = Boolean(result.effect_roll_required && result.pending_spell_id);
   const outcomeLabel = getOutcomeLabel(result);
   const hasEffectInstanceOutcomes = Boolean(result.effect_instance_outcomes?.length);
+  const hasAreaTargetOutcomes = Boolean(result.area_target_outcomes?.length);
 
   return (
     <div className="mt-5 space-y-4">
@@ -87,7 +89,16 @@ export const SpellCastResultPanel = ({
             ))}
           </div>
         ) : null}
-        {!pendingEffect && !hasEffectInstanceOutcomes && (result.damage > 0 || result.healing > 0) ? (
+        {!pendingEffect && hasAreaTargetOutcomes ? (
+          <div className="mt-3 space-y-2 text-xs text-slate-300">
+            {result.area_target_outcomes?.map((outcome) => (
+              <p key={outcome.target_ref_id}>
+                {formatAreaTargetOutcome(outcome)}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        {!pendingEffect && !hasEffectInstanceOutcomes && !hasAreaTargetOutcomes && (result.damage > 0 || result.healing > 0) ? (
           <p className="mt-2 text-xs text-slate-300">{formatSpellEffectBreakdown(result)}</p>
         ) : null}
         {result.area_shape ? (

@@ -427,7 +427,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Cobertura: meia (+2 AC)");
+    expect(markup).toContain("Cobertura: meia cobertura (+2 AC)");
   });
 
   it("Eldritch Blast single-target com three_quarters cover mostra +5 AC", () => {
@@ -465,7 +465,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Feixe 1: válido · Cobertura: meia (+2 AC)");
+    expect(markup).toContain("Feixe 1: válido · Cobertura: meia cobertura (+2 AC)");
     expect(markup).not.toContain("Feixe 2: válido · Cobertura");
   });
 
@@ -486,7 +486,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
 
     expect(markup).toContain("Motivo: linha de visão bloqueada");
     // cover is shown even when invalid (it's metadata, not a reason)
-    expect(markup).toContain("Cobertura: meia (+2 AC)");
+    expect(markup).toContain("Cobertura: meia cobertura (+2 AC)");
   });
 
   it("Magic Missile não mostra cover como modificador AC/DC (direct_damage)", () => {
@@ -524,7 +524,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Cobertura: meia (-2 DC efetiva)");
+    expect(markup).toContain("Cobertura: meia cobertura (-2 DC efetiva)");
   });
 
   it("saving throw com coverAppliesToSave true e three_quarters cover mostra -5 DC efetiva", () => {

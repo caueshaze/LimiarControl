@@ -11,6 +11,7 @@ import {
   formatSpellCoverPreview,
   formatSpellMapPreviewReason,
   formatSpellMapPreviewStatus,
+  formatTargetList,
   resolveCoverContext,
 } from "./spellMapPreviewPresentation";
 import type { SpellPreviewModel } from "./spellPreviewModel";
@@ -205,7 +206,7 @@ export const SpellCastDialogHeader = ({
             <p className="mt-1 text-xs opacity-90">Afetados: {mapPreviewModel.affectedTargetCount}</p>
           ) : null}
           {mapPreviewModel.affectedTargetNames?.length ? (
-            <p className="mt-1 text-xs opacity-90">Alvos: {mapPreviewModel.affectedTargetNames.join(", ")}</p>
+            <p className="mt-1 text-xs opacity-90">Alvos: {formatTargetList(mapPreviewModel.affectedTargetNames)}</p>
           ) : null}
           {mapPreviewModel.affectedTargetSpatialMetadata?.length ? (
             <div className="mt-2 space-y-0.5 text-xs opacity-90">
