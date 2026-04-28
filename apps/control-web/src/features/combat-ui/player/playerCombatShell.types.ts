@@ -8,6 +8,7 @@ import type {
 } from "../../../shared/api/combatRepo";
 import type { SpellSelectionType } from "../../../entities/base-spell";
 import type { DragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
+import type { SpellSlotSummaryEntry } from "../../../shared/ui/SpellSlotSummary";
 
 export type AttackResult = CombatAttackResult;
 export type SpellResult = CombatSpellResult;
@@ -26,6 +27,7 @@ export type CombatShellData = {
 export type SpellOption = {
   id: string;
   name: string;
+  level?: number;
   range?: string | null;
   rangeMeters?: number | null;
   actionCost?: CombatActionCost | null;
@@ -37,6 +39,8 @@ export type SpellOption = {
   inventoryItemId?: string | null;
   chargesCurrent?: number | null;
   chargesMax?: number | null;
+  availableSlotLevels?: number[];
+  slotSummary?: SpellSlotSummaryEntry[];
 };
 export type ConsumableOption = { id: string; label: string };
 export type UseObjectTargetOption = { id: string; display_name: string };

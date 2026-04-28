@@ -7,6 +7,7 @@ import { isCombatSpellActionCostAvailable } from "../spellAutomation";
 import { requiresAreaTargetingSelection, spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import { RangeStatusBadge } from "../components/RangeStatusBadge";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
+import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
 import type {
   ConsumableOption,
   DragonbornBreathWeaponOption,
@@ -116,6 +117,14 @@ export const PlayerActionPanels = ({
     dragonbornBreathWeaponAction?.damageType ?? null,
     locale,
   );
+  const selectedSpellHasSlots = (selectedSpell?.availableSlotLevels?.length ?? 0) > 0;
+  const selectedSpellIsCantrip = selectedSpell?.level === 0;
+  const spellCastUnavailableForSlots = Boolean(
+    selectedSpell &&
+      !selectedSpellIsCantrip &&
+      selectedSpell.sourceType !== "magic_item" &&
+      !selectedSpellHasSlots,
+  );
 
   return (
     <div className="space-y-4">
@@ -197,6 +206,17 @@ export const PlayerActionPanels = ({
                   {spellActionCostLabel}
                 </p>
               ) : null}
+              {selectedSpellIsCantrip ? (
+                <p className="mt-2 text-xs text-emerald-200">Truque - sem custo de slot.</p>
+              ) : null}
+              {selectedSpell?.slotSummary?.length ? (
+                <div className="mt-3">
+                  <SpellSlotSummary compact entries={selectedSpell.slotSummary} />
+                </div>
+              ) : null}
+              {spellCastUnavailableForSlots ? (
+                <p className="mt-2 text-xs text-rose-200">Sem slots válidos disponíveis para esta magia.</p>
+              ) : null}
               {selectedSpell && !canSpendSpellActionCost ? (
                 <p className="mt-2 text-xs text-rose-200">
                   {t("combatUi.spellActionUnavailable")}
@@ -205,7 +225,7 @@ export const PlayerActionPanels = ({
             </div>
             <button
               type="button"
-              disabled={!canAct || !canSpendSpellActionCost || (selectedSpellNeedsTarget && !targetId) || !selectedSpell}
+              disabled={!canAct || !canSpendSpellActionCost || spellCastUnavailableForSlots || (selectedSpellNeedsTarget && !targetId) || !selectedSpell}
               onClick={() => {
                 void handleCast();
               }}
@@ -229,6 +249,10 @@ export const PlayerActionPanels = ({
                 spellOptions.map((spell) => (
                   <option key={spell.id} value={spell.id}>
                     {spell.name}
+                    {spell.level === 0 ? " · cantrip" : ""}
+                    {spell.level !== 0 && spell.sourceType !== "magic_item" && (spell.availableSlotLevels?.length ?? 0) === 0
+                      ? " · sem slots"
+                      : ""}
                     {spell.sourceType === "magic_item" && spell.sourceItemName ? ` · ${spell.sourceItemName}` : ""}
                     {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
                       ? ` · ${spell.chargesCurrent}/${spell.chargesMax}`

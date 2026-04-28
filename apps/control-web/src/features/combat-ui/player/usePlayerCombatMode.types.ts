@@ -47,6 +47,7 @@ export type CombatSpellOption = {
   savingThrow: string | null;
   suggestedMode: CombatSpellMode | null;
   availableSlotLevels: number[];
+  slotSummary?: Array<{ level: number; max: number; used: number; remaining: number }>;
   upcast?: SpellUpcast | null;
   cantripScaling?: SpellCantripScaling | null;
   characterLevel?: number | null;

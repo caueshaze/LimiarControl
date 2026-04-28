@@ -7,6 +7,7 @@ import type {
 } from "../../../entities/roll/rollResolution.types";
 import { AuthoritativeRollDialog } from "../../../features/rolls/components/AuthoritativeRollDialog";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
 import { CombatLogPanel } from "../components/CombatLogPanel";
 import { CombatModeBar } from "../components/CombatModeBar";
 import { CombatParticipantRoster } from "../components/CombatParticipantRoster";
@@ -468,6 +469,16 @@ export const PlayerCombatModeShell = ({
                   <p className="mt-3 text-sm text-slate-400">{t("combatUi.noEffects")}</p>
                 )}
               </div>
+
+              {playerSheet?.spellcasting ? (
+                <div className="mt-4 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+                  <SpellSlotSummary
+                    slots={playerSheet.spellcasting.slots}
+                    title={t("playerBoard.spellResourcesTitle")}
+                    emptyLabel={t("playerBoard.noSpellSlots")}
+                  />
+                </div>
+              ) : null}
             </section>
 
             <CombatParticipantRoster

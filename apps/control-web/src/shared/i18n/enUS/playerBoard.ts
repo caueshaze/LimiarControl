@@ -39,6 +39,8 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.statusPanelTitle": "Combat base",
   "playerBoard.statusPanelHeading": "Adventurer summary",
   "playerBoard.statusPanelDescription": "Level, HP, XP, and defense stay visible here to support the next combat and roll flows.",
+  "playerBoard.spellResourcesTitle": "Spell slots",
+  "playerBoard.noSpellSlots": "No active spell slots.",
   "playerBoard.currentHpLabel": "Current HP",
   "playerBoard.tempHpLabel": "Temp HP",
   "playerBoard.xpProgressLabel": "XP",

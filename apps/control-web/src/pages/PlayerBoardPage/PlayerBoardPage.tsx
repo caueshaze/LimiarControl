@@ -265,12 +265,13 @@ export const PlayerBoardPage = () => {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-6">
-          <PlayerBoardStatusPanel
-            combatActive={combatActive}
-            pendingRoll={pendingRoll}
-            playerStatus={playerStatus}
-            restState={restState}
-            usingHitDie={usingHitDie}
+      <PlayerBoardStatusPanel
+        combatActive={combatActive}
+        pendingRoll={pendingRoll}
+        playerSheet={playerSheet}
+        playerStatus={playerStatus}
+        restState={restState}
+        usingHitDie={usingHitDie}
             onUseHitDie={handleUseHitDie}
           />
           {activeSession?.id && (
