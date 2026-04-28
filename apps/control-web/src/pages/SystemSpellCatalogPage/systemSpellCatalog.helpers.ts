@@ -135,6 +135,7 @@ export const createEmptyForm = (): FormState => ({
   resolutionType: "",
   savingThrow: "",
   saveSuccessOutcome: "",
+  coverAppliesToSave: "",
   damageDice: "",
   damageDiceCount: "",
   damageDieSize: "",
@@ -149,6 +150,7 @@ export const createEmptyForm = (): FormState => ({
   upcastFlat: "",
   upcastPerLevel: "1",
   upcastMaxLevel: "",
+  upcastBaseEffectInstances: "",
   upcastScalingKey: "",
   upcastScalingSummary: "",
   upcastScalingEditorial: "",
@@ -178,9 +180,10 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   ...(() => {
     const damageParts = parseDiceParts(spell.damageDice);
     const upcastParts = parseDiceParts(spell.upcast?.dice);
-    const thresholdDice = (level: number) =>
-      spell.cantripScaling?.thresholds.find((entry) => entry.characterLevel === level)
-        ?.damage.dice;
+    const thresholdDice = (level: number) => {
+      const entry = spell.cantripScaling?.thresholds.find((e) => e.characterLevel === level);
+      return entry && "damage" in entry ? entry.damage.dice : undefined;
+    };
     const cantripLevel1Parts = parseDiceParts(thresholdDice(1));
     const cantripLevel5Parts = parseDiceParts(thresholdDice(5));
     const cantripLevel11Parts = parseDiceParts(thresholdDice(11));
@@ -246,6 +249,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   resolutionType: spell.resolutionType ?? "",
   savingThrow: spell.savingThrow ?? "",
   saveSuccessOutcome: spell.saveSuccessOutcome ?? "",
+  coverAppliesToSave: spell.coverAppliesToSave ?? "",
   damageDice: spell.damageDice ?? "",
   damageType: spell.damageType ?? "",
   healDice: spell.healDice ?? "",
@@ -254,6 +258,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   upcastFlat: spell.upcast?.flat != null ? String(spell.upcast.flat) : "",
   upcastPerLevel: spell.upcast?.perLevel != null ? String(spell.upcast.perLevel) : "1",
   upcastMaxLevel: spell.upcast?.maxLevel != null ? String(spell.upcast.maxLevel) : "",
+  upcastBaseEffectInstances: spell.upcast?.baseEffectInstances != null ? String(spell.upcast.baseEffectInstances) : "",
   upcastScalingKey: spell.upcast?.scalingKey ?? "",
   upcastScalingSummary: spell.upcast?.scalingSummary ?? "",
   upcastScalingEditorial: spell.upcast?.scalingEditorial ?? "",
@@ -405,6 +410,7 @@ export const buildPayload = (
       resolutionType: form.resolutionType || null,
       savingThrow: showSavingThrow ? form.savingThrow || null : null,
       saveSuccessOutcome: showSaveSuccessOutcome ? form.saveSuccessOutcome || null : null,
+      coverAppliesToSave: form.coverAppliesToSave || null,
       damageDice: showDamage
         ? buildDiceExpression(
             form.damageDiceCount,
@@ -425,6 +431,12 @@ export const buildPayload = (
             flat: upcastFlat.value ?? null,
             perLevel: upcastPerLevel.value ?? 1,
             maxLevel: upcastMaxLevel.value ?? null,
+            ...(form.upcastMode === "additional_effect_instances" ? {
+              baseEffectInstances: (() => {
+                const v = parseOptionalInteger(form.upcastBaseEffectInstances, "Base effect instances");
+                return v.value ?? null;
+              })(),
+            } : {}),
             ...(form.upcastMode === "effect_scaling" ? {
               scalingKey: normalizeOptionalText(form.upcastScalingKey) ?? null,
               scalingSummary: normalizeOptionalText(form.upcastScalingSummary) ?? null,
@@ -440,7 +452,8 @@ export const buildPayload = (
       cantripScaling:
         form.level === 0 && form.cantripScalingMode === "character_level"
           ? {
-              mode: "character_level",
+              scalingMode: "character_level" as const,
+              scalingEffectType: "damage_dice" as const,
               thresholds: [
                 {
                   characterLevel: 1,
@@ -482,7 +495,7 @@ export const buildPayload = (
                     ),
                   },
                 },
-              ].filter((entry) => entry.damage.dice),
+              ].filter((entry): entry is { characterLevel: number; damage: { dice: string } } => Boolean(entry.damage.dice)),
             }
           : null,
       source: form.source,

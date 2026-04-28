@@ -1,11 +1,11 @@
 import type { BaseSpell } from "../../entities/base-spell";
-import type { BaseSpellUpdatePayload } from "../../shared/api/baseSpellsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellCatalogList } from "../../features/shop/components/SpellCatalogList";
 import { SpellCatalogFilters } from "./SpellCatalogFilters";
 
 type Props = {
   allSpellsCount: number;
+  canEdit?: boolean;
   classFilter: string | null;
   filteredSpells: BaseSpell[];
   levelFilter: number | null;
@@ -17,14 +17,11 @@ type Props = {
   onLevelChange: (value: number | null) => void;
   onSchoolChange: (value: string | null) => void;
   onSearchChange: (value: string) => void;
-  onUpdate: (
-    spellId: string,
-    payload: BaseSpellUpdatePayload,
-  ) => boolean | Promise<boolean>;
 };
 
 export const CatalogSpellsSection = ({
   allSpellsCount,
+  canEdit = true,
   classFilter,
   filteredSpells,
   levelFilter,
@@ -36,7 +33,6 @@ export const CatalogSpellsSection = ({
   onLevelChange,
   onSchoolChange,
   onSearchChange,
-  onUpdate,
 }: Props) => {
   const { t } = useLocale();
 
@@ -61,7 +57,7 @@ export const CatalogSpellsSection = ({
           {t("catalog.spells.loading")}
         </div>
       ) : (
-        <SpellCatalogList spells={filteredSpells} onUpdate={onUpdate} />
+        <SpellCatalogList spells={filteredSpells} canEdit={canEdit} />
       )}
     </div>
   );

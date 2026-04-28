@@ -23,6 +23,8 @@ export const routes = {
   catalog: "/catalog",
   catalogItems: "/catalog/items",
   catalogSpells: "/catalog/spells",
+  catalogSpellNew: "/catalog/spells/new",
+  catalogSpellEdit: "/catalog/spells/:spellId/edit",
   adminHome: "/admin",
   adminCatalogItems: "/admin/catalog/items",
   adminCatalogSpells: "/admin/catalog/spells",
@@ -47,4 +49,8 @@ export function buildCampaignDashboardPath(
   }
   const search = new URLSearchParams({ partyId });
   return `${path}?${search.toString()}`;
+}
+
+export function buildCatalogSpellEditPath(spellId: string): string {
+  return routes.catalogSpellEdit.replace(":spellId", spellId);
 }

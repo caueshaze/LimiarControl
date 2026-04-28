@@ -12,7 +12,9 @@ import {
   localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
 } from "../../shared/i18n/domainLabels";
+import { SystemSpellCatalogFormSection } from "./SystemSpellCatalogFormSection";
 import {
+  COVER_APPLIES_TO_SAVE_OPTIONS,
   DAMAGE_TYPE_OPTIONS,
   DICE_COUNT_OPTIONS,
   DIE_SIZE_OPTIONS,
@@ -67,434 +69,522 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
   const showUpcastMaxLevelField = Boolean(form.upcastMode);
   const showEffectScalingFields = form.upcastMode === "effect_scaling";
   const showExtraEffectFields = form.upcastMode === "extra_effect";
+  const showBaseEffectInstances = form.upcastMode === "additional_effect_instances";
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Resolution type
-          </span>
-          <select
-            value={form.resolutionType}
-            onChange={(event) =>
-              setForm((c) => ({
-                ...c,
-                resolutionType: event.target.value as ResolutionType | "",
-              }))
-            }
-            className={`${inputClassName} mt-2`}
-          >
-            <option value="">—</option>
-            {RESOLUTION_TYPE_OPTIONS.map((rt) => (
-              <option key={rt} value={rt}>
-                {formatSpellChoiceLabel(rt)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {showSavingThrowFields && (
-          <label className="block">
+      <SystemSpellCatalogFormSection title="Resolução">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Saving throw ability
+              Resolution type
             </span>
             <select
-              value={form.savingThrow}
+              value={form.resolutionType}
               onChange={(event) =>
                 setForm((c) => ({
                   ...c,
-                  savingThrow: event.target.value as SpellSavingThrow | "",
+                  resolutionType: event.target.value as ResolutionType | "",
                 }))
               }
               className={`${inputClassName} mt-2`}
             >
               <option value="">—</option>
-              {SAVING_THROW_OPTIONS.map((st) => (
-                <option key={st} value={st}>
-                  {st}
+              {RESOLUTION_TYPE_OPTIONS.map((rt) => (
+                <option key={rt} value={rt}>
+                  {formatSpellChoiceLabel(rt)}
                 </option>
               ))}
             </select>
           </label>
-        )}
+
+          {showSavingThrowFields && (
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Saving throw ability
+              </span>
+              <select
+                value={form.savingThrow}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    savingThrow: event.target.value as SpellSavingThrow | "",
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {SAVING_THROW_OPTIONS.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
 
         {showSaveSuccessOutcome && (
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              {t("catalog.spells.form.saveSuccessOutcome")}
-            </span>
-            <select
-              value={form.saveSuccessOutcome}
-              onChange={(event) =>
-                setForm((c) => ({
-                  ...c,
-                  saveSuccessOutcome: event.target.value as SaveSuccessOutcome | "",
-                }))
-              }
-              className={`${inputClassName} mt-2`}
-            >
-              <option value="">—</option>
-              {SAVE_SUCCESS_OUTCOME_OPTIONS.map((outcome) => (
-                <option key={outcome} value={outcome}>
-                  {localizeSaveSuccessOutcome(outcome, locale)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {t("catalog.spells.form.saveSuccessOutcome")}
+              </span>
+              <select
+                value={form.saveSuccessOutcome}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    saveSuccessOutcome: event.target.value as SaveSuccessOutcome | "",
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {SAVE_SUCCESS_OUTCOME_OPTIONS.map((outcome) => (
+                  <option key={outcome} value={outcome}>
+                    {localizeSaveSuccessOutcome(outcome, locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block min-w-0">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Cover applies to save</span>
+                <FieldHelpIcon text="Se cover físico aplica à saving throw. &quot;physical&quot; = alvo com cover recebe bônus. &quot;none&quot; = cover não aplica." />
+              </span>
+              <select
+                value={form.coverAppliesToSave}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    coverAppliesToSave: event.target.value as FormState["coverAppliesToSave"],
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {COVER_APPLIES_TO_SAVE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         )}
-      </div>
+
+        {showSavingThrowFields && !showSaveSuccessOutcome && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Cover applies to save</span>
+                <FieldHelpIcon text="Se cover físico aplica à saving throw. &quot;physical&quot; = alvo com cover recebe bônus. &quot;none&quot; = cover não aplica." />
+              </span>
+              <select
+                value={form.coverAppliesToSave}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    coverAppliesToSave: event.target.value as FormState["coverAppliesToSave"],
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {COVER_APPLIES_TO_SAVE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+      </SystemSpellCatalogFormSection>
 
       {showDamageFields && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Dice count</span>
-              <FieldHelpIcon text="Quantidade de dados do efeito base. Ex.: 3 em 3d4+3." />
-            </span>
-            <select
-              value={form.damageDiceCount}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, damageDiceCount: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-            >
-              <option value="">—</option>
-              {DICE_COUNT_OPTIONS.map((count) => (
-                <option key={count} value={count}>
-                  {count}
-                </option>
-              ))}
-            </select>
-          </label>
+        <SystemSpellCatalogFormSection title="Dano">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <label className="block min-w-0">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Dice count</span>
+                <FieldHelpIcon text="Quantidade de dados do efeito base. Ex.: 3 em 3d4+3." />
+              </span>
+              <select
+                value={form.damageDiceCount}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, damageDiceCount: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {DICE_COUNT_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Die</span>
-              <FieldHelpIcon text="Tipo do dado do efeito base. Ex.: d4." />
-            </span>
-            <select
-              value={form.damageDieSize}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, damageDieSize: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-            >
-              <option value="">—</option>
-              {DIE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  d{size}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="block min-w-0">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Die</span>
+                <FieldHelpIcon text="Tipo do dado do efeito base. Ex.: d4." />
+              </span>
+              <select
+                value={form.damageDieSize}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, damageDieSize: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {DIE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    d{size}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Fixed bonus</span>
-              <FieldHelpIcon text="Bônus fixo somado ao efeito base. Ex.: +3 em 3d4+3." />
-            </span>
-            <input
-              type="number"
-              step={1}
-              value={form.damageFixedBonus}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, damageFixedBonus: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder="0"
-            />
-          </label>
+            <label className="block min-w-0">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                <span>Fixed bonus</span>
+                <FieldHelpIcon text="Bônus fixo somado ao efeito base. Ex.: +3 em 3d4+3." />
+              </span>
+              <input
+                type="number"
+                step={1}
+                value={form.damageFixedBonus}
+                onChange={(event) =>
+                  setForm((c) => ({ ...c, damageFixedBonus: event.target.value }))
+                }
+                className={`${inputClassName} mt-2`}
+                placeholder="0"
+              />
+            </label>
 
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Damage type
-            </span>
-            <select
-              value={form.damageType}
-              onChange={(event) =>
-                setForm((c) => ({
-                  ...c,
-                  damageType: event.target.value as SpellDamageType | "",
-                }))
-              }
-              className={`${inputClassName} mt-2`}
-            >
-              <option value="">—</option>
-              {DAMAGE_TYPE_OPTIONS.map((dt) => (
-                <option key={dt} value={dt}>
-                  {dt}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Damage type
+              </span>
+              <select
+                value={form.damageType}
+                onChange={(event) =>
+                  setForm((c) => ({
+                    ...c,
+                    damageType: event.target.value as SpellDamageType | "",
+                  }))
+                }
+                className={`${inputClassName} mt-2`}
+              >
+                <option value="">—</option>
+                {DAMAGE_TYPE_OPTIONS.map((dt) => (
+                  <option key={dt} value={dt}>
+                    {dt}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </SystemSpellCatalogFormSection>
       )}
 
       {showHealFields && (
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Heal dice
-          </span>
-          <input
-            value={form.healDice}
-            onChange={(event) =>
-              setForm((c) => ({ ...c, healDice: event.target.value }))
-            }
-            className={`${inputClassName} mt-2`}
-            placeholder="1d8"
-          />
-        </label>
+        <SystemSpellCatalogFormSection title="Cura">
+          <label className="block min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Heal dice
+            </span>
+            <input
+              value={form.healDice}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, healDice: event.target.value }))
+              }
+              className={`${inputClassName} mt-2`}
+              placeholder="1d8"
+            />
+          </label>
+        </SystemSpellCatalogFormSection>
       )}
 
-      {form.level > 0 ? (
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Upcast mode
-          </span>
-          <select
-            value={form.upcastMode}
-            onChange={(event) =>
-              setForm((c) => ({
-                ...c,
-                upcastMode: event.target.value as UpcastMode | "",
-              }))
-            }
-            className={`${inputClassName} mt-2`}
-          >
-            <option value="">—</option>
-            {UPCAST_MODE_OPTIONS.map((um) => (
-              <option key={um} value={um}>
-                {formatSpellChoiceLabel(um)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-      </div>
-      ) : null}
-
-      {form.level > 0 && showUpcastDiceField ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Upcast dice count</span>
-              <FieldHelpIcon text="Dados por incremento ou instância extra. Ex.: 1 em 1d4+1." />
+      {form.level > 0 && (
+        <SystemSpellCatalogFormSection
+          title="Upcast"
+          collapsible
+        >
+          <label className="block min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Upcast mode
             </span>
             <select
-              value={form.upcastDiceCount}
+              value={form.upcastMode}
               onChange={(event) =>
-                setForm((c) => ({ ...c, upcastDiceCount: event.target.value }))
+                setForm((c) => ({
+                  ...c,
+                  upcastMode: event.target.value as UpcastMode | "",
+                }))
               }
               className={`${inputClassName} mt-2`}
             >
               <option value="">—</option>
-              {DICE_COUNT_OPTIONS.map((count) => (
-                <option key={count} value={count}>
-                  {count}
+              {UPCAST_MODE_OPTIONS.map((um) => (
+                <option key={um} value={um}>
+                  {formatSpellChoiceLabel(um)}
                 </option>
               ))}
             </select>
           </label>
 
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Upcast die</span>
-              <FieldHelpIcon text="Dado do incremento de upcast. Ex.: d4." />
-            </span>
-            <select
-              value={form.upcastDieSize}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, upcastDieSize: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-            >
-              <option value="">—</option>
-              {DIE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  d{size}
-                </option>
-              ))}
-            </select>
-          </label>
+          {showUpcastDiceField && (
+            <div className="grid gap-4 md:grid-cols-3">
+              <label className="block min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  <span>Upcast dice count</span>
+                  <FieldHelpIcon text="Dados por incremento ou instância extra. Ex.: 1 em 1d4+1." />
+                </span>
+                <select
+                  value={form.upcastDiceCount}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastDiceCount: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                >
+                  <option value="">—</option>
+                  {DICE_COUNT_OPTIONS.map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <label className="block">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              <span>Upcast fixed bonus</span>
-              <FieldHelpIcon text="Bônus por incremento. Ex.: +1 por míssil extra." />
-            </span>
-            <input
-              type="number"
-              step={1}
-              value={form.upcastFixedBonus}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, upcastFixedBonus: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder="0"
-            />
-          </label>
-        </div>
-      ) : null}
+              <label className="block min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  <span>Upcast die</span>
+                  <FieldHelpIcon text="Dado do incremento de upcast. Ex.: d4." />
+                </span>
+                <select
+                  value={form.upcastDieSize}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastDieSize: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                >
+                  <option value="">—</option>
+                  {DIE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      d{size}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-      {form.level > 0 && (showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField) ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {showUpcastFlatField ? (
-            <label className="block">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Upcast flat</span>
-                <FieldHelpIcon text="Bônus fixo sem dado; use para escalas numéricas simples." />
-              </span>
-              <input
-                value={form.upcastFlat}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastFlat: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="1"
-              />
-            </label>
-          ) : null}
+              <label className="block min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  <span>Upcast fixed bonus</span>
+                  <FieldHelpIcon text="Bônus por incremento. Ex.: +1 por míssil extra." />
+                </span>
+                <input
+                  type="number"
+                  step={1}
+                  value={form.upcastFixedBonus}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastFixedBonus: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                  placeholder="0"
+                />
+              </label>
+            </div>
+          )}
 
-          {showUpcastPerLevelField ? (
-            <label className="block">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Upcast por nível</span>
-                <FieldHelpIcon text="Incrementos por slot acima do nível base. Normalmente 1." />
-              </span>
-              <input
-                value={form.upcastPerLevel}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastPerLevel: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="1"
-              />
-            </label>
-          ) : null}
+          {showBaseEffectInstances && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  <span>Base effect instances</span>
+                  <FieldHelpIcon text="Número de instâncias no nível base da magia. Ex.: Magic Missile tem 3." />
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.upcastBaseEffectInstances}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastBaseEffectInstances: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                  placeholder="3"
+                />
+              </label>
+            </div>
+          )}
 
-          {showUpcastMaxLevelField ? (
-            <label className="block">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Nível máximo do slot</span>
-                <FieldHelpIcon text="Limite de escala; vazio usa qualquer slot válido." />
-              </span>
-              <input
-                value={form.upcastMaxLevel}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastMaxLevel: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="9"
-              />
-            </label>
-          ) : null}
-        </div>
-      ) : null}
+          {(showUpcastFlatField || showUpcastPerLevelField || showUpcastMaxLevelField) && (
+            <div className="grid gap-4 md:grid-cols-3">
+              {showUpcastFlatField ? (
+                <label className="block min-w-0">
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <span>Upcast flat</span>
+                    <FieldHelpIcon text="Bônus fixo sem dado; use para escalas numéricas simples." />
+                  </span>
+                  <input
+                    value={form.upcastFlat}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastFlat: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="1"
+                  />
+                </label>
+              ) : null}
 
-      {form.level > 0 && showEffectScalingFields && (
-        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-400/70">
-            Effect scaling — o que escala ao upcasting
-          </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Scaling key <span className="text-red-400">*</span>
-              </span>
-              <input
-                value={form.upcastScalingKey}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastScalingKey: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="armor_class_bonus"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Scaling summary <span className="text-red-400">*</span>
-              </span>
-              <input
-                value={form.upcastScalingSummary}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastScalingSummary: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="+1 to AC per slot level above 1st"
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Scaling editorial
-            </span>
-            <input
-              value={form.upcastScalingEditorial}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, upcastScalingEditorial: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder="Optional editorial note about the scaling behavior"
-            />
-          </label>
-        </div>
+              {showUpcastPerLevelField ? (
+                <label className="block min-w-0">
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <span>Upcast por nível</span>
+                    <FieldHelpIcon text="Incrementos por slot acima do nível base. Normalmente 1." />
+                  </span>
+                  <input
+                    value={form.upcastPerLevel}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastPerLevel: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="1"
+                  />
+                </label>
+              ) : null}
+
+              {showUpcastMaxLevelField ? (
+                <label className="block min-w-0">
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <span>Nível máximo do slot</span>
+                    <FieldHelpIcon text="Limite de escala; vazio usa qualquer slot válido." />
+                  </span>
+                  <input
+                    value={form.upcastMaxLevel}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastMaxLevel: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="9"
+                  />
+                </label>
+              ) : null}
+            </div>
+          )}
+
+          {showEffectScalingFields && (
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-400/70">
+                Effect scaling — o que escala ao upcasting
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Scaling key <span className="text-red-400">*</span>
+                  </span>
+                  <input
+                    value={form.upcastScalingKey}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastScalingKey: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="armor_class_bonus"
+                  />
+                </label>
+                <label className="block min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Scaling summary <span className="text-red-400">*</span>
+                  </span>
+                  <input
+                    value={form.upcastScalingSummary}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastScalingSummary: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="+1 to AC per slot level above 1st"
+                  />
+                </label>
+              </div>
+              <label className="block min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Scaling editorial
+                </span>
+                <input
+                  value={form.upcastScalingEditorial}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastScalingEditorial: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                  placeholder="Optional editorial note about the scaling behavior"
+                />
+              </label>
+            </div>
+          )}
+
+          {showExtraEffectFields && (
+            <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4 space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-400/70">
+                Extra effect — o que é destravado ao upcasting
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Unlock key <span className="text-red-400">*</span>
+                  </span>
+                  <input
+                    value={form.upcastUnlockKey}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastUnlockKey: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="additional_beam"
+                  />
+                </label>
+                <label className="block min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Unlock summary <span className="text-red-400">*</span>
+                  </span>
+                  <input
+                    value={form.upcastUnlockSummary}
+                    onChange={(event) =>
+                      setForm((c) => ({ ...c, upcastUnlockSummary: event.target.value }))
+                    }
+                    className={`${inputClassName} mt-2`}
+                    placeholder="Create one additional beam per slot level above 5th"
+                  />
+                </label>
+              </div>
+              <label className="block min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Unlock editorial
+                </span>
+                <input
+                  value={form.upcastUnlockEditorial}
+                  onChange={(event) =>
+                    setForm((c) => ({ ...c, upcastUnlockEditorial: event.target.value }))
+                  }
+                  className={`${inputClassName} mt-2`}
+                  placeholder="Optional editorial note about the unlocked effect"
+                />
+              </label>
+            </div>
+          )}
+        </SystemSpellCatalogFormSection>
       )}
 
-      {form.level > 0 && showExtraEffectFields && (
-        <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4 space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-400/70">
-            Extra effect — o que é destravado ao upcasting
-          </p>
+      {form.level === 0 && (
+        <SystemSpellCatalogFormSection
+          title="Cantrip Scaling"
+          collapsible
+        >
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Unlock key <span className="text-red-400">*</span>
-              </span>
-              <input
-                value={form.upcastUnlockKey}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastUnlockKey: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="additional_beam"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Unlock summary <span className="text-red-400">*</span>
-              </span>
-              <input
-                value={form.upcastUnlockSummary}
-                onChange={(event) =>
-                  setForm((c) => ({ ...c, upcastUnlockSummary: event.target.value }))
-                }
-                className={`${inputClassName} mt-2`}
-                placeholder="Create one additional beam per slot level above 5th"
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Unlock editorial
-            </span>
-            <input
-              value={form.upcastUnlockEditorial}
-              onChange={(event) =>
-                setForm((c) => ({ ...c, upcastUnlockEditorial: event.target.value }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder="Optional editorial note about the unlocked effect"
-            />
-          </label>
-        </div>
-      )}
-
-      {form.level === 0 ? (
-        <div className="space-y-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
+            <label className="block min-w-0">
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Scaling mode
               </span>
@@ -524,13 +614,13 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                 [11, "cantripLevel11DiceCount", "cantripLevel11DieSize", "cantripLevel11FixedBonus"],
                 [17, "cantripLevel17DiceCount", "cantripLevel17DieSize", "cantripLevel17FixedBonus"],
               ].map(([level, countKey, dieKey, bonusKey]) => (
-                <div key={level} className="grid gap-4 md:grid-cols-[90px_repeat(3,minmax(0,1fr))]">
+                <div key={level} className="grid gap-4 md:grid-cols-[80px_1fr_1fr_1fr]">
                   <div className="flex items-end pb-3 text-xs font-semibold text-slate-300">
                     Nível {level}
                   </div>
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Damage dice count
+                      Dice count
                     </span>
                     <select
                       value={form[countKey as keyof FormState] as string}
@@ -547,9 +637,9 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       ))}
                     </select>
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Damage die
+                      Die size
                     </span>
                     <select
                       value={form[dieKey as keyof FormState] as string}
@@ -566,7 +656,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       ))}
                     </select>
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                       Fixed bonus
                     </span>
@@ -585,8 +675,8 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               ))}
             </div>
           ) : null}
-        </div>
-      ) : null}
+        </SystemSpellCatalogFormSection>
+      )}
     </>
   );
 };

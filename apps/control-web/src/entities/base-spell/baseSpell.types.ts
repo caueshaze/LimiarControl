@@ -273,6 +273,7 @@ export type BaseSpell = {
   resolutionType?: ResolutionType | null;
   savingThrow?: SpellSavingThrow | null;
   saveSuccessOutcome?: SaveSuccessOutcome | null;
+  coverAppliesToSave?: "physical" | "none" | null;
 
   // Effect
   damageDice?: string | null;
@@ -348,6 +349,7 @@ export type BaseSpellWritePayload = {
   resolutionType?: ResolutionType | null;
   savingThrow?: SpellSavingThrow | null;
   saveSuccessOutcome?: SaveSuccessOutcome | null;
+  coverAppliesToSave?: "physical" | "none" | null;
   damageDice?: string | null;
   damageType?: SpellDamageType | null;
   healDice?: string | null;

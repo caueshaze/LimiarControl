@@ -72,6 +72,7 @@ export type FormState = {
   resolutionType: ResolutionType | "";
   savingThrow: SpellSavingThrow | "";
   saveSuccessOutcome: SaveSuccessOutcome | "";
+  coverAppliesToSave: "" | "physical" | "none";
   damageDice: string;
   damageDiceCount: string;
   damageDieSize: string;
@@ -86,6 +87,7 @@ export type FormState = {
   upcastFlat: string;
   upcastPerLevel: string;
   upcastMaxLevel: string;
+  upcastBaseEffectInstances: string;
   upcastScalingKey: string;
   upcastScalingSummary: string;
   upcastScalingEditorial: string;
@@ -166,6 +168,7 @@ export const CLASS_OPTIONS = [
   "Wizard",
 ] as const;
 export const COMPONENT_OPTIONS = ["V", "S", "M"] as const;
+export const COVER_APPLIES_TO_SAVE_OPTIONS = ["physical", "none"] as const;
 
 export const SCHOOL_COLORS: Record<string, string> = {
   abjuration: "text-blue-300 border-blue-400/30 bg-blue-400/10",

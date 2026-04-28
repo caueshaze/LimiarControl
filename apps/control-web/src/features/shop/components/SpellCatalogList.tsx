@@ -1,17 +1,13 @@
 import type { BaseSpell } from "../../../entities/base-spell";
-import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { SpellCatalogCard } from "./SpellCatalogCard";
 
 type Props = {
   spells: BaseSpell[];
-  onUpdate?: (
-    spellId: string,
-    payload: BaseSpellUpdatePayload,
-  ) => boolean | Promise<boolean>;
+  canEdit?: boolean;
 };
 
-export const SpellCatalogList = ({ spells, onUpdate }: Props) => {
+export const SpellCatalogList = ({ spells, canEdit = true }: Props) => {
   const { t } = useLocale();
 
   if (spells.length === 0) {
@@ -23,9 +19,9 @@ export const SpellCatalogList = ({ spells, onUpdate }: Props) => {
   }
 
   return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {spells.map((spell) => (
-        <SpellCatalogCard key={spell.id} spell={spell} onUpdate={onUpdate} />
+        <SpellCatalogCard key={spell.id} spell={spell} canEdit={canEdit} />
       ))}
     </div>
   );
