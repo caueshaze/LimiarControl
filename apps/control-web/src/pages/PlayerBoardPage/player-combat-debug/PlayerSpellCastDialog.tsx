@@ -616,6 +616,7 @@ export const PlayerSpellCastDialog = ({
     } catch (err: any) {
       setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao conjurar magia"));
       setTargetingMode(isAreaSpell ? "area_target_select" : "single_target_select");
+      setAttackMode("choose");
     } finally {
       setLoading(false);
     }
@@ -746,6 +747,7 @@ export const PlayerSpellCastDialog = ({
           <SpellCastDialogActions
             attackMode={attackMode}
             canSubmitArea={canSubmitArea}
+            hasError={!!error || mapPreviewModel?.status === "invalid"}
             isAreaSpell={isAreaSpell}
             loading={loading}
             onAttackModeChange={setAttackMode}
@@ -753,6 +755,7 @@ export const PlayerSpellCastDialog = ({
             onClearArea={() => {
               clearAreaSelection();
               setTargetingMode("area_target_select");
+              setError(null);
             }}
             onShowAreaHint={isAreaSpell && targetingMode === "area_target_select"}
             onSubmitCast={(payload) => {

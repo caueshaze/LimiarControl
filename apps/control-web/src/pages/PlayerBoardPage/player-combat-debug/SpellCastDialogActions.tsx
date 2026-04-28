@@ -3,6 +3,7 @@ import { D20_VALUES } from "./spellCastHelpers";
 type Props = {
   attackMode: "choose" | "manual" | "virtual";
   canSubmitArea: boolean;
+  hasError?: boolean;
   isAreaSpell: boolean;
   loading: boolean;
   onAttackModeChange: (mode: "choose" | "manual" | "virtual") => void;
@@ -19,6 +20,7 @@ type Props = {
 export const SpellCastDialogActions = ({
   attackMode,
   canSubmitArea,
+  hasError = false,
   isAreaSpell,
   loading,
   onAttackModeChange,
@@ -33,42 +35,62 @@ export const SpellCastDialogActions = ({
 }: Props) => (
   <>
     {spellMode === "spell_attack" && !isAreaSpell && attackMode === "choose" ? (
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="mt-5 flex flex-col gap-3">
+        {!hasError ? (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={spellOutOfRange || submitDisabled}
+              onClick={() => onAttackModeChange("virtual")}
+              className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500 disabled:opacity-40"
+            >
+              Virtual
+            </button>
+            <button
+              type="button"
+              disabled={spellOutOfRange || submitDisabled}
+              onClick={() => onAttackModeChange("manual")}
+              className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+            >
+              Manual
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
-          disabled={spellOutOfRange || submitDisabled}
-          onClick={() => onAttackModeChange("virtual")}
-          className="rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-fuchsia-500 disabled:opacity-40"
+          onClick={onCancel}
+          className={`rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400 hover:bg-slate-800 transition-colors ${hasError ? "w-full" : ""}`}
         >
-          Virtual
-        </button>
-        <button
-          type="button"
-          disabled={spellOutOfRange || submitDisabled}
-          onClick={() => onAttackModeChange("manual")}
-          className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
-        >
-          Manual
+          Cancelar
         </button>
       </div>
     ) : null}
 
     {spellMode === "spell_attack" && !isAreaSpell && attackMode === "virtual" ? (
       <div className="mt-5 flex gap-3">
-        <button
-          type="button"
-          disabled={loading || submitDisabled}
-          onClick={() => onSubmitCast({ roll_source: "system" })}
-          className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-        >
-          {loading ? "..." : "Rolar ataque magico"}
-        </button>
+        {!hasError ? (
+          <button
+            type="button"
+            disabled={loading || submitDisabled}
+            onClick={() => onSubmitCast({ roll_source: "system" })}
+            className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
+          >
+            {loading ? "..." : "Rolar ataque magico"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onAttackModeChange("choose")}
-          className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
+          className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400 transition-colors hover:bg-slate-800"
         >
           Voltar
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400 transition-colors hover:bg-slate-800"
+        >
+          Cancelar
         </button>
       </div>
     ) : null}
@@ -89,26 +111,37 @@ export const SpellCastDialogActions = ({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => onAttackModeChange("choose")}
-          className="rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400"
-        >
-          Voltar
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => onAttackModeChange("choose")}
+            className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400 transition-colors hover:bg-slate-800"
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-full border border-slate-700 px-4 py-3 text-xs text-slate-400 transition-colors hover:bg-slate-800"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
     ) : null}
 
     {spellMode !== "spell_attack" ? (
       <div className="mt-5 flex gap-3">
-        <button
-          type="button"
-          disabled={isAreaSpell ? !canSubmitArea || loading : loading || spellOutOfRange || submitDisabled}
-          onClick={() => onSubmitCast()}
-          className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
-        >
-          {loading ? "..." : "Conjurar"}
-        </button>
+        {!hasError ? (
+          <button
+            type="button"
+            disabled={isAreaSpell ? !canSubmitArea || loading : loading || spellOutOfRange || submitDisabled}
+            onClick={() => onSubmitCast()}
+            className="flex-1 rounded-full bg-fuchsia-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white disabled:opacity-50"
+          >
+            {loading ? "..." : "Conjurar"}
+          </button>
+        ) : null}
         {isAreaSpell ? (
           <button
             type="button"

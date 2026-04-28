@@ -14,6 +14,7 @@ import {
   formatTargetList,
   resolveCoverContext,
 } from "./spellMapPreviewPresentation";
+import { localizeDamageType } from "../../../shared/i18n/domainLabels";
 import type { SpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 
@@ -106,10 +107,12 @@ export const SpellCastDialogHeader = ({
 }: Props) => {
   const flowDamageType =
     spellMode !== "heal" && spellMode !== "utility" && previewModel.damageType
-      ? previewModel.damageType
+      ? localizeDamageType(previewModel.damageType, "pt-BR")
       : null;
   const flowSaveAbility =
-    previewModel.requiresSavingThrow && previewModel.saveAbility ? previewModel.saveAbility : null;
+    previewModel.requiresSavingThrow && previewModel.saveAbility 
+      ? previewModel.saveAbility.substring(0, 3).toUpperCase() 
+      : null;
   const flowAreaShape = isAreaSpell && previewModel.areaShape ? previewModel.areaShape : null;
   const showInstanceCount =
     previewModel.effectInstanceCount > 1 && previewModel.source === "resolved";
@@ -128,62 +131,98 @@ export const SpellCastDialogHeader = ({
 
   return (
     <>
-      <p className="text-xs uppercase tracking-[0.3em] text-fuchsia-200">Magia</p>
-      <h2 className="mt-3 text-2xl font-semibold text-white">{spell.name}</h2>
-      <p className="mt-2 text-sm text-slate-300">
-        {isAreaSpell
-          ? `Origem: ${actorDisplayName}${anchorCell ? ` · Ancora: (${anchorCell.x}, ${anchorCell.y})` : ""}`
-          : (
-            <>
-              Alvo: <span className="font-semibold text-white">{targetDisplayName ?? "Nenhum"}</span>
-            </>
-          )}
-      </p>
-      {spell.sourceType === "magic_item" && spell.sourceItemName ? (
-        <p className="mt-1 text-sm text-slate-400">
-          Item: <span className="font-semibold text-white">{spell.sourceItemName}</span>
-          {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
-            ? ` · ${spell.chargesCurrent}/${spell.chargesMax}`
-            : ""}
+      <div className="mb-6 border-b border-fuchsia-900/30 pb-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-fuchsia-200/70">
+          Magia
         </p>
-      ) : null}
-      <p className="mt-1 text-sm text-slate-400">
-        Fluxo: {resolutionLabel}
-        {flowDamageType ? ` · ${flowDamageType}` : ""}
-        {flowSaveAbility ? ` · save ${flowSaveAbility}` : ""}
-        {flowAreaShape ? ` · ${flowAreaShape}` : ""}
-      </p>
-      <p
-        className="mt-2 text-xs text-slate-300"
+        <h2 className="mt-1 text-3xl font-semibold text-white">{spell.name}</h2>
+        {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-fuchsia-400/80">
+            Nível Fixo do Item: {spell.fixedCastLevel}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-y-4 gap-x-6">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Alvo
+          </p>
+          <p className="mt-1 text-sm font-semibold text-white">
+            {isAreaSpell
+              ? `Origem: ${actorDisplayName}${anchorCell ? ` · Ancora: (${anchorCell.x}, ${anchorCell.y})` : ""}`
+              : targetDisplayName ?? "Nenhum"}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Custo
+          </p>
+          <p className="mt-1 text-sm text-slate-300">
+            {actionCostLabel}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Fluxo
+          </p>
+          <p className="mt-1 text-sm text-slate-300">
+            {resolutionLabel}
+            {flowDamageType ? ` · ${flowDamageType}` : ""}
+            {flowSaveAbility ? ` · save ${flowSaveAbility}` : ""}
+            {flowAreaShape ? ` · ${flowAreaShape}` : ""}
+          </p>
+        </div>
+
+        {spell.sourceType === "magic_item" && spell.sourceItemName ? (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Item de Origem
+            </p>
+            <p className="mt-1 text-sm text-slate-300">
+              {spell.sourceItemName}
+              {typeof spell.chargesCurrent === "number" && typeof spell.chargesMax === "number"
+                ? ` (${spell.chargesCurrent}/${spell.chargesMax} cargas)`
+                : ""}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        className="mb-6"
         data-testid="spell-tactical-preview"
         data-preview-source={previewModel.source}
       >
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">
-          Preview
-        </span>
-        <span className="ml-2 text-slate-200">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">
+          Mecânica Básica
+        </p>
+        <p className="mt-1 text-sm text-slate-200">
           {previewModel.damagePreview ? `Dano ${previewModel.damagePreview}` : "Sem dano direto"}
-        </span>
-        {showInstanceCount ? (
-          <span className="ml-2 text-fuchsia-100">
-            · {previewModel.effectInstanceCount} instâncias
-            {previewModel.effectInstanceDice ? ` (${previewModel.effectInstanceDice})` : ""}
-          </span>
-        ) : null}
-        {areaSizeLabel ? <span className="ml-2 text-slate-300">· {areaSizeLabel}</span> : null}
-        {rangeLabel && !isAreaSpell ? (
-          <span className="ml-2 text-slate-300">· alcance {rangeLabel}</span>
-        ) : null}
-      </p>
+          {showInstanceCount ? (
+            <span className="text-fuchsia-300">
+              {` · ${previewModel.effectInstanceCount} instâncias`}
+              {previewModel.effectInstanceDice ? ` (${previewModel.effectInstanceDice})` : ""}
+            </span>
+          ) : null}
+          {areaSizeLabel ? <span className="text-slate-400"> · {areaSizeLabel}</span> : null}
+          {rangeLabel && !isAreaSpell ? (
+            <span className="text-slate-400"> · alcance {rangeLabel}</span>
+          ) : null}
+        </p>
+      </div>
+
       {mapPreviewModel ? (
         <div
-          className={`mt-4 rounded-2xl border px-4 py-3 ${MAP_PREVIEW_STYLES[mapPreviewModel.status]}`}
+          className={`mb-6 rounded-2xl border px-5 py-4 ${MAP_PREVIEW_STYLES[mapPreviewModel.status]}`}
           data-testid="spell-map-preview"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.18em]">
             {isAreaSpell
               ? formatAreaOriginPreviewLabel(mapPreviewModel)
-              : `Preview tático: ${formatSpellMapPreviewStatus(mapPreviewModel.status)}`}
+              : `Visão tática: ${formatSpellMapPreviewStatus(mapPreviewModel.status)}`}
           </p>
           {!isAreaSpell && mapPreviewReason ? (
             <p className="mt-1 text-sm">Motivo: {mapPreviewReason}</p>
@@ -240,14 +279,15 @@ export const SpellCastDialogHeader = ({
           ) : null}
         </div>
       ) : null}
-      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-fuchsia-200/80">{actionCostLabel}</p>
-      {spell.sourceType === "magic_item" && spell.fixedCastLevel ? (
-        <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">
-          Item cast level: {spell.fixedCastLevel}
-        </p>
+
+      {!isAreaSpell ? (
+        <div className="mb-6">
+          <RangeStatusBadge preview={targetPreview} />
+        </div>
       ) : null}
+
       {spell.level > 0 && spell.sourceType !== "magic_item" ? (
-        <label className="mt-4 block">
+        <label className="mb-6 block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
             Slot level
           </span>
@@ -264,8 +304,9 @@ export const SpellCastDialogHeader = ({
           </select>
         </label>
       ) : null}
+
       {shouldShowConcentrationControl ? (
-        <div className="mt-4">
+        <div className="mb-6">
           <ConcentrationSaveControl
             disabled={loading}
             manualValue={concentrationManualRoll}
@@ -275,13 +316,9 @@ export const SpellCastDialogHeader = ({
           />
         </div>
       ) : null}
-      {!isAreaSpell ? (
-        <div className="mt-4">
-          <RangeStatusBadge preview={targetPreview} />
-        </div>
-      ) : null}
+
       {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
           {error}
         </div>
       ) : null}

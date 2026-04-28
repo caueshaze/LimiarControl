@@ -27,6 +27,7 @@ from app.schemas.session import (
     RollRequestActivityEvent,
     RollResolvedActivityEvent,
     ShopActivityEvent,
+    SpellCastRejectedActivityEvent,
 )
 from .shop import _format_cp_label, _price_to_cp
 
@@ -158,6 +159,25 @@ def get_session_activity(
                 displayName=actor_name,
                 action="started" if command.command_type == "start_combat" else "ended",
                 note=payload.get("note") if isinstance(payload.get("note"), str) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "spell_cast_rejected":
+            events.append(SpellCastRejectedActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                actorRefId=payload.get("actorRefId") if isinstance(payload.get("actorRefId"), str) else None,
+                actorDisplayName=payload.get("actorDisplayName") if isinstance(payload.get("actorDisplayName"), str) else None,
+                spellId=payload.get("spellId") if isinstance(payload.get("spellId"), str) else None,
+                spellName=str(payload.get("spellName") or "Spell"),
+                targetRefId=payload.get("targetRefId") if isinstance(payload.get("targetRefId"), str) else None,
+                targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                instanceIndex=payload.get("instanceIndex") if isinstance(payload.get("instanceIndex"), int) else None,
+                areaOrigin=payload.get("areaOrigin") if isinstance(payload.get("areaOrigin"), dict) else None,
+                reason=str(payload.get("reason") or "invalid_target"),
+                message=str(payload.get("message") or "Spell cast rejected."),
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

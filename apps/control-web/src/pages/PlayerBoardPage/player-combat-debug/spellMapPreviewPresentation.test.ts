@@ -12,8 +12,8 @@ import {
 
 describe("spellMapPreviewPresentation", () => {
   it("formata valid/invalid/partial/unknown", () => {
-    expect(formatSpellMapPreviewStatus("valid")).toBe("válido");
-    expect(formatSpellMapPreviewStatus("invalid")).toBe("inválido");
+    expect(formatSpellMapPreviewStatus("valid")).toBe("livre");
+    expect(formatSpellMapPreviewStatus("invalid")).toBe("bloqueado");
     expect(formatSpellMapPreviewStatus("partial")).toBe("parcial");
     expect(formatSpellMapPreviewStatus("unknown")).toBe("indisponível");
   });
@@ -108,8 +108,10 @@ describe("resolveCoverContext", () => {
 });
 
 describe("formatAreaOriginPreviewLabel", () => {
-  it("valid sem reason → Origem da área: válida", () => {
-    expect(formatAreaOriginPreviewLabel({ status: "valid", reason: null })).toBe("Origem da área: válida");
+  it("valid sem reason → Origem da área: livre", () => {
+    expect(formatAreaOriginPreviewLabel({ status: "valid", reason: null })).toBe(
+      "Origem da área: livre",
+    );
   });
 
   it("invalid + out_of_range → Origem da área: fora do alcance", () => {
@@ -136,8 +138,10 @@ describe("formatAreaOriginPreviewLabel", () => {
     expect(formatAreaOriginPreviewLabel({ status: "unknown", reason: null })).toBe("Origem da área: dados insuficientes");
   });
 
-  it("invalid sem reason conhecido → Origem da área: inválida", () => {
-    expect(formatAreaOriginPreviewLabel({ status: "invalid", reason: null })).toBe("Origem da área: inválida");
+  it("invalid sem reason conhecido → Origem da área: bloqueada", () => {
+    expect(formatAreaOriginPreviewLabel({ status: "invalid", reason: null })).toBe(
+      "Origem da área: bloqueada",
+    );
   });
 });
 

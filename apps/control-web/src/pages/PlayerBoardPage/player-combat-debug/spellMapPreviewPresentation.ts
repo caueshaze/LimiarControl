@@ -5,9 +5,9 @@ const UNKNOWN_MESSAGE = "Dados de posição insuficientes para validar o preview
 export const formatSpellMapPreviewStatus = (status: SpellMapPreviewStatus): string => {
   switch (status) {
     case "valid":
-      return "válido";
+      return "livre";
     case "invalid":
-      return "inválido";
+      return "bloqueado";
     case "partial":
       return "parcial";
     default:
@@ -58,9 +58,9 @@ export const formatAreaOriginPreviewLabel = (
   }
   switch (model.status) {
     case "valid":
-      return "Origem da área: válida";
+      return "Origem da área: livre";
     case "invalid":
-      return "Origem da área: inválida";
+      return "Origem da área: bloqueada";
     case "unknown":
       return "Origem da área: dados insuficientes";
     default:

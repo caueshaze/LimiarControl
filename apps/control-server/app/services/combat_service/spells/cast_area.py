@@ -96,6 +96,20 @@ class CastAreaMixin:
         )
         targeting_result = get_combat_targeting_service(state.use_map).validate(targeting_intent, state)
         if not targeting_result.is_valid:
+            cls._record_spell_cast_rejected_activity(
+                db,
+                session_id=session_id,
+                actor_user_id=actor_user_id,
+                actor_ref_id=attacker["ref_id"],
+                actor_display_name=attacker.get("display_name") or attacker["ref_id"],
+                spell_context=spell_context,
+                reason=cls._map_spell_rejection_reason(
+                    targeting_result.diagnostics.primary_failure()
+                    if targeting_result.diagnostics
+                    else None
+                ),
+                area_origin=req.anchor_cell.model_dump() if req.anchor_cell is not None else None,
+            )
             raise CombatServiceError(
                 targeting_result.failure_reason or "Area targeting could not be resolved.",
                 400,
