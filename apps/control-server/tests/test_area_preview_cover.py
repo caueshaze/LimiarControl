@@ -23,9 +23,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.integrations.limiar_map_client_types import (
-    LimiarMapClientError,
-    LimiarMapAreaTargetingResponse,
     LimiarMapAreaCell,
+    LimiarMapAreaTargetingResponse,
+    LimiarMapBatchTargetingResponse,
+    LimiarMapBatchTargetingResult,
+    LimiarMapClientError,
     LimiarMapTargetingResponse,
 )
 from app.services.combat import CombatService
@@ -72,6 +74,7 @@ class GetAreaPerTargetCoverStandaloneTests(unittest.TestCase):
 
     def test_returns_cover_per_target(self):
         client = MagicMock()
+        client.validate_targets_batch.side_effect = LimiarMapClientError("no batch", kind="network")
         client.validate_single_target.side_effect = [
             self._targeting_response("none"),
             self._targeting_response("half"),
@@ -88,6 +91,7 @@ class GetAreaPerTargetCoverStandaloneTests(unittest.TestCase):
 
     def test_error_for_one_target_falls_back_to_none(self):
         client = MagicMock()
+        client.validate_targets_batch.side_effect = LimiarMapClientError("no batch", kind="network")
         client.validate_single_target.side_effect = [
             self._targeting_response("half"),
             LimiarMapClientError("timeout", kind="timeout"),
@@ -104,6 +108,7 @@ class GetAreaPerTargetCoverStandaloneTests(unittest.TestCase):
 
     def test_null_cover_response_stored_as_none(self):
         client = MagicMock()
+        client.validate_targets_batch.side_effect = LimiarMapClientError("no batch", kind="network")
         client.validate_single_target.return_value = self._targeting_response(None)
         result = get_area_per_target_cover(
             client=client,
@@ -116,6 +121,7 @@ class GetAreaPerTargetCoverStandaloneTests(unittest.TestCase):
 
     def test_called_without_range_or_sight_checks(self):
         client = MagicMock()
+        client.validate_targets_batch.side_effect = LimiarMapClientError("no batch", kind="network")
         client.validate_single_target.return_value = self._targeting_response(None)
         get_area_per_target_cover(
             client=client,
@@ -355,6 +361,7 @@ class AreaPreviewCoverMetadataTests(TestCombatServiceBase):
             ]
         )
         mock_client.preview_area_targeting.return_value = area_preview
+        mock_client.validate_targets_batch.side_effect = LimiarMapClientError("no batch", kind="network")
         mock_client.validate_single_target.side_effect = cover_side_effects
 
         with patch("app.services.combat.CombatService.get_state", return_value=self.state), \

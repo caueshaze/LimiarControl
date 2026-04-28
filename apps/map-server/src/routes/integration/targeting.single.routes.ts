@@ -7,7 +7,7 @@ import {
   hasLineOfEffect,
   nextEncounterVersion
 } from "@limiarmap/tactical-engine";
-import { singleTargetRequestSchema } from "@limiarmap/shared-contracts";
+import { batchTargetingRequestSchema, singleTargetRequestSchema } from "@limiarmap/shared-contracts";
 import type { InMemoryEncounterRepository } from "../../modules/encounters/encounter-repository";
 import type { BroadcastAdapter } from "../../modules/realtime/broadcast";
 import { broadcastAuthoritativeEvent } from "../../modules/realtime/broadcast";
@@ -215,6 +215,57 @@ export function registerSingleTargetingRoutes(
         targetTokenId: targetToken.id,
         distanceCells: distance,
         cover
+      });
+    }
+  );
+
+  app.post(
+    "/integration/sessions/:sessionId/targeting/batch",
+    async (request, reply) => {
+      const { sessionId } = request.params as { sessionId: string };
+      const encounter = repository.getEncounter(sessionId);
+      if (!encounter) {
+        return err(reply, 404, "session_not_found", "Session not found");
+      }
+
+      const parse = batchTargetingRequestSchema.safeParse(request.body);
+      if (!parse.success) {
+        return reply.status(400).send({
+          message: "Invalid request body",
+          errors: parse.error.errors
+        });
+      }
+
+      const { actionId, combatantId, targetCombatantIds } = parse.data;
+
+      const sourceToken = encounter.tokens.find(
+        (token) => token.combatantId === combatantId
+      );
+
+      const results = targetCombatantIds.map((targetCombatantId) => {
+        if (!sourceToken) {
+          return { targetCombatantId, cover: null };
+        }
+        const targetToken = encounter.tokens.find(
+          (token) => token.combatantId === targetCombatantId
+        );
+        if (!targetToken) {
+          return { targetCombatantId, cover: null };
+        }
+        const cover = evaluateCover(
+          encounter.obstacles,
+          sourceToken.position,
+          targetToken.position,
+          encounter.edgeObstacles
+        );
+        return { targetCombatantId, cover: cover ?? null };
+      });
+
+      return reply.status(200).send({
+        sessionId,
+        actionId,
+        version: encounter.combatState.version,
+        results
       });
     }
   );

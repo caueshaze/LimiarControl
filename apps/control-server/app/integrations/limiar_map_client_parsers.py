@@ -5,6 +5,8 @@ from typing import Any
 from .limiar_map_client_types import (
     LimiarMapAreaCell,
     LimiarMapAreaTargetingResponse,
+    LimiarMapBatchTargetingResponse,
+    LimiarMapBatchTargetingResult,
     LimiarMapClientError,
     LimiarMapMovementCell,
     LimiarMapMovementResponse,
@@ -188,6 +190,63 @@ def parse_area_targeting_response(
         affected_cells=tuple(affected_cells),
         affected_token_ids=tuple(affected_token_ids),
         affected_combatant_ids=tuple(affected_combatant_ids),
+    )
+
+
+def parse_batch_targeting_response(
+    payload: dict[str, Any],
+) -> LimiarMapBatchTargetingResponse:
+    session_id = payload.get("sessionId")
+    action_id = payload.get("actionId")
+    version = payload.get("version")
+    raw_results = payload.get("results")
+
+    if not isinstance(session_id, str) or not session_id.strip():
+        raise LimiarMapClientError(
+            "LimiarMap batch targeting response is missing sessionId",
+            kind="payload",
+        )
+    if not isinstance(action_id, str) or not action_id.strip():
+        raise LimiarMapClientError(
+            "LimiarMap batch targeting response is missing actionId",
+            kind="payload",
+        )
+    if not isinstance(version, int):
+        raise LimiarMapClientError(
+            "LimiarMap batch targeting response is missing version",
+            kind="payload",
+        )
+    if not isinstance(raw_results, list):
+        raise LimiarMapClientError(
+            "LimiarMap batch targeting response is missing results",
+            kind="payload",
+        )
+
+    results: list[LimiarMapBatchTargetingResult] = []
+    for item in raw_results:
+        if not isinstance(item, dict):
+            raise LimiarMapClientError(
+                "LimiarMap batch targeting response has an invalid result entry",
+                kind="payload",
+            )
+        target_combatant_id = item.get("targetCombatantId")
+        if not isinstance(target_combatant_id, str):
+            raise LimiarMapClientError(
+                "LimiarMap batch targeting result is missing targetCombatantId",
+                kind="payload",
+            )
+        cover_raw = item.get("cover")
+        cover = cover_raw if isinstance(cover_raw, str) else None
+        results.append(LimiarMapBatchTargetingResult(
+            target_combatant_id=target_combatant_id,
+            cover=cover,
+        ))
+
+    return LimiarMapBatchTargetingResponse(
+        session_id=session_id,
+        action_id=action_id,
+        version=version,
+        results=tuple(results),
     )
 
 

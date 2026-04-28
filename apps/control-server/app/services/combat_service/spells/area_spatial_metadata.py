@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from app.integrations.limiar_map_client_types import LimiarMapClientError
 
-from ..cover_modifiers import resolve_cover_save_dc, should_cover_apply_to_save
+from ..cover_modifiers import resolve_cover_save_dc
 
 if TYPE_CHECKING:
     from app.integrations.limiar_map_client import LimiarMapClient
@@ -33,14 +33,84 @@ def get_area_per_target_cover(
     fails). Failures are isolated per-target so that one bad lookup never
     blocks the others.
 
+    Prefers a single batch call when the client supports it; falls back to
+    per-target individual calls otherwise or on batch failure.
+
     Callers are responsible for skipping this function when the map is
     unavailable or cover does not apply to the save.
-
-    TODO: Replace N individual calls with a batch endpoint once the map
-    API exposes one (follow-up: Batch area target spatial metadata lookup).
     """
+    if not target_ref_ids:
+        return {}
+
+    unique_ref_ids = list(dict.fromkeys(target_ref_ids))
+
+    if hasattr(client, "validate_targets_batch"):
+        try:
+            return _cover_via_batch(
+                client=client,
+                session_id=session_id,
+                action_id=action_id,
+                actor_ref_id=actor_ref_id,
+                unique_ref_ids=unique_ref_ids,
+            )
+        except LimiarMapClientError as exc:
+            logger.warning(
+                "Batch cover lookup failed for session_id=%s (%s); "
+                "falling back to per-target individual lookups",
+                session_id,
+                exc,
+            )
+
+    return _cover_via_individual(
+        client=client,
+        session_id=session_id,
+        action_id=action_id,
+        actor_ref_id=actor_ref_id,
+        unique_ref_ids=unique_ref_ids,
+    )
+
+
+def _cover_via_batch(
+    *,
+    client: "LimiarMapClient",
+    session_id: str,
+    action_id: str,
+    actor_ref_id: str,
+    unique_ref_ids: list[str],
+) -> dict[str, str | None]:
+    response = client.validate_targets_batch(
+        session_id=session_id,
+        action_id=action_id,
+        combatant_id=actor_ref_id,
+        target_combatant_ids=unique_ref_ids,
+    )
     result: dict[str, str | None] = {}
-    for target_ref_id in target_ref_ids:
+    for item in response.results:
+        result[item.target_combatant_id] = item.cover
+
+    for ref_id in unique_ref_ids:
+        if ref_id not in result:
+            logger.warning(
+                "Batch cover response missing target_ref_id=%s session_id=%s; "
+                "using None (base DC)",
+                ref_id,
+                session_id,
+            )
+            result[ref_id] = None
+
+    return result
+
+
+def _cover_via_individual(
+    *,
+    client: "LimiarMapClient",
+    session_id: str,
+    action_id: str,
+    actor_ref_id: str,
+    unique_ref_ids: list[str],
+) -> dict[str, str | None]:
+    result: dict[str, str | None] = {}
+    for target_ref_id in unique_ref_ids:
         try:
             response = client.validate_single_target(
                 session_id=session_id,

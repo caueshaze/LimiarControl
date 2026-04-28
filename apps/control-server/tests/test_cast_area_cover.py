@@ -22,7 +22,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from _combat_test_shared import TestCombatServiceBase
-from app.integrations.limiar_map_client_types import LimiarMapClientError, LimiarMapTargetingResponse
+from app.integrations.limiar_map_client_types import (
+    LimiarMapBatchTargetingResponse,
+    LimiarMapBatchTargetingResult,
+    LimiarMapClientError,
+    LimiarMapTargetingResponse,
+)
 from app.models.combat import CombatPhase
 from app.models.session_state import SessionState
 from app.schemas.combat import CombatCastSpellRequest, CombatGridCell
@@ -34,6 +39,28 @@ from app.services.combat_service.targeting_result import SpatialMetadata, Target
 # ---------------------------------------------------------------------------
 # Unit tests: _get_area_per_target_cover
 # ---------------------------------------------------------------------------
+
+def _batch_unavailable() -> MagicMock:
+    """Return a side_effect that makes validate_targets_batch raise LimiarMapClientError.
+
+    Use this on mock clients in tests that exercise the individual-fallback path,
+    so the new batch-preferring logic still falls back to validate_single_target.
+    """
+    return MagicMock(side_effect=LimiarMapClientError("batch not available", kind="network"))
+
+
+def _batch_response(*results: tuple[str, str | None]) -> LimiarMapBatchTargetingResponse:
+    """Build a LimiarMapBatchTargetingResponse for test use."""
+    return LimiarMapBatchTargetingResponse(
+        session_id="s1",
+        action_id="a1",
+        version=1,
+        results=tuple(
+            LimiarMapBatchTargetingResult(target_combatant_id=ref_id, cover=cover)
+            for ref_id, cover in results
+        ),
+    )
+
 
 class GetAreaPerTargetCoverTests(unittest.TestCase):
     """Unit tests for the _get_area_per_target_cover helper."""
@@ -86,6 +113,7 @@ class GetAreaPerTargetCoverTests(unittest.TestCase):
     def test_returns_cover_per_target_from_map(self, mock_settings):
         mock_settings.limiar_map_enabled = True
         mock_client = MagicMock()
+        mock_client.validate_targets_batch = _batch_unavailable()
         mock_client.validate_single_target.side_effect = [
             self._targeting_response("none"),
             self._targeting_response("half"),
@@ -105,6 +133,7 @@ class GetAreaPerTargetCoverTests(unittest.TestCase):
     def test_map_error_for_one_target_falls_back_to_none(self, mock_settings):
         mock_settings.limiar_map_enabled = True
         mock_client = MagicMock()
+        mock_client.validate_targets_batch = _batch_unavailable()
         mock_client.validate_single_target.side_effect = [
             self._targeting_response("half"),
             LimiarMapClientError("timeout", kind="timeout"),
@@ -124,6 +153,7 @@ class GetAreaPerTargetCoverTests(unittest.TestCase):
     def test_response_cover_none_stored_as_none(self, mock_settings):
         mock_settings.limiar_map_enabled = True
         mock_client = MagicMock()
+        mock_client.validate_targets_batch = _batch_unavailable()
         mock_client.validate_single_target.return_value = self._targeting_response(None)
         with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
             result = CombatService._get_area_per_target_cover(
@@ -139,6 +169,7 @@ class GetAreaPerTargetCoverTests(unittest.TestCase):
     def test_validate_single_target_called_without_range_or_sight_checks(self, mock_settings):
         mock_settings.limiar_map_enabled = True
         mock_client = MagicMock()
+        mock_client.validate_targets_batch = _batch_unavailable()
         mock_client.validate_single_target.return_value = self._targeting_response("half")
         with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
             CombatService._get_area_per_target_cover(
@@ -152,6 +183,140 @@ class GetAreaPerTargetCoverTests(unittest.TestCase):
         self.assertIsNone(call_kwargs["range_cells"])
         self.assertFalse(call_kwargs["requires_sight"])
         self.assertFalse(call_kwargs["requires_effect"])
+
+
+class GetAreaPerTargetCoverBatchTests(unittest.TestCase):
+    """Unit tests for the batch path in get_area_per_target_cover."""
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_batch_called_once_for_all_targets(self, mock_settings):
+        """When batch is available, validate_targets_batch is called once and
+        validate_single_target is never called."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch.return_value = _batch_response(
+            ("t1", "none"), ("t2", "half"), ("t3", "threeQuarters")
+        )
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1", "t2", "t3"],
+                use_map=True,
+            )
+        mock_client.validate_targets_batch.assert_called_once()
+        mock_client.validate_single_target.assert_not_called()
+        self.assertEqual(result, {"t1": "none", "t2": "half", "t3": "threeQuarters"})
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_batch_result_missing_target_filled_with_none(self, mock_settings):
+        """If a target ref_id is absent from the batch response, it gets None."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch.return_value = _batch_response(
+            ("t1", "half"),
+            # t2 deliberately omitted from results
+        )
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1", "t2"],
+                use_map=True,
+            )
+        self.assertEqual(result["t1"], "half")
+        self.assertIsNone(result["t2"])
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_batch_failure_falls_back_to_individual(self, mock_settings):
+        """A LimiarMapClientError from batch triggers fallback to individual calls."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch.side_effect = LimiarMapClientError(
+            "service unavailable", kind="http", status_code=503
+        )
+        mock_client.validate_single_target.side_effect = [
+            LimiarMapTargetingResponse(
+                is_valid=True, reason=None, session_id="s1", action_id="a1",
+                version=1, source_token_id=None, target_token_id=None, cover="half",
+            ),
+            LimiarMapTargetingResponse(
+                is_valid=True, reason=None, session_id="s1", action_id="a1",
+                version=1, source_token_id=None, target_token_id=None, cover="none",
+            ),
+        ]
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1", "t2"],
+                use_map=True,
+            )
+        mock_client.validate_targets_batch.assert_called_once()
+        self.assertEqual(mock_client.validate_single_target.call_count, 2)
+        self.assertEqual(result, {"t1": "half", "t2": "none"})
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_duplicate_target_ref_ids_are_deduped(self, mock_settings):
+        """Duplicate target_ref_ids must be deduped before the batch/individual call."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch.return_value = _batch_response(
+            ("t1", "half"),
+        )
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1", "t1", "t1"],
+                use_map=True,
+            )
+        batch_call = mock_client.validate_targets_batch.call_args.kwargs
+        self.assertEqual(batch_call["target_combatant_ids"], ["t1"],
+                         "Batch must receive deduplicated list")
+        self.assertEqual(result["t1"], "half")
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_duplicate_deduplication_with_individual_fallback(self, mock_settings):
+        """Dedupe also applies when falling back to individual calls."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch = _batch_unavailable()
+        mock_client.validate_single_target.return_value = LimiarMapTargetingResponse(
+            is_valid=True, reason=None, session_id="s1", action_id="a1",
+            version=1, source_token_id=None, target_token_id=None, cover="half",
+        )
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1", "t1", "t1"],
+                use_map=True,
+            )
+        self.assertEqual(mock_client.validate_single_target.call_count, 1,
+                         "Individual fallback must call validate_single_target only once per unique ref_id")
+        self.assertEqual(result["t1"], "half")
+
+    @patch("app.services.combat_service.spells.cast_area.settings")
+    def test_batch_cover_null_stored_as_none(self, mock_settings):
+        """cover=null from batch (token not found) is stored as None."""
+        mock_settings.limiar_map_enabled = True
+        mock_client = MagicMock()
+        mock_client.validate_targets_batch.return_value = _batch_response(("t1", None))
+        with patch.object(CombatService, "_build_limiar_map_client", return_value=mock_client):
+            result = CombatService._get_area_per_target_cover(
+                session_id="s1",
+                action_id="a1",
+                actor_ref_id="actor",
+                target_ref_ids=["t1"],
+                use_map=True,
+            )
+        self.assertIsNone(result["t1"])
 
 
 # ---------------------------------------------------------------------------
