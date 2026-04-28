@@ -108,6 +108,7 @@ describe("spellCatalogForm", () => {
       damageType: "Lightning",
       savingThrow: "DEX",
       saveSuccessOutcome: "half_damage",
+      coverAppliesToSave: "physical",
       requiresTargetSight: false,
       requiresTargetEffect: true,
       requiresPointSight: true,
@@ -141,6 +142,7 @@ describe("spellCatalogForm", () => {
         damageType: "Lightning",
         savingThrow: "DEX",
         saveSuccessOutcome: "half_damage",
+        coverAppliesToSave: "physical",
         requiresTargetSight: false,
         requiresTargetEffect: true,
         requiresPointSight: true,
@@ -171,6 +173,7 @@ describe("spellCatalogForm", () => {
         maxTargets: 2,
         resolutionType: "heal",
         healDice: "2d4",
+        coverAppliesToSave: "none",
         requiresTargetSight: null,
         requiresTargetEffect: true,
         requiresPointSight: null,
@@ -190,6 +193,7 @@ describe("spellCatalogForm", () => {
     expect(state.maxTargets).toBe("2");
     expect(state.resolutionType).toBe("heal");
     expect(state.healDice).toBe("2d4");
+    expect(state.coverAppliesToSave).toBe("none");
     expect(state.requiresTargetSight).toBeNull();
     expect(state.requiresTargetEffect).toBe(true);
     expect(state.requiresPointSight).toBeNull();
@@ -210,6 +214,7 @@ describe("spellCatalogForm", () => {
           maxTargets: 2,
           resolutionType: "heal",
           healDice: "2d4",
+          coverAppliesToSave: "none",
           requiresTargetSight: null,
           requiresTargetEffect: true,
           requiresPointSight: null,
@@ -229,6 +234,7 @@ describe("spellCatalogForm", () => {
     expect(payload.targetType).toBe("ranged");
     expect(payload.maxTargets).toBe(2);
     expect(payload.resolutionType).toBe("heal");
+    expect(payload.coverAppliesToSave).toBeNull();
     expect(payload.damageDice).toBeNull();
     expect(payload.healDice).toBe("2d4");
     expect(payload.requiresTargetSight).toBeNull();
@@ -361,6 +367,79 @@ describe("spellCatalogForm", () => {
     expect(payload.cantripScaling).toBeNull();
     expect(payload.upcast?.mode).toBe("additional_effect_instances");
     expect(payload.upcast?.dice).toBe("1d4+1");
+  });
+
+  it("preserves coverAppliesToSave as physical in payload", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      resolutionType: "damage",
+      savingThrow: "DEX",
+      saveSuccessOutcome: "half_damage",
+      coverAppliesToSave: "physical",
+      damageDiceCount: "8",
+      damageDieSize: "6",
+      damageType: "Fire",
+    });
+
+    expect(payload.coverAppliesToSave).toBe("physical");
+  });
+
+  it("preserves coverAppliesToSave as none in payload", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      resolutionType: "control",
+      savingThrow: "WIS",
+      coverAppliesToSave: "none",
+    });
+
+    expect(payload.coverAppliesToSave).toBe("none");
+  });
+
+  it("does not default missing coverAppliesToSave to physical", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createEmptySpellEditorState(),
+      canonicalKey: "acid_splash",
+      nameEn: "Acid Splash",
+      descriptionEn: "A bubble of acid.",
+      resolutionType: "damage",
+      savingThrow: "DEX",
+      damageDiceCount: "1",
+      damageDieSize: "6",
+      damageType: "Acid",
+    });
+
+    expect(payload.coverAppliesToSave).toBeNull();
+  });
+
+  it("hydrates coverAppliesToSave as physical from existing spell", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        canonicalKey: "fireball",
+        resolutionType: "damage",
+        savingThrow: "DEX",
+        saveSuccessOutcome: "half_damage",
+        coverAppliesToSave: "physical",
+        damageDice: "8d6",
+        damageType: "Fire",
+      }),
+    );
+
+    expect(state.coverAppliesToSave).toBe("physical");
+  });
+
+  it("hydrates coverAppliesToSave as none from existing spell", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        canonicalKey: "acid_splash",
+        resolutionType: "damage",
+        savingThrow: "DEX",
+        coverAppliesToSave: "none",
+        damageDice: "1d6",
+        damageType: "Acid",
+      }),
+    );
+
+    expect(state.coverAppliesToSave).toBe("none");
   });
 
   it("keeps canonical key normalization deterministic", () => {

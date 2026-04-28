@@ -7,6 +7,7 @@ import {
 } from "../../../shared/i18n/domainLabels";
 import { SpellCatalogField } from "./SpellCatalogEditorControls";
 import {
+  SPELL_COVER_APPLIES_TO_SAVE_OPTIONS,
   SPELL_DICE_COUNT_OPTIONS,
   SPELL_DAMAGE_TYPE_OPTIONS,
   SPELL_DIE_SIZE_OPTIONS,
@@ -106,6 +107,56 @@ export const SpellCatalogResolutionFields = ({
               {SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS.map((outcome) => (
                 <option key={outcome} value={outcome}>
                   {localizeSaveSuccessOutcome(outcome, locale)}
+                </option>
+              ))}
+              </select>
+          </SpellCatalogField>
+
+          <SpellCatalogField
+            label={t("catalog.spells.form.coverAppliesToSave")}
+            help={t("catalog.spells.form.coverAppliesToSaveHelp")}
+          >
+            <select
+              value={state.coverAppliesToSave}
+              onChange={(event) =>
+                setState((current) => ({
+                  ...current,
+                  coverAppliesToSave: event.target.value as SpellCatalogEditorState["coverAppliesToSave"],
+                }))
+              }
+              className={fieldClassName}
+            >
+              <option value="">{selectPlaceholder}</option>
+              {SPELL_COVER_APPLIES_TO_SAVE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {localizeSpellAdminValue(option, locale)}
+                </option>
+              ))}
+            </select>
+          </SpellCatalogField>
+        </div>
+      ) : null}
+
+      {showSavingThrowFields && !showSaveSuccessOutcome ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SpellCatalogField
+            label={t("catalog.spells.form.coverAppliesToSave")}
+            help={t("catalog.spells.form.coverAppliesToSaveHelp")}
+          >
+            <select
+              value={state.coverAppliesToSave}
+              onChange={(event) =>
+                setState((current) => ({
+                  ...current,
+                  coverAppliesToSave: event.target.value as SpellCatalogEditorState["coverAppliesToSave"],
+                }))
+              }
+              className={fieldClassName}
+            >
+              <option value="">{selectPlaceholder}</option>
+              {SPELL_COVER_APPLIES_TO_SAVE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>

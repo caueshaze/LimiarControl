@@ -119,6 +119,7 @@ const SAVE_SUCCESS_OUTCOME_LABELS: Record<SaveSuccessOutcome, LabelEntry> = {
 
 const SPELL_ADMIN_VALUE_LABELS: Record<string, LabelEntry> = {
   saving_throw: label("Saving throw", "Teste de resistência"),
+  physical: label("Physical", "Física"),
 };
 
 const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {

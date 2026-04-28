@@ -145,6 +145,8 @@ export const catalogEnUSDictionary = {
   "catalog.spells.form.descriptionEn": "Description in English",
   "catalog.spells.form.descriptionPt": "Description in Portuguese",
   "catalog.spells.form.saveSuccessOutcome": "Save success outcome",
+  "catalog.spells.form.coverAppliesToSave": "Cover on saving throw",
+  "catalog.spells.form.coverAppliesToSaveHelp": "Defines whether physical cover reduces the effective saving throw DC. Use \"physical\" for spells where cover should help the target on the save; use \"none\" when cover does not apply.",
   "catalog.spells.form.targetingRequirements": "Targeting requirements",
   "catalog.spells.form.requiresTargetSight": "Needs target line of sight",
   "catalog.spells.form.requiresTargetEffect": "Needs target line of effect",

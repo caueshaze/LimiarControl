@@ -92,6 +92,7 @@ export const SPELL_SAVING_THROW_OPTIONS = [
 ] as const;
 
 export const SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS = ["none", "half_damage"] as const;
+export const SPELL_COVER_APPLIES_TO_SAVE_OPTIONS = ["none", "physical"] as const;
 export const SPELL_DICE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 export const SPELL_DIE_SIZE_OPTIONS = [4, 6, 8, 10, 12] as const;
 
@@ -103,6 +104,7 @@ const SPELL_COMPONENT_OPTION_SET = new Set<string>(SPELL_COMPONENT_OPTIONS);
 const SPELL_DAMAGE_TYPE_OPTION_SET = new Set<string>(SPELL_DAMAGE_TYPE_OPTIONS);
 const SPELL_SAVING_THROW_OPTION_SET = new Set<string>(SPELL_SAVING_THROW_OPTIONS);
 const SPELL_SAVE_SUCCESS_OUTCOME_OPTION_SET = new Set<string>(SPELL_SAVE_SUCCESS_OUTCOME_OPTIONS);
+const SPELL_COVER_APPLIES_TO_SAVE_OPTION_SET = new Set<string>(SPELL_COVER_APPLIES_TO_SAVE_OPTIONS);
 
 const CASTING_TIME_LABELS: Record<CastingTimeType, string> = {
   action: "1 action",
@@ -423,6 +425,9 @@ export const buildSpellUpdatePayload = (
     state.resolutionType === "damage" && state.savingThrow
       ? ((toNullableText(state.saveSuccessOutcome) as SaveSuccessOutcome | null) ?? null)
       : null,
+  coverAppliesToSave: supportsSavingThrow(state.resolutionType)
+    ? ((toNullableText(state.coverAppliesToSave) as "none" | "physical" | null) ?? null)
+    : null,
   requiresTargetSight: toNullableBoolean(state.requiresTargetSight),
   requiresTargetEffect: toNullableBoolean(state.requiresTargetEffect),
   requiresPointSight: toNullableBoolean(state.requiresPointSight),
@@ -478,6 +483,7 @@ export type SpellCatalogEditorState = {
   healDice: string;
   savingThrow: string;
   saveSuccessOutcome: string;
+  coverAppliesToSave: "" | "none" | "physical";
   radiusMeters: string;
   lengthMeters: string;
   sideMeters: string;
@@ -660,6 +666,10 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
     spell.saveSuccessOutcome,
     SPELL_SAVE_SUCCESS_OUTCOME_OPTION_SET,
   ),
+  coverAppliesToSave: normalizeKnownSpellValue(
+    spell.coverAppliesToSave,
+    SPELL_COVER_APPLIES_TO_SAVE_OPTION_SET,
+  ) as SpellCatalogEditorState["coverAppliesToSave"],
   requiresTargetSight: spell.requiresTargetSight ?? null,
   requiresTargetEffect: spell.requiresTargetEffect ?? null,
   requiresPointSight: spell.requiresPointSight ?? null,
@@ -717,6 +727,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   healDice: "",
   savingThrow: "",
   saveSuccessOutcome: "",
+  coverAppliesToSave: "",
   requiresTargetSight: null,
   requiresTargetEffect: null,
   requiresPointSight: null,
