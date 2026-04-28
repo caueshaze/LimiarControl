@@ -145,6 +145,8 @@ export const catalogPtBRDictionary = {
   "catalog.spells.form.descriptionEn": "Descrição em inglês",
   "catalog.spells.form.descriptionPt": "Descrição em português",
   "catalog.spells.form.saveSuccessOutcome": "Resultado do save bem-sucedido",
+  "catalog.spells.form.coverAppliesToSave": "Cobertura no saving throw",
+  "catalog.spells.form.coverAppliesToSaveHelp": "Define se cobertura física reduz a DC efetiva do saving throw. Use \"physical\" para magias em que cobertura deve ajudar o alvo no save; use \"none\" quando cobertura não se aplica.",
   "catalog.spells.form.targetingRequirements": "Requisitos de alvo",
   "catalog.spells.form.requiresTargetSight": "Exige linha de visão no alvo",
   "catalog.spells.form.requiresTargetEffect": "Exige linha de efeito no alvo",
