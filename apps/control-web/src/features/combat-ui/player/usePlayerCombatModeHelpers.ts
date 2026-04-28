@@ -13,6 +13,7 @@ import {
   resolveCombatSpellActionCost
 } from "../spellAutomation";
 import type { CombatSpellOption } from "./usePlayerCombatMode.types";
+import { buildSpellSlotSummaryEntries } from "../../../shared/ui/SpellSlotSummary";
 
 export const normalizeSavingThrow = (
   value?: string | null
@@ -50,11 +51,15 @@ export const buildSpellOptions = (
 ): CombatSpellOption[] => {
   const catalog = getBaseSpells(campaignId);
   const spellcasting = playerSheet?.spellcasting;
+  const slotSummary = buildSpellSlotSummaryEntries(spellcasting?.slots);
   const availableSlotLevels = Object.entries(spellcasting?.slots ?? {})
     .map(([level, slot]) => ({ level: Number(level), slot }))
     .filter(
       ({ level, slot }) =>
-        Number.isInteger(level) && level > 0 && Boolean(slot?.max)
+        Number.isInteger(level) &&
+        level > 0 &&
+        Boolean(slot?.max) &&
+        Math.max(0, Number(slot?.max ?? 0) - Number(slot?.used ?? 0)) > 0
     )
     .map(({ level }) => level)
     .sort((left, right) => left - right);
@@ -131,6 +136,10 @@ export const buildSpellOptions = (
                     (slotLevel) => slotLevel >= spell.level
                   )
                 : [],
+            slotSummary:
+              spell.level > 0
+                ? slotSummary.filter((entry) => entry.level >= spell.level)
+                : slotSummary,
             upcast: catalogSpell?.upcast ?? null
           };
         })

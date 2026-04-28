@@ -1,5 +1,6 @@
 import { ConcentrationSaveControl } from "../../../features/combat-ui/components/ConcentrationSaveControl";
 import { RangeStatusBadge } from "../../../features/combat-ui/components/RangeStatusBadge";
+import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
 import type { TargetingPreviewResult } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import type { CombatSpellMode } from "../../../shared/api/combatRepo";
 import { getInstanceLabel } from "./InstanceTargetSelector";
@@ -128,6 +129,11 @@ export const SpellCastDialogHeader = ({
   const coverLabel = mapPreviewModel?.cover
     ? formatSpellCoverPreview(mapPreviewModel.cover, coverContext)
     : null;
+  const selectedSlotSummary =
+    selectedSlotLevel != null
+      ? spell.slotSummary?.find((entry) => entry.level === selectedSlotLevel) ?? null
+      : null;
+  const hasSlotCost = spell.sourceType !== "magic_item" && spell.level > 0;
 
   return (
     <>
@@ -190,6 +196,35 @@ export const SpellCastDialogHeader = ({
           </div>
         ) : null}
       </div>
+
+      {spell.sourceType !== "magic_item" ? (
+        <div className="mb-6 rounded-2xl border border-white/8 bg-white/4 px-4 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Recursos
+          </p>
+          {spell.level === 0 ? (
+            <p className="mt-2 text-sm font-semibold text-emerald-100">Truque - sem custo de slot</p>
+          ) : hasSlotCost && spell.availableSlotLevels.length === 0 ? (
+            <p className="mt-2 text-sm font-semibold text-rose-200">Sem slots disponíveis</p>
+          ) : (
+            <>
+              {selectedSlotSummary ? (
+                <p className="mt-2 text-sm text-slate-200">
+                  Slot selecionado: {selectedSlotSummary.level}º ({selectedSlotSummary.remaining}/{selectedSlotSummary.max} restantes)
+                </p>
+              ) : null}
+              <div className="mt-3">
+                <SpellSlotSummary
+                  compact
+                  entries={spell.slotSummary}
+                  emptyLabel="Sem slots disponíveis"
+                  highlightLevel={selectedSlotLevel}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
 
       <div
         className="mb-6"

@@ -201,6 +201,102 @@ describe("buildSpellOptions", () => {
         actionCost: "action",
         damageType: "Force",
         availableSlotLevels: [1],
+        slotSummary: [{ level: 1, max: 2, used: 0, remaining: 2 }],
+      }),
+    ]);
+  });
+
+  it("marca magia de slot como indisponível quando não restam slots válidos", () => {
+    seedSpellCatalogCache([
+      {
+        campaignSpellId: null,
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "evocation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test spell.",
+        resolutionType: "damage",
+        damageType: "Force",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Wizard"],
+      },
+      {
+        campaignSpellId: null,
+        canonicalKey: "ray_of_frost",
+        name: "Ray of Frost",
+        level: 0,
+        school: "evocation",
+        castingTimeType: "action",
+        castingTime: "1 action",
+        range: "18 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Test cantrip.",
+        resolutionType: "damage",
+        damageType: "Cold",
+        savingThrow: null,
+        saveSuccessOutcome: null,
+        healDice: null,
+        upcast: null,
+        classes: ["Wizard"],
+      },
+    ]);
+
+    const options = buildSpellOptions({
+      level: 3,
+      spellcasting: {
+        ability: "intelligence",
+        mode: "known",
+        slots: { 1: { max: 2, used: 2 } },
+        spells: [
+          {
+            id: "spell-1",
+            name: "Magic Missile",
+            canonicalKey: "magic_missile",
+            campaignSpellId: null,
+            level: 1,
+            school: "evocation",
+            prepared: true,
+            notes: "",
+          },
+          {
+            id: "spell-2",
+            name: "Ray of Frost",
+            canonicalKey: "ray_of_frost",
+            campaignSpellId: null,
+            level: 0,
+            school: "evocation",
+            prepared: true,
+            notes: "",
+          },
+        ],
+      },
+    } as CharacterSheet);
+
+    expect(options).toEqual([
+      expect.objectContaining({
+        id: "spell-2",
+        level: 0,
+        availableSlotLevels: [],
+        slotSummary: [{ level: 1, max: 2, used: 2, remaining: 0 }],
+      }),
+      expect.objectContaining({
+        id: "spell-1",
+        level: 1,
+        availableSlotLevels: [],
+        slotSummary: [{ level: 1, max: 2, used: 2, remaining: 0 }],
       }),
     ]);
   });

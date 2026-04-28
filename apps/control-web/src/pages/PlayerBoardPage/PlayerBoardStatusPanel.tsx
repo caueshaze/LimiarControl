@@ -1,4 +1,6 @@
+import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -13,6 +15,7 @@ import {
 type Props = {
   combatActive: boolean;
   pendingRoll: PendingRoll | null;
+  playerSheet?: CharacterSheet | null;
   playerStatus: PlayerBoardStatusSummary | null;
   restState: "exploration" | "short_rest" | "long_rest";
   usingHitDie: boolean;
@@ -22,6 +25,7 @@ type Props = {
 export const PlayerBoardStatusPanel = ({
   combatActive,
   pendingRoll,
+  playerSheet,
   playerStatus,
   restState,
   usingHitDie,
@@ -112,6 +116,16 @@ export const PlayerBoardStatusPanel = ({
               playerStatus={playerStatus}
             />
           </div>
+
+          {playerSheet?.spellcasting ? (
+            <div className="mt-5 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+              <SpellSlotSummary
+                slots={playerSheet.spellcasting.slots}
+                title={t("playerBoard.spellResourcesTitle")}
+                emptyLabel={t("playerBoard.noSpellSlots")}
+              />
+            </div>
+          ) : null}
 
           <RestCard
             playerStatus={playerStatus}

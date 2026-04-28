@@ -39,6 +39,8 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.statusPanelTitle": "Base de combate",
   "playerBoard.statusPanelHeading": "Resumo do aventureiro",
   "playerBoard.statusPanelDescription": "Nivel, vida, XP e defesa ficam visiveis aqui para sustentar as proximas etapas de combate e rolagem.",
+  "playerBoard.spellResourcesTitle": "Slots de magia",
+  "playerBoard.noSpellSlots": "Sem slots de magia ativos.",
   "playerBoard.currentHpLabel": "Vida atual",
   "playerBoard.tempHpLabel": "Temp HP",
   "playerBoard.xpProgressLabel": "XP",

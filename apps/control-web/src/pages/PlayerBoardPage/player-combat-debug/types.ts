@@ -57,6 +57,7 @@ export type CombatSpellOption = {
   areaShape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
   rangeMeters?: number | null;
   availableSlotLevels: number[];
+  slotSummary?: Array<{ level: number; max: number; used: number; remaining: number }>;
   upcast?: SpellUpcast | null;
   cantripScaling?: SpellCantripScaling | null;
   characterLevel?: number | null;

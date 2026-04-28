@@ -159,6 +159,53 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Dados de posição insuficientes para validar o preview no mapa");
   });
 
+  it("mostra resumo de slots e destaca quando a magia não tem slot disponível", () => {
+    const availableMarkup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        selectedSlotLevel={2}
+        previewModel={buildPreviewModel({})}
+        spell={{
+          ...baseSpell,
+          slotSummary: [
+            { level: 1, max: 4, used: 2, remaining: 2 },
+            { level: 2, max: 3, used: 2, remaining: 1 },
+          ],
+        }}
+      />,
+    );
+
+    expect(availableMarkup).toContain("Slot selecionado: 2º");
+    expect(availableMarkup).toContain("1º: 2/4");
+    expect(availableMarkup).toContain("2º: 1/3");
+
+    const unavailableMarkup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        previewModel={buildPreviewModel({})}
+        spell={{
+          ...baseSpell,
+          availableSlotLevels: [],
+          slotSummary: [{ level: 1, max: 4, used: 4, remaining: 0 }],
+        }}
+      />,
+    );
+
+    expect(unavailableMarkup).toContain("Sem slots disponíveis");
+  });
+
+  it("mostra cantrip como sem custo de slot", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        previewModel={buildPreviewModel({})}
+        spell={{ ...baseSpell, level: 0, availableSlotLevels: [] }}
+      />,
+    );
+
+    expect(markup).toContain("Truque - sem custo de slot");
+  });
+
   it("renders Magic Missile slot 3 preview from resolved context (5 instâncias, 5d4+5)", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader
