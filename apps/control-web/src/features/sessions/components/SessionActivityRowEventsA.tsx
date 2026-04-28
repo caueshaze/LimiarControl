@@ -120,6 +120,21 @@ export const SessionActivityCombatRow = ({ event, actor }: Props) => {
   );
 };
 
+export const SessionActivitySpellCastRejectedRow = ({ event }: Props) => {
+  if (event.type !== "spell_cast_rejected") return null;
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-950/30 px-4 py-3">
+      <span className="mt-0.5 text-base">🚫</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white">{event.message}</p>
+      </div>
+      <span className="shrink-0 text-xs font-mono text-slate-500">
+        {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+      </span>
+    </div>
+  );
+};
+
 export const SessionActivityRestRow = ({ event, actor }: Props) => {
   const { t } = useLocale();
   if (event.type !== "rest") return null;

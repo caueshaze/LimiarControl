@@ -7,6 +7,7 @@ import {
   SessionActivityRollRequestRow,
   SessionActivityRollRow,
   SessionActivityShopRow,
+  SessionActivitySpellCastRejectedRow,
 } from "./SessionActivityRowEventsA";
 import {
   SessionActivityConsumableRow,
@@ -36,6 +37,10 @@ export const SessionActivityRow = ({ event, isGm = false }: { event: ActivityEve
 
   if (event.type === "combat") {
     return <SessionActivityCombatRow event={event} actor={actor} />;
+  }
+
+  if (event.type === "spell_cast_rejected") {
+    return <SessionActivitySpellCastRejectedRow event={event} actor={actor} />;
   }
 
   if (event.type === "rest") {

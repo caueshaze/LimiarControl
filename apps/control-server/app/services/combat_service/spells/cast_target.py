@@ -4,8 +4,12 @@ import logging
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import select
 
+from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
+from app.models.session import Session as CampaignSession
+from app.models.session_command_event import SessionCommandEvent
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
@@ -17,7 +21,7 @@ from app.services.magic_item_effects import (
 from ..combat_targeting import get_combat_targeting_service
 from ..cover_modifiers import resolve_cover_modifier
 from ..exceptions import CombatServiceError
-from ..targeting_diagnostics import NO_LINE_OF_EFFECT, NO_LINE_OF_SIGHT, NOT_VISIBLE, TARGET_OUT_OF_REACH
+from ..targeting_diagnostics import INVALID_TARGET_TYPE, MAP_UNREACHABLE, NO_LINE_OF_EFFECT, NO_LINE_OF_SIGHT, NOT_VISIBLE, TARGET_OUT_OF_REACH
 from ..targeting_intent import SpellCastIntent
 from ..targeting_result import TargetingResult
 from .cast_target_commit import CastTargetCommitMixin
@@ -42,6 +46,115 @@ def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
 
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
+    @classmethod
+    def _map_spell_rejection_reason(cls, reason: str | None) -> str:
+        if reason == TARGET_OUT_OF_REACH:
+            return "out_of_range"
+        if reason == NO_LINE_OF_SIGHT:
+            return "blocked_line_of_sight"
+        if reason == NO_LINE_OF_EFFECT:
+            return "blocked_line_of_effect"
+        if reason in (INVALID_TARGET_TYPE, "target_not_found"):
+            return "invalid_target"
+        if reason == MAP_UNREACHABLE:
+            return "missing_map_data"
+        return "invalid_target"
+
+    @classmethod
+    def _build_spell_rejection_message(
+        cls,
+        *,
+        actor_name: str,
+        spell_name: str,
+        reason: str,
+        target_name: str | None = None,
+        instance_index: int | None = None,
+        is_area: bool = False,
+    ) -> str:
+        subject = f"{actor_name} tentou conjurar {spell_name}"
+        if instance_index is not None:
+            subject = f"{subject}, mas Feixe {instance_index}"
+            if target_name:
+                subject = f"{subject} contra {target_name}"
+        elif is_area:
+            subject = f"{subject}, mas a origem da area"
+        elif target_name:
+            subject = f"{subject} em {target_name}"
+
+        if reason == "blocked_line_of_sight":
+            return f"{subject} estava sem linha de visao."
+        if reason == "blocked_line_of_effect":
+            return f"{subject} estava sem linha de efeito."
+        if reason == "out_of_range":
+            return f"{subject} estava fora do alcance."
+        if reason == "missing_map_data":
+            return f"{subject} nao pode ser resolvido por falta de dados do mapa."
+        return f"{subject} tinha um alvo invalido."
+
+    @classmethod
+    def _record_spell_cast_rejected_activity(
+        cls,
+        db,
+        *,
+        session_id: str,
+        actor_user_id: str,
+        actor_ref_id: str,
+        actor_display_name: str,
+        spell_context: dict,
+        reason: str,
+        target_ref_id: str | None = None,
+        target_display_name: str | None = None,
+        instance_index: int | None = None,
+        area_origin: dict | None = None,
+    ) -> None:
+        session_entry = db.exec(
+            select(CampaignSession).where(CampaignSession.id == session_id)
+        ).first()
+        if not session_entry:
+            return
+        member = db.exec(
+            select(CampaignMember).where(
+                CampaignMember.campaign_id == session_entry.campaign_id,
+                CampaignMember.user_id == actor_user_id,
+            )
+        ).first()
+        if not member or not member.id:
+            return
+
+        message = cls._build_spell_rejection_message(
+            actor_name=actor_display_name,
+            spell_name=str(spell_context.get("spell_name") or "magia"),
+            reason=reason,
+            target_name=target_display_name,
+            instance_index=instance_index,
+            is_area=area_origin is not None,
+        )
+        payload = {
+            "eventType": "spell_cast_rejected",
+            "actorRefId": actor_ref_id,
+            "actorDisplayName": actor_display_name,
+            "spellId": spell_context.get("spell_canonical_key"),
+            "spellName": spell_context.get("spell_name"),
+            "targetRefId": target_ref_id,
+            "targetDisplayName": target_display_name,
+            "instanceIndex": instance_index,
+            "areaOrigin": area_origin,
+            "reason": reason,
+            "message": message,
+        }
+        db.add(
+            SessionCommandEvent(
+                id=str(uuid4()),
+                session_id=session_entry.id,
+                user_id=actor_user_id,
+                member_id=member.id,
+                actor_name=actor_display_name,
+                command_type="spell_cast_rejected",
+                payload_json=payload,
+            )
+        )
+        db.commit()
+
     @classmethod
     def _validate_cast_prerequisites(
         cls,
@@ -226,6 +339,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     def _validate_instance_spatial_targets(
         cls,
         *,
+        db,
         state,
         attacker: dict,
         spell_context: dict,
@@ -275,6 +389,21 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                     None,
                 )
                 target_label = (participant or {}).get("display_name") or target_ref_id
+                reason = cls._map_spell_rejection_reason(
+                    result.diagnostics.primary_failure() if result.diagnostics else None
+                )
+                cls._record_spell_cast_rejected_activity(
+                    db,
+                    session_id=session_id,
+                    actor_user_id=attacker.get("actor_user_id"),
+                    actor_ref_id=attacker["ref_id"],
+                    actor_display_name=attacker.get("display_name") or attacker["ref_id"],
+                    spell_context=spell_context,
+                    reason=reason,
+                    target_ref_id=target_ref_id,
+                    target_display_name=target_label,
+                    instance_index=first_instance_index,
+                )
                 reason_phrase = _resolve_instance_spatial_error_phrase(result)
                 raise CombatServiceError(
                     f"Instance {first_instance_index} target {target_label} {reason_phrase}.",
@@ -629,6 +758,23 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 req.target_ref_id,
                 diag.compact_log() if diag else targeting_result.failure_reason,
             )
+            target_p = next(
+                (p for p in state.participants if p["ref_id"] == req.target_ref_id),
+                None,
+            )
+            cls._record_spell_cast_rejected_activity(
+                db,
+                session_id=session_id,
+                actor_user_id=actor_user_id,
+                actor_ref_id=attacker["ref_id"],
+                actor_display_name=attacker.get("display_name") or attacker["ref_id"],
+                spell_context=spell_context,
+                reason=cls._map_spell_rejection_reason(
+                    diag.primary_failure() if diag else None
+                ),
+                target_ref_id=req.target_ref_id,
+                target_display_name=target_p.get("display_name") if target_p else None,
+            )
             raise CombatServiceError(
                 targeting_result.failure_reason or "Target not found in combat"
             )
@@ -978,6 +1124,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         )
         if validated_targets is not None:
             spatial_results_by_target_ref = cls._validate_instance_spatial_targets(
+                db=db,
                 state=state,
                 attacker=attacker,
                 spell_context=spell_context,

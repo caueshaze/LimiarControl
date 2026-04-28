@@ -67,6 +67,25 @@ export type CombatActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type SpellCastRejectedActivityEvent = {
+  type: "spell_cast_rejected";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  actorRefId?: string | null;
+  actorDisplayName?: string | null;
+  spellId?: string | null;
+  spellName: string;
+  targetRefId?: string | null;
+  targetDisplayName?: string | null;
+  instanceIndex?: number | null;
+  areaOrigin?: Record<string, unknown> | null;
+  reason: string;
+  message: string;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type RestActivityEvent = {
   type: "rest";
   userId?: string | null;
@@ -277,6 +296,7 @@ export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
   | ShopActivityEvent
+  | SpellCastRejectedActivityEvent
   | RollRequestActivityEvent
   | CombatActivityEvent
   | RestActivityEvent

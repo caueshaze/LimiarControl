@@ -106,7 +106,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Preview tático: válido");
+    expect(markup).toContain("Visão tática: livre");
   });
 
   it("renderiza status inválido com reason", () => {
@@ -118,7 +118,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Preview tático: inválido");
+    expect(markup).toContain("Visão tática: bloqueado");
     expect(markup).toContain("Motivo: fora do alcance");
   });
 
@@ -155,7 +155,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Preview tático: indisponível");
+    expect(markup).toContain("Visão tática: indisponível");
     expect(markup).toContain("Dados de posição insuficientes para validar o preview no mapa");
   });
 
@@ -188,8 +188,8 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("5 instâncias");
     expect(markup).toContain("(1d4+1)");
     expect(markup).toContain("alcance 36m");
-    expect(markup).toContain("Míssil 1: válido");
-    expect(markup).toContain("Míssil 5: válido");
+    expect(markup).toContain("Míssil 1: livre");
+    expect(markup).toContain("Míssil 5: livre");
     expect(markup).toContain('data-preview-source="resolved"');
   });
 
@@ -222,9 +222,9 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("2 instâncias");
     expect(markup).toContain("(1d10)");
     expect(markup).toContain("ataque");
-    expect(markup).toContain("Feixe 1: válido");
-    expect(markup).toContain("Feixe 2: inválido · fora do alcance");
-    expect(markup).toContain("Preview tático: parcial");
+    expect(markup).toContain("Feixe 1: livre");
+    expect(markup).toContain("Feixe 2: bloqueado · fora do alcance");
+    expect(markup).toContain("Visão tática: parcial");
   });
 
   it("renderiza reason por instância em multi-instância", () => {
@@ -250,7 +250,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Feixe 2: inválido · linha de visão bloqueada");
+    expect(markup).toContain("Feixe 2: bloqueado · linha de visão bloqueada");
   });
 
   it("renders Acid Splash as saving throw without instâncias", () => {
@@ -272,7 +272,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
     );
 
     expect(markup).toContain("saving throw");
-    expect(markup).toContain("save dexterity");
+    expect(markup).toContain("save DEX");
     expect(markup).toContain("Dano 2d6");
     expect(markup).not.toContain("instâncias");
   });
@@ -324,8 +324,8 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Origem da área: válida");
-    expect(markup).not.toContain("Preview tático:");
+    expect(markup).toContain("Origem da área: livre");
+    expect(markup).not.toContain("Visão tática:");
   });
 
   it("Fireball fora de alcance mostra Origem da área: fora do alcance", () => {
@@ -387,7 +387,7 @@ describe("SpellCastDialogHeader tactical preview", () => {
     );
 
     expect(markup).toContain("Origem da área: dados do mapa insuficientes");
-    expect(markup).not.toContain("Preview tático:");
+    expect(markup).not.toContain("Visão tática:");
   });
 
   it("Fireball inválida com affected targets mostra reason da origem e lista de alvos", () => {
@@ -465,8 +465,8 @@ describe("SpellCastDialogHeader tactical preview", () => {
       />,
     );
 
-    expect(markup).toContain("Feixe 1: válido · Cobertura: meia cobertura (+2 AC)");
-    expect(markup).not.toContain("Feixe 2: válido · Cobertura");
+    expect(markup).toContain("Feixe 1: livre · Cobertura: meia cobertura (+2 AC)");
+    expect(markup).not.toContain("Feixe 2: livre · Cobertura");
   });
 
   it("spell inválida por LoS mantém reason e não transforma cover em reason", () => {

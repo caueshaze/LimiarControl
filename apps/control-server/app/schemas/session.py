@@ -115,6 +115,25 @@ class CombatActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class SpellCastRejectedActivityEvent(BaseModel):
+    type: Literal["spell_cast_rejected"] = "spell_cast_rejected"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    actorRefId: Optional[str] = None
+    actorDisplayName: Optional[str] = None
+    spellId: Optional[str] = None
+    spellName: str
+    targetRefId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    instanceIndex: Optional[int] = None
+    areaOrigin: Optional[dict] = None
+    reason: str
+    message: str
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 class RestActivityEvent(BaseModel):
     type: Literal["rest"] = "rest"
     userId: Optional[str] = None
@@ -253,6 +272,7 @@ ActivityEvent = Union[
     RollActivityEvent,
     PurchaseActivityEvent,
     ShopActivityEvent,
+    SpellCastRejectedActivityEvent,
     RollRequestActivityEvent,
     CombatActivityEvent,
     RestActivityEvent,
