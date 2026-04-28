@@ -150,7 +150,8 @@ describe("systemSpellCatalog upcast helpers", () => {
     expect(result.error).toBeUndefined();
     expect(result.payload?.upcast).toBeNull();
     expect(result.payload?.cantripScaling).toEqual({
-      mode: "character_level",
+      scalingMode: "character_level",
+      scalingEffectType: "damage_dice",
       thresholds: [
         { characterLevel: 1, damage: { dice: "1d6" } },
         { characterLevel: 5, damage: { dice: "2d6" } },
@@ -158,5 +159,118 @@ describe("systemSpellCatalog upcast helpers", () => {
         { characterLevel: 17, damage: { dice: "4d6" } },
       ],
     });
+  });
+
+  it("includes coverAppliesToSave in payload when set", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "fireball";
+    form.nameEn = "Fireball";
+    form.descriptionEn = "A bright streak flashes.";
+    form.level = 3;
+    form.school = "evocation";
+    form.resolutionType = "damage";
+    form.savingThrow = "DEX";
+    form.coverAppliesToSave = "physical";
+    form.damageDiceCount = "8";
+    form.damageDieSize = "6";
+    form.damageType = "Fire";
+
+    const result = buildPayload(form, true);
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload?.coverAppliesToSave).toBe("physical");
+  });
+
+  it("defaults coverAppliesToSave to null when empty", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "test";
+    form.nameEn = "Test";
+    form.descriptionEn = "Test.";
+
+    const result = buildPayload(form, true);
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload?.coverAppliesToSave).toBeNull();
+  });
+
+  it("includes baseEffectInstances in upcast payload for additional_effect_instances", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "magic_missile";
+    form.nameEn = "Magic Missile";
+    form.descriptionEn = "Three glowing darts.";
+    form.level = 1;
+    form.school = "evocation";
+    form.resolutionType = "damage";
+    form.damageDiceCount = "3";
+    form.damageDieSize = "4";
+    form.damageFixedBonus = "3";
+    form.damageType = "Force";
+    form.upcastMode = "additional_effect_instances";
+    form.upcastDiceCount = "1";
+    form.upcastDieSize = "4";
+    form.upcastFixedBonus = "1";
+    form.upcastBaseEffectInstances = "3";
+
+    const result = buildPayload(form, true);
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload?.upcast?.baseEffectInstances).toBe(3);
+  });
+
+  it("hydrates coverAppliesToSave and baseEffectInstances from spell", () => {
+    const spell: BaseSpell = {
+      id: "spell-fireball",
+      system: "DND5E",
+      canonicalKey: "fireball",
+      nameEn: "Fireball",
+      namePt: "Bola de Fogo",
+      descriptionEn: "A bright streak flashes to a point.",
+      descriptionPt: null,
+      level: 3,
+      school: "evocation",
+      classesJson: ["Sorcerer", "Wizard"],
+      castingTimeType: "action",
+      castingTime: "1 action",
+      rangeMeters: 45,
+      rangeText: "150 ft",
+      targetType: "ranged",
+      maxTargets: null,
+      selectionType: "point",
+      originType: "selected_point",
+      targetAnchor: "selected_point",
+      attackType: "none",
+      rangeKind: "distance",
+      effectTiming: "immediate",
+      areaShape: "sphere",
+      radiusMeters: 6,
+      lengthMeters: null,
+      sideMeters: null,
+      duration: "Instantaneous",
+      componentsJson: ["V", "S", "M"],
+      materialComponentText: "a tiny ball of bat guano and sulfur",
+      concentration: false,
+      ritual: false,
+      resolutionType: "damage",
+      savingThrow: "DEX",
+      saveSuccessOutcome: "half_damage",
+      coverAppliesToSave: "physical",
+      damageDice: "8d6",
+      damageType: "Fire",
+      healDice: null,
+      upcast: {
+        mode: "extra_damage_dice",
+        dice: "1d6",
+        perLevel: 1,
+      },
+      source: "admin_panel",
+      sourceRef: null,
+      isSrd: true,
+      isActive: true,
+      aliases: [],
+    };
+
+    const form = formFromSpell(spell);
+
+    expect(form.coverAppliesToSave).toBe("physical");
   });
 });

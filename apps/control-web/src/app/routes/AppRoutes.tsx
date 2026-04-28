@@ -33,6 +33,14 @@ const CatalogSpellsPage = lazy(async () => {
   const module = await import("../../pages/CatalogPage");
   return { default: module.CatalogSpellsPage };
 });
+const CatalogSpellNewPage = lazy(async () => {
+  const module = await import("../../pages/CatalogPage/CatalogSpellNewPage");
+  return { default: module.CatalogSpellNewPage };
+});
+const CatalogSpellEditPage = lazy(async () => {
+  const module = await import("../../pages/CatalogPage/CatalogSpellEditPage");
+  return { default: module.CatalogSpellEditPage };
+});
 const SystemCatalogPage = lazy(async () => {
   const module = await import("../../pages/SystemCatalogPage");
   return { default: module.SystemCatalogPage };
@@ -289,6 +297,26 @@ export const AppRoutes = () => {
             <RequireAuth>
               <RequireGmRole>
                 {renderRoute(<CatalogSpellsPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.catalogSpellNew}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CatalogSpellNewPage />)}
+              </RequireGmRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.catalogSpellEdit}
+          element={
+            <RequireAuth>
+              <RequireGmRole>
+                {renderRoute(<CatalogSpellEditPage />)}
               </RequireGmRole>
             </RequireAuth>
           }
