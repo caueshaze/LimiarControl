@@ -6,6 +6,7 @@ import httpx
 
 from .limiar_map_client_types import (
     LimiarMapAreaTargetingResponse,
+    LimiarMapBatchTargetingResponse,
     LimiarMapClientError,
     LimiarMapMovementResponse,
     LimiarMapStateResponse,
@@ -20,6 +21,7 @@ from .limiar_map_client_types import (  # noqa: F401
 )
 from .limiar_map_client_parsers import (
     parse_area_targeting_response,
+    parse_batch_targeting_response,
     parse_movement_response,
     parse_targeting_response,
 )
@@ -114,6 +116,26 @@ class LimiarMapClient:
             json_payload=payload,
         )
         return parse_targeting_response(data)
+
+    def validate_targets_batch(
+        self,
+        *,
+        session_id: str,
+        action_id: str,
+        combatant_id: str,
+        target_combatant_ids: list[str],
+    ) -> LimiarMapBatchTargetingResponse:
+        payload = {
+            "actionId": action_id,
+            "combatantId": combatant_id,
+            "targetCombatantIds": target_combatant_ids,
+        }
+        data = self._request_json(
+            "POST",
+            f"/integration/sessions/{session_id}/targeting/batch",
+            json_payload=payload,
+        )
+        return parse_batch_targeting_response(data)
 
     def resolve_area_targeting(
         self,

@@ -51,9 +51,30 @@ export const areaTargetResponseSchema = z.object({
 
 export const areaTargetPreviewResponseSchema = areaTargetResponseSchema;
 
+export const batchTargetingRequestSchema = z.object({
+  actionId: z.string(),
+  combatantId: z.string(),
+  targetCombatantIds: z.array(z.string()),
+});
+
+export const batchTargetingResultSchema = z.object({
+  targetCombatantId: z.string(),
+  cover: obstacleCoverSchema.nullable(),
+});
+
+export const batchTargetingResponseSchema = z.object({
+  sessionId: z.string(),
+  actionId: z.string(),
+  version: z.number().int().nonnegative(),
+  results: z.array(batchTargetingResultSchema),
+});
+
 export type SingleTargetRequest = z.infer<typeof singleTargetRequestSchema>;
 export type AreaTargetShape = z.infer<typeof areaTargetShapeSchema>;
 export type AreaTargetRequest = z.infer<typeof areaTargetRequestSchema>;
 export type SingleTargetResponse = z.infer<typeof singleTargetResponseSchema>;
 export type AreaTargetResponse = z.infer<typeof areaTargetResponseSchema>;
 export type AreaTargetPreviewResponse = z.infer<typeof areaTargetPreviewResponseSchema>;
+export type BatchTargetingRequest = z.infer<typeof batchTargetingRequestSchema>;
+export type BatchTargetingResult = z.infer<typeof batchTargetingResultSchema>;
+export type BatchTargetingResponse = z.infer<typeof batchTargetingResponseSchema>;

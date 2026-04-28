@@ -105,6 +105,20 @@ class LimiarMapMovementResponse:
     remaining_budget: int
 
 
+@dataclass(frozen=True)
+class LimiarMapBatchTargetingResult:
+    target_combatant_id: str
+    cover: str | None
+
+
+@dataclass(frozen=True)
+class LimiarMapBatchTargetingResponse:
+    session_id: str
+    action_id: str
+    version: int
+    results: tuple["LimiarMapBatchTargetingResult", ...]
+
+
 class LimiarMapClientError(RuntimeError):
     def __init__(
         self,
