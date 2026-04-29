@@ -9,8 +9,7 @@ import {
   computeAbilityScoreTotal,
   safeParseInt,
 } from "../utils/calculations";
-import { getRace } from "../data/races";
-import { stripClassLevelAbilityBonuses } from "../data/classFeatures";
+import { computeBaseAbilitiesForPointAccounting } from "../utils/abilityScoreAccounting";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
@@ -38,19 +37,14 @@ export const AbilityScores = ({
 }: Props) => {
   const { t } = useLocale();
   const isCreation = mode === "creation";
-  const raceData = getRace(race, raceConfig);
-  const baseAbilities = stripClassLevelAbilityBonuses(
-    { ...abilities },
+  const baseAbilities = computeBaseAbilitiesForPointAccounting(
+    abilities,
+    race,
+    raceConfig,
     className ?? "",
     level,
   );
-  if (isCreation && raceData) {
-    for (const [key, bonus] of Object.entries(raceData.abilityBonuses)) {
-      const abilityKey = key as AbilityName;
-      baseAbilities[abilityKey] -= bonus ?? 0;
-    }
-  }
-  const usedPoints = computeAbilityScoreTotal(isCreation ? baseAbilities : abilities);
+  const usedPoints = computeAbilityScoreTotal(baseAbilities);
   const remainingPoints = ABILITY_SCORE_POOL - usedPoints;
 
   return (

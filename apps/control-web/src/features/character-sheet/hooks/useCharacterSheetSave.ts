@@ -1,10 +1,8 @@
 import type { CharacterSheetMode } from "../model/characterSheet.types";
 import {
-  ABILITY_SCORE_POOL,
   STANDARD_ARRAY,
 } from "../constants";
 import {
-  computeAbilityScoreTotal,
   isStandardArrayDistribution,
 } from "../utils/calculations";
 import {
@@ -99,19 +97,6 @@ export function useCharacterSheetSave(
           });
           return;
         }
-      }
-    } else {
-      const abilityTotal = computeAbilityScoreTotal(params.state.sheet.abilities);
-      if (abilityTotal !== ABILITY_SCORE_POOL) {
-        const diff = ABILITY_SCORE_POOL - abilityTotal;
-        dispatch({
-          type: "saving_fail",
-          error:
-            diff > 0
-              ? `Ability scores must total ${ABILITY_SCORE_POOL} (remaining: ${diff}).`
-              : `Ability scores must total ${ABILITY_SCORE_POOL} (over by ${Math.abs(diff)}).`,
-        });
-        return;
       }
     }
 
