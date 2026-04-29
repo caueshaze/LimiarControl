@@ -267,7 +267,7 @@ export const PlayerCombatModeShell = ({
     myParticipant?.status === "active" &&
     combat.state?.use_map !== false;
   const isTargetingAction =
-    (activeActionPanel === "attack" && Boolean(playerStatus?.currentWeapon)) ||
+    activeActionPanel === "attack" ||
     (activeActionPanel === "spell" && Boolean(selectedSpell) && selectedSpellNeedsTarget);
 
   const mapSelectionMode =

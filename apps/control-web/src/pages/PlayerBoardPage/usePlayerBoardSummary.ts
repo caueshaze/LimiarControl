@@ -75,6 +75,7 @@ export const usePlayerBoardSummary = ({
         itemsById,
         locale,
         playerSheet,
+        unarmedStrikeName: t("combatUi.unarmedStrikeName"),
       }),
     [inventory, itemsById, locale, playerSheet],
   );

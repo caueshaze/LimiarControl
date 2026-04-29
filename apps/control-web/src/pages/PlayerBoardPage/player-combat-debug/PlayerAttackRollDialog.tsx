@@ -3,6 +3,7 @@ import { RollResultCard } from "../../../features/rolls/components/RollResultCar
 import { ConcentrationSaveControl } from "../../../features/combat-ui/components/ConcentrationSaveControl";
 import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import { markRollEventKnown } from "../../../features/rolls/knownRollEvents";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import type {
   CombatAttackResult,
   CombatParticipant,
@@ -53,6 +54,7 @@ export const PlayerAttackRollDialog = ({
   target,
   weapon,
 }: Props) => {
+  const { t } = useLocale();
   const preview = useTargetingPreview({
     sessionId,
     actorRefId,
@@ -160,7 +162,7 @@ export const PlayerAttackRollDialog = ({
       <div className="w-full max-w-md rounded-3xl border border-limiar-400/30 bg-void-950 p-6 text-slate-100 shadow-2xl shadow-limiar-900/40">
         <p className="text-xs uppercase tracking-[0.3em] text-limiar-200">Ataque</p>
         <h2 className="mt-3 text-2xl font-semibold text-white">
-          {weapon?.name ?? "Ataque desarmado"}
+          {weapon?.name ?? t("combatUi.unarmedStrikeName")}
         </h2>
         <p className="mt-2 text-sm text-slate-300">
           Alvo: <span className="font-semibold text-white">{target.display_name}</span>

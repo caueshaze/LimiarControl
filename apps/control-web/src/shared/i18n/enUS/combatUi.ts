@@ -75,6 +75,7 @@ export const combatUiEnUSDictionary = {
   "combatUi.castSpell": "Cast spell",
   "combatUi.castBy": "Cast by:",
   "combatUi.noWeapon": "No weapon equipped",
+  "combatUi.unarmedStrikeName": "Unarmed Strike",
   "combatUi.noSpellcasting": "No combat spell ready",
   "combatUi.selectSpell": "Spell",
   "combatUi.noSpellsPrepared": "No spell available",
