@@ -9,6 +9,7 @@ from app.models.campaign import SystemType
 
 from .base_spell_upcast import SpellUpcastConfig
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
+from .base_spell_effects import SpellDeclarativeEffect
 
 
 class BaseSpellAliasRead(BaseModel):
@@ -60,6 +61,8 @@ class BaseSpellRead(BaseModel):
     damageDice: Optional[str] = None
     damageType: Optional[str] = None
     healDice: Optional[str] = None
+    effects: list[SpellDeclarativeEffect] | None = None
+    onEndEffects: list[SpellDeclarativeEffect] | None = None
 
     requiresTargetSight: Optional[bool] = None
     requiresTargetEffect: Optional[bool] = None

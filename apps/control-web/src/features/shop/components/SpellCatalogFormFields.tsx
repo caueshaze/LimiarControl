@@ -16,6 +16,7 @@ import { SpellUpcastFields } from "./SpellUpcastFields";
 import { SpellCantripScalingFields } from "./SpellCantripScalingFields";
 import { SpellCatalogResolutionFields } from "./SpellCatalogResolutionFields";
 import { SpellCatalogTargetingRequirements } from "./SpellCatalogTargetingRequirements";
+import { SpellCatalogDeclarativeEffectsFields } from "./SpellCatalogDeclarativeEffectsFields";
 import {
     SPELL_CLASS_OPTIONS,
     SPELL_COMPONENT_OPTIONS,
@@ -539,6 +540,11 @@ export const SpellCatalogFormFields = ({
         showSaveSuccessOutcome={showSaveSuccessOutcome}
         showDamageFields={showDamageFields}
         showHealFields={showHealFields}
+      />
+
+      <SpellCatalogDeclarativeEffectsFields
+        state={state}
+        setState={setState}
       />
 
       <SpellCatalogTargetingRequirements

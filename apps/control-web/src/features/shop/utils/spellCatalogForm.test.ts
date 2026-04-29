@@ -34,6 +34,8 @@ const createSpell = (overrides: Partial<BaseSpell> = {}): BaseSpell => ({
   saveSuccessOutcome: null,
   source: "seed_json_bootstrap",
   sourceRef: null,
+  effects: null,
+  onEndEffects: null,
   isSrd: true,
   isActive: true,
   aliases: [],
@@ -203,6 +205,37 @@ describe("spellCatalogForm", () => {
     expect(state.upcastDice).toBe("1d4");
     expect(state.upcastPerLevel).toBe("1");
     expect(state.upcastMaxLevel).toBe("6");
+  });
+
+  it("hydrates and serializes declarative spell effects", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "caster",
+            duration: { type: "rounds", rounds: 10, anchor: "caster" },
+            params: { ability: "charisma" },
+            stacking: "replace",
+          },
+        ],
+        onEndEffects: [
+          {
+            type: "apply_condition",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { condition: "hostile_to_caster" },
+          },
+        ],
+      }),
+    );
+
+    expect(state.effects).toHaveLength(1);
+    expect(state.onEndEffects).toHaveLength(1);
+
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.effects).toEqual(state.effects);
+    expect(payload.onEndEffects).toEqual(state.onEndEffects);
   });
 
   it("preserves structured targeting and upcast fields when building an update payload", () => {

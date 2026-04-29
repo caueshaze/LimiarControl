@@ -221,9 +221,19 @@ async def roll_ability(
     entry, member = _get_session_and_member(session_id, user, db)
     is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
+    derived_advantage_mode = CombatService._resolve_check_advantage_mode_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        ability=body.ability,
+    )
+    effective_advantage_mode = (
+        body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
+    )
 
     result = resolve_ability_check(
-        stats, body.ability, body.advantage_mode, body.bonus_override, body.dc,
+        stats, body.ability, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
     )
     result.is_gm_roll = is_gm
@@ -265,9 +275,19 @@ async def roll_skill(
     entry, member = _get_session_and_member(session_id, user, db)
     is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
+    derived_advantage_mode = CombatService._resolve_skill_check_advantage_mode_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        skill=body.skill,
+    )
+    effective_advantage_mode = (
+        body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
+    )
 
     result = resolve_skill_check(
-        stats, body.skill, body.advantage_mode, body.bonus_override, body.dc,
+        stats, body.skill, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
     )
     result.is_gm_roll = is_gm

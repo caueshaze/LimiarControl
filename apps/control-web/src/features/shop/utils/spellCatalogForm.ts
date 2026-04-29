@@ -23,6 +23,7 @@ import {
   type ResolutionType,
   type SaveSuccessOutcome,
   type SpellDamageType,
+  type SpellDeclarativeEffect,
   type SpellAttackType,
   type SpellEffectTiming,
   type SpellOriginType,
@@ -423,6 +424,8 @@ export const buildSpellUpdatePayload = (
       ? (toNullableText(state.damageType) as SpellDamageType | null)
       : null,
   healDice: state.resolutionType === "heal" ? toNullableText(state.healDice) : null,
+  effects: state.effects.length > 0 ? state.effects : null,
+  onEndEffects: state.onEndEffects.length > 0 ? state.onEndEffects : null,
   savingThrow: supportsSavingThrow(state.resolutionType)
     ? (toNullableText(state.savingThrow) as SpellSavingThrow | null)
     : null,
@@ -486,6 +489,8 @@ export type SpellCatalogEditorState = {
   damageFixedBonus: string;
   damageType: string;
   healDice: string;
+  effects: SpellDeclarativeEffect[];
+  onEndEffects: SpellDeclarativeEffect[];
   savingThrow: string;
   saveSuccessOutcome: string;
   coverAppliesToSave: "" | "none" | "physical";
@@ -667,6 +672,8 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   damageDice: spell.damageDice ?? "",
   damageType: normalizeKnownSpellValue(spell.damageType, SPELL_DAMAGE_TYPE_OPTION_SET),
   healDice: spell.healDice ?? "",
+  effects: spell.effects ?? [],
+  onEndEffects: spell.onEndEffects ?? [],
   savingThrow: normalizeKnownSpellValue(spell.savingThrow, SPELL_SAVING_THROW_OPTION_SET),
   saveSuccessOutcome: normalizeKnownSpellValue(
     spell.saveSuccessOutcome,
@@ -733,6 +740,8 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   damageFixedBonus: "",
   damageType: "",
   healDice: "",
+  effects: [],
+  onEndEffects: [],
   savingThrow: "",
   saveSuccessOutcome: "",
   coverAppliesToSave: "",

@@ -231,6 +231,14 @@ class BaseSpell(SQLModel, table=True):
     damage_dice: Optional[str] = None  # e.g. "1d8", "2d6+3"
     damage_type: Optional[str] = None  # enum: Acid/Fire/etc
     heal_dice: Optional[str] = None  # e.g. "1d8+3"
+    effects_json: Optional[list[dict]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
+    on_end_effects_json: Optional[list[dict]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     # --- Targeting requirements (mechanical) ---
     requires_target_sight: Optional[bool] = Field(

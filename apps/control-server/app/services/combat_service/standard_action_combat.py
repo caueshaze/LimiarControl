@@ -120,6 +120,13 @@ class CombatStandardCombatActionMixin(CombatStandardObjectActionMixin):
         roll_result = resolve_skill_check(
             cls._build_roll_actor_stats_for_skill(db, session_id, actor["ref_id"], actor["kind"], actor["display_name"]),
             "stealth",
+            advantage_mode=cls._resolve_skill_check_advantage_mode_for_actor(
+                db,
+                session_id,
+                actor_kind=actor["kind"],
+                actor_ref_id=actor["ref_id"],
+                skill="stealth",
+            ),
             roll_source=req.roll_source,
             manual_roll=req.manual_roll,
             manual_rolls=req.manual_rolls,

@@ -170,6 +170,11 @@ class CombatConcentrationMixin:
             result = cls._remove_effect_group(state, concentration_group=group_id)
             all_removed.extend(result["removed_effects"])
             all_area_removed.extend(result["removed_area_effects"])
+        if all_removed:
+            cls._execute_on_end_effects_for_removed(
+                state=state,
+                removed_effects=all_removed,
+            )
         return {
             "removed_effects": all_removed,
             "removed_area_effects": all_area_removed,

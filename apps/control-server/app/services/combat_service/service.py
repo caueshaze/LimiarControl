@@ -13,6 +13,7 @@ from .player_death_save import CombatPlayerDeathSaveMixin
 from .player_actions import CombatPlayerActionMixin
 from .save_resolve import CombatSaveResolveMixin
 from .spell_automation import CombatSpellAutomationMixin
+from .spell_declarative_effects import CombatSpellDeclarativeEffectsMixin
 from .spell_dice_math import CombatSpellDiceMathMixin
 from .spell_lookup import CombatSpellLookupMixin
 from .spells.cast_area_effect import CastAreaEffectMixin
@@ -38,6 +39,7 @@ class CombatService(
     CombatSpellDiceMathMixin,
     CombatConcentrationMixin,
     CombatSpellAutomationMixin,
+    CombatSpellDeclarativeEffectsMixin,
     SpellResolutionMixin,
     SpellResponseMixin,
     CastAreaEffectMixin,
