@@ -10,6 +10,7 @@ from app.models.campaign import SystemType
 from .base_spell_upcast import SpellUpcastConfig
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
 from .base_spell_effects import SpellDeclarativeEffect
+from .base_spell_persistent_area import SpellPersistentAreaEffect
 
 
 class BaseSpellAliasRead(BaseModel):
@@ -63,6 +64,7 @@ class BaseSpellRead(BaseModel):
     healDice: Optional[str] = None
     effects: list[SpellDeclarativeEffect] | None = None
     onEndEffects: list[SpellDeclarativeEffect] | None = None
+    persistentArea: SpellPersistentAreaEffect | None = None
 
     requiresTargetSight: Optional[bool] = None
     requiresTargetEffect: Optional[bool] = None

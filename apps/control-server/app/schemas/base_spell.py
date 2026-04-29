@@ -50,6 +50,15 @@ from .base_spell_effects import (
     SpellDeclarativeModifyStat,
     SpellDeclarativeRestrictActionKind,
 )
+from .base_spell_persistent_area import (
+    PersistentAreaHazardParams,
+    PersistentAreaNoSemanticEffectParams,
+    PersistentAreaObscurementParams,
+    SpellPersistentAreaEffect,
+    SpellPersistentAreaKind,
+    SpellPersistentAreaObscurement,
+    SpellPersistentAreaTerrainEffect,
+)
 from .base_spell_upcast import (
     SpellUpcastConfig,
     SpellUpcastMode,
@@ -114,6 +123,13 @@ __all__ = [
     "SpellDeclarativeEffectType",
     "SpellDeclarativeModifyStat",
     "SpellDeclarativeRestrictActionKind",
+    "PersistentAreaHazardParams",
+    "PersistentAreaNoSemanticEffectParams",
+    "PersistentAreaObscurementParams",
+    "SpellPersistentAreaEffect",
+    "SpellPersistentAreaKind",
+    "SpellPersistentAreaObscurement",
+    "SpellPersistentAreaTerrainEffect",
     "SpellUpcastConfig",
     "SpellUpcastMode",
     "_build_structured_upcast_from_legacy",

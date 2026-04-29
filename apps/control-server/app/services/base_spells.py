@@ -53,6 +53,7 @@ _FIELD_MAP: dict[str, str] = {
     "healDice": "heal_dice",
     "effects": "effects_json",
     "onEndEffects": "on_end_effects_json",
+    "persistentArea": "persistent_area_json",
     "requiresTargetSight": "requires_target_sight",
     "requiresTargetEffect": "requires_target_effect",
     "requiresPointSight": "requires_point_sight",

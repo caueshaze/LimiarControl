@@ -239,6 +239,10 @@ class BaseSpell(SQLModel, table=True):
         default=None,
         sa_column=Column(JSONB, nullable=True),
     )
+    persistent_area_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     # --- Targeting requirements (mechanical) ---
     requires_target_sight: Optional[bool] = Field(

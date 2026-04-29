@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import uuid4
 
 from app.models.combat import CombatState
+
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_float(value: object) -> float | None:
@@ -14,14 +18,54 @@ def _safe_float(value: object) -> float | None:
     return None
 
 
+def _normalize_persistent_area(spell_context: dict[str, Any]) -> dict[str, Any] | None:
+    persistent_area = spell_context.get("persistent_area")
+    return persistent_area if isinstance(persistent_area, dict) else None
+
+
+def _metadata_from_persistent_area(persistent_area: dict[str, Any]) -> dict[str, Any]:
+    kind = persistent_area.get("kind")
+    params = persistent_area.get("params")
+    params = params if isinstance(params, dict) else {}
+
+    if kind == "obscurement":
+        return {
+            "effect_kind": "obscurement",
+            "obscurement": params.get("obscurement"),
+        }
+    if kind == "hazard":
+        return {
+            "effect_kind": "hazard",
+            "terrain_effect": params.get("terrainEffect"),
+            "movement_damage_dice": params.get("movementDamageDice"),
+            "damage_type": params.get("damageType"),
+            "damage_per_meters": _safe_float(params.get("damagePerMeters")),
+        }
+    if kind == "no_semantic_effect":
+        return {"effect_kind": "spell_area"}
+    raise ValueError(f"Unknown persistent area kind: {kind}")
+
+
 def _metadata_for_spell(spell_context: dict[str, Any]) -> dict[str, Any]:
+    persistent_area = _normalize_persistent_area(spell_context)
+    if persistent_area is not None:
+        return _metadata_from_persistent_area(persistent_area)
+
     canonical_key = spell_context.get("spell_canonical_key")
     if canonical_key == "fog_cloud":
+        logger.info(
+            "persistent_area_fallback_legacy",
+            extra={"spell_canonical_key": canonical_key, "fallback_reason": "missing_persistent_area"},
+        )
         return {
             "effect_kind": "obscurement",
             "obscurement": "heavily_obscured",
         }
     if canonical_key == "spike_growth":
+        logger.info(
+            "persistent_area_fallback_legacy",
+            extra={"spell_canonical_key": canonical_key, "fallback_reason": "missing_persistent_area"},
+        )
         return {
             "effect_kind": "hazard",
             "terrain_effect": "difficult_terrain",
@@ -29,6 +73,14 @@ def _metadata_for_spell(spell_context: dict[str, Any]) -> dict[str, Any]:
             "damage_type": "Piercing",
             "damage_per_meters": 1.5,
         }
+    if spell_context.get("effect_timing") == "persistent":
+        logger.info(
+            "persistent_area_fallback_legacy",
+            extra={
+                "spell_canonical_key": canonical_key,
+                "fallback_reason": "missing_persistent_area_untyped",
+            },
+        )
     return {"effect_kind": "spell_area"}
 
 

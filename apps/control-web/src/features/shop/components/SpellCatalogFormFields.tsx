@@ -17,6 +17,7 @@ import { SpellCantripScalingFields } from "./SpellCantripScalingFields";
 import { SpellCatalogResolutionFields } from "./SpellCatalogResolutionFields";
 import { SpellCatalogTargetingRequirements } from "./SpellCatalogTargetingRequirements";
 import { SpellCatalogDeclarativeEffectsFields } from "./SpellCatalogDeclarativeEffectsFields";
+import { SpellCatalogPersistentAreaFields } from "./SpellCatalogPersistentAreaFields";
 import {
     SPELL_CLASS_OPTIONS,
     SPELL_COMPONENT_OPTIONS,
@@ -543,6 +544,11 @@ export const SpellCatalogFormFields = ({
       />
 
       <SpellCatalogDeclarativeEffectsFields
+        state={state}
+        setState={setState}
+      />
+
+      <SpellCatalogPersistentAreaFields
         state={state}
         setState={setState}
       />

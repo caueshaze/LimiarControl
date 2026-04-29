@@ -36,6 +36,7 @@ const createSpell = (overrides: Partial<BaseSpell> = {}): BaseSpell => ({
   sourceRef: null,
   effects: null,
   onEndEffects: null,
+  persistentArea: null,
   isSrd: true,
   isActive: true,
   aliases: [],
@@ -236,6 +237,40 @@ describe("spellCatalogForm", () => {
     const payload = buildSpellUpdatePayload(state);
     expect(payload.effects).toEqual(state.effects);
     expect(payload.onEndEffects).toEqual(state.onEndEffects);
+  });
+
+  it("hydrates and serializes persistent area semantics", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        effectTiming: "persistent",
+        persistentArea: {
+          kind: "hazard",
+          params: {
+            terrainEffect: "difficult_terrain",
+            movementDamageDice: "2d4",
+            damageType: "Piercing",
+            damagePerMeters: 1.5,
+          },
+        },
+      }),
+    );
+
+    expect(state.persistentAreaKind).toBe("hazard");
+    expect(state.persistentAreaTerrainEffect).toBe("difficult_terrain");
+    expect(state.persistentAreaMovementDamageDice).toBe("2d4");
+    expect(state.persistentAreaDamageType).toBe("Piercing");
+    expect(state.persistentAreaDamagePerMeters).toBe("1.5");
+
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.persistentArea).toEqual({
+      kind: "hazard",
+      params: {
+        terrainEffect: "difficult_terrain",
+        movementDamageDice: "2d4",
+        damageType: "Piercing",
+        damagePerMeters: 1.5,
+      },
+    });
   });
 
   it("preserves structured targeting and upcast fields when building an update payload", () => {

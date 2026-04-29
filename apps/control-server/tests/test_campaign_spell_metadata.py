@@ -72,6 +72,7 @@ def _make_campaign_spell(**overrides) -> CampaignSpell:
     spell.upcast_mode = None
     spell.upcast_value = None
     spell.cantrip_scaling_json = None
+    spell.persistent_area_json = None
     spell.source = None
     spell.source_ref = None
     spell.is_srd = False
@@ -118,6 +119,17 @@ class CampaignSpellReadSerializerTests(unittest.TestCase):
         self.assertFalse(result.requiresPointSight)
         self.assertFalse(result.requiresPointEffect)
 
+    def test_persistent_area_is_returned(self) -> None:
+        spell = _make_campaign_spell(
+            persistent_area_json={
+                "kind": "obscurement",
+                "params": {"obscurement": "heavily_obscured"},
+            }
+        )
+        campaign = _make_campaign()
+        result = to_campaign_spell_read(spell, campaign)
+        self.assertEqual(result.persistentArea.kind, "obscurement")
+
     def test_null_targeting_fields_are_returned_as_none(self) -> None:
         # Records predating migration 0051 have NULL; they fall back in combat.
         spell = _make_campaign_spell(
@@ -160,6 +172,20 @@ class CampaignSpellUpdateFieldMapTests(unittest.TestCase):
         field_map = {"coverAppliesToSave": "cover_applies_to_save"}
         data = {field_map.get(k, k): v for k, v in raw.items()}
         self.assertEqual(data["cover_applies_to_save"], "none")
+
+    def test_persistent_area_maps_correctly(self) -> None:
+        from app.schemas.base_spell import BaseSpellUpdate
+
+        payload = BaseSpellUpdate(
+            persistentArea={
+                "kind": "obscurement",
+                "params": {"obscurement": "heavily_obscured"},
+            }
+        )
+        raw = payload.model_dump(exclude_unset=True)
+        field_map = {"persistentArea": "persistent_area_json"}
+        data = {field_map.get(k, k): v for k, v in raw.items()}
+        self.assertEqual(data["persistent_area_json"]["kind"], "obscurement")
 
 
 if __name__ == "__main__":

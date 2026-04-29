@@ -8,6 +8,7 @@ from app.models.combat import CombatPhase
 from app.models.session_state import SessionState
 from app.schemas.combat import CombatCastSpellRequest, CombatGridCell
 from app.services.combat import CombatService
+from app.services.combat_service.persistent_area_effects import active_area_effects_for_map
 from app.services.combat_service.targeting_result import SpatialMetadata, TargetingResult
 
 
@@ -44,6 +45,22 @@ class PersistentAreaEffectCastTests(TestCombatServiceBase):
         )
 
     def _spell_context(self, canonical_key: str, **overrides):
+        persistent_area = None
+        if canonical_key == "fog_cloud":
+            persistent_area = {
+                "kind": "obscurement",
+                "params": {"obscurement": "heavily_obscured"},
+            }
+        elif canonical_key == "spike_growth":
+            persistent_area = {
+                "kind": "hazard",
+                "params": {
+                    "terrainEffect": "difficult_terrain",
+                    "movementDamageDice": "2d4",
+                    "damageType": "Piercing",
+                    "damagePerMeters": 1.5,
+                },
+            }
         base = {
             "spell_name": "Fog Cloud" if canonical_key == "fog_cloud" else "Spike Growth",
             "spell_canonical_key": canonical_key,
@@ -74,6 +91,7 @@ class PersistentAreaEffectCastTests(TestCombatServiceBase):
             "elemental_affinity_eligible": False,
             "elemental_affinity_damage_type": None,
             "elemental_affinity_bonus": None,
+            "persistent_area": persistent_area,
         }
         base.update(overrides)
         return base
@@ -166,6 +184,26 @@ class PersistentAreaEffectCastTests(TestCombatServiceBase):
         self.assertIsNone(result["active_area_effect"])
         mock_sync.assert_not_called()
 
+    async def test_no_semantic_effect_maps_to_plain_spell_area_overlay(self):
+        await self._cast_persistent_area(
+            "guardian_field",
+            spell_name="Guardian Field",
+            persistent_area={"kind": "no_semantic_effect", "params": {}},
+        )
+
+        effect = self.state.active_area_effects[0]
+        self.assertEqual(effect["effect_kind"], "spell_area")
+        self.assertIsNone(effect.get("obscurement"))
+        self.assertIsNone(effect.get("terrain_effect"))
+
+    async def test_persistent_area_round_trips_into_map_payload_shape(self):
+        await self._cast_persistent_area("fog_cloud")
+
+        map_effects = active_area_effects_for_map(self.state)
+        self.assertEqual(len(map_effects), 1)
+        self.assertEqual(map_effects[0]["effectKind"], "obscurement")
+        self.assertEqual(map_effects[0]["obscurement"], "heavily_obscured")
+
 
 class ConcentrationAreaEffectCleanupTests(TestCombatServiceBase):
     def setUp(self):
@@ -200,6 +238,22 @@ class ConcentrationAreaEffectCleanupTests(TestCombatServiceBase):
         )
 
     def _spell_context(self, canonical_key: str, **overrides):
+        persistent_area = None
+        if canonical_key == "fog_cloud":
+            persistent_area = {
+                "kind": "obscurement",
+                "params": {"obscurement": "heavily_obscured"},
+            }
+        elif canonical_key == "spike_growth":
+            persistent_area = {
+                "kind": "hazard",
+                "params": {
+                    "terrainEffect": "difficult_terrain",
+                    "movementDamageDice": "2d4",
+                    "damageType": "Piercing",
+                    "damagePerMeters": 1.5,
+                },
+            }
         base = {
             "spell_name": "Fog Cloud" if canonical_key == "fog_cloud" else "Spike Growth",
             "spell_canonical_key": canonical_key,
@@ -230,6 +284,7 @@ class ConcentrationAreaEffectCleanupTests(TestCombatServiceBase):
             "elemental_affinity_eligible": False,
             "elemental_affinity_damage_type": None,
             "elemental_affinity_bonus": None,
+            "persistent_area": persistent_area,
         }
         base.update(overrides)
         return base

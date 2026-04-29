@@ -58,6 +58,57 @@ class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
                 ],
             )
 
+    def test_accepts_persistent_area_payload(self):
+        spell = BaseSpellCreate(
+            canonicalKey="fog_cloud",
+            nameEn="Fog Cloud",
+            descriptionEn="Create a cloud of fog.",
+            level=1,
+            school="conjuration",
+            resolutionType="utility",
+            effectTiming="persistent",
+            persistentArea={
+                "kind": "obscurement",
+                "params": {"obscurement": "heavily_obscured"},
+            },
+        )
+        self.assertEqual(spell.persistentArea.kind, "obscurement")
+
+    def test_rejects_hazard_persistent_area_without_semantics(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="bad_hazard",
+                nameEn="Bad Hazard",
+                descriptionEn="Broken area.",
+                level=1,
+                school="conjuration",
+                resolutionType="utility",
+                effectTiming="persistent",
+                persistentArea={
+                    "kind": "hazard",
+                    "params": {},
+                },
+            )
+
+    def test_rejects_movement_damage_without_distance_interval(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="bad_spike_growth",
+                nameEn="Bad Spike Growth",
+                descriptionEn="Broken hazard area.",
+                level=2,
+                school="transmutation",
+                resolutionType="damage",
+                effectTiming="persistent",
+                persistentArea={
+                    "kind": "hazard",
+                    "params": {
+                        "movementDamageDice": "2d4",
+                        "damageType": "Piercing",
+                    },
+                },
+            )
+
 
 class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
     def _make_state(self) -> CombatState:

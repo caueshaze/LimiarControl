@@ -337,6 +337,48 @@ export type SpellDeclarativeEffect =
       stacking?: "stack" | "replace" | null;
     };
 
+export const SpellPersistentAreaKind = {
+  OBSCUREMENT: "obscurement",
+  HAZARD: "hazard",
+  NO_SEMANTIC_EFFECT: "no_semantic_effect",
+} as const;
+
+export type SpellPersistentAreaKind =
+  (typeof SpellPersistentAreaKind)[keyof typeof SpellPersistentAreaKind];
+
+export const SpellPersistentAreaObscurement = {
+  HEAVILY_OBSCURED: "heavily_obscured",
+} as const;
+
+export type SpellPersistentAreaObscurement =
+  (typeof SpellPersistentAreaObscurement)[keyof typeof SpellPersistentAreaObscurement];
+
+export const SpellPersistentAreaTerrainEffect = {
+  DIFFICULT_TERRAIN: "difficult_terrain",
+} as const;
+
+export type SpellPersistentAreaTerrainEffect =
+  (typeof SpellPersistentAreaTerrainEffect)[keyof typeof SpellPersistentAreaTerrainEffect];
+
+export type SpellPersistentAreaEffect =
+  | {
+      kind: "obscurement";
+      params: { obscurement: SpellPersistentAreaObscurement };
+    }
+  | {
+      kind: "hazard";
+      params: {
+        terrainEffect?: SpellPersistentAreaTerrainEffect | null;
+        movementDamageDice?: string | null;
+        damageType?: SpellDamageType | null;
+        damagePerMeters?: number | null;
+      };
+    }
+  | {
+      kind: "no_semantic_effect";
+      params?: Record<string, never> | null;
+    };
+
 export type BaseSpellAlias = {
   id: string;
   alias: string;
@@ -394,6 +436,7 @@ export type BaseSpell = {
   healDice?: string | null;
   effects?: SpellDeclarativeEffect[] | null;
   onEndEffects?: SpellDeclarativeEffect[] | null;
+  persistentArea?: SpellPersistentAreaEffect | null;
 
   // Targeting requirements
   requiresTargetSight?: boolean | null;
@@ -470,6 +513,7 @@ export type BaseSpellWritePayload = {
   healDice?: string | null;
   effects?: SpellDeclarativeEffect[] | null;
   onEndEffects?: SpellDeclarativeEffect[] | null;
+  persistentArea?: SpellPersistentAreaEffect | null;
   requiresTargetSight?: boolean | null;
   requiresTargetEffect?: boolean | null;
   requiresPointSight?: boolean | null;
