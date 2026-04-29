@@ -4,7 +4,7 @@ import type { CharacterSheet } from "../../features/character-sheet/model/charac
 import { getModifier, getProficiencyBonus } from "../../features/character-sheet/utils/calculations";
 import { getFightingStyleAttackBonus } from "../../features/character-sheet/data/classFeatures";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
-import { formatDamageLabel } from "../../shared/i18n/domainLabels";
+import { formatDamageLabel, localizeDamageType } from "../../shared/i18n/domainLabels";
 import type { PlayerBoardWeaponSummary } from "./playerBoard.types";
 
 const SPECIFIC_WEAPON_PROFICIENCY_ALIASES: Record<string, string[]> = {
@@ -104,14 +104,35 @@ export const buildPlayerBoardWeaponSummary = ({
   itemsById,
   locale,
   playerSheet,
+  unarmedStrikeName,
 }: {
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
   locale: string;
   playerSheet: CharacterSheet | null;
+  unarmedStrikeName: string;
 }): PlayerBoardWeaponSummary | null => {
-  if (!playerSheet?.currentWeaponId) {
+  if (!playerSheet) {
     return null;
+  }
+
+  if (!playerSheet.currentWeaponId) {
+    const strMod = getModifier(playerSheet.abilities.strength);
+    const profBonus = getProficiencyBonus(playerSheet.level);
+    const typeLabel = localizeDamageType("bludgeoning", locale) ?? "contundente";
+    const damageLabel =
+      strMod > 0 ? `1 + ${strMod} ${typeLabel}`
+      : strMod < 0 ? `1 - ${Math.abs(strMod)} ${typeLabel}`
+      : `1 ${typeLabel}`;
+    return {
+      attackBonus: strMod + profBonus,
+      damageLabel,
+      name: unarmedStrikeName,
+      proficient: true,
+      rangeMeters: 1.5,
+      rangeLongMeters: null,
+      isRanged: false,
+    };
   }
 
   const selectedEntry = (inventory ?? []).find((entry) => entry.id === playerSheet.currentWeaponId);

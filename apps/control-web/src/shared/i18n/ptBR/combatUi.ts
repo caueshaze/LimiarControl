@@ -76,6 +76,7 @@ export const combatUiPtBRDictionary = {
   "combatUi.castSpell": "Conjurar magia",
   "combatUi.castBy": "Conjurado por:",
   "combatUi.noWeapon": "Nenhuma arma equipada",
+  "combatUi.unarmedStrikeName": "Ataque desarmado",
   "combatUi.noSpellcasting": "Nenhuma magia pronta para combate",
   "combatUi.selectSpell": "Magia",
   "combatUi.noSpellsPrepared": "Nenhuma magia disponível",

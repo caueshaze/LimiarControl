@@ -371,7 +371,7 @@ export const PlayerTurnActions = ({
                   Ataque atual
                 </p>
                 <p className="mt-2 text-base font-semibold text-white">
-                  {currentWeapon?.name ?? "Ataque desarmado"}
+                  {currentWeapon?.name ?? t("combatUi.unarmedStrikeName")}
                 </p>
                 <p className="mt-1 text-xs text-slate-300">
                   Bônus de ataque: {currentWeapon ? `${currentWeapon.attackBonus >= 0 ? "+" : ""}${currentWeapon.attackBonus}` : "FOR + proficiência"}
