@@ -72,21 +72,29 @@ describe("computeAoeFootprint", () => {
   });
 
   describe("cone", () => {
-    it("includes origin", () => {
+    it("does not include origin (matches combat behavior)", () => {
       const cells = computeAoeFootprint("cone", 2);
-      expect(cells).toContainEqual({ x: 0, y: 0 });
+      expect(cells).not.toContainEqual({ x: 0, y: 0 });
     });
 
-    it("expands width per distance step", () => {
+    it("step 1 has width 1 (only center cell, matching resolveCone spread)", () => {
       const cells = computeAoeFootprint("cone", 2);
       const coordSet = new Set(cells.map((c) => `${c.x},${c.y}`));
-      // at x=1: y in [-1..1]
-      expect(coordSet.has("1,-1")).toBe(true);
+      // at x=1: spread -(1-1)..+(1-1) = 0..0 → only (1,0)
       expect(coordSet.has("1,0")).toBe(true);
-      expect(coordSet.has("1,1")).toBe(true);
-      // at x=2: y in [-2..2]
-      expect(coordSet.has("2,-2")).toBe(true);
-      expect(coordSet.has("2,2")).toBe(true);
+      expect(coordSet.has("1,-1")).toBe(false);
+      expect(coordSet.has("1,1")).toBe(false);
+    });
+
+    it("step 2 has width 3 (matching resolveCone spread)", () => {
+      const cells = computeAoeFootprint("cone", 2);
+      const coordSet = new Set(cells.map((c) => `${c.x},${c.y}`));
+      // at x=2: spread -(2-1)..+(2-1) = -1..1
+      expect(coordSet.has("2,-1")).toBe(true);
+      expect(coordSet.has("2,0")).toBe(true);
+      expect(coordSet.has("2,1")).toBe(true);
+      expect(coordSet.has("2,-2")).toBe(false);
+      expect(coordSet.has("2,2")).toBe(false);
     });
 
     it("does not include cells beyond the size", () => {
