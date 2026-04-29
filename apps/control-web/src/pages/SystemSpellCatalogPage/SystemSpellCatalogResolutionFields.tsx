@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useMemo } from "react";
 
 import type {
   ResolutionType,
@@ -8,9 +9,12 @@ import type {
   UpcastMode,
 } from "../../entities/base-spell";
 import { useLocale } from "../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../shared/i18n";
 import {
   localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
+  localizeUpcastModeDescription,
+  localizeUpcastModeExample,
 } from "../../shared/i18n/domainLabels";
 import { SystemSpellCatalogFormSection } from "./SystemSpellCatalogFormSection";
 import {
@@ -25,6 +29,10 @@ import {
   UPCAST_MODE_OPTIONS,
   inputClassName,
 } from "./systemSpellCatalog.types";
+import {
+  computeUpcastPreviewRows,
+  computeUpcastValidationWarnings,
+} from "../../features/shop/utils/upcastPreview";
 
 type Props = {
   form: FormState;
@@ -41,6 +49,130 @@ const FieldHelpIcon = ({ text }: { text: string }) => (
     </span>
   </span>
 );
+
+const SystemUpcastValidationAndPreview = ({
+  form,
+  locale,
+  t,
+}: {
+  form: FormState;
+  locale: string;
+  t: (key: LocaleKey) => string;
+}) => {
+  const warnings = useMemo(
+    () =>
+      computeUpcastValidationWarnings({
+        resolutionType: form.resolutionType,
+        upcastMode: form.upcastMode,
+        upcastDiceCount: form.upcastDiceCount,
+        upcastDieSize: form.upcastDieSize,
+        upcastFlat: form.upcastFlat,
+        upcastScalingKey: form.upcastScalingKey,
+        upcastScalingSummary: form.upcastScalingSummary,
+        upcastUnlockKey: form.upcastUnlockKey,
+        upcastUnlockSummary: form.upcastUnlockSummary,
+      }),
+    [
+      form.resolutionType,
+      form.upcastMode,
+      form.upcastDiceCount,
+      form.upcastDieSize,
+      form.upcastFlat,
+      form.upcastScalingKey,
+      form.upcastScalingSummary,
+      form.upcastUnlockKey,
+      form.upcastUnlockSummary,
+    ],
+  );
+
+  const previewRows = useMemo(
+    () =>
+      computeUpcastPreviewRows({
+        spellLevel: form.level,
+        upcastMode: form.upcastMode,
+        upcastDice:
+          form.upcastDiceCount && form.upcastDieSize
+            ? `${form.upcastDiceCount}d${form.upcastDieSize}${
+                form.upcastFixedBonus ? `+${form.upcastFixedBonus}` : ""
+              }`
+            : null,
+        upcastFlat: form.upcastFlat ? Number(form.upcastFlat) : null,
+        perLevel: form.upcastPerLevel ? Number(form.upcastPerLevel) : 1,
+        maxLevel: form.upcastMaxLevel ? Number(form.upcastMaxLevel) : null,
+        baseEffectInstances: form.upcastBaseEffectInstances
+          ? Number(form.upcastBaseEffectInstances)
+          : null,
+        baseDice: form.damageDice || form.healDice || null,
+        baseMaxTargets: form.maxTargets ? Number(form.maxTargets) : null,
+      }),
+    [
+      form.level,
+      form.upcastMode,
+      form.upcastDiceCount,
+      form.upcastDieSize,
+      form.upcastFixedBonus,
+      form.upcastFlat,
+      form.upcastPerLevel,
+      form.upcastMaxLevel,
+      form.upcastBaseEffectInstances,
+      form.damageDice,
+      form.healDice,
+      form.maxTargets,
+    ],
+  );
+
+  if (!form.upcastMode || warnings.length === 0 && previewRows.length <= 1) return null;
+
+  return (
+    <>
+      {warnings.length > 0 ? (
+        <div className="rounded-xl border border-amber-300/15 bg-amber-400/10 px-4 py-3 space-y-1 mt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
+            {t("catalog.spells.form.upcastValidationTitle")}
+          </p>
+          {warnings.map((w) => (
+            <p key={w.key} className="text-xs leading-5 text-amber-100">
+              {t(w.key as LocaleKey)}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {previewRows.length > 1 ? (
+        <div className="space-y-2 mt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            {t("catalog.spells.form.upcastPreviewTitle")}
+          </p>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/5 text-left text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                <th className="pb-2 pr-4">{t("catalog.spells.form.upcastPreviewSlot")}</th>
+                <th className="pb-2">{t("catalog.spells.form.upcastPreviewResult")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewRows.map((row) => (
+                <tr
+                  key={row.slotLevel}
+                  className={row.isBase ? "text-slate-300" : "text-white"}
+                >
+                  <td className="py-1 pr-4 font-mono text-[11px]">
+                    {row.isBase ? (
+                      <span className="text-slate-400">{row.label}</span>
+                    ) : (
+                      row.label
+                    )}
+                  </td>
+                  <td className="py-1 font-mono text-[11px]">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => {
   const { locale, t } = useLocale();
@@ -59,12 +191,8 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
   const showUpcastDiceField =
     form.upcastMode === "extra_damage_dice" ||
     form.upcastMode === "extra_heal_dice" ||
-    form.upcastMode === "additional_effect_instances" ||
-    form.upcastMode === "additional_targets";
-  const showUpcastFlatField =
-    form.upcastMode === "extra_damage_dice" ||
-    form.upcastMode === "extra_heal_dice" ||
-    form.upcastMode === "flat_bonus";
+    form.upcastMode === "additional_effect_instances";
+  const showUpcastFlatField = form.upcastMode === "flat_bonus";
   const showUpcastPerLevelField = Boolean(form.upcastMode);
   const showUpcastMaxLevelField = Boolean(form.upcastMode);
   const showEffectScalingFields = form.upcastMode === "effect_scaling";
@@ -315,6 +443,10 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           title={t("catalog.spells.form.upcast")}
           collapsible
         >
+          <p className="text-xs leading-5 text-slate-400 mb-2">
+            {t("catalog.spells.form.upcastIntro")}
+          </p>
+
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
               {t("catalog.spells.form.upcastModeDetailed")}
@@ -337,6 +469,19 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               ))}
             </select>
           </label>
+
+          {form.upcastMode ? (
+            <>
+              <p className="text-xs leading-5 text-slate-300 mt-2">
+                {localizeUpcastModeDescription(form.upcastMode, locale)}
+              </p>
+              {localizeUpcastModeExample(form.upcastMode, locale) ? (
+                <p className="text-[11px] italic leading-5 text-slate-500">
+                  {localizeUpcastModeExample(form.upcastMode, locale)}
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
           {showUpcastDiceField && (
             <div className="grid gap-4 md:grid-cols-3">
@@ -575,6 +720,8 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               </label>
             </div>
           )}
+
+          <SystemUpcastValidationAndPreview form={form} locale={locale} t={t} />
         </SystemSpellCatalogFormSection>
       )}
 

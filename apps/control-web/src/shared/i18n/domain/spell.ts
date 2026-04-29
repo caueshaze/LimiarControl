@@ -133,6 +133,67 @@ const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {
   extra_effect: label("Extra effect", "Efeito extra"),
 };
 
+const UPCAST_MODE_DESCRIPTIONS: Record<UpcastMode, LabelEntry> = {
+  extra_damage_dice: label(
+    "Adds damage dice per slot level above base",
+    "Adiciona dados de dano por nível de espaço acima do base",
+  ),
+  extra_heal_dice: label(
+    "Adds healing dice per slot level above base",
+    "Adiciona dados de cura por nível de espaço acima do base",
+  ),
+  flat_bonus: label(
+    "Adds a flat numeric bonus per slot level",
+    "Adiciona um bônus numérico fixo por nível de espaço",
+  ),
+  additional_effect_instances: label(
+    "Adds more effect instances, like Magic Missile darts",
+    "Adiciona instâncias extras de efeito, como dardos de Magic Missile",
+  ),
+  additional_targets: label(
+    "Adds more targets per higher slot level",
+    "Adiciona alvos extras por nível de espaço acima do base",
+  ),
+  duration_scaling: label(
+    "Increases spell duration when upcast",
+    "Aumenta a duração da magia quando conjurada em nível superior",
+  ),
+  effect_scaling: label(
+    "Increases an effect value, such as radius",
+    "Aumenta um valor de efeito, como o raio de área",
+  ),
+  extra_effect: label(
+    "Unlocks an additional effect at higher levels",
+    "Desbloqueia um efeito adicional em níveis superiores",
+  ),
+};
+
+const UPCAST_MODE_EXAMPLES: Record<UpcastMode, LabelEntry> = {
+  extra_damage_dice: label(
+    "Ex.: Fireball uses +1d6 per slot level above 3rd.",
+    "Ex.: Fireball usa +1d6 por nível de espaço acima do 3º.",
+  ),
+  extra_heal_dice: label(
+    "Ex.: Cure Wounds uses +1d8 per slot level above 1st.",
+    "Ex.: Cure Wounds usa +1d8 por nível de espaço acima do 1º.",
+  ),
+  flat_bonus: label("", ""),
+  additional_effect_instances: label(
+    "Ex.: Magic Missile adds 1 extra dart per slot level above 1st.",
+    "Ex.: Magic Missile adiciona 1 dardo extra por nível de espaço acima do 1º.",
+  ),
+  additional_targets: label(
+    "Ex.: Hold Person adds 1 extra target per slot level above 2nd.",
+    "Ex.: Hold Person adiciona 1 alvo extra por nível de espaço acima do 2º.",
+  ),
+  duration_scaling: label("", ""),
+  effect_scaling: label(
+    "Ex.: Fog Cloud increases radius by 6 m per slot level above 1st.",
+    "Ex.: Fog Cloud aumenta o raio em 6 m por nível de espaço acima do 1º.",
+  ),
+  extra_effect: label("", ""),
+};
+
 const SPELL_SOURCE_LABELS: Record<SpellSource, LabelEntry> = {
   admin_panel: label("Admin panel", "Painel admin"),
   seed_json_bootstrap: label("Seed bootstrap", "Carga inicial por seed"),
@@ -171,6 +232,12 @@ export const localizeSaveSuccessOutcome = (
 
 export const localizeUpcastMode = (value: UpcastMode, locale: LocaleLike) =>
   displayLabel(UPCAST_MODE_LABELS[value], locale);
+
+export const localizeUpcastModeDescription = (value: UpcastMode, locale: LocaleLike) =>
+  displayLabel(UPCAST_MODE_DESCRIPTIONS[value], locale);
+
+export const localizeUpcastModeExample = (value: UpcastMode, locale: LocaleLike) =>
+  displayLabel(UPCAST_MODE_EXAMPLES[value], locale);
 
 export const localizeSpellSource = (value: SpellSource, locale: LocaleLike) =>
   displayLabel(SPELL_SOURCE_LABELS[value], locale);
