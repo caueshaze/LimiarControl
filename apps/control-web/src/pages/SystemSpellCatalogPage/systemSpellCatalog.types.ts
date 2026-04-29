@@ -161,6 +161,7 @@ export const CLASS_OPTIONS = [
   "Bard",
   "Cleric",
   "Druid",
+  "Guardian",
   "Paladin",
   "Ranger",
   "Sorcerer",

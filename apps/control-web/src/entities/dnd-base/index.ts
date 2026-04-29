@@ -24,6 +24,7 @@ export {
   getBaseSpells,
   findBaseSpell,
   getBaseSpellsForClass,
+  getSpellAvailabilityClassIds,
   loadSpellCatalog,
   isSpellCatalogLoaded,
   resolveSpellSourceClassId,

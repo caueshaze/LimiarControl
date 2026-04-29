@@ -57,6 +57,7 @@ export const SPELL_CLASS_OPTIONS = [
   "Bard",
   "Cleric",
   "Druid",
+  "Guardian",
   "Paladin",
   "Ranger",
   "Sorcerer",

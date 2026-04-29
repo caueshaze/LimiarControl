@@ -203,6 +203,7 @@ const SPELL_CLASS_LABELS: Record<string, LabelEntry> = {
   Bard: label("Bard", "Bardo"),
   Cleric: label("Cleric", "Clérigo"),
   Druid: label("Druid", "Druida"),
+  Guardian: label("Guardian", "Guardião"),
   Paladin: label("Paladin", "Paladino"),
   Ranger: label("Ranger", "Patrulheiro"),
   Sorcerer: label("Sorcerer", "Feiticeiro"),

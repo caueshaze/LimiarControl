@@ -8,6 +8,7 @@ import {
   stripClassLevelAbilityBonuses,
   applyClassLevelAbilityBonuses,
 } from "../data/classFeatures";
+import { isGuidedPreset } from "../data/guidedPresets";
 import {
   computeMaxHpAtLevel,
   safeParseInt,
@@ -59,8 +60,8 @@ export const buildCreationSetField = (
       if (!cls) return { ...sheet, level, abilities, classFeatures: buildClassFeatures(sheet.class, level, null, sheet.subclassConfig) };
       const fixedSubclass = getFixedSubclassForClassLevel(sheet.class, level);
       const fixedFightingStyle = getFixedFightingStyleForClassLevel(sheet.class, level);
-      const nextSubclass = fixedSubclass ?? (sheet.class === "guardian" ? null : sheet.subclass);
-      const nextFightingStyle = fixedFightingStyle ?? (sheet.class === "guardian" ? null : sheet.fightingStyle);
+      const nextSubclass = fixedSubclass ?? (isGuidedPreset(sheet.class) ? null : sheet.subclass);
+      const nextFightingStyle = fixedFightingStyle ?? (isGuidedPreset(sheet.class) ? null : sheet.fightingStyle);
       const maxHP = computeMaxHpAtLevel(cls.hitDice, level, abilities.constitution);
       const spellcasting = buildCreationSpellcasting(
         sheet.class,
