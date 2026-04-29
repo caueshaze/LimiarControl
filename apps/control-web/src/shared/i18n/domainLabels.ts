@@ -25,5 +25,7 @@ export {
   localizeAreaShape,
   localizeTargetType,
   localizeUpcastMode,
+  localizeUpcastModeDescription,
+  localizeUpcastModeExample,
 } from "./domain/spell";
 export { humanizeFallback as formatDomainFallbackLabel } from "./domain/shared";

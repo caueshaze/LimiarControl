@@ -79,16 +79,13 @@ export const SpellCatalogFormFields = ({
   const showUpcastDiceField =
     state.upcastMode === "extra_damage_dice" ||
     state.upcastMode === "extra_heal_dice" ||
-    state.upcastMode === "additional_effect_instances" ||
-    state.upcastMode === "additional_targets";
-  const showUpcastFlatField =
-    state.upcastMode === "extra_damage_dice" ||
-    state.upcastMode === "extra_heal_dice" ||
-    state.upcastMode === "flat_bonus";
+    state.upcastMode === "additional_effect_instances";
+  const showUpcastFlatField = state.upcastMode === "flat_bonus";
   const showUpcastPerLevelField = Boolean(state.upcastMode);
   const showUpcastMaxLevelField = Boolean(state.upcastMode);
   const showEffectScalingFields = state.upcastMode === "effect_scaling";
   const showExtraEffectFields = state.upcastMode === "extra_effect";
+  const showBaseEffectInstances = state.upcastMode === "additional_effect_instances";
   const showRadiusField = state.areaShape === "sphere" || state.areaShape === "cylinder";
   const showLengthField = state.areaShape === "cone" || state.areaShape === "line";
   const showSideField = state.areaShape === "cube";
@@ -563,6 +560,7 @@ export const SpellCatalogFormFields = ({
           showUpcastFlatField={showUpcastFlatField}
           showUpcastPerLevelField={showUpcastPerLevelField}
           showUpcastMaxLevelField={showUpcastMaxLevelField}
+          showBaseEffectInstances={showBaseEffectInstances}
           showEffectScalingFields={showEffectScalingFields}
           showExtraEffectFields={showExtraEffectFields}
         />

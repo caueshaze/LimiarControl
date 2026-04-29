@@ -247,6 +247,10 @@ const buildStructuredUpcast = (
     flat: toNullablePositiveInteger(state.upcastFlat),
     perLevel: toNullablePositiveInteger(state.upcastPerLevel, 1),
     maxLevel: toNullablePositiveInteger(state.upcastMaxLevel),
+    baseEffectInstances:
+      state.upcastMode === "additional_effect_instances"
+        ? toNullablePositiveInteger(state.upcastBaseEffectInstances)
+        : null,
     scalingKey:
       state.upcastMode === "effect_scaling" ? toNullableText(state.upcastScalingKey) : null,
     scalingSummary:
@@ -499,6 +503,7 @@ export type SpellCatalogEditorState = {
   upcastFlat: string;
   upcastPerLevel: string;
   upcastMaxLevel: string;
+  upcastBaseEffectInstances: string;
   upcastScalingKey: string;
   upcastScalingSummary: string;
   upcastScalingEditorial: string;
@@ -679,6 +684,8 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   upcastFlat: spell.upcast?.flat != null ? String(spell.upcast.flat) : "",
   upcastPerLevel: spell.upcast?.perLevel != null ? String(spell.upcast.perLevel) : "1",
   upcastMaxLevel: spell.upcast?.maxLevel != null ? String(spell.upcast.maxLevel) : "",
+  upcastBaseEffectInstances:
+    spell.upcast?.baseEffectInstances != null ? String(spell.upcast.baseEffectInstances) : "",
   upcastScalingKey: spell.upcast?.scalingKey ?? "",
   upcastScalingSummary: spell.upcast?.scalingSummary ?? "",
   upcastScalingEditorial: spell.upcast?.scalingEditorial ?? "",
@@ -740,6 +747,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   upcastFlat: "",
   upcastPerLevel: "1",
   upcastMaxLevel: "",
+  upcastBaseEffectInstances: "",
   upcastScalingKey: "",
   upcastScalingSummary: "",
   upcastScalingEditorial: "",

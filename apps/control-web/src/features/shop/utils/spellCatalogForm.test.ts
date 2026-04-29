@@ -153,6 +153,7 @@ describe("spellCatalogForm", () => {
           flat: null,
           perLevel: 1,
           maxLevel: 5,
+          baseEffectInstances: null,
           scalingKey: null,
           scalingSummary: null,
           scalingEditorial: null,
@@ -247,6 +248,7 @@ describe("spellCatalogForm", () => {
       flat: null,
       perLevel: 1,
       maxLevel: 6,
+      baseEffectInstances: null,
       scalingKey: null,
       scalingSummary: null,
       scalingEditorial: null,
@@ -532,5 +534,80 @@ describe("spellCatalogForm", () => {
     expect(state.lengthMeters).toBe("4.5");
     const payload = buildSpellUpdatePayload(state);
     expect(payload.lengthMeters).toBe(4.5);
+  });
+
+  it("includes baseEffectInstances in upcast for additional_effect_instances mode", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createSpellEditorState(
+        createSpell({
+          level: 1,
+          resolutionType: "damage",
+          damageDice: "3d4+3",
+          damageType: "Force",
+          upcast: {
+            mode: "additional_effect_instances",
+            dice: "1d4+1",
+            perLevel: 1,
+            baseEffectInstances: 3,
+          },
+        }),
+      ),
+    });
+
+    expect(payload.upcast).toEqual(
+      expect.objectContaining({
+        mode: "additional_effect_instances",
+        baseEffectInstances: 3,
+      }),
+    );
+  });
+
+  it("omits baseEffectInstances for non-instance upcast modes", () => {
+    const payload = buildSpellUpdatePayload({
+      ...createSpellEditorState(
+        createSpell({
+          level: 3,
+          resolutionType: "damage",
+          damageDice: "8d6",
+          damageType: "Fire",
+          upcast: {
+            mode: "extra_damage_dice",
+            dice: "1d6",
+            perLevel: 1,
+          },
+        }),
+      ),
+    });
+
+    expect(payload.upcast).toEqual(
+      expect.objectContaining({
+        mode: "extra_damage_dice",
+        baseEffectInstances: null,
+      }),
+    );
+  });
+
+  it("hydrates upcastBaseEffectInstances from spell data", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        level: 1,
+        resolutionType: "damage",
+        damageDice: "3d4+3",
+        damageType: "Force",
+        upcast: {
+          mode: "additional_effect_instances",
+          dice: "1d4+1",
+          perLevel: 1,
+          baseEffectInstances: 3,
+        },
+      }),
+    );
+
+    expect(state.upcastBaseEffectInstances).toBe("3");
+  });
+
+  it("defaults upcastBaseEffectInstances to empty string for new spells", () => {
+    const state = createEmptySpellEditorState();
+    expect(state.upcastBaseEffectInstances).toBe("");
   });
 });
