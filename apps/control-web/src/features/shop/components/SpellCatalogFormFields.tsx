@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { BaseSpell } from "../../../entities/base-spell";
+import { SpellAoeFootprintPreview } from "../../../pages/SystemSpellCatalogPage/SpellAoeFootprintPreview";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 import {
@@ -522,6 +523,13 @@ export const SpellCatalogFormFields = ({
             )}
           </div>
         ) : null}
+
+        <SpellAoeFootprintPreview
+          areaShape={state.areaShape}
+          radiusMeters={state.radiusMeters}
+          lengthMeters={state.lengthMeters}
+          sideMeters={state.sideMeters}
+        />
       </Section>
 
       <SpellCatalogResolutionFields

@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import { SpellAoeFootprintPreview } from "./SpellAoeFootprintPreview";
 import type {
   AreaShape,
   CastingTimeType,
@@ -462,6 +463,13 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
             )}
           </div>
         )}
+
+        <SpellAoeFootprintPreview
+          areaShape={form.areaShape}
+          radiusMeters={form.radiusMeters}
+          lengthMeters={form.lengthMeters}
+          sideMeters={form.sideMeters}
+        />
       </SystemSpellCatalogFormSection>
     </>
   );
