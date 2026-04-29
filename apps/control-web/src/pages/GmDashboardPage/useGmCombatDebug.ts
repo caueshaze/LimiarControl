@@ -8,8 +8,10 @@ import { subscribe } from "../../shared/realtime/centrifugoClient";
 import type { SessionEntity } from "../../entities/session-entity";
 import { sessionEntitiesRepo } from "../../shared/api/sessionEntitiesRepo";
 import { formatDamageDiceExpression } from "../../shared/utils/diceExpression";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 export const useGmCombatDebug = (sessionId: string) => {
+  const { t } = useLocale();
   const [state, setState] = useState<CombatState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +176,7 @@ export const useGmCombatDebug = (sessionId: string) => {
 
   const formatEntityActionResult = (result: CombatEntityActionResult) => {
     if (!selectedCombatAction) {
-      return "Action resolved.";
+      return t("gm.dashboard.actionResolved");
     }
     if (
       result?.action_kind === "weapon_attack" ||
@@ -199,14 +201,14 @@ export const useGmCombatDebug = (sessionId: string) => {
       );
       return result?.is_saved
         ? result?.save_success_outcome === "half_damage"
-          ? `${selectedCombatAction.name}: target saved (${result?.save_roll ?? "-"} vs DC ${result?.save_dc ?? "-"}) and took half damage (${result?.damage ?? 0} of ${rolledTotal}).`
-          : `${selectedCombatAction.name}: target saved (${result?.save_roll ?? "-"} vs DC ${result?.save_dc ?? "-"}) and took no damage.`
+          ? `${selectedCombatAction.name}: alvo passou no save (${result?.save_roll ?? "-"} vs DC ${result?.save_dc ?? "-"}) e sofreu metade do dano (${result?.damage ?? 0} de ${rolledTotal}).`
+          : `${selectedCombatAction.name}: alvo passou no save (${result?.save_roll ?? "-"} vs DC ${result?.save_dc ?? "-"}) e não sofreu dano.`
         : `${selectedCombatAction.name}: target failed the save and took ${result?.damage ?? 0} damage.`;
     }
     if (result?.action_kind === "heal") {
-      return `${selectedCombatAction.name} healed ${result?.healing ?? 0} HP.`;
+      return `${selectedCombatAction.name} curou ${result?.healing ?? 0} HP.`;
     }
-    return `${selectedCombatAction.name} executed.`;
+    return `${selectedCombatAction.name} resolvida.`;
   };
 
   const handleSetInitiative = async () => {
@@ -224,7 +226,7 @@ export const useGmCombatDebug = (sessionId: string) => {
       });
       if (updated) setState(updated);
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Failed to set initiative");
+      setError(err?.data?.detail || err?.message || t("gm.dashboard.failedToSetInitiative"));
     } finally {
       setLoading(false);
     }
@@ -241,7 +243,7 @@ export const useGmCombatDebug = (sessionId: string) => {
       setError(
         err?.data?.detail ||
           err?.message ||
-          "Failed to confirm combat placement"
+          t("gm.dashboard.failedToConfirmPlacement")
       );
     } finally {
       setLoading(false);
@@ -260,7 +262,7 @@ export const useGmCombatDebug = (sessionId: string) => {
       });
       if (updated) setState(updated);
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Failed to advance turn");
+      setError(err?.data?.detail || err?.message || t("gm.dashboard.failedToAdvanceTurn"));
     } finally {
       setLoading(false);
     }
@@ -298,7 +300,7 @@ export const useGmCombatDebug = (sessionId: string) => {
       setState(refreshed);
       setActionResult(formatEntityActionResult(result));
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Failed to execute action");
+      setError(err?.data?.detail || err?.message || t("gm.dashboard.failedToExecuteAction"));
     } finally {
       setLoading(false);
     }

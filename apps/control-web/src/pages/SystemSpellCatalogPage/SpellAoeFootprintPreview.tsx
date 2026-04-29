@@ -1,4 +1,5 @@
 import { metersToCells } from "../../features/combat-ui/hooks/useTargetingPreview";
+import { useLocale } from "../../shared/hooks/useLocale";
 import {
   computeAoeFootprint,
   getRequiredDimensionField,
@@ -61,10 +62,12 @@ export const SpellAoeFootprintPreview = ({
   lengthMeters,
   sideMeters,
 }: Props) => {
+  const { t } = useLocale();
+
   if (!areaShape) {
     return (
       <p className="text-xs text-slate-500" data-testid="spell-aoe-preview-empty">
-        Nenhuma forma de área selecionada.
+        {t("catalog.spells.preview.noAreaSelected")}
       </p>
     );
   }
@@ -86,7 +89,8 @@ export const SpellAoeFootprintPreview = ({
         className="text-xs text-amber-400/80"
         data-testid="spell-aoe-preview-warning"
       >
-        Configure o {DIMENSION_LABEL[dimensionField]} para ver o preview da área.
+        {t("catalog.spells.preview.configureDimensionPrefix")} {DIMENSION_LABEL[dimensionField]}{" "}
+        {t("catalog.spells.preview.configureDimensionSuffix")}
       </p>
     );
   }
@@ -98,7 +102,7 @@ export const SpellAoeFootprintPreview = ({
   return (
     <div data-testid="spell-aoe-preview">
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-        Preview da área
+        {t("catalog.spells.preview.title")}
       </p>
       <div
         className="inline-grid gap-px rounded border border-white/8 bg-white/4 p-1"
@@ -121,8 +125,10 @@ export const SpellAoeFootprintPreview = ({
         )}
       </div>
       <p className="mt-1.5 text-xs text-slate-400">
-        {cells.length} célula{cells.length !== 1 ? "s" : ""} afetada
-        {cells.length !== 1 ? "s" : ""}
+        {cells.length}{" "}
+        {cells.length === 1
+          ? t("catalog.spells.preview.affectedCellsSingular")
+          : t("catalog.spells.preview.affectedCellsPlural")}
       </p>
     </div>
   );

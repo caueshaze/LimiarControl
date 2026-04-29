@@ -244,7 +244,7 @@ export const PartyDetailsPage = () => {
             setSearchQuery("");
             await loadData();
         } catch (err: any) {
-            alert(err?.message ?? "Failed to invite user");
+            alert(err?.message ?? t("campaignHome.failedToInviteUser"));
         }
     };
 
@@ -271,7 +271,7 @@ export const PartyDetailsPage = () => {
                 setShowStartModal(false);
                 return;
             }
-            alert(err?.message ?? "Failed to start session");
+            alert(err?.message ?? t("campaignHome.failedToStartSession"));
         } finally {
             setStarting(false);
         }
@@ -290,7 +290,7 @@ export const PartyDetailsPage = () => {
                 setMissingSheetsPlayers(detail.players ?? []);
                 return;
             }
-            alert(err?.message ?? "Failed to start session");
+            alert(err?.message ?? t("campaignHome.failedToStartSession"));
         } finally {
             setForceStarting(false);
         }
@@ -298,21 +298,19 @@ export const PartyDetailsPage = () => {
 
     const handleEndSession = async () => {
         if (!partyId || !activeSession) return;
-        if (!confirm("Are you sure you want to end this session?")) return;
+        if (!confirm(t("campaignHome.confirmEndSession"))) return;
         try {
             await partiesRepo.closePartySession(partyId, activeSession.id);
             await loadData();
         } catch (err: any) {
-            alert(err?.message ?? "Failed to end session");
+            alert(err?.message ?? t("campaignHome.failedToEndSession"));
         }
     };
 
     const handleDeleteParty = async () => {
         if (!party || deletingParty) return;
 
-        const confirmed = confirm(
-            `Delete the party "${party.name}" permanently?\n\nThis removes the party, its members, invitations, sessions, sheets, and party inventory.`
-        );
+        const confirmed = confirm(t("campaignHome.confirmDeleteParty").replace("{name}", party.name));
         if (!confirmed) return;
 
         setDeletingParty(true);
@@ -320,18 +318,18 @@ export const PartyDetailsPage = () => {
             await partiesRepo.remove(party.id);
             navigate(routes.gmHome);
         } catch (err: any) {
-            alert(err?.message ?? "Failed to delete party");
+            alert(err?.message ?? t("campaignHome.failedToDeleteParty"));
             setDeletingParty(false);
         }
     };
 
-    if (loading) return <section className="space-y-8 p-6"><p className="text-slate-400">Loading party details...</p></section>;
+    if (loading) return <section className="space-y-8 p-6"><p className="text-slate-400">{t("campaignHome.loadingPartyDetails")}</p></section>;
 
     if (!party) {
         return (
             <section className="space-y-8 p-6">
-                <p className="text-slate-400">Party not found.</p>
-                <Link to={routes.gmHome} className="text-limiar-400 hover:underline">Return to GM Home</Link>
+                <p className="text-slate-400">{t("campaignHome.partyNotFound")}</p>
+                <Link to={routes.gmHome} className="text-limiar-400 hover:underline">{t("campaignHome.returnToGmHome")}</Link>
             </section>
         );
     }

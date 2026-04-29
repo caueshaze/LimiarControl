@@ -146,7 +146,7 @@ export const SystemCatalogItemForm = ({
               {t("catalog.admin.table.healDice")}
             </p>
             <p className="mt-1 text-sm text-slate-400">
-              Estruture a fórmula de cura automática para consumíveis.
+              {t("catalog.admin.form.healFormulaHelper")}
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -202,7 +202,7 @@ export const SystemCatalogItemForm = ({
       <div className="grid gap-4 md:grid-cols-3">
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Source
+            {t("catalog.admin.form.sourceDetailed")}
           </span>
           <select
             value={form.source}
@@ -224,7 +224,7 @@ export const SystemCatalogItemForm = ({
 
         <label className="block md:col-span-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Source ref
+            {t("catalog.admin.form.sourceRefDetailed")}
           </span>
           <input
             value={form.sourceRef}
@@ -250,14 +250,14 @@ export const SystemCatalogItemForm = ({
                 }))
               }
             />
-            stealth disadvantage
+            {t("catalog.admin.form.stealthDisadvantage")}
           </label>
         )}
 
         {supportsArmorFields && (
           <label className="flex items-center gap-3 text-sm text-slate-300">
             <input type="checkbox" checked={isShieldArmor} readOnly />
-            shield
+            {t("catalog.admin.form.shield")}
           </label>
         )}
 
@@ -303,7 +303,7 @@ export const SystemCatalogItemForm = ({
           onClick={onCreateNew}
           className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/6"
         >
-          Limpar editor
+          {t("catalog.admin.form.clearFields")}
         </button>
         {selectedItemId && (
           <button
@@ -311,7 +311,7 @@ export const SystemCatalogItemForm = ({
             onClick={onDelete}
             className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/16"
           >
-            Deletar item
+            {t("catalog.admin.form.deleteItem")}
           </button>
         )}
       </div>

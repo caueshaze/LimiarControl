@@ -1,10 +1,12 @@
 import type { DeathSaveFeedback } from "./types";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
   feedback: DeathSaveFeedback;
 };
 
 export const PlayerDeathSaveFeedbackCard = ({ feedback }: Props) => {
+  const { t } = useLocale();
   const toneClass =
     feedback.status === "active"
       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
@@ -19,7 +21,7 @@ export const PlayerDeathSaveFeedbackCard = ({ feedback }: Props) => {
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-bold uppercase tracking-widest">Death Save Result</h4>
         <span className="rounded-full border border-white/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
-          {feedback.roll != null ? `Roll ${feedback.roll}` : "Auto Update"}
+          {feedback.roll != null ? t("playerBoard.rollN").replace("{n}", String(feedback.roll)) : t("playerBoard.autoUpdate")}
         </span>
       </div>
       <p className="mt-3 text-sm">{feedback.message ?? ""}</p>

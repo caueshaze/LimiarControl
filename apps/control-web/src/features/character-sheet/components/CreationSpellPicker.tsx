@@ -1,3 +1,4 @@
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useEffect, useState } from "react";
 import { loadSpellCatalog, isSpellCatalogLoaded } from "../../../entities/dnd-base";
 import { getAvailableStartingSpells, getFixedStartingSpells } from "../utils/creationSpells";
@@ -23,6 +24,7 @@ export const CreationSpellPicker = ({
   selectedSpells,
   onToggle,
 }: Props) => {
+  const { t } = useLocale();
   const [ready, setReady] = useState(isSpellCatalogLoaded(campaignId));
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export const CreationSpellPicker = ({
           <circle cx="12" cy="12" r="10" strokeOpacity={0.25} />
           <path d="M12 2a10 10 0 019.5 6.5" strokeLinecap="round" />
         </svg>
-        Loading spells...
+        {t("sheet.spells.loading")}
       </div>
     );
   }
@@ -87,7 +89,7 @@ const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, name
   <div>
     <div className="mb-2 flex items-center justify-between">
       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
-      {limitReached && <span className="text-[10px] font-semibold text-amber-300">Limit reached</span>}
+      {limitReached && <span className="text-[10px] font-semibold text-amber-300">{t("sheet.creation.limitReached")}</span>}
     </div>
     <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto pr-1">
       {names.map((name) => {

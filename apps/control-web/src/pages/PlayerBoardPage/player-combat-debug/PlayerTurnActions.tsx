@@ -85,39 +85,39 @@ const StandardActionButtons = ({
           onClick={() => onStandardAction("dodge")}
           className={`${STD_BTN} border-sky-500/40 text-sky-300 hover:bg-sky-500/10`}
         >
-          Dodge
+          {t("combatUi.dodge")}
         </button>
         <button
           disabled={disabled}
           onClick={() => onStandardAction("dash")}
           className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}
         >
-          Dash
+          {t("combatUi.dash")}
         </button>
         <button
           disabled={disabled}
           onClick={() => onStandardAction("disengage")}
           className={`${STD_BTN} border-slate-600 text-slate-300 hover:bg-slate-700`}
         >
-          Disengage
+          {t("combatUi.disengage")}
         </button>
         <button
           disabled={disabled}
           onClick={() => onStandardAction("hide")}
           className={`${STD_BTN} border-violet-500/40 text-violet-300 hover:bg-violet-500/10`}
         >
-          Hide
+          {t("combatUi.hide")}
         </button>
         <button
           disabled={disabled || !helpTarget}
           onClick={() => { onStandardAction("help", helpTarget); setHelpTarget(""); }}
           className={`${STD_BTN} border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10`}
-        >Help</button>
+        >{t("combatUi.help")}</button>
         <button
           disabled={disabled}
           onClick={() => { onStandardAction("use_object", undefined, useObjectDesc || undefined); setUseObjectDesc(""); }}
           className={`${STD_BTN} border-amber-500/40 text-amber-300 hover:bg-amber-500/10`}
-        >Use Object</button>
+        >{t("combatUi.useObject")}</button>
       </div>
 
       {/* Help target selector */}
@@ -127,7 +127,7 @@ const StandardActionButtons = ({
           onChange={(e) => setHelpTarget(e.target.value)}
           className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
         >
-          <option value="">Help target (ally)...</option>
+          <option value="">{t("combatUi.helpTargetPlaceholder")}</option>
           {allies.map((p) => (
             <option key={p.id} value={p.id}>{p.display_name}</option>
           ))}
@@ -140,7 +140,7 @@ const StandardActionButtons = ({
           type="text"
           value={useObjectDesc}
           onChange={(e) => setUseObjectDesc(e.target.value)}
-          placeholder="Object description (optional)"
+          placeholder={t("combatUi.objectDescriptionPlaceholder")}
           className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
         />
       )}
@@ -240,6 +240,7 @@ export const PlayerTurnActions = ({
   spellSaveAbility,
   targetId,
 }: Props) => {
+  const { t } = useLocale();
   const selectedSpellActionCost =
     selectedSpell?.actionCost ?? resolveCombatSpellActionCost("action");
   const canSpendSpellActionCost = isCombatSpellActionCostAvailable(
@@ -248,10 +249,10 @@ export const PlayerTurnActions = ({
   );
   const spellActionCostLabel =
     selectedSpellActionCost === "bonus_action"
-      ? "Bonus Action"
+      ? t("combatUi.bonusAction")
       : selectedSpellActionCost === "reaction"
-        ? "Reaction"
-        : "Action";
+        ? t("combatUi.reaction")
+        : t("combatUi.action");
   const canSubmitSpell =
     Boolean(targetId) &&
     Boolean(selectedSpell?.canonicalKey) &&
@@ -265,18 +266,18 @@ export const PlayerTurnActions = ({
   if (deathSaveVisible) {
     return (
       <div className="mt-4 rounded border border-rose-500/40 bg-rose-950/40 p-4">
-        <h4 className="text-sm font-bold uppercase tracking-widest text-rose-300">Downed</h4>
+        <h4 className="text-sm font-bold uppercase tracking-widest text-rose-300">{t("combatUi.downedTitle")}</h4>
         <p className="mt-2 text-sm text-rose-100">
           {canRollDeathSave
-            ? "You reached 0 HP and must roll a Death Save now."
-            : "You reached 0 HP. Your Death Save will become available on your turn."}
+            ? t("combatUi.downedYourTurn")
+            : t("combatUi.downedWaiting")}
         </p>
         <button
           disabled={loading || !canRollDeathSave}
           onClick={onDeathSave}
           className="mt-4 w-full rounded bg-rose-600 px-4 py-4 text-lg font-bold uppercase tracking-widest text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Roll Death Save
+          {t("combatUi.rollDeathSave")}
         </button>
       </div>
     );
@@ -288,7 +289,7 @@ export const PlayerTurnActions = ({
 
   return (
     <div className="mt-4 border-t border-sky-500/20 pt-4">
-      <h4 className="mb-2 font-bold text-sky-300">Your Turn Actions (Debug UI)</h4>
+      <h4 className="mb-2 font-bold text-sky-300">{t("combatUi.turnActionsDebug")}</h4>
 
       {isActive ? (
         <>
@@ -298,13 +299,13 @@ export const PlayerTurnActions = ({
             return (
               <div className="mb-3 flex gap-3 text-[10px] font-bold uppercase tracking-wider">
                 <span className={tr.action_used ? "text-slate-600 line-through" : "text-emerald-400"}>
-                  Action: {tr.action_used ? "Used" : "Ready"}
+                  {t("combatUi.turnActionState")}
                 </span>
                 <span className={tr.bonus_action_used ? "text-slate-600 line-through" : "text-amber-400"}>
-                  Bonus: {tr.bonus_action_used ? "Used" : "Ready"}
+                  {t("combatUi.turnBonusState")}
                 </span>
                 <span className={tr.reaction_used ? "text-slate-600 line-through" : "text-sky-400"}>
-                  Reaction: {tr.reaction_used ? "Used" : "Ready"}
+                  {t("combatUi.turnReactionState")}
                 </span>
               </div>
             );
@@ -316,7 +317,7 @@ export const PlayerTurnActions = ({
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
             >
-              <option value="">Select Target...</option>
+              <option value="">{t("combatUi.selectTarget")}</option>
               {livingTargets.length > 0 && (
                 <optgroup label="Vivos / em combate">
                   {livingTargets.map((participant) => (
@@ -350,7 +351,7 @@ export const PlayerTurnActions = ({
                   : "border-slate-700 bg-slate-800 text-slate-400"
               }`}
             >
-              ATTACK
+              {t("combatUi.attack")}
             </button>
             <button
               onClick={() => setActiveTab("cast")}
@@ -360,7 +361,7 @@ export const PlayerTurnActions = ({
                   : "border-slate-700 bg-slate-800 text-slate-400"
               }`}
             >
-              CAST SPELL
+              {t("combatUi.castSpell")}
             </button>
           </div>
 
@@ -398,7 +399,7 @@ export const PlayerTurnActions = ({
                 value={selectedSpellId}
                 onChange={(e) => setSelectedSpellId(e.target.value)}
               >
-                <option value="">Select Spell...</option>
+                <option value="">{t("combatUi.selectSpellPlaceholder")}</option>
                 {spellOptions.map((spell) => (
                   <option key={spell.id} value={spell.id}>
                     {spell.name} {spell.level > 0 ? `(Lv ${spell.level})` : "(Cantrip)"}
@@ -416,7 +417,7 @@ export const PlayerTurnActions = ({
                     Sugestao do catalogo: {selectedSpell.suggestedMode?.replace(/_/g, " ") ?? "nenhuma"}
                   </p>
                   <p className="mt-1 text-xs text-slate-300">
-                    Action cost: {spellActionCostLabel}
+                    {t("combatUi.actionCost")}: {spellActionCostLabel}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Tipo de dano: {selectedSpell.damageType ?? "nao estruturado"} · Save: {selectedSpell.savingThrow ?? "nao estruturado"}
@@ -434,11 +435,11 @@ export const PlayerTurnActions = ({
                 value={spellMode}
                 onChange={(e) => setSpellMode(e.target.value as CombatSpellMode)}
               >
-                <option value="spell_attack">Spell Attack</option>
-                <option value="saving_throw">Saving Throw</option>
-                <option value="direct_damage">Direct Damage (override)</option>
-                <option value="heal">Direct Heal</option>
-                <option value="utility">Utility</option>
+                <option value="spell_attack">{t("combatUi.spellMode.spell_attack")}</option>
+                <option value="saving_throw">{t("combatUi.spellMode.saving_throw")}</option>
+                <option value="direct_damage">{t("combatUi.spellMode.direct_damage")}</option>
+                <option value="heal">{t("combatUi.spellMode.heal")}</option>
+                <option value="utility">{t("combatUi.spellMode.utility")}</option>
               </select>
 
               {spellMode === "direct_damage" ? (
@@ -453,7 +454,11 @@ export const PlayerTurnActions = ({
                     type="text"
                     value={spellEffectDice}
                     onChange={(e) => setSpellEffectDice(e.target.value)}
-                    placeholder={spellMode === "heal" ? "Heal Dice (ex: 1d4)" : "Damage Dice (ex: 2d6)"}
+                    placeholder={
+                      spellMode === "heal"
+                        ? t("combatUi.healDicePlaceholder")
+                        : t("combatUi.damageDicePlaceholder")
+                    }
                     className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
                   />
 
@@ -461,7 +466,7 @@ export const PlayerTurnActions = ({
                     type="number"
                     value={spellEffectBonus}
                     onChange={(e) => setSpellEffectBonus(e.target.value)}
-                    placeholder="Bonus"
+                    placeholder={t("combatUi.bonusPlaceholder")}
                     className="w-full rounded border border-slate-700 bg-slate-900 p-2 font-mono text-white"
                   />
                 </>
@@ -473,7 +478,7 @@ export const PlayerTurnActions = ({
                   onChange={(e) => setSpellDamageType(e.target.value)}
                   className="w-full rounded border border-slate-700 bg-slate-900 p-2 text-white"
                 >
-                  <option value="">Damage Type...</option>
+                  <option value="">{t("combatUi.damageTypePlaceholder")}</option>
                   {DAMAGE_TYPE_OPTIONS.map((damageType) => (
                     <option key={damageType} value={damageType}>
                       {damageType}
@@ -488,13 +493,13 @@ export const PlayerTurnActions = ({
                   onChange={(e) => setSpellSaveAbility(e.target.value as AbilityName | "")}
                   className="w-full rounded border border-slate-700 bg-slate-900 p-2 text-white"
                 >
-                  <option value="">Save Ability...</option>
-                  <option value="strength">Strength</option>
-                  <option value="dexterity">Dexterity</option>
-                  <option value="constitution">Constitution</option>
-                  <option value="intelligence">Intelligence</option>
-                  <option value="wisdom">Wisdom</option>
-                  <option value="charisma">Charisma</option>
+                  <option value="">{t("combatUi.saveAbilityPlaceholder")}</option>
+                  <option value="strength">{getAbilityLabel("strength", t)}</option>
+                  <option value="dexterity">{getAbilityLabel("dexterity", t)}</option>
+                  <option value="constitution">{getAbilityLabel("constitution", t)}</option>
+                  <option value="intelligence">{getAbilityLabel("intelligence", t)}</option>
+                  <option value="wisdom">{getAbilityLabel("wisdom", t)}</option>
+                  <option value="charisma">{getAbilityLabel("charisma", t)}</option>
                 </select>
               ) : null}
 
@@ -503,7 +508,7 @@ export const PlayerTurnActions = ({
                 onClick={onCast}
                 className="w-full rounded bg-fuchsia-600 px-4 py-3 font-bold text-white hover:bg-fuchsia-500 disabled:opacity-50"
               >
-                Cast Spell
+                {t("combatUi.castSpell")}
               </button>
             </div>
           )}
@@ -513,7 +518,7 @@ export const PlayerTurnActions = ({
             const actionUsed = !!myParticipant.turn_resources?.action_used;
             return (
               <div className="mt-3 border-t border-slate-700/50 pt-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Standard Actions</p>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">{t("combatUi.standardActions")}</p>
                 <StandardActionButtons
                   actionUsed={actionUsed}
                   dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
@@ -535,7 +540,7 @@ export const PlayerTurnActions = ({
             onClick={onEndTurn}
             className="mt-4 w-full rounded border border-sky-500/50 bg-transparent px-4 py-3 font-bold text-sky-400 hover:bg-sky-500/10 disabled:opacity-50"
           >
-            End Turn
+            {t("combatUi.endTurnLabel")}
           </button>
         </>
       ) : (

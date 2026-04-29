@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocale } from "../hooks/useLocale";
 
 const BRAND_MARK_SOURCES = [
   "/favicon.png",
@@ -24,11 +25,13 @@ export const BrandMark = ({
   size = "md",
   className = "",
   imageClassName = "",
-  alt = "Limiar logo",
+  alt,
 }: BrandMarkProps) => {
+  const { t } = useLocale();
   const [sourceIndex, setSourceIndex] = useState(0);
   const src = BRAND_MARK_SOURCES[sourceIndex];
   const showImage = sourceIndex < BRAND_MARK_SOURCES.length;
+  const resolvedAlt = alt ?? t("home.landing.logoAlt");
 
   return (
     <span
@@ -37,7 +40,7 @@ export const BrandMark = ({
       {showImage ? (
         <img
           src={src}
-          alt={alt}
+          alt={resolvedAlt}
           onError={() => setSourceIndex((current) => current + 1)}
           className={`h-full w-full object-contain p-1.5 ${imageClassName}`}
         />

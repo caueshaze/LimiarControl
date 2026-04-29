@@ -1,3 +1,5 @@
+import { useLocale } from "../../shared/hooks/useLocale";
+
 const playerBadges = [
   {
     name: "Lyra",
@@ -51,10 +53,13 @@ const flowItems = [
 
 const modules = ["Ficha", "Loja", "Inventario", "NPCs", "Dashboard", "Board"] as const;
 
-export const LandingHeroVisual = () => (
-  <div className="relative mx-auto w-full max-w-[40.5rem]">
-    <div className="absolute -left-12 top-6 h-32 w-32 rounded-full bg-cyan-400/20 blur-3xl" />
-    <div className="absolute -right-6 bottom-0 h-48 w-48 rounded-full bg-limiar-500/20 blur-3xl" />
+export const LandingHeroVisual = () => {
+  const { t } = useLocale();
+
+  return (
+    <div className="relative mx-auto w-full max-w-[40.5rem]">
+      <div className="absolute -left-12 top-6 h-32 w-32 rounded-full bg-cyan-400/20 blur-3xl" />
+      <div className="absolute -right-6 bottom-0 h-48 w-48 rounded-full bg-limiar-500/20 blur-3xl" />
 
     <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] shadow-[0_30px_120px_rgba(2,6,23,0.6)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(56,189,248,0.14),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
@@ -75,8 +80,8 @@ export const LandingHeroVisual = () => (
           <div className="space-y-4">
             <div className="overflow-hidden rounded-[28px] border border-white/8 bg-slate-950/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Battle board</p>
-                <span className="text-xs text-slate-400">Fog of war active</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{t("home.landing.battleBoard")}</p>
+                <span className="text-xs text-slate-400">{t("home.landing.fogOfWarActive")}</span>
               </div>
               <div className="grid grid-cols-6 gap-2 rounded-[22px] border border-white/6 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.88))] p-3">
                 {Array.from({ length: 24 }, (_, index) => {
@@ -144,7 +149,7 @@ export const LandingHeroVisual = () => (
               <div className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,30,0.92),rgba(4,7,20,0.96))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-limiar-300/15 bg-limiar-400/10 text-limiar-100">
-                    <span className="font-display text-sm font-bold">GM</span>
+                    <span className="font-display text-sm font-bold">{t("home.landing.gm")}</span>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Nota do mestre</p>
@@ -160,7 +165,7 @@ export const LandingHeroVisual = () => (
           <div className="space-y-4">
             <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(6,10,24,0.95))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Party status</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{t("home.landing.partyStatus")}</p>
                 <span className="rounded-full bg-limiar-400/10 px-2 py-1 text-[10px] font-semibold text-limiar-200">
                   Act 2
                 </span>
@@ -188,7 +193,7 @@ export const LandingHeroVisual = () => (
             </div>
 
             <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(23,37,84,0.9),rgba(15,23,42,0.9))] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Dice moment</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t("home.landing.diceMoment")}</p>
               <div className="mt-4 grid gap-4 xl:grid-cols-[auto_minmax(0,1fr)] xl:items-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-[22px] border border-white/10 bg-black/20 font-display text-3xl text-white motion-safe:animate-[landing-float_6s_ease-in-out_infinite]">
                   d20
@@ -219,5 +224,6 @@ export const LandingHeroVisual = () => (
         </div>
       </div>
     </div>
-  </div>
-);
+    </div>
+  );
+};

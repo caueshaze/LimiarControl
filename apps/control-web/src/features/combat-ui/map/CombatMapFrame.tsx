@@ -383,10 +383,10 @@ export const CombatMapFrame = ({
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
           {selectionMode === "select-token"
-            ? "Targeting"
+            ? t("combatUi.targeting")
             : selectionMode === "select-cell"
-              ? "Area"
-              : "Preview"}
+              ? t("combatUi.area")
+              : t("combatUi.preview")}
         </span>
       </div>
 

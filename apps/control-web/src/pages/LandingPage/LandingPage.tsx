@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { APP_NAME } from "../../app/config/appConfig";
 import { routes } from "../../app/routes/routes";
 import { useAuth } from "../../features/auth";
+import { useLocale } from "../../shared/hooks/useLocale";
 import { BrandMark } from "../../shared/ui";
 import { LandingHeroVisual } from "./LandingHeroVisual";
 import {
@@ -14,6 +15,7 @@ import {
 
 export const LandingPage = () => {
   const { user } = useAuth();
+  const { t } = useLocale();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -212,7 +214,7 @@ export const LandingPage = () => {
 
             <div className="grid gap-5 md:grid-cols-2">
               <div className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,24,39,0.84),rgba(2,6,23,0.92))] p-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Player board</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{t("home.landing.playerBoard")}</p>
                 <div className="mt-5 space-y-4">
                   <div className="rounded-3xl border border-white/8 bg-white/3 p-4">
                     <p className="text-sm font-semibold text-white">Ficha pronta para sessao</p>
@@ -226,12 +228,12 @@ export const LandingPage = () => {
               </div>
 
               <div className="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(3,7,18,0.94))] p-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">GM dashboard</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{t("home.landing.gmDashboard")}</p>
                 <div className="mt-5 space-y-3">
                   {["Campanhas ativas", "Catalogo da loja", "Inventario por party", "Sessoes em andamento"].map((label) => (
                     <div key={label} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/3 px-4 py-3">
                       <span className="text-sm text-slate-200">{label}</span>
-                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-limiar-200">Live</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-limiar-200">{t("home.landing.live")}</span>
                     </div>
                   ))}
                 </div>

@@ -7,6 +7,7 @@ import {
   type CombatApplyEffectRequest,
   type CombatState,
 } from "../../shared/api/combatRepo";
+import { useLocale } from "../../shared/hooks/useLocale";
 import {
   CONDITION_TYPES,
   DURATION_TYPES,
@@ -21,6 +22,7 @@ export const ApplyEffectForm = ({
   participants: CombatState["participants"];
   sessionId: string;
 }) => {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [targetId, setTargetId] = useState("");
   const [kind, setKind] = useState<ActiveEffectKind>("condition");
@@ -52,7 +54,7 @@ export const ApplyEffectForm = ({
       }
       await combatRepo.applyEffect(sessionId, payload);
     } catch (err: any) {
-      setFormError(err?.data?.detail || err?.message || "Failed to apply effect");
+      setFormError(err?.data?.detail || err?.message || t("combatUi.revivePlayerError"));
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +66,7 @@ export const ApplyEffectForm = ({
         onClick={() => setOpen(true)}
         className="w-full rounded border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs text-purple-300 hover:bg-purple-500/20"
       >
-        + Apply Effect
+        + {t("combatUi.applyEffect")}
       </button>
     );
   }
@@ -72,8 +74,8 @@ export const ApplyEffectForm = ({
   return (
     <div className="rounded border border-purple-500/30 bg-purple-950/20 p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Apply Effect</span>
-        <button onClick={() => setOpen(false)} className="text-xs text-slate-400 hover:text-white">Close</button>
+        <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">{t("combatUi.applyEffect")}</span>
+        <button onClick={() => setOpen(false)} className="text-xs text-slate-400 hover:text-white">{t("common.close")}</button>
       </div>
 
       {formError && (
@@ -85,7 +87,7 @@ export const ApplyEffectForm = ({
         value={targetId}
         onChange={(e) => setTargetId(e.target.value)}
       >
-        <option value="">Select Target...</option>
+        <option value="">{t("combatUi.selectTarget")}</option>
         {participants
           .filter((p) => p.status !== "dead" && p.status !== "defeated")
           .map((p) => (
@@ -101,7 +103,7 @@ export const ApplyEffectForm = ({
         onChange={(e) => setKind(e.target.value as ActiveEffectKind)}
       >
         {EFFECT_KINDS.map((k) => (
-          <option key={k.value} value={k.value}>{k.label}</option>
+          <option key={k.value} value={k.value}>{t(k.label)}</option>
         ))}
       </select>
 
@@ -112,7 +114,7 @@ export const ApplyEffectForm = ({
           onChange={(e) => setConditionType(e.target.value as ActiveEffectConditionType)}
         >
           {CONDITION_TYPES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
+            <option key={c.value} value={c.value}>{t(c.label)}</option>
           ))}
         </select>
       )}
@@ -121,7 +123,7 @@ export const ApplyEffectForm = ({
         <input
           type="number"
           className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
-          placeholder="Value (e.g. 2, -1)"
+          placeholder={t("combatUi.effectValue")}
           value={numericValue}
           onChange={(e) => setNumericValue(e.target.value)}
         />
@@ -133,7 +135,7 @@ export const ApplyEffectForm = ({
         onChange={(e) => setDurationType(e.target.value as ActiveEffectDurationType)}
       >
         {DURATION_TYPES.map((d) => (
-          <option key={d.value} value={d.value}>{d.label}</option>
+          <option key={d.value} value={d.value}>{t(d.label)}</option>
         ))}
       </select>
 
@@ -142,7 +144,7 @@ export const ApplyEffectForm = ({
           type="number"
           min={1}
           className="w-full rounded border border-slate-700 bg-slate-900 p-1.5 text-xs text-white"
-          placeholder="Rounds"
+          placeholder={t("combatUi.effectRounds")}
           value={remainingRounds}
           onChange={(e) => setRemainingRounds(e.target.value)}
         />
@@ -153,7 +155,7 @@ export const ApplyEffectForm = ({
         onClick={handleSubmit}
         className="w-full rounded bg-purple-600 px-3 py-2 text-xs font-bold text-white hover:bg-purple-500 disabled:opacity-50"
       >
-        Apply
+        {t("combatUi.applyEffect")}
       </button>
     </div>
   );

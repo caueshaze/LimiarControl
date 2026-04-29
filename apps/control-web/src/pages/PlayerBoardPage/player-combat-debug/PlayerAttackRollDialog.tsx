@@ -241,14 +241,14 @@ export const PlayerAttackRollDialog = ({
                       onClick={() => setDamageMode("virtual")}
                       className="rounded-2xl bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-400"
                     >
-                      Virtual
+                      {t("combatUi.virtual")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDamageMode("manual")}
                       className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
                     >
-                      Manual
+                      {t("combatUi.manual")}
                     </button>
                   </div>
                 </div>
@@ -401,7 +401,7 @@ export const PlayerAttackRollDialog = ({
               onClick={() => setAttackMode("virtual")}
               className="rounded-2xl bg-limiar-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-400 disabled:opacity-40"
             >
-              Virtual
+              {t("combatUi.virtual")}
             </button>
             <button
               type="button"
@@ -409,7 +409,7 @@ export const PlayerAttackRollDialog = ({
               onClick={() => setAttackMode("manual")}
               className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             >
-              Manual
+              {t("combatUi.manual")}
             </button>
           </div>
         ) : null}

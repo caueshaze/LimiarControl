@@ -153,7 +153,7 @@ export const usePartyDetailsResources = ({ activeSession, locale, party }: Props
     } catch (error) {
       setDrafts([]);
       setPlayerResources([]);
-      setLoadError((error as { message?: string })?.message ?? "Could not load party resources.");
+      setLoadError((error as { message?: string })?.message ?? t("campaignHome.failedToLoadPartyResources"));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { BaseSpell, BaseSpellFilters } from "../../../entities/base-spell";
 import { campaignSpellsRepo } from "../../../shared/api/campaignSpellsRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 type UseCampaignSpellsOptions = {
   campaignId?: string | null;
@@ -11,6 +12,7 @@ type UseCampaignSpellsOptions = {
 };
 
 export const useCampaignSpells = (options?: UseCampaignSpellsOptions) => {
+  const { t } = useLocale();
   const { campaignId, level, school, className, auto = true } = options ?? {};
   const [spells, setSpells] = useState<BaseSpell[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,11 +35,11 @@ export const useCampaignSpells = (options?: UseCampaignSpellsOptions) => {
       const result = await campaignSpellsRepo.list(campaignId, filters);
       setSpells(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load spells");
+      setError(err instanceof Error ? err.message : t("shop.failedToLoadSpells"));
     } finally {
       setLoading(false);
     }
-  }, [campaignId, className, level, school]);
+  }, [campaignId, className, level, school, t]);
 
   useEffect(() => {
     if (auto) {

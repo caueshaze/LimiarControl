@@ -1,6 +1,7 @@
 import { describeCombatAction } from "../../entities/campaign-entity/describeCombatAction";
 import type { CombatState } from "../../shared/api/combatRepo";
 import type { SessionEntity } from "../../entities/session-entity";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 type CombatAction = NonNullable<SessionEntity["entity"]>["combatActions"][number];
 
@@ -27,6 +28,7 @@ export const GmCombatNpcActions = ({
   loading: boolean;
   onExecuteAction: () => void;
 }) => {
+  const { t } = useLocale();
   return (
     <div className="rounded border border-rose-500/20 bg-slate-950/60 p-4">
       <h4 className="mb-2 font-bold text-rose-300">
@@ -68,7 +70,7 @@ export const GmCombatNpcActions = ({
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
             >
-              <option value="">Select Target...</option>
+              <option value="">{t("common.selectTarget")}</option>
               {availableTargets.map((participant) => (
                 <option key={participant.id} value={participant.ref_id}>
                   {participant.display_name}
@@ -87,7 +89,7 @@ export const GmCombatNpcActions = ({
           >
             {selectedCombatAction?.kind === "weapon_attack" || selectedCombatAction?.kind === "spell_attack"
               ? "Abrir rolagem da acao"
-              : "Execute Structured Action"}
+              : t("combatUi.executeStructuredAction")}
           </button>
         </div>
       )}

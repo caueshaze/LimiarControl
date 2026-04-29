@@ -55,7 +55,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
         </div>
         {supportsLongRangeField && (
           <span className="rounded-full border border-amber-300/15 bg-amber-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-            alcance habilitado
+            {t("catalog.admin.form.weaponRangeEnabled")}
           </span>
         )}
       </div>
@@ -63,7 +63,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
       <div className="grid gap-4 md:grid-cols-4">
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Categoria da arma
+            {t("catalog.admin.form.weaponCategoryShort")}
           </span>
           <select
             value={form.weaponCategory}
@@ -86,7 +86,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Tipo de alcance
+            {t("catalog.admin.form.weaponRangeShort")}
           </span>
           <select
             value={form.weaponRangeType}
@@ -154,7 +154,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Alcance normal (m)
+            {t("catalog.admin.form.weaponNormalRangeShort")}
           </span>
           <select
             value={form.rangeNormalMeters}
@@ -177,7 +177,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
         {supportsLongRangeField && (
           <label className="block">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Alcance longo (m)
+              {t("catalog.admin.form.weaponLongRangeShort")}
             </span>
             <select
               value={form.rangeLongMeters}
@@ -226,7 +226,7 @@ export const SystemCatalogWeaponFields = ({ form, setForm }: Props) => {
       <div className="space-y-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Propriedades de arma
+            {t("catalog.admin.form.weaponPropertiesShort")}
           </p>
           <p className="mt-1 text-sm text-slate-400">
             Multi-select fechado. Nada de texto livre em propriedades usadas pela

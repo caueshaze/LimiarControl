@@ -118,14 +118,14 @@ export function useMovementPreview({
           ...current,
           loading: destinationCell != null,
           actorToken,
-          error: actorToken ? null : "Actor token not found on map.",
+          error: actorToken ? null : t("combatUi.actorTokenNotFound"),
         }));
       })
       .catch((error: any) => {
         if (cancelled) return;
         setState({
           ...INITIAL,
-          error: error?.data?.detail || error?.message || "Failed to load map state.",
+          error: error?.data?.detail || error?.message || t("combatUi.failedToLoadMapState"),
         });
       });
 
@@ -163,7 +163,7 @@ export function useMovementPreview({
           ...current,
           loading: false,
           preview: null,
-          error: error?.data?.detail || error?.message || "Failed to preview movement.",
+          error: error?.data?.detail || error?.message || t("combatUi.failedToPreviewMovement"),
         }));
       });
 

@@ -1,3 +1,4 @@
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useEffect, useState } from "react";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
@@ -31,6 +32,7 @@ const toDraftValues = (currency: CharacterSheet["currency"]) => {
 };
 
 export const Currency = ({ currency, setCurrency, readOnly = false }: Props) => {
+  const { t } = useLocale();
   const [draftValues, setDraftValues] = useState<Record<CurrencyUnit, string>>(() => toDraftValues(currency));
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export const Currency = ({ currency, setCurrency, readOnly = false }: Props) => 
   };
 
   return (
-    <Section title="Currency" color="bg-amber-400">
+    <Section title={t("sheet.currency.title")} color="bg-amber-400">
       <div className="grid grid-cols-5 gap-3">
         {COINS.map(({ key, label, accent }) => (
           <div key={key} className="flex flex-col gap-2">

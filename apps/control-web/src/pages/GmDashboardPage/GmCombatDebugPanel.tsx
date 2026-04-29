@@ -7,6 +7,7 @@ import { ApplyEffectForm } from "./ApplyEffectForm";
 import { GmCombatParticipantList } from "./GmCombatParticipantList";
 import { GmCombatNpcActions } from "./GmCombatNpcActions";
 import { useGmCombatDebug } from "./useGmCombatDebug";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 export const GmCombatDebugPanel = ({
   sessionId,
@@ -17,6 +18,7 @@ export const GmCombatDebugPanel = ({
   campaignId: string;
   partyPlayers: PartyMemberSummary[];
 }) => {
+  const { t } = useLocale();
   const {
     state,
     loading,
@@ -134,7 +136,7 @@ export const GmCombatDebugPanel = ({
                   disabled={loading}
                   onClick={handleMarkReaction}
                   className="rounded border border-orange-500/50 bg-transparent px-3 py-2 text-xs font-bold text-orange-400 hover:bg-orange-500/10 disabled:opacity-50"
-                  title="Mark the active participant's reaction as used"
+                  title={t("gm.dashboard.markReactionUsed")}
                 >
                   Mark Reaction
                 </button>

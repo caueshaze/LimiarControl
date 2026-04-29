@@ -42,7 +42,7 @@ export const SystemCatalogArmorFields = ({ form, setForm }: Props) => {
         </div>
         {isShieldArmor && (
           <span className="rounded-full border border-sky-300/15 bg-sky-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-            escudo detectado
+            {t("catalog.admin.form.armorShieldDetected")}
           </span>
         )}
       </div>
@@ -85,7 +85,7 @@ export const SystemCatalogArmorFields = ({ form, setForm }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            CA base
+            {t("catalog.admin.form.armorClassDetailed")}
           </span>
           <select
             value={form.armorClassBase}
@@ -108,7 +108,7 @@ export const SystemCatalogArmorFields = ({ form, setForm }: Props) => {
         {!isShieldArmor && (
           <label className="block">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Regra de DEX
+              {t("catalog.admin.form.dexModifierDetailed")}
             </span>
             <select
               value={form.dexBonusRule}

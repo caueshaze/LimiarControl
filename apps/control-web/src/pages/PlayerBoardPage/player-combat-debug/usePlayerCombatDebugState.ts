@@ -20,6 +20,7 @@ import {
   resolveCombatSpellActionCost
 } from "../../../features/combat-ui/spellAutomation";
 import { buildDragonbornBreathWeaponAction } from "../../../features/combat-ui/player/dragonbornBreathWeapon";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import type { PlayerBoardStatusSummary } from "../playerBoard.types";
 import { spellRequiresExternalTarget } from "./areaTargetingUi";
 import type { CombatSpellOption, DeathSaveFeedback } from "./types";
@@ -152,6 +153,7 @@ export const usePlayerCombatDebugState = ({
   playerStatus,
   sessionId
 }: Props) => {
+  const { t } = useLocale();
   const [state, setState] = useState<CombatState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -298,8 +300,8 @@ export const usePlayerCombatDebugState = ({
         },
         message:
           failureDelta >= 2
-            ? "You took a critical hit while downed. +2 failures."
-            : "You took damage while downed. +1 failure.",
+            ? t("playerBoard.criticalHitWhileDowned")
+            : t("playerBoard.damageWhileDowned"),
         status:
           playerStatus.deathSaveFailures >= 3
             ? "dead"
@@ -318,7 +320,7 @@ export const usePlayerCombatDebugState = ({
     try {
       await callback();
     } catch (err: any) {
-      setError(err?.data?.detail || err?.message || "Combat action failed");
+      setError(err?.data?.detail || err?.message || "Falha na ação de combate");
     } finally {
       setLoading(false);
     }
@@ -380,16 +382,16 @@ export const usePlayerCombatDebugState = ({
         ...(result ?? {}),
         message:
           result?.roll === 20
-            ? "Critical success. You are back up with 1 HP."
+            ? t("playerBoard.criticalSuccessDeathSave")
             : result?.roll === 1
-              ? "Critical failure. Two failures were added."
+              ? t("playerBoard.criticalFailureDeathSave")
               : result?.status === "stable"
-                ? "You stabilized at 0 HP."
+                ? t("playerBoard.stabilizedAtZero")
                 : result?.status === "dead"
-                  ? "You reached 3 failed death saves."
+                  ? t("playerBoard.threeFailedDeathSaves")
                   : (result?.roll ?? 0) >= 10
-                    ? "Death save succeeded."
-                    : "Death save failed."
+                    ? t("playerBoard.deathSaveSucceeded")
+                    : t("playerBoard.deathSaveFailed")
       });
     });
   };

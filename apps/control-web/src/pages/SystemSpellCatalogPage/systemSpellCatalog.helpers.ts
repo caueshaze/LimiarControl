@@ -3,6 +3,7 @@ import {
   SpellSource as SpellSourceValues,
   SpellSchool as SpellSchoolValues,
 } from "../../entities/base-spell";
+import { catalogPtBRDictionary } from "../../shared/i18n/ptBR/catalog";
 import type { FormState } from "./systemSpellCatalog.types";
 
 const CASTING_TIME_LABELS: Record<CastingTimeType, string> = {
@@ -84,7 +85,7 @@ const parseDiceParts = (value?: string | null) => {
 const buildDiceExpression = (count: string, size: string, bonus: string) => {
   const parsedCount = parseOptionalInteger(count, "Quantidade de dados").value;
   const parsedSize = parseOptionalInteger(size, "Dado").value;
-  const parsedBonus = parseOptionalInteger(bonus, "Bonus fixo").value;
+  const parsedBonus = parseOptionalInteger(bonus, "Bônus fixo").value;
   if (!parsedCount || !parsedSize || parsedCount < 1 || parsedSize < 1) {
     return null;
   }
@@ -277,23 +278,23 @@ export const buildPayload = (
   isNew: boolean,
 ): { payload?: BaseSpellWritePayload; error?: string } => {
   const canonicalKey = normalizeCanonicalKey(form.canonicalKey);
-  if (!canonicalKey) return { error: "Canonical key é obrigatório." };
+  if (!canonicalKey) return { error: catalogPtBRDictionary["catalog.spells.validation.canonicalKeyRequired"] };
 
   const nameEn = normalizeOptionalText(form.nameEn);
-  if (!nameEn) return { error: "Nome EN é obrigatório." };
+  if (!nameEn) return { error: catalogPtBRDictionary["catalog.spells.validation.nameEnRequired"] };
 
   const descriptionEn = normalizeOptionalText(form.descriptionEn);
-  if (!descriptionEn) return { error: "Descrição EN é obrigatória." };
+  if (!descriptionEn) return { error: catalogPtBRDictionary["catalog.spells.validation.descriptionEnRequired"] };
 
   const rangeMeters = parseOptionalInteger(form.rangeMeters, "Alcance (m)");
   if (rangeMeters.error) return { error: rangeMeters.error };
   if (rangeMeters.value !== undefined && rangeMeters.value < 0)
     return { error: "Alcance (m) não pode ser negativo." };
 
-  const maxTargets = parseOptionalInteger(form.maxTargets, "Max targets");
+  const maxTargets = parseOptionalInteger(form.maxTargets, "Máximo de alvos");
   if (maxTargets.error) return { error: maxTargets.error };
   if (maxTargets.value !== undefined && maxTargets.value < 1)
-    return { error: "Max targets deve ser pelo menos 1." };
+    return { error: "Máximo de alvos deve ser pelo menos 1." };
 
   const radiusMeters = parseOptionalPositiveFloat(form.radiusMeters, "Raio (m)");
   if (radiusMeters.error) return { error: radiusMeters.error };
@@ -310,11 +311,17 @@ export const buildPayload = (
   if (sideMeters.value !== undefined && sideMeters.value <= 0)
     return { error: "Lado (m) deve ser maior que 0." };
 
-  const upcastFlat = parseOptionalInteger(form.upcastFlat, "Upcast flat");
+  const upcastFlat = parseOptionalInteger(form.upcastFlat, "Bônus fixo em nível superior");
   if (upcastFlat.error) return { error: upcastFlat.error };
-  const upcastPerLevel = parseOptionalInteger(form.upcastPerLevel, "Upcast por nível");
+  const upcastPerLevel = parseOptionalInteger(
+    form.upcastPerLevel,
+    catalogPtBRDictionary["catalog.spells.validation.upcastPerLevelLabel"],
+  );
   if (upcastPerLevel.error) return { error: upcastPerLevel.error };
-  const upcastMaxLevel = parseOptionalInteger(form.upcastMaxLevel, "Upcast nível máximo");
+  const upcastMaxLevel = parseOptionalInteger(
+    form.upcastMaxLevel,
+    catalogPtBRDictionary["catalog.spells.validation.upcastMaxLevelLabel"],
+  );
   if (upcastMaxLevel.error) return { error: upcastMaxLevel.error };
 
   const showDamage = form.resolutionType === "damage";
@@ -333,14 +340,14 @@ export const buildPayload = (
       form.damageFixedBonus,
     )
   )
-    return { error: "Dados de dano são obrigatórios para resolutionType damage." };
+    return { error: catalogPtBRDictionary["catalog.spells.validation.damageDiceRequired"] };
   if (showHealDice && !form.healDice.trim())
-    return { error: "Heal dice é obrigatório para resolutionType heal." };
+    return { error: "Dados de cura são obrigatórios para resolução do tipo cura." };
   const shouldValidateUpcast = form.level > 0 && Boolean(form.upcastMode);
   if (shouldValidateUpcast && form.upcastMode === "extra_damage_dice" && !showDamage)
-    return { error: "Upcast extra_damage_dice exige resolutionType damage." };
+    return { error: catalogPtBRDictionary["catalog.spells.validation.upcastExtraDamageDiceRequiresDamage"] };
   if (shouldValidateUpcast && form.upcastMode === "extra_heal_dice" && !showHealDice)
-    return { error: "Upcast extra_heal_dice exige resolutionType heal." };
+    return { error: catalogPtBRDictionary["catalog.spells.validation.upcastExtraHealDiceRequiresHeal"] };
   if (
     shouldValidateUpcast
     &&
@@ -352,17 +359,17 @@ export const buildPayload = (
     )
     && upcastFlat.value == null
   ) {
-    return { error: "Upcast de dado/bônus exige dice ou flat." };
+    return { error: catalogPtBRDictionary["catalog.spells.validation.upcastDiceOrBonusRequiresValue"] };
   }
   if (shouldValidateUpcast && form.upcastMode === "flat_bonus" && !form.upcastFlat.trim())
-    return { error: "Upcast flat_bonus exige valor flat." };
+    return { error: "Conjuração em nível superior com bônus fixo exige um valor fixo." };
   if (shouldValidateUpcast && form.upcastMode === "effect_scaling") {
-    if (!form.upcastScalingKey.trim()) return { error: "effect_scaling exige scaling key." };
-    if (!form.upcastScalingSummary.trim()) return { error: "effect_scaling exige scaling summary." };
+    if (!form.upcastScalingKey.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.effectScalingRequiresKey"] };
+    if (!form.upcastScalingSummary.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.effectScalingRequiresSummary"] };
   }
   if (shouldValidateUpcast && form.upcastMode === "extra_effect") {
-    if (!form.upcastUnlockKey.trim()) return { error: "extra_effect exige unlock key." };
-    if (!form.upcastUnlockSummary.trim()) return { error: "extra_effect exige unlock summary." };
+    if (!form.upcastUnlockKey.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.extraEffectRequiresKey"] };
+    if (!form.upcastUnlockSummary.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.extraEffectRequiresSummary"] };
   }
 
   return {
@@ -433,7 +440,7 @@ export const buildPayload = (
             maxLevel: upcastMaxLevel.value ?? null,
             ...(form.upcastMode === "additional_effect_instances" ? {
               baseEffectInstances: (() => {
-                const v = parseOptionalInteger(form.upcastBaseEffectInstances, "Base effect instances");
+                const v = parseOptionalInteger(form.upcastBaseEffectInstances, "Instâncias-base do efeito");
                 return v.value ?? null;
               })(),
             } : {}),

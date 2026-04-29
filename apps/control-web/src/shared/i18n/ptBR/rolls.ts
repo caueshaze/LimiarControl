@@ -27,6 +27,8 @@ export const rollsPtBRDictionary = {
   "rolls.selectSecondD20": "Agora selecione o 2o d20",
   "rolls.virtual": "Virtual",
   "rolls.manual": "Manual",
+  "rolls.gmRoll": "Rolagem do Mestre",
+  "rolls.failed": "Falha na rolagem",
   "rolls.advantage": "Vantagem",
   "rolls.disadvantage": "Desvantagem",
   "rolls.ability.strength": "Força",

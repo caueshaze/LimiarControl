@@ -284,12 +284,12 @@ export const PlayerSpellCastDialog = ({
   const parsedBonus = parseBonus(spellEffectBonus);
   const actionCostLabel =
     spell.actionCost === "bonus_action"
-      ? "Bonus Action"
+      ? t("combatUi.bonusAction")
       : spell.actionCost === "reaction"
-        ? "Reaction"
+        ? t("combatUi.reaction")
         : spell.actionCost === "free"
-          ? "Free"
-          : "Action";
+          ? t("combatUi.freeAction")
+          : t("combatUi.action");
   const anchorTargetRefId =
     anchorCell && mapState
       ? mapState.tokens.find((token) => token.position.x === anchorCell.x && token.position.y === anchorCell.y)?.combatant_id ?? null

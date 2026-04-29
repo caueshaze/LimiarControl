@@ -50,7 +50,7 @@ export const usePartyManagement = (campaigns: Campaign[]) => {
         : [];
       setParties(myParties);
     } catch (fetchError: any) {
-      setError(fetchError?.message ?? "Failed to load parties");
+      setError(fetchError?.message ?? t("gm.home.failedToLoadParties"));
       setParties([]);
     } finally {
       setLoading(false);
@@ -63,7 +63,7 @@ export const usePartyManagement = (campaigns: Campaign[]) => {
 
   const createParty = useCallback(async (): Promise<CreatePartyResult> => {
     if (!campaignId || !partyName.trim()) {
-      return { ok: false, message: "Invalid payload" };
+      return { ok: false, message: t("gm.home.invalidPayload") };
     }
 
     setSaving(true);

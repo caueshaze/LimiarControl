@@ -38,7 +38,7 @@ type Props = {
 };
 
 export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   const formatSpellChoiceLabel = (value: string) =>
     value === "DND5E" ? "D&D 5e" : localizeSpellAdminValue(value, locale);
@@ -51,11 +51,11 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
   return (
     <>
-      <SystemSpellCatalogFormSection title="Casting">
+      <SystemSpellCatalogFormSection title={t("catalog.spells.form.casting")}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Casting time type
+              {t("catalog.spells.form.castingTimeTypeDetailed")}
             </span>
             <select
               value={form.castingTimeType}
@@ -126,7 +126,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
                   : "border-white/10 bg-white/4 text-slate-400 hover:bg-white/8"
               }`}
             >
-              Concentration
+              {t("catalog.spells.form.concentration")}
             </button>
             <button
               type="button"
@@ -172,7 +172,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
         {showMaterialComponent && (
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Material component
+              {t("catalog.spells.form.materialComponentDetailed")}
             </span>
             <input
               value={form.materialComponentText}
@@ -183,20 +183,17 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
                 }))
               }
               className={`${inputClassName} mt-2`}
-              placeholder="a tiny ball of bat guano and sulfur"
+              placeholder={t("catalog.spells.form.materialComponentPlaceholder")}
             />
           </label>
         )}
       </SystemSpellCatalogFormSection>
 
-      <SystemSpellCatalogFormSection
-        title="Targeting"
-        collapsible
-      >
+      <SystemSpellCatalogFormSection title={t("catalog.spells.form.targeting")} collapsible>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Target type
+              {t("catalog.admin.table.targetType")}
             </span>
             <select
               value={form.targetType}
@@ -219,7 +216,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Max targets
+              {t("catalog.spells.form.maxTargets")}
             </span>
             <input
               type="number"
@@ -238,7 +235,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Selection type
+              {t("catalog.spells.form.selectionType")}
             </span>
             <select
               value={form.selectionType}
@@ -261,7 +258,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Origin type
+              {t("catalog.spells.form.originType")}
             </span>
             <select
               value={form.originType}
@@ -284,7 +281,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Target anchor
+              {t("catalog.spells.form.targetAnchorDetailed")}
             </span>
             <select
               value={form.targetAnchor}
@@ -309,7 +306,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Attack type
+              {t("catalog.spells.form.attackType")}
             </span>
             <select
               value={form.attackType}
@@ -332,7 +329,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Range kind
+              {t("catalog.spells.form.rangeKindDetailed")}
             </span>
             <select
               value={form.rangeKind}
@@ -355,7 +352,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Effect timing
+              {t("catalog.spells.form.effectTimingDetailed")}
             </span>
             <select
               value={form.effectTiming}
@@ -384,7 +381,7 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
       >
         <label className="block min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Area shape
+            {t("catalog.spells.form.areaShapeDetailed")}
           </span>
           <select
             value={form.areaShape}

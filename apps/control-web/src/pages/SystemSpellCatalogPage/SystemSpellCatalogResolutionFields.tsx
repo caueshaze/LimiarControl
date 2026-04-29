@@ -77,7 +77,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Resolution type
+              {t("catalog.spells.form.resolutionTypeDetailed")}
             </span>
             <select
               value={form.resolutionType}
@@ -101,7 +101,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           {showSavingThrowFields && (
             <label className="block min-w-0">
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Saving throw ability
+                {t("catalog.spells.form.savingThrowAbility")}
               </span>
               <select
                 value={form.savingThrow}
@@ -151,7 +151,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
             <label className="block min-w-0">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Cover applies to save</span>
+                <span>{t("catalog.spells.form.coverAppliesToSaveDetailed")}</span>
                 <FieldHelpIcon text="Se cover físico aplica à saving throw. &quot;physical&quot; = alvo com cover recebe bônus. &quot;none&quot; = cover não aplica." />
               </span>
               <select
@@ -179,7 +179,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block min-w-0">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Cover applies to save</span>
+                <span>{t("catalog.spells.form.coverAppliesToSaveDetailed")}</span>
                 <FieldHelpIcon text="Se cover físico aplica à saving throw. &quot;physical&quot; = alvo com cover recebe bônus. &quot;none&quot; = cover não aplica." />
               </span>
               <select
@@ -209,7 +209,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <label className="block min-w-0">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Dice count</span>
+                <span>{t("catalog.spells.form.damageDiceCount")}</span>
                 <FieldHelpIcon text="Quantidade de dados do efeito base. Ex.: 3 em 3d4+3." />
               </span>
               <select
@@ -230,7 +230,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
             <label className="block min-w-0">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Die</span>
+                <span>{t("catalog.spells.form.damageDie")}</span>
                 <FieldHelpIcon text="Tipo do dado do efeito base. Ex.: d4." />
               </span>
               <select
@@ -251,7 +251,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
             <label className="block min-w-0">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                <span>Fixed bonus</span>
+                <span>{t("catalog.spells.form.damageFixedBonus")}</span>
                 <FieldHelpIcon text="Bônus fixo somado ao efeito base. Ex.: +3 em 3d4+3." />
               </span>
               <input
@@ -268,7 +268,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
             <label className="block min-w-0">
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Damage type
+                {t("catalog.admin.table.damageType")}
               </span>
               <select
                 value={form.damageType}
@@ -296,7 +296,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
         <SystemSpellCatalogFormSection title="Cura">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Heal dice
+              {t("catalog.spells.form.healDiceDetailed")}
             </span>
             <input
               value={form.healDice}
@@ -312,12 +312,12 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
       {form.level > 0 && (
         <SystemSpellCatalogFormSection
-          title="Upcast"
+          title={t("catalog.spells.form.upcast")}
           collapsible
         >
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Upcast mode
+              {t("catalog.spells.form.upcastModeDetailed")}
             </span>
             <select
               value={form.upcastMode}
@@ -342,7 +342,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
             <div className="grid gap-4 md:grid-cols-3">
               <label className="block min-w-0">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  <span>Upcast dice count</span>
+                  <span>{t("catalog.spells.form.upcastDiceCount")}</span>
                   <FieldHelpIcon text="Dados por incremento ou instância extra. Ex.: 1 em 1d4+1." />
                 </span>
                 <select
@@ -363,7 +363,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
               <label className="block min-w-0">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  <span>Upcast die</span>
+                  <span>{t("catalog.spells.form.upcastDie")}</span>
                   <FieldHelpIcon text="Dado do incremento de upcast. Ex.: d4." />
                 </span>
                 <select
@@ -384,7 +384,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
               <label className="block min-w-0">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  <span>Upcast fixed bonus</span>
+                  <span>{t("catalog.spells.form.upcastFixedBonus")}</span>
                   <FieldHelpIcon text="Bônus por incremento. Ex.: +1 por míssil extra." />
                 </span>
                 <input
@@ -405,7 +405,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block min-w-0">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  <span>Base effect instances</span>
+                  <span>{t("catalog.spells.form.baseEffectInstances")}</span>
                   <FieldHelpIcon text="Número de instâncias no nível base da magia. Ex.: Magic Missile tem 3." />
                 </span>
                 <input
@@ -428,7 +428,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               {showUpcastFlatField ? (
                 <label className="block min-w-0">
                   <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <span>Upcast flat</span>
+                    <span>{t("catalog.spells.form.upcastFlatDetailed")}</span>
                     <FieldHelpIcon text="Bônus fixo sem dado; use para escalas numéricas simples." />
                   </span>
                   <input
@@ -445,7 +445,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               {showUpcastPerLevelField ? (
                 <label className="block min-w-0">
                   <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <span>Upcast por nível</span>
+                    <span>{t("catalog.spells.form.upcastPerLevelDetailed")}</span>
                     <FieldHelpIcon text="Incrementos por slot acima do nível base. Normalmente 1." />
                   </span>
                   <input
@@ -462,7 +462,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
               {showUpcastMaxLevelField ? (
                 <label className="block min-w-0">
                   <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <span>Nível máximo do slot</span>
+                    <span>{t("catalog.spells.form.upcastMaxLevelDetailed")}</span>
                     <FieldHelpIcon text="Limite de escala; vazio usa qualquer slot válido." />
                   </span>
                   <input
@@ -481,12 +481,12 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           {showEffectScalingFields && (
             <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-400/70">
-                Effect scaling — o que escala ao upcasting
+                {t("catalog.spells.form.effectScalingTitle")}
               </p>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block min-w-0">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Scaling key <span className="text-red-400">*</span>
+                    {t("catalog.spells.form.scalingKey")} <span className="text-red-400">*</span>
                   </span>
                   <input
                     value={form.upcastScalingKey}
@@ -494,12 +494,12 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       setForm((c) => ({ ...c, upcastScalingKey: event.target.value }))
                     }
                     className={`${inputClassName} mt-2`}
-                    placeholder="armor_class_bonus"
+                    placeholder={t("catalog.spells.form.armorClassBonus")}
                   />
                 </label>
                 <label className="block min-w-0">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Scaling summary <span className="text-red-400">*</span>
+                    {t("catalog.spells.form.scalingSummary")} <span className="text-red-400">*</span>
                   </span>
                   <input
                     value={form.upcastScalingSummary}
@@ -507,13 +507,13 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       setForm((c) => ({ ...c, upcastScalingSummary: event.target.value }))
                     }
                     className={`${inputClassName} mt-2`}
-                    placeholder="+1 to AC per slot level above 1st"
+                    placeholder={t("catalog.spells.form.acScalingExample")}
                   />
                 </label>
               </div>
               <label className="block min-w-0">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Scaling editorial
+                  {t("catalog.spells.form.scalingEditorial")}
                 </span>
                 <input
                   value={form.upcastScalingEditorial}
@@ -521,7 +521,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                     setForm((c) => ({ ...c, upcastScalingEditorial: event.target.value }))
                   }
                   className={`${inputClassName} mt-2`}
-                  placeholder="Optional editorial note about the scaling behavior"
+                  placeholder={t("catalog.spells.form.scalingEditorialNote")}
                 />
               </label>
             </div>
@@ -530,12 +530,12 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
           {showExtraEffectFields && (
             <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4 space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-400/70">
-                Extra effect — o que é destravado ao upcasting
+                {t("catalog.spells.form.extraEffectTitle")}
               </p>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block min-w-0">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Unlock key <span className="text-red-400">*</span>
+                    {t("catalog.spells.form.unlockKey")} <span className="text-red-400">*</span>
                   </span>
                   <input
                     value={form.upcastUnlockKey}
@@ -543,12 +543,12 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       setForm((c) => ({ ...c, upcastUnlockKey: event.target.value }))
                     }
                     className={`${inputClassName} mt-2`}
-                    placeholder="additional_beam"
+                    placeholder={t("catalog.spells.form.additionalBeam")}
                   />
                 </label>
                 <label className="block min-w-0">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Unlock summary <span className="text-red-400">*</span>
+                    {t("catalog.spells.form.unlockSummary")} <span className="text-red-400">*</span>
                   </span>
                   <input
                     value={form.upcastUnlockSummary}
@@ -556,13 +556,13 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                       setForm((c) => ({ ...c, upcastUnlockSummary: event.target.value }))
                     }
                     className={`${inputClassName} mt-2`}
-                    placeholder="Create one additional beam per slot level above 5th"
+                    placeholder={t("catalog.spells.form.beamScalingExample")}
                   />
                 </label>
               </div>
               <label className="block min-w-0">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Unlock editorial
+                  {t("catalog.spells.form.unlockEditorial")}
                 </span>
                 <input
                   value={form.upcastUnlockEditorial}
@@ -570,7 +570,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                     setForm((c) => ({ ...c, upcastUnlockEditorial: event.target.value }))
                   }
                   className={`${inputClassName} mt-2`}
-                  placeholder="Optional editorial note about the unlocked effect"
+                  placeholder={t("catalog.spells.form.unlockEditorialNote")}
                 />
               </label>
             </div>
@@ -580,13 +580,13 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
 
       {form.level === 0 && (
         <SystemSpellCatalogFormSection
-          title="Cantrip Scaling"
+          title={t("catalog.spells.form.cantripScaling")}
           collapsible
         >
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block min-w-0">
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Scaling mode
+                {t("catalog.spells.form.scalingMode")}
               </span>
               <select
                 value={form.cantripScalingMode}
@@ -599,14 +599,14 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                 className={`${inputClassName} mt-2`}
               >
                 <option value="">—</option>
-                <option value="character_level">Character level</option>
+                <option value="character_level">{t("catalog.spells.form.characterLevel")}</option>
               </select>
             </label>
           </div>
           {form.cantripScalingMode === "character_level" ? (
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Character level thresholds
+                {t("catalog.spells.form.characterLevelThresholds")}
               </p>
               {[
                 [1, "cantripLevel1DiceCount", "cantripLevel1DieSize", "cantripLevel1FixedBonus"],
@@ -620,7 +620,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                   </div>
                   <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Dice count
+                      {t("catalog.spells.form.damageDiceCount")}
                     </span>
                     <select
                       value={form[countKey as keyof FormState] as string}
@@ -639,7 +639,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                   </label>
                   <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Die size
+                      {t("catalog.spells.form.damageDie")}
                     </span>
                     <select
                       value={form[dieKey as keyof FormState] as string}
@@ -658,7 +658,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                   </label>
                   <label className="block min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Fixed bonus
+                      {t("catalog.spells.form.damageFixedBonus")}
                     </span>
                     <input
                       type="number"

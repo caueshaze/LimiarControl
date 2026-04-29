@@ -1,3 +1,4 @@
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCallback, useEffect, useState } from "react";
 import type { InventoryItem } from "../../../entities/inventory";
 import { inventoryRepo } from "../../../shared/api/inventoryRepo";
@@ -9,6 +10,7 @@ type UseInventoryOptions = {
 };
 
 export const useInventory = (options?: UseInventoryOptions) => {
+  const { t } = useLocale();
   const { selectedCampaignId } = useCampaigns();
   const memberId = options?.memberId ?? null;
   const partyId = options?.partyId ?? null;
@@ -38,7 +40,7 @@ export const useInventory = (options?: UseInventoryOptions) => {
       } catch (error: unknown) {
         const typedError = error as { message?: string };
         setInventory([]);
-        setInventoryError(typedError?.message ?? "Failed to load inventory");
+        setInventoryError(typedError?.message ?? t("inventory.failedToLoad"));
       } finally {
         if (!silent) {
           setInventoryLoading(false);

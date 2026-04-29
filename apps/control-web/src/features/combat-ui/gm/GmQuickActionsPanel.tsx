@@ -199,17 +199,17 @@ export const GmQuickActionsPanel = ({
             <span
               className={`rounded flex items-center justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${currentParticipant.turn_resources.action_used ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 border border-emerald-500/30 text-emerald-200"}`}
             >
-              Action: {currentParticipant.turn_resources.action_used ? "Used" : "Avail"}
+              {t("combatUi.turnActionAvailState")}
             </span>
             <span
               className={`rounded flex items-center justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${currentParticipant.turn_resources.bonus_action_used ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 border border-emerald-500/30 text-emerald-200"}`}
             >
-              Bonus: {currentParticipant.turn_resources.bonus_action_used ? "Used" : "Avail"}
+              {t("combatUi.turnBonusAvailState")}
             </span>
             <span
               className={`rounded flex items-center justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${currentParticipant.turn_resources.reaction_used ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 border border-emerald-500/30 text-emerald-200"}`}
             >
-              Reaction: {currentParticipant.turn_resources.reaction_used ? "Used" : "Avail"}
+              {t("combatUi.turnReactionAvailState")}
             </span>
           </div>
         ) : null}

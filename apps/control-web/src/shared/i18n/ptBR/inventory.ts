@@ -10,6 +10,7 @@ export const inventoryPtBRDictionary = {
   "inventory.goCampaigns": "Ir para campanhas",
   "inventory.empty": "Inventario vazio. Compre itens na loja.",
   "inventory.loading": "Carregando inventario...",
+  "inventory.failedToLoad": "Falha ao carregar inventário",
   "inventory.loadErrorTitle": "Inventario indisponivel",
   "inventory.loadErrorDescription": "Nao foi possivel carregar inventario.",
   "inventory.unknownItem": "Item desconhecido",

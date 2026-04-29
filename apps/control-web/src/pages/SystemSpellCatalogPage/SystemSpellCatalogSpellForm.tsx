@@ -71,7 +71,7 @@ export const SystemSpellCatalogSpellForm = ({
         </div>
       )}
 
-      <SystemSpellCatalogFormSection title="Informações básicas">
+      <SystemSpellCatalogFormSection title={t("catalog.spells.form.basicInfo")}>
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
@@ -134,7 +134,7 @@ export const SystemSpellCatalogSpellForm = ({
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              {t("catalog.admin.table.nameEn")}
+              {t("catalog.spells.form.nameEnDetailed")}
             </span>
             <input
               value={form.nameEn}
@@ -147,7 +147,7 @@ export const SystemSpellCatalogSpellForm = ({
           </label>
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              {t("catalog.admin.table.namePt")}
+              {t("catalog.spells.form.namePtDetailed")}
             </span>
             <input
               value={form.namePt}
@@ -181,7 +181,7 @@ export const SystemSpellCatalogSpellForm = ({
 
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Classes
+            {t("catalog.spells.form.classes")}
           </span>
           <div className="mt-2 flex flex-wrap gap-2">
             {CLASS_OPTIONS.map((cls) => (
@@ -211,11 +211,11 @@ export const SystemSpellCatalogSpellForm = ({
 
       <SystemSpellCatalogResolutionFields form={form} setForm={setForm} />
 
-      <SystemSpellCatalogFormSection title="Descrição">
+      <SystemSpellCatalogFormSection title={t("catalog.spells.form.description")}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Descrição EN
+              {t("catalog.spells.form.descriptionEnShort")}
             </span>
             <textarea
               value={form.descriptionEn}
@@ -227,7 +227,7 @@ export const SystemSpellCatalogSpellForm = ({
           </label>
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Descrição PT
+              {t("catalog.spells.form.descriptionPtShort")}
             </span>
             <textarea
               value={form.descriptionPt}
@@ -241,14 +241,14 @@ export const SystemSpellCatalogSpellForm = ({
       </SystemSpellCatalogFormSection>
 
       <SystemSpellCatalogFormSection
-        title="Metadados"
+        title={t("catalog.spells.form.metadata")}
         collapsible
         defaultCollapsed
       >
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Source
+              {t("catalog.spells.form.sourceDetailed")}
             </span>
             <select
               value={form.source}
@@ -267,7 +267,7 @@ export const SystemSpellCatalogSpellForm = ({
 
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Source ref
+              {t("catalog.spells.form.sourceRefDetailed")}
             </span>
             <input
               value={form.sourceRef}
@@ -320,7 +320,7 @@ export const SystemSpellCatalogSpellForm = ({
             onClick={onDelete}
             className="rounded-2xl border border-rose-400/30 bg-rose-400/8 px-5 py-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/15"
           >
-            Remover
+            {t("catalog.spells.form.remove")}
           </button>
         )}
         <button
@@ -328,7 +328,7 @@ export const SystemSpellCatalogSpellForm = ({
           onClick={onCreateNew}
           className="rounded-2xl border border-white/10 bg-white/4 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/8"
         >
-          Limpar
+          {t("catalog.spells.form.clear")}
         </button>
       </div>
     </div>

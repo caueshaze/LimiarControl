@@ -1,4 +1,5 @@
 import type { SessionInventoryFilterGroup } from "../../features/inventory/components/sessionInventoryPanel.utils";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 type Props = {
   userId: string;
@@ -18,6 +19,8 @@ export const GmDashboardInventoryFilters = ({
   onToggleEquippedOnly,
   onGroupChange,
 }: Props) => {
+  const { t } = useLocale();
+
   return (
     <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
       <div className="flex flex-col gap-3 lg:flex-row">
@@ -25,7 +28,7 @@ export const GmDashboardInventoryFilters = ({
           type="text"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search inventory"
+          placeholder={t("gm.dashboard.searchInventory")}
           className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-limiar-500 focus:outline-none"
         />
         <button
@@ -37,7 +40,7 @@ export const GmDashboardInventoryFilters = ({
               : "border-slate-700 bg-slate-900 text-slate-300"
           }`}
         >
-          Equipped only
+          {t("gm.dashboard.equippedOnly")}
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -52,17 +55,7 @@ export const GmDashboardInventoryFilters = ({
                 : "border-slate-700 bg-slate-900 text-slate-400"
             }`}
           >
-            {entryGroup === "all"
-              ? "All"
-              : entryGroup === "weapon"
-                ? "Weapon"
-                : entryGroup === "armor"
-                  ? "Armor"
-                  : entryGroup === "magic"
-                    ? "Magic"
-                    : entryGroup === "consumable"
-                      ? "Consumable"
-                      : "Misc"}
+            {t(`gm.dashboard.inventoryGroup.${entryGroup}`)}
           </button>
         ))}
       </div>

@@ -10,6 +10,7 @@ import { GmDashboardPlayerProgressBlock } from "./GmDashboardPlayerProgressBlock
 import { GmDashboardInventoryFilters } from "./GmDashboardInventoryFilters";
 import { GmDashboardInventoryItemList } from "./GmDashboardInventoryItemList";
 import { GmDashboardGrantPanels } from "./GmDashboardGrantPanels";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 type Props = {
   activeSessionPartyId: string | null;
@@ -96,6 +97,7 @@ export const GmDashboardPlayerInventoryCard = ({
   setItemDraft,
   setXpDraftByUserId,
 }: Props) => {
+  const { t } = useLocale();
   const isApproving =
     levelUpActionState?.userId === player.userId && levelUpActionState.action === "approve";
   const isDenying =
@@ -109,7 +111,7 @@ export const GmDashboardPlayerInventoryCard = ({
     ? `${routes.characterSheetParty.replace(":partyId", activeSessionPartyId)}?${new URLSearchParams({
         mode: "play",
         playerId: player.userId,
-        playerName: player.displayName || player.username || "Player",
+        playerName: player.displayName || player.username || t("gm.dashboard.playerLabel"),
         ...(effectiveCampaignId ? { campaignId: effectiveCampaignId } : {}),
         from: "gm-dashboard",
       }).toString()}`
@@ -132,7 +134,7 @@ export const GmDashboardPlayerInventoryCard = ({
           </div>
           <div>
             <span className="text-sm font-medium text-white">
-              {player.displayName || player.username || "Player"}
+              {player.displayName || player.username || t("gm.dashboard.playerLabel")}
             </span>
             <span
               className={`block text-[10px] ${isOnline ? "text-emerald-500" : "text-slate-600"}`}
@@ -144,7 +146,7 @@ export const GmDashboardPlayerInventoryCard = ({
         <div className="flex items-center gap-3">
           {sheet?.pendingLevelUp && (
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-200">
-              Level-Up Pending
+              Pendente de subida de nível
             </span>
           )}
           {playSheetRoute && (

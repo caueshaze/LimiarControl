@@ -63,7 +63,7 @@ export const RollResultCard = ({
       </p>
 
       {result.is_gm_roll && (
-        <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-600">GM Roll</p>
+        <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-600">{t("rolls.gmRoll")}</p>
       )}
     </div>
   );

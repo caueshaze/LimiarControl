@@ -189,7 +189,7 @@ export const SpellUpcastFields = ({
               }))
             }
             className={fieldClassName}
-            placeholder="armor_class_bonus"
+            placeholder={t("catalog.spells.form.armorClassBonus")}
           />
         </SpellCatalogField>
         <SpellCatalogField label={t("catalog.spells.form.upcastScalingSummary")}>
@@ -231,7 +231,7 @@ export const SpellUpcastFields = ({
               }))
             }
             className={fieldClassName}
-            placeholder="additional_beam"
+            placeholder={t("catalog.spells.form.additionalBeam")}
           />
         </SpellCatalogField>
         <SpellCatalogField label={t("catalog.spells.form.upcastUnlockSummary")}>

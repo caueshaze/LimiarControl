@@ -128,7 +128,7 @@ const WeaponRow = ({ weapon, abilities, fightingStyle, level, readOnly, onRemove
             <span className="text-slate-400">Dmg: <span className="font-bold text-slate-200">{dmg} {weapon.damageType}</span></span>
           </div>
         </div>
-        {!readOnly && <RemoveBtn onClick={() => onRemove(weapon.id)} title="Remove weapon" />}
+        {!readOnly && <RemoveBtn onClick={() => onRemove(weapon.id)} title={t("sheet.weapons.removeWeapon")} />}
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">

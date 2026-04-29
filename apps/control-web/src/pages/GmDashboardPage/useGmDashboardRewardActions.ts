@@ -9,6 +9,7 @@ import type { Item } from "../../entities/item";
 import type { InventoryItem } from "../../entities/inventory";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { clampHP } from "../../features/character-sheet/utils/calculations";
+import { useLocale } from "../../shared/hooks/useLocale";
 import type { CurrencyDraft, GrantFeedback, HpActionState, ItemDraft } from "./gmDashboard.types";
 
 type Props = {
@@ -30,6 +31,7 @@ export const useGmDashboardRewardActions = ({
   setWalletByUserId,
   sortedCatalogItems,
 }: Props) => {
+  const { t } = useLocale();
   const [grantFeedbackByUserId, setGrantFeedbackByUserId] = useState<Record<string, GrantFeedback>>({});
   const [currencyDraftByUserId, setCurrencyDraftByUserId] = useState<Record<string, CurrencyDraft>>({});
   const [itemDraftByUserId, setItemDraftByUserId] = useState<Record<string, ItemDraft>>({});
@@ -51,7 +53,7 @@ export const useGmDashboardRewardActions = ({
     if (!Number.isFinite(amount) || amount <= 0) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Enter a valid amount before sending currency." },
+        [userId]: { tone: "error", message: t("gm.dashboard.enterValidCurrencyAmount") },
       }));
       return;
     }
@@ -59,7 +61,7 @@ export const useGmDashboardRewardActions = ({
     setGrantingCurrencyForUserId(userId);
     setGrantFeedbackByUserId((current) => ({
       ...current,
-      [userId]: { tone: "success", message: "Sending currency..." },
+      [userId]: { tone: "success", message: t("gm.dashboard.sendingCurrency") },
     }));
 
     try {
@@ -102,14 +104,14 @@ export const useGmDashboardRewardActions = ({
     if (!draft.itemId) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Choose an item before sending it." },
+        [userId]: { tone: "error", message: t("gm.dashboard.chooseItemBeforeSending") },
       }));
       return;
     }
     if (!Number.isFinite(quantity) || quantity <= 0) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Enter a valid quantity before sending the item." },
+        [userId]: { tone: "error", message: t("gm.dashboard.enterValidItemQuantity") },
       }));
       return;
     }
@@ -118,7 +120,7 @@ export const useGmDashboardRewardActions = ({
     setGrantingItemForUserId(userId);
     setGrantFeedbackByUserId((current) => ({
       ...current,
-      [userId]: { tone: "success", message: "Sending item..." },
+      [userId]: { tone: "success", message: t("gm.dashboard.sendingItem") },
     }));
 
     try {
@@ -163,7 +165,7 @@ export const useGmDashboardRewardActions = ({
     if (!Number.isFinite(amount) || amount <= 0) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Enter a valid XP amount before sending it." },
+        [userId]: { tone: "error", message: t("gm.dashboard.enterValidXpAmount") },
       }));
       return;
     }
@@ -171,7 +173,7 @@ export const useGmDashboardRewardActions = ({
     setGrantingXpForUserId(userId);
     setGrantFeedbackByUserId((current) => ({
       ...current,
-      [userId]: { tone: "success", message: "Granting XP..." },
+      [userId]: { tone: "success", message: t("gm.dashboard.grantingXp") },
     }));
 
     try {
@@ -212,7 +214,7 @@ export const useGmDashboardRewardActions = ({
       ...current,
       [userId]: {
         tone: "success",
-        message: action === "approve" ? "Approving level-up..." : "Denying level-up...",
+        message: action === "approve" ? t("gm.dashboard.approvingLevelUp") : t("gm.dashboard.denyingLevelUp"),
       },
     }));
 
@@ -229,8 +231,8 @@ export const useGmDashboardRewardActions = ({
           tone: "success",
           message:
             action === "approve"
-              ? "Level-up approved. The sheet has been updated."
-              : "Level-up request denied.",
+              ? t("gm.dashboard.levelUpApprovedUpdated")
+              : t("gm.dashboard.levelUpDenied"),
         },
       }));
     } catch (error) {
@@ -238,7 +240,7 @@ export const useGmDashboardRewardActions = ({
         ...current,
         [userId]: {
           tone: "error",
-          message: (error as { message?: string })?.message ?? "Could not update the level-up request right now.",
+          message: (error as { message?: string })?.message ?? t("gm.dashboard.failedToUpdateLevelUpRequest"),
         },
       }));
     } finally {
@@ -253,7 +255,7 @@ export const useGmDashboardRewardActions = ({
     if (!Number.isFinite(amount) || amount <= 0) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Enter a valid HP amount before applying it." },
+        [userId]: { tone: "error", message: t("gm.dashboard.enterValidHpAmount") },
       }));
       return;
     }
@@ -262,7 +264,7 @@ export const useGmDashboardRewardActions = ({
     if (!sheet) {
       setGrantFeedbackByUserId((current) => ({
         ...current,
-        [userId]: { tone: "error", message: "Player sheet is still loading." },
+        [userId]: { tone: "error", message: t("gm.dashboard.playerSheetLoading") },
       }));
       return;
     }
@@ -272,9 +274,12 @@ export const useGmDashboardRewardActions = ({
       ...current,
       [userId]: {
         tone: "success",
-        message: action === "damage" ? "Applying damage..." : "Applying healing...",
-      },
-    }));
+          message:
+            action === "damage"
+              ? t("gm.dashboard.applyingDamageProgress")
+              : t("gm.dashboard.applyingHealingProgress"),
+        },
+      }));
 
     try {
       const delta = action === "damage" ? -amount : amount;

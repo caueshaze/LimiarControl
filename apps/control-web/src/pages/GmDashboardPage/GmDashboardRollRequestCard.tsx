@@ -177,7 +177,7 @@ export const GmDashboardRollRequestCard = ({
           <option value="">{t("gm.dashboard.allPlayers")}</option>
           {partyPlayers.map((player) => (
             <option key={player.userId} value={player.userId}>
-              {player.displayName || player.username || "Player"}
+              {player.displayName || player.username || t("gm.dashboard.playerLabel")}
             </option>
           ))}
         </select>

@@ -1,3 +1,4 @@
+import { dictionaries } from "../../../shared/i18n";
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
 import {
   type CurrencyUnit,
@@ -29,7 +30,7 @@ export const COIN_VISUALS: Record<
       "rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200",
   },
   ep: {
-    longLabel: "Electrum",
+    longLabel: dictionaries.pt["shop.currency.electrum"],
     shortLabel: "PE",
     className:
       "rounded-full border border-lime-500/25 bg-lime-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-lime-200",

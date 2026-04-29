@@ -8,6 +8,7 @@ import {
   inventoryRepo,
   type InventorySellResult,
 } from "../../../shared/api/inventoryRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCampaigns } from "../../campaign-select";
 import { isItem, validateCatalogItemPayload } from "./shopValidation";
 
@@ -42,6 +43,7 @@ export const toItemRepoPayload = (payload: ItemInput): ItemInput => ({
 
 export const useShop = (options?: UseShopOptions) => {
   const { campaigns, selectedCampaignId } = useCampaigns();
+  const { t } = useLocale();
   const campaignId = options?.campaignId ?? selectedCampaignId ?? null;
   const campaignSystemType =
     campaigns.find((campaign) => campaign.id === campaignId)?.systemType ?? null;
@@ -71,13 +73,13 @@ export const useShop = (options?: UseShopOptions) => {
         return next;
       } catch (error: unknown) {
         setItems([]);
-        setItemsError((error as { message?: string })?.message ?? "Failed to load items");
+        setItemsError((error as { message?: string })?.message ?? t("shop.failedToLoadItems"));
         return [];
       } finally {
         setItemsLoading(false);
       }
     },
-    [campaignId, sessionId],
+    [campaignId, sessionId, t],
   );
 
   useEffect(() => {
@@ -89,7 +91,7 @@ export const useShop = (options?: UseShopOptions) => {
 
   const createItem = async (payload: ItemInput) => {
     if (!campaignId) {
-      return { ok: false, message: "No campaign selected." };
+      return { ok: false, message: t("shop.noCampaignSelected") };
     }
 
     const validation = validateCatalogItemPayload(payload);
@@ -109,14 +111,14 @@ export const useShop = (options?: UseShopOptions) => {
     } catch (error: unknown) {
       return {
         ok: false,
-        message: (error as { message?: string })?.message ?? "Failed to create item",
+        message: (error as { message?: string })?.message ?? t("shop.failedToCreateItem"),
       };
     }
   };
 
   const updateItem = async (itemId: string, payload: ItemInput) => {
     if (!campaignId) {
-      return { ok: false, message: "No campaign selected." };
+      return { ok: false, message: t("shop.noCampaignSelected") };
     }
 
     const validation = validateCatalogItemPayload(payload);
@@ -139,7 +141,7 @@ export const useShop = (options?: UseShopOptions) => {
     } catch (error: unknown) {
       return {
         ok: false,
-        message: (error as { message?: string })?.message ?? "Failed to update item",
+        message: (error as { message?: string })?.message ?? t("shop.failedToUpdateItem"),
       };
     }
   };
@@ -156,7 +158,7 @@ export const useShop = (options?: UseShopOptions) => {
 
   const buyItem = (itemId: string): Promise<InventoryItem> => {
     if (!sessionId) {
-      return Promise.reject(new Error("No active session"));
+      return Promise.reject(new Error(t("shop.noActiveSession")));
     }
     return inventoryRepo.buy(sessionId, {
       itemId,
@@ -166,7 +168,7 @@ export const useShop = (options?: UseShopOptions) => {
 
   const sellItem = (inventoryItemId: string): Promise<InventorySellResult> => {
     if (!sessionId) {
-      return Promise.reject(new Error("No active session"));
+      return Promise.reject(new Error(t("shop.noActiveSession")));
     }
     return inventoryRepo.sell(sessionId, {
       inventoryItemId,

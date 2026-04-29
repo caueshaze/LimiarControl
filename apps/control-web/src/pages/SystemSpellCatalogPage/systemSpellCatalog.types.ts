@@ -150,12 +150,12 @@ export const DURATION_OPTIONS = [
   "10 days",
   "30 days",
   "Permanent",
-  "Concentration, up to 1 round",
-  "Concentration, up to 1 minute",
-  "Concentration, up to 10 minutes",
-  "Concentration, up to 1 hour",
-  "Concentration, up to 8 hours",
-  "Concentration, up to 24 hours",
+  "Concentração, até 1 rodada",
+  "Concentração, até 1 minuto",
+  "Concentração, até 10 minutos",
+  "Concentração, até 1 hora",
+  "Concentração, até 8 horas",
+  "Concentração, até 24 horas",
 ] as const;
 export const CLASS_OPTIONS = [
   "Bard",

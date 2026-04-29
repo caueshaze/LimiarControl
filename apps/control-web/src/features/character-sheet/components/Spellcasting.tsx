@@ -228,7 +228,7 @@ export const Spellcasting = ({
       {!readOnly && !creationConfig && <div className="mt-4">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{t("sheet.spells.knownTitle")}</div>
         {shouldUseCatalogBackedEditing && !catalogReady ? (
-          <p className="pb-2 text-xs text-slate-500">Loading spells...</p>
+          <p className="pb-2 text-xs text-slate-500">{t("sheet.spells.loading")}</p>
         ) : null}
         <div className="space-y-2">
           {spellcasting.spells.map((spell) => (
@@ -319,7 +319,7 @@ const SpellRow = ({
             onChange={(e) => onSelectCatalogSpell(spell.id, e.target.value)}
             className={input}
           >
-            <option value="">Select a spell</option>
+            <option value="">{t("sheet.spells.selectSpell")}</option>
             {catalogSpellOptions.map((option) => (
               <option key={option.canonicalKey} value={option.canonicalKey}>
                 {option.name}

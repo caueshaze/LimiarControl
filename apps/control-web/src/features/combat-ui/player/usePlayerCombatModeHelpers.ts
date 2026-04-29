@@ -237,7 +237,7 @@ export const withActionState = async (callback: () => Promise<void>) => {
     await callback();
   } catch (err: any) {
     throw new Error(
-      err?.data?.detail || err?.message || "Combat action failed"
+      err?.data?.detail || err?.message || "Falha na ação de combate"
     );
   }
 };

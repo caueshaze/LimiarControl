@@ -10,6 +10,7 @@ export const inventoryEnUSDictionary = {
   "inventory.goCampaigns": "Go to campaigns",
   "inventory.empty": "Inventory is empty. Buy items from the shop to add them here.",
   "inventory.loading": "Loading inventory...",
+  "inventory.failedToLoad": "Failed to load inventory",
   "inventory.loadErrorTitle": "Inventory unavailable",
   "inventory.loadErrorDescription": "Could not load inventory.",
   "inventory.unknownItem": "Unknown item",

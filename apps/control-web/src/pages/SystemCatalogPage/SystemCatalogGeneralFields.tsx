@@ -29,7 +29,7 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            {t("catalog.admin.table.nameEn")}
+            {t("catalog.admin.form.nameEnDetailed")}
           </span>
           <input
             value={form.nameEn}
@@ -43,7 +43,7 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            {t("catalog.admin.table.namePt")}
+            {t("catalog.admin.form.namePtDetailed")}
           </span>
           <input
             value={form.namePt}
@@ -57,7 +57,7 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
 
         <label className="block md:col-span-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Descrição EN
+            {t("catalog.admin.form.descriptionEnDetailed")}
           </span>
           <textarea
             value={form.descriptionEn}
@@ -73,7 +73,7 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
 
         <label className="block md:col-span-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Descrição PT
+            {t("catalog.admin.form.descriptionPtDetailed")}
           </span>
           <textarea
             value={form.descriptionPt}

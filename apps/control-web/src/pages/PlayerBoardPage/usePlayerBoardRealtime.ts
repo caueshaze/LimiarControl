@@ -188,8 +188,8 @@ export const usePlayerBoardRealtime = ({
       if (eventPlayerUserId && eventPlayerUserId === userId) {
         showToast({
           variant: "success",
-          title: "Coins received",
-          description: "The GM added currency to your pouch.",
+          title: t("playerBoard.coinsReceived"),
+          description: t("playerBoard.currencyAddedByGm"),
         });
       }
       return;
@@ -202,8 +202,8 @@ export const usePlayerBoardRealtime = ({
       if (eventPlayerUserId && eventPlayerUserId === userId) {
         showToast({
           variant: "success",
-          title: "New item received",
-          description: `${String(lastEvent.payload.itemName ?? "Item")} added to your inventory.`,
+          title: t("playerBoard.newItemReceived"),
+          description: `${String(lastEvent.payload.itemName ?? "Item")} ${t("playerBoard.itemAddedToInventory")}`,
         });
       }
       return;
@@ -216,8 +216,11 @@ export const usePlayerBoardRealtime = ({
       if (eventPlayerUserId && eventPlayerUserId === userId) {
         showToast({
           variant: "success",
-          title: "XP received",
-          description: `The GM granted ${String(lastEvent.payload.grantedAmount ?? 0)} XP.`,
+          title: t("playerBoard.xpReceivedTitle"),
+          description: t("playerBoard.xpReceivedDescription").replace(
+            "{amount}",
+            String(lastEvent.payload.grantedAmount ?? 0),
+          ),
         });
       }
       return;
@@ -230,8 +233,8 @@ export const usePlayerBoardRealtime = ({
       if (eventPlayerUserId && eventPlayerUserId === userId) {
         showToast({
           variant: "success",
-          title: "Level-up approved",
-          description: "Your character sheet has been updated.",
+          title: t("playerBoard.levelUpApprovedTitle"),
+          description: t("playerBoard.characterSheetUpdated"),
         });
       }
       return;
@@ -244,8 +247,8 @@ export const usePlayerBoardRealtime = ({
       if (eventPlayerUserId && eventPlayerUserId === userId) {
         showToast({
           variant: "info",
-          title: "Level-up denied",
-          description: "The GM cleared your pending request.",
+          title: t("playerBoard.levelUpDeniedTitle"),
+          description: t("playerBoard.pendingRequestCleared"),
         });
       }
       return;

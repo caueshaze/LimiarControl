@@ -82,7 +82,7 @@ export const GmDashboardPartyInventories = ({
   setItemDraftByUserId,
   setXpDraftByUserId,
 }: Props) => {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [inventorySearchByUserId, setInventorySearchByUserId] = useState<Record<string, string>>({});
   const [inventoryGroupByUserId, setInventoryGroupByUserId] = useState<Record<string, SessionInventoryFilterGroup>>({});
   const [equippedOnlyByUserId, setEquippedOnlyByUserId] = useState<Record<string, boolean>>({});
@@ -91,7 +91,7 @@ export const GmDashboardPartyInventories = ({
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-      <h2 className="mb-4 text-lg font-semibold text-white">Party Inventories</h2>
+      <h2 className="mb-4 text-lg font-semibold text-white">{t("gm.dashboard.partyInventories")}</h2>
       <div className="space-y-3">
         {partyPlayers.map((player) => {
           const memberId = memberIdByUserId[player.userId];

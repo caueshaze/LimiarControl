@@ -1,5 +1,6 @@
 import { RollResultCard } from "../../features/rolls/components/RollResultCard";
 import type { CombatEntityActionResult, CombatParticipant } from "../../shared/api/combatRepo";
+import { useLocale } from "../../shared/hooks/useLocale";
 import { formatDamageBreakdown, formatSigned } from "./gmEntityActionRollDialog.helpers";
 
 type Props = {
@@ -39,6 +40,7 @@ export const GmActionResultPanel = ({
   result,
   target,
 }: Props) => {
+  const { t } = useLocale();
   const pendingDamage = Boolean(result.damage_roll_required && result.pending_attack_id);
 
   const attackBonusText =
@@ -93,14 +95,14 @@ export const GmActionResultPanel = ({
                 onClick={() => onDamageModeChange("virtual")}
                 className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500"
               >
-                Virtual
+                {t("combatUi.virtual")}
               </button>
               <button
                 type="button"
                 onClick={() => onDamageModeChange("manual")}
                 className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700"
               >
-                Manual
+                {t("combatUi.manual")}
               </button>
             </div>
           </div>

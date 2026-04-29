@@ -27,6 +27,7 @@ export const useRollResolution = (
   actorKind: "player" | "session_entity",
   actorRefId: string,
 ) => {
+  const { t } = useLocale();
   const [result, setResult] = useState<RollResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +92,7 @@ export const useRollResolution = (
         setResult(res);
         return res;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Roll failed";
+        const msg = err instanceof Error ? err.message : t("rolls.failed");
         setError(msg);
         return null;
       } finally {
@@ -108,3 +109,4 @@ export const useRollResolution = (
 
   return { result, loading, error, submitRoll, clearResult };
 };
+import { useLocale } from "../../../shared/hooks/useLocale";

@@ -6,6 +6,7 @@ import {
   subscribe,
   subscribeConnectionState,
 } from "../../../shared/realtime/centrifugoClient";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useSession } from "../../sessions";
 
 const MAX_EVENTS = 50;
@@ -17,6 +18,7 @@ type RollError = {
 
 export const useRollSession = () => {
   const { selectedSessionId } = useSession();
+  const { t } = useLocale();
   const [events, setEvents] = useState<RollEvent[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>("offline");
   const [lastError, setLastError] = useState<RollError | null>(null);
@@ -71,10 +73,10 @@ export const useRollSession = () => {
       .catch((error: { message?: string }) => {
         setLastError({
           requestId: null,
-          message: error?.message ?? "Failed to load roll history",
+          message: error?.message ?? t("playerBoard.rollHistoryLoadFailed"),
         });
       });
-  }, [selectedSessionId]);
+  }, [selectedSessionId, t]);
 
   const roll = useCallback(async (
     expression: string,
@@ -82,7 +84,7 @@ export const useRollSession = () => {
     advantage?: "advantage" | "disadvantage" | null,
   ) => {
     if (!selectedSessionId) {
-      setLastError({ requestId: null, message: "No session selected" });
+      setLastError({ requestId: null, message: t("playerBoard.noSessionSelected") });
       return;
     }
     const payload: RollRequest = {
@@ -97,10 +99,10 @@ export const useRollSession = () => {
     } catch (error) {
       setLastError({
         requestId: null,
-        message: (error as { message?: string }).message ?? "Failed to submit roll",
+        message: (error as { message?: string }).message ?? t("playerBoard.rollSubmitFailed"),
       });
     }
-  }, [appendEvent, selectedSessionId]);
+  }, [appendEvent, selectedSessionId, t]);
 
   return {
     events,

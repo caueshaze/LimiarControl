@@ -91,4 +91,11 @@ export const shopEnUSDictionary = {
   "shop.type.consumable": "Consumables",
   "shop.type.misc": "Misc",
   "shop.type.magic": "Magic",
+  "shop.failedToLoadItems": "Failed to load items",
+  "shop.noCampaignSelected": "No campaign selected.",
+  "shop.failedToCreateItem": "Failed to create item",
+  "shop.failedToUpdateItem": "Failed to update item",
+  "shop.noActiveSession": "No active session",
+  "shop.failedToLoadSpells": "Failed to load spells",
+  "shop.currency.electrum": "Electrum",
 } as const;

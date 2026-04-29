@@ -202,7 +202,7 @@ export const AdminUsersPage = () => {
               >
                 <option value="ALL">{t("admin.users.filters.allRoles")}</option>
                 <option value="GM">GM</option>
-                <option value="PLAYER">Player</option>
+                <option value="PLAYER">{t("admin.users.filters.player")}</option>
               </select>
             </label>
             <label className="space-y-2">

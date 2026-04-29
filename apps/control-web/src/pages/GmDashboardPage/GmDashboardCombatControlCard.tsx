@@ -106,7 +106,7 @@ export const GmDashboardCombatControlCard = ({
       await Promise.allSettled(playerIds.map((userId) => onRequestInitiativeRoll(userId)));
       onSetGmInitiativeQueue(included.filter((p) => p.kind === "session_entity"));
     } catch (err: any) {
-      setCombatError(err?.response?.data?.detail || err.message || "Failed to start combat");
+      setCombatError(err?.response?.data?.detail || err.message || t("gm.dashboard.failedToStartCombat"));
     } finally {
       setCombatLoading(false);
     }
@@ -122,7 +122,7 @@ export const GmDashboardCombatControlCard = ({
       onClearGmInitiativeQueue();
       if (rollType === "attack" || rollType === "initiative") setRollType(null);
     } catch (err: any) {
-      setCombatError(err?.response?.data?.detail || err.message || "Failed to end combat");
+      setCombatError(err?.response?.data?.detail || err.message || t("gm.dashboard.failedToEndCombat"));
     } finally {
       setCombatLoading(false);
     }

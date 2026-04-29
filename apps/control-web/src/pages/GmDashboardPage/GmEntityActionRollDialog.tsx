@@ -18,6 +18,7 @@ import { GmDamageRollSection } from "./GmDamageRollSection";
 import { isMissingDistanceError } from "../../features/combat-ui/combatErrors";
 import { useTargetingPreview } from "../../features/combat-ui/hooks/useTargetingPreview";
 import { RangeStatusBadge } from "../../features/combat-ui/components/RangeStatusBadge";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 type Props = {
   actionDescription?: string | null;
@@ -46,6 +47,7 @@ export const GmEntityActionRollDialog = ({
   sessionId,
   target,
 }: Props) => {
+  const { t } = useLocale();
   const preview = useTargetingPreview({
     sessionId,
     actorRefId,
@@ -279,7 +281,7 @@ export const GmEntityActionRollDialog = ({
                 onClick={() => setAttackMode("virtual")}
                 className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-rose-500 disabled:opacity-40"
               >
-                Virtual
+                {t("combatUi.virtual")}
               </button>
               <button
                 type="button"
@@ -287,7 +289,7 @@ export const GmEntityActionRollDialog = ({
                 onClick={() => setAttackMode("manual")}
                 className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
               >
-                Manual
+                {t("combatUi.manual")}
               </button>
             </div>
             <button

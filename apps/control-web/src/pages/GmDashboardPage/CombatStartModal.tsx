@@ -51,13 +51,13 @@ export const CombatStartModal = ({
     ...partyPlayers.map((p) => ({
       id: p.userId,
       kind: "player" as const,
-      displayName: p.displayName || p.username || "Player",
+      displayName: p.displayName || p.username || t("gm.dashboard.playerLabel"),
       included: true,
     })),
     ...sessionEntities.map((e) => ({
       id: e.id,
       kind: "session_entity" as const,
-      displayName: e.label || e.entity?.name || "Entity",
+      displayName: e.label || e.entity?.name || t("gm.dashboard.entityLabel"),
       included: true,
     })),
   ];
@@ -121,7 +121,7 @@ export const CombatStartModal = ({
                         {map.imageUrl ? (
                           <ManagedImage
                             src={map.imageUrl}
-                            alt={map.mapName ?? "Campaign map"}
+                            alt={map.mapName ?? t("gm.dashboard.campaignMap")}
                             className="h-full w-full object-cover"
                           />
                         ) : null}

@@ -28,12 +28,12 @@ export const GmDashboardHeader = ({
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
           />
         ) : null}
-        <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">GM Command Center</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">{t("gm.dashboard.commandCenter")}</p>
         <h1 className="mt-2 text-3xl font-bold text-white">
-          {selectedCampaignName ?? overviewName ?? "Untitled Campaign"}
+          {selectedCampaignName ?? overviewName ?? t("gm.dashboard.untitledCampaign")}
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          {overviewSystem ? getCampaignSystemLabel(overviewSystem) : "No System"}
+          {overviewSystem ? getCampaignSystemLabel(overviewSystem) : t("gm.dashboard.noSystem")}
         </p>
       </div>
       <div className="flex gap-3" />

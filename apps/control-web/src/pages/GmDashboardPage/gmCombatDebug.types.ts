@@ -6,36 +6,36 @@ import type {
 } from "../../shared/api/combatRepo";
 
 export const EFFECT_KINDS: { value: ActiveEffectKind; label: string }[] = [
-  { value: "condition", label: "Condition" },
-  { value: "temp_ac_bonus", label: "Temp AC Bonus" },
-  { value: "attack_bonus", label: "Attack Bonus" },
-  { value: "damage_bonus", label: "Damage Bonus" },
-  { value: "advantage_on_attacks", label: "Advantage on Attacks" },
-  { value: "disadvantage_on_attacks", label: "Disadvantage on Attacks" },
+  { value: "condition", label: "combatUi.effect.condition" },
+  { value: "temp_ac_bonus", label: "combatUi.effect.temp_ac_bonus" },
+  { value: "attack_bonus", label: "combatUi.effect.attack_bonus" },
+  { value: "damage_bonus", label: "combatUi.effect.damage_bonus" },
+  { value: "advantage_on_attacks", label: "combatUi.effect.advantage_on_attacks" },
+  { value: "disadvantage_on_attacks", label: "combatUi.effect.disadvantage_on_attacks" },
 ];
 
 export const CONDITION_TYPES: { value: ActiveEffectConditionType; label: string }[] = [
-  { value: "prone", label: "Prone" },
-  { value: "poisoned", label: "Poisoned" },
-  { value: "restrained", label: "Restrained" },
-  { value: "blinded", label: "Blinded" },
-  { value: "frightened", label: "Frightened" },
+  { value: "prone", label: "combatUi.condition.prone" },
+  { value: "poisoned", label: "combatUi.condition.poisoned" },
+  { value: "restrained", label: "combatUi.condition.restrained" },
+  { value: "blinded", label: "combatUi.condition.blinded" },
+  { value: "frightened", label: "combatUi.condition.frightened" },
 ];
 
 export const DURATION_TYPES: { value: ActiveEffectDurationType; label: string }[] = [
-  { value: "manual", label: "Manual (remove manually)" },
-  { value: "rounds", label: "Rounds" },
-  { value: "until_turn_start", label: "Until Turn Start" },
-  { value: "until_turn_end", label: "Until Turn End" },
+  { value: "manual", label: "combatUi.duration.manual" },
+  { value: "rounds", label: "combatUi.duration.rounds" },
+  { value: "until_turn_start", label: "combatUi.duration.until_turn_start" },
+  { value: "until_turn_end", label: "combatUi.duration.until_turn_end" },
 ];
 
 export const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus"]);
 
 export const STANDARD_ACTIONS: { value: StandardActionType; label: string }[] = [
-  { value: "dodge", label: "Dodge" },
-  { value: "help", label: "Help" },
-  { value: "hide", label: "Hide" },
-  { value: "use_object", label: "Use Object" },
-  { value: "dash", label: "Dash" },
-  { value: "disengage", label: "Disengage" },
+  { value: "dodge", label: "combatUi.dodge" },
+  { value: "help", label: "combatUi.help" },
+  { value: "hide", label: "combatUi.hide" },
+  { value: "use_object", label: "combatUi.useObject" },
+  { value: "dash", label: "combatUi.dash" },
+  { value: "disengage", label: "combatUi.disengage" },
 ];

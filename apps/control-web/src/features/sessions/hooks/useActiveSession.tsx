@@ -1,3 +1,4 @@
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionsRepo } from "../../../shared/api/sessionsRepo";
 import { useCampaigns } from "../../campaign-select";
@@ -8,6 +9,7 @@ import {
 } from "./useActiveSession.state";
 
 export const useActiveSession = (campaignId?: string | null) => {
+  const { t } = useLocale();
   const { selectedCampaignId } = useCampaigns();
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
   const [state, setState] = useState(() =>
@@ -57,7 +59,7 @@ export const useActiveSession = (campaignId?: string | null) => {
           campaignId: effectiveCampaignId,
           activeSession: null,
           loading: false,
-          error: err?.message ?? "Failed to load active session",
+          error: err?.message ?? t("gm.dashboard.failedToLoadActiveSession"),
         });
         return null;
       });
@@ -86,7 +88,7 @@ export const useActiveSession = (campaignId?: string | null) => {
         .catch((err: { message?: string }) => {
           setState((current) => ({
             ...current,
-            error: err?.message ?? "Failed to activate session",
+            error: err?.message ?? t("gm.dashboard.failedToActivateSession"),
           }));
           throw err; // re-throw so callers can inspect the full error
         });
@@ -109,7 +111,7 @@ export const useActiveSession = (campaignId?: string | null) => {
       .catch((err: { message?: string }) => {
         setState((current) => ({
           ...current,
-          error: err?.message ?? "Failed to end session",
+          error: err?.message ?? t("gm.dashboard.failedToEndSession"),
         }));
         return false;
       });

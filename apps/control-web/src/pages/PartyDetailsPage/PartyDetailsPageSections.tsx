@@ -37,7 +37,7 @@ export const PartyDetailsHeader = ({
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-white">{party.name}</h1>
         <p className="mt-3 text-sm text-slate-300">
-          Manage the roster, inspect sheets, and keep inventory close before the next session goes live.
+          {t("campaignHome.managePartyDescription")}
         </p>
       </div>
       <div className="flex flex-wrap justify-end gap-3">
@@ -47,7 +47,7 @@ export const PartyDetailsHeader = ({
           disabled={deletingParty}
           className="rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {deletingParty ? "Deleting..." : "Delete Party"}
+          {deletingParty ? t("campaignHome.deleting") : t("campaignHome.deleteParty")}
         </button>
         {activeSession?.status === "ACTIVE" ? (
           <>
@@ -55,13 +55,13 @@ export const PartyDetailsHeader = ({
               onClick={onEndSession}
               className="rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-400 hover:bg-red-500/20"
             >
-              End Session
+              {t("campaignHome.endSession")}
             </button>
             <Link
               to={buildCampaignDashboardPath(party.campaignId, activeSession.partyId ?? party.id)}
               className="rounded-full border border-emerald-500/30 bg-emerald-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/30"
             >
-              Manage Session →
+              {t("campaignHome.manageSession")} →
             </Link>
           </>
         ) : activeSession?.status === "LOBBY" ? (
@@ -69,14 +69,14 @@ export const PartyDetailsHeader = ({
             onClick={onEndSession}
             className="rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-400 hover:bg-red-500/20"
           >
-            Cancel Lobby
+            {t("campaignHome.cancelLobby")}
           </button>
         ) : (
           <button
             onClick={onStartSession}
             className="rounded-full bg-limiar-500 px-6 py-2.5 text-sm font-semibold uppercase tracking-wider text-white shadow-lg shadow-limiar-500/20 transition hover:bg-limiar-400"
           >
-            Start New Session
+            {t("campaignHome.startNewSession")}
           </button>
         )}
       </div>
@@ -98,85 +98,89 @@ export const PartyDetailsLobbyCard = ({
   onlineUsers,
   forceStarting,
   onForceStart,
-}: LobbyProps) => (
-  <div className="space-y-5 rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
-    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-amber-400">Lobby aberto</p>
-        <p className="mt-1 text-lg font-semibold text-white">
-          {activeSession.title || "Untitled Session"}
-        </p>
-        <p className="mt-1 text-sm text-slate-400">
-          Aguardando os jogadores confirmarem entrada para iniciar a sessao.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
-          {lobbyStatus
-            ? `${lobbyStatus.ready.length}/${lobbyStatus.expected.length} prontos`
-            : "Carregando lobby"}
-        </span>
-        <button
-          onClick={onForceStart}
-          disabled={forceStarting}
-          className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-limiar-300 hover:bg-limiar-500/20 disabled:opacity-50"
-        >
-          {forceStarting ? "Starting..." : "Force Start"}
-        </button>
-      </div>
-    </div>
+}: LobbyProps) => {
+  const { t } = useLocale();
 
-    {lobbyStatus ? (
-      lobbyStatus.expected.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {lobbyStatus.expected.map((player) => {
-            const isReady = lobbyStatus.ready.includes(player.userId);
-            const isOnline = Boolean(onlineUsers[player.userId]);
-            return (
-              <div
-                key={player.userId}
-                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
-                  isReady
-                    ? "border-emerald-500/20 bg-emerald-500/10"
-                    : "border-slate-800 bg-slate-900/40"
-                }`}
-              >
-                <div className="relative">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold ${
-                      isReady
-                        ? "border-emerald-500/30 bg-emerald-500/20 text-emerald-200"
-                        : "border-slate-700 bg-slate-800 text-slate-300"
-                    }`}
-                  >
-                    {player.displayName.charAt(0).toUpperCase()}
-                  </div>
-                  <span
-                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-slate-950 ${
-                      isOnline ? "bg-emerald-400" : "bg-slate-600"
-                    }`}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className={`truncate text-sm font-medium ${isReady ? "text-emerald-200" : "text-white"}`}>
-                    {player.displayName}
-                  </p>
-                  <p className={`text-xs ${isReady ? "text-emerald-400" : isOnline ? "text-sky-400" : "text-slate-500"}`}>
-                    {isReady ? "Entrou no lobby" : isOnline ? "Online" : "Offline"}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+  return (
+    <div className="space-y-5 rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-amber-400">Lobby aberto</p>
+          <p className="mt-1 text-lg font-semibold text-white">
+            {activeSession.title || t("campaignHome.untitledSession")}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            Aguardando os jogadores confirmarem entrada para iniciar a sessao.
+          </p>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+            {lobbyStatus
+              ? `${lobbyStatus.ready.length}/${lobbyStatus.expected.length} prontos`
+              : "Carregando lobby"}
+          </span>
+          <button
+            onClick={onForceStart}
+            disabled={forceStarting}
+            className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-limiar-300 hover:bg-limiar-500/20 disabled:opacity-50"
+          >
+            {forceStarting ? t("campaignHome.starting") : t("campaignHome.forceStart")}
+          </button>
+        </div>
+      </div>
+
+      {lobbyStatus ? (
+        lobbyStatus.expected.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {lobbyStatus.expected.map((player) => {
+              const isReady = lobbyStatus.ready.includes(player.userId);
+              const isOnline = Boolean(onlineUsers[player.userId]);
+              return (
+                <div
+                  key={player.userId}
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                    isReady
+                      ? "border-emerald-500/20 bg-emerald-500/10"
+                      : "border-slate-800 bg-slate-900/40"
+                  }`}
+                >
+                  <div className="relative">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold ${
+                        isReady
+                          ? "border-emerald-500/30 bg-emerald-500/20 text-emerald-200"
+                          : "border-slate-700 bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      {player.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-slate-950 ${
+                        isOnline ? "bg-emerald-400" : "bg-slate-600"
+                      }`}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`truncate text-sm font-medium ${isReady ? "text-emerald-200" : "text-white"}`}>
+                      {player.displayName}
+                    </p>
+                    <p className={`text-xs ${isReady ? "text-emerald-400" : isOnline ? "text-sky-400" : "text-slate-500"}`}>
+                      {isReady ? "Entrou no lobby" : isOnline ? "Online" : "Offline"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400">Nenhum player confirmado para este lobby.</p>
+        )
       ) : (
-        <p className="text-sm text-slate-400">Nenhum player confirmado para este lobby.</p>
-      )
-    ) : (
-      <p className="text-sm text-slate-400">Carregando estado do lobby...</p>
-    )}
-  </div>
-);
+        <p className="text-sm text-slate-400">Carregando estado do lobby...</p>
+      )}
+    </div>
+  );
+};
 
 type MembersProps = {
   party: PartyDetail;
@@ -204,7 +208,7 @@ export const PartyDetailsMembersCard = ({
       </h2>
       <div className="mt-6 space-y-3">
         {party.members.length === 0 ? (
-          <p className="text-sm text-slate-500">No members or invites yet.</p>
+          <p className="text-sm text-slate-500">{t("campaignHome.noMembersOrInvites")}</p>
         ) : (
           party.members.map((member) => (
             <div
@@ -213,7 +217,7 @@ export const PartyDetailsMembersCard = ({
             >
               <div>
                 <span className="block text-sm font-medium text-white">
-                  {member.displayName || member.username || "Unknown Player"}
+                  {member.displayName || member.username || t("campaignHome.unknownPlayer")}
                 </span>
                 {member.username && (
                   <span className="block text-xs text-slate-500">@{member.username}</span>
@@ -274,7 +278,7 @@ export const PartyDetailsMembersCard = ({
                   disabled={alreadyInParty}
                   className="rounded-full bg-slate-800 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {alreadyInParty ? "Added" : t("gm.home.partyUserAdd")}
+                  {alreadyInParty ? t("campaignHome.added") : t("gm.home.partyUserAdd")}
                 </button>
               </div>
             );
@@ -295,56 +299,60 @@ export const PartyDetailsTimelineCard = ({
   sessions,
   expandedSessionId,
   onToggleSession,
-}: TimelineProps) => (
-  <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-6">
-    <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
-      Sessions Timeline
-    </h2>
-    <div className="mt-6 space-y-3">
-      {sessions.length === 0 ? (
-        <p className="text-sm text-slate-500">No sessions recorded. Start one above!</p>
-      ) : (
-        sessions.map((session, index) => {
-          const isExpanded = expandedSessionId === session.id;
-          return (
-            <div
-              key={session.id}
-              className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/60"
-            >
-              <button
-                onClick={() => onToggleSession(isExpanded ? null : session.id)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-900/40"
+}: TimelineProps) => {
+  const { t } = useLocale();
+
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+        {t("campaignHome.sessionsTimeline")}
+      </h2>
+      <div className="mt-6 space-y-3">
+        {sessions.length === 0 ? (
+          <p className="text-sm text-slate-500">{t("campaignHome.noSessionsRecorded")}</p>
+        ) : (
+          sessions.map((session, index) => {
+            const isExpanded = expandedSessionId === session.id;
+            return (
+              <div
+                key={session.id}
+                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/60"
               >
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-slate-500">
-                    Session {index + 1} • {new Date(session.createdAt).toLocaleDateString()}
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-white">{session.title}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span
-                    className={`rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
-                      session.isActive
-                        ? "bg-limiar-500/20 text-limiar-300"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
-                    {session.status}
-                  </span>
-                  <span className={`text-xs text-slate-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
-                    ▼
-                  </span>
-                </div>
-              </button>
-              {isExpanded && (
-                <div className="border-t border-slate-800/60 px-4 pb-4">
-                  <PartyDetailsSessionActivityLog sessionId={session.id} />
-                </div>
-              )}
-            </div>
-          );
-        })
-      )}
+                <button
+                  onClick={() => onToggleSession(isExpanded ? null : session.id)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-900/40"
+                >
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-slate-500">
+                      {t("campaignHome.sessionLabel")} {index + 1} • {new Date(session.createdAt).toLocaleDateString()}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-white">{session.title}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+                        session.isActive
+                          ? "bg-limiar-500/20 text-limiar-300"
+                          : "bg-slate-800 text-slate-400"
+                      }`}
+                    >
+                      {session.status}
+                    </span>
+                    <span className={`text-xs text-slate-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-slate-800/60 px-4 pb-4">
+                    <PartyDetailsSessionActivityLog sessionId={session.id} />
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};

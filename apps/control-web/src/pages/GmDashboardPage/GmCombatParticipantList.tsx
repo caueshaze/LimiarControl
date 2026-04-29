@@ -1,4 +1,5 @@
 import { combatRepo, type ActiveEffect, type CombatState } from "../../shared/api/combatRepo";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 export const GmCombatParticipantList = ({
   state,
@@ -11,6 +12,7 @@ export const GmCombatParticipantList = ({
   setInitiatives: (v: Record<string, string>) => void;
   sessionId: string;
 }) => {
+  const { t } = useLocale();
   return (
     <div className="space-y-2">
       {state.participants.map((p: any, idx: number) => (
@@ -24,7 +26,7 @@ export const GmCombatParticipantList = ({
         >
           <span className="w-6 font-mono text-slate-500">{idx + 1}.</span>
           <span className="flex-1 font-semibold">
-            {p.display_name} {p.kind === "session_entity" ? "(NPC)" : "(Player)"}
+            {p.display_name} {p.kind === "session_entity" ? t("gm.dashboard.npcTag") : t("gm.dashboard.playerTag")}
             <em className="ml-2 text-[10px] uppercase font-bold text-rose-500">
               {p.status !== "active" && p.status}
             </em>
@@ -77,7 +79,7 @@ export const GmCombatParticipantList = ({
               type="number"
               value={initiatives[p.id] || ""}
               onChange={(e) => setInitiatives({ ...initiatives, [p.id]: e.target.value })}
-              placeholder="Init"
+              placeholder={t("gm.dashboard.initPlaceholder")}
               className="w-16 rounded bg-slate-900 px-2 py-1 text-center"
             />
           ) : (

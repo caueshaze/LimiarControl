@@ -2,6 +2,7 @@ import type { Item } from "../../entities/item";
 import type { InventoryItem } from "../../entities/inventory";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
 import { resolveInventoryEntries, filterInventoryEntries, type SessionInventoryFilterGroup } from "../../features/inventory/components/sessionInventoryPanel.utils";
+import { useLocale } from "../../shared/hooks/useLocale";
 
 type Props = {
   items: InventoryItem[] | undefined;
@@ -20,12 +21,14 @@ export const GmDashboardInventoryItemList = ({
   group,
   search,
 }: Props) => {
+  const { t } = useLocale();
+
   if (!items) {
-    return <p className="py-2 text-xs text-slate-500">Loading...</p>;
+    return <p className="py-2 text-xs text-slate-500">{t("gm.dashboard.loadingItems")}</p>;
   }
 
   if (items.length === 0) {
-    return <p className="py-2 text-xs text-slate-500">No items yet.</p>;
+    return <p className="py-2 text-xs text-slate-500">{t("gm.dashboard.noItemsYet")}</p>;
   }
 
   const resolvedItems = resolveInventoryEntries(items, catalogItems, locale);
@@ -34,7 +37,7 @@ export const GmDashboardInventoryItemList = ({
   return (
     <div className="space-y-1">
       {filteredItems.length === 0 ? (
-        <p className="py-2 text-xs text-slate-500">No items match the current filters.</p>
+        <p className="py-2 text-xs text-slate-500">{t("gm.dashboard.noItemsMatchFilters")}</p>
       ) : null}
 
       {filteredItems.map(({ entry, item }) => (
@@ -46,7 +49,7 @@ export const GmDashboardInventoryItemList = ({
             <span>×{entry.quantity}</span>
             {entry.isEquipped && (
               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-emerald-400">
-                Equipped
+                {t("gm.dashboard.equipped")}
               </span>
             )}
           </div>

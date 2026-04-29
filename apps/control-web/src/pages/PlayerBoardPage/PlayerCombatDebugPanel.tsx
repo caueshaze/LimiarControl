@@ -83,11 +83,11 @@ export const PlayerCombatDebugPanel = ({
 
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 shadow-xl">
-      <h3 className="text-lg font-bold text-sky-300">Combat Feed (Phase 1)</h3>
+      <h3 className="text-lg font-bold text-sky-300">{t("combatUi.combatFeedPhase1")}</h3>
 
       {error && (
         <div className="mt-4 rounded border border-rose-500 bg-rose-500/10 p-2 text-sm text-rose-200">
-          <strong>Error:</strong> {error}
+          <strong>{t("combatUi.errorLabel")}</strong> {error}
         </div>
       )}
 

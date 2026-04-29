@@ -1,7 +1,9 @@
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { partiesRepo, type PartyActiveSession } from "../../../shared/api/partiesRepo";
 
 export const usePartyActiveSession = (partyId?: string | null) => {
+  const { t } = useLocale();
   const [activeSession, setActiveSession] = useState<PartyActiveSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export const usePartyActiveSession = (partyId?: string | null) => {
           return null;
         }
         setActiveSession(null);
-        setError(err?.message ?? "Failed to load active session");
+        setError(err?.message ?? t("gm.dashboard.failedToLoadActiveSession"));
         return null;
       })
       .finally(() => {

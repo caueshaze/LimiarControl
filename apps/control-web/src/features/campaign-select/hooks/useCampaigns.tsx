@@ -198,7 +198,7 @@ export const CampaignProvider = ({ children }: { children: ReactNode }) => {
   const updateCampaign = useCallback(
     async (campaignId: string, name: string, systemType: CampaignSystemType) => {
       if (!campaignId || !name.trim()) {
-        return { ok: false, message: "Invalid payload" };
+        return { ok: false, message: t("gm.home.invalidPayload") };
       }
 
       return campaignsRepo

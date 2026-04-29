@@ -27,6 +27,8 @@ export const rollsEnUSDictionary = {
   "rolls.selectSecondD20": "Now select the 2nd d20",
   "rolls.virtual": "Virtual",
   "rolls.manual": "Manual",
+  "rolls.gmRoll": "GM Roll",
+  "rolls.failed": "Roll failed",
   "rolls.advantage": "Advantage",
   "rolls.disadvantage": "Disadvantage",
   "rolls.ability.strength": "Strength",

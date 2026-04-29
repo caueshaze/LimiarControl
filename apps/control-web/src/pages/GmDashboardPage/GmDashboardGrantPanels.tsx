@@ -3,6 +3,7 @@ import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import type { CurrencyUnit } from "../../shared/utils/money";
 import { EMPTY_WALLET, buildWalletDisplay } from "../../features/shop/utils/shopCurrency";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
+import { useLocale } from "../../shared/hooks/useLocale";
 import type { CurrencyDraft, GrantFeedback, ItemDraft } from "./gmDashboard.types";
 
 type Props = {
@@ -36,12 +37,14 @@ export const GmDashboardGrantPanels = ({
   setCurrencyDraft,
   setItemDraft,
 }: Props) => {
+  const { t } = useLocale();
+
   return (
     <>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-            Give Currency
+            {t("gm.dashboard.giveCurrency")}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {buildWalletDisplay(wallet ?? EMPTY_WALLET).map((coin) => (
@@ -86,13 +89,13 @@ export const GmDashboardGrantPanels = ({
               disabled={grantingCurrencyForUserId === userId}
               className="rounded-xl bg-emerald-500/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white hover:bg-emerald-500 disabled:opacity-60"
             >
-              {grantingCurrencyForUserId === userId ? "Sending..." : "Give"}
+              {grantingCurrencyForUserId === userId ? t("gm.dashboard.sending") : t("gm.dashboard.give")}
             </button>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">Give Item</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">{t("gm.dashboard.giveItem")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <select
               value={itemDraft?.itemId ?? sortedCatalogItems[0]?.id ?? ""}
@@ -105,7 +108,7 @@ export const GmDashboardGrantPanels = ({
               className="min-w-48 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
             >
               {sortedCatalogItems.length === 0 ? (
-                <option value="">No items</option>
+                <option value="">{t("gm.dashboard.noItems")}</option>
               ) : (
                 sortedCatalogItems.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -132,7 +135,7 @@ export const GmDashboardGrantPanels = ({
               disabled={grantingItemForUserId === userId || sortedCatalogItems.length === 0}
               className="rounded-xl bg-limiar-500/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white hover:bg-limiar-500 disabled:opacity-60"
             >
-              {grantingItemForUserId === userId ? "Sending..." : "Give"}
+              {grantingItemForUserId === userId ? t("gm.dashboard.sending") : t("gm.dashboard.give")}
             </button>
           </div>
         </div>

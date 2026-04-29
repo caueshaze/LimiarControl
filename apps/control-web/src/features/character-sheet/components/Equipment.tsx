@@ -246,7 +246,7 @@ const ItemRow = ({
           </div>
         ) : null}
       </div>
-      {!readOnly && <RemoveBtn onClick={() => onRemove(item.id)} title="Remove item" />}
+      {!readOnly && <RemoveBtn onClick={() => onRemove(item.id)} title={t("sheet.equipment.removeItem")} />}
     </div>
   );
 };

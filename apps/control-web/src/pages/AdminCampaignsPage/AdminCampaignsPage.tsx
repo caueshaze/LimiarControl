@@ -115,7 +115,7 @@ export const AdminCampaignsPage = () => {
                 <option value="T20">Tormenta20</option>
                 <option value="PF2E">Pathfinder 2e</option>
                 <option value="COC">Call of Cthulhu</option>
-                <option value="CUSTOM">Custom</option>
+                <option value="CUSTOM">{t("admin.campaigns.filters.custom")}</option>
               </select>
             </label>
           </div>

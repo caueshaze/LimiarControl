@@ -9,6 +9,7 @@ import {
   type StandardActionType,
 } from "../../../shared/api/combatRepo";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCombatUiState } from "../useCombatUiState";
 import {
   buildSpellOptions,
@@ -37,6 +38,7 @@ export const usePlayerCombatMode = ({
   sessionId,
   userId = null,
 }: UsePlayerCombatModeProps) => {
+  const { t } = useLocale();
   const combat = useCombatUiState({ sessionId, userId });
   const [attackDialogOpen, setAttackDialogOpen] = useState(false);
   const [spellDialogOpen, setSpellDialogOpen] = useState(false);
@@ -144,8 +146,8 @@ export const usePlayerCombatMode = ({
         },
         message:
           failureDelta >= 2
-            ? "Critical hit while downed. Two failures added."
-            : "Damage while downed. One failure added.",
+            ? t("playerBoard.criticalHitWhileDowned")
+            : t("playerBoard.damageWhileDowned"),
         status:
           playerStatus.deathSaveFailures >= 3
             ? "dead"
@@ -297,16 +299,16 @@ export const usePlayerCombatMode = ({
         ...(result ?? {}),
         message:
           result?.roll === 20
-            ? "Critical success. You return with 1 HP."
+            ? t("playerBoard.criticalSuccessDeathSave")
             : result?.roll === 1
-              ? "Critical failure. Two failures were added."
+              ? t("playerBoard.criticalFailureDeathSave")
               : result?.status === "stable"
-                ? "You stabilized at 0 HP."
+                ? t("playerBoard.stabilizedAtZero")
                 : result?.status === "dead"
-                  ? "You reached 3 failed death saves."
+                  ? t("playerBoard.threeFailedDeathSaves")
                   : (result?.roll ?? 0) >= 10
-                    ? "Death save succeeded."
-                    : "Death save failed.",
+                    ? t("playerBoard.deathSaveSucceeded")
+                    : t("playerBoard.deathSaveFailed"),
       });
       await combat.refreshState();
     });

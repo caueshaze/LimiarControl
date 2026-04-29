@@ -94,19 +94,19 @@ export const useGmCombatHandlers = ({
     const actionName = result.action_name || selectedCombatAction?.name || selectedUtilityAction?.name || "Action";
     if (result.action_kind === "weapon_attack" || result.action_kind === "spell_attack") {
       return result.is_hit
-        ? `${actionName} hit ${result.target_display_name ?? "the target"} for ${result.damage ?? 0}.`
-        : `${actionName} missed ${result.target_display_name ?? "the target"}.`;
+        ? `${actionName} ${t("gm.dashboard.hit").toLowerCase()} ${result.target_display_name ?? "o alvo"} e causou ${result.damage ?? 0}.`
+        : `${actionName} ${t("gm.dashboard.missed").toLowerCase()} ${result.target_display_name ?? "o alvo"}.`;
     }
     if (result.action_kind === "saving_throw") {
       if (result.pending_save_id) {
-        return `${actionName}: waiting for ${result.target_display_name ?? "the target"} to roll the save.`;
+        return `${actionName}: ${t("gm.dashboard.waitingForTarget")} ${result.target_display_name ?? "o alvo"} rolar o save.`;
       }
       return result.is_saved
-        ? `${actionName}: target saved.`
-        : `${actionName}: target failed the save and took ${result.damage ?? 0}.`;
+        ? `${actionName}: alvo passou no save.`
+        : `${actionName}: alvo falhou no save e sofreu ${result.damage ?? 0}.`;
     }
-    if (result.action_kind === "heal") return `${actionName} healed ${result.healing ?? 0} HP.`;
-    return `${actionName} executed.`;
+    if (result.action_kind === "heal") return `${actionName} ${t("gm.dashboard.healed").toLowerCase()} ${result.healing ?? 0} HP.`;
+    return `${actionName} ${t("gm.dashboard.actionResolved").toLowerCase()}`;
   };
 
   const executeWithOverride = async (
@@ -179,7 +179,7 @@ export const useGmCombatHandlers = ({
         setActionResult(formatEntityActionResult(result));
         await refreshCombat();
       },
-      "Failed to execute entity action",
+      t("gm.dashboard.failedToExecuteEntityAction"),
     );
   };
 
@@ -203,7 +203,7 @@ export const useGmCombatHandlers = ({
         setActionResult(result.message);
         await refreshCombat();
       },
-      "Failed to execute standard action",
+      t("gm.dashboard.failedToExecuteAction"),
     );
   };
 
@@ -221,7 +221,7 @@ export const useGmCombatHandlers = ({
         setActionResult(formatEntityActionResult(result));
         await refreshCombat();
       },
-      "Failed to execute entity action",
+      t("gm.dashboard.failedToExecuteEntityAction"),
     );
   };
 
@@ -234,7 +234,7 @@ export const useGmCombatHandlers = ({
       await combatRepo.nextTurn(sessionId, { actor_participant_id: currentParticipant.id });
       await refreshCombat();
     } catch (err: any) {
-      setActionError(err?.data?.detail || err?.message || "Failed to advance turn");
+      setActionError(err?.data?.detail || err?.message || t("gm.dashboard.failedToAdvanceTurn"));
     } finally {
       setSubmitting(false);
     }
@@ -283,7 +283,7 @@ export const useGmCombatHandlers = ({
       });
       await refreshCombat();
     } catch (err: any) {
-      setActionError(err?.data?.detail || err?.message || "Failed to resolve save");
+      setActionError(err?.data?.detail || err?.message || t("gm.dashboard.waitingForTarget"));
     } finally {
       setSubmitting(false);
     }
@@ -306,7 +306,7 @@ export const useGmCombatHandlers = ({
       await refreshCombat();
       setApplyEffectOpen(false);
     } catch (err: any) {
-      setActionError(err?.data?.detail || err?.message || "Failed to apply effect");
+      setActionError(err?.data?.detail || err?.message || t("gm.dashboard.failedToApplyEffect"));
     } finally {
       setSubmitting(false);
     }
@@ -323,7 +323,7 @@ export const useGmCombatHandlers = ({
       });
       await refreshCombat();
     } catch (err: any) {
-      setActionError(err?.data?.detail || err?.message || "Failed to remove effect");
+      setActionError(err?.data?.detail || err?.message || t("gm.dashboard.failedToRemoveEffect"));
     } finally {
       setSubmitting(false);
     }
