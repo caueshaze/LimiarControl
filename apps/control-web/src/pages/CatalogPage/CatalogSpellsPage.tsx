@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
 import { useCampaignSpells } from "../../features/shop/hooks/useCampaignSpells";
@@ -77,11 +77,17 @@ export const CatalogSpellsPage = () => {
     );
   }
 
-  const campaignPanelRoute = routes.campaignEdit.replace(":campaignId", selectedCampaignId);
-
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
+
+      <Link
+        to={routes.campaigns}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+      >
+        <span aria-hidden>←</span>
+        {t("campaignHome.back")}
+      </Link>
 
       <CatalogHero
         campaignName={selectedCampaign?.name ?? t("home.activeCampaign")}
@@ -90,7 +96,6 @@ export const CatalogSpellsPage = () => {
         systemType={selectedCampaign?.systemType ?? null}
         totalCount={allSpells.length}
         customCount={0}
-        backTo={campaignPanelRoute}
         title={t("catalog.spells.subtitle")}
         description={t("catalog.spells.heroDescription")}
       />

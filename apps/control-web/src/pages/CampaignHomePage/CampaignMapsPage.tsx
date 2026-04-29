@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
@@ -11,7 +11,6 @@ import { useLocale } from "../../shared/hooks/useLocale";
 import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { CampaignMapConfigCard } from "./CampaignMapConfig";
-import { BackButton } from "../../shared/ui";
 
 export const CampaignMapsPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -84,6 +83,13 @@ export const CampaignMapsPage = () => {
 
   return (
     <section className="space-y-6">
+      <Link
+        to={routes.campaignEdit.replace(":campaignId", effectiveCampaignId)}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+      >
+        <span aria-hidden>←</span>
+        {t("campaignHome.back")}
+      </Link>
       <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/20 p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">
           {t("campaignHome.mapConfigTitle")}
@@ -110,15 +116,6 @@ export const CampaignMapsPage = () => {
                 </span>
               )}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <BackButton
-              fallbackTo={
-                routes.campaignEdit.replace(":campaignId", effectiveCampaignId)
-              }
-              label={t("campaignHome.back")}
-              className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
-            />
           </div>
         </div>
         <p className="mt-4 text-sm text-slate-300">

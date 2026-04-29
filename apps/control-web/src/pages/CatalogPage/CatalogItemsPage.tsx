@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
 import { CreateShopItemForm, useShop } from "../../features/shop";
@@ -79,10 +79,6 @@ export const CatalogItemsPage = () => {
     );
   }
 
-  const campaignPanelRoute = selectedCampaignId
-    ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
-    : routes.home;
-
   const handleCreate = async (payload: Parameters<typeof createItem>[0]) => {
     const result = await createItem(payload);
     if (result?.ok) {
@@ -148,6 +144,14 @@ export const CatalogItemsPage = () => {
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
 
+      <Link
+        to={routes.campaigns}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+      >
+        <span aria-hidden>←</span>
+        {t("campaignHome.back")}
+      </Link>
+
       <CatalogHero
         campaignName={selectedCampaign?.name ?? t("home.activeCampaign")}
         filteredCount={filteredItems.length}
@@ -155,7 +159,6 @@ export const CatalogItemsPage = () => {
         systemType={campaignSystemType}
         totalCount={items.length}
         customCount={customCount}
-        backTo={campaignPanelRoute}
         title={t("catalog.subtitle")}
         description={t("catalog.heroDescription")}
       />

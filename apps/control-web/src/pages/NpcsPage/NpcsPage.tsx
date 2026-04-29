@@ -82,11 +82,17 @@ export const NpcsPage = () => {
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
+      <Link
+        to={campaignPanelRoute}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+      >
+        <span aria-hidden>←</span>
+        {t("campaignHome.back")}
+      </Link>
       <NpcsHero
         campaignName={selectedCampaign?.name ?? t("home.activeCampaign")}
         totalCount={rawEntities.length}
         visibleCount={entities.length}
-        backTo={campaignPanelRoute}
         eyebrow={t("entity.heroEyebrow")}
         title={t("entity.title")}
         description={t("entity.description")}

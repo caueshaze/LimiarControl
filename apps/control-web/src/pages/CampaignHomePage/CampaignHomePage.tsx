@@ -139,8 +139,8 @@ export const CampaignHomePage = () => {
           <div className="flex flex-wrap items-center gap-3">
             <BackButton
               fallbackTo={routes.gmHome}
-              label={t("campaignHome.back")}
-              className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200 hover:border-slate-500"
+              label={<><span aria-hidden>←</span>{t("campaignHome.back")}</>}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
             />
           </div>
         </div>

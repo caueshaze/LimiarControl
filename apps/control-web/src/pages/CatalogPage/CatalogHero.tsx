@@ -1,6 +1,5 @@
 import type { CampaignSystemType } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { BackButton } from "../../shared/ui";
 
 type CatalogHeroProps = {
   campaignName: string;
@@ -9,7 +8,6 @@ type CatalogHeroProps = {
   systemType: CampaignSystemType | null;
   totalCount: number;
   customCount: number;
-  backTo: string;
   title: string;
   description: string;
 };
@@ -21,7 +19,6 @@ export const CatalogHero = ({
   systemType,
   totalCount,
   customCount,
-  backTo,
   title,
   description,
 }: CatalogHeroProps) => {
@@ -62,11 +59,6 @@ export const CatalogHero = ({
                 {systemType}
               </div>
             )}
-            <BackButton
-              fallbackTo={backTo}
-              label={`← ${t("campaignHome.back")}`}
-              className="inline-flex items-center rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:border-white/20 hover:bg-white/8"
-            />
           </div>
         </div>
 

@@ -95,9 +95,10 @@ export const JoinPage = () => {
         <button
           type="button"
           onClick={() => navigateBackOrFallback(navigate, { fallbackTo: routes.home })}
-          className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
         >
-          ← Voltar
+          <span aria-hidden>←</span>
+          {t("campaignHome.back")}
         </button>
         <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
           {t("join.title")}
