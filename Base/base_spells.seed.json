@@ -950,7 +950,13 @@
       "targetAnchor": "selected_point",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "persistent"
+      "effectTiming": "persistent",
+      "persistentArea": {
+        "kind": "obscurement",
+        "params": {
+          "obscurement": "heavily_obscured"
+        }
+      }
     },
     {
       "system": "DND5E",
@@ -1036,7 +1042,16 @@
       "targetAnchor": "selected_point",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "persistent"
+      "effectTiming": "persistent",
+      "persistentArea": {
+        "kind": "hazard",
+        "params": {
+          "terrainEffect": "difficult_terrain",
+          "movementDamageDice": "2d4",
+          "damageType": "Piercing",
+          "damagePerMeters": 1.5
+        }
+      }
     },
     {
       "system": "DND5E",

@@ -24,6 +24,9 @@ import {
   type SaveSuccessOutcome,
   type SpellDamageType,
   type SpellDeclarativeEffect,
+  type SpellPersistentAreaKind,
+  type SpellPersistentAreaObscurement,
+  type SpellPersistentAreaTerrainEffect,
   type SpellAttackType,
   type SpellEffectTiming,
   type SpellOriginType,
@@ -100,6 +103,9 @@ export const SPELL_DIE_SIZE_OPTIONS = [4, 6, 8, 10, 12] as const;
 
 export const SPELL_UPCAST_MODE_OPTIONS = Object.values(UpcastModeValues);
 export const SPELL_CANTRIP_SCALING_EFFECT_TYPE_OPTIONS = Object.values(CantripScalingEffectTypeValues);
+export const SPELL_PERSISTENT_AREA_KIND_OPTIONS = ["obscurement", "hazard", "no_semantic_effect"] as const;
+export const SPELL_PERSISTENT_AREA_OBSCUREMENT_OPTIONS = ["heavily_obscured"] as const;
+export const SPELL_PERSISTENT_AREA_TERRAIN_OPTIONS = ["difficult_terrain"] as const;
 
 const SPELL_CLASS_OPTION_SET = new Set<string>(SPELL_CLASS_OPTIONS);
 const SPELL_COMPONENT_OPTION_SET = new Set<string>(SPELL_COMPONENT_OPTIONS);
@@ -231,6 +237,54 @@ const supportsSavingThrow = (resolutionType: SpellCatalogEditorState["resolution
   resolutionType === "damage" ||
   resolutionType === "control" ||
   resolutionType === "debuff";
+
+const buildPersistentArea = (
+  state: SpellCatalogEditorState,
+): BaseSpellUpdatePayload["persistentArea"] => {
+  if (state.effectTiming !== "persistent" || !state.persistentAreaKind) {
+    return null;
+  }
+
+  if (state.persistentAreaKind === "obscurement") {
+    const obscurement = toNullableText(
+      state.persistentAreaObscurement,
+    ) as SpellPersistentAreaObscurement | null;
+    return obscurement
+      ? {
+          kind: "obscurement",
+          params: { obscurement },
+        }
+      : null;
+  }
+
+  if (state.persistentAreaKind === "hazard") {
+    const terrainEffect = toNullableText(
+      state.persistentAreaTerrainEffect,
+    ) as SpellPersistentAreaTerrainEffect | null;
+    const movementDamageDice = toNullableText(state.persistentAreaMovementDamageDice);
+    const damageType = toNullableText(state.persistentAreaDamageType) as SpellDamageType | null;
+    const damagePerMeters = toNullableFloat(state.persistentAreaDamagePerMeters);
+
+    if (!terrainEffect && !movementDamageDice && !damageType && !damagePerMeters) {
+      return null;
+    }
+
+    return {
+      kind: "hazard",
+      params: {
+        terrainEffect,
+        movementDamageDice,
+        damageType,
+        damagePerMeters,
+      },
+    };
+  }
+
+  return {
+    kind: "no_semantic_effect",
+    params: {},
+  };
+};
 
 const buildStructuredUpcast = (
   state: SpellCatalogEditorState,
@@ -426,6 +480,7 @@ export const buildSpellUpdatePayload = (
   healDice: state.resolutionType === "heal" ? toNullableText(state.healDice) : null,
   effects: state.effects.length > 0 ? state.effects : null,
   onEndEffects: state.onEndEffects.length > 0 ? state.onEndEffects : null,
+  persistentArea: buildPersistentArea(state),
   savingThrow: supportsSavingThrow(state.resolutionType)
     ? (toNullableText(state.savingThrow) as SpellSavingThrow | null)
     : null,
@@ -491,6 +546,12 @@ export type SpellCatalogEditorState = {
   healDice: string;
   effects: SpellDeclarativeEffect[];
   onEndEffects: SpellDeclarativeEffect[];
+  persistentAreaKind: SpellPersistentAreaKind | "";
+  persistentAreaObscurement: SpellPersistentAreaObscurement | "";
+  persistentAreaTerrainEffect: SpellPersistentAreaTerrainEffect | "";
+  persistentAreaMovementDamageDice: string;
+  persistentAreaDamageType: string;
+  persistentAreaDamagePerMeters: string;
   savingThrow: string;
   saveSuccessOutcome: string;
   coverAppliesToSave: "" | "none" | "physical";
@@ -674,6 +735,27 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   healDice: spell.healDice ?? "",
   effects: spell.effects ?? [],
   onEndEffects: spell.onEndEffects ?? [],
+  persistentAreaKind: spell.persistentArea?.kind ?? "",
+  persistentAreaObscurement:
+    spell.persistentArea?.kind === "obscurement"
+      ? spell.persistentArea.params.obscurement
+      : "",
+  persistentAreaTerrainEffect:
+    spell.persistentArea?.kind === "hazard"
+      ? (spell.persistentArea.params.terrainEffect ?? "")
+      : "",
+  persistentAreaMovementDamageDice:
+    spell.persistentArea?.kind === "hazard"
+      ? (spell.persistentArea.params.movementDamageDice ?? "")
+      : "",
+  persistentAreaDamageType:
+    spell.persistentArea?.kind === "hazard"
+      ? normalizeKnownSpellValue(spell.persistentArea.params.damageType, SPELL_DAMAGE_TYPE_OPTION_SET)
+      : "",
+  persistentAreaDamagePerMeters:
+    spell.persistentArea?.kind === "hazard" && spell.persistentArea.params.damagePerMeters != null
+      ? String(spell.persistentArea.params.damagePerMeters)
+      : "",
   savingThrow: normalizeKnownSpellValue(spell.savingThrow, SPELL_SAVING_THROW_OPTION_SET),
   saveSuccessOutcome: normalizeKnownSpellValue(
     spell.saveSuccessOutcome,
@@ -742,6 +824,12 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   healDice: "",
   effects: [],
   onEndEffects: [],
+  persistentAreaKind: "",
+  persistentAreaObscurement: "",
+  persistentAreaTerrainEffect: "",
+  persistentAreaMovementDamageDice: "",
+  persistentAreaDamageType: "",
+  persistentAreaDamagePerMeters: "",
   savingThrow: "",
   saveSuccessOutcome: "",
   coverAppliesToSave: "",

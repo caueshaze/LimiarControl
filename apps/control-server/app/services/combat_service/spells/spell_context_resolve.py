@@ -370,6 +370,7 @@ class SpellContextResolveMixin:
             "save_success_outcome": resolved_math["save_success_outcome"],
             "effects": getattr(catalog_spell, "effects_json", None),
             "on_end_effects": getattr(catalog_spell, "on_end_effects_json", None),
+            "persistent_area": getattr(catalog_spell, "persistent_area_json", None),
             "cover_applies_to_save": getattr(catalog_spell, "cover_applies_to_save", None),
             "attack_bonus": resolved_math["attack_bonus"],
             "slot_level": resolved_mode["slot_level"],
