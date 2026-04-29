@@ -173,14 +173,33 @@ export const buildWeaponOptions = (
   inventory: InventoryItem[] | null,
   itemsById: Record<string, Item>,
   locale: "en" | "pt" | string,
-): SessionInventorySelectOption[] =>
-  resolveInventoryEntries(inventory, itemsById, locale)
+): SessionInventorySelectOption[] => {
+  const formatRangeDetail = (item: Item | null) => {
+    if (!item || typeof item.rangeMeters !== "number") {
+      return null;
+    }
+    if (typeof item.rangeLongMeters === "number") {
+      return `alcance ${item.rangeMeters}m · longo ${item.rangeLongMeters}m`;
+    }
+    return `alcance ${item.rangeMeters}m`;
+  };
+
+  return resolveInventoryEntries(inventory, itemsById, locale)
     .filter((entry) => entry.group === "weapon")
-    .map(({ entry, item, name }) => ({
-      value: entry.id,
-      label: name,
-      detail: item?.damageDice ? formatDamageLabel(item.damageDice, item.damageType, locale) : null,
-    }));
+    .map(({ entry, item, name }) => {
+      const damageDetail = item?.damageDice
+        ? formatDamageLabel(item.damageDice, item.damageType, locale)
+        : null;
+      const rangeDetail = formatRangeDetail(item);
+      const detail = [damageDetail, rangeDetail].filter(Boolean).join(" · ") || null;
+
+      return {
+        value: entry.id,
+        label: name,
+        detail,
+      };
+    });
+};
 
 export const buildArmorOptions = (
   inventory: InventoryItem[] | null,

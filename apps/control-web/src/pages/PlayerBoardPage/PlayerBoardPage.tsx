@@ -199,7 +199,9 @@ export const PlayerBoardPage = () => {
           campaignId={effectiveCampaignId}
           expanded={combatUiExpanded}
           inventory={myInventory}
+          isSavingLoadout={isSavingLoadout}
           itemsById={catalogItems}
+          loadoutStatus={loadoutStatus}
           locale={locale}
           manualValue={manualValue}
           onAuthoritativeRollResolved={handleAuthoritativeRollResolved}
@@ -212,12 +214,15 @@ export const PlayerBoardPage = () => {
           onSubmitManualRoll={handleManualRoll}
           onToggleExpanded={toggleCombatUiExpanded}
           onVirtualRoll={handleRoll}
+          onWeaponChange={handleWeaponChange}
           pendingRoll={pendingRoll}
           playerSheet={playerSheet}
           playerStatus={playerStatus}
           rollMode={rollMode}
+          selectedWeaponId={selectedWeaponId}
           sessionId={activeSession.id}
           userId={user?.userId}
+          weaponOptions={weaponOptions}
         />
       ) : (
         <>

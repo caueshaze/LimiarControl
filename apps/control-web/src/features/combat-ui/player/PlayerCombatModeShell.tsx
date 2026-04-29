@@ -22,6 +22,7 @@ import {
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
 import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
+import type { SessionInventorySelectOption } from "../../inventory/components/sessionInventoryPanel.utils";
 import type { Locale } from "../../../shared/i18n";
 import type {
   PendingRoll,
@@ -54,11 +55,16 @@ type Props = {
   onSubmitManualRoll: () => Promise<void>;
   onToggleExpanded: () => void;
   onVirtualRoll: () => void;
+  onWeaponChange?: (inventoryItemId: string | null) => void;
   pendingRoll: PendingRoll | null;
   playerSheet?: CharacterSheet | null;
   playerStatus?: PlayerBoardStatusSummary | null;
   rollMode: "virtual" | "manual" | null;
   sessionId: string;
+  selectedWeaponId?: string | null;
+  weaponOptions?: SessionInventorySelectOption[];
+  isSavingLoadout?: boolean;
+  loadoutStatus?: string | null;
   userId?: string | null;
 };
 
@@ -77,11 +83,16 @@ export const PlayerCombatModeShell = ({
   onSubmitManualRoll,
   onToggleExpanded,
   onVirtualRoll,
+  onWeaponChange,
   pendingRoll,
   playerSheet,
   playerStatus,
   rollMode,
   sessionId,
+  selectedWeaponId = null,
+  weaponOptions = [],
+  isSavingLoadout = false,
+  loadoutStatus = null,
   userId = null,
 }: Props) => {
   const { locale: currentLocale, t } = useLocale();
@@ -404,6 +415,7 @@ export const PlayerCombatModeShell = ({
             setUseObjectNote={setUseObjectNote}
             setUseObjectRollMode={setUseObjectRollMode}
             setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
+            selectedWeaponId={selectedWeaponId ?? ""}
             spellOptions={spellOptions}
             targetId={targetId}
             useObjectManualRolls={useObjectManualRolls}
@@ -411,6 +423,10 @@ export const PlayerCombatModeShell = ({
             useObjectRollMode={useObjectRollMode}
             useObjectTargetOptions={useObjectTargetOptions}
             useObjectTargetParticipantId={useObjectTargetParticipantId}
+            weaponOptions={weaponOptions}
+            isSavingLoadout={isSavingLoadout}
+            loadoutStatus={loadoutStatus}
+            onWeaponChange={onWeaponChange}
           />
         </div>
 
