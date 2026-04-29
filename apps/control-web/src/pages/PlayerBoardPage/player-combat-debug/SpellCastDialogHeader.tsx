@@ -291,6 +291,16 @@ export const SpellCastDialogHeader = ({
               })}
             </div>
           ) : null}
+          {mapPreviewModel.guardrailTargetOutcomes?.length ? (
+            <div className="mt-2 space-y-0.5 text-xs opacity-90">
+              <p className="font-semibold">Exclusões mecânicas previstas:</p>
+              {mapPreviewModel.guardrailTargetOutcomes.map((item) => (
+                <p key={item.target_ref_id}>
+                  {item.target_display_name}: {item.guardrail_reason}
+                </p>
+              ))}
+            </div>
+          ) : null}
           {mapPreviewModel.instanceStatuses?.length ? (
             <div className="mt-2 space-y-1 text-xs">
               {mapPreviewModel.instanceStatuses.map((instanceStatus) => {

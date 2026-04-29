@@ -1,5 +1,6 @@
 import { METERS_PER_CELL } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import type {
+  CombatAreaGuardrailOutcome,
   AreaPreviewAffectedTargetSpatialMetadata,
   CombatAreaPreviewResponse,
 } from "../../../shared/api/combatRepo";
@@ -46,6 +47,7 @@ export type SpellMapPreviewModel = {
   affectedTargetCount?: number;
   affectedTargetNames?: string[];
   affectedTargetSpatialMetadata?: AreaTargetSpatialMetadata[];
+  guardrailTargetOutcomes?: CombatAreaGuardrailOutcome[];
   rangeMeters: number | null;
   areaShape: string | null;
   areaSizeMeters: number | null;
@@ -116,6 +118,19 @@ const toAreaTargetSpatialMetadata = (
     baseSaveDc: item.base_save_dc ?? null,
     effectiveSaveDc: item.effective_save_dc ?? null,
     coverModifier: item.cover_modifier ?? 0,
+  }));
+};
+
+const toGuardrailTargetOutcomes = (
+  raw?: CombatAreaGuardrailOutcome[],
+): CombatAreaGuardrailOutcome[] | undefined => {
+  if (!raw || raw.length === 0) return undefined;
+  return raw.map((item) => ({
+    target_ref_id: item.target_ref_id,
+    target_display_name: item.target_display_name,
+    target_kind: item.target_kind,
+    excluded_by_guardrail: item.excluded_by_guardrail ?? true,
+    guardrail_reason: item.guardrail_reason,
   }));
 };
 
@@ -212,6 +227,9 @@ export const buildSpellMapPreviewModel = ({
         affectedTargetSpatialMetadata: toAreaTargetSpatialMetadata(
           existingAreaPreviewResult?.affected_target_spatial_metadata,
         ),
+        guardrailTargetOutcomes: toGuardrailTargetOutcomes(
+          existingAreaPreviewResult?.guardrail_target_outcomes,
+        ),
       };
     }
 
@@ -229,6 +247,9 @@ export const buildSpellMapPreviewModel = ({
           .filter((name): name is string => Boolean(name)),
         affectedTargetSpatialMetadata: toAreaTargetSpatialMetadata(
           existingAreaPreviewResult.affected_target_spatial_metadata,
+        ),
+        guardrailTargetOutcomes: toGuardrailTargetOutcomes(
+          existingAreaPreviewResult.guardrail_target_outcomes,
         ),
       };
     }

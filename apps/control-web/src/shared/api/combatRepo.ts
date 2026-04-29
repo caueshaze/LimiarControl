@@ -333,6 +333,8 @@ export type CombatSpellResult = {
     base_save_dc?: number | null;
     effective_save_dc?: number | null;
     cover_modifier?: number;
+    excluded_by_guardrail?: boolean;
+    guardrail_reason?: string | null;
   }>;
   effect_instance_outcomes?: Array<{
     instance_index: number;
@@ -472,6 +474,14 @@ export type AreaPreviewAffectedTargetSpatialMetadata = {
   cover_modifier?: number;
 };
 
+export type CombatAreaGuardrailOutcome = {
+  target_ref_id: string;
+  target_display_name: string;
+  target_kind: CombatParticipantKind;
+  excluded_by_guardrail?: boolean;
+  guardrail_reason: string;
+};
+
 export type CombatAreaPreviewResponse = {
   is_valid: boolean;
   reason?: string | null;
@@ -481,6 +491,7 @@ export type CombatAreaPreviewResponse = {
   affected_token_ids: string[];
   map_version?: number | null;
   affected_target_spatial_metadata?: AreaPreviewAffectedTargetSpatialMetadata[];
+  guardrail_target_outcomes?: CombatAreaGuardrailOutcome[];
 };
 
 export type CombatMovementPreviewRequest = {

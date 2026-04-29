@@ -280,3 +280,145 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
         self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["5"]["used"], 1)
         mock_emit_state.assert_awaited()
         mock_emit_log.assert_awaited()
+
+    @patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_entity_hp_update", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._emit_log", new_callable=AsyncMock)
+    @patch("app.services.combat_service.spells.cast_area.resolve_saving_throw")
+    async def test_area_spell_surfaces_guardrail_exclusions_without_aborting_other_targets(
+        self,
+        mock_resolve_saving_throw,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_entity_hp_update,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        self.state.participants.append(
+            {
+                "id": "p2",
+                "ref_id": "charmer-123",
+                "kind": "player",
+                "display_name": "Charmed Noble",
+                "initiative": 9,
+                "status": "active",
+                "team": "players",
+                "visible": True,
+                "actor_user_id": "user-2",
+            }
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "kind": "condition",
+                "condition_type": "charmed",
+                "metadata": {"charmer_participant_id": "p2"},
+            }
+        ]
+
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "abilities": {"charisma": 18},
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Fireball",
+                            "canonicalKey": "fireball",
+                            "level": 3,
+                            "prepared": True,
+                        }
+                    ],
+                    "slots": {"3": {"used": 0, "max": 2}},
+                },
+            },
+        )
+        map_targeting_result = TargetingResult(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-123",
+            affected_target_ref_ids=["charmer-123", "enemy-123"],
+            target_kind="session_entity",
+            spatial_metadata=SpatialMetadata(
+                source_token_id="tok_player",
+                affected_token_ids=["tok_charmer", "tok_enemy"],
+                affected_cells=[{"x": 10, "y": 10}, {"x": 10, "y": 9}],
+                area_shape="sphere",
+                map_version=12,
+                targeting_authority="limiar_map",
+            ),
+        )
+
+        def get_stats_side_effect(_db, ref_id, kind, _session_id=""):
+            if ref_id == "player-123" and kind == "player":
+                return (attacker_state, 12, 10, 10, 3, 4)
+            if ref_id == "enemy-123" and kind == "session_entity":
+                return (MagicMock(), 13, 10, 10, 2, 0)
+            if ref_id == "charmer-123" and kind == "player":
+                return (MagicMock(), 12, 10, 10, 2, 0)
+            raise AssertionError(f"Unexpected get_stats call for {ref_id}/{kind}")
+
+        mock_resolve_saving_throw.return_value = MagicMock(total=7, success=False)
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=MagicMock(
+                canonical_key="fireball",
+                name_en="Fireball",
+                name_pt="Bola de Fogo",
+                level=3,
+                resolution_type="saving_throw",
+                saving_throw="dexterity",
+                save_success_outcome="half_damage",
+                damage_type="fire",
+                damage_dice="8d6",
+                heal_dice=None,
+                upcast_json=None,
+                casting_time_type="action",
+                target_type="ranged", area_shape="sphere",
+                range_meters=45,
+                radius_meters=6,
+            ),
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            side_effect=get_stats_side_effect,
+        ), patch(
+            "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+            return_value=RollActorStats(
+                display_name="Target",
+                abilities={"dexterity": 10},
+                actor_kind="session_entity",
+                actor_ref_id="enemy-123",
+            ),
+        ), patch(
+            "app.services.combat_service.spells.cast_area.get_combat_targeting_service",
+            return_value=SimpleNamespace(validate=MagicMock(return_value=map_targeting_result)),
+        ):
+            result = await CombatService.cast_spell(
+                self.db,
+                "session-123",
+                CombatCastSpellRequest(
+                    actor_participant_id="p1",
+                    origin_cell=CombatGridCell(x=8, y=8),
+                    anchor_cell=CombatGridCell(x=10, y=10),
+                    spell_canonical_key="fireball",
+                ),
+                "user-1",
+                False,
+            )
+
+        self.assertTrue(result["effect_roll_required"])
+        self.assertEqual(result["affected_target_ref_ids"], ["charmer-123", "enemy-123"])
+        self.assertEqual(result["target_count"], 2)
+        blocked = next(
+            outcome for outcome in result["area_target_outcomes"]
+            if outcome["target_ref_id"] == "charmer-123"
+        )
+        self.assertTrue(blocked["excluded_by_guardrail"])
+        self.assertIn("hostile spell", blocked["guardrail_reason"])
+        pending_attack = self.state.participants[0]["pending_attack"]
+        self.assertEqual(len(pending_attack["area_targets"]), 1)
+        self.assertEqual(pending_attack["area_targets"][0]["target_ref_id"], "enemy-123")
+        self.assertEqual(len(pending_attack["area_guardrail_outcomes"]), 1)

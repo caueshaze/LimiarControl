@@ -145,4 +145,45 @@ describe("SpellCastResultPanel", () => {
 
     expect(markup).toContain("1d6: [6] = 6");
   });
+
+  it("explica quando um alvo de area foi excluido por guardrail mecanico", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Fireball",
+          spell_canonical_key: "fireball",
+          action_kind: "saving_throw",
+          effect_kind: "damage",
+          damage: 24,
+          healing: 0,
+          target_display_name: "Area effect",
+          target_kind: "session_entity",
+          area_shape: "sphere",
+          affected_target_ref_ids: ["charmer-1", "enemy-1"],
+          affected_cells: [{ x: 10, y: 10 }],
+          area_target_outcomes: [
+            {
+              target_ref_id: "charmer-1",
+              target_display_name: "Charmed Noble",
+              target_kind: "player",
+              excluded_by_guardrail: true,
+              guardrail_reason: "You cannot use a hostile spell against Charmed Noble while charmed.",
+            },
+            {
+              target_ref_id: "enemy-1",
+              target_display_name: "Goblin A",
+              target_kind: "session_entity",
+              is_saved: false,
+              damage_applied: 24,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Charmed Noble: excluído por regra mecânica");
+    expect(markup).toContain("You cannot use a hostile spell against Charmed Noble while charmed.");
+    expect(markup).toContain("1 alvo na área foi excluído por regras mecânicas.");
+  });
 });

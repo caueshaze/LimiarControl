@@ -219,6 +219,67 @@ class AoEPreviewReadOnlyTests(TestCombatServiceBase):
         slots = attacker_state.state_json["spellcasting"]["slots"]["3"]
         self.assertEqual(slots["used"], 0)
 
+    def test_preview_surfaces_guardrail_exclusions_for_spatial_targets(self):
+        attacker_state = _make_attacker_state()
+        catalog = _make_spell_catalog()
+        self.state.participants.append(
+            {
+                "id": "p2",
+                "ref_id": "charmer-123",
+                "kind": "player",
+                "display_name": "Charmed Noble",
+                "initiative": 9,
+                "status": "active",
+                "team": "players",
+                "visible": True,
+                "actor_user_id": "user-2",
+            }
+        )
+        self.state.participants[0]["active_effects"] = [
+            {
+                "kind": "condition",
+                "condition_type": "charmed",
+                "metadata": {"charmer_participant_id": "p2"},
+            }
+        ]
+
+        map_client = MagicMock()
+        map_client.get_session_state.return_value = _make_map_session_state()
+        map_client.preview_area_targeting.return_value = _make_map_preview_response(
+            cells=[(10, 10), (10, 9)],
+            combatant_ids=["charmer-123", "enemy-123"],
+            token_ids=["tok_charmer", "tok_enemy"],
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), \
+             patch("app.services.combat.CombatService._get_spell_catalog_entry_for_session", return_value=catalog), \
+             patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 12, 10, 10, 3, 4)), \
+             patch("app.services.combat.CombatService._build_limiar_map_client", return_value=map_client):
+            result = CombatService.preview_area_spell_targeting(
+                self.db,
+                "session-123",
+                CombatAreaPreviewRequest(
+                    actor_participant_id="p1",
+                    origin_cell=CombatGridCell(x=8, y=8),
+                    anchor_cell=CombatGridCell(x=10, y=10),
+                    spell_canonical_key="fireball",
+                ),
+                "user-1",
+                False,
+            )
+
+        self.assertTrue(result["is_valid"])
+        self.assertEqual(result["affected_target_ref_ids"], ["charmer-123", "enemy-123"])
+        self.assertEqual(len(result["guardrail_target_outcomes"]), 1)
+        self.assertEqual(
+            result["guardrail_target_outcomes"][0]["target_ref_id"],
+            "charmer-123",
+        )
+        self.assertIn(
+            "hostile spell",
+            result["guardrail_target_outcomes"][0]["guardrail_reason"],
+        )
+
     def test_cone_preview_does_not_create_pending_spell(self):
         attacker_state = _make_attacker_state("burning_hands", "Burning Hands", 1)
         catalog = _make_spell_catalog(
