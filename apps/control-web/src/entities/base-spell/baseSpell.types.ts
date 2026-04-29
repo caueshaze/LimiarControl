@@ -224,6 +224,119 @@ export const SaveSuccessOutcome = {
 export type SaveSuccessOutcome =
   (typeof SaveSuccessOutcome)[keyof typeof SaveSuccessOutcome];
 
+export const SpellDeclarativeEffectType = {
+  APPLY_CONDITION: "apply_condition",
+  MODIFY_STAT: "modify_stat",
+  ADVANTAGE_ON_CHECKS: "advantage_on_checks",
+  DISADVANTAGE_ON_CHECKS: "disadvantage_on_checks",
+  RESTRICT_ACTION: "restrict_action",
+} as const;
+
+export type SpellDeclarativeEffectType =
+  (typeof SpellDeclarativeEffectType)[keyof typeof SpellDeclarativeEffectType];
+
+export const SpellDeclarativeEffectTarget = {
+  SELECTED_TARGET: "selected_target",
+  CASTER: "caster",
+} as const;
+
+export type SpellDeclarativeEffectTarget =
+  (typeof SpellDeclarativeEffectTarget)[keyof typeof SpellDeclarativeEffectTarget];
+
+export const SpellDeclarativeDurationType = {
+  MANUAL: "manual",
+  ROUNDS: "rounds",
+  UNTIL_TURN_START: "until_turn_start",
+  UNTIL_TURN_END: "until_turn_end",
+} as const;
+
+export type SpellDeclarativeDurationType =
+  (typeof SpellDeclarativeDurationType)[keyof typeof SpellDeclarativeDurationType];
+
+export const SpellDeclarativeDurationAnchor = {
+  TARGET: "target",
+  CASTER: "caster",
+} as const;
+
+export type SpellDeclarativeDurationAnchor =
+  (typeof SpellDeclarativeDurationAnchor)[keyof typeof SpellDeclarativeDurationAnchor];
+
+export type SpellDeclarativeDuration = {
+  type: SpellDeclarativeDurationType;
+  rounds?: number | null;
+  anchor?: SpellDeclarativeDurationAnchor | null;
+};
+
+export const SpellDeclarativeConditionType = {
+  BLINDED: "blinded",
+  CHARMED: "charmed",
+  DEAFENED: "deafened",
+  FRIGHTENED: "frightened",
+  GRAPPLED: "grappled",
+  HOSTILE_TO_CASTER: "hostile_to_caster",
+  INCAPACITATED: "incapacitated",
+  INVISIBLE: "invisible",
+  PARALYZED: "paralyzed",
+  PETRIFIED: "petrified",
+  POISONED: "poisoned",
+  PRONE: "prone",
+  RESTRAINED: "restrained",
+  STUNNED: "stunned",
+  UNCONSCIOUS: "unconscious",
+} as const;
+
+export type SpellDeclarativeConditionType =
+  (typeof SpellDeclarativeConditionType)[keyof typeof SpellDeclarativeConditionType];
+
+export const SpellDeclarativeModifyStat = {
+  TEMP_AC_BONUS: "temp_ac_bonus",
+  ATTACK_BONUS: "attack_bonus",
+  DAMAGE_BONUS: "damage_bonus",
+} as const;
+
+export type SpellDeclarativeModifyStat =
+  (typeof SpellDeclarativeModifyStat)[keyof typeof SpellDeclarativeModifyStat];
+
+export const SpellDeclarativeRestrictActionKind = {
+  ACTIONS: "actions",
+  BONUS_ACTIONS: "bonus_actions",
+  REACTIONS: "reactions",
+  MOVEMENT: "movement",
+} as const;
+
+export type SpellDeclarativeRestrictActionKind =
+  (typeof SpellDeclarativeRestrictActionKind)[keyof typeof SpellDeclarativeRestrictActionKind];
+
+export type SpellDeclarativeEffect =
+  | {
+      type: "apply_condition";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      params: { condition: SpellDeclarativeConditionType };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "modify_stat";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      params: { stat: SpellDeclarativeModifyStat; value: number };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "advantage_on_checks" | "disadvantage_on_checks";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      params: { ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma" };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "restrict_action";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      params: { action: SpellDeclarativeRestrictActionKind };
+      stacking?: "stack" | "replace" | null;
+    };
+
 export type BaseSpellAlias = {
   id: string;
   alias: string;
@@ -279,6 +392,8 @@ export type BaseSpell = {
   damageDice?: string | null;
   damageType?: SpellDamageType | null;
   healDice?: string | null;
+  effects?: SpellDeclarativeEffect[] | null;
+  onEndEffects?: SpellDeclarativeEffect[] | null;
 
   // Targeting requirements
   requiresTargetSight?: boolean | null;
@@ -353,6 +468,8 @@ export type BaseSpellWritePayload = {
   damageDice?: string | null;
   damageType?: SpellDamageType | null;
   healDice?: string | null;
+  effects?: SpellDeclarativeEffect[] | null;
+  onEndEffects?: SpellDeclarativeEffect[] | null;
   requiresTargetSight?: boolean | null;
   requiresTargetEffect?: boolean | null;
   requiresPointSight?: boolean | null;

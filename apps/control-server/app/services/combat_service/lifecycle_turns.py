@@ -62,7 +62,13 @@ class CombatLifecycleTurnsMixin:
         if not state.participants:
             raise CombatServiceError("No participants")
         outgoing = state.participants[state.current_turn_index]
-        for effect in await cls._expire_effects_for_participant(session_id, state, outgoing["id"], "turn_end"):
+        expired_end = await cls._expire_effects_for_participant(session_id, state, outgoing["id"], "turn_end")
+        if expired_end:
+            cls._execute_on_end_effects_for_removed(
+                state=state,
+                removed_effects=expired_end,
+            )
+        for effect in expired_end:
             label = effect.get("condition_type") or effect.get("kind", "effect")
             await cls._emit_log(session_id, {"message": f"Effect '{label}' expired on {effect['target_display_name']} (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
         while True:
@@ -77,7 +83,13 @@ class CombatLifecycleTurnsMixin:
             if status == "stable":
                 await cls._emit_log(session_id, {"message": f"Turn skipped for stable participant {state.participants[state.current_turn_index]['display_name']}."})
         incoming = state.participants[state.current_turn_index]
-        for effect in await cls._expire_effects_for_participant(session_id, state, incoming["id"], "turn_start"):
+        expired_start = await cls._expire_effects_for_participant(session_id, state, incoming["id"], "turn_start")
+        if expired_start:
+            cls._execute_on_end_effects_for_removed(
+                state=state,
+                removed_effects=expired_start,
+            )
+        for effect in expired_start:
             label = effect.get("condition_type") or effect.get("kind", "effect")
             await cls._emit_log(session_id, {"message": f"Effect '{label}' expired on {effect['target_display_name']} (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
         cls._reset_turn_resources(incoming)

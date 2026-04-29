@@ -31,6 +31,7 @@ from .base_spell_constants import (
 )
 from .base_spell_upcast import SpellUpcastConfig, _build_structured_upcast_from_legacy
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
+from .base_spell_effects import SpellDeclarativeEffect
 
 
 class BaseSpellWrite(BaseModel):
@@ -72,6 +73,8 @@ class BaseSpellWrite(BaseModel):
     damageDice: Optional[str] = None
     damageType: Optional[str] = None
     healDice: Optional[str] = None
+    effects: Optional[list[SpellDeclarativeEffect]] = None
+    onEndEffects: Optional[list[SpellDeclarativeEffect]] = None
 
     requiresTargetSight: Optional[bool] = None
     requiresTargetEffect: Optional[bool] = None
@@ -468,6 +471,9 @@ class BaseSpellWrite(BaseModel):
                 )
         if self.cantripScaling is not None and self.level is not None and self.level > 0:
             raise ValueError("Only cantrips can use cantripScaling.")
+
+        if self.onEndEffects and not self.effects:
+            raise ValueError("onEndEffects requires effects to be present.")
 
         return self
 

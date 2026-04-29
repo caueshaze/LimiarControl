@@ -95,10 +95,16 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
         if not removed:
             raise CombatServiceError("Effect not found on this participant", 404)
         cls._set_participant_effects(target, keep)
+        removed_effects = [removed]
         removed_metadata = cls._get_effect_metadata(removed)
         if removed_metadata.get("concentration") is True and isinstance(removed_metadata.get("concentration_group"), str):
             group_result = cls._remove_effect_group(state, concentration_group=removed_metadata["concentration_group"])
+            removed_effects.extend(group_result["removed_effects"])
             cls._sync_area_effects_if_changed(session_id, state, group_result["removed_area_effects"])
+        cls._execute_on_end_effects_for_removed(
+            state=state,
+            removed_effects=removed_effects,
+        )
         flag_modified(state, "participants")
         db.add(state)
         db.commit()

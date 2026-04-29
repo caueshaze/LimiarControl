@@ -33,7 +33,8 @@ export type ActiveEffectConditionType =
   | "restrained"
   | "blinded"
   | "frightened"
-  | "charmed";
+  | "charmed"
+  | "hostile_to_caster";
 
 export type ActiveEffectDurationType =
   | "manual"

@@ -133,6 +133,7 @@ ActiveEffectConditionType = Literal[
     "deafened",
     "frightened",
     "grappled",
+    "hostile_to_caster",
     "incapacitated",
     "invisible",
     "paralyzed",

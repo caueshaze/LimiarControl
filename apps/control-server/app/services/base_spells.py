@@ -51,6 +51,8 @@ _FIELD_MAP: dict[str, str] = {
     "damageDice": "damage_dice",
     "damageType": "damage_type",
     "healDice": "heal_dice",
+    "effects": "effects_json",
+    "onEndEffects": "on_end_effects_json",
     "requiresTargetSight": "requires_target_sight",
     "requiresTargetEffect": "requires_target_effect",
     "requiresPointSight": "requires_point_sight",

@@ -134,6 +134,14 @@ class CampaignSpell(SQLModel, table=True):
     damage_dice: Optional[str] = None
     damage_type: Optional[str] = None
     heal_dice: Optional[str] = None
+    effects_json: Optional[list[dict]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
+    on_end_effects_json: Optional[list[dict]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     # --- Targeting requirements (mechanical) ---
     requires_target_sight: Optional[bool] = Field(

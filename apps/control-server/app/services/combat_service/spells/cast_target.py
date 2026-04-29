@@ -863,6 +863,19 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             spell_context=spell_context,
             target_participant=target_p,
         )
+        if automation_result is None:
+            automation_result = await cls._cast_spell_via_declarative_effects(
+                db,
+                session_id,
+                attacker=attacker,
+                attacker_model=attacker_model,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                req=req,
+                state=state,
+                spell_context=spell_context,
+                target_participant=target_p,
+            )
         if automation_result is not None:
             spell_mode = automation_result["action_kind"]
             effect_kind = automation_result["effect_kind"]
@@ -999,6 +1012,19 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             spell_context=spell_context,
             target_participant=attacker,
         )
+        if automation_result is None:
+            automation_result = await cls._cast_spell_via_declarative_effects(
+                db,
+                session_id,
+                attacker=attacker,
+                attacker_model=attacker_model,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                req=req,
+                state=state,
+                spell_context=spell_context,
+                target_participant=attacker,
+            )
         if automation_result is not None:
             result = SpellResolutionResult(
                 roll_result=automation_result["roll_result"],

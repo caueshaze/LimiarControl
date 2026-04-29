@@ -1426,6 +1426,77 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "friends",
+      "nameEn": "Friends",
+      "namePt": "Amizade",
+      "descriptionEn": "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you. When the spell ends, the creature realizes that you used magic to influence its mood and becomes hostile toward you.",
+      "descriptionPt": "Pela duração, você tem vantagem em todos os testes de Carisma direcionados a uma criatura de sua escolha que não seja hostil a você. Quando a magia termina, a criatura percebe que você usou magia para influenciar seu humor e se torna hostil a você.",
+      "level": 0,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 minute",
+      "componentsJson": [
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a small amount of makeup applied to the face as this spell is cast",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility",
+      "effects": [
+        {
+          "type": "advantage_on_checks",
+          "target": "caster",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "ability": "charisma"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "onEndEffects": [
+        {
+          "type": "apply_condition",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "condition": "hostile_to_caster"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "requiresTargetSight": true,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "self",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "hex",
       "nameEn": "Hex",
       "namePt": "Maldição",
