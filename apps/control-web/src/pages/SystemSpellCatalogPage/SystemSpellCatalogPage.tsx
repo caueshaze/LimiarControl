@@ -18,7 +18,8 @@ export const SystemSpellCatalogPage = () => {
   const { t } = useLocale();
   const [spells, setSpells] = useState<BaseSpell[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(createEmptyForm());
@@ -27,6 +28,15 @@ export const SystemSpellCatalogPage = () => {
   const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>("ALL");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const deferredSearch = useDeferredValue(search);
+
+  useEffect(() => {
+    if (statusTone !== "success" || !statusMessage) return;
+    const timeoutId = window.setTimeout(() => {
+      setStatusMessage(null);
+      setStatusTone("idle");
+    }, 2600);
+    return () => window.clearTimeout(timeoutId);
+  }, [statusMessage, statusTone]);
 
   const loadSpells = async () => {
     setLoading(true);
@@ -76,7 +86,8 @@ export const SystemSpellCatalogPage = () => {
     setSelectedSpellId(null);
     setForm(createEmptyForm());
     setError(null);
-    setLoadingMessage(null);
+    setStatusMessage(null);
+    setStatusTone("idle");
   };
 
   const handleSave = async () => {
@@ -86,7 +97,8 @@ export const SystemSpellCatalogPage = () => {
       setError(built.error ?? "Payload inválido.");
       return;
     }
-    setLoadingMessage(isNew ? "Criando magia..." : "Salvando magia...");
+    setStatusMessage(isNew ? "Criando magia..." : "Salvando magia...");
+    setStatusTone("saving");
     setError(null);
     try {
       const saved = isNew
@@ -95,30 +107,35 @@ export const SystemSpellCatalogPage = () => {
       await loadSpells();
       setSelectedSpellId(saved.id);
       setForm(formFromSpell(saved));
-      setLoadingMessage(isNew ? "Magia criada." : "Alterações salvas.");
+      setStatusMessage(isNew ? "Magia criada com sucesso." : "Magia salva com sucesso.");
+      setStatusTone("success");
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "Falha ao salvar a magia.";
       setError(message);
-      setLoadingMessage(null);
+      setStatusMessage("Não foi possível salvar a magia.");
+      setStatusTone("error");
     }
   };
 
   const handleDelete = async () => {
     if (!selectedSpellId) return;
     if (!window.confirm("Remover esta magia base do catálogo global?")) return;
-    setLoadingMessage("Removendo magia...");
+    setStatusMessage("Removendo magia...");
+    setStatusTone("saving");
     setError(null);
     try {
       await adminBaseSpellsRepo.delete(selectedSpellId);
       handleCreateNew();
       await loadSpells();
-      setLoadingMessage("Magia removida.");
+      setStatusMessage("Magia removida com sucesso.");
+      setStatusTone("success");
     } catch (deleteError) {
       const message =
         deleteError instanceof Error ? deleteError.message : "Falha ao remover a magia.";
       setError(message);
-      setLoadingMessage(null);
+      setStatusMessage("Não foi possível remover a magia.");
+      setStatusTone("error");
     }
   };
 
@@ -166,7 +183,8 @@ export const SystemSpellCatalogPage = () => {
           form={form}
           setForm={setForm}
           selectedSpellId={selectedSpellId}
-          loadingMessage={loadingMessage}
+          statusMessage={statusMessage}
+          statusTone={statusTone}
           error={error}
           onSave={handleSave}
           onCreateNew={handleCreateNew}

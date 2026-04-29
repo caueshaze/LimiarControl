@@ -3,6 +3,7 @@ import { buildCatalogSpellEditPath } from "../../../app/routes/routes";
 import type { BaseSpell } from "../../../entities/base-spell";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
+import { localizeSpellClass } from "../../../shared/i18n/domainLabels";
 
 type Props = {
   spell: BaseSpell;
@@ -107,7 +108,7 @@ export const SpellCatalogCard = ({ spell, canEdit = true }: Props) => {
                 key={cls}
                 className="rounded-full border border-white/8 bg-white/3 px-2 py-0.5 text-[9px] font-semibold text-slate-400"
               >
-                {cls}
+                {localizeSpellClass(cls, locale)}
               </span>
             ))}
           </div>

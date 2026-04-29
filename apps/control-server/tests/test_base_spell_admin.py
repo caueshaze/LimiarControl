@@ -146,6 +146,10 @@ class BaseSpellSchemaTests(unittest.TestCase):
         spell = self._make_create(classesJson=["wizard", "SORCERER"])
         self.assertEqual(spell.classesJson, ["Wizard", "Sorcerer"])
 
+    def test_accepts_guardian_spell_class(self):
+        spell = self._make_create(classesJson=["guardian", "RANGER"])
+        self.assertEqual(spell.classesJson, ["Guardian", "Ranger"])
+
     def test_rejects_unknown_spell_class(self):
         with self.assertRaises(ValueError):
             self._make_create(classesJson=["Artificer"])

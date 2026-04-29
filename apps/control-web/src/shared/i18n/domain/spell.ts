@@ -3,6 +3,7 @@ import type {
   CastingTimeType,
   ResolutionType,
   SaveSuccessOutcome,
+  SpellSavingThrow,
   SpellAttackType,
   SpellEffectTiming,
   SpellOriginType,
@@ -115,6 +116,15 @@ const RESOLUTION_TYPE_LABELS: Record<ResolutionType, LabelEntry> = {
 const SAVE_SUCCESS_OUTCOME_LABELS: Record<SaveSuccessOutcome, LabelEntry> = {
   none: label("None", "Nenhum"),
   half_damage: label("Half damage", "Metade do dano"),
+};
+
+const SPELL_SAVING_THROW_LABELS: Record<SpellSavingThrow, LabelEntry> = {
+  STR: label("Strength", "Forca"),
+  DEX: label("Dexterity", "Destreza"),
+  CON: label("Constitution", "Constituicao"),
+  INT: label("Intelligence", "Inteligencia"),
+  WIS: label("Wisdom", "Sabedoria"),
+  CHA: label("Charisma", "Carisma"),
 };
 
 const SPELL_ADMIN_VALUE_LABELS: Record<string, LabelEntry> = {
@@ -230,6 +240,11 @@ export const localizeSaveSuccessOutcome = (
   value: SaveSuccessOutcome,
   locale: LocaleLike,
 ) => displayLabel(SAVE_SUCCESS_OUTCOME_LABELS[value], locale);
+
+export const localizeSpellSavingThrow = (
+  value: SpellSavingThrow,
+  locale: LocaleLike,
+) => displayLabel(SPELL_SAVING_THROW_LABELS[value], locale);
 
 export const localizeUpcastMode = (value: UpcastMode, locale: LocaleLike) =>
   displayLabel(UPCAST_MODE_LABELS[value], locale);

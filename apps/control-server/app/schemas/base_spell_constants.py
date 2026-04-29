@@ -20,6 +20,7 @@ SPELL_CLASS_VALUES = (
     "Bard",
     "Cleric",
     "Druid",
+    "Guardian",
     "Paladin",
     "Ranger",
     "Sorcerer",

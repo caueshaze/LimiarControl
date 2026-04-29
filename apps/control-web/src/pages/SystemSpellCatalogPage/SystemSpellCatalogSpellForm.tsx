@@ -4,6 +4,7 @@ import type { BaseSpell, SpellSchool, SpellSource } from "../../entities/base-sp
 import { useLocale } from "../../shared/hooks/useLocale";
 import {
   localizeSpellAdminValue,
+  localizeSpellClass,
   localizeSpellSchool,
 } from "../../shared/i18n/domainLabels";
 import { SystemSpellCatalogCastingFields } from "./SystemSpellCatalogCastingFields";
@@ -25,7 +26,8 @@ type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
   selectedSpellId: string | null;
-  loadingMessage: string | null;
+  statusMessage: string | null;
+  statusTone: "idle" | "saving" | "success" | "error";
   error: string | null;
   onSave: () => void;
   onCreateNew: () => void;
@@ -36,7 +38,8 @@ export const SystemSpellCatalogSpellForm = ({
   form,
   setForm,
   selectedSpellId,
-  loadingMessage,
+  statusMessage,
+  statusTone,
   error,
   onSave,
   onCreateNew,
@@ -60,10 +63,21 @@ export const SystemSpellCatalogSpellForm = ({
             {selectedLabel}
           </h2>
         </div>
-        {loadingMessage && (
-          <p className="text-sm text-violet-200">{loadingMessage}</p>
-        )}
       </div>
+
+      {statusMessage && statusTone !== "idle" && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm ${
+            statusTone === "success"
+              ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+              : statusTone === "saving"
+                ? "border-violet-400/25 bg-violet-500/10 text-violet-100"
+                : "border-rose-400/20 bg-rose-500/10 text-rose-100"
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
@@ -200,7 +214,7 @@ export const SystemSpellCatalogSpellForm = ({
                     : "border-white/10 bg-white/4 text-slate-400 hover:bg-white/8"
                 }`}
               >
-                {cls}
+                {localizeSpellClass(cls, locale)}
               </button>
             ))}
           </div>

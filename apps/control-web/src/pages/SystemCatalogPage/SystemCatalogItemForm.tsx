@@ -25,7 +25,8 @@ type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
   selectedItemId: string | null;
-  loadingMessage: string | null;
+  statusMessage: string | null;
+  statusTone: "idle" | "saving" | "success" | "error";
   error: string | null;
   onSave: () => void;
   onCreateNew: () => void;
@@ -36,7 +37,8 @@ export const SystemCatalogItemForm = ({
   form,
   setForm,
   selectedItemId,
-  loadingMessage,
+  statusMessage,
+  statusTone,
   error,
   onSave,
   onCreateNew,
@@ -65,8 +67,21 @@ export const SystemCatalogItemForm = ({
             {selectedKindLabel}
           </h2>
         </div>
-        {loadingMessage && <p className="text-sm text-amber-200">{loadingMessage}</p>}
       </div>
+
+      {statusMessage && statusTone !== "idle" && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm ${
+            statusTone === "success"
+              ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+              : statusTone === "saving"
+                ? "border-amber-400/25 bg-amber-500/10 text-amber-100"
+                : "border-rose-400/20 bg-rose-500/10 text-rose-100"
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">

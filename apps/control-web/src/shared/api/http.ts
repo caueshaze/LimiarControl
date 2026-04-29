@@ -9,22 +9,42 @@ export type HttpError = {
   data?: unknown;
 };
 
-const formatDetailMessage = (detail: unknown) => {
-  if (typeof detail === "string") {
-    return detail;
+const formatDetailMessage = (payload: unknown) => {
+  if (typeof payload === "string") {
+    return payload;
   }
-  if (!detail || typeof detail !== "object") {
+  if (!payload || typeof payload !== "object") {
     return null;
   }
 
-  const typedDetail = detail as {
+  const typedDetail = payload as {
     code?: string;
     message?: string;
+    details?: Array<{ loc?: unknown; msg?: unknown }>;
     players?: Array<{ displayName?: string | null; userId?: string | null }>;
   };
 
   if (typeof typedDetail.message === "string") {
     return typedDetail.message;
+  }
+
+  if (Array.isArray(typedDetail.details) && typedDetail.details.length > 0) {
+    const messages = typedDetail.details
+      .map((detail) => {
+        const loc = Array.isArray(detail.loc)
+          ? detail.loc
+              .map((entry) => String(entry))
+              .filter((entry) => entry && entry !== "body")
+              .join(".")
+          : "";
+        const msg = typeof detail.msg === "string" ? detail.msg : "";
+        if (!msg) return null;
+        return loc ? `${loc}: ${msg}` : msg;
+      })
+      .filter((entry): entry is string => Boolean(entry));
+    if (messages.length > 0) {
+      return messages.join(" | ");
+    }
   }
 
   if (
@@ -78,7 +98,7 @@ const request = async <T>(method: HttpMethod, path: string, body?: unknown) => {
     try {
       errorData = await response.json();
       const d = errorData as { error?: string; message?: string; detail?: unknown };
-      const detailMessage = formatDetailMessage(d?.detail);
+      const detailMessage = formatDetailMessage(errorData) ?? formatDetailMessage(d?.detail);
       if (detailMessage) message = detailMessage;
       else if (d?.error) message = d.error as string;
       else if (d?.message) message = d.message as string;

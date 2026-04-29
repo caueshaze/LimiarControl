@@ -18,7 +18,8 @@ export const SystemCatalogPage = () => {
   const { t } = useLocale();
   const [items, setItems] = useState<BaseItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(createEmptyForm());
@@ -28,6 +29,15 @@ export const SystemCatalogPage = () => {
     useState<EquipmentCategoryFilter>("ALL");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const deferredSearch = useDeferredValue(search);
+
+  useEffect(() => {
+    if (statusTone !== "success" || !statusMessage) return;
+    const timeoutId = window.setTimeout(() => {
+      setStatusMessage(null);
+      setStatusTone("idle");
+    }, 2600);
+    return () => window.clearTimeout(timeoutId);
+  }, [statusMessage, statusTone]);
 
   const loadItems = async () => {
     setLoading(true);
@@ -78,23 +88,27 @@ export const SystemCatalogPage = () => {
     setSelectedItemId(null);
     setForm(createEmptyForm());
     setError(null);
-    setLoadingMessage(null);
+    setStatusMessage(null);
+    setStatusTone("idle");
   };
 
   const handleSyncSeed = async () => {
-    setLoadingMessage("Sincronizando catálogo base...");
+    setStatusMessage("Sincronizando catálogo base...");
+    setStatusTone("saving");
     setError(null);
     try {
       const result = await adminBaseItemsRepo.syncSeed();
       await loadItems();
-      setLoadingMessage(
+      setStatusMessage(
         `Catálogo sincronizado. ${result.inserted} inseridos, ${result.updated} atualizados.`,
       );
+      setStatusTone("success");
     } catch (syncError) {
       const message =
         syncError instanceof Error ? syncError.message : "Falha ao sincronizar o catálogo base.";
       setError(message);
-      setLoadingMessage(null);
+      setStatusMessage("Não foi possível sincronizar o catálogo base.");
+      setStatusTone("error");
     }
   };
 
@@ -104,7 +118,8 @@ export const SystemCatalogPage = () => {
       setError(built.error ?? "Payload inválido.");
       return;
     }
-    setLoadingMessage(selectedItemId ? "Salvando item..." : "Criando item...");
+    setStatusMessage(selectedItemId ? "Salvando item..." : "Criando item...");
+    setStatusTone("saving");
     setError(null);
     try {
       const saved = selectedItemId
@@ -113,30 +128,35 @@ export const SystemCatalogPage = () => {
       await loadItems();
       setSelectedItemId(saved.id);
       setForm(formFromItem(saved));
-      setLoadingMessage(selectedItemId ? "Alterações salvas." : "Item criado.");
+      setStatusMessage(selectedItemId ? "Item salvo com sucesso." : "Item criado com sucesso.");
+      setStatusTone("success");
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "Falha ao salvar o item.";
       setError(message);
-      setLoadingMessage(null);
+      setStatusMessage("Não foi possível salvar o item.");
+      setStatusTone("error");
     }
   };
 
   const handleDelete = async () => {
     if (!selectedItemId) return;
     if (!window.confirm("Remover este item base do catálogo global?")) return;
-    setLoadingMessage("Removendo item...");
+    setStatusMessage("Removendo item...");
+    setStatusTone("saving");
     setError(null);
     try {
       await adminBaseItemsRepo.delete(selectedItemId);
       handleCreateNew();
       await loadItems();
-      setLoadingMessage("Item removido.");
+      setStatusMessage("Item removido com sucesso.");
+      setStatusTone("success");
     } catch (deleteError) {
       const message =
         deleteError instanceof Error ? deleteError.message : "Falha ao remover o item.";
       setError(message);
-      setLoadingMessage(null);
+      setStatusMessage("Não foi possível remover o item.");
+      setStatusTone("error");
     }
   };
 
@@ -195,7 +215,8 @@ export const SystemCatalogPage = () => {
           form={form}
           setForm={setForm}
           selectedItemId={selectedItemId}
-          loadingMessage={loadingMessage}
+          statusMessage={statusMessage}
+          statusTone={statusTone}
           error={error}
           onSave={handleSave}
           onCreateNew={handleCreateNew}

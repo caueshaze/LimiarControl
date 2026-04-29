@@ -13,6 +13,7 @@ import type { LocaleKey } from "../../shared/i18n";
 import {
   localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
+  localizeSpellSavingThrow,
   localizeUpcastModeDescription,
   localizeUpcastModeExample,
 } from "../../shared/i18n/domainLabels";
@@ -244,7 +245,7 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                 <option value="">—</option>
                 {SAVING_THROW_OPTIONS.map((st) => (
                   <option key={st} value={st}>
-                    {st}
+                    {localizeSpellSavingThrow(st, locale)}
                   </option>
                 ))}
               </select>

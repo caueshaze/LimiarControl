@@ -18,6 +18,7 @@ export {
   localizeCastingTimeType,
   localizeResolutionType,
   localizeSaveSuccessOutcome,
+  localizeSpellSavingThrow,
   localizeSpellAdminValue,
   localizeSpellClass,
   localizeSpellSchool,

@@ -4,6 +4,7 @@ import {
   localizeDamageType,
   localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
+  localizeSpellSavingThrow,
 } from "../../../shared/i18n/domainLabels";
 import { SpellCatalogField } from "./SpellCatalogEditorControls";
 import {
@@ -86,7 +87,7 @@ export const SpellCatalogResolutionFields = ({
               <option value="">{selectPlaceholder}</option>
               {SPELL_SAVING_THROW_OPTIONS.map((savingThrow) => (
                 <option key={savingThrow} value={savingThrow}>
-                  {savingThrow}
+                  {localizeSpellSavingThrow(savingThrow, locale)}
                 </option>
               ))}
             </select>

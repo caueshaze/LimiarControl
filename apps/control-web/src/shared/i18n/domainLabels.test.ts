@@ -7,6 +7,7 @@ import {
   localizeSaveSuccessOutcome,
   localizeSpellAdminValue,
   localizeSpellClass,
+  localizeSpellSavingThrow,
   localizeSpellSchool,
 } from "./domainLabels";
 
@@ -38,6 +39,11 @@ describe("domainLabels", () => {
     expect(localizeSpellClass("Wizard", "pt")).toBe("Mago");
     expect(localizeSpellClass("Cleric", "en")).toBe("Cleric");
     expect(localizeSpellClass("Guardian", "pt")).toBe("Guardião");
+  });
+
+  it("localizes spell saving throw abilities", () => {
+    expect(localizeSpellSavingThrow("WIS", "pt")).toBe("Sabedoria");
+    expect(localizeSpellSavingThrow("CHA", "en")).toBe("Charisma");
   });
 
   it("falls back safely for unknown values", () => {
