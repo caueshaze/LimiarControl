@@ -165,10 +165,24 @@ describe("resolveCone — Phase 11 shadow filtering", () => {
 // ─── resolveSphere ───────────────────────────────────────────────────────────
 
 describe("resolveSphere — Phase 11 shadow filtering", () => {
-  it("backward compatible: no obstacles, all cells within radius included", () => {
+  it("no obstacles: all cells within Euclidean radius included", () => {
     const result = resolveSphere({ x: 5, y: 5 }, 2, [], []);
-    // Chebyshev radius 2 → 5×5 = 25 cells
-    expect(result.length).toBe(25);
+    // Euclidean radius 2 → circular footprint, 13 cells (dx²+dy² ≤ 4)
+    expect(result.length).toBe(13);
+  });
+
+  it("sphere does not include Chebyshev corners outside Euclidean radius", () => {
+    const result = resolveSphere({ x: 5, y: 5 }, 2, [], []);
+    const coords = new Set(result.map((c) => `${c.x},${c.y}`));
+    expect(coords.has("3,3")).toBe(false);
+    expect(coords.has("7,3")).toBe(false);
+    expect(coords.has("3,7")).toBe(false);
+    expect(coords.has("7,7")).toBe(false);
+    // cardinal edge cells remain included
+    expect(coords.has("3,5")).toBe(true);
+    expect(coords.has("7,5")).toBe(true);
+    expect(coords.has("5,3")).toBe(true);
+    expect(coords.has("5,7")).toBe(true);
   });
 
   it("cells inside radius but behind a cell-obstacle wall are excluded", () => {

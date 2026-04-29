@@ -25,9 +25,9 @@ export function computeAoeFootprint(
   }
 
   if (shape === "cone") {
-    const cells: FootprintCell[] = [{ x: 0, y: 0 }];
+    const cells: FootprintCell[] = [];
     for (let x = 1; x <= sizeCells; x++) {
-      for (let y = -x; y <= x; y++) {
+      for (let y = -(x - 1); y <= x - 1; y++) {
         cells.push({ x, y });
       }
     }
