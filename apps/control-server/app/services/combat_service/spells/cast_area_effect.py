@@ -33,6 +33,12 @@ class CastAreaEffectMixin:
         area_targets_payload = pending_spell.get("area_targets")
         if not isinstance(area_targets_payload, list) or not area_targets_payload:
             raise CombatServiceError("Pending area spell effect is missing target information.", 400)
+        guardrail_outcomes_payload = pending_spell.get("area_guardrail_outcomes")
+        guardrail_outcomes = (
+            [item for item in guardrail_outcomes_payload if isinstance(item, dict)]
+            if isinstance(guardrail_outcomes_payload, list)
+            else []
+        )
 
         effect_rolls: list[int] = []
         base_effect = 0
@@ -121,6 +127,8 @@ class CastAreaEffectMixin:
                 }
             )
 
+        area_target_outcomes.extend(guardrail_outcomes)
+
         cls._clear_participant_pending_attack(attacker)
         flag_modified(state, "participants")
         db.add(state)
@@ -135,14 +143,23 @@ class CastAreaEffectMixin:
         await cls._emit_state(session_id, state)
 
         target_count = len(area_target_outcomes)
-        saved_count = sum(1 for outcome in area_target_outcomes if outcome.get("is_saved"))
-        failed_count = target_count - saved_count
+        resolved_target_outcomes = [
+            outcome for outcome in area_target_outcomes if not outcome.get("excluded_by_guardrail")
+        ]
+        guardrail_blocked_count = target_count - len(resolved_target_outcomes)
+        saved_count = sum(1 for outcome in resolved_target_outcomes if outcome.get("is_saved"))
+        failed_count = len(resolved_target_outcomes) - saved_count
         log_text = (
             f"{attacker['display_name']} resolveu {pending_spell.get('spell_name') or 'magia'} em area: "
             f"{target_count} alvo{'s' if target_count != 1 else ''}, "
             f"{failed_count} falhou/falharam no save, {saved_count} passou/passaram. "
             f"Dano rolado {rolled_effect_total}; dano total aplicado {total_damage}."
         )
+        if guardrail_blocked_count > 0:
+            log_text = (
+                f"{log_text} {guardrail_blocked_count} alvo{'s' if guardrail_blocked_count != 1 else ''} "
+                "foram excluídos por regras mecânicas."
+            )
         if concentration_checks:
             summaries = [
                 check.get("summary_text")

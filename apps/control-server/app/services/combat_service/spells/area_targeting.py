@@ -67,6 +67,7 @@ from ..targeting_requirements import (
 from ..targeting_intent import AreaTargetingIntent, SpellCastIntent, WeaponAttackIntent
 from ..unit_conversion import meters_to_cells
 from .area_spatial_metadata import build_area_affected_target_spatial_metadata, get_area_per_target_cover
+from .area_guardrails import build_area_guardrail_outcome, evaluate_area_target_guardrail
 
 
 
@@ -326,6 +327,32 @@ class AreaTargetingMixin:
             ) from exc
 
         affected_target_ref_ids = list(preview.affected_combatant_ids)
+        participant_by_ref_id = {
+            p["ref_id"]: p
+            for p in state.participants
+            if isinstance(p.get("ref_id"), str)
+        }
+        guardrail_target_outcomes: list[dict[str, Any]] = []
+        for target_ref_id in affected_target_ref_ids:
+            participant = participant_by_ref_id.get(target_ref_id)
+            if not participant:
+                continue
+            reason = evaluate_area_target_guardrail(
+                db=db,
+                session_id=session_id,
+                attacker=attacker,
+                target_participant=participant,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                assert_hostile_action_allowed=cls._assert_hostile_action_allowed,
+                validate_spell_automation_target=cls._validate_spell_automation_target,
+            )
+            if reason:
+                guardrail_target_outcomes.append(
+                    build_area_guardrail_outcome(
+                        target_participant=participant,
+                        reason=reason,
+                    )
+                )
 
         cover_applies_to_save = spell_context.get("cover_applies_to_save")
         raw_save_dc = spell_context.get("save_dc")
@@ -372,4 +399,5 @@ class AreaTargetingMixin:
             "affected_token_ids": list(preview.affected_token_ids),
             "map_version": preview.version,
             "affected_target_spatial_metadata": affected_target_spatial_metadata,
+            "guardrail_target_outcomes": guardrail_target_outcomes,
         }

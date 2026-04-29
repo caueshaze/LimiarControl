@@ -108,6 +108,10 @@ export const formatEffectInstanceOutcome = (
 export const formatAreaTargetOutcome = (
   outcome: NonNullable<CombatSpellResult["area_target_outcomes"]>[number],
 ) => {
+  if (outcome.excluded_by_guardrail) {
+    return `${outcome.target_display_name}: excluído por regra mecânica${outcome.guardrail_reason ? ` (${outcome.guardrail_reason})` : ""}`;
+  }
+
   const details: string[] = [];
   const coverLabel = outcome.cover === "half" ? "meia cobertura" : outcome.cover === "three_quarters" || outcome.cover === "threeQuarters" ? "três-quartos" : null;
 

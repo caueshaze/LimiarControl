@@ -21,6 +21,7 @@ from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
 from ..persistent_area_effects import build_persistent_spell_area_effect
 from ..targeting_intent import AreaTargetingIntent
 from .area_spatial_metadata import get_area_per_target_cover
+from .area_guardrails import build_area_guardrail_outcome, evaluate_area_target_guardrail
 
 logger = logging.getLogger(__name__)
 
@@ -170,18 +171,27 @@ class CastAreaMixin:
             for participant in state.participants
             if participant["ref_id"] in targeting_result.affected_target_ref_ids
         ]
+        eligible_participants: list[dict[str, Any]] = []
+        excluded_target_outcomes: list[dict[str, Any]] = []
         for target_participant in affected_participants:
-            cls._assert_hostile_action_allowed(
-                attacker,
-                target_participant,
-                action_label="a hostile spell",
-            )
-            cls._validate_spell_automation_target(
-                db,
-                session_id,
-                spell_canonical_key=spell_context["spell_canonical_key"],
+            guardrail_reason = evaluate_area_target_guardrail(
+                db=db,
+                session_id=session_id,
+                attacker=attacker,
                 target_participant=target_participant,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                assert_hostile_action_allowed=cls._assert_hostile_action_allowed,
+                validate_spell_automation_target=cls._validate_spell_automation_target,
             )
+            if guardrail_reason:
+                excluded_target_outcomes.append(
+                    build_area_guardrail_outcome(
+                        target_participant=target_participant,
+                        reason=guardrail_reason,
+                    )
+                )
+                continue
+            eligible_participants.append(target_participant)
         cover_applies_to_save = spell_context.get("cover_applies_to_save")
         per_target_cover: dict[str, str | None] = {}
         if should_cover_apply_to_save(cover_applies_to_save):
@@ -189,14 +199,14 @@ class CastAreaMixin:
                 session_id=session_id,
                 action_id=f"area-cover:{uuid4()}",
                 actor_ref_id=attacker["ref_id"],
-                target_ref_ids=[p["ref_id"] for p in affected_participants],
+                target_ref_ids=[p["ref_id"] for p in eligible_participants],
                 use_map=state.use_map,
             )
 
         base_save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
         area_target_outcomes: list[dict[str, Any]] = []
         target_results_for_pending: list[dict[str, Any]] = []
-        for target_participant in affected_participants:
+        for target_participant in eligible_participants:
             target_ref_id = target_participant["ref_id"]
             target_cover = per_target_cover.get(target_ref_id)
             effective_dc, _ = resolve_cover_save_dc(
@@ -245,9 +255,78 @@ class CastAreaMixin:
                 }
             )
 
+        area_target_outcomes.extend(excluded_target_outcomes)
+
+        if not target_results_for_pending:
+            db.add(state)
+            db.commit()
+            db.refresh(state)
+            if slot_spent:
+                target_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
+                await cls._emit_player_state_update(db, session_id, attacker["ref_id"], target_state)
+            await cls._emit_state(session_id, state)
+            log_message = (
+                f"{attacker['display_name']} lancou {spell_context['spell_name']} em area "
+                f"({area_spec['shape']}), mas todos os alvos espaciais foram excluidos por regras mecânicas."
+            )
+            if excluded_target_outcomes:
+                blocked_lines = [
+                    f"  {outcome['target_display_name']}: {outcome['guardrail_reason']}"
+                    for outcome in excluded_target_outcomes
+                ]
+                log_message = "\n".join([log_message, *blocked_lines])
+            if was_overridden:
+                log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+            await cls._emit_log(session_id, {
+                "message": log_message,
+                "actorUserId": actor_user_id,
+                "source": "gm_override" if is_gm else "player_turn",
+                "is_override": was_overridden,
+                "overridden_resource": action_cost if was_overridden else None,
+            })
+            return {
+                "spell_name": spell_context["spell_name"],
+                "spell_canonical_key": spell_context["spell_canonical_key"],
+                "action_kind": spell_context["spell_mode"],
+                "effect_kind": spell_context["effect_kind"],
+                "damage": 0,
+                "healing": 0,
+                "damage_type": spell_context.get("damage_type"),
+                "is_critical": False,
+                "is_hit": None,
+                "is_saved": None,
+                "new_hp": None,
+                "roll": None,
+                "roll_result": None,
+                "target_ac": None,
+                "target_display_name": "Area effect",
+                "target_kind": "session_entity",
+                "save_ability": spell_context.get("save_ability"),
+                "save_dc": spell_context.get("save_dc"),
+                "save_success_outcome": spell_context.get("save_success_outcome"),
+                "effect_dice": spell_context.get("effect_dice"),
+                "effect_bonus": cls._safe_int(spell_context.get("effect_bonus"), 0),
+                "pending_spell_id": None,
+                "effect_roll_required": False,
+                "base_effect": None,
+                "action_cost": action_cost,
+                "summary_text": "Todos os alvos na área foram excluídos por regras mecânicas.",
+                "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+                "concentration_check": None,
+                "concentration_checks": [],
+                "area_shape": area_spec["shape"],
+                "affected_target_ref_ids": list(targeting_result.affected_target_ref_ids),
+                "affected_cells": list(targeting_result.spatial_metadata.affected_cells),
+                "area_target_outcomes": area_target_outcomes,
+                "target_count": len(targeting_result.affected_target_ref_ids),
+                "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+                "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+            }
+
         primary_result_target = (
             anchor_target
-            or (affected_participants[0] if affected_participants else None)
+            or (eligible_participants[0] if eligible_participants else None)
         )
         primary_target_ref_id = (
             primary_result_target["ref_id"]
@@ -294,6 +373,7 @@ class CastAreaMixin:
                 "affected_target_ref_ids": list(targeting_result.affected_target_ref_ids),
                 "affected_token_ids": list(targeting_result.spatial_metadata.affected_token_ids),
                 "area_targets": target_results_for_pending,
+                "area_guardrail_outcomes": excluded_target_outcomes,
             },
         )
 
@@ -306,13 +386,18 @@ class CastAreaMixin:
             await cls._emit_player_state_update(db, session_id, attacker["ref_id"], target_state)
         await cls._emit_state(session_id, state)
 
-        target_count = len(area_target_outcomes)
+        target_count = len(targeting_result.affected_target_ref_ids)
         area_label = f"Area ({target_count} alvo{'s' if target_count != 1 else ''})"
         log_lines = [
             f"{attacker['display_name']} lancou {spell_context['spell_name']} em area "
-            f"({area_spec['shape']}): {target_count} alvo{'s' if target_count != 1 else ''} afetado{'s' if target_count != 1 else ''}.",
+            f"({area_spec['shape']}): {target_count} alvo{'s' if target_count != 1 else ''} na area.",
         ]
         for area_outcome in area_target_outcomes:
+            if area_outcome.get("excluded_by_guardrail"):
+                log_lines.append(
+                    f"  {area_outcome['target_display_name']}: excluído por regra mecânica ({area_outcome.get('guardrail_reason')})."
+                )
+                continue
             save_text = "passou" if area_outcome["is_saved"] else "falhou"
             outcome_dc = area_outcome["effective_save_dc"]
             outcome_cover = area_outcome.get("cover")

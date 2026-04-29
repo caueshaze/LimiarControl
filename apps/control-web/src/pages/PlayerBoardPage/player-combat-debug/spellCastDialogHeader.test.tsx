@@ -146,6 +146,33 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Motivo: linha de efeito bloqueada");
   });
 
+  it("mostra exclusoes mecanicas previstas para magias de area", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        isAreaSpell
+        spell={{ ...baseSpell, name: "Fireball", canonicalKey: "fireball", areaShape: "sphere", selectionType: "point" }}
+        mapPreviewModel={buildMapPreviewModel({
+          status: "valid",
+          areaShape: "sphere",
+          guardrailTargetOutcomes: [
+            {
+              target_ref_id: "charmer-1",
+              target_display_name: "Charmed Noble",
+              target_kind: "player",
+              excluded_by_guardrail: true,
+              guardrail_reason: "You cannot use a hostile spell against Charmed Noble while charmed.",
+            },
+          ],
+        })}
+        previewModel={buildPreviewModel({ areaShape: "sphere" })}
+      />,
+    );
+
+    expect(markup).toContain("Exclusões mecânicas previstas:");
+    expect(markup).toContain("Charmed Noble: You cannot use a hostile spell against Charmed Noble while charmed.");
+  });
+
   it("renderiza status unknown como indisponível e não como erro", () => {
     const markup = renderToStaticMarkup(
       <SpellCastDialogHeader

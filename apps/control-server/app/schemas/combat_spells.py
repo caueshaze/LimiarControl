@@ -160,6 +160,16 @@ class CombatAreaTargetOutcome(BaseModel):
     base_save_dc: int | None = None
     effective_save_dc: int | None = None
     cover_modifier: int = 0
+    excluded_by_guardrail: bool = False
+    guardrail_reason: str | None = None
+
+
+class CombatAreaGuardrailOutcome(BaseModel):
+    target_ref_id: str
+    target_display_name: str
+    target_kind: Literal["player", "session_entity"]
+    excluded_by_guardrail: bool = True
+    guardrail_reason: str
 
 
 class CombatMapPreviewToken(BaseModel):
@@ -258,6 +268,9 @@ class CombatAreaPreviewResponse(BaseModel):
     affected_token_ids: list[str] = Field(default_factory=list)
     map_version: int | None = None
     affected_target_spatial_metadata: list[AreaPreviewAffectedTargetSpatialMetadata] = Field(
+        default_factory=list
+    )
+    guardrail_target_outcomes: list[CombatAreaGuardrailOutcome] = Field(
         default_factory=list
     )
 

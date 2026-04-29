@@ -45,6 +45,7 @@ export const SpellCastResultPanel = ({
   const outcomeLabel = getOutcomeLabel(result);
   const hasEffectInstanceOutcomes = Boolean(result.effect_instance_outcomes?.length);
   const hasAreaTargetOutcomes = Boolean(result.area_target_outcomes?.length);
+  const guardrailBlockedCount = result.area_target_outcomes?.filter((outcome) => outcome.excluded_by_guardrail).length ?? 0;
 
   return (
     <div className="mt-5 space-y-4">
@@ -97,6 +98,11 @@ export const SpellCastResultPanel = ({
               </p>
             ))}
           </div>
+        ) : null}
+        {!pendingEffect && guardrailBlockedCount > 0 ? (
+          <p className="mt-2 text-xs text-amber-100">
+            {guardrailBlockedCount} alvo{guardrailBlockedCount !== 1 ? "s" : ""} na área {guardrailBlockedCount === 1 ? "foi excluído" : "foram excluídos"} por regras mecânicas.
+          </p>
         ) : null}
         {!pendingEffect && !hasEffectInstanceOutcomes && !hasAreaTargetOutcomes && (result.damage > 0 || result.healing > 0) ? (
           <p className="mt-2 text-xs text-slate-300">{formatSpellEffectBreakdown(result)}</p>
