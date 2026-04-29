@@ -9,6 +9,7 @@ import type {
 import type { SpellSelectionType } from "../../../entities/base-spell";
 import type { DragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
 import type { SpellSlotSummaryEntry } from "../../../shared/ui/SpellSlotSummary";
+import type { SessionInventorySelectOption } from "../../inventory/components/sessionInventoryPanel.utils";
 
 export type AttackResult = CombatAttackResult;
 export type SpellResult = CombatSpellResult;
@@ -45,6 +46,7 @@ export type SpellOption = {
 export type ConsumableOption = { id: string; label: string };
 export type UseObjectTargetOption = { id: string; display_name: string };
 export type DragonbornBreathWeaponOption = DragonbornBreathWeaponAction;
+export type WeaponOption = SessionInventorySelectOption;
 export type SelectedConsumable = {
   isHealingConsumable: boolean;
   manualRollCount: number;

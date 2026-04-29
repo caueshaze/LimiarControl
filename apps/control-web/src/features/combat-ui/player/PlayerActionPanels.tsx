@@ -14,6 +14,7 @@ import type {
   SelectedConsumable,
   SpellOption,
   UseObjectTargetOption,
+  WeaponOption,
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
 
@@ -45,6 +46,7 @@ type Props = {
   setUseObjectNote: (note: string) => void;
   setUseObjectRollMode: (mode: "system" | "manual") => void;
   setUseObjectTargetParticipantId: (id: string) => void;
+  selectedWeaponId: string;
   spellOptions: SpellOption[];
   targetId: string;
   useObjectActionDisabled: boolean;
@@ -53,6 +55,10 @@ type Props = {
   useObjectRollMode: "system" | "manual";
   useObjectTargetOptions: UseObjectTargetOption[];
   useObjectTargetParticipantId: string;
+  weaponOptions: WeaponOption[];
+  isSavingLoadout?: boolean;
+  loadoutStatus?: string | null;
+  onWeaponChange?: (inventoryItemId: string | null) => void;
 };
 
 export const PlayerActionPanels = ({
@@ -83,6 +89,7 @@ export const PlayerActionPanels = ({
   setUseObjectNote,
   setUseObjectRollMode,
   setUseObjectTargetParticipantId,
+  selectedWeaponId,
   spellOptions,
   targetId,
   useObjectActionDisabled,
@@ -91,6 +98,10 @@ export const PlayerActionPanels = ({
   useObjectRollMode,
   useObjectTargetOptions,
   useObjectTargetParticipantId,
+  weaponOptions,
+  isSavingLoadout = false,
+  loadoutStatus = null,
+  onWeaponChange,
 }: Props) => {
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
@@ -117,6 +128,8 @@ export const PlayerActionPanels = ({
     dragonbornBreathWeaponAction?.damageType ?? null,
     locale,
   );
+  const selectedWeaponOption =
+    weaponOptions.find((option) => option.value === selectedWeaponId) ?? null;
   const selectedSpellHasSlots = (selectedSpell?.availableSlotLevels?.length ?? 0) > 0;
   const selectedSpellIsCantrip = selectedSpell?.level === 0;
   const spellCastUnavailableForSlots = Boolean(
@@ -155,7 +168,7 @@ export const PlayerActionPanels = ({
       {activeActionPanel === "attack" ? (
         <article className="rounded-3xl border border-amber-500/15 bg-amber-500/8 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-lg font-semibold text-white">{t("combatUi.attack")}</h3>
               <p className="mt-2 text-sm text-slate-300">
                 {playerStatus?.currentWeapon?.name ?? t("combatUi.noWeapon")}
@@ -164,6 +177,32 @@ export const PlayerActionPanels = ({
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   {playerStatus.currentWeapon.damageLabel}
                 </p>
+              ) : null}
+              <label className="mt-4 block">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  {t("combatUi.switchWeapon")}
+                </span>
+                <select
+                  value={selectedWeaponId}
+                  disabled={isSavingLoadout || weaponOptions.length === 0}
+                  onChange={(event) => onWeaponChange?.(event.target.value || null)}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">{t("combatUi.switchWeaponPlaceholder")}</option>
+                  {weaponOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.detail ? `${option.label} · ${option.detail}` : option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-2 block text-xs text-slate-400">
+                  {selectedWeaponOption?.detail
+                    ? `${selectedWeaponOption.label} · ${selectedWeaponOption.detail}`
+                    : selectedWeaponOption?.label ?? t("combatUi.switchWeaponHint")}
+                </span>
+              </label>
+              {loadoutStatus ? (
+                <p className="mt-2 text-xs font-medium text-amber-200">{loadoutStatus}</p>
               ) : null}
             </div>
             <button

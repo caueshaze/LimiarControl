@@ -14,7 +14,8 @@ import type {
   SpellOption,
   SpellResult,
   UseObjectResult,
-  UseObjectTargetOption
+  UseObjectTargetOption,
+  WeaponOption,
 } from "./playerCombatShell.types";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import { PlayerActionPanels } from "./PlayerActionPanels";
@@ -58,6 +59,7 @@ type Props = {
   setUseObjectNote: (note: string) => void;
   setUseObjectRollMode: (mode: "system" | "manual") => void;
   setUseObjectTargetParticipantId: (id: string) => void;
+  selectedWeaponId: string;
   spellOptions: SpellOption[];
   targetId: string;
   useObjectManualRolls: number[];
@@ -65,6 +67,10 @@ type Props = {
   useObjectRollMode: "system" | "manual";
   useObjectTargetOptions: UseObjectTargetOption[];
   useObjectTargetParticipantId: string;
+  weaponOptions: WeaponOption[];
+  isSavingLoadout?: boolean;
+  loadoutStatus?: string | null;
+  onWeaponChange?: (inventoryItemId: string | null) => void;
 };
 
 const waitLabelByPhase = (
@@ -118,13 +124,18 @@ export const PlayerTurnPanel = ({
   setUseObjectNote,
   setUseObjectRollMode,
   setUseObjectTargetParticipantId,
+  selectedWeaponId,
   spellOptions,
   targetId,
   useObjectManualRolls,
   useObjectNote,
   useObjectRollMode,
   useObjectTargetOptions,
-  useObjectTargetParticipantId
+  useObjectTargetParticipantId,
+  weaponOptions,
+  isSavingLoadout = false,
+  loadoutStatus = null,
+  onWeaponChange,
 }: Props) => {
   const { t } = useLocale();
 
@@ -327,19 +338,24 @@ export const PlayerTurnPanel = ({
               setActiveActionPanel={setActiveActionPanel}
               setConsumableItemId={setConsumableItemId}
               setSelectedSpellId={setSelectedSpellId}
-              setUseObjectManualRolls={setUseObjectManualRolls}
-              setUseObjectNote={setUseObjectNote}
-              setUseObjectRollMode={setUseObjectRollMode}
-              setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
-              spellOptions={spellOptions}
-              targetId={targetId}
-              useObjectActionDisabled={useObjectActionDisabled}
-              useObjectManualRolls={useObjectManualRolls}
-              useObjectNote={useObjectNote}
-              useObjectRollMode={useObjectRollMode}
-              useObjectTargetOptions={useObjectTargetOptions}
-              useObjectTargetParticipantId={useObjectTargetParticipantId}
-            />
+            setUseObjectManualRolls={setUseObjectManualRolls}
+            setUseObjectNote={setUseObjectNote}
+            setUseObjectRollMode={setUseObjectRollMode}
+            setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
+            selectedWeaponId={selectedWeaponId}
+            spellOptions={spellOptions}
+            targetId={targetId}
+            useObjectActionDisabled={useObjectActionDisabled}
+            useObjectManualRolls={useObjectManualRolls}
+            useObjectNote={useObjectNote}
+            useObjectRollMode={useObjectRollMode}
+            useObjectTargetOptions={useObjectTargetOptions}
+            useObjectTargetParticipantId={useObjectTargetParticipantId}
+            weaponOptions={weaponOptions}
+            isSavingLoadout={isSavingLoadout}
+            loadoutStatus={loadoutStatus}
+            onWeaponChange={onWeaponChange}
+          />
 
             <div className="flex justify-end">
               <button
