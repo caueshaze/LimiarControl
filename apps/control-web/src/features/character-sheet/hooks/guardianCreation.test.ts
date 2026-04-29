@@ -6,7 +6,8 @@ import { INITIAL_SHEET } from "../model/initialSheet";
 import { computeSpellSaveDC, computeWeaponAttack } from "../utils/calculations";
 import {
   seedSpellCatalogCache,
-  resolveSpellSourceClassId
+  resolveSpellSourceClassId,
+  getSpellAvailabilityClassIds,
 } from "../../../entities/dnd-base";
 import {
   resetCreationItemCatalogForTests,
@@ -19,7 +20,11 @@ import {
 } from "../utils/creationSpells";
 import { validateCreationSheet } from "../utils/creationValidation";
 import { getInitialClassEquipmentSelections } from "../utils/creationEquipment";
-import { getClass } from "../data/classes";
+import {
+  getClass,
+  hasFightingStyleAtCreation,
+  isSubclassUnlocked,
+} from "../data/classes";
 
 describe("guardian creation flow", () => {
   beforeEach(() => {
@@ -104,6 +109,22 @@ describe("guardian creation flow", () => {
         damageType: null,
         savingThrow: null,
         classes: ["Druid", "Ranger", "Wizard"]
+      },
+      {
+        canonicalKey: "guardian_beacon",
+        name: "Guardian Beacon",
+        level: 1,
+        school: "Abjuration",
+        castingTime: "1 action",
+        range: "9 m",
+        components: "V, S",
+        duration: "1 minute",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Guardian"]
       }
     ]);
   });
@@ -307,6 +328,20 @@ describe("guardian creation flow", () => {
     expect(cls!.spellcastingAbility).toBe("wisdom");
   });
 
+  it("treats guardian as its own class identity in display and choice flows", () => {
+    const guardianClass = getClass("guardian");
+    const rangerClass = getClass("ranger");
+
+    expect(guardianClass?.id).toBe("guardian");
+    expect(guardianClass?.name).toBe("Guardião");
+    expect(rangerClass?.id).toBe("ranger");
+    expect(rangerClass?.name).toBe("Patrulheiro");
+    expect(guardianClass?.subclassLabel).toBe("Arquétipo de Guardião");
+    expect(rangerClass?.subclassLabel).toBe("Arquétipo de Patrulheiro");
+    expect(hasFightingStyleAtCreation(guardianClass!, 2)).toBe(true);
+    expect(isSubclassUnlocked(guardianClass!, 3)).toBe(true);
+  });
+
   it("preserves guardian identity when leveling from 1 to 4", () => {
     const level1 = normalizeCreationAfterClassChange(
       { ...INITIAL_SHEET, level: 1, race: "human", background: "soldier" },
@@ -333,12 +368,23 @@ describe("guardian creation flow", () => {
     expect(resolveSpellSourceClassId("wizard")).toBe("wizard");
   });
 
-  it("provides ranger-tagged spells for guardian through explicit source mapping", () => {
+  it("builds guardian spell availability from ranger inheritance plus explicit guardian extensions", () => {
+    expect(getSpellAvailabilityClassIds("guardian")).toEqual([
+      "guardian",
+      "ranger",
+    ]);
+    expect(getSpellAvailabilityClassIds("ranger")).toEqual(["ranger"]);
+  });
+
+  it("provides ranger-tagged spells for guardian through mechanics-family inheritance", () => {
     const guardianSpells = getAvailableStartingSpells("guardian");
     const rangerSpells = getAvailableStartingSpells("ranger");
 
     expect(guardianSpells.leveled.map((s) => s.canonicalKey)).toEqual(
-      rangerSpells.leveled.map((s) => s.canonicalKey)
+      expect.arrayContaining(rangerSpells.leveled.map((s) => s.canonicalKey))
+    );
+    expect(guardianSpells.leveled.map((s) => s.canonicalKey)).toContain(
+      "guardian_beacon"
     );
     expect(guardianSpells.leveled.length).toBeGreaterThan(0);
   });
@@ -352,6 +398,26 @@ describe("guardian creation flow", () => {
     expect(spell).not.toBeNull();
     expect(spell!.canonicalKey).toBe("animal_friendship");
     expect(spell!.name).toBe("Animal Friendship");
+  });
+
+  it("allows selecting guardian-only catalog spells for guardian sheets", () => {
+    const spell = selectCatalogSpellForSheet(
+      "guardian_beacon",
+      "guardian",
+      "known"
+    );
+    expect(spell).not.toBeNull();
+    expect(spell!.canonicalKey).toBe("guardian_beacon");
+    expect(spell!.name).toBe("Guardian Beacon");
+  });
+
+  it("does not expose guardian-only catalog spells to ranger sheets", () => {
+    const spell = selectCatalogSpellForSheet(
+      "guardian_beacon",
+      "ranger",
+      "known"
+    );
+    expect(spell).toBeNull();
   });
 
   it("does not allow non-ranger spells for guardian sheets", () => {
@@ -392,6 +458,46 @@ describe("guardian creation flow", () => {
       classEquipmentSelections: getInitialClassEquipmentSelections("guardian")
     });
     expect(result.missingRequiredFields).not.toContain("leveledSpells");
+  });
+
+  it("does not require manual subclass or fighting style choices for guardian", () => {
+    const sheet = normalizeCreationAfterClassChange(
+      { ...INITIAL_SHEET, level: 3, race: "human", background: "soldier" },
+      "guardian"
+    );
+    const result = validateCreationSheet({
+      ...sheet,
+      name: "Guardian",
+      alignment: "Neutral",
+      playerName: "Player",
+      classSkillChoices: getClass("guardian")!.skillChoices.slice(0, 3),
+      classEquipmentSelections: getInitialClassEquipmentSelections("guardian"),
+    });
+
+    expect(result.missingRequiredFields).not.toContain("subclass");
+    expect(result.missingRequiredFields).not.toContain("fightingStyle");
+  });
+
+  it("keeps ranger normal choice flows independent from guardian", () => {
+    const ranger = normalizeCreationAfterClassChange(
+      { ...INITIAL_SHEET, level: 3, race: "human", background: "soldier" },
+      "ranger"
+    );
+    const result = validateCreationSheet({
+      ...ranger,
+      name: "Ranger",
+      alignment: "Neutral",
+      playerName: "Player",
+      classSkillChoices: getClass("ranger")!.skillChoices.slice(0, 3),
+      classEquipmentSelections: getInitialClassEquipmentSelections("ranger"),
+    });
+
+    expect(ranger.class).toBe("ranger");
+    expect(ranger.subclass).toBeNull();
+    expect(ranger.fightingStyle).toBeNull();
+    expect(ranger.classFeatures).toEqual([]);
+    expect(result.missingRequiredFields).toContain("subclass");
+    expect(result.missingRequiredFields).toContain("fightingStyle");
   });
 
   it("maintains consistent spellcasting through level 4 progression", () => {

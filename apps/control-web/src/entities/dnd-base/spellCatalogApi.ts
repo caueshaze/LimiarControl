@@ -65,11 +65,16 @@ export type BaseSpell = {
 const BASE_SCOPE_KEY = "__base__";
 
 /**
- * Maps a class id to the catalog class whose spell entries it reuses.
- * This is an explicit spell-source-only mapping — it MUST NOT be used for
- * class identity, UI labels, sheet persistence, or validation.
+ * Maps a guided-preset class id to the catalog class whose spell entries it
+ * inherits by default.
  *
- * Guardian is its own class but reuses Ranger-tagged catalog spells.
+ * Availability rules:
+ * - the class keeps its own identity (`guardian` stays `guardian`)
+ * - inherited classes automatically gain spells tagged for the mapped family
+ * - explicitly tagged class entries remain valid extensions
+ *
+ * Example: `guardian` can use spells tagged for `Ranger` and also spells tagged
+ * directly for `Guardian`.
  */
 const SPELL_SOURCE_CLASS_MAP: Record<string, string> = {
   guardian: "ranger"
@@ -88,7 +93,16 @@ export const resolveSpellSourceClassId = (classId: string): string => {
   return SPELL_SOURCE_CLASS_MAP[normalized] ?? normalized;
 };
 
-const normalizeClassLookup = resolveSpellSourceClassId;
+const normalizeSpellClassTag = (value: string) => value.trim().toLowerCase();
+
+export const getSpellAvailabilityClassIds = (classId: string): string[] => {
+  const normalizedClassId = normalizeSpellClassTag(classId);
+  const inheritedClassId = resolveSpellSourceClassId(normalizedClassId);
+
+  return Array.from(
+    new Set([normalizedClassId, inheritedClassId].filter(Boolean))
+  );
+};
 
 // ---- Module-level cache ----
 let activeScopeKey = BASE_SCOPE_KEY;
@@ -193,11 +207,11 @@ export const getBaseSpellsForClass = (
   campaignId?: string | null
 ): BaseSpell[] => {
   const source = getBaseSpells(campaignId);
-  const lookupClass = normalizeClassLookup(className);
+  const lookupClasses = new Set(getSpellAvailabilityClassIds(className));
   return source.filter(
     (spell) =>
       spell.level <= maxLevel &&
-      spell.classes.some((c) => c.toLowerCase() === lookupClass)
+      spell.classes.some((c) => lookupClasses.has(normalizeSpellClassTag(c)))
   );
 };
 

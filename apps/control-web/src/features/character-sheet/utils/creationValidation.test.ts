@@ -24,6 +24,7 @@ beforeAll(() => {
     { canonicalKey: "goodberry", name: "Goodberry", level: 1, school: "Transmutation", castingTime: "1 action", range: "Touch", components: "V, S, M", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Druid", "Ranger"] },
     { canonicalKey: "healing_word", name: "Healing Word", level: 1, school: "Evocation", castingTime: "1 bonus action", range: "18 m", components: "V", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid"] },
     { canonicalKey: "hunters_mark", name: "Hunter's Mark", level: 1, school: "Divination", castingTime: "1 bonus action", range: "27 m", components: "V", duration: "Up to 1 hour", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Ranger"] },
+    { canonicalKey: "guardian_beacon", name: "Guardian Beacon", level: 1, school: "Abjuration", castingTime: "1 action", range: "9 m", components: "V, S", duration: "1 minute", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Guardian"] },
   ]);
 });
 
@@ -137,6 +138,7 @@ describe("validateCreationSheet", () => {
       "cure_wounds",
       "goodberry",
       "hunters_mark",
+      "guardian_beacon",
     ]);
     expect(getStartingSpellLimits("guardian", INITIAL_SHEET.abilities, 1)).toBeNull();
     expect(getStartingSpellLimits("guardian", INITIAL_SHEET.abilities, 2)).toMatchObject({

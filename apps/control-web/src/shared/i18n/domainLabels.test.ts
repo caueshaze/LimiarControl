@@ -37,6 +37,7 @@ describe("domainLabels", () => {
   it("localizes spell classes", () => {
     expect(localizeSpellClass("Wizard", "pt")).toBe("Mago");
     expect(localizeSpellClass("Cleric", "en")).toBe("Cleric");
+    expect(localizeSpellClass("Guardian", "pt")).toBe("Guardião");
   });
 
   it("falls back safely for unknown values", () => {

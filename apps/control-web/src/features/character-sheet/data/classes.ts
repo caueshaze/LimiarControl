@@ -78,10 +78,10 @@ const ALL_FIGHTING_STYLE_IDS = FIGHTING_STYLES.map((style) => style.id);
 const PALADIN_FIGHTING_STYLE_IDS = ["defense", "dueling", "great_weapon_fighting", "protection"];
 const RANGER_FIGHTING_STYLE_IDS = ["archery", "defense", "dueling", "two_weapon_fighting"];
 
-const getDefaultFightingStyleOptions = (classId: string): string[] => {
+const getDefaultFightingStyleOptions = (classId: string, mechanicsFamily: string | null): string[] => {
   if (classId === "fighter") return ALL_FIGHTING_STYLE_IDS;
   if (classId === "paladin") return PALADIN_FIGHTING_STYLE_IDS;
-  if (classId === "ranger" || classId === "guardian") return RANGER_FIGHTING_STYLE_IDS;
+  if (classId === "ranger" || mechanicsFamily === "ranger") return RANGER_FIGHTING_STYLE_IDS;
   return [];
 };
 
@@ -236,7 +236,7 @@ export const getSubclassLanguageGrants = (
 
 export const CLASSES: DndClass[] = CLASS_DEFINITIONS.map((entry) => ({
   ...entry,
-  fightingStyleOptions: entry.fightingStyleOptions ?? getDefaultFightingStyleOptions(entry.id),
+  fightingStyleOptions: entry.fightingStyleOptions ?? getDefaultFightingStyleOptions(entry.id, entry.mechanicsFamily),
   startingEquipment: describeDefaultClassStartingEquipment(entry.id),
 }));
 

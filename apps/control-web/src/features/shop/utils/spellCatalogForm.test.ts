@@ -44,7 +44,7 @@ describe("spellCatalogForm", () => {
   it("filters unsupported legacy values from the editor state", () => {
     const state = createSpellEditorState(
       createSpell({
-        classesJson: ["Wizard", "Psion"],
+        classesJson: ["Wizard", "Guardian", "Psion"],
         componentsJson: ["V", "X"],
         damageType: "Void" as any,
         savingThrow: "LCK" as any,
@@ -52,7 +52,7 @@ describe("spellCatalogForm", () => {
       }),
     );
 
-    expect(state.classesJson).toEqual(["Wizard"]);
+    expect(state.classesJson).toEqual(["Wizard", "Guardian"]);
     expect(state.componentsJson).toEqual(["V"]);
     expect(state.damageType).toBe("");
     expect(state.savingThrow).toBe("");

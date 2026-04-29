@@ -3,9 +3,9 @@ import {
   findBaseSpell,
   getBaseSpells,
   getBaseSpellsForClass,
+  getSpellAvailabilityClassIds,
   isSameSpellAuthority,
   resolveSpellByAuthority,
-  resolveSpellSourceClassId
 } from "../../../entities/dnd-base";
 import { getModifier } from "./calculations";
 import { getClassCreationConfig } from "../data/classCreation";
@@ -60,11 +60,11 @@ const toSheetSpell = (
   campaignId?: string | null
 ): Spell | null => {
   const baseSpell = findBaseSpell(spellIdentifier, campaignId);
-  const spellClassId = resolveSpellSourceClassId(className);
+  const allowedClassIds = new Set(getSpellAvailabilityClassIds(className));
   if (
     !baseSpell ||
     !baseSpell.classes.some(
-      (entry) => entry.toLowerCase() === spellClassId.toLowerCase()
+      (entry) => allowedClassIds.has(entry.toLowerCase())
     )
   ) {
     return null;
