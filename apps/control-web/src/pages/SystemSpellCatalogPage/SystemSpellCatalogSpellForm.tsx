@@ -226,10 +226,12 @@ export const SystemSpellCatalogSpellForm = ({
 
       <SystemSpellCatalogResolutionFields form={form} setForm={setForm} />
 
-      <SpellCatalogDeclarativeEffectsFields
-        state={form}
-        setState={setForm}
-      />
+      {form.resolutionType === "buff" && (
+        <SpellCatalogDeclarativeEffectsFields
+          state={form}
+          setState={setForm}
+        />
+      )}
 
       <SystemSpellCatalogFormSection title={t("catalog.spells.form.description")}>
         <div className="grid gap-4 md:grid-cols-2">
