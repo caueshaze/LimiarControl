@@ -21,6 +21,7 @@ export const SystemSpellCatalogPage = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(createEmptyForm());
   const [search, setSearch] = useState("");
@@ -139,6 +140,51 @@ export const SystemSpellCatalogPage = () => {
     }
   };
 
+  const handleSyncSeed = async () => {
+    setSyncLoading(true);
+    setStatusMessage("Sincronizando seed...");
+    setStatusTone("saving");
+    setError(null);
+    try {
+      const response = await adminBaseSpellsRepo.syncSeed();
+      setStatusMessage(
+        `Sincronizados: ${response.updated} magias (${response.total} no total).`
+      );
+      setStatusTone("success");
+      await loadSpells();
+    } catch (syncError) {
+      const message =
+        syncError instanceof Error ? syncError.message : "Falha ao sincronizar seed.";
+      setError(message);
+      setStatusMessage("Não foi possível sincronizar o seed.");
+      setStatusTone("error");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleExportSeed = async () => {
+    setSyncLoading(true);
+    setStatusMessage("Exportando magias para seed...");
+    setStatusTone("saving");
+    setError(null);
+    try {
+      const response = await adminBaseSpellsRepo.exportSeed();
+      setStatusMessage(
+        `Exportadas: ${response.total} magias para base_spells.seed.json.`
+      );
+      setStatusTone("success");
+    } catch (exportError) {
+      const message =
+        exportError instanceof Error ? exportError.message : "Falha ao exportar seed.";
+      setError(message);
+      setStatusMessage("Não foi possível exportar o seed.");
+      setStatusTone("error");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
       <div className={panelClassName}>
@@ -154,13 +200,33 @@ export const SystemSpellCatalogPage = () => {
               {t("catalog.admin.spellSystemDescription")}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className="rounded-2xl border border-violet-400/30 bg-violet-400/12 px-4 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-400/18"
-          >
-            {t("catalog.createAction")}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleSyncSeed}
+              disabled={syncLoading}
+              className="rounded-2xl border border-cyan-400/30 bg-cyan-400/12 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/18 disabled:opacity-50"
+              title="Importar magias do seed JSON"
+            >
+              {syncLoading ? "Sincronizando..." : "⬇️ Sincronizar seed"}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportSeed}
+              disabled={syncLoading}
+              className="rounded-2xl border border-cyan-400/30 bg-cyan-400/12 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/18 disabled:opacity-50"
+              title="Exportar magias atuais para seed JSON"
+            >
+              {syncLoading ? "Exportando..." : "⬆️ Exportar seed"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="rounded-2xl border border-violet-400/30 bg-violet-400/12 px-4 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-400/18"
+            >
+              {t("catalog.createAction")}
+            </button>
+          </div>
         </div>
       </div>
 
