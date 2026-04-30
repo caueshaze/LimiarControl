@@ -83,6 +83,11 @@ class CombatSaveResolveMixin:
             (p for p in state.participants if p["id"] == attacker_participant_id),
             None,
         )
+        pending_spell_context = cls._build_pending_spell_context_from_payload(
+            pending_save,
+            target_participant=target_p,
+        )
+        manual_notes_by_target = pending_spell_context.get("manual_notes_by_target")
 
         if effect_roll_required and (not is_saved or save_success_outcome == "half_damage"):
             if attacker:
@@ -110,6 +115,13 @@ class CombatSaveResolveMixin:
                         "roll": roll_result.total,
                         "roll_result": roll_result.model_dump(mode="json"),
                         "save_success_outcome": save_success_outcome,
+                        "variant_scope": pending_save.get("variant_scope"),
+                        "selected_variant_key": pending_spell_context.get("selected_variant_key"),
+                        "selected_variant_label": pending_spell_context.get("selected_variant_label"),
+                        "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
+                        "manual_notes_by_target": manual_notes_by_target,
+                        "effects": pending_spell_context.get("effects"),
+                        "on_end_effects": pending_spell_context.get("on_end_effects"),
                     },
                 )
         elif not is_saved or save_success_outcome == "half_damage":
@@ -162,6 +174,9 @@ class CombatSaveResolveMixin:
                 "new_hp": new_hp,
                 "roll_result": roll_result.model_dump(mode="json"),
                 "pending_spell_id": pending_spell_id,
+                "selected_variant_key": pending_spell_context.get("selected_variant_key"),
+                "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
+                "manual_notes_by_target": manual_notes_by_target,
             }
             flag_modified(state, "participants")
             db.add(state)
@@ -183,6 +198,7 @@ class CombatSaveResolveMixin:
             log_message += f" {amount} de {effect_kind} de {damage_type or 'energia'}{effect_msg}"
         if pending_spell_id:
             log_message += " Efeito pendente."
+        log_message = f"{log_message}{cls._format_manual_notes_for_log(manual_notes_by_target)}".strip()
         await cls._emit_log(session_id, {
             "message": log_message,
             "actorUserId": actor_user_id,
@@ -197,6 +213,7 @@ class CombatSaveResolveMixin:
             "damage": amount if effect_kind == "damage" else 0,
             "healing": amount if effect_kind == "healing" else 0,
             "damage_type": damage_type,
+            "selected_variant_key": pending_spell_context.get("selected_variant_key"),
             "is_critical": False,
             "is_hit": None,
             "is_saved": is_saved,
@@ -224,4 +241,6 @@ class CombatSaveResolveMixin:
             "elemental_affinity_bonus": pending_save.get("elemental_affinity_bonus"),
             "effect_rolls": effect_rolls,
             "effect_roll_source": req.roll_source,
+            "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
+            "manual_notes_by_target": manual_notes_by_target,
         }

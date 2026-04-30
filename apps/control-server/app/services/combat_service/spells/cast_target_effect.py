@@ -77,6 +77,19 @@ class CastTargetEffectMixin:
             raise CombatServiceError(
                 "Pending spell effect is missing target information.", 400
             )
+        target_participant = next(
+            (
+                participant
+                for participant in state.participants
+                if participant.get("ref_id") == target_ref_id and participant.get("kind") == target_kind
+            ),
+            None,
+        )
+        pending_spell_context = cls._build_pending_spell_context_from_payload(
+            pending_spell,
+            target_participant=target_participant,
+        )
+        manual_notes_by_target = pending_spell_context.get("manual_notes_by_target")
 
         effect_rolls: list[int] = []
         base_effect = 0
@@ -121,6 +134,15 @@ class CastTargetEffectMixin:
                 concentration_roll_source=req.concentration_roll_source,
                 concentration_manual_roll=req.concentration_manual_roll,
             )
+        if target_participant is not None and cls._spell_context_has_declarative_effects(
+            pending_spell_context
+        ):
+            cls._apply_declarative_spell_effects(
+                state=state,
+                attacker=attacker,
+                target_participant=target_participant,
+                spell_context=pending_spell_context,
+            )
 
         cls._clear_participant_pending_attack(attacker)
         flag_modified(state, "participants")
@@ -159,6 +181,7 @@ class CastTargetEffectMixin:
             concentration_check.get("summary_text"), str
         ):
             log_message = f"{log_message} {concentration_check['summary_text']}".strip()
+        log_message = f"{log_message}{cls._format_manual_notes_for_log(manual_notes_by_target)}".strip()
 
         await cls._emit_log(
             session_id,
@@ -172,6 +195,7 @@ class CastTargetEffectMixin:
         return {
             "spell_name": pending_spell.get("spell_name"),
             "spell_canonical_key": pending_spell.get("spell_canonical_key"),
+            "selected_variant_key": pending_spell_context.get("selected_variant_key"),
             "action_kind": pending_spell.get("action_kind"),
             "effect_kind": effect_kind,
             "damage": amount if effect_kind == "damage" else 0,
@@ -207,4 +231,6 @@ class CastTargetEffectMixin:
             "elemental_affinity_bonus": pending_spell.get("elemental_affinity_bonus"),
             "effect_rolls": effect_rolls,
             "effect_roll_source": req.roll_source,
+            "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
+            "manual_notes_by_target": manual_notes_by_target,
         }
