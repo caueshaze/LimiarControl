@@ -326,7 +326,7 @@ export type SpellDeclarativeEffect =
       type: "advantage_on_checks" | "disadvantage_on_checks";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
-      params: { ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma" };
+      params: { ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma"; against?: "any" | "effect_target" };
       stacking?: "stack" | "replace" | null;
     }
   | {

@@ -72,6 +72,11 @@ const ABILITY_OPTIONS = [
   "wisdom",
   "charisma",
 ] as const;
+const AGAINST_OPTIONS = ["any", "effect_target"] as const;
+const AGAINST_LABELS: Record<"any" | "effect_target", string> = {
+  any: "Qualquer alvo",
+  effect_target: "Apenas contra o alvo do efeito",
+};
 
 const createDefaultEffect = (): SpellDeclarativeEffect => ({
   type: "apply_condition",
@@ -91,7 +96,7 @@ const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativ
       return { stat: "temp_ac_bonus", value: 1 };
     case "advantage_on_checks":
     case "disadvantage_on_checks":
-      return { ability: "charisma" };
+      return { ability: "charisma", against: "any" };
     case "restrict_action":
       return { action: "actions" };
   }
@@ -334,28 +339,50 @@ const EffectEditor = ({
           ) : null}
 
           {"ability" in effect.params ? (
-            <select
-              value={effect.params.ability}
-              onChange={(event) =>
-                onChange(
-                  effects.map((entry, entryIndex) =>
-                    entryIndex === index && "ability" in entry.params
-                      ? {
-                          ...entry,
-                          params: { ability: event.target.value as (typeof ABILITY_OPTIONS)[number] },
-                        }
-                      : entry,
-                  ),
-                )
-              }
-              className={fieldClassName}
-            >
-              {ABILITY_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {labelize(option)}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                value={effect.params.ability}
+                onChange={(event) =>
+                  onChange(
+                    effects.map((entry, entryIndex) =>
+                      entryIndex === index && "ability" in entry.params
+                        ? {
+                            ...entry,
+                            params: { ...entry.params, ability: event.target.value as (typeof ABILITY_OPTIONS)[number] },
+                          }
+                        : entry,
+                    ),
+                  )
+                }
+                className={fieldClassName}
+              >
+                {ABILITY_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {labelize(option)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={effect.params.against ?? "any"}
+                onChange={(event) =>
+                  onChange(
+                    effects.map((entry, entryIndex) =>
+                      entryIndex === index && "ability" in entry.params
+                        ? { ...entry, params: { ...entry.params, against: event.target.value as "any" | "effect_target" } }
+                        : entry,
+                    ),
+                  )
+                }
+                className={fieldClassName}
+              >
+                {AGAINST_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {AGAINST_LABELS[option]}
+                  </option>
+                ))}
+              </select>
+            </>
           ) : null}
 
           {"action" in effect.params ? (

@@ -678,4 +678,84 @@ describe("spellCatalogForm", () => {
     const state = createEmptySpellEditorState();
     expect(state.upcastBaseEffectInstances).toBe("");
   });
+
+  it("preserves `against` field when changing ability in advantage_on_checks effect", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "rounds", rounds: 10, anchor: "target" },
+            params: { ability: "charisma", against: "effect_target" },
+            stacking: "replace",
+          },
+        ],
+      }),
+    );
+
+    expect(state.effects[0]).toHaveProperty("params.against", "effect_target");
+
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.effects?.[0].params).toEqual({
+      ability: "charisma",
+      against: "effect_target",
+    });
+  });
+
+  it("initializes new advantage_on_checks effect with against: 'any'", () => {
+    const state = createEmptySpellEditorState();
+    expect(state.effects).toHaveLength(0);
+
+    const newEffect: typeof state.effects[number] = {
+      type: "advantage_on_checks",
+      target: "selected_target",
+      duration: { type: "manual" },
+      params: { ability: "charisma", against: "any" },
+      stacking: "replace",
+    };
+
+    expect(newEffect.params).toEqual({
+      ability: "charisma",
+      against: "any",
+    });
+  });
+
+  it("serializes Friends spell with against: 'effect_target' correctly", () => {
+    const friendsSpell = createSpell({
+      canonicalKey: "friends",
+      nameEn: "Friends",
+      effects: [
+        {
+          type: "advantage_on_checks",
+          target: "caster",
+          duration: { type: "rounds", rounds: 10, anchor: "caster" },
+          params: { ability: "charisma", against: "effect_target" },
+          stacking: "replace",
+        },
+      ],
+      onEndEffects: [
+        {
+          type: "apply_condition",
+          target: "selected_target",
+          duration: { type: "manual" },
+          params: { condition: "hostile_to_caster" },
+          stacking: "replace",
+        },
+      ],
+    });
+
+    const state = createSpellEditorState(friendsSpell);
+    const payload = buildSpellUpdatePayload(state);
+
+    expect(payload.effects).toHaveLength(1);
+    expect(payload.effects?.[0].params).toEqual({
+      ability: "charisma",
+      against: "effect_target",
+    });
+    expect(payload.onEndEffects).toHaveLength(1);
+    expect(payload.onEndEffects?.[0].params).toEqual({
+      condition: "hostile_to_caster",
+    });
+  });
 });
