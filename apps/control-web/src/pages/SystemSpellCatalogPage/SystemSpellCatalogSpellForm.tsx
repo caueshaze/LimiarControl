@@ -7,6 +7,7 @@ import {
   localizeSpellClass,
   localizeSpellSchool,
 } from "../../shared/i18n/domainLabels";
+import { SpellCatalogDeclarativeEffectsFields } from "../../features/shop/components/SpellCatalogDeclarativeEffectsFields";
 import { SystemSpellCatalogCastingFields } from "./SystemSpellCatalogCastingFields";
 import { SystemSpellCatalogFormSection } from "./SystemSpellCatalogFormSection";
 import { SystemSpellCatalogResolutionFields } from "./SystemSpellCatalogResolutionFields";
@@ -224,6 +225,11 @@ export const SystemSpellCatalogSpellForm = ({
       <SystemSpellCatalogCastingFields form={form} setForm={setForm} />
 
       <SystemSpellCatalogResolutionFields form={form} setForm={setForm} />
+
+      <SpellCatalogDeclarativeEffectsFields
+        state={form}
+        setState={setForm}
+      />
 
       <SystemSpellCatalogFormSection title={t("catalog.spells.form.description")}>
         <div className="grid gap-4 md:grid-cols-2">
