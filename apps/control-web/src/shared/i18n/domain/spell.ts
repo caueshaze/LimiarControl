@@ -130,6 +130,8 @@ const SPELL_SAVING_THROW_LABELS: Record<SpellSavingThrow, LabelEntry> = {
 const SPELL_ADMIN_VALUE_LABELS: Record<string, LabelEntry> = {
   saving_throw: label("Saving throw", "Teste de resistência"),
   physical: label("Physical", "Física"),
+  any: label("Any target", "Qualquer alvo"),
+  effect_target: label("Only against effect target", "Apenas contra o alvo do efeito"),
 };
 
 const UPCAST_MODE_LABELS: Record<UpcastMode, LabelEntry> = {

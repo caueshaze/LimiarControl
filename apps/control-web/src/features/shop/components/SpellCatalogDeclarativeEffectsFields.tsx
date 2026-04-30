@@ -7,6 +7,8 @@ import type {
   SpellDeclarativeModifyStat,
   SpellDeclarativeRestrictActionKind,
 } from "../../../entities/base-spell";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import { localizeSpellAdminValue } from "../../../shared/i18n/domainLabels";
 import type { SpellCatalogEditorState } from "../utils/spellCatalogForm";
 
 type Props = {
@@ -73,10 +75,6 @@ const ABILITY_OPTIONS = [
   "charisma",
 ] as const;
 const AGAINST_OPTIONS = ["any", "effect_target"] as const;
-const AGAINST_LABELS: Record<"any" | "effect_target", string> = {
-  any: "Qualquer alvo",
-  effect_target: "Apenas contra o alvo do efeito",
-};
 
 const createDefaultEffect = (): SpellDeclarativeEffect => ({
   type: "apply_condition",
@@ -110,7 +108,9 @@ const EffectEditor = ({
   title: string;
   effects: SpellDeclarativeEffect[];
   onChange: (next: SpellDeclarativeEffect[]) => void;
-}) => (
+}) => {
+  const { locale } = useLocale();
+  return (
   <Section title={title}>
     <div className="space-y-3">
       {effects.map((effect, index) => (
@@ -378,7 +378,7 @@ const EffectEditor = ({
               >
                 {AGAINST_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {AGAINST_LABELS[option]}
+                    {localizeSpellAdminValue(option, locale)}
                   </option>
                 ))}
               </select>
@@ -431,6 +431,7 @@ const EffectEditor = ({
     </div>
   </Section>
 );
+};
 
 export const SpellCatalogDeclarativeEffectsFields = ({
   state,
