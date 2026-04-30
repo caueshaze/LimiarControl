@@ -332,6 +332,15 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
             </label>
           </div>
         )}
+
+        {form.resolutionType === "buff" && (
+          <div className="border-t border-white/8 pt-4">
+            <SpellCatalogDeclarativeEffectsFields
+              state={form}
+              setState={setForm}
+            />
+          </div>
+        )}
       </SystemSpellCatalogFormSection>
 
       {showDamageFields && (
@@ -825,13 +834,6 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
             </div>
           ) : null}
         </SystemSpellCatalogFormSection>
-      )}
-
-      {form.resolutionType === "buff" && (
-        <SpellCatalogDeclarativeEffectsFields
-          state={form}
-          setState={setForm}
-        />
       )}
     </>
   );
