@@ -191,13 +191,14 @@ class CombatSpellDeclarativeEffectsMixin:
         attacker: dict,
         target_participant: dict | None,
         spell_context: dict,
+        effect_group_id: str | None = None,
     ) -> dict:
         effects = cls._spell_context_declarative_effects(spell_context)
         on_end_effects = cls._spell_context_on_end_effects(spell_context)
         if not effects:
             return {"applied_effects": [], "effect_group_id": None}
 
-        effect_group_id = str(uuid4())
+        effect_group_id = effect_group_id or str(uuid4())
         applied: list[dict] = []
         for effect in effects:
             applied.extend(
@@ -274,6 +275,7 @@ class CombatSpellDeclarativeEffectsMixin:
         state,
         spell_context: dict,
         target_participant: dict | None,
+        effect_group_id: str | None = None,
     ) -> dict | None:
         if not cls._spell_context_has_declarative_effects(spell_context):
             return None
@@ -283,6 +285,7 @@ class CombatSpellDeclarativeEffectsMixin:
             attacker=attacker,
             target_participant=target_participant,
             spell_context=spell_context,
+            effect_group_id=effect_group_id,
         )
         applied_effects = application["applied_effects"]
         summary_target = target_participant or attacker

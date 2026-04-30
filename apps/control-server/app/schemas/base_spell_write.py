@@ -33,6 +33,7 @@ from .base_spell_upcast import SpellUpcastConfig, _build_structured_upcast_from_
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
 from .base_spell_effects import SpellDeclarativeEffect
 from .base_spell_persistent_area import SpellPersistentAreaEffect
+from .base_spell_variants import SpellVariant
 
 
 class BaseSpellWrite(BaseModel):
@@ -76,6 +77,7 @@ class BaseSpellWrite(BaseModel):
     healDice: Optional[str] = None
     effects: Optional[list[SpellDeclarativeEffect]] = None
     onEndEffects: Optional[list[SpellDeclarativeEffect]] = None
+    variants: Optional[list[SpellVariant]] = None
     persistentArea: Optional[SpellPersistentAreaEffect] = None
 
     requiresTargetSight: Optional[bool] = None
@@ -476,6 +478,16 @@ class BaseSpellWrite(BaseModel):
 
         if self.onEndEffects and not self.effects:
             raise ValueError("onEndEffects requires effects to be present.")
+
+        if self.variants:
+            seen_variant_keys: set[str] = set()
+            for variant in self.variants:
+                variant_key = variant.key.lower()
+                if variant_key in seen_variant_keys:
+                    raise ValueError(
+                        f"Duplicate spell variant key: {variant.key}"
+                    )
+                seen_variant_keys.add(variant_key)
 
         if self.persistentArea is not None and self.effectTiming not in (None, "persistent"):
             raise ValueError("persistentArea requires effectTiming to be 'persistent'.")

@@ -96,7 +96,7 @@ const buildSpellOptions = (
         catalogSpell?.effectTiming === "triggered"
           ? "utility"
           : null) ??
-        (catalogSpell?.defaultSpellMode as
+        ((catalogSpell as { defaultSpellMode?: CombatSpellMode | null } | undefined)?.defaultSpellMode as
           | CombatSpellMode
           | null
           | undefined) ??
@@ -138,7 +138,8 @@ const buildSpellOptions = (
                 (slotLevel) => slotLevel >= spell.level
               )
             : [],
-        upcast: catalogSpell?.upcast ?? null
+        upcast: catalogSpell?.upcast ?? null,
+        variants: (catalogSpell as { variants?: CombatSpellOption["variants"] } | undefined)?.variants ?? null,
       };
     })
     .sort(

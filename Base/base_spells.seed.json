@@ -1551,6 +1551,174 @@
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "enhance_ability",
+      "nameEn": "Enhance Ability",
+      "namePt": "Aprimorar Habilidade",
+      "descriptionEn": "You touch a creature and grant it a magical enhancement. Choose one of six abilities; the target gains the chosen benefit for the duration.",
+      "descriptionPt": "Você toca uma criatura e concede a ela um aprimoramento mágico. Escolha uma de seis habilidades; o alvo recebe o benefício escolhido pela duração.",
+      "level": 2,
+      "school": "transmutation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Sorcerer"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Touch",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "fur or a feather from a beast",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "variants": [
+        {
+          "key": "bears_endurance",
+          "labelPt": "Resistência do Urso",
+          "labelEn": "Bear's Endurance",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "constitution"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "manualNotes": [
+            {
+              "key": "grant_temp_hp",
+              "label": "PV temporários",
+              "description": "Conceda 2d6 pontos de vida temporários manualmente enquanto a magia durar."
+            }
+          ]
+        },
+        {
+          "key": "bulls_strength",
+          "labelPt": "Força do Touro",
+          "labelEn": "Bull's Strength",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "strength"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "manualNotes": [
+            {
+              "key": "carrying_capacity_multiplier",
+              "label": "Capacidade de carga",
+              "description": "Dobre manualmente a capacidade de carga do alvo enquanto a magia durar."
+            }
+          ]
+        },
+        {
+          "key": "cats_grace",
+          "labelPt": "Graça do Gato",
+          "labelEn": "Cat's Grace",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "dexterity"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "manualNotes": [
+            {
+              "key": "fall_damage_immunity_threshold",
+              "label": "Queda curta",
+              "description": "Ignore manualmente dano de queda de até 6 metros, se o alvo não estiver incapacitado."
+            }
+          ]
+        },
+        {
+          "key": "eagles_splendor",
+          "labelPt": "Esplendor da Águia",
+          "labelEn": "Eagle's Splendor",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "charisma"
+              },
+              "stacking": "replace"
+            }
+          ]
+        },
+        {
+          "key": "foxs_cunning",
+          "labelPt": "Esperteza da Raposa",
+          "labelEn": "Fox's Cunning",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "intelligence"
+              },
+              "stacking": "replace"
+            }
+          ]
+        },
+        {
+          "key": "owls_wisdom",
+          "labelPt": "Sabedoria da Coruja",
+          "labelEn": "Owl's Wisdom",
+          "effects": [
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "params": {
+                "ability": "wisdom"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "manualNotes": [
+            {
+              "key": "passive_perception_bonus",
+              "label": "Percepção passiva",
+              "description": "Aplique manualmente +5 à Percepção Passiva do alvo enquanto a magia durar."
+            }
+          ]
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent"
     }
   ]
 }

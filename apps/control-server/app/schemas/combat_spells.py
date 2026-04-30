@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.campaign_entity_shared import AbilityName
+from app.schemas.base_spell import SpellVariantManualNote
 from app.schemas.roll import RollResult, RollSource
 
 from .combat_lifecycle import CombatActionCost
@@ -50,6 +51,11 @@ class EffectInstanceTarget(BaseModel):
     target_ref_id: str
 
 
+class TargetVariantAssignment(BaseModel):
+    target_participant_id: str
+    variant_key: str
+
+
 class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str | None = None
@@ -59,6 +65,8 @@ class CombatCastSpellRequest(BaseModel):
     spell_id: str | None = None
     spell_canonical_key: str | None = None
     campaign_spell_id: str | None = None
+    variant_key: str | None = None
+    target_variant_assignments: list[TargetVariantAssignment] | None = None
     spell_mode: (
         Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
         | None
@@ -93,6 +101,8 @@ class CombatResolveSpellContextRequest(BaseModel):
     spell_id: str | None = None
     spell_canonical_key: str | None = None
     campaign_spell_id: str | None = None
+    variant_key: str | None = None
+    target_variant_assignments: list[TargetVariantAssignment] | None = None
     spell_mode: (
         Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
         | None
@@ -119,6 +129,8 @@ class CombatResolvedSpellContext(BaseModel):
     spell_name: str
     spell_level: int
     slot_level: int | None = None
+    max_targets: int | None = None
+    base_max_targets: int | None = None
     target_type: str | None = None
     selection_type: str | None = None
     area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
@@ -139,6 +151,16 @@ class CombatResolvedSpellContext(BaseModel):
     upcast_added_instances: int = 0
     upcast_instance_effect_dice: str | None = None
     cover_applies_to_save: str | None = None
+    variants: list["SpellVariantSummaryPayload"] | None = None
+    selected_variant_key: str | None = None
+    target_variant_assignments: list[TargetVariantAssignment] | None = None
+
+
+class SpellVariantSummaryPayload(BaseModel):
+    key: str
+    label: str
+    description: str | None = None
+    manualNotes: list[SpellVariantManualNote] | None = None
 
 
 class CombatGridCell(BaseModel):
@@ -315,6 +337,7 @@ class EffectInstanceOutcome(BaseModel):
 class CombatSpellResult(BaseModel):
     spell_name: str
     spell_canonical_key: str | None = None
+    selected_variant_key: str | None = None
     action_kind: Literal[
         "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
     ]
@@ -368,3 +391,5 @@ class CombatSpellResult(BaseModel):
     effect_instance_dice: str | None = None
     base_effect_instance_count: int | None = None
     effect_instance_outcomes: list[EffectInstanceOutcome] = Field(default_factory=list)
+    target_variant_assignments: list[dict] | None = None
+    manual_notes_by_target: list[dict] | None = None

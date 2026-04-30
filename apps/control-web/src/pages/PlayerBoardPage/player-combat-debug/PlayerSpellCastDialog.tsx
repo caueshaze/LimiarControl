@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { SpellVariant } from "../../../entities/base-spell";
 import type { AbilityName } from "../../../entities/roll/rollResolution.types";
 import { participantHasActiveConcentration } from "../../../features/combat-ui/combatUi.helpers";
 import type {
@@ -30,6 +31,11 @@ import {
   resolveEffectInstanceContext,
   type EffectInstanceTargetInput,
 } from "./InstanceTargetSelector";
+import {
+  hasCompleteTargetVariantAssignments,
+  VariantTargetAssignmentSelector,
+  type TargetVariantAssignmentInput,
+} from "./VariantTargetAssignmentSelector";
 import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
@@ -44,6 +50,7 @@ import { buildSpellPreviewModel } from "./spellPreviewModel";
 import type { CombatSpellOption } from "./types";
 import { useAreaTargeting } from "./useAreaTargeting";
 import { useResolvedSpellContext } from "./useResolvedSpellContext";
+import { useLocale } from "../../../shared/hooks/useLocale";
 import {
   buildInstanceSpatialValidations,
   buildSingleTargetSpatialValidations,
@@ -87,15 +94,18 @@ type BuildNonAreaSpellCastPayloadParams = {
   concentrationRollMode: "system" | "manual";
   effectInstanceTargets: EffectInstanceTargetInput[];
   isMultiInstanceSpell: boolean;
+  isVariantMultiTargetSpell?: boolean;
   manualRoll?: number | null;
   parsedBonus: number;
   rollSource?: "manual" | "system";
   selectedSlotLevel: number | null;
+  selectedVariantKey?: string | null;
   spell: CombatSpellOption;
   spellDamageType: string;
   spellEffectDice: string;
   spellMode: CombatSpellMode;
   spellSaveAbility: AbilityName | "";
+  targetVariantAssignments?: TargetVariantAssignmentInput[];
   targetRefId?: string | null;
 };
 
@@ -105,20 +115,29 @@ export const buildNonAreaSpellCastPayload = ({
   concentrationRollMode,
   effectInstanceTargets,
   isMultiInstanceSpell,
+  isVariantMultiTargetSpell = false,
   manualRoll = null,
   parsedBonus,
   rollSource = "system",
   selectedSlotLevel,
+  selectedVariantKey = null,
   spell,
   spellDamageType,
   spellEffectDice,
   spellMode,
   spellSaveAbility,
+  targetVariantAssignments = [],
   targetRefId = null,
 }: BuildNonAreaSpellCastPayloadParams): CombatCastSpellRequest => ({
   actor_participant_id: actorParticipantId,
-  target_ref_id: isMultiInstanceSpell ? effectInstanceTargets[0]?.target_ref_id ?? targetRefId ?? null : targetRefId,
+  target_ref_id: isVariantMultiTargetSpell
+    ? null
+    : isMultiInstanceSpell
+      ? effectInstanceTargets[0]?.target_ref_id ?? targetRefId ?? null
+      : targetRefId,
   effect_instance_targets: isMultiInstanceSpell ? effectInstanceTargets : null,
+  variant_key: isVariantMultiTargetSpell ? null : selectedVariantKey,
+  target_variant_assignments: isVariantMultiTargetSpell ? targetVariantAssignments : null,
   spell_canonical_key: spell.canonicalKey,
   spell_id: spell.canonicalKey,
   campaign_spell_id: spell.campaignSpellId ?? null,
@@ -179,6 +198,7 @@ export const PlayerSpellCastDialog = ({
   spellSaveAbility,
   target = null,
 }: Props) => {
+  const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [attackMode, setAttackMode] = useState<"choose" | "manual" | "virtual">("choose");
@@ -189,6 +209,8 @@ export const PlayerSpellCastDialog = ({
   const [selectedSlotLevel, setSelectedSlotLevel] = useState<number | null>(
     spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null),
   );
+  const [selectedVariantKey, setSelectedVariantKey] = useState<string>("");
+  const [targetVariantAssignments, setTargetVariantAssignments] = useState<TargetVariantAssignmentInput[]>([]);
   const [effectInstanceTargets, setEffectInstanceTargets] = useState<EffectInstanceTargetInput[]>([]);
   const [result, setResult] = useState<CombatSpellResult | null>(null);
   const [spellMapState, setSpellMapState] = useState<Awaited<ReturnType<typeof combatRepo.getMapState>> | null>(null);
@@ -229,6 +251,7 @@ export const PlayerSpellCastDialog = ({
   const resolvedSpellContextState = useResolvedSpellContext({
     actorParticipantId,
     selectedSlotLevel,
+    selectedVariantKey: selectedVariantKey || null,
     sessionId,
     spell,
     spellMode,
@@ -254,6 +277,18 @@ export const PlayerSpellCastDialog = ({
     allowLocalFallback,
   );
   const isMultiInstanceSpell = !isAreaSpell && effectInstanceContext.instanceCount > 1;
+  const spellVariants: SpellVariant[] = (resolvedSpellContextState.context?.variants?.length
+    ? resolvedSpellContextState.context.variants.map((variant) => ({
+        key: variant.key,
+        labelPt: variant.label,
+        descriptionPt: variant.description ?? null,
+        manualNotes: variant.manualNotes ?? null,
+      }))
+    : spell.variants ?? []) ?? [];
+  const maxTargets = Math.max(1, resolvedSpellContextState.context?.max_targets ?? 1);
+  const isVariantSpell = spellVariants.length > 0;
+  const isVariantMultiTargetSpell = isVariantSpell && !isAreaSpell && !isMultiInstanceSpell && maxTargets > 1;
+  const hasCompleteVariantAssignments = hasCompleteTargetVariantAssignments(targetVariantAssignments, maxTargets);
   const selectableParticipants = participants.filter((participant) => participant.id !== actor.id);
   const normalizedEffectInstanceTargets = normalizeEffectInstanceTargets(
     effectInstanceTargets,
@@ -375,6 +410,8 @@ export const PlayerSpellCastDialog = ({
   useEffect(() => {
     setSelectedSlotLevel(spell.fixedCastLevel ?? (spell.level > 0 ? spell.level : null));
     setTargetingMode(createInitialTargetingMode(spell.areaShape, spell.selectionType));
+    setSelectedVariantKey("");
+    setTargetVariantAssignments([]);
     setEffectInstanceTargets([]);
     setError(null);
     handledSaveResolutionKeyRef.current = null;
@@ -418,7 +455,7 @@ export const PlayerSpellCastDialog = ({
         buildSpellPreviewFanoutKey({
           sessionId,
           actorRefId: actor.ref_id,
-          spellId: spell.canonicalKey,
+          spellId: spell.canonicalKey ?? spell.id,
           slotLevel: selectedSlotLevel,
           targetRefId,
         }),
@@ -556,6 +593,14 @@ export const PlayerSpellCastDialog = ({
       setError(MULTI_INSTANCE_TARGET_ERROR);
       return;
     }
+    if (isVariantSpell && !isVariantMultiTargetSpell && !selectedVariantKey) {
+      setError("Escolha uma variante da magia antes de conjurar.");
+      return;
+    }
+    if (isVariantMultiTargetSpell && !hasCompleteVariantAssignments) {
+      setError("Escolha ao menos dois alvos e uma variante para cada um.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -593,15 +638,18 @@ export const PlayerSpellCastDialog = ({
               concentrationRollMode,
               effectInstanceTargets: normalizedEffectInstanceTargets,
               isMultiInstanceSpell,
+              isVariantMultiTargetSpell,
               manualRoll: payload?.manual_roll ?? null,
               parsedBonus,
               rollSource: payload?.roll_source ?? "system",
               selectedSlotLevel,
+              selectedVariantKey: selectedVariantKey || null,
               spell,
               spellDamageType,
               spellEffectDice,
               spellMode,
               spellSaveAbility,
+              targetVariantAssignments,
               targetRefId: target?.ref_id ?? null,
             }),
       );
@@ -666,9 +714,67 @@ export const PlayerSpellCastDialog = ({
           slotOptions={slotOptions}
           spell={spell}
           spellMode={spellMode}
-          targetDisplayName={isMultiInstanceSpell ? "Múltiplos alvos" : target?.display_name ?? null}
+          targetDisplayName={
+            isMultiInstanceSpell || isVariantMultiTargetSpell
+              ? "Múltiplos alvos"
+              : target?.display_name ?? null
+          }
           targetPreview={rangePreview}
         />
+
+        {!result && isVariantSpell && !isVariantMultiTargetSpell ? (
+          <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Variante da magia
+              </p>
+              <p className="text-xs text-slate-400">
+                Escolha qual benefício será aplicado neste alvo.
+              </p>
+            </div>
+            <select
+              aria-label="Variante da magia"
+              disabled={loading}
+              value={selectedVariantKey}
+              onChange={(event) => {
+                setSelectedVariantKey(event.target.value);
+                setError(null);
+              }}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400 disabled:opacity-50"
+            >
+              <option value="">Escolha uma variante</option>
+              {spellVariants.map((variant) => (
+                <option key={variant.key} value={variant.key}>
+                  {variant.labelPt ?? variant.labelEn ?? variant.key}
+                </option>
+              ))}
+            </select>
+            {selectedVariantKey
+              ? spellVariants
+                  .filter((variant) => variant.key === selectedVariantKey)
+                  .flatMap((variant) => variant.manualNotes ?? [])
+                  .map((note) => (
+                    <p key={note.key} className="text-xs text-amber-100">
+                      Automação parcial: {note.label} - {note.description}
+                    </p>
+                  ))
+              : null}
+          </div>
+        ) : null}
+
+        {!result && isVariantMultiTargetSpell ? (
+          <VariantTargetAssignmentSelector
+            disabled={loading}
+            maxTargets={maxTargets}
+            participants={selectableParticipants}
+            value={targetVariantAssignments}
+            variants={spellVariants}
+            onChange={(nextValue) => {
+              setTargetVariantAssignments(nextValue);
+              setError(null);
+            }}
+          />
+        ) : null}
 
         {!result && isMultiInstanceSpell ? (
           <InstanceTargetSelector
@@ -768,12 +874,21 @@ export const PlayerSpellCastDialog = ({
             }}
             spellMode={spellMode}
             spellOutOfRange={spellOutOfRange}
-            submitDisabled={!spellContextReady || (isMultiInstanceSpell && !effectInstanceTargetsComplete)}
+            submitDisabled={
+              !spellContextReady ||
+              (isMultiInstanceSpell && !effectInstanceTargetsComplete) ||
+              (isVariantSpell && !isVariantMultiTargetSpell && !selectedVariantKey) ||
+              (isVariantMultiTargetSpell && !hasCompleteVariantAssignments)
+            }
             validationMessage={
               !spellContextReady
                 ? "Resolvendo contexto da magia..."
                 : isMultiInstanceSpell && !effectInstanceTargetsComplete
                   ? MULTI_INSTANCE_TARGET_ERROR
+                  : isVariantSpell && !isVariantMultiTargetSpell && !selectedVariantKey
+                    ? "Escolha uma variante da magia."
+                    : isVariantMultiTargetSpell && !hasCompleteVariantAssignments
+                      ? "Escolha ao menos dois alvos e uma variante para cada um."
                   : null
             }
           />

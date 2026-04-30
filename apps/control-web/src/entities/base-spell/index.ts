@@ -41,6 +41,8 @@ export type {
   SpellDeclarativeDuration,
   SpellDeclarativeEffect,
   SpellPersistentAreaEffect,
+  SpellVariant,
+  SpellVariantManualNote,
   SpellUpcast,
   SpellAttackType as SpellAttackTypeValue,
   SpellEffectTiming as SpellEffectTimingValue,

@@ -59,6 +59,11 @@ from .base_spell_persistent_area import (
     SpellPersistentAreaObscurement,
     SpellPersistentAreaTerrainEffect,
 )
+from .base_spell_variants import (
+    SpellVariant,
+    SpellVariantManualNote,
+    SpellVariantSummary,
+)
 from .base_spell_upcast import (
     SpellUpcastConfig,
     SpellUpcastMode,
@@ -126,6 +131,9 @@ __all__ = [
     "PersistentAreaHazardParams",
     "PersistentAreaNoSemanticEffectParams",
     "PersistentAreaObscurementParams",
+    "SpellVariant",
+    "SpellVariantManualNote",
+    "SpellVariantSummary",
     "SpellPersistentAreaEffect",
     "SpellPersistentAreaKind",
     "SpellPersistentAreaObscurement",

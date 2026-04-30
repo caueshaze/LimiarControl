@@ -12,6 +12,7 @@ type UseResolvedSpellContextParams = {
   spell: CombatSpellOption;
   spellMode: CombatSpellMode;
   selectedSlotLevel: number | null;
+  selectedVariantKey?: string | null;
 };
 
 type UseResolvedSpellContextResult = {
@@ -32,6 +33,7 @@ export const useResolvedSpellContext = ({
   spell,
   spellMode,
   selectedSlotLevel,
+  selectedVariantKey = null,
 }: UseResolvedSpellContextParams): UseResolvedSpellContextResult => {
   const [state, setState] = useState<UseResolvedSpellContextResult>(INITIAL);
 
@@ -51,6 +53,7 @@ export const useResolvedSpellContext = ({
         spell_id: spell.canonicalKey,
         spell_canonical_key: spell.canonicalKey,
         campaign_spell_id: spell.campaignSpellId ?? null,
+        variant_key: selectedVariantKey,
         spell_mode: spellMode,
         slot_level:
           spell.sourceType === "magic_item"
@@ -95,6 +98,7 @@ export const useResolvedSpellContext = ({
     spell.level,
     spell.sourceType,
     spellMode,
+    selectedVariantKey,
   ]);
 
   return state;
