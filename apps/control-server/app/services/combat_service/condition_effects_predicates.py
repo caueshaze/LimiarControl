@@ -96,14 +96,37 @@ def is_lightly_obscured(participant: dict) -> bool:
 def resolve_check_advantage_mode(
     participant: dict,
     ability: AbilityName,
+    target_participant_id: str | None = None,
 ) -> Literal["advantage", "normal", "disadvantage"]:
     has_adv = False
     has_dis = False
-    for declarative in _iter_declarative_spell_effects(participant):
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+
         effect_type = declarative.get("type")
         params = declarative.get("params")
         if not isinstance(params, dict) or params.get("ability") != ability:
             continue
+
+        # Check "against" constraint if present
+        against = params.get("against")
+        if against == "selected_target":
+            # Only applies if target matches the spell's selected target
+            if target_participant_id != metadata.get("selected_target_participant_id"):
+                continue
+        elif against == "effect_target":
+            # For advantage_on_checks applied to caster, effect_target is caster
+            # (this constraint doesn't filter based on target_participant_id)
+            pass
+        # "any" or None means no constraint
+
         if effect_type == "advantage_on_checks":
             has_adv = True
         elif effect_type == "disadvantage_on_checks":

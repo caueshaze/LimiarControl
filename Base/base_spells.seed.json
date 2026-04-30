@@ -1466,7 +1466,7 @@
       "materialComponentText": "a small amount of makeup applied to the face as this spell is cast",
       "concentration": false,
       "ritual": false,
-      "resolutionType": "utility",
+      "resolutionType": "buff",
       "effects": [
         {
           "type": "advantage_on_checks",
@@ -1477,7 +1477,8 @@
             "anchor": "caster"
           },
           "params": {
-            "ability": "charisma"
+            "ability": "charisma",
+            "against": "selected_target"
           },
           "stacking": "replace"
         }

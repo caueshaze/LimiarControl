@@ -317,6 +317,7 @@ class CombatSpellDeclarativeEffectsMixin:
         actor_kind: str,
         actor_ref_id: str,
         ability: AbilityName,
+        target_participant_id: str | None = None,
     ) -> str:
         state = cls.get_state(db, session_id)
         if state is None:
@@ -331,7 +332,7 @@ class CombatSpellDeclarativeEffectsMixin:
         )
         if not isinstance(participant, dict):
             return "normal"
-        return resolve_check_advantage_mode(participant, ability)
+        return resolve_check_advantage_mode(participant, ability, target_participant_id=target_participant_id)
 
     @classmethod
     def _resolve_skill_check_advantage_mode_for_actor(
@@ -342,6 +343,7 @@ class CombatSpellDeclarativeEffectsMixin:
         actor_kind: str,
         actor_ref_id: str,
         skill: SkillName,
+        target_participant_id: str | None = None,
     ) -> str:
         return cls._resolve_check_advantage_mode_for_actor(
             db,
@@ -349,4 +351,5 @@ class CombatSpellDeclarativeEffectsMixin:
             actor_kind=actor_kind,
             actor_ref_id=actor_ref_id,
             ability=SKILL_ABILITY_MAP[skill],
+            target_participant_id=target_participant_id,
         )

@@ -227,6 +227,7 @@ async def roll_ability(
         actor_kind=body.actor_kind,
         actor_ref_id=body.actor_ref_id,
         ability=body.ability,
+        target_participant_id=body.target_participant_id,
     )
     effective_advantage_mode = (
         body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
@@ -281,6 +282,7 @@ async def roll_skill(
         actor_kind=body.actor_kind,
         actor_ref_id=body.actor_ref_id,
         skill=body.skill,
+        target_participant_id=body.target_participant_id,
     )
     effective_advantage_mode = (
         body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
