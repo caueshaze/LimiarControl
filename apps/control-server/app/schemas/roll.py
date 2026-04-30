@@ -25,6 +25,7 @@ class _RollRequestBase(BaseModel):
     roll_source: RollSource = "system"
     manual_roll: int | None = Field(default=None, ge=1, le=20)
     manual_rolls: list[int] | None = None  # 2 d20 values for adv/disadv manual
+    target_participant_id: str | None = None  # For contextual checks (e.g. advantage against specific target)
 
 
 class AbilityRollRequest(_RollRequestBase):

@@ -7,6 +7,8 @@ import type {
   SpellDeclarativeModifyStat,
   SpellDeclarativeRestrictActionKind,
 } from "../../../entities/base-spell";
+import { useLocale } from "../../../shared/hooks/useLocale";
+import { localizeSpellAdminValue } from "../../../shared/i18n/domainLabels";
 import type { SpellCatalogEditorState } from "../utils/spellCatalogForm";
 
 type Props = {
@@ -72,11 +74,7 @@ const ABILITY_OPTIONS = [
   "wisdom",
   "charisma",
 ] as const;
-const AGAINST_OPTIONS = ["any", "effect_target"] as const;
-const AGAINST_LABELS: Record<"any" | "effect_target", string> = {
-  any: "Qualquer alvo",
-  effect_target: "Apenas contra o alvo do efeito",
-};
+const AGAINST_OPTIONS = ["any", "effect_target", "selected_target"] as const;
 
 const createDefaultEffect = (): SpellDeclarativeEffect => ({
   type: "apply_condition",
@@ -85,8 +83,6 @@ const createDefaultEffect = (): SpellDeclarativeEffect => ({
   params: { condition: "charmed" },
   stacking: "replace",
 });
-
-const labelize = (value: string) => value.replace(/_/g, " ");
 
 const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativeEffect["params"] => {
   switch (effectType) {
@@ -110,7 +106,9 @@ const EffectEditor = ({
   title: string;
   effects: SpellDeclarativeEffect[];
   onChange: (next: SpellDeclarativeEffect[]) => void;
-}) => (
+}) => {
+  const { locale } = useLocale();
+  return (
   <Section title={title}>
     <div className="space-y-3">
       {effects.map((effect, index) => (
@@ -118,6 +116,11 @@ const EffectEditor = ({
           key={`${title}-${index}`}
           className="space-y-3 rounded-2xl border border-white/8 bg-slate-950/50 p-4"
         >
+          {effect.target === "selected_target" && effect.type === "advantage_on_checks" && effect.params && "against" in effect.params && effect.params.against === "selected_target" && (
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
+              ⚠️ Aviso: efeito aplicado ao alvo contra ele mesmo (sem sentido semântico)
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <select
               value={effect.type}
@@ -138,7 +141,7 @@ const EffectEditor = ({
             >
               {EFFECT_TYPE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {labelize(option)}
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>
@@ -158,7 +161,7 @@ const EffectEditor = ({
             >
               {TARGET_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {labelize(option)}
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>
@@ -185,7 +188,7 @@ const EffectEditor = ({
             >
               {DURATION_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {labelize(option)}
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>
@@ -254,7 +257,7 @@ const EffectEditor = ({
               >
                 {ANCHOR_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {labelize(option)}
+                    {localizeSpellAdminValue(option, locale)}
                   </option>
                 ))}
               </select>
@@ -282,7 +285,7 @@ const EffectEditor = ({
             >
               {CONDITION_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {labelize(option)}
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>
@@ -311,7 +314,7 @@ const EffectEditor = ({
               >
                 {MODIFY_STAT_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {labelize(option)}
+                    {localizeSpellAdminValue(option, locale)}
                   </option>
                 ))}
               </select>
@@ -358,7 +361,7 @@ const EffectEditor = ({
               >
                 {ABILITY_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {labelize(option)}
+                    {localizeSpellAdminValue(option, locale)}
                   </option>
                 ))}
               </select>
@@ -369,7 +372,7 @@ const EffectEditor = ({
                   onChange(
                     effects.map((entry, entryIndex) =>
                       entryIndex === index && "ability" in entry.params
-                        ? { ...entry, params: { ...entry.params, against: event.target.value as "any" | "effect_target" } }
+                        ? { ...entry, params: { ...entry.params, against: event.target.value as "any" | "effect_target" | "selected_target" } }
                         : entry,
                     ),
                   )
@@ -378,7 +381,7 @@ const EffectEditor = ({
               >
                 {AGAINST_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {AGAINST_LABELS[option]}
+                    {localizeSpellAdminValue(option, locale)}
                   </option>
                 ))}
               </select>
@@ -406,7 +409,7 @@ const EffectEditor = ({
             >
               {RESTRICT_ACTION_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {labelize(option)}
+                  {localizeSpellAdminValue(option, locale)}
                 </option>
               ))}
             </select>
@@ -431,6 +434,7 @@ const EffectEditor = ({
     </div>
   </Section>
 );
+};
 
 export const SpellCatalogDeclarativeEffectsFields = ({
   state,

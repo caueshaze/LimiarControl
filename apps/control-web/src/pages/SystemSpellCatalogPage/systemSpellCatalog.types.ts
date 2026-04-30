@@ -6,6 +6,7 @@ import type {
   SaveSuccessOutcome,
   SpellAttackType,
   SpellDamageType,
+  SpellDeclarativeEffect,
   SpellEffectTiming,
   SpellOriginType,
   SpellRangeKind,
@@ -111,6 +112,8 @@ export type FormState = {
   sourceRef: string;
   isSrd: boolean;
   isActive: boolean;
+  effects: SpellDeclarativeEffect[];
+  onEndEffects: SpellDeclarativeEffect[];
 };
 
 export { SpellSchoolValues, SpellSourceValues, UpcastModeValues };

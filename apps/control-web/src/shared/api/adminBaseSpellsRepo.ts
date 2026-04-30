@@ -37,6 +37,13 @@ const toQueryString = (filters?: BaseSpellFilters) => {
   return queryString ? `?${queryString}` : "";
 };
 
+interface SeedSyncResult {
+  inserted: number;
+  updated: number;
+  deactivated: number;
+  total: number;
+}
+
 export const adminBaseSpellsRepo = {
   list: (filters?: BaseSpellFilters) =>
     http.get<BaseSpell[]>(`/admin/base-spells${toQueryString(filters)}`),
@@ -48,4 +55,8 @@ export const adminBaseSpellsRepo = {
     http.put<BaseSpell>(`/admin/base-spells/${baseSpellId}`, payload),
   delete: (baseSpellId: string) =>
     http.del(`/admin/base-spells/${baseSpellId}`),
+  syncSeed: () =>
+    http.post<SeedSyncResult>("/admin/base-spells/sync-seed", {}),
+  exportSeed: () =>
+    http.post<SeedSyncResult>("/admin/base-spells/export-seed", {}),
 };

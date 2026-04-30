@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
+import { SpellCatalogDeclarativeEffectsFields } from "../../features/shop/components/SpellCatalogDeclarativeEffectsFields";
 import type {
   ResolutionType,
   SaveSuccessOutcome,
@@ -329,6 +330,15 @@ export const SystemSpellCatalogResolutionFields = ({ form, setForm }: Props) => 
                 ))}
               </select>
             </label>
+          </div>
+        )}
+
+        {form.resolutionType === "buff" && (
+          <div className="border-t border-white/8 pt-4">
+            <SpellCatalogDeclarativeEffectsFields
+              state={form}
+              setState={setForm}
+            />
           </div>
         )}
       </SystemSpellCatalogFormSection>

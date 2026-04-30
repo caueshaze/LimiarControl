@@ -175,6 +175,8 @@ export const createEmptyForm = (): FormState => ({
   sourceRef: "",
   isSrd: false,
   isActive: true,
+  effects: [],
+  onEndEffects: [],
 });
 
 export const formFromSpell = (spell: BaseSpell): FormState => ({
@@ -271,6 +273,8 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   sourceRef: spell.sourceRef ?? "",
   isSrd: spell.isSrd,
   isActive: spell.isActive,
+  effects: spell.effects ?? [],
+  onEndEffects: spell.onEndEffects ?? [],
 });
 
 export const buildPayload = (
@@ -505,6 +509,8 @@ export const buildPayload = (
               ].filter((entry): entry is { characterLevel: number; damage: { dice: string } } => Boolean(entry.damage.dice)),
             }
           : null,
+      effects: form.effects.length > 0 ? form.effects : null,
+      onEndEffects: form.onEndEffects.length > 0 ? form.onEndEffects : null,
       source: form.source,
       sourceRef: normalizeOptionalText(form.sourceRef) ?? null,
       isSrd: form.isSrd,
