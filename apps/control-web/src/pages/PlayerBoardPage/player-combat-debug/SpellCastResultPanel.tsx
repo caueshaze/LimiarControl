@@ -117,6 +117,22 @@ export const SpellCastResultPanel = ({
             Afinidade Elemental elegível: {result.elemental_affinity_damage_type ?? "tipo"}{typeof result.elemental_affinity_bonus === "number" ? ` · bonus potencial +${result.elemental_affinity_bonus}` : ""}
           </p>
         ) : null}
+        {result.manual_notes_by_target?.length ? (
+          <div className="mt-3 space-y-2 text-xs text-amber-100">
+            {result.manual_notes_by_target.map((entry) => (
+              <div key={`${entry.target_participant_id ?? entry.target_ref_id ?? entry.target_display_name}:${entry.variant_key}`}>
+                <p>
+                  {entry.target_display_name}: {entry.variant_label ?? entry.variant_key}
+                </p>
+                {entry.manual_notes.map((note) => (
+                  <p key={note.key}>
+                    {note.label} - {note.description}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {!pendingEffect && result.concentration_check?.summary_text ? (
           <p className="mt-2 text-xs text-amber-100">{result.concentration_check.summary_text}</p>
         ) : null}

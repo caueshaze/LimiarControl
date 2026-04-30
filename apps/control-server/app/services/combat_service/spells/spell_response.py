@@ -207,6 +207,11 @@ class SpellResponseMixin:
         return {
             "spell_name": spell_context["spell_name"],
             "spell_canonical_key": spell_context["spell_canonical_key"],
+            "selected_variant_key": (
+                automation_result.get("selected_variant_key")
+                if automation_result is not None
+                else spell_context.get("selected_variant_key")
+            ),
             "action_kind": spell_mode,
             "effect_kind": effect_kind,
             "damage": result.damage,
@@ -253,4 +258,14 @@ class SpellResponseMixin:
             "effect_instance_dice": spell_context.get("effect_instance_dice"),
             "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
             "effect_instance_outcomes": [],
+            "target_variant_assignments": (
+                automation_result.get("target_variant_assignments")
+                if automation_result is not None
+                else spell_context.get("target_variant_assignments")
+            ),
+            "manual_notes_by_target": (
+                automation_result.get("manual_notes_by_target")
+                if automation_result is not None
+                else spell_context.get("manual_notes_by_target")
+            ),
         }

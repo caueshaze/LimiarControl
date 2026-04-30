@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.schemas.base_spell import SpellVariant, SpellVariantSummary
 from app.services.draconic_ancestry import resolve_elemental_affinity
 from app.services.magic_item_effects import get_magic_item_spell_key
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
@@ -9,6 +10,56 @@ from ..targeting_requirements import resolve_spell_targeting_requirements
 
 
 class SpellContextResolveMixin:
+    @classmethod
+    def _normalize_spell_variants(cls, raw_variants: object) -> list[SpellVariant]:
+        if not isinstance(raw_variants, list):
+            return []
+        normalized: list[SpellVariant] = []
+        for entry in raw_variants:
+            if not isinstance(entry, dict):
+                continue
+            normalized.append(SpellVariant.model_validate(entry))
+        return normalized
+
+    @classmethod
+    def _build_spell_variant_summaries(cls, raw_variants: object) -> list[dict] | None:
+        variants = cls._normalize_spell_variants(raw_variants)
+        if not variants:
+            return None
+        summaries: list[dict] = []
+        for variant in variants:
+            label = variant.labelPt or variant.labelEn or variant.key
+            description = variant.descriptionPt or variant.descriptionEn
+            summaries.append(
+                SpellVariantSummary(
+                    key=variant.key,
+                    label=label,
+                    description=description,
+                    manualNotes=variant.manualNotes,
+                ).model_dump(mode="json")
+            )
+        return summaries
+
+    @classmethod
+    def _validate_selected_variant_key(
+        cls,
+        *,
+        catalog_spell,
+        variant_key: str | None,
+    ) -> str | None:
+        if not isinstance(variant_key, str) or not variant_key.strip():
+            return None
+        normalized_key = variant_key.strip()
+        variants = cls._normalize_spell_variants(getattr(catalog_spell, "variants_json", None))
+        if not variants:
+            raise CombatServiceError("This spell does not define variants.", 400)
+        if not any(variant.key == normalized_key for variant in variants):
+            raise CombatServiceError(
+                f"Unknown spell variant '{normalized_key}' for this spell.",
+                400,
+            )
+        return normalized_key
+
     @classmethod
     def _resolve_spell_source_context(cls, db, session_id: str, attacker: dict, req, attacker_data: dict) -> dict:
         inventory_item = None
@@ -88,6 +139,10 @@ class SpellContextResolveMixin:
             "player_spell": player_spell,
             "spell_level": spell_level,
             "spell_name": spell_name,
+            "selected_variant_key": cls._validate_selected_variant_key(
+                catalog_spell=catalog_spell,
+                variant_key=getattr(req, "variant_key", None),
+            ),
         }
 
     @classmethod
@@ -370,6 +425,16 @@ class SpellContextResolveMixin:
             "save_success_outcome": resolved_math["save_success_outcome"],
             "effects": getattr(catalog_spell, "effects_json", None),
             "on_end_effects": getattr(catalog_spell, "on_end_effects_json", None),
+            "variant_definitions": getattr(catalog_spell, "variants_json", None),
+            "variants": cls._build_spell_variant_summaries(
+                getattr(catalog_spell, "variants_json", None)
+            ),
+            "selected_variant_key": source_context.get("selected_variant_key"),
+            "target_variant_assignments": [
+                assignment.model_dump(mode="json")
+                for assignment in (getattr(source_context.get("request"), "target_variant_assignments", None) or [])
+            ]
+            or None,
             "persistent_area": getattr(catalog_spell, "persistent_area_json", None),
             "cover_applies_to_save": getattr(catalog_spell, "cover_applies_to_save", None),
             "attack_bonus": resolved_math["attack_bonus"],
@@ -409,10 +474,12 @@ class SpellContextResolveMixin:
         source_context = cls._resolve_spell_source_context(
             db, session_id, attacker, req, attacker_data
         )
+        source_context["request"] = req
         catalog_context = cls._resolve_catalog_spell_context(
             db, session_id, req, attacker_data, source_context
         )
         source_context["spell_name"] = catalog_context["spell_name"]
+        source_context["selected_variant_key"] = catalog_context["selected_variant_key"]
         _, _, _, _, prof_bonus, spell_mod = cls._get_stats(
             db, attacker["ref_id"], attacker["kind"], session_id
         )

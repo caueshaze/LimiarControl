@@ -10,6 +10,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.session import Session as CampaignSession
 from app.models.session_command_event import SessionCommandEvent
+from app.schemas.base_spell import SpellVariant
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
@@ -239,6 +240,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "spell_name": spell_context["spell_name"],
             "spell_level": cls._safe_int(spell_context.get("spell_level"), 0),
             "slot_level": spell_context.get("slot_level"),
+            "max_targets": spell_context.get("max_targets"),
+            "base_max_targets": spell_context.get("base_max_targets"),
             "target_type": spell_context.get("target_type"),
             "selection_type": spell_context.get("selection_type"),
             "area_shape": spell_context.get("area_shape"),
@@ -263,6 +266,9 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             ),
             "upcast_instance_effect_dice": spell_context.get("upcast_instance_effect_dice"),
             "cover_applies_to_save": spell_context.get("cover_applies_to_save"),
+            "variants": spell_context.get("variants"),
+            "selected_variant_key": spell_context.get("selected_variant_key"),
+            "target_variant_assignments": spell_context.get("target_variant_assignments"),
         }
 
     @classmethod
@@ -286,6 +292,203 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             db, session_id, attacker, attacker_model, req,
         )
         return cls._build_resolved_spell_context_response(req, spell_context)
+
+    @classmethod
+    def _get_spell_variants_map(cls, spell_context: dict) -> dict[str, SpellVariant]:
+        variants = cls._normalize_spell_variants(spell_context.get("variant_definitions"))
+        return {variant.key: variant for variant in variants}
+
+    @classmethod
+    def _participant_display_name(cls, participant: dict | None) -> str:
+        if isinstance(participant, dict):
+            return participant.get("display_name") or participant.get("ref_id") or "Target"
+        return "Target"
+
+    @classmethod
+    def _build_variant_summary_for_target(
+        cls,
+        *,
+        participant: dict,
+        variant: SpellVariant,
+    ) -> dict:
+        return {
+            "target_ref_id": participant.get("ref_id"),
+            "target_participant_id": participant.get("id"),
+            "target_display_name": cls._participant_display_name(participant),
+            "variant_key": variant.key,
+            "variant_label": variant.labelPt or variant.labelEn or variant.key,
+            "manual_notes": [
+                note.model_dump(mode="json") for note in (variant.manualNotes or [])
+            ],
+        }
+
+    @classmethod
+    def _merge_spell_context_with_variant(
+        cls,
+        *,
+        spell_context: dict,
+        variant: SpellVariant,
+        participant: dict | None = None,
+        target_variant_assignments: list[dict] | None = None,
+    ) -> dict:
+        merged = dict(spell_context)
+        base_effects = list(spell_context.get("effects") or [])
+        base_on_end_effects = list(spell_context.get("on_end_effects") or [])
+        merged["effects"] = base_effects + [
+            effect.model_dump(mode="json") for effect in (variant.effects or [])
+        ]
+        merged["on_end_effects"] = base_on_end_effects + [
+            effect.model_dump(mode="json") for effect in (variant.onEndEffects or [])
+        ]
+        merged["selected_variant_key"] = variant.key
+        merged["selected_variant_label"] = variant.labelPt or variant.labelEn or variant.key
+        merged["manual_notes_by_target"] = (
+            [cls._build_variant_summary_for_target(participant=participant, variant=variant)]
+            if isinstance(participant, dict) and variant.manualNotes
+            else []
+        )
+        merged["target_variant_assignments"] = target_variant_assignments
+        return merged
+
+    @classmethod
+    def _validate_modal_target_variant_assignments(
+        cls,
+        *,
+        req,
+        spell_context: dict,
+        state,
+    ) -> list[dict] | None:
+        variant_map = cls._get_spell_variants_map(spell_context)
+        raw_assignments = list(getattr(req, "target_variant_assignments", None) or [])
+        variant_key = getattr(req, "variant_key", None)
+
+        if not variant_map:
+            if raw_assignments or variant_key:
+                raise CombatServiceError("This spell does not define variants.", 400)
+            return None
+
+        max_targets = cls._safe_int(spell_context.get("max_targets"), 1)
+        if raw_assignments:
+            if variant_key:
+                raise CombatServiceError(
+                    "variant_key cannot be combined with target_variant_assignments.",
+                    400,
+                )
+            if len(raw_assignments) < 2:
+                raise CombatServiceError(
+                    "Single-target modal casts must use variant_key.",
+                    400,
+                )
+            if max_targets > 0 and len(raw_assignments) > max_targets:
+                raise CombatServiceError(
+                    f"This spell can affect at most {max_targets} targets at this cast level.",
+                    400,
+                )
+            seen_target_ids: set[str] = set()
+            validated: list[dict] = []
+            for assignment in raw_assignments:
+                target_participant_id = assignment.target_participant_id
+                if target_participant_id in seen_target_ids:
+                    raise CombatServiceError(
+                        f"Duplicate target variant assignment for participant {target_participant_id}.",
+                        400,
+                    )
+                participant = cls._find_participant_by_id(state, target_participant_id)
+                if participant is None:
+                    raise CombatServiceError(
+                        f"Unknown target participant '{target_participant_id}'.",
+                        400,
+                    )
+                variant = variant_map.get(assignment.variant_key)
+                if variant is None:
+                    raise CombatServiceError(
+                        f"Unknown spell variant '{assignment.variant_key}' for this spell.",
+                        400,
+                    )
+                seen_target_ids.add(target_participant_id)
+                validated.append(
+                    {
+                        "target_participant_id": target_participant_id,
+                        "target_ref_id": participant.get("ref_id"),
+                        "participant": participant,
+                        "variant": variant,
+                        "variant_key": variant.key,
+                        "variant_label": variant.labelPt or variant.labelEn or variant.key,
+                    }
+                )
+            return validated
+
+        if not isinstance(variant_key, str) or not variant_key.strip():
+            raise CombatServiceError(
+                "This spell requires choosing a variant before casting.",
+                400,
+            )
+        variant = variant_map.get(variant_key.strip())
+        if variant is None:
+            raise CombatServiceError(
+                f"Unknown spell variant '{variant_key}' for this spell.",
+                400,
+            )
+        return None
+
+    @classmethod
+    def _validate_modal_variant_spatial_targets(
+        cls,
+        *,
+        db,
+        state,
+        attacker: dict,
+        spell_context: dict,
+        assignments: list[dict],
+        session_id: str,
+    ) -> dict[str, TargetingResult]:
+        targeting_service = get_combat_targeting_service(state.use_map)
+        results_by_participant_id: dict[str, TargetingResult] = {}
+
+        for assignment in assignments:
+            participant = assignment["participant"]
+            target_ref_id = assignment["target_ref_id"]
+            intent = SpellCastIntent(
+                session_id=session_id,
+                action_id=f"targeting-variant:{participant.get('id')}",
+                actor_ref_id=attacker["ref_id"],
+                actor_kind=attacker["kind"],
+                requested_target_ref_id=target_ref_id,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                spell_mode=spell_context["spell_mode"],
+                target_type=spell_context.get("target_type"),
+                selection_type=spell_context.get("selection_type"),
+                attack_type=spell_context.get("attack_type"),
+                range_kind=spell_context.get("range_kind"),
+                area_shape=spell_context.get("area_shape"),
+                range_meters=spell_context.get("range_meters"),
+                requires_sight=bool(spell_context.get("requires_target_sight")),
+                requires_effect=bool(spell_context.get("requires_target_effect")),
+            )
+            result = targeting_service.validate(intent, state)
+            if not result.is_valid:
+                diag = result.diagnostics
+                reason = cls._map_spell_rejection_reason(
+                    diag.primary_failure() if diag else None
+                )
+                cls._record_spell_cast_rejected_activity(
+                    db,
+                    session_id=session_id,
+                    actor_user_id=attacker.get("actor_user_id"),
+                    actor_ref_id=attacker["ref_id"],
+                    actor_display_name=attacker.get("display_name") or attacker["ref_id"],
+                    spell_context=spell_context,
+                    reason=reason,
+                    target_ref_id=target_ref_id,
+                    target_display_name=cls._participant_display_name(participant),
+                )
+                raise CombatServiceError(
+                    f"Target {cls._participant_display_name(participant)} { _resolve_instance_spatial_error_phrase(result) }.",
+                    400,
+                )
+            results_by_participant_id[participant["id"]] = result
+
+        return results_by_participant_id
 
     @classmethod
     def _validate_instance_targets(cls, *, req, spell_context, state):
@@ -725,6 +928,339 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         }
 
     @classmethod
+    async def _resolve_modal_multi_target_cast(
+        cls,
+        db,
+        session_id,
+        req,
+        state,
+        attacker,
+        attacker_model,
+        spell_context,
+        actor_user_id,
+        is_gm,
+        validated_assignments,
+        *,
+        spatial_results_by_participant_id: dict[str, TargetingResult] | None = None,
+    ):
+        slot_spent = False
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            remaining_charges = get_inventory_item_charges_current(inventory_item, source_item)
+            if isinstance(remaining_charges, int) and remaining_charges <= 0:
+                raise CombatServiceError("This item has no charges remaining.", 400)
+
+        action_cost = spell_context.get("action_cost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+
+        if spell_context.get("source_kind") == "magic_item":
+            inventory_item = spell_context.get("inventory_item")
+            source_item = spell_context.get("source_item")
+            if not isinstance(inventory_item, InventoryItem):
+                raise CombatServiceError("Magic item inventory entry is missing.", 400)
+            try:
+                consume_inventory_item_charge(inventory_item, source_item)
+            except ValueError as exc:
+                raise CombatServiceError(str(exc), 400) from exc
+            db.add(inventory_item)
+        elif isinstance(spell_context.get("slot_level"), int):
+            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
+            db.add(attacker_model)
+            slot_spent = True
+
+        shared_effect_group_id = str(uuid4()) if spell_context.get("concentration") else None
+        outcomes: list[dict] = []
+        target_variant_assignments: list[dict] = []
+        manual_notes_by_target: list[dict] = []
+        player_state_ids_to_emit = set()
+        entity_previous_hp_map: dict[str, int] = {}
+        total_damage = 0
+        total_healing = 0
+        spell_mode = spell_context["spell_mode"]
+
+        is_hostile_spell = spell_mode in ("spell_attack", "saving_throw", "direct_damage")
+        for assignment in validated_assignments:
+            if is_hostile_spell:
+                cls._assert_hostile_action_allowed(
+                    attacker,
+                    assignment["participant"],
+                    action_label="a hostile spell",
+                )
+            cls._validate_spell_automation_target(
+                db,
+                session_id,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                target_participant=assignment["participant"],
+            )
+
+        for assignment in validated_assignments:
+            participant = assignment["participant"]
+            variant = assignment["variant"]
+            target_variant_assignments.append(
+                {
+                    "target_ref_id": participant.get("ref_id"),
+                    "target_participant_id": participant.get("id"),
+                    "variant_key": assignment["variant_key"],
+                    "variant_label": assignment["variant_label"],
+                }
+            )
+            if variant.manualNotes:
+                manual_notes_by_target.append(
+                    cls._build_variant_summary_for_target(
+                        participant=participant,
+                        variant=variant,
+                    )
+                )
+
+            per_target_context = cls._merge_spell_context_with_variant(
+                spell_context=spell_context,
+                variant=variant,
+                participant=participant,
+                target_variant_assignments=target_variant_assignments,
+            )
+            automation_result = await cls._cast_spell_via_automation(
+                db,
+                session_id,
+                attacker=attacker,
+                attacker_model=attacker_model,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                req=req,
+                state=state,
+                spell_context=per_target_context,
+                target_participant=participant,
+            )
+            if automation_result is None:
+                automation_result = await cls._cast_spell_via_declarative_effects(
+                    db,
+                    session_id,
+                    attacker=attacker,
+                    attacker_model=attacker_model,
+                    actor_user_id=actor_user_id,
+                    is_gm=is_gm,
+                    req=req,
+                    state=state,
+                    spell_context=per_target_context,
+                    target_participant=participant,
+                    effect_group_id=shared_effect_group_id,
+                )
+
+            if automation_result is not None:
+                if automation_result.get("pending_spell_id") or automation_result.get("pending_save_id"):
+                    raise CombatServiceError(
+                        "Multi-target modal spells do not support pending follow-up resolution yet.",
+                        400,
+                    )
+                outcome = {
+                    "target_ref_id": participant.get("ref_id"),
+                    "target_display_name": cls._participant_display_name(participant),
+                    "target_kind": participant.get("kind", "session_entity"),
+                    "damage": automation_result.get("damage", 0) or 0,
+                    "healing": automation_result.get("healing", 0) or 0,
+                    "is_hit": automation_result.get("is_hit"),
+                    "is_saved": automation_result.get("is_saved"),
+                    "is_critical": automation_result.get("is_critical", False),
+                    "roll": automation_result.get("roll"),
+                    "roll_result": automation_result.get("roll_result"),
+                    "new_hp": automation_result.get("new_hp"),
+                    "variant_key": assignment["variant_key"],
+                    "variant_label": assignment["variant_label"],
+                    "summary_text": automation_result.get("summary_text"),
+                }
+                player_state_ids_to_emit.update(
+                    automation_result.get("__player_state_ids_to_emit") or set()
+                )
+            elif spell_mode == "spell_attack":
+                outcome = cls._resolve_instance_attack(
+                    db,
+                    session_id,
+                    state,
+                    attacker,
+                    participant,
+                    per_target_context,
+                    req,
+                    is_gm,
+                    targeting_result=(spatial_results_by_participant_id or {}).get(participant["id"]),
+                )
+                outcome["variant_key"] = assignment["variant_key"]
+                outcome["variant_label"] = assignment["variant_label"]
+                if outcome.get("roll_result") and (
+                    outcome.get("roll_result").pending_spell_id
+                    or outcome.get("roll_result").pending_save_id
+                ):
+                    raise CombatServiceError(
+                        "Multi-target modal spells do not support pending follow-up resolution yet.",
+                        400,
+                    )
+            elif spell_mode == "saving_throw":
+                resolution = cls._resolve_saving_throw_spell(
+                    db,
+                    session_id,
+                    state=state,
+                    attacker=attacker,
+                    target_p=participant,
+                    spell_context=per_target_context,
+                    req=req,
+                    is_gm=is_gm,
+                    spell_mode=spell_mode,
+                    effect_kind=per_target_context.get("effect_kind"),
+                    effect_bonus=cls._safe_int(per_target_context.get("effect_bonus"), 0),
+                    effect_roll_required=per_target_context["effect_dice"] is not None,
+                    save_success_outcome=per_target_context.get("save_success_outcome"),
+                    targeting_result=(spatial_results_by_participant_id or {}).get(participant["id"]),
+                )
+                if resolution.pending_spell_id or resolution.pending_save_id:
+                    raise CombatServiceError(
+                        "Multi-target modal spells do not support pending follow-up resolution yet.",
+                        400,
+                    )
+                outcome = {
+                    "target_ref_id": participant.get("ref_id"),
+                    "target_display_name": cls._participant_display_name(participant),
+                    "target_kind": participant.get("kind", "session_entity"),
+                    "damage": resolution.damage,
+                    "healing": resolution.healing,
+                    "is_hit": None,
+                    "is_saved": resolution.is_saved,
+                    "is_critical": False,
+                    "roll": resolution.roll_total,
+                    "roll_result": resolution.roll_result,
+                    "new_hp": resolution.new_hp,
+                    "variant_key": assignment["variant_key"],
+                    "variant_label": assignment["variant_label"],
+                }
+            else:
+                outcome = cls._resolve_direct_effect_spell(
+                    db,
+                    state,
+                    attacker=attacker,
+                    target_p=participant,
+                    spell_context=per_target_context,
+                    req=req,
+                    spell_mode=spell_mode,
+                    effect_kind=per_target_context.get("effect_kind"),
+                    effect_bonus=cls._safe_int(per_target_context.get("effect_bonus"), 0),
+                    effect_roll_required=per_target_context["effect_dice"] is not None,
+                ).__dict__
+                if outcome.get("pending_spell_id") or outcome.get("pending_save_id"):
+                    raise CombatServiceError(
+                        "Multi-target modal spells do not support pending follow-up resolution yet.",
+                        400,
+                    )
+                outcome["target_ref_id"] = participant.get("ref_id")
+                outcome["target_display_name"] = cls._participant_display_name(participant)
+                outcome["target_kind"] = participant.get("kind", "session_entity")
+                outcome["variant_key"] = assignment["variant_key"]
+                outcome["variant_label"] = assignment["variant_label"]
+
+            outcomes.append(outcome)
+            total_damage += outcome.get("damage", 0) or 0
+            total_healing += outcome.get("healing", 0) or 0
+            previous_hp = outcome.get("previous_hp")
+            if previous_hp is not None and participant.get("ref_id") not in entity_previous_hp_map:
+                entity_previous_hp_map[participant.get("ref_id")] = previous_hp
+            if participant.get("kind") == "player" and (
+                (outcome.get("damage", 0) or 0) > 0 or (outcome.get("healing", 0) or 0) > 0
+            ):
+                player_state_ids_to_emit.add(participant.get("ref_id"))
+
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        if slot_spent:
+            player_state_ids_to_emit.add(attacker["ref_id"])
+
+        for player_ref_id in player_state_ids_to_emit:
+            target_state, *_ = cls._get_stats(db, player_ref_id, "player", session_id)
+            await cls._emit_player_state_update(db, session_id, player_ref_id, target_state)
+
+        for ref_id, prev_hp in entity_previous_hp_map.items():
+            target_p_entity = next(
+                (p for p in state.participants if p["ref_id"] == ref_id), None,
+            )
+            if target_p_entity and target_p_entity.get("kind") == "session_entity":
+                await cls._emit_entity_hp_update(db, session_id, ref_id, prev_hp)
+
+        await cls._emit_state(session_id, state)
+
+        target_count = len(validated_assignments)
+        target_names = ", ".join(
+            cls._participant_display_name(assignment["participant"])
+            for assignment in validated_assignments
+        )
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_context['spell_name']} em {target_count} alvo"
+            f"{'s' if target_count != 1 else ''}: {target_names}."
+        )
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+        await cls._emit_log(session_id, {
+            "message": log_message,
+            "actorUserId": actor_user_id,
+            "source": "gm_override" if is_gm else "player_turn",
+            "is_override": was_overridden,
+            "overridden_resource": action_cost if was_overridden else None,
+        })
+
+        return {
+            "spell_name": spell_context["spell_name"],
+            "spell_canonical_key": spell_context["spell_canonical_key"],
+            "selected_variant_key": None,
+            "action_kind": spell_mode,
+            "effect_kind": spell_context.get("effect_kind"),
+            "damage": total_damage,
+            "healing": total_healing,
+            "damage_type": spell_context.get("damage_type"),
+            "is_critical": None,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": f"{target_count} alvos",
+            "target_kind": "session_entity",
+            "save_ability": spell_context.get("save_ability"),
+            "save_dc": spell_context.get("save_dc"),
+            "save_success_outcome": spell_context.get("save_success_outcome"),
+            "effect_dice": spell_context.get("effect_dice"),
+            "effect_bonus": cls._safe_int(spell_context.get("effect_bonus"), 0),
+            "pending_spell_id": None,
+            "pending_save_id": None,
+            "effect_roll_required": False,
+            "base_effect": None,
+            "action_cost": action_cost,
+            "summary_text": f"{spell_context['spell_name']} aplicou efeitos em {target_count} alvos.",
+            "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "concentration_check": None,
+            "concentration_checks": [],
+            "area_shape": None,
+            "affected_target_ref_ids": [],
+            "affected_cells": [],
+            "area_target_outcomes": [],
+            "target_count": target_count,
+            "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+            "effect_instance_count": spell_context.get("effect_instance_count"),
+            "effect_instance_dice": spell_context.get("effect_instance_dice"),
+            "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
+            "effect_instance_outcomes": [],
+            "target_variant_assignments": target_variant_assignments,
+            "manual_notes_by_target": manual_notes_by_target,
+        }
+
+    @classmethod
     async def _resolve_cast_resolution(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm,
@@ -1145,6 +1681,66 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         spell_context = cls._resolve_player_spell_context(
             db, session_id, attacker, attacker_model, req,
         )
+        validated_variant_assignments = cls._validate_modal_target_variant_assignments(
+            req=req,
+            spell_context=spell_context,
+            state=state,
+        )
+        if validated_variant_assignments:
+            spatial_results_by_participant_id = cls._validate_modal_variant_spatial_targets(
+                db=db,
+                state=state,
+                attacker=attacker,
+                spell_context=spell_context,
+                assignments=validated_variant_assignments,
+                session_id=session_id,
+            )
+            return await cls._resolve_modal_multi_target_cast(
+                db,
+                session_id,
+                req,
+                state,
+                attacker,
+                attacker_model,
+                spell_context,
+                actor_user_id,
+                is_gm,
+                validated_variant_assignments,
+                spatial_results_by_participant_id=spatial_results_by_participant_id,
+            )
+        variant_map = cls._get_spell_variants_map(spell_context)
+        if variant_map:
+            selected_variant_key = spell_context.get("selected_variant_key")
+            selected_variant = variant_map.get(selected_variant_key)
+            if selected_variant is None:
+                raise CombatServiceError(
+                    "This spell requires choosing a variant before casting.",
+                    400,
+                )
+            selected_participant = next(
+                (
+                    participant
+                    for participant in state.participants
+                    if participant.get("ref_id") == getattr(req, "target_ref_id", None)
+                ),
+                attacker if spell_context.get("selection_type") in ("self", "none") else None,
+            )
+            single_target_assignment = (
+                [
+                    {
+                        "target_participant_id": selected_participant.get("id"),
+                        "variant_key": selected_variant.key,
+                    }
+                ]
+                if isinstance(selected_participant, dict)
+                else None
+            )
+            spell_context = cls._merge_spell_context_with_variant(
+                spell_context=spell_context,
+                variant=selected_variant,
+                participant=selected_participant,
+                target_variant_assignments=single_target_assignment,
+            )
         validated_targets = cls._validate_instance_targets(
             req=req, spell_context=spell_context, state=state,
         )

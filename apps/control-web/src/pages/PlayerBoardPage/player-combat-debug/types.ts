@@ -1,4 +1,4 @@
-import type { SpellCantripScaling, SpellUpcast } from "../../../entities/base-spell";
+import type { SpellCantripScaling, SpellUpcast, SpellVariant } from "../../../entities/base-spell";
 import type {
   SpellAttackType,
   SpellEffectTiming,
@@ -63,4 +63,5 @@ export type CombatSpellOption = {
   characterLevel?: number | null;
   chargesCurrent?: number | null;
   chargesMax?: number | null;
+  variants?: SpellVariant[] | null;
 };

@@ -122,6 +122,7 @@ def _catalog_spell(**overrides):
         "concentration": False,
         "cover_applies_to_save": None,
         "max_targets": 3,
+        "variants_json": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -303,6 +304,71 @@ class ResolveSpellContextTests(unittest.TestCase):
         self.assertEqual(result["range_meters"], 45)
         self.assertEqual(result["save_ability"], "dexterity")
         self.assertEqual(result["damage_type"], "fire")
+
+    def test_resolves_modal_spell_variants(self):
+        self.attacker_state.state_json["spellcasting"]["spells"].append(
+            {
+                "name": "Enhance Ability",
+                "canonicalKey": "enhance_ability",
+                "level": 2,
+                "prepared": True,
+            }
+        )
+
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="enhance_ability",
+                spell_mode="utility",
+                slot_level=3,
+                variant_key="owls_wisdom",
+            ),
+            _catalog_spell(
+                canonical_key="enhance_ability",
+                name_en="Enhance Ability",
+                name_pt="Aprimorar Habilidade",
+                level=2,
+                resolution_type="buff",
+                damage_dice=None,
+                damage_type=None,
+                target_type="touch",
+                selection_type="creature",
+                range_kind="touch",
+                max_targets=2,
+                variants_json=[
+                    {
+                        "key": "owls_wisdom",
+                        "labelPt": "Sabedoria da Coruja",
+                        "descriptionPt": "Vantagem em testes de Sabedoria.",
+                        "effects": [
+                            {
+                                "type": "advantage_on_checks",
+                                "target": "selected_target",
+                                "params": {"ability": "wisdom"},
+                                "stacking": "replace",
+                            }
+                        ],
+                        "manualNotes": [
+                            {
+                                "key": "passive_perception_bonus",
+                                "label": "Percepção passiva",
+                                "description": "Aplique +5 manualmente.",
+                            }
+                        ],
+                    }
+                ],
+                upcast_json={"mode": "additional_targets", "perLevel": 1},
+            ),
+        )
+
+        self.assertEqual(result["selected_variant_key"], "owls_wisdom")
+        self.assertEqual(result["max_targets"], 2)
+        self.assertIsNotNone(result["variants"])
+        self.assertEqual(result["variants"][0]["key"], "owls_wisdom")
+        self.assertEqual(
+            result["variants"][0]["manualNotes"][0]["key"],
+            "passive_perception_bonus",
+        )
 
     def test_resolve_spell_context_does_not_alter_combat_state(self):
         self.state.participants[0]["pending_attack"] = {"id": "pending-1"}

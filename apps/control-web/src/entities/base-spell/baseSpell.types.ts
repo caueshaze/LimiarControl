@@ -379,6 +379,23 @@ export type SpellPersistentAreaEffect =
       params?: Record<string, never> | null;
     };
 
+export type SpellVariantManualNote = {
+  key: string;
+  label: string;
+  description: string;
+};
+
+export type SpellVariant = {
+  key: string;
+  labelEn?: string | null;
+  labelPt: string;
+  descriptionEn?: string | null;
+  descriptionPt?: string | null;
+  effects?: SpellDeclarativeEffect[] | null;
+  onEndEffects?: SpellDeclarativeEffect[] | null;
+  manualNotes?: SpellVariantManualNote[] | null;
+};
+
 export type BaseSpellAlias = {
   id: string;
   alias: string;
@@ -436,6 +453,7 @@ export type BaseSpell = {
   healDice?: string | null;
   effects?: SpellDeclarativeEffect[] | null;
   onEndEffects?: SpellDeclarativeEffect[] | null;
+  variants?: SpellVariant[] | null;
   persistentArea?: SpellPersistentAreaEffect | null;
 
   // Targeting requirements
@@ -513,6 +531,7 @@ export type BaseSpellWritePayload = {
   healDice?: string | null;
   effects?: SpellDeclarativeEffect[] | null;
   onEndEffects?: SpellDeclarativeEffect[] | null;
+  variants?: SpellVariant[] | null;
   persistentArea?: SpellPersistentAreaEffect | null;
   requiresTargetSight?: boolean | null;
   requiresTargetEffect?: boolean | null;

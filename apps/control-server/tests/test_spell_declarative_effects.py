@@ -58,6 +58,54 @@ class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
                 ],
             )
 
+    def test_accepts_spell_variants(self):
+        spell = BaseSpellCreate(
+            canonicalKey="enhance_ability",
+            nameEn="Enhance Ability",
+            descriptionEn="Choose one ability enhancement.",
+            level=2,
+            school="transmutation",
+            resolutionType="buff",
+            variants=[
+                {
+                    "key": "bears_endurance",
+                    "labelPt": "Resistência do Urso",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "target": "selected_target",
+                            "params": {"ability": "constitution"},
+                            "stacking": "replace",
+                        }
+                    ],
+                    "manualNotes": [
+                        {
+                            "key": "grant_temp_hp",
+                            "label": "PV temporários",
+                            "description": "Conceda 2d6 PV temporários manualmente.",
+                        }
+                    ],
+                }
+            ],
+        )
+        self.assertEqual(spell.variants[0].key, "bears_endurance")
+        self.assertEqual(spell.variants[0].manualNotes[0].key, "grant_temp_hp")
+
+    def test_rejects_duplicate_variant_keys(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="enhance_ability",
+                nameEn="Enhance Ability",
+                descriptionEn="Choose one ability enhancement.",
+                level=2,
+                school="transmutation",
+                resolutionType="buff",
+                variants=[
+                    {"key": "fox", "labelPt": "Raposa"},
+                    {"key": "fox", "labelPt": "Outra Raposa"},
+                ],
+            )
+
     def test_accepts_persistent_area_payload(self):
         spell = BaseSpellCreate(
             canonicalKey="fog_cloud",
@@ -217,3 +265,53 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
             )
 
         self.assertEqual(mode, "advantage")
+
+    def test_shared_declarative_effect_group_can_be_reused_across_targets(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        first_target = state.participants[1]
+        second_target = {
+            "id": "target-2",
+            "ref_id": "entity-2",
+            "kind": "session_entity",
+            "display_name": "Target B",
+            "active_effects": [],
+            "status": "active",
+        }
+        state.participants.append(second_target)
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "params": {"ability": "wisdom"},
+                    "stacking": "replace",
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=first_target,
+            spell_context=spell_context,
+            effect_group_id="shared-group",
+        )
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=second_target,
+            spell_context=spell_context,
+            effect_group_id="shared-group",
+        )
+
+        first_metadata = first_target["active_effects"][0]["metadata"]
+        second_metadata = second_target["active_effects"][0]["metadata"]
+        self.assertEqual(first_metadata["declarative_effect_group_id"], "shared-group")
+        self.assertEqual(second_metadata["declarative_effect_group_id"], "shared-group")
+        self.assertEqual(first_metadata["concentration_group"], "shared-group")
+        self.assertEqual(second_metadata["concentration_group"], "shared-group")

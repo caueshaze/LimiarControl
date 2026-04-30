@@ -56,6 +56,12 @@ vi.mock("./useResolvedSpellContext", () => ({
   useResolvedSpellContext: () => resolvedSpellContextState,
 }));
 
+vi.mock("../../../shared/hooks/useLocale", () => ({
+  useLocale: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 vi.mock("./SpellCastDialogHeader", () => ({
   SpellCastDialogHeader: () => <div>header</div>,
 }));
@@ -473,6 +479,81 @@ describe("PlayerSpellCastDialog", () => {
     });
 
     expect(payload.effect_instance_targets).toBeNull();
+  });
+
+  it("submit single-target modal inclui variant_key", () => {
+    const payload = buildNonAreaSpellCastPayload({
+      actorParticipantId: actor.id,
+      concentrationManualRoll: null,
+      concentrationRollMode: "system",
+      effectInstanceTargets: [],
+      isMultiInstanceSpell: false,
+      parsedBonus: 0,
+      selectedSlotLevel: 2,
+      selectedVariantKey: "owls_wisdom",
+      spell: {
+        id: "spell-4",
+        name: "Enhance Ability",
+        canonicalKey: "enhance_ability",
+        campaignSpellId: null,
+        level: 2,
+        prepared: true,
+        actionCost: "action",
+        suggestedMode: "utility",
+        damageType: null,
+        savingThrow: null,
+        availableSlotLevels: [2, 3],
+      },
+      spellDamageType: "",
+      spellEffectDice: "",
+      spellMode: "utility",
+      spellSaveAbility: "",
+      targetRefId: "session_entity:goblin-a",
+    });
+
+    expect(payload.variant_key).toBe("owls_wisdom");
+    expect(payload.target_variant_assignments).toBeNull();
+  });
+
+  it("submit multi-target modal inclui target_variant_assignments", () => {
+    const payload = buildNonAreaSpellCastPayload({
+      actorParticipantId: actor.id,
+      concentrationManualRoll: null,
+      concentrationRollMode: "system",
+      effectInstanceTargets: [],
+      isMultiInstanceSpell: false,
+      isVariantMultiTargetSpell: true,
+      parsedBonus: 0,
+      selectedSlotLevel: 3,
+      spell: {
+        id: "spell-5",
+        name: "Enhance Ability",
+        canonicalKey: "enhance_ability",
+        campaignSpellId: null,
+        level: 2,
+        prepared: true,
+        actionCost: "action",
+        suggestedMode: "utility",
+        damageType: null,
+        savingThrow: null,
+        availableSlotLevels: [2, 3],
+      },
+      spellDamageType: "",
+      spellEffectDice: "",
+      spellMode: "utility",
+      spellSaveAbility: "",
+      targetVariantAssignments: [
+        { target_participant_id: "enemy-1", variant_key: "owls_wisdom" },
+        { target_participant_id: "enemy-2", variant_key: "foxs_cunning" },
+      ],
+    });
+
+    expect(payload.variant_key).toBeNull();
+    expect(payload.target_ref_id).toBeNull();
+    expect(payload.target_variant_assignments).toEqual([
+      { target_participant_id: "enemy-1", variant_key: "owls_wisdom" },
+      { target_participant_id: "enemy-2", variant_key: "foxs_cunning" },
+    ]);
   });
 
   it("submit fica invalido quando ha instancias sem alvo", () => {

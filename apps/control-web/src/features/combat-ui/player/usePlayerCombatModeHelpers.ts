@@ -140,7 +140,8 @@ export const buildSpellOptions = (
               spell.level > 0
                 ? slotSummary.filter((entry) => entry.level >= spell.level)
                 : slotSummary,
-            upcast: catalogSpell?.upcast ?? null
+            upcast: catalogSpell?.upcast ?? null,
+            variants: catalogSpell?.variants ?? null,
           };
         })
     : [];
@@ -204,7 +205,8 @@ export const buildSpellOptions = (
         characterLevel: playerSheet?.level ?? null,
         availableSlotLevels:
           magicEffect.castLevel > 0 ? [magicEffect.castLevel] : [],
-        upcast: null
+        upcast: null,
+        variants: catalogSpell.variants ?? null,
       }
     ];
   });

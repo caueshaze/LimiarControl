@@ -2,6 +2,7 @@ import type {
   RollResult,
   RollSource
 } from "../../entities/roll/rollResolution.types";
+import type { SpellVariantManualNote } from "../../entities/base-spell";
 import { http } from "./http";
 
 export type CombatPhase = "initiative" | "placement" | "active" | "ended";
@@ -218,6 +219,11 @@ export type CombatCastSpellRequest = {
   spell_id?: string | null;
   spell_canonical_key?: string | null;
   campaign_spell_id?: string | null;
+  variant_key?: string | null;
+  target_variant_assignments?: Array<{
+    target_participant_id: string;
+    variant_key: string;
+  }> | null;
   spell_mode?: CombatSpellMode | null;
   slot_level?: number | null;
   has_advantage?: boolean;
@@ -248,6 +254,11 @@ export type CombatResolveSpellContextRequest = {
   spell_id?: string | null;
   spell_canonical_key?: string | null;
   campaign_spell_id?: string | null;
+  variant_key?: string | null;
+  target_variant_assignments?: Array<{
+    target_participant_id: string;
+    variant_key: string;
+  }> | null;
   spell_mode?: CombatSpellMode | null;
   slot_level?: number | null;
 };
@@ -260,6 +271,8 @@ export type CombatResolvedSpellContext = {
   spell_name: string;
   spell_level: number;
   slot_level?: number | null;
+  max_targets?: number | null;
+  base_max_targets?: number | null;
   target_type?: string | null;
   selection_type?: string | null;
   area_shape?: "sphere" | "cone" | "line" | "cube" | "cylinder" | null;
@@ -278,11 +291,23 @@ export type CombatResolvedSpellContext = {
   upcast_added_instances: number;
   upcast_instance_effect_dice?: string | null;
   cover_applies_to_save?: string | null;
+  variants?: Array<{
+    key: string;
+    label: string;
+    description?: string | null;
+    manualNotes?: SpellVariantManualNote[] | null;
+  }> | null;
+  selected_variant_key?: string | null;
+  target_variant_assignments?: Array<{
+    target_participant_id: string;
+    variant_key: string;
+  }> | null;
 };
 
 export type CombatSpellResult = {
   spell_name: string;
   spell_canonical_key?: string | null;
+  selected_variant_key?: string | null;
   action_kind: CombatSpellMode;
   effect_kind?: "damage" | "healing" | null;
   damage: number;
@@ -362,6 +387,20 @@ export type CombatSpellResult = {
   effect_instance_count?: number | null;
   effect_instance_dice?: string | null;
   base_effect_instance_count?: number | null;
+  target_variant_assignments?: Array<{
+    target_ref_id?: string | null;
+    target_participant_id?: string | null;
+    variant_key: string;
+    variant_label?: string | null;
+  }> | null;
+  manual_notes_by_target?: Array<{
+    target_ref_id?: string | null;
+    target_participant_id?: string | null;
+    target_display_name: string;
+    variant_key: string;
+    variant_label?: string | null;
+    manual_notes: SpellVariantManualNote[];
+  }> | null;
 };
 
 export type CombatMapPreviewToken = {
