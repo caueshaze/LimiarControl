@@ -73,6 +73,7 @@ class SpellResolutionCommonMixin:
                     "variant_key": variant_key.strip(),
                     "variant_label": entry.get("variant_label"),
                     "target_ref_id": entry.get("target_ref_id"),
+                    "target_display_name": entry.get("target_display_name"),
                 }
             )
         return normalized
@@ -126,6 +127,8 @@ class SpellResolutionCommonMixin:
                 "variant_scope": "per_target",
                 "selected_variant_key": assignment["variant_key"],
                 "selected_variant_label": assignment.get("variant_label"),
+                "context_origin": spell_context.get("context_origin") or "initial_cast",
+                "concentration_group": spell_context.get("concentration_group"),
                 "target_variant_assignments": target_variant_assignments,
                 "manual_notes_by_target": manual_notes_by_target,
                 "effects": list(effects or []),
@@ -138,10 +141,13 @@ class SpellResolutionCommonMixin:
                 "variant_scope": "single_target",
                 "selected_variant_key": selected_variant_key.strip(),
                 "selected_variant_label": spell_context.get("selected_variant_label"),
+                "context_origin": spell_context.get("context_origin") or "initial_cast",
+                "concentration_group": spell_context.get("concentration_group"),
                 "target_variant_assignments": [
                     {
                         "target_participant_id": target_participant_id,
                         "target_ref_id": target_p.get("ref_id"),
+                        "target_display_name": target_p.get("display_name"),
                         "variant_key": selected_variant_key.strip(),
                         "variant_label": spell_context.get("selected_variant_label"),
                     }
@@ -166,6 +172,9 @@ class SpellResolutionCommonMixin:
             "spell_name": pending_payload.get("spell_name"),
             "spell_canonical_key": pending_payload.get("spell_canonical_key"),
             "concentration": bool(pending_payload.get("concentration")),
+            "context_origin": pending_payload.get("context_origin"),
+            "concentration_group": pending_payload.get("concentration_group"),
+            "variant_scope": pending_payload.get("variant_scope"),
             "effects": list(pending_payload.get("effects") or []),
             "on_end_effects": list(pending_payload.get("on_end_effects") or []),
             "selected_variant_key": pending_payload.get("selected_variant_key"),
@@ -213,6 +222,57 @@ class SpellResolutionCommonMixin:
             if labels:
                 chunks.append(f"{target_name}: {', '.join(labels)}")
         return f" Notas manuais: {'; '.join(chunks)}." if chunks else ""
+
+    @classmethod
+    def _format_variant_assignments_for_log(
+        cls,
+        target_variant_assignments: object,
+        manual_notes_by_target: object = None,
+    ) -> str:
+        if not isinstance(target_variant_assignments, list) or not target_variant_assignments:
+            return ""
+        display_names_by_id: dict[str, str] = {}
+        display_names_by_ref: dict[str, str] = {}
+        if isinstance(manual_notes_by_target, list):
+            for entry in manual_notes_by_target:
+                if not isinstance(entry, dict):
+                    continue
+                display_name = entry.get("target_display_name")
+                if not isinstance(display_name, str) or not display_name.strip():
+                    continue
+                participant_id = entry.get("target_participant_id")
+                ref_id = entry.get("target_ref_id")
+                if isinstance(participant_id, str):
+                    display_names_by_id[participant_id] = display_name
+                if isinstance(ref_id, str):
+                    display_names_by_ref[ref_id] = display_name
+        chunks: list[str] = []
+        for entry in target_variant_assignments:
+            if not isinstance(entry, dict):
+                continue
+            variant_label = entry.get("variant_label") or entry.get("variant_key")
+            if not isinstance(variant_label, str) or not variant_label.strip():
+                continue
+            participant_id = entry.get("target_participant_id")
+            ref_id = entry.get("target_ref_id")
+            explicit_target_name = entry.get("target_display_name")
+            target_name = None
+            if isinstance(explicit_target_name, str) and explicit_target_name.strip():
+                target_name = explicit_target_name
+            if target_name is None and isinstance(participant_id, str):
+                target_name = display_names_by_id.get(participant_id)
+            if target_name is None and isinstance(ref_id, str):
+                target_name = display_names_by_ref.get(ref_id)
+            if target_name is None:
+                target_name = participant_id or ref_id or "Target"
+            chunks.append(f"{target_name}={variant_label}")
+        return f" Variantes: {'; '.join(chunks)}." if chunks else ""
+
+    @classmethod
+    def _format_concentration_group_for_log(cls, concentration_group: object) -> str:
+        if isinstance(concentration_group, str) and concentration_group.strip():
+            return f" Concentração: {concentration_group.strip()}."
+        return ""
 
     @classmethod
     def _apply_spell_effect(
@@ -266,6 +326,8 @@ class SpellResolutionCommonMixin:
             "spell_name": spell_context["spell_name"],
             "spell_canonical_key": spell_context["spell_canonical_key"],
             "action_kind": action_kind,
+            "context_origin": spell_context.get("context_origin") or "initial_cast",
+            "concentration_group": spell_context.get("concentration_group"),
             "effect_kind": effect_kind,
             "effect_dice": spell_context["effect_dice"],
             "effect_bonus": effect_bonus,

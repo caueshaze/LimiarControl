@@ -208,6 +208,9 @@ export const mergePendingSaveResolutionResult = (
     save_ability: (resolution.save_ability as AbilityName) ?? result.save_ability,
     save_dc: resolution.save_dc,
     selected_variant_key: resolution.selected_variant_key ?? result.selected_variant_key,
+    selected_variant_label: resolution.selected_variant_label ?? result.selected_variant_label,
+    context_origin: resolution.context_origin ?? result.context_origin,
+    concentration_group: resolution.concentration_group ?? result.concentration_group,
     target_variant_assignments:
       resolution.target_variant_assignments ?? result.target_variant_assignments ?? null,
     manual_notes_by_target:

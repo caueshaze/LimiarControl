@@ -58,6 +58,11 @@ export type ActiveEffect = {
   display_label?: string | null;
 };
 
+export type CombatSpellContextOrigin =
+  | "initial_cast"
+  | "pending_save"
+  | "pending_spell";
+
 export type TurnResources = {
   action_used: boolean;
   bonus_action_used: boolean;
@@ -80,6 +85,8 @@ export type PendingSave = {
   effect_kind?: "damage" | "healing" | null;
   selected_variant_key?: string | null;
   selected_variant_label?: string | null;
+  context_origin?: CombatSpellContextOrigin | null;
+  concentration_group?: string | null;
   target_variant_assignments?: Array<{
     target_participant_id?: string | null;
     target_ref_id?: string | null;
@@ -112,6 +119,9 @@ export type SaveResolution = {
   roll_result: RollResult;
   pending_spell_id?: string | null;
   selected_variant_key?: string | null;
+  selected_variant_label?: string | null;
+  context_origin?: CombatSpellContextOrigin | null;
+  concentration_group?: string | null;
   target_variant_assignments?: Array<{
     target_participant_id?: string | null;
     target_ref_id?: string | null;
@@ -339,6 +349,9 @@ export type CombatSpellResult = {
   spell_name: string;
   spell_canonical_key?: string | null;
   selected_variant_key?: string | null;
+  selected_variant_label?: string | null;
+  context_origin?: CombatSpellContextOrigin | null;
+  concentration_group?: string | null;
   action_kind: CombatSpellMode;
   effect_kind?: "damage" | "healing" | null;
   damage: number;

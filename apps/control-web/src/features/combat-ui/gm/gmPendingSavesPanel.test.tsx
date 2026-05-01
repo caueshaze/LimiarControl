@@ -31,6 +31,9 @@ describe("GmPendingSavesPanel", () => {
               save_dc: 14,
               attacker_display_name: "Mage",
               selected_variant_key: "foxs_cunning",
+              selected_variant_label: "Esperteza da Raposa",
+              context_origin: "pending_save",
+              concentration_group: "group-1",
               target_variant_assignments: [
                 {
                   target_participant_id: "enemy-1",
@@ -80,6 +83,8 @@ describe("GmPendingSavesPanel", () => {
     );
 
     expect(markup).toContain("Variante: Esperteza da Raposa");
+    expect(markup).toContain("Origem: pending_save");
+    expect(markup).toContain("Concentração: group-1");
     expect(markup).toContain("Manual A - Descricao A");
     expect(markup).not.toContain("Manual B - Descricao B");
   });

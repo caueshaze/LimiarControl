@@ -118,6 +118,8 @@ class CombatSaveResolveMixin:
                         "variant_scope": pending_save.get("variant_scope"),
                         "selected_variant_key": pending_spell_context.get("selected_variant_key"),
                         "selected_variant_label": pending_spell_context.get("selected_variant_label"),
+                        "context_origin": "pending_save",
+                        "concentration_group": pending_spell_context.get("concentration_group"),
                         "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
                         "manual_notes_by_target": manual_notes_by_target,
                         "effects": pending_spell_context.get("effects"),
@@ -175,6 +177,9 @@ class CombatSaveResolveMixin:
                 "roll_result": roll_result.model_dump(mode="json"),
                 "pending_spell_id": pending_spell_id,
                 "selected_variant_key": pending_spell_context.get("selected_variant_key"),
+                "selected_variant_label": pending_spell_context.get("selected_variant_label"),
+                "context_origin": "pending_save",
+                "concentration_group": pending_spell_context.get("concentration_group"),
                 "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
                 "manual_notes_by_target": manual_notes_by_target,
             }
@@ -198,7 +203,12 @@ class CombatSaveResolveMixin:
             log_message += f" {amount} de {effect_kind} de {damage_type or 'energia'}{effect_msg}"
         if pending_spell_id:
             log_message += " Efeito pendente."
-        log_message = f"{log_message}{cls._format_manual_notes_for_log(manual_notes_by_target)}".strip()
+        log_message = (
+            f"{log_message}"
+            f"{cls._format_variant_assignments_for_log(pending_spell_context.get('target_variant_assignments'), manual_notes_by_target)}"
+            f"{cls._format_manual_notes_for_log(manual_notes_by_target)}"
+            f"{cls._format_concentration_group_for_log(pending_spell_context.get('concentration_group'))}"
+        ).strip()
         await cls._emit_log(session_id, {
             "message": log_message,
             "actorUserId": actor_user_id,
@@ -214,6 +224,9 @@ class CombatSaveResolveMixin:
             "healing": amount if effect_kind == "healing" else 0,
             "damage_type": damage_type,
             "selected_variant_key": pending_spell_context.get("selected_variant_key"),
+            "selected_variant_label": pending_spell_context.get("selected_variant_label"),
+            "context_origin": "pending_save",
+            "concentration_group": pending_spell_context.get("concentration_group"),
             "is_critical": False,
             "is_hit": None,
             "is_saved": is_saved,

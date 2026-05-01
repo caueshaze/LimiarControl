@@ -100,6 +100,8 @@ class RollRequestActivityEvent(BaseModel):
     dc: Optional[int] = None
     targetUserId: Optional[str] = None
     targetDisplayName: Optional[str] = None
+    targetParticipantId: Optional[str] = None
+    debugModifiers: Optional[List[dict]] = None
     timestamp: datetime
     sessionOffsetSeconds: int
 

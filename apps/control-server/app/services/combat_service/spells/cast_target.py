@@ -342,6 +342,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         ]
         merged["selected_variant_key"] = variant.key
         merged["selected_variant_label"] = variant.labelPt or variant.labelEn or variant.key
+        merged["variant_scope"] = (
+            "per_target"
+            if isinstance(target_variant_assignments, list) and len(target_variant_assignments) > 1
+            else "single_target"
+        )
+        merged["context_origin"] = spell_context.get("context_origin") or "initial_cast"
         merged["manual_notes_by_target"] = (
             [cls._build_variant_summary_for_target(participant=participant, variant=variant)]
             if isinstance(participant, dict) and variant.manualNotes
@@ -1008,6 +1014,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 {
                     "target_ref_id": participant.get("ref_id"),
                     "target_participant_id": participant.get("id"),
+                    "target_display_name": cls._participant_display_name(participant),
                     "variant_key": assignment["variant_key"],
                     "variant_label": assignment["variant_label"],
                 }
@@ -1202,6 +1209,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             f"{attacker['display_name']} conjurou {spell_context['spell_name']} em {target_count} alvo"
             f"{'s' if target_count != 1 else ''}: {target_names}."
         )
+        log_message = (
+            f"{log_message}"
+            f"{cls._format_variant_assignments_for_log(target_variant_assignments, manual_notes_by_target)}"
+            f"{cls._format_manual_notes_for_log(manual_notes_by_target)}"
+            f"{cls._format_concentration_group_for_log(shared_effect_group_id)}"
+        ).strip()
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
         await cls._emit_log(session_id, {
@@ -1216,6 +1229,9 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "spell_name": spell_context["spell_name"],
             "spell_canonical_key": spell_context["spell_canonical_key"],
             "selected_variant_key": None,
+            "selected_variant_label": None,
+            "context_origin": "initial_cast",
+            "concentration_group": shared_effect_group_id,
             "action_kind": spell_mode,
             "effect_kind": spell_context.get("effect_kind"),
             "damage": total_damage,
@@ -1729,7 +1745,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 [
                     {
                         "target_participant_id": selected_participant.get("id"),
+                        "target_display_name": cls._participant_display_name(selected_participant),
                         "variant_key": selected_variant.key,
+                        "variant_label": selected_variant.labelPt or selected_variant.labelEn or selected_variant.key,
+                        "target_ref_id": selected_participant.get("ref_id"),
                     }
                 ]
                 if isinstance(selected_participant, dict)

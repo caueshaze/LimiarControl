@@ -30,6 +30,15 @@ from .commands_common import (
 )
 
 AUTHORITATIVE_ROLL_TYPES = {"ability", "save", "skill", "initiative", "attack"}
+CHECK_MODIFIER_TYPES = {"advantage", "disadvantage"}
+CHECK_MODIFIER_ROLL_TYPES = {"ability", "skill"}
+CHECK_MODIFIER_AGAINST = {"any", "effect_target", "selected_target"}
+CHECK_MODIFIER_SKIP_REASONS = {
+    "target_mismatch",
+    "ability_mismatch",
+    "skill_mismatch",
+    "missing_target",
+}
 
 
 def record_gm_activity(
@@ -127,6 +136,62 @@ async def send_session_command_service(
         if target:
             activity_payload["targetUserId"] = target[0]
             activity_payload["targetDisplayName"] = target[1]
+
+        target_participant_id = payload_data.get("targetParticipantId")
+        if target_participant_id is not None:
+            if not isinstance(target_participant_id, str) or not target_participant_id.strip():
+                raise HTTPException(status_code=400, detail="targetParticipantId must be a non-empty string")
+            activity_payload["targetParticipantId"] = target_participant_id.strip()
+
+        debug_modifiers = payload_data.get("debugModifiers")
+        if debug_modifiers is not None:
+            if not isinstance(debug_modifiers, list):
+                raise HTTPException(status_code=400, detail="debugModifiers must be a list")
+            normalized_debug_modifiers: list[dict] = []
+            for entry_payload in debug_modifiers:
+                if not isinstance(entry_payload, dict):
+                    raise HTTPException(status_code=400, detail="Each debug modifier must be an object")
+                source_label = entry_payload.get("source_label")
+                modifier_type = entry_payload.get("modifier_type")
+                roll_type_value = entry_payload.get("roll_type")
+                applied = entry_payload.get("applied")
+                if not isinstance(source_label, str) or not source_label.strip():
+                    raise HTTPException(status_code=400, detail="debugModifiers.source_label must be a non-empty string")
+                if modifier_type not in CHECK_MODIFIER_TYPES:
+                    raise HTTPException(status_code=400, detail="debugModifiers.modifier_type is invalid")
+                if roll_type_value not in CHECK_MODIFIER_ROLL_TYPES:
+                    raise HTTPException(status_code=400, detail="debugModifiers.roll_type is invalid")
+                if not isinstance(applied, bool):
+                    raise HTTPException(status_code=400, detail="debugModifiers.applied must be a boolean")
+                against = entry_payload.get("against")
+                if against is not None and against not in CHECK_MODIFIER_AGAINST:
+                    raise HTTPException(status_code=400, detail="debugModifiers.against is invalid")
+                skip_reason = entry_payload.get("skip_reason")
+                if skip_reason is not None and skip_reason not in CHECK_MODIFIER_SKIP_REASONS:
+                    raise HTTPException(status_code=400, detail="debugModifiers.skip_reason is invalid")
+                normalized_debug_modifiers.append(
+                    {
+                        "source_label": source_label.strip(),
+                        "modifier_type": modifier_type,
+                        "roll_type": roll_type_value,
+                        "ability": entry_payload.get("ability")
+                        if isinstance(entry_payload.get("ability"), str)
+                        else None,
+                        "skill": entry_payload.get("skill")
+                        if isinstance(entry_payload.get("skill"), str)
+                        else None,
+                        "against": against,
+                        "selected_target_participant_id": entry_payload.get("selected_target_participant_id")
+                        if isinstance(entry_payload.get("selected_target_participant_id"), str)
+                        else None,
+                        "selected_target_display_name": entry_payload.get("selected_target_display_name")
+                        if isinstance(entry_payload.get("selected_target_display_name"), str)
+                        else None,
+                        "applied": applied,
+                        "skip_reason": skip_reason,
+                    }
+                )
+            activity_payload["debugModifiers"] = normalized_debug_modifiers
 
         event_type = "roll_requested"
         event_payload.update(activity_payload)

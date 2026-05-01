@@ -644,6 +644,9 @@ describe("PlayerSpellCastDialog", () => {
         },
         pending_spell_id: "pending-spell-1",
         selected_variant_key: "foxs_cunning",
+        selected_variant_label: "Esperteza da Raposa",
+        context_origin: "pending_save",
+        concentration_group: "group-1",
         target_variant_assignments: [
           {
             target_participant_id: "enemy-1",
@@ -664,6 +667,9 @@ describe("PlayerSpellCastDialog", () => {
     );
 
     expect(merged.selected_variant_key).toBe("foxs_cunning");
+    expect(merged.selected_variant_label).toBe("Esperteza da Raposa");
+    expect(merged.context_origin).toBe("pending_save");
+    expect(merged.concentration_group).toBe("group-1");
     expect(merged.pending_spell_id).toBe("pending-spell-1");
     expect(merged.target_variant_assignments).toEqual([
       {

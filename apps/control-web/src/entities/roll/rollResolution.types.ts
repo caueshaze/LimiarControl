@@ -47,6 +47,7 @@ export type AbilityRollRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  target_participant_id?: string | null;
 };
 
 export type SaveRollRequest = {
@@ -59,6 +60,7 @@ export type SaveRollRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  target_participant_id?: string | null;
 };
 
 export type SkillRollRequest = {
@@ -71,6 +73,7 @@ export type SkillRollRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  target_participant_id?: string | null;
 };
 
 export type InitiativeRollRequest = {
@@ -81,6 +84,7 @@ export type InitiativeRollRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  target_participant_id?: string | null;
 };
 
 export type AttackBaseRollRequest = {
@@ -92,6 +96,7 @@ export type AttackBaseRollRequest = {
   roll_source?: RollSource;
   manual_roll?: number | null;
   manual_rolls?: [number, number] | null;
+  target_participant_id?: string | null;
 };
 
 // --- Result (received from backend + via realtime) ---

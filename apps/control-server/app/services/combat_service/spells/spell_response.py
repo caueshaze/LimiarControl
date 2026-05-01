@@ -43,6 +43,12 @@ class SpellResponseMixin:
                 lines.append(f"  Instância {idx} → {name}: sem dano.")
 
         log_message = "\n".join(lines)
+        log_message = (
+            f"{log_message}"
+            f"{cls._format_variant_assignments_for_log(spell_context.get('target_variant_assignments'), spell_context.get('manual_notes_by_target'))}"
+            f"{cls._format_manual_notes_for_log(spell_context.get('manual_notes_by_target'))}"
+            f"{cls._format_concentration_group_for_log(spell_context.get('concentration_group'))}"
+        ).strip()
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
         return log_message
@@ -150,6 +156,13 @@ class SpellResponseMixin:
                 f"{log_message} {result.concentration_check['summary_text']}".strip()
             )
 
+        log_message = (
+            f"{log_message}"
+            f"{cls._format_variant_assignments_for_log(spell_context.get('target_variant_assignments'), spell_context.get('manual_notes_by_target'))}"
+            f"{cls._format_manual_notes_for_log(spell_context.get('manual_notes_by_target'))}"
+            f"{cls._format_concentration_group_for_log(spell_context.get('concentration_group'))}"
+        ).strip()
+
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
 
@@ -211,6 +224,21 @@ class SpellResponseMixin:
                 automation_result.get("selected_variant_key")
                 if automation_result is not None
                 else spell_context.get("selected_variant_key")
+            ),
+            "selected_variant_label": (
+                automation_result.get("selected_variant_label")
+                if automation_result is not None
+                else spell_context.get("selected_variant_label")
+            ),
+            "context_origin": (
+                automation_result.get("context_origin")
+                if automation_result is not None
+                else spell_context.get("context_origin") or "initial_cast"
+            ),
+            "concentration_group": (
+                automation_result.get("concentration_group")
+                if automation_result is not None
+                else spell_context.get("concentration_group")
             ),
             "action_kind": spell_mode,
             "effect_kind": effect_kind,

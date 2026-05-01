@@ -181,7 +181,12 @@ class CastTargetEffectMixin:
             concentration_check.get("summary_text"), str
         ):
             log_message = f"{log_message} {concentration_check['summary_text']}".strip()
-        log_message = f"{log_message}{cls._format_manual_notes_for_log(manual_notes_by_target)}".strip()
+        log_message = (
+            f"{log_message}"
+            f"{cls._format_variant_assignments_for_log(pending_spell_context.get('target_variant_assignments'), manual_notes_by_target)}"
+            f"{cls._format_manual_notes_for_log(manual_notes_by_target)}"
+            f"{cls._format_concentration_group_for_log(pending_spell_context.get('concentration_group'))}"
+        ).strip()
 
         await cls._emit_log(
             session_id,
@@ -196,6 +201,9 @@ class CastTargetEffectMixin:
             "spell_name": pending_spell.get("spell_name"),
             "spell_canonical_key": pending_spell.get("spell_canonical_key"),
             "selected_variant_key": pending_spell_context.get("selected_variant_key"),
+            "selected_variant_label": pending_spell_context.get("selected_variant_label"),
+            "context_origin": "pending_spell",
+            "concentration_group": pending_spell_context.get("concentration_group"),
             "action_kind": pending_spell.get("action_kind"),
             "effect_kind": effect_kind,
             "damage": amount if effect_kind == "damage" else 0,

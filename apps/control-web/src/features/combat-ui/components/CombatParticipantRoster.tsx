@@ -1,6 +1,7 @@
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { getCombatEffectLabel, getCombatStatusLabel, getTurnResourceLabel } from "../combatUi.helpers";
 import type { CombatParticipantView } from "../types";
+import { ActiveEffectDebugPanel } from "./ActiveEffectDebugPanel";
 
 type Props = {
   onRemoveEffect?: (participantId: string, effectId: string) => void | Promise<void>;
@@ -74,28 +75,34 @@ export const CombatParticipantRoster = ({
             </div>
 
             {participant.activeEffects.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {participant.activeEffects.map((effect) => (
-                  <span
-                    key={effect.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-fuchsia-500/25 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100"
-                  >
-                    {getCombatEffectLabel(t, effect)}
-                    {onRemoveEffect ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void onRemoveEffect(participant.id, effect.id);
-                        }}
-                        className="text-fuchsia-200 transition-colors hover:text-white"
-                        aria-label={t("combatUi.removeEffect")}
-                      >
-                        x
-                      </button>
-                    ) : null}
-                  </span>
-                ))}
-              </div>
+              <>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {participant.activeEffects.map((effect) => (
+                    <span
+                      key={effect.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-fuchsia-500/25 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100"
+                    >
+                      {getCombatEffectLabel(t, effect)}
+                      {onRemoveEffect ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onRemoveEffect(participant.id, effect.id);
+                          }}
+                          className="text-fuchsia-200 transition-colors hover:text-white"
+                          aria-label={t("combatUi.removeEffect")}
+                        >
+                          x
+                        </button>
+                      ) : null}
+                    </span>
+                  ))}
+                </div>
+                <ActiveEffectDebugPanel
+                  effects={participant.activeEffects}
+                  targetDisplayName={participant.display_name}
+                />
+              </>
             ) : null}
           </article>
         ))}

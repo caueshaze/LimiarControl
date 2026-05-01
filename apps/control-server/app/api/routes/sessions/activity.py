@@ -148,6 +148,8 @@ def get_session_activity(
                 dc=payload.get("dc") if isinstance(payload.get("dc"), int) else None,
                 targetUserId=payload.get("targetUserId") if isinstance(payload.get("targetUserId"), str) else None,
                 targetDisplayName=payload.get("targetDisplayName") if isinstance(payload.get("targetDisplayName"), str) else None,
+                targetParticipantId=payload.get("targetParticipantId") if isinstance(payload.get("targetParticipantId"), str) else None,
+                debugModifiers=payload.get("debugModifiers") if isinstance(payload.get("debugModifiers"), list) else None,
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

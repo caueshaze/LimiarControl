@@ -136,3 +136,77 @@ def resolve_check_advantage_mode(
     if has_dis and not has_adv:
         return "disadvantage"
     return "normal"
+
+
+def explain_check_modifier_sources(
+    participant: dict,
+    *,
+    ability: AbilityName,
+    roll_type: Literal["ability", "skill"] = "ability",
+    skill: str | None = None,
+    target_participant_id: str | None = None,
+) -> list[dict]:
+    explanations: list[dict] = []
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+
+        effect_type = declarative.get("type")
+        if effect_type not in {"advantage_on_checks", "disadvantage_on_checks"}:
+            continue
+
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+
+        against = (
+            params.get("against")
+            if params.get("against") in {"any", "effect_target", "selected_target"}
+            else "any"
+        )
+        effect_ability = params.get("ability")
+        modifier_type = "advantage" if effect_type == "advantage_on_checks" else "disadvantage"
+        entry = {
+            "source_label": metadata.get("source_spell_name")
+            or effect.get("display_label")
+            or "Spell effect",
+            "modifier_type": modifier_type,
+            "roll_type": roll_type,
+            "ability": effect_ability if isinstance(effect_ability, str) else None,
+            "skill": skill if roll_type == "skill" else None,
+            "against": against,
+            "selected_target_participant_id": metadata.get("selected_target_participant_id")
+            if isinstance(metadata.get("selected_target_participant_id"), str)
+            else None,
+            "selected_target_display_name": metadata.get("selected_target_display_name")
+            if isinstance(metadata.get("selected_target_display_name"), str)
+            else None,
+            "applied": False,
+            "skip_reason": None,
+        }
+
+        if effect_ability != ability:
+            entry["skip_reason"] = "skill_mismatch" if roll_type == "skill" else "ability_mismatch"
+            explanations.append(entry)
+            continue
+
+        if against == "selected_target":
+            selected_target_id = metadata.get("selected_target_participant_id")
+            if not isinstance(target_participant_id, str) or not target_participant_id.strip():
+                entry["skip_reason"] = "missing_target"
+                explanations.append(entry)
+                continue
+            if target_participant_id != selected_target_id:
+                entry["skip_reason"] = "target_mismatch"
+                explanations.append(entry)
+                continue
+
+        entry["applied"] = True
+        explanations.append(entry)
+    return explanations
