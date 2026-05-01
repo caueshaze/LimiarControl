@@ -7,6 +7,7 @@ import { SpellCatalogFormFields } from "../../features/shop/components/SpellCata
 import {
   buildSpellUpdatePayload,
   createSpellEditorState,
+  getSpellCatalogEditorVariantErrors,
   getUnsupportedSpellEditorValues,
   type SpellCatalogEditorState,
 } from "../../features/shop/utils/spellCatalogForm";
@@ -79,7 +80,8 @@ export const CatalogSpellEditPage = () => {
     Boolean(formState.nameEn.trim()) &&
     Boolean(formState.descriptionEn.trim()) &&
     formState.level >= 0 &&
-    formState.level <= 9;
+    formState.level <= 9 &&
+    getSpellCatalogEditorVariantErrors(formState).length === 0;
 
   const handleSave = async () => {
     if (!canSave || isSaving) return;

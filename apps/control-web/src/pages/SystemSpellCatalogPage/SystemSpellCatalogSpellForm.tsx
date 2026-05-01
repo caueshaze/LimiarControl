@@ -10,6 +10,7 @@ import {
 import { SystemSpellCatalogCastingFields } from "./SystemSpellCatalogCastingFields";
 import { SystemSpellCatalogFormSection } from "./SystemSpellCatalogFormSection";
 import { SystemSpellCatalogResolutionFields } from "./SystemSpellCatalogResolutionFields";
+import { SpellCatalogVariantsFields } from "../../features/shop/components/SpellCatalogVariantsFields";
 import { toggleListValue } from "./systemSpellCatalog.helpers";
 import {
   CLASS_OPTIONS,
@@ -224,6 +225,11 @@ export const SystemSpellCatalogSpellForm = ({
       <SystemSpellCatalogCastingFields form={form} setForm={setForm} />
 
       <SystemSpellCatalogResolutionFields form={form} setForm={setForm} />
+
+      <SpellCatalogVariantsFields
+        variants={form.variants}
+        onChange={(next) => setForm((c) => ({ ...c, variants: next }))}
+      />
 
       <SystemSpellCatalogFormSection title={t("catalog.spells.form.description")}>
         <div className="grid gap-4 md:grid-cols-2">

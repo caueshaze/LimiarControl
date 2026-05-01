@@ -6,6 +6,7 @@ import { SpellCatalogFormFields } from "../../features/shop/components/SpellCata
 import {
   buildSpellCreatePayload,
   createEmptySpellEditorState,
+  getSpellCatalogEditorVariantErrors,
   normalizeSpellCanonicalKey,
 } from "../../features/shop/utils/spellCatalogForm";
 import type { CampaignSpellCreatePayload } from "../../shared/api/campaignSpellsRepo";
@@ -32,7 +33,8 @@ export const CatalogSpellNewPage = () => {
     Boolean(state.nameEn.trim()) &&
     Boolean(state.descriptionEn.trim()) &&
     state.level >= 0 &&
-    state.level <= 9;
+    state.level <= 9 &&
+    getSpellCatalogEditorVariantErrors(state).length === 0;
 
   const handleCreate = async () => {
     if (!canSave || isSaving) return;

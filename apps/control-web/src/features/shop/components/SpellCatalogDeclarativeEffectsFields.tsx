@@ -115,7 +115,7 @@ const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativ
   }
 };
 
-const EffectEditor = ({
+export const SpellCatalogEffectEditor = ({
   title,
   effects,
   onChange,
@@ -494,12 +494,12 @@ export const SpellCatalogDeclarativeEffectsFields = ({
   setState,
 }: Props) => (
   <div className="space-y-5">
-    <EffectEditor
+    <SpellCatalogEffectEditor
       title="Efeitos declarativos"
       effects={state.effects}
       onChange={(next) => setState((current) => ({ ...current, effects: next }))}
     />
-    <EffectEditor
+    <SpellCatalogEffectEditor
       title="Efeitos ao terminar"
       effects={state.onEndEffects}
       onChange={(next) => setState((current) => ({ ...current, onEndEffects: next }))}

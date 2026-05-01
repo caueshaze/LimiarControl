@@ -5,6 +5,7 @@ import { SpellCatalogFormFields } from "./SpellCatalogFormFields";
 import {
   buildSpellCreatePayload,
   createEmptySpellEditorState,
+  getSpellCatalogEditorVariantErrors,
   normalizeSpellCanonicalKey,
 } from "../utils/spellCatalogForm";
 
@@ -22,7 +23,8 @@ export const CreateSpellCatalogForm = ({ onCreate }: Props) => {
     Boolean(state.nameEn.trim()) &&
     Boolean(state.descriptionEn.trim()) &&
     state.level >= 0 &&
-    state.level <= 9;
+    state.level <= 9 &&
+    getSpellCatalogEditorVariantErrors(state).length === 0;
 
   const handleCreate = async () => {
     if (!canSave || isSaving) {

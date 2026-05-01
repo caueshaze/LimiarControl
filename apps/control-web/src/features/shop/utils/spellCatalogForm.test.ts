@@ -5,6 +5,7 @@ import {
   buildSpellUpdatePayload,
   createEmptySpellEditorState,
   createSpellEditorState,
+  getSpellCatalogEditorVariantErrors,
   getUnsupportedSpellEditorValues,
   normalizeSpellCanonicalKey,
 } from "./spellCatalogForm";
@@ -237,6 +238,97 @@ describe("spellCatalogForm", () => {
     const payload = buildSpellUpdatePayload(state);
     expect(payload.effects).toEqual(state.effects);
     expect(payload.onEndEffects).toEqual(state.onEndEffects);
+  });
+
+  it("hydrates and serializes spell variants", () => {
+    const state = createSpellEditorState(
+      createSpell({
+        variants: [
+          {
+            key: "bears_endurance",
+            labelPt: "Resistência do Urso",
+            labelEn: "Bear's Endurance",
+            descriptionPt: "Ganha vantagem em testes de Constituição.",
+            descriptionEn: "Gain advantage on Constitution checks.",
+            effects: [
+              {
+                type: "advantage_on_checks",
+                target: "selected_target",
+                duration: { type: "manual" },
+                params: { ability: "constitution", against: "any" },
+              },
+            ],
+            onEndEffects: null,
+            manualNotes: [
+              {
+                key: "grant_temp_hp",
+                label: "PV temporários",
+                description: "Aplicar 2d6 PV temporários manualmente.",
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(state.variants).toHaveLength(1);
+    expect(state.variants[0]?.key).toBe("bears_endurance");
+
+    const payload = buildSpellUpdatePayload(state);
+    expect(payload.variants).toEqual([
+      {
+        key: "bears_endurance",
+        labelPt: "Resistência do Urso",
+        labelEn: "Bear's Endurance",
+        descriptionPt: "Ganha vantagem em testes de Constituição.",
+        descriptionEn: "Gain advantage on Constitution checks.",
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { ability: "constitution", against: "any" },
+          },
+        ],
+        onEndEffects: null,
+        manualNotes: [
+          {
+            key: "grant_temp_hp",
+            label: "PV temporários",
+            description: "Aplicar 2d6 PV temporários manualmente.",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps existing spells without variants unchanged", () => {
+    const payload = buildSpellUpdatePayload(createSpellEditorState(createSpell()));
+    expect(payload.variants).toBeNull();
+  });
+
+  it("campaign editor validation blocks duplicate and no-op variants", () => {
+    const state = createEmptySpellEditorState();
+    state.variants = [
+      {
+        key: "owls_wisdom",
+        labelPt: "Sabedoria da Coruja",
+        effects: [],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+      {
+        key: "owls_wisdom",
+        labelPt: "Sabedoria da Coruja 2",
+        effects: [],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+    ];
+
+    const errors = getSpellCatalogEditorVariantErrors(state);
+    expect(errors.some((error) => error.includes("duplicada"))).toBe(true);
+    expect(errors.some((error) => error.includes("ao menos um efeito declarativo ou nota manual"))).toBe(true);
   });
 
   it("hydrates and serializes persistent area semantics", () => {

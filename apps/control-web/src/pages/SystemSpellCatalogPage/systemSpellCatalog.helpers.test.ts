@@ -273,4 +273,124 @@ describe("systemSpellCatalog upcast helpers", () => {
 
     expect(form.coverAppliesToSave).toBe("physical");
   });
+
+  it("hydrates and serializes variants through the admin helper", () => {
+    const spell: BaseSpell = {
+      id: "spell-enhance",
+      system: "DND5E",
+      canonicalKey: "enhance_ability",
+      nameEn: "Enhance Ability",
+      namePt: "Aprimorar Habilidade",
+      descriptionEn: "Choose one ability.",
+      descriptionPt: "Escolha uma habilidade.",
+      level: 2,
+      school: "transmutation",
+      classesJson: ["Bard", "Druid"],
+      castingTimeType: "action",
+      castingTime: "1 action",
+      rangeMeters: null,
+      rangeText: "Touch",
+      targetType: "touch",
+      maxTargets: 1,
+      selectionType: "creature",
+      originType: "selected_target",
+      targetAnchor: "selected_target",
+      attackType: "none",
+      rangeKind: "distance",
+      effectTiming: "immediate",
+      duration: "Concentração, até 1 hora",
+      componentsJson: ["V", "S", "M"],
+      materialComponentText: "fur or a feather from a beast",
+      concentration: true,
+      ritual: false,
+      resolutionType: "utility",
+      savingThrow: null,
+      saveSuccessOutcome: null,
+      coverAppliesToSave: null,
+      damageDice: null,
+      damageType: null,
+      healDice: null,
+      upcast: null,
+      variants: [
+        {
+          key: "owls_wisdom",
+          labelPt: "Sabedoria da Coruja",
+          labelEn: "Owl's Wisdom",
+          descriptionPt: "Vantagem em testes de Sabedoria.",
+          descriptionEn: "Advantage on Wisdom checks.",
+          effects: [
+            {
+              type: "advantage_on_checks",
+              target: "selected_target",
+              duration: { type: "manual" },
+              params: { ability: "wisdom", against: "any" },
+            },
+          ],
+          onEndEffects: null,
+          manualNotes: [
+            {
+              key: "passive_perception_bonus",
+              label: "Percepção passiva",
+              description: "+5 enquanto durar.",
+            },
+          ],
+        },
+      ],
+      source: "admin_panel",
+      sourceRef: null,
+      isSrd: false,
+      isActive: true,
+      aliases: [],
+      effects: null,
+      onEndEffects: null,
+    };
+
+    const form = formFromSpell(spell);
+    expect(form.variants).toHaveLength(1);
+    expect(form.variants[0]?.labelPt).toBe("Sabedoria da Coruja");
+
+    const result = buildPayload(form, true);
+    expect(result.error).toBeUndefined();
+    expect(result.payload?.variants).toEqual(spell.variants);
+  });
+
+  it("blocks duplicate variant keys in the admin helper", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "enhance_ability";
+    form.nameEn = "Enhance Ability";
+    form.descriptionEn = "Choose one ability.";
+    form.variants = [
+      {
+        key: "owls_wisdom",
+        labelPt: "Sabedoria da Coruja",
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { ability: "wisdom", against: "any" },
+          },
+        ],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+      {
+        key: "owls_wisdom",
+        labelPt: "Sabedoria da Coruja 2",
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { ability: "wisdom", against: "any" },
+          },
+        ],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+    ];
+
+    const result = buildPayload(form, true);
+    expect(result.error).toContain("Chave de variante duplicada");
+  });
 });
