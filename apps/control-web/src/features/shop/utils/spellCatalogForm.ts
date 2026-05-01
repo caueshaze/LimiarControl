@@ -24,6 +24,7 @@ import {
   type SaveSuccessOutcome,
   type SpellDamageType,
   type SpellDeclarativeEffect,
+  type SpellVariant,
   type SpellPersistentAreaKind,
   type SpellPersistentAreaObscurement,
   type SpellPersistentAreaTerrainEffect,
@@ -39,6 +40,7 @@ import {
 } from "../../../entities/base-spell";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
 import type { CampaignSpellCreatePayload } from "../../../shared/api/campaignSpellsRepo";
+import { normalizeSpellVariantsForPayload } from "./spellVariantEditor";
 
 export const SPELL_LEVEL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -424,80 +426,84 @@ export const getUnsupportedSpellEditorValues = (spell: BaseSpell) => {
 
 export const buildSpellUpdatePayload = (
   state: SpellCatalogEditorState,
-): BaseSpellUpdatePayload => ({
-  castingTimeType: toNullableText(state.castingTimeType) as CastingTimeType | null,
-  nameEn: state.nameEn.trim(),
-  namePt: toNullableText(state.namePt),
-  descriptionEn: state.descriptionEn.trim(),
-  descriptionPt: toNullableText(state.descriptionPt),
-  level: state.level,
-  school: state.school,
-  classesJson: state.classesJson.length > 0 ? state.classesJson : null,
-  castingTime: deriveCastingTimeText(state.castingTimeType, state.castingTime),
-  rangeMeters: toNullableInteger(state.rangeMeters),
-  rangeText: toNullableText(state.rangeText),
-  targetType: toNullableText(state.targetType) as TargetType | null,
-  maxTargets: toNullableInteger(state.maxTargets),
-  selectionType: toNullableText(state.selectionType) as SpellSelectionType | null,
-  originType: toNullableText(state.originType) as SpellOriginType | null,
-  targetAnchor: toNullableText(state.targetAnchor) as SpellTargetAnchor | null,
-  attackType: toNullableText(state.attackType) as SpellAttackType | null,
-  rangeKind: toNullableText(state.rangeKind) as SpellRangeKind | null,
-  effectTiming: toNullableText(state.effectTiming) as SpellEffectTiming | null,
-  areaShape: toNullableText(state.areaShape) as AreaShape | null,
-  radiusMeters:
-    state.areaShape === "sphere" || state.areaShape === "cylinder"
-      ? toNullableFloat(state.radiusMeters)
+): BaseSpellUpdatePayload => {
+  const normalizedVariants = normalizeSpellVariantsForPayload(state.variants);
+  return {
+    castingTimeType: toNullableText(state.castingTimeType) as CastingTimeType | null,
+    nameEn: state.nameEn.trim(),
+    namePt: toNullableText(state.namePt),
+    descriptionEn: state.descriptionEn.trim(),
+    descriptionPt: toNullableText(state.descriptionPt),
+    level: state.level,
+    school: state.school,
+    classesJson: state.classesJson.length > 0 ? state.classesJson : null,
+    castingTime: deriveCastingTimeText(state.castingTimeType, state.castingTime),
+    rangeMeters: toNullableInteger(state.rangeMeters),
+    rangeText: toNullableText(state.rangeText),
+    targetType: toNullableText(state.targetType) as TargetType | null,
+    maxTargets: toNullableInteger(state.maxTargets),
+    selectionType: toNullableText(state.selectionType) as SpellSelectionType | null,
+    originType: toNullableText(state.originType) as SpellOriginType | null,
+    targetAnchor: toNullableText(state.targetAnchor) as SpellTargetAnchor | null,
+    attackType: toNullableText(state.attackType) as SpellAttackType | null,
+    rangeKind: toNullableText(state.rangeKind) as SpellRangeKind | null,
+    effectTiming: toNullableText(state.effectTiming) as SpellEffectTiming | null,
+    areaShape: toNullableText(state.areaShape) as AreaShape | null,
+    radiusMeters:
+      state.areaShape === "sphere" || state.areaShape === "cylinder"
+        ? toNullableFloat(state.radiusMeters)
+        : null,
+    lengthMeters:
+      state.areaShape === "cone" || state.areaShape === "line"
+        ? toNullableFloat(state.lengthMeters)
+        : null,
+    sideMeters:
+      state.areaShape === "cube"
+        ? toNullableFloat(state.sideMeters)
+        : null,
+    duration: toNullableText(state.duration),
+    componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
+    materialComponentText: state.componentsJson.includes("M")
+      ? toNullableText(state.materialComponentText)
       : null,
-  lengthMeters:
-    state.areaShape === "cone" || state.areaShape === "line"
-      ? toNullableFloat(state.lengthMeters)
+    concentration: state.concentration,
+    ritual: state.ritual,
+    resolutionType: toNullableText(state.resolutionType) as ResolutionType | null,
+    damageDice:
+      state.resolutionType === "damage"
+        ? buildDiceExpression(
+            state.damageDiceCount,
+            state.damageDieSize,
+            state.damageFixedBonus,
+          )
+        : null,
+    damageType:
+      state.resolutionType === "damage"
+        ? (toNullableText(state.damageType) as SpellDamageType | null)
+        : null,
+    healDice: state.resolutionType === "heal" ? toNullableText(state.healDice) : null,
+    effects: state.effects.length > 0 ? state.effects : null,
+    onEndEffects: state.onEndEffects.length > 0 ? state.onEndEffects : null,
+    variants: normalizedVariants.variants,
+    persistentArea: buildPersistentArea(state),
+    savingThrow: supportsSavingThrow(state.resolutionType)
+      ? (toNullableText(state.savingThrow) as SpellSavingThrow | null)
       : null,
-  sideMeters:
-    state.areaShape === "cube"
-      ? toNullableFloat(state.sideMeters)
+    saveSuccessOutcome:
+      state.resolutionType === "damage" && state.savingThrow
+        ? ((toNullableText(state.saveSuccessOutcome) as SaveSuccessOutcome | null) ?? null)
+        : null,
+    coverAppliesToSave: supportsSavingThrow(state.resolutionType)
+      ? ((toNullableText(state.coverAppliesToSave) as "none" | "physical" | null) ?? null)
       : null,
-  duration: toNullableText(state.duration),
-  componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
-  materialComponentText: state.componentsJson.includes("M")
-    ? toNullableText(state.materialComponentText)
-    : null,
-  concentration: state.concentration,
-  ritual: state.ritual,
-  resolutionType: toNullableText(state.resolutionType) as ResolutionType | null,
-  damageDice:
-    state.resolutionType === "damage"
-      ? buildDiceExpression(
-          state.damageDiceCount,
-          state.damageDieSize,
-          state.damageFixedBonus,
-        )
-      : null,
-  damageType:
-    state.resolutionType === "damage"
-      ? (toNullableText(state.damageType) as SpellDamageType | null)
-      : null,
-  healDice: state.resolutionType === "heal" ? toNullableText(state.healDice) : null,
-  effects: state.effects.length > 0 ? state.effects : null,
-  onEndEffects: state.onEndEffects.length > 0 ? state.onEndEffects : null,
-  persistentArea: buildPersistentArea(state),
-  savingThrow: supportsSavingThrow(state.resolutionType)
-    ? (toNullableText(state.savingThrow) as SpellSavingThrow | null)
-    : null,
-  saveSuccessOutcome:
-    state.resolutionType === "damage" && state.savingThrow
-      ? ((toNullableText(state.saveSuccessOutcome) as SaveSuccessOutcome | null) ?? null)
-      : null,
-  coverAppliesToSave: supportsSavingThrow(state.resolutionType)
-    ? ((toNullableText(state.coverAppliesToSave) as "none" | "physical" | null) ?? null)
-    : null,
-  requiresTargetSight: toNullableBoolean(state.requiresTargetSight),
-  requiresTargetEffect: toNullableBoolean(state.requiresTargetEffect),
-  requiresPointSight: toNullableBoolean(state.requiresPointSight),
-  requiresPointEffect: toNullableBoolean(state.requiresPointEffect),
-  upcast: buildStructuredUpcast(state),
-  cantripScaling: buildStructuredCantripScaling(state),
-});
+    requiresTargetSight: toNullableBoolean(state.requiresTargetSight),
+    requiresTargetEffect: toNullableBoolean(state.requiresTargetEffect),
+    requiresPointSight: toNullableBoolean(state.requiresPointSight),
+    requiresPointEffect: toNullableBoolean(state.requiresPointEffect),
+    upcast: buildStructuredUpcast(state),
+    cantripScaling: buildStructuredCantripScaling(state),
+  };
+};
 
 export const buildSpellCreatePayload = (
   state: SpellCatalogEditorState,
@@ -509,6 +515,9 @@ export const buildSpellCreatePayload = (
   level: state.level,
   school: state.school,
 });
+
+export const getSpellCatalogEditorVariantErrors = (state: SpellCatalogEditorState) =>
+  normalizeSpellVariantsForPayload(state.variants).errors;
 
 export type SpellCatalogEditorState = {
   canonicalKey: string;
@@ -546,6 +555,7 @@ export type SpellCatalogEditorState = {
   healDice: string;
   effects: SpellDeclarativeEffect[];
   onEndEffects: SpellDeclarativeEffect[];
+  variants: SpellVariant[];
   persistentAreaKind: SpellPersistentAreaKind | "";
   persistentAreaObscurement: SpellPersistentAreaObscurement | "";
   persistentAreaTerrainEffect: SpellPersistentAreaTerrainEffect | "";
@@ -735,6 +745,7 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   healDice: spell.healDice ?? "",
   effects: spell.effects ?? [],
   onEndEffects: spell.onEndEffects ?? [],
+  variants: spell.variants ?? [],
   persistentAreaKind: spell.persistentArea?.kind ?? "",
   persistentAreaObscurement:
     spell.persistentArea?.kind === "obscurement"
@@ -824,6 +835,7 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   healDice: "",
   effects: [],
   onEndEffects: [],
+  variants: [],
   persistentAreaKind: "",
   persistentAreaObscurement: "",
   persistentAreaTerrainEffect: "",

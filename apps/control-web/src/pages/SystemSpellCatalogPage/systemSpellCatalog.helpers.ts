@@ -4,6 +4,7 @@ import {
   SpellSchool as SpellSchoolValues,
 } from "../../entities/base-spell";
 import { catalogPtBRDictionary } from "../../shared/i18n/ptBR/catalog";
+import { normalizeSpellVariantsForPayload } from "../../features/shop/utils/spellVariantEditor";
 import type { FormState } from "./systemSpellCatalog.types";
 
 const CASTING_TIME_LABELS: Record<CastingTimeType, string> = {
@@ -177,6 +178,7 @@ export const createEmptyForm = (): FormState => ({
   isActive: true,
   effects: [],
   onEndEffects: [],
+  variants: [],
 });
 
 export const formFromSpell = (spell: BaseSpell): FormState => ({
@@ -275,6 +277,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   isActive: spell.isActive,
   effects: spell.effects ?? [],
   onEndEffects: spell.onEndEffects ?? [],
+  variants: spell.variants ?? [],
 });
 
 export const buildPayload = (
@@ -374,6 +377,11 @@ export const buildPayload = (
   if (shouldValidateUpcast && form.upcastMode === "extra_effect") {
     if (!form.upcastUnlockKey.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.extraEffectRequiresKey"] };
     if (!form.upcastUnlockSummary.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.extraEffectRequiresSummary"] };
+  }
+
+  const normalizedVariants = normalizeSpellVariantsForPayload(form.variants);
+  if (normalizedVariants.errors.length > 0) {
+    return { error: normalizedVariants.errors[0] };
   }
 
   return {
@@ -511,6 +519,7 @@ export const buildPayload = (
           : null,
       effects: form.effects.length > 0 ? form.effects : null,
       onEndEffects: form.onEndEffects.length > 0 ? form.onEndEffects : null,
+      variants: normalizedVariants.variants,
       source: form.source,
       sourceRef: normalizeOptionalText(form.sourceRef) ?? null,
       isSrd: form.isSrd,
