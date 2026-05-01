@@ -120,6 +120,10 @@ class CombatSpellAutomationMixin:
         result: dict = {
             "spell_name": spell_name,
             "spell_canonical_key": spell_context["spell_canonical_key"],
+            "selected_variant_key": spell_context.get("selected_variant_key"),
+            "selected_variant_label": spell_context.get("selected_variant_label"),
+            "context_origin": spell_context.get("context_origin") or "initial_cast",
+            "concentration_group": spell_context.get("concentration_group"),
             "action_kind": action_kind,
             "effect_kind": None, "damage": 0, "healing": 0, "damage_type": None,
             "is_critical": False, "is_hit": None, "is_saved": None, "new_hp": None,

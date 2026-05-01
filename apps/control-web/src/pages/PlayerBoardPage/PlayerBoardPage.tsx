@@ -393,8 +393,10 @@ export const PlayerBoardPage = () => {
             skill: (pendingRoll.skill ?? undefined) as SkillName | undefined,
             advantageMode: (pendingRoll.mode ?? "normal") as AdvantageMode,
             dc: pendingRoll.dc,
+            targetParticipantId: pendingRoll.targetParticipantId ?? undefined,
             reason: pendingRoll.reason,
             issuedBy: pendingRoll.issuedBy,
+            debugModifiers: pendingRoll.debugModifiers ?? undefined,
           }}
           sessionId={activeSession?.id ?? ""}
           actorKind="player"

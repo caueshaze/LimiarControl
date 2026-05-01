@@ -16,9 +16,22 @@ export type AuthoritativeRollRequest = {
   skill?: SkillName;
   advantageMode: AdvantageMode;
   dc?: number | null;
+  targetParticipantId?: string | null;
   reason?: string;
   issuedBy?: string;
   issuedByLabel?: string;
+  debugModifiers?: Array<{
+    source_label: string;
+    modifier_type: "advantage" | "disadvantage";
+    roll_type: "ability" | "skill";
+    ability?: string | null;
+    skill?: string | null;
+    against?: "any" | "effect_target" | "selected_target" | null;
+    selected_target_participant_id?: string | null;
+    selected_target_display_name?: string | null;
+    applied: boolean;
+    skip_reason?: "target_mismatch" | "ability_mismatch" | "skill_mismatch" | "missing_target" | null;
+  }> | null;
 };
 
 type Props = {
@@ -82,6 +95,7 @@ export const AuthoritativeRollDialog = ({
           skill: request.skill,
           advantageMode: request.advantageMode,
           dc: request.dc,
+          targetParticipantId: request.targetParticipantId,
           rollSource: "system",
         });
     if (result) {
@@ -106,6 +120,7 @@ export const AuthoritativeRollDialog = ({
             skill: request.skill,
             advantageMode: request.advantageMode,
             dc: request.dc,
+            targetParticipantId: request.targetParticipantId,
             rollSource: "manual",
             manualRolls: [manualD20, value],
           });
@@ -124,6 +139,7 @@ export const AuthoritativeRollDialog = ({
             skill: request.skill,
             advantageMode: request.advantageMode,
             dc: request.dc,
+            targetParticipantId: request.targetParticipantId,
             rollSource: "manual",
             manualRoll: value,
           });
@@ -135,6 +151,31 @@ export const AuthoritativeRollDialog = ({
   };
 
   const context = request.ability ?? request.skill ?? null;
+  const debugModifiers = request.debugModifiers ?? [];
+
+  const formatDebugModifier = (entry: NonNullable<typeof request.debugModifiers>[number]) => {
+    const subject = entry.roll_type === "skill" ? entry.skill ?? entry.ability ?? "check" : entry.ability ?? "check";
+    const base = `${entry.source_label}: ${entry.modifier_type} em ${subject}`;
+    if (entry.applied) {
+      if (entry.against === "selected_target" && entry.selected_target_display_name) {
+        return `${base} contra ${entry.selected_target_display_name}`;
+      }
+      return base;
+    }
+    if (entry.skip_reason === "target_mismatch" && entry.selected_target_display_name) {
+      return `Não aplicado: ${entry.source_label} só vale contra ${entry.selected_target_display_name}`;
+    }
+    if (entry.skip_reason === "missing_target") {
+      return `Não aplicado: ${entry.source_label} exige um alvo contextual`;
+    }
+    if (entry.skip_reason === "skill_mismatch") {
+      return `Não aplicado: ${entry.source_label} não afeta ${entry.skill ?? "esta perícia"}`;
+    }
+    if (entry.skip_reason === "ability_mismatch") {
+      return `Não aplicado: ${entry.source_label} não afeta ${entry.ability ?? "este atributo"}`;
+    }
+    return `Não aplicado: ${base}`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
@@ -170,6 +211,21 @@ export const AuthoritativeRollDialog = ({
             {request.issuedByLabel ?? t("playerBoard.requestedBy" as Parameters<typeof t>[0])} {request.issuedBy}
           </p>
         )}
+
+        {debugModifiers.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-200">
+              Effect Context
+            </p>
+            <div className="mt-2 space-y-1 text-xs text-slate-200">
+              {debugModifiers.map((entry, index) => (
+                <p key={`${entry.source_label}:${entry.modifier_type}:${index}`}>
+                  {formatDebugModifier(entry)}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Result display */}
         {displayedResult && (

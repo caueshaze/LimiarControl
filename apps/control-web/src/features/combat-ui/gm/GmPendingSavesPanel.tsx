@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   findManualNotesForTarget,
+  formatManualNotesByTarget,
   resolveTargetVariantLabel,
 } from "../spellVariantUi";
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
@@ -42,6 +43,9 @@ export const GmPendingSavesPanel = ({
             targetParticipantId: p.id,
             targetRefId: p.ref_id,
           });
+          const manualNoteLines = formatManualNotesByTarget(
+            manualNotesEntry ? [manualNotesEntry] : null,
+          );
           return (
             <div key={p.id} className="rounded-2xl bg-slate-950/40 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,11 +58,17 @@ export const GmPendingSavesPanel = ({
                   {variantLabel ? (
                     <p className="mt-1 text-xs text-fuchsia-200">Variante: {variantLabel}</p>
                   ) : null}
-                  {manualNotesEntry?.manual_notes.length ? (
+                  {save.context_origin ? (
+                    <p className="mt-1 text-xs text-sky-200">Origem: {save.context_origin}</p>
+                  ) : null}
+                  {save.concentration_group ? (
+                    <p className="mt-1 text-xs text-sky-200">Concentração: {save.concentration_group}</p>
+                  ) : null}
+                  {manualNoteLines.length ? (
                     <div className="mt-2 space-y-1 text-xs text-amber-100">
-                      {manualNotesEntry.manual_notes.map((note) => (
-                        <p key={note.key}>
-                          {note.label} - {note.description}
+                      {manualNoteLines.map((line, index) => (
+                        <p key={`${p.id}:${index}`}>
+                          {line.replace(`${p.display_name}: `, "")}
                         </p>
                       ))}
                     </div>

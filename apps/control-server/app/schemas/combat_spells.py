@@ -338,6 +338,9 @@ class CombatSpellResult(BaseModel):
     spell_name: str
     spell_canonical_key: str | None = None
     selected_variant_key: str | None = None
+    selected_variant_label: str | None = None
+    context_origin: Literal["initial_cast", "pending_save", "pending_spell"] | None = None
+    concentration_group: str | None = None
     action_kind: Literal[
         "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
     ]

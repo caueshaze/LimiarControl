@@ -195,6 +195,9 @@ describe("SpellCastResultPanel", () => {
           spell_name: "Modal Save Test Spell",
           spell_canonical_key: "modal_save_test_spell",
           selected_variant_key: "foxs_cunning",
+          selected_variant_label: "Esperteza da Raposa",
+          context_origin: "pending_spell",
+          concentration_group: "group-1",
           action_kind: "saving_throw",
           effect_kind: "damage",
           damage: 7,
@@ -234,7 +237,8 @@ describe("SpellCastResultPanel", () => {
       />,
     );
 
-    expect(markup).toContain("Variante resolvida: Esperteza da Raposa");
+    expect(markup).toContain("Origem: pending_spell");
+    expect(markup).toContain("Concentração: group-1");
     expect(markup).toContain("Goblin A: Esperteza da Raposa");
     expect(markup).toContain("Manual A - Descricao A");
     expect(markup).toContain("Goblin B: Sabedoria da Coruja");

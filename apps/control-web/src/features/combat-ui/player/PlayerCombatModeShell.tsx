@@ -11,6 +11,7 @@ import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
 import { CombatLogPanel } from "../components/CombatLogPanel";
 import { CombatModeBar } from "../components/CombatModeBar";
 import { CombatParticipantRoster } from "../components/CombatParticipantRoster";
+import { ActiveEffectDebugPanel } from "../components/ActiveEffectDebugPanel";
 import { buildCombatParticipantViews, getCombatEffectLabel, getCombatStatusLabel } from "../combatUi.helpers";
 import { PlayerAttackRollDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerAttackRollDialog";
 import { PlayerSpellCastDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerSpellCastDialog";
@@ -472,16 +473,22 @@ export const PlayerCombatModeShell = ({
                   </span>
                 </div>
                 {myParticipant?.active_effects?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {myParticipant.active_effects.map((effect) => (
-                      <span
-                        key={effect.id}
-                        className="rounded-full border border-fuchsia-500/25 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100"
-                      >
-                        {getCombatEffectLabel(t, effect)}
-                      </span>
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {myParticipant.active_effects.map((effect) => (
+                        <span
+                          key={effect.id}
+                          className="rounded-full border border-fuchsia-500/25 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100"
+                        >
+                          {getCombatEffectLabel(t, effect)}
+                        </span>
+                      ))}
+                    </div>
+                    <ActiveEffectDebugPanel
+                      effects={myParticipant.active_effects}
+                      targetDisplayName={myParticipant.display_name}
+                    />
+                  </>
                 ) : (
                   <p className="mt-3 text-sm text-slate-400">{t("combatUi.noEffects")}</p>
                 )}
@@ -555,8 +562,10 @@ export const PlayerCombatModeShell = ({
             skill: (pendingRoll.skill ?? undefined) as SkillName | undefined,
             advantageMode: (pendingRoll.mode ?? "normal") as AdvantageMode,
             dc: pendingRoll.dc,
+            targetParticipantId: pendingRoll.targetParticipantId ?? undefined,
             reason: pendingRoll.reason,
             issuedBy: pendingRoll.issuedBy,
+            debugModifiers: pendingRoll.debugModifiers ?? undefined,
           }}
           sessionId={sessionId}
           actorKind="player"
@@ -596,6 +605,7 @@ export const PlayerCombatModeShell = ({
                 targetRefId: activePendingSave.participantRefId,
               }),
             }),
+            targetParticipantId: activePendingSave.participantId,
             issuedBy: activePendingSave.attacker_display_name ?? undefined,
             issuedByLabel: t("combatUi.castBy"),
           }}

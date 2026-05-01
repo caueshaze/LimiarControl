@@ -153,6 +153,13 @@ export const usePlayerBoardRollRequests = ({
     const ability = (lastCommand.data?.ability as string | undefined) ?? null;
     const skill = (lastCommand.data?.skill as string | undefined) ?? null;
     const dc = typeof lastCommand.data?.dc === "number" ? lastCommand.data.dc : null;
+    const targetParticipantId =
+      typeof lastCommand.data?.targetParticipantId === "string"
+        ? lastCommand.data.targetParticipantId
+        : null;
+    const debugModifiers = Array.isArray(lastCommand.data?.debugModifiers)
+      ? lastCommand.data.debugModifiers
+      : null;
     const requestActivity: RollRequestActivityEvent = {
       type: "roll_request",
       expression,
@@ -162,6 +169,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
+      targetParticipantId,
+      debugModifiers,
       targetUserId: targetUserId ?? null,
       timestamp: String(lastCommand.issuedAt ?? new Date().toISOString()),
       sessionOffsetSeconds: 0,
@@ -176,6 +185,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
+      targetParticipantId,
+      debugModifiers,
     }, requestActivity);
   }, [activeSessionId, lastCommand, reconcileAndShowRollPrompt, userId]);
 
@@ -211,6 +222,13 @@ export const usePlayerBoardRollRequests = ({
     const ability = (typeof lastEvent.payload.ability === "string" ? lastEvent.payload.ability : null);
     const skill = (typeof lastEvent.payload.skill === "string" ? lastEvent.payload.skill : null);
     const dc = typeof lastEvent.payload.dc === "number" ? lastEvent.payload.dc : null;
+    const targetParticipantId =
+      typeof lastEvent.payload.targetParticipantId === "string"
+        ? lastEvent.payload.targetParticipantId
+        : null;
+    const debugModifiers = Array.isArray(lastEvent.payload.debugModifiers)
+      ? lastEvent.payload.debugModifiers
+      : null;
     const requestActivity: RollRequestActivityEvent = {
       type: "roll_request",
       expression,
@@ -220,6 +238,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
+      targetParticipantId,
+      debugModifiers,
       targetUserId,
       timestamp: String(lastEvent.payload.issuedAt ?? ""),
       sessionOffsetSeconds: 0,
@@ -234,6 +254,8 @@ export const usePlayerBoardRollRequests = ({
       ability,
       skill,
       dc,
+      targetParticipantId,
+      debugModifiers,
     }, requestActivity);
   }, [activeSessionId, lastEvent, reconcileAndShowRollPrompt, userId]);
 
@@ -282,6 +304,8 @@ export const usePlayerBoardRollRequests = ({
         ability: latestRequest.ability ?? null,
         skill: latestRequest.skill ?? null,
         dc: latestRequest.dc ?? null,
+        targetParticipantId: latestRequest.targetParticipantId ?? null,
+        debugModifiers: latestRequest.debugModifiers ?? null,
       });
     } catch {
       // Ignore fallback polling errors; realtime remains the primary path.

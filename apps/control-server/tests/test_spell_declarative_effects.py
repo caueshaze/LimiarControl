@@ -315,3 +315,49 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
         self.assertEqual(second_metadata["declarative_effect_group_id"], "shared-group")
         self.assertEqual(first_metadata["concentration_group"], "shared-group")
         self.assertEqual(second_metadata["concentration_group"], "shared-group")
+
+    def test_active_effect_metadata_exposes_modal_and_contextual_debug_fields(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Friends",
+            "spell_canonical_key": "friends",
+            "selected_variant_key": "eagles_splendor",
+            "selected_variant_label": "Esplendor da Aguia",
+            "variant_scope": "single_target",
+            "context_origin": "initial_cast",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "caster",
+                    "params": {"ability": "charisma", "against": "selected_target"},
+                    "stacking": "replace",
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+            effect_group_id="group-ctx",
+        )
+
+        metadata = attacker["active_effects"][0]["metadata"]
+        self.assertEqual(metadata["source_spell_name"], "Friends")
+        self.assertEqual(metadata["selected_variant_key"], "eagles_splendor")
+        self.assertEqual(metadata["selected_variant_label"], "Esplendor da Aguia")
+        self.assertEqual(metadata["target_assignment_source"], "single_target")
+        self.assertEqual(metadata["context_origin"], "initial_cast")
+        self.assertEqual(metadata["selected_target_participant_id"], "target-1")
+        self.assertEqual(metadata["selected_target_ref_id"], "entity-1")
+        self.assertEqual(metadata["selected_target_display_name"], "Target")
+        self.assertEqual(metadata["effect_target_participant_id"], "caster-1")
+        self.assertEqual(metadata["effect_target_ref_id"], "player-1")
+        self.assertEqual(metadata["effect_target_display_name"], "Caster")
+        self.assertEqual(metadata["against"], "selected_target")
+        self.assertEqual(metadata["concentration_group"], "group-ctx")

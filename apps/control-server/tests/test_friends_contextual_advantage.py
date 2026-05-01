@@ -14,6 +14,7 @@ Regression guard: prevents silent breakage of contextual advantages.
 import unittest
 
 from app.services.combat_service.condition_effects_predicates import (
+    explain_check_modifier_sources,
     resolve_check_advantage_mode,
 )
 
@@ -31,6 +32,7 @@ def _spell_effect_advantage(ability: str, against: str | None = None) -> dict:
                 },
             },
             "selected_target_participant_id": None,  # Will be set per scenario
+            "selected_target_display_name": "Guard Captain",
             "caster_participant_id": "caster_id",
             "source_spell_key": "friends",
             "source_spell_name": "Friends",
@@ -185,6 +187,39 @@ class TestFriendsContextualAdvantage(unittest.TestCase):
         self.assertEqual(
             mode, "normal", "Charisma advantage should NOT apply to Strength checks"
         )
+
+    def test_explain_sources_marks_applied_entry(self):
+        effect = _spell_effect_advantage("charisma", against="selected_target")
+        effect["metadata"]["selected_target_participant_id"] = "target_a_id"
+        caster = _participant_with_effect("caster_id", [effect])
+
+        explanation = explain_check_modifier_sources(
+            caster,
+            ability="charisma",
+            roll_type="ability",
+            target_participant_id="target_a_id",
+        )
+
+        self.assertEqual(len(explanation), 1)
+        self.assertTrue(explanation[0]["applied"])
+        self.assertIsNone(explanation[0]["skip_reason"])
+        self.assertEqual(explanation[0]["selected_target_display_name"], "Guard Captain")
+
+    def test_explain_sources_marks_target_mismatch(self):
+        effect = _spell_effect_advantage("charisma", against="selected_target")
+        effect["metadata"]["selected_target_participant_id"] = "target_a_id"
+        caster = _participant_with_effect("caster_id", [effect])
+
+        explanation = explain_check_modifier_sources(
+            caster,
+            ability="charisma",
+            roll_type="ability",
+            target_participant_id="target_b_id",
+        )
+
+        self.assertEqual(len(explanation), 1)
+        self.assertFalse(explanation[0]["applied"])
+        self.assertEqual(explanation[0]["skip_reason"], "target_mismatch")
 
 
 if __name__ == "__main__":

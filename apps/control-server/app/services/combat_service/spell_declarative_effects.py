@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import Literal
 from uuid import uuid4
 
 from app.schemas.base_spell import SpellDeclarativeEffect
 from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, SkillName
-from .condition_effects_predicates import resolve_check_advantage_mode
+from .condition_effects_predicates import (
+    explain_check_modifier_sources,
+    resolve_check_advantage_mode,
+)
 from .exceptions import CombatServiceError
 
 
@@ -123,8 +127,18 @@ class CombatSpellDeclarativeEffectsMixin:
             "selected_target_participant_id": target_participant.get("id")
             if isinstance(target_participant, dict)
             else None,
+            "selected_target_ref_id": target_participant.get("ref_id")
+            if isinstance(target_participant, dict)
+            else None,
+            "selected_target_display_name": target_participant.get("display_name")
+            if isinstance(target_participant, dict)
+            else None,
             "source_spell_key": spell_context.get("spell_canonical_key"),
             "source_spell_name": spell_context.get("spell_name"),
+            "selected_variant_key": spell_context.get("selected_variant_key"),
+            "selected_variant_label": spell_context.get("selected_variant_label"),
+            "target_assignment_source": spell_context.get("variant_scope"),
+            "context_origin": spell_context.get("context_origin") or "initial_cast",
             "concentration": bool(spell_context.get("concentration")),
             "concentration_group": effect_group_id if spell_context.get("concentration") else None,
         }
@@ -137,8 +151,13 @@ class CombatSpellDeclarativeEffectsMixin:
         )
         if resolved_target is None:
             return []
+        metadata["effect_target_participant_id"] = resolved_target.get("id")
+        metadata["effect_target_ref_id"] = resolved_target.get("ref_id")
+        metadata["effect_target_display_name"] = resolved_target.get("display_name")
 
         params = effect.params.model_dump(mode="json")
+        if effect.type in {"advantage_on_checks", "disadvantage_on_checks"}:
+            metadata["against"] = params.get("against") or "any"
         if effect.stacking == "replace":
             cls._replace_matching_effects(resolved_target, effect.type, params)
 
@@ -308,6 +327,9 @@ class CombatSpellDeclarativeEffectsMixin:
             extra={
                 "__declarative_effect_group_id": application["effect_group_id"],
                 "__applied_effect_count": len(applied_effects),
+                "concentration_group": application["effect_group_id"]
+                if spell_context.get("concentration")
+                else None,
             },
         )
 
@@ -354,5 +376,39 @@ class CombatSpellDeclarativeEffectsMixin:
             actor_kind=actor_kind,
             actor_ref_id=actor_ref_id,
             ability=SKILL_ABILITY_MAP[skill],
+            target_participant_id=target_participant_id,
+        )
+
+    @classmethod
+    def _explain_check_modifier_sources_for_actor(
+        cls,
+        db,
+        session_id: str,
+        *,
+        actor_kind: str,
+        actor_ref_id: str,
+        ability: AbilityName,
+        roll_type: Literal["ability", "skill"] = "ability",
+        skill: SkillName | None = None,
+        target_participant_id: str | None = None,
+    ) -> list[dict]:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            return []
+        participant = next(
+            (
+                entry
+                for entry in state.participants
+                if entry.get("kind") == actor_kind and entry.get("ref_id") == actor_ref_id
+            ),
+            None,
+        )
+        if not isinstance(participant, dict):
+            return []
+        return explain_check_modifier_sources(
+            participant,
+            ability=ability,
+            roll_type=roll_type,
+            skill=skill,
             target_participant_id=target_participant_id,
         )

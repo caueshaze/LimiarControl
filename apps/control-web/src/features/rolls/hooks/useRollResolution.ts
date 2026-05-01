@@ -16,6 +16,7 @@ export type AuthoritativeRollParams = {
   advantageMode: AdvantageMode;
   dc?: number | null;
   targetAc?: number | null;
+  targetParticipantId?: string | null;
   bonusOverride?: number | null;
   rollSource: "system" | "manual";
   manualRoll?: number | null;
@@ -46,6 +47,7 @@ export const useRollResolution = (
           actor_ref_id: actorRefId,
           advantage_mode: params.advantageMode,
           bonus_override: params.bonusOverride ?? undefined,
+          target_participant_id: params.targetParticipantId ?? undefined,
           roll_source: params.rollSource,
           manual_roll: params.manualRoll ?? undefined,
           manual_rolls: params.manualRolls ?? undefined,

@@ -1,5 +1,9 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
-import { resolveTargetVariantLabel } from "../../../features/combat-ui/spellVariantUi";
+import {
+  formatManualNotesByTarget,
+  formatVariantAssignmentDebug,
+  resolveTargetVariantLabel,
+} from "../../../features/combat-ui/spellVariantUi";
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
 import {
   formatAreaTargetOutcome,
@@ -54,6 +58,11 @@ export const SpellCastResultPanel = ({
     targetRefId: null,
     targetParticipantId: null,
   });
+  const variantAssignmentLines = formatVariantAssignmentDebug(
+    result.target_variant_assignments,
+    result.manual_notes_by_target,
+  );
+  const manualNoteLines = formatManualNotesByTarget(result.manual_notes_by_target);
 
   return (
     <div className="mt-5 space-y-4">
@@ -125,22 +134,29 @@ export const SpellCastResultPanel = ({
             Afinidade Elemental elegível: {result.elemental_affinity_damage_type ?? "tipo"}{typeof result.elemental_affinity_bonus === "number" ? ` · bonus potencial +${result.elemental_affinity_bonus}` : ""}
           </p>
         ) : null}
-        {resolvedVariantLabel ? (
-          <p className="mt-2 text-xs text-slate-300">Variante resolvida: {resolvedVariantLabel}</p>
+        {(variantAssignmentLines.length || resolvedVariantLabel || result.context_origin || result.concentration_group) ? (
+          <div className="mt-3 space-y-1 text-xs text-sky-100">
+            {variantAssignmentLines.length ? (
+              variantAssignmentLines.map((line, index) => (
+                <p key={`variant:${index}`}>{line}</p>
+              ))
+            ) : resolvedVariantLabel ? (
+              <p>Variante: {resolvedVariantLabel}</p>
+            ) : null}
+            {result.context_origin ? (
+              <p>Origem: {result.context_origin}</p>
+            ) : null}
+            {result.concentration_group ? (
+              <p>Concentração: {result.concentration_group}</p>
+            ) : null}
+          </div>
         ) : null}
-        {result.manual_notes_by_target?.length ? (
+        {manualNoteLines.length ? (
           <div className="mt-3 space-y-2 text-xs text-amber-100">
-            {result.manual_notes_by_target.map((entry) => (
-              <div key={`${entry.target_participant_id ?? entry.target_ref_id ?? entry.target_display_name}:${entry.variant_key}`}>
-                <p>
-                  {entry.target_display_name}: {entry.variant_label ?? entry.variant_key}
-                </p>
-                {entry.manual_notes.map((note) => (
-                  <p key={note.key}>
-                    {note.label} - {note.description}
-                  </p>
-                ))}
-              </div>
+            {manualNoteLines.map((line, index) => (
+              <p key={`note:${index}`}>
+                {line}
+              </p>
             ))}
           </div>
         ) : null}
