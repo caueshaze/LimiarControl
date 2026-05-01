@@ -78,6 +78,22 @@ export type PendingSave = {
   save_ability: string;
   save_dc: number;
   effect_kind?: "damage" | "healing" | null;
+  selected_variant_key?: string | null;
+  selected_variant_label?: string | null;
+  target_variant_assignments?: Array<{
+    target_participant_id?: string | null;
+    target_ref_id?: string | null;
+    variant_key: string;
+    variant_label?: string | null;
+  }> | null;
+  manual_notes_by_target?: Array<{
+    target_participant_id?: string | null;
+    target_ref_id?: string | null;
+    target_display_name: string;
+    variant_key: string;
+    variant_label?: string | null;
+    manual_notes: SpellVariantManualNote[];
+  }> | null;
 };
 
 export type SaveResolution = {
@@ -95,6 +111,21 @@ export type SaveResolution = {
   new_hp?: number | null;
   roll_result: RollResult;
   pending_spell_id?: string | null;
+  selected_variant_key?: string | null;
+  target_variant_assignments?: Array<{
+    target_participant_id?: string | null;
+    target_ref_id?: string | null;
+    variant_key: string;
+    variant_label?: string | null;
+  }> | null;
+  manual_notes_by_target?: Array<{
+    target_participant_id?: string | null;
+    target_ref_id?: string | null;
+    target_display_name: string;
+    variant_key: string;
+    variant_label?: string | null;
+    manual_notes: SpellVariantManualNote[];
+  }> | null;
 };
 
 export type CombatParticipant = {

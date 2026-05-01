@@ -4,6 +4,7 @@ import {
   PlayerSpellCastDialog,
   buildNonAreaSpellCastPayload,
   getEffectiveEffectInstanceContext,
+  mergePendingSaveResolutionResult,
 } from "./PlayerSpellCastDialog";
 import { reconcileEffectInstanceTargets, resolveEffectInstanceContext } from "./InstanceTargetSelector";
 
@@ -594,5 +595,91 @@ describe("PlayerSpellCastDialog", () => {
 
     expect(lastActionsProps?.submitDisabled).toBe(true);
     expect(lastActionsProps?.validationMessage).toBe("Escolha um alvo para cada instância da magia.");
+  });
+
+  it("preserva contexto modal ao mesclar last_save_resolution com o resultado local", () => {
+    const merged = mergePendingSaveResolutionResult(
+      {
+        spell_name: "Modal Save Test Spell",
+        spell_canonical_key: "modal_save_test_spell",
+        selected_variant_key: null,
+        action_kind: "saving_throw",
+        effect_kind: "damage",
+        damage: 0,
+        healing: 0,
+        target_display_name: "Goblin A",
+        target_kind: "session_entity",
+        pending_save_id: "pending-save-1",
+        pending_spell_id: null,
+      },
+      {
+        spell_name: "Modal Save Test Spell",
+        pending_save_id: "pending-save-1",
+        target_display_name: "Goblin A",
+        save_ability: "wisdom",
+        save_dc: 14,
+        is_saved: false,
+        roll_total: 9,
+        damage: 0,
+        healing: 0,
+        effect_kind: "damage",
+        roll_result: {
+          event_id: "roll-1",
+          roll_type: "save",
+          actor_kind: "session_entity",
+          actor_ref_id: "session_entity:goblin-a",
+          actor_display_name: "Goblin A",
+          rolls: [8],
+          selected_roll: 8,
+          advantage_mode: "normal",
+          modifier_used: 1,
+          override_used: false,
+          formula: "1d20+1",
+          total: 9,
+          ability: "wisdom",
+          success: false,
+          is_gm_roll: true,
+          roll_source: "manual",
+          timestamp: "2026-04-30T00:00:00Z",
+        },
+        pending_spell_id: "pending-spell-1",
+        selected_variant_key: "foxs_cunning",
+        target_variant_assignments: [
+          {
+            target_participant_id: "enemy-1",
+            variant_key: "foxs_cunning",
+            variant_label: "Esperteza da Raposa",
+          },
+        ],
+        manual_notes_by_target: [
+          {
+            target_participant_id: "enemy-1",
+            target_display_name: "Goblin A",
+            variant_key: "foxs_cunning",
+            variant_label: "Esperteza da Raposa",
+            manual_notes: [{ key: "k", label: "Nota", description: "Descricao" }],
+          },
+        ],
+      },
+    );
+
+    expect(merged.selected_variant_key).toBe("foxs_cunning");
+    expect(merged.pending_spell_id).toBe("pending-spell-1");
+    expect(merged.target_variant_assignments).toEqual([
+      {
+        target_participant_id: "enemy-1",
+        variant_key: "foxs_cunning",
+        variant_label: "Esperteza da Raposa",
+      },
+    ]);
+    expect(merged.manual_notes_by_target).toEqual([
+      {
+        target_participant_id: "enemy-1",
+        target_display_name: "Goblin A",
+        variant_key: "foxs_cunning",
+        variant_label: "Esperteza da Raposa",
+        manual_notes: [{ key: "k", label: "Nota", description: "Descricao" }],
+      },
+    ]);
   });
 });

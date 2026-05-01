@@ -1,4 +1,5 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
+import { resolveTargetVariantLabel } from "../../../features/combat-ui/spellVariantUi";
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
 import {
   formatAreaTargetOutcome,
@@ -46,6 +47,13 @@ export const SpellCastResultPanel = ({
   const hasEffectInstanceOutcomes = Boolean(result.effect_instance_outcomes?.length);
   const hasAreaTargetOutcomes = Boolean(result.area_target_outcomes?.length);
   const guardrailBlockedCount = result.area_target_outcomes?.filter((outcome) => outcome.excluded_by_guardrail).length ?? 0;
+  const resolvedVariantLabel = resolveTargetVariantLabel({
+    targetVariantAssignments: result.target_variant_assignments,
+    manualNotesByTarget: result.manual_notes_by_target,
+    selectedVariantKey: result.selected_variant_key,
+    targetRefId: null,
+    targetParticipantId: null,
+  });
 
   return (
     <div className="mt-5 space-y-4">
@@ -116,6 +124,9 @@ export const SpellCastResultPanel = ({
           <p className="mt-2 text-xs text-amber-100">
             Afinidade Elemental elegível: {result.elemental_affinity_damage_type ?? "tipo"}{typeof result.elemental_affinity_bonus === "number" ? ` · bonus potencial +${result.elemental_affinity_bonus}` : ""}
           </p>
+        ) : null}
+        {resolvedVariantLabel ? (
+          <p className="mt-2 text-xs text-slate-300">Variante resolvida: {resolvedVariantLabel}</p>
         ) : null}
         {result.manual_notes_by_target?.length ? (
           <div className="mt-3 space-y-2 text-xs text-amber-100">

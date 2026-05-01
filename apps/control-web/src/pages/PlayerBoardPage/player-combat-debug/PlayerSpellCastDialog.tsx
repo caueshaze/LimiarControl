@@ -181,6 +181,40 @@ export const getEffectiveEffectInstanceContext = (
       };
 };
 
+export const mergePendingSaveResolutionResult = (
+  result: CombatSpellResult,
+  resolution: CombatParticipant["last_save_resolution"],
+): CombatSpellResult => {
+  if (!resolution) {
+    return result;
+  }
+
+  return {
+    ...result,
+    action_kind: "saving_throw",
+    damage: resolution.damage,
+    healing: resolution.healing,
+    damage_type: resolution.damage_type ?? result.damage_type,
+    effect_kind: resolution.effect_kind ?? result.effect_kind,
+    effect_roll_required: Boolean(resolution.pending_spell_id),
+    is_critical: false,
+    is_hit: null,
+    is_saved: resolution.is_saved,
+    new_hp: resolution.new_hp ?? null,
+    pending_save_id: null,
+    pending_spell_id: resolution.pending_spell_id ?? null,
+    roll: resolution.roll_total,
+    roll_result: resolution.roll_result,
+    save_ability: (resolution.save_ability as AbilityName) ?? result.save_ability,
+    save_dc: resolution.save_dc,
+    selected_variant_key: resolution.selected_variant_key ?? result.selected_variant_key,
+    target_variant_assignments:
+      resolution.target_variant_assignments ?? result.target_variant_assignments ?? null,
+    manual_notes_by_target:
+      resolution.manual_notes_by_target ?? result.manual_notes_by_target ?? null,
+  };
+};
+
 export const PlayerSpellCastDialog = ({
   actor,
   actorParticipantId,
@@ -557,25 +591,7 @@ export const PlayerSpellCastDialog = ({
     }
     handledSaveResolutionKeyRef.current = resolutionKey;
 
-    const resolved: CombatSpellResult = {
-      ...result,
-      action_kind: "saving_throw",
-      damage: resolution.damage,
-      healing: resolution.healing,
-      damage_type: resolution.damage_type ?? result.damage_type,
-      effect_kind: resolution.effect_kind ?? result.effect_kind,
-      effect_roll_required: Boolean(resolution.pending_spell_id),
-      is_critical: false,
-      is_hit: null,
-      is_saved: resolution.is_saved,
-      new_hp: resolution.new_hp ?? null,
-      pending_save_id: null,
-      pending_spell_id: resolution.pending_spell_id ?? null,
-      roll: resolution.roll_total,
-      roll_result: resolution.roll_result,
-      save_ability: (resolution.save_ability as AbilityName) ?? result.save_ability,
-      save_dc: resolution.save_dc,
-    };
+    const resolved = mergePendingSaveResolutionResult(result, resolution);
 
     setResult(resolved);
     setManualEffectRolls([]);

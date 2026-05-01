@@ -186,4 +186,58 @@ describe("SpellCastResultPanel", () => {
     expect(markup).toContain("You cannot use a hostile spell against Charmed Noble while charmed.");
     expect(markup).toContain("1 alvo na área foi excluído por regras mecânicas.");
   });
+
+  it("exibe variante resolvida e notas manuais agrupadas por alvo", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Modal Save Test Spell",
+          spell_canonical_key: "modal_save_test_spell",
+          selected_variant_key: "foxs_cunning",
+          action_kind: "saving_throw",
+          effect_kind: "damage",
+          damage: 7,
+          healing: 0,
+          is_saved: false,
+          target_display_name: "Goblin A",
+          target_kind: "session_entity",
+          target_variant_assignments: [
+            {
+              target_participant_id: "enemy-1",
+              variant_key: "foxs_cunning",
+              variant_label: "Esperteza da Raposa",
+            },
+            {
+              target_participant_id: "enemy-2",
+              variant_key: "owls_wisdom",
+              variant_label: "Sabedoria da Coruja",
+            },
+          ],
+          manual_notes_by_target: [
+            {
+              target_participant_id: "enemy-1",
+              target_display_name: "Goblin A",
+              variant_key: "foxs_cunning",
+              variant_label: "Esperteza da Raposa",
+              manual_notes: [{ key: "a", label: "Manual A", description: "Descricao A" }],
+            },
+            {
+              target_participant_id: "enemy-2",
+              target_display_name: "Goblin B",
+              variant_key: "owls_wisdom",
+              variant_label: "Sabedoria da Coruja",
+              manual_notes: [{ key: "b", label: "Manual B", description: "Descricao B" }],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Variante resolvida: Esperteza da Raposa");
+    expect(markup).toContain("Goblin A: Esperteza da Raposa");
+    expect(markup).toContain("Manual A - Descricao A");
+    expect(markup).toContain("Goblin B: Sabedoria da Coruja");
+    expect(markup).toContain("Manual B - Descricao B");
+  });
 });
