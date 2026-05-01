@@ -45,6 +45,8 @@ export type PlayerBoardStatusSummary = {
   maxHp: number;
   nextLevelThreshold: number | null;
   passivePerception: number;
+  passivePerceptionBonus?: number | null;
+  passivePerceptionBonusSources?: Array<{ label: string; value: number }> | null;
   spellAttack: number | null;
   spellSaveDC: number | null;
   tempHp: number;
