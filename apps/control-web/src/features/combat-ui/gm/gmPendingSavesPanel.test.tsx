@@ -83,7 +83,7 @@ describe("GmPendingSavesPanel", () => {
     );
 
     expect(markup).toContain("Variante: Esperteza da Raposa");
-    expect(markup).toContain("Origem: pending_save");
+    expect(markup).toContain("Origem: pending save");
     expect(markup).toContain("Concentração: group-1");
     expect(markup).toContain("Manual A - Descricao A");
     expect(markup).not.toContain("Manual B - Descricao B");

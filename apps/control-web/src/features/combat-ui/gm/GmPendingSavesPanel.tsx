@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   findManualNotesForTarget,
   formatManualNotesByTarget,
+  originLabel,
   resolveTargetVariantLabel,
 } from "../spellVariantUi";
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
@@ -58,8 +59,8 @@ export const GmPendingSavesPanel = ({
                   {variantLabel ? (
                     <p className="mt-1 text-xs text-fuchsia-200">Variante: {variantLabel}</p>
                   ) : null}
-                  {save.context_origin ? (
-                    <p className="mt-1 text-xs text-sky-200">Origem: {save.context_origin}</p>
+                  {originLabel(save.context_origin) ? (
+                    <p className="mt-1 text-xs text-sky-200">Origem: {originLabel(save.context_origin)}</p>
                   ) : null}
                   {save.concentration_group ? (
                     <p className="mt-1 text-xs text-sky-200">Concentração: {save.concentration_group}</p>

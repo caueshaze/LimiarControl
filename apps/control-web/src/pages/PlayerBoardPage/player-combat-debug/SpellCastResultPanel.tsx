@@ -2,6 +2,7 @@ import { RollResultCard } from "../../../features/rolls/components/RollResultCar
 import {
   formatManualNotesByTarget,
   formatVariantAssignmentDebug,
+  originLabel,
   resolveTargetVariantLabel,
 } from "../../../features/combat-ui/spellVariantUi";
 import type { CombatSpellResult } from "../../../shared/api/combatRepo";
@@ -143,8 +144,8 @@ export const SpellCastResultPanel = ({
             ) : resolvedVariantLabel ? (
               <p>Variante: {resolvedVariantLabel}</p>
             ) : null}
-            {result.context_origin ? (
-              <p>Origem: {result.context_origin}</p>
+            {originLabel(result.context_origin) ? (
+              <p>Origem: {originLabel(result.context_origin)}</p>
             ) : null}
             {result.concentration_group ? (
               <p>Concentração: {result.concentration_group}</p>

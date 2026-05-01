@@ -237,7 +237,7 @@ describe("SpellCastResultPanel", () => {
       />,
     );
 
-    expect(markup).toContain("Origem: pending_spell");
+    expect(markup).toContain("Origem: pending spell");
     expect(markup).toContain("Concentração: group-1");
     expect(markup).toContain("Goblin A: Esperteza da Raposa");
     expect(markup).toContain("Manual A - Descricao A");

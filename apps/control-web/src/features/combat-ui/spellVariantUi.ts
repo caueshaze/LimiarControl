@@ -166,7 +166,7 @@ export const formatManualNotesByTarget = (
   );
 };
 
-const originLabel = (origin: CombatSpellContextOrigin | null | undefined) => {
+export const originLabel = (origin: CombatSpellContextOrigin | null | undefined) => {
   switch (origin) {
     case "initial_cast":
       return "initial cast";
