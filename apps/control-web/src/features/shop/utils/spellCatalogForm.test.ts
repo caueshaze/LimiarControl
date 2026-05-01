@@ -328,7 +328,33 @@ describe("spellCatalogForm", () => {
 
     const errors = getSpellCatalogEditorVariantErrors(state);
     expect(errors.some((error) => error.includes("duplicada"))).toBe(true);
-    expect(errors.some((error) => error.includes("ao menos um efeito declarativo ou nota manual"))).toBe(true);
+    expect(errors.some((error) => error.includes("ao menos um efeito declarativo"))).toBe(true);
+  });
+
+  it("campaign payload builder throws when current locale label is missing", () => {
+    const state = createEmptySpellEditorState();
+    state.canonicalKey = "enhance_ability";
+    state.nameEn = "Enhance Ability";
+    state.descriptionEn = "Choose one ability.";
+    state.variants = [
+      {
+        key: "owls_wisdom",
+        labelPt: "",
+        labelEn: "Owl's Wisdom",
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { ability: "wisdom", against: "any" },
+          },
+        ],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+    ];
+
+    expect(() => buildSpellCreatePayload(state, "pt")).toThrow(/rótulo em português/i);
   });
 
   it("hydrates and serializes persistent area semantics", () => {

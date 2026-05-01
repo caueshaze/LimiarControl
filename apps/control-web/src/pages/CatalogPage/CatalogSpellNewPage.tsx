@@ -18,7 +18,7 @@ import { Toast } from "../../shared/ui/Toast";
 export const CatalogSpellNewPage = () => {
   const { selectedCampaignId } = useCampaigns();
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
 
   const [state, setState] = useState(createEmptySpellEditorState);
@@ -34,14 +34,14 @@ export const CatalogSpellNewPage = () => {
     Boolean(state.descriptionEn.trim()) &&
     state.level >= 0 &&
     state.level <= 9 &&
-    getSpellCatalogEditorVariantErrors(state).length === 0;
+    getSpellCatalogEditorVariantErrors(state, locale).length === 0;
 
   const handleCreate = async () => {
     if (!canSave || isSaving) return;
 
     setIsSaving(true);
     try {
-      await campaignSpellsRepo.create(selectedCampaignId, buildSpellCreatePayload(state) as CampaignSpellCreatePayload);
+      await campaignSpellsRepo.create(selectedCampaignId, buildSpellCreatePayload(state, locale) as CampaignSpellCreatePayload);
       showToast({
         variant: "success",
         title: t("catalog.spells.createSuccessTitle"),

@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [state, setState] = useState(() => createSpellEditorState(spell));
   const [isSaving, setIsSaving] = useState(false);
   const unsupportedValues = getUnsupportedSpellEditorValues(spell);
@@ -31,7 +31,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
     Boolean(state.descriptionEn.trim()) &&
     state.level >= 0 &&
     state.level <= 9 &&
-    getSpellCatalogEditorVariantErrors(state).length === 0;
+    getSpellCatalogEditorVariantErrors(state, locale).length === 0;
 
   const handleSave = async () => {
     if (!canSave || isSaving) {
@@ -40,7 +40,7 @@ export const SpellCatalogEditor = ({ spell, onSave, onCancel }: Props) => {
 
     setIsSaving(true);
     try {
-      const updated = await onSave(spell.id, buildSpellUpdatePayload(state));
+      const updated = await onSave(spell.id, buildSpellUpdatePayload(state, locale));
       if (updated) {
         onCancel();
       }

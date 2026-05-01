@@ -15,7 +15,7 @@ import {
 } from "./systemSpellCatalog.types";
 
 export const SystemSpellCatalogPage = () => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [spells, setSpells] = useState<BaseSpell[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export const SystemSpellCatalogPage = () => {
 
   const handleSave = async () => {
     const isNew = !selectedSpellId;
-    const built = buildPayload(form, isNew);
+    const built = buildPayload(form, isNew, locale);
     if (!built.payload) {
       setError(built.error ?? "Payload inválido.");
       return;

@@ -3,8 +3,8 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 import {
   addSpellVariant,
   createEmptySpellVariantManualNote,
-  getSpellVariantErrors,
-  getSpellVariantWarnings,
+  getVariantIssueLabel,
+  validateSpellVariants,
   removeSpellVariant,
   summarizeSpellVariant,
 } from "../utils/spellVariantEditor";
@@ -34,28 +34,34 @@ const updateVariant = (
 ) => variants.map((variant, variantIndex) => (variantIndex === index ? updater(variant) : variant));
 
 export const SpellCatalogVariantsFields = ({ variants, onChange }: Props) => {
-  const { t } = useLocale();
-  const errors = getSpellVariantErrors(variants);
-  const warnings = getSpellVariantWarnings(variants);
+  const { locale, t } = useLocale();
+  const validation = validateSpellVariants(variants, locale);
+  const errors = validation.errors;
+  const warnings = validation.warnings;
 
   return (
     <Section title="Variants">
       {errors.length > 0 ? (
         <div className="space-y-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-          {errors.map((error) => (
-            <p key={error}>{error}</p>
+          {errors.map((error, index) => (
+            <p key={`${error.variantIndex}:${error.noteIndex ?? "variant"}:${index}`}>{error.message}</p>
           ))}
         </div>
       ) : null}
       {warnings.length > 0 ? (
         <div className="space-y-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          {warnings.map((warning) => (
-            <p key={warning}>{warning}</p>
+          {warnings.map((warning, index) => (
+            <p key={`${warning.variantIndex}:${warning.noteIndex ?? "variant"}:${index}`}>{warning.message}</p>
           ))}
         </div>
       ) : null}
 
       {variants.map((variant, index) => (
+        (() => {
+          const variantErrors = validation.errors.filter((issue) => issue.variantIndex === index && issue.noteIndex == null);
+          const variantWarnings = validation.warnings.filter((issue) => issue.variantIndex === index && issue.noteIndex == null);
+          const noteIssues = validation.issues.filter((issue) => issue.variantIndex === index && issue.noteIndex != null);
+          return (
         <div
           key={`variant-${index}`}
           className="space-y-4 rounded-2xl border border-white/8 bg-slate-950/45 p-4"
@@ -63,13 +69,13 @@ export const SpellCatalogVariantsFields = ({ variants, onChange }: Props) => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-white">
-                Variante {index + 1}
+                {getVariantIssueLabel(variant, index)}
               </p>
               <p className="text-xs text-slate-400">
                 Configure rótulos, descrições, efeitos e notas manuais desta opção de cast.
               </p>
               <p className="mt-1 text-xs text-violet-200/85">
-                {summarizeSpellVariant(variant, "pt")}
+                {summarizeSpellVariant(variant, locale)}
               </p>
             </div>
             <button
@@ -80,6 +86,21 @@ export const SpellCatalogVariantsFields = ({ variants, onChange }: Props) => {
               Remover variante
             </button>
           </div>
+
+          {variantErrors.length > 0 ? (
+            <div className="space-y-1 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              {variantErrors.map((issue, issueIndex) => (
+                <p key={`variant-error-${index}-${issueIndex}`}>{issue.message}</p>
+              ))}
+            </div>
+          ) : null}
+          {variantWarnings.length > 0 ? (
+            <div className="space-y-1 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+              {variantWarnings.map((issue, issueIndex) => (
+                <p key={`variant-warning-${index}-${issueIndex}`}>{issue.message}</p>
+              ))}
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block min-w-0">
@@ -234,10 +255,20 @@ export const SpellCatalogVariantsFields = ({ variants, onChange }: Props) => {
             </div>
 
             {(variant.manualNotes ?? []).map((note, noteIndex) => (
+              (() => {
+                const currentNoteIssues = noteIssues.filter((issue) => issue.noteIndex === noteIndex);
+                return (
               <div
                 key={`variant-${index}-note-${noteIndex}`}
                 className="space-y-3 rounded-2xl border border-white/8 bg-slate-950/55 p-3"
               >
+                {currentNoteIssues.length > 0 ? (
+                  <div className="space-y-1 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+                    {currentNoteIssues.map((issue, issueIndex) => (
+                      <p key={`variant-${index}-note-${noteIndex}-issue-${issueIndex}`}>{issue.message}</p>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <input
                     value={note.key}
@@ -308,9 +339,13 @@ export const SpellCatalogVariantsFields = ({ variants, onChange }: Props) => {
                   placeholder="Explique o que ainda precisa ser aplicado manualmente."
                 />
               </div>
+                );
+              })()
             ))}
           </div>
         </div>
+          );
+        })()
       ))}
 
       <button

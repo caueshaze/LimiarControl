@@ -38,6 +38,7 @@ import {
   type TargetType,
   type UpcastMode,
 } from "../../../entities/base-spell";
+import type { Locale } from "../../../shared/i18n";
 import type { BaseSpellUpdatePayload } from "../../../shared/api/baseSpellsRepo";
 import type { CampaignSpellCreatePayload } from "../../../shared/api/campaignSpellsRepo";
 import { normalizeSpellVariantsForPayload } from "./spellVariantEditor";
@@ -426,8 +427,12 @@ export const getUnsupportedSpellEditorValues = (spell: BaseSpell) => {
 
 export const buildSpellUpdatePayload = (
   state: SpellCatalogEditorState,
+  locale: Locale = "pt",
 ): BaseSpellUpdatePayload => {
-  const normalizedVariants = normalizeSpellVariantsForPayload(state.variants);
+  const normalizedVariants = normalizeSpellVariantsForPayload(state.variants, locale);
+  if (normalizedVariants.errors.length > 0) {
+    throw new Error(normalizedVariants.errors[0]);
+  }
   return {
     castingTimeType: toNullableText(state.castingTimeType) as CastingTimeType | null,
     nameEn: state.nameEn.trim(),
@@ -507,17 +512,20 @@ export const buildSpellUpdatePayload = (
 
 export const buildSpellCreatePayload = (
   state: SpellCatalogEditorState,
+  locale: Locale = "pt",
 ): CampaignSpellCreatePayload => ({
   canonicalKey: normalizeSpellCanonicalKey(state.canonicalKey),
-  ...buildSpellUpdatePayload(state),
+  ...buildSpellUpdatePayload(state, locale),
   nameEn: state.nameEn.trim(),
   descriptionEn: state.descriptionEn.trim(),
   level: state.level,
   school: state.school,
 });
 
-export const getSpellCatalogEditorVariantErrors = (state: SpellCatalogEditorState) =>
-  normalizeSpellVariantsForPayload(state.variants).errors;
+export const getSpellCatalogEditorVariantErrors = (
+  state: SpellCatalogEditorState,
+  locale: Locale = "pt",
+) => normalizeSpellVariantsForPayload(state.variants, locale).errors;
 
 export type SpellCatalogEditorState = {
   canonicalKey: string;

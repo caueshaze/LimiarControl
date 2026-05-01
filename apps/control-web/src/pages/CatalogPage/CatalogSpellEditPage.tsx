@@ -20,7 +20,7 @@ export const CatalogSpellEditPage = () => {
   const { spellId } = useParams<{ spellId: string }>();
   const { selectedCampaignId } = useCampaigns();
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const { toast, showToast, clearToast } = useToast();
 
   const {
@@ -81,7 +81,7 @@ export const CatalogSpellEditPage = () => {
     Boolean(formState.descriptionEn.trim()) &&
     formState.level >= 0 &&
     formState.level <= 9 &&
-    getSpellCatalogEditorVariantErrors(formState).length === 0;
+    getSpellCatalogEditorVariantErrors(formState, locale).length === 0;
 
   const handleSave = async () => {
     if (!canSave || isSaving) return;
@@ -91,7 +91,7 @@ export const CatalogSpellEditPage = () => {
       await campaignSpellsRepo.update(
         selectedCampaignId,
         spell.id,
-        buildSpellUpdatePayload(formState),
+        buildSpellUpdatePayload(formState, locale),
       );
       await refetchSpells();
       showToast({
