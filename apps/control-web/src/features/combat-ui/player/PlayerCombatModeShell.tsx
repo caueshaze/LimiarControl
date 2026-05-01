@@ -39,6 +39,7 @@ import {
   useMovementPreview,
 } from "../map/useMovementPreview";
 import { combatRepo, type PendingSave } from "../../../shared/api/combatRepo";
+import { buildPendingSaveReason, resolveTargetVariantLabel } from "../spellVariantUi";
 
 type Props = {
   campaignId?: string | null;
@@ -583,7 +584,18 @@ export const PlayerCombatModeShell = ({
             ability: activePendingSave.save_ability as AbilityName,
             advantageMode: "normal",
             dc: activePendingSave.save_dc,
-            reason: `${activePendingSave.spell_name} - save de ${activePendingSave.save_ability}`,
+            reason: buildPendingSaveReason({
+              spellName: activePendingSave.spell_name,
+              saveAbility: activePendingSave.save_ability,
+              variantLabel: resolveTargetVariantLabel({
+                targetVariantAssignments: activePendingSave.target_variant_assignments,
+                manualNotesByTarget: activePendingSave.manual_notes_by_target,
+                selectedVariantKey: activePendingSave.selected_variant_key,
+                selectedVariantLabel: activePendingSave.selected_variant_label,
+                targetParticipantId: activePendingSave.participantId,
+                targetRefId: activePendingSave.participantRefId,
+              }),
+            }),
             issuedBy: activePendingSave.attacker_display_name ?? undefined,
             issuedByLabel: t("combatUi.castBy"),
           }}

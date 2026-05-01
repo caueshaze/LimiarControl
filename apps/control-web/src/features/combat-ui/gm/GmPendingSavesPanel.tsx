@@ -1,4 +1,8 @@
 import { useState } from "react";
+import {
+  findManualNotesForTarget,
+  resolveTargetVariantLabel,
+} from "../spellVariantUi";
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
@@ -26,6 +30,18 @@ export const GmPendingSavesPanel = ({
         {pendingSaves.map((p) => {
           const save = p.pending_save;
           const isExpanded = expandedId === p.id;
+          const variantLabel = resolveTargetVariantLabel({
+            targetVariantAssignments: save.target_variant_assignments,
+            manualNotesByTarget: save.manual_notes_by_target,
+            selectedVariantKey: save.selected_variant_key,
+            selectedVariantLabel: save.selected_variant_label,
+            targetParticipantId: p.id,
+            targetRefId: p.ref_id,
+          });
+          const manualNotesEntry = findManualNotesForTarget(save.manual_notes_by_target, {
+            targetParticipantId: p.id,
+            targetRefId: p.ref_id,
+          });
           return (
             <div key={p.id} className="rounded-2xl bg-slate-950/40 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -35,6 +51,18 @@ export const GmPendingSavesPanel = ({
                     {save.spell_name} — save de {save.save_ability} CD {save.save_dc}
                     {save.attacker_display_name ? ` (lancado por ${save.attacker_display_name})` : ""}
                   </p>
+                  {variantLabel ? (
+                    <p className="mt-1 text-xs text-fuchsia-200">Variante: {variantLabel}</p>
+                  ) : null}
+                  {manualNotesEntry?.manual_notes.length ? (
+                    <div className="mt-2 space-y-1 text-xs text-amber-100">
+                      {manualNotesEntry.manual_notes.map((note) => (
+                        <p key={note.key}>
+                          {note.label} - {note.description}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               {isExpanded ? (
