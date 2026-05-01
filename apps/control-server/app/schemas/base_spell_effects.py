@@ -13,6 +13,10 @@ SpellDeclarativeEffectType = Literal[
     "advantage_on_checks",
     "disadvantage_on_checks",
     "restrict_action",
+    "grant_temp_hp",
+    "passive_skill_bonus",
+    "carrying_capacity_multiplier",
+    "fall_damage_immunity_threshold",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -91,6 +95,23 @@ class RestrictActionParams(BaseModel):
     action: SpellDeclarativeRestrictActionKind
 
 
+class GrantTempHpParams(BaseModel):
+    dice: str
+
+
+class PassiveSkillBonusParams(BaseModel):
+    skill: str
+    bonus: int
+
+
+class CarryingCapacityMultiplierParams(BaseModel):
+    multiplier: float
+
+
+class FallDamageImmunityThresholdParams(BaseModel):
+    max_distance_meters: float
+
+
 class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
@@ -100,6 +121,10 @@ class SpellDeclarativeEffect(BaseModel):
         | ModifyStatParams
         | CheckModifierParams
         | RestrictActionParams
+        | GrantTempHpParams
+        | PassiveSkillBonusParams
+        | CarryingCapacityMultiplierParams
+        | FallDamageImmunityThresholdParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -115,4 +140,12 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError(f"{self.type} effects require CheckModifierParams")
         if self.type == "restrict_action" and not isinstance(self.params, RestrictActionParams):
             raise ValueError("restrict_action effects require RestrictActionParams")
+        if self.type == "grant_temp_hp" and not isinstance(self.params, GrantTempHpParams):
+            raise ValueError("grant_temp_hp effects require GrantTempHpParams")
+        if self.type == "passive_skill_bonus" and not isinstance(self.params, PassiveSkillBonusParams):
+            raise ValueError("passive_skill_bonus effects require PassiveSkillBonusParams")
+        if self.type == "carrying_capacity_multiplier" and not isinstance(self.params, CarryingCapacityMultiplierParams):
+            raise ValueError("carrying_capacity_multiplier effects require CarryingCapacityMultiplierParams")
+        if self.type == "fall_damage_immunity_threshold" and not isinstance(self.params, FallDamageImmunityThresholdParams):
+            raise ValueError("fall_damage_immunity_threshold effects require FallDamageImmunityThresholdParams")
         return self

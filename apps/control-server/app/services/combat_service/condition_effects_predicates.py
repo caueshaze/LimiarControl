@@ -210,3 +210,16 @@ def explain_check_modifier_sources(
         entry["applied"] = True
         explanations.append(entry)
     return explanations
+
+
+def get_passive_skill_bonus(participant: dict, skill: str) -> int:
+    total = 0
+    for declarative in _iter_declarative_spell_effects(participant):
+        if declarative.get("type") != "passive_skill_bonus":
+            continue
+        params = declarative.get("params")
+        if isinstance(params, dict) and params.get("skill") == skill:
+            bonus = params.get("bonus")
+            if isinstance(bonus, int):
+                total += bonus
+    return total
