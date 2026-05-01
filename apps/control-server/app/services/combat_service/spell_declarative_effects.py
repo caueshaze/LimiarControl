@@ -9,7 +9,7 @@ from .condition_effects_predicates import (
     explain_check_modifier_sources,
     resolve_check_advantage_mode,
 )
-from .exceptions import CombatServiceError
+from .exceptions import CombatServiceError, _roll_dice_expression
 
 
 class CombatSpellDeclarativeEffectsMixin:
@@ -190,6 +190,23 @@ class CombatSpellDeclarativeEffectsMixin:
             )
             cls._append_effect_to_participant(resolved_target, active_effect)
             created.append(active_effect)
+        elif effect.type == "grant_temp_hp":
+            rolled = _roll_dice_expression(params["dice"])
+            active_effect = cls._build_active_effect(
+                kind="temp_hp_granted",
+                source_participant_id=attacker.get("id"),
+                numeric_value=rolled,
+                metadata={
+                    **metadata,
+                    "rolled_temp_hp": rolled,
+                    "does_not_expire_temp_hp": True,
+                    "applied_temp_hp": False,
+                },
+                display_label=spell_context.get("spell_name"),
+                **duration_kwargs,
+            )
+            cls._append_effect_to_participant(resolved_target, active_effect)
+            created.append(active_effect)
         else:
             active_effect = cls._build_active_effect(
                 kind="spell_effect",
@@ -281,6 +298,52 @@ class CombatSpellDeclarativeEffectsMixin:
         return executed
 
     @classmethod
+    def _apply_temp_hp_from_granted_effects(cls, db, state, applied_effects: list[dict]) -> None:
+        from app.services.session_state_finalize import finalize_session_state_data
+        from sqlalchemy.orm.attributes import flag_modified
+
+        for effect in applied_effects:
+            if effect.get("kind") != "temp_hp_granted":
+                continue
+            metadata = cls._get_effect_metadata(effect)
+            if metadata.get("applied_temp_hp"):
+                continue
+            rolled = metadata.get("rolled_temp_hp")
+            if not isinstance(rolled, int) or rolled <= 0:
+                continue
+            target_participant_id = metadata.get("effect_target_participant_id")
+            target_ref_id = metadata.get("effect_target_ref_id")
+            target_kind = None
+            for p in (state.participants if state else []):
+                if p.get("id") == target_participant_id or p.get("ref_id") == target_ref_id:
+                    target_kind = p.get("kind")
+                    target_ref_id = p.get("ref_id")
+                    break
+            if not target_ref_id or not target_kind:
+                continue
+            previous_temp_hp = 0
+            final_temp_hp = rolled
+            if target_kind == "player":
+                try:
+                    target_model, *_ = cls._get_stats(db, target_ref_id, "player", state.session_id if state else "")
+                    data = cls._as_dict(target_model.state_json)
+                    previous_temp_hp = max(0, cls._safe_int(data.get("tempHP"), 0))
+                    final_temp_hp = max(previous_temp_hp, rolled)
+                    if final_temp_hp > previous_temp_hp:
+                        data["tempHP"] = final_temp_hp
+                        target_model.state_json = finalize_session_state_data(data)
+                        flag_modified(target_model, "state_json")
+                        db.add(target_model)
+                        if state:
+                            flag_modified(state, "participants")
+                            db.add(state)
+                except Exception:
+                    pass
+            metadata["applied_temp_hp"] = True
+            metadata["previous_temp_hp"] = previous_temp_hp
+            metadata["final_temp_hp"] = final_temp_hp
+
+    @classmethod
     async def _cast_spell_via_declarative_effects(
         cls,
         db,
@@ -307,6 +370,7 @@ class CombatSpellDeclarativeEffectsMixin:
             effect_group_id=effect_group_id,
         )
         applied_effects = application["applied_effects"]
+        cls._apply_temp_hp_from_granted_effects(db, state, applied_effects)
         summary_target = target_participant or attacker
         summary_text = (
             f"{spell_context['spell_name']} aplicou {len(applied_effects)} efeito(s)."

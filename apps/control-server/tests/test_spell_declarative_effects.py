@@ -76,20 +76,98 @@ class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
                             "target": "selected_target",
                             "params": {"ability": "constitution"},
                             "stacking": "replace",
-                        }
-                    ],
-                    "manualNotes": [
+                        },
                         {
-                            "key": "grant_temp_hp",
-                            "label": "PV temporários",
-                            "description": "Conceda 2d6 PV temporários manualmente.",
-                        }
+                            "type": "grant_temp_hp",
+                            "target": "selected_target",
+                            "duration": {"type": "manual"},
+                            "params": {"dice": "2d6"},
+                        },
                     ],
                 }
             ],
         )
         self.assertEqual(spell.variants[0].key, "bears_endurance")
-        self.assertEqual(spell.variants[0].manualNotes[0].key, "grant_temp_hp")
+        self.assertEqual(spell.variants[0].effects[1].type, "grant_temp_hp")
+        self.assertEqual(spell.variants[0].effects[1].params.dice, "2d6")
+
+    def test_accepts_enhance_ability_all_variants_declarative(self):
+        spell = BaseSpellCreate(
+            canonicalKey="enhance_ability",
+            nameEn="Enhance Ability",
+            descriptionEn="Choose one ability enhancement.",
+            level=2,
+            school="transmutation",
+            resolutionType="buff",
+            variants=[
+                {
+                    "key": "owls_wisdom",
+                    "labelPt": "Sabedoria da Coruja",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "target": "selected_target",
+                            "params": {"ability": "wisdom"},
+                            "stacking": "replace",
+                        },
+                        {
+                            "type": "passive_skill_bonus",
+                            "target": "selected_target",
+                            "duration": {"type": "manual"},
+                            "params": {"skill": "perception", "bonus": 5},
+                        },
+                    ],
+                },
+                {
+                    "key": "bulls_strength",
+                    "labelPt": "Força do Touro",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "target": "selected_target",
+                            "params": {"ability": "strength"},
+                            "stacking": "replace",
+                        },
+                        {
+                            "type": "carrying_capacity_multiplier",
+                            "target": "selected_target",
+                            "duration": {"type": "manual"},
+                            "params": {"multiplier": 2.0},
+                        },
+                    ],
+                },
+                {
+                    "key": "cats_grace",
+                    "labelPt": "Graça do Gato",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "target": "selected_target",
+                            "params": {"ability": "dexterity"},
+                            "stacking": "replace",
+                        },
+                        {
+                            "type": "fall_damage_immunity_threshold",
+                            "target": "selected_target",
+                            "duration": {"type": "manual"},
+                            "params": {"max_distance_meters": 6.0},
+                        },
+                    ],
+                },
+            ],
+        )
+        owls = spell.variants[0]
+        self.assertEqual(owls.effects[1].type, "passive_skill_bonus")
+        self.assertEqual(owls.effects[1].params.skill, "perception")
+        self.assertEqual(owls.effects[1].params.bonus, 5)
+
+        bulls = spell.variants[1]
+        self.assertEqual(bulls.effects[1].type, "carrying_capacity_multiplier")
+        self.assertEqual(bulls.effects[1].params.multiplier, 2.0)
+
+        cats = spell.variants[2]
+        self.assertEqual(cats.effects[1].type, "fall_damage_immunity_threshold")
+        self.assertEqual(cats.effects[1].params.max_distance_meters, 6.0)
 
     def test_rejects_duplicate_variant_keys(self):
         with self.assertRaises(ValueError):
@@ -361,3 +439,145 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
         self.assertEqual(metadata["effect_target_display_name"], "Caster")
         self.assertEqual(metadata["against"], "selected_target")
         self.assertEqual(metadata["concentration_group"], "group-ctx")
+
+    def test_grant_temp_hp_creates_observability_effect_with_rolled_value(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "grant_temp_hp",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"dice": "2d6"},
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        with patch(
+            "app.services.combat_service.spell_declarative_effects._roll_dice_expression",
+            return_value=9,
+        ):
+            CombatService._apply_declarative_spell_effects(
+                state=state,
+                attacker=attacker,
+                target_participant=target,
+                spell_context=spell_context,
+            )
+
+        self.assertEqual(len(target["active_effects"]), 1)
+        effect = target["active_effects"][0]
+        self.assertEqual(effect["kind"], "temp_hp_granted")
+        self.assertEqual(effect["numeric_value"], 9)
+        metadata = effect["metadata"]
+        self.assertEqual(metadata["rolled_temp_hp"], 9)
+        self.assertTrue(metadata["does_not_expire_temp_hp"])
+        self.assertFalse(metadata["applied_temp_hp"])
+
+    def test_passive_skill_bonus_creates_spell_effect_and_predicate_sums_correctly(self):
+        from app.services.combat_service.condition_effects_predicates import get_passive_skill_bonus
+
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "passive_skill_bonus",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"skill": "perception", "bonus": 5},
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        self.assertEqual(len(target["active_effects"]), 1)
+        effect = target["active_effects"][0]
+        self.assertEqual(effect["kind"], "spell_effect")
+        declarative = effect["metadata"]["declarative_effect"]
+        self.assertEqual(declarative["type"], "passive_skill_bonus")
+        self.assertEqual(declarative["params"]["skill"], "perception")
+        self.assertEqual(declarative["params"]["bonus"], 5)
+
+        self.assertEqual(get_passive_skill_bonus(target, "perception"), 5)
+        self.assertEqual(get_passive_skill_bonus(target, "stealth"), 0)
+
+    def test_carrying_capacity_multiplier_stores_params_in_metadata(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "carrying_capacity_multiplier",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"multiplier": 2.0},
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        effect = target["active_effects"][0]
+        self.assertEqual(effect["kind"], "spell_effect")
+        declarative = effect["metadata"]["declarative_effect"]
+        self.assertEqual(declarative["type"], "carrying_capacity_multiplier")
+        self.assertEqual(declarative["params"]["multiplier"], 2.0)
+
+    def test_fall_damage_immunity_threshold_stores_params_in_metadata(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "fall_damage_immunity_threshold",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"max_distance_meters": 6.0},
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        effect = target["active_effects"][0]
+        self.assertEqual(effect["kind"], "spell_effect")
+        declarative = effect["metadata"]["declarative_effect"]
+        self.assertEqual(declarative["type"], "fall_damage_immunity_threshold")
+        self.assertEqual(declarative["params"]["max_distance_meters"], 6.0)

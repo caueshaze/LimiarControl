@@ -246,20 +246,35 @@ export const formatEffectContextDebug = (
   if (declarative && typeof declarative === "object") {
     const entry = declarative as {
       type?: unknown;
-      params?: { ability?: unknown; stat?: unknown; condition?: unknown } | null;
+      params?: Record<string, unknown> | null;
     };
+    const p = entry.params ?? {};
     if (
       (entry.type === "advantage_on_checks" || entry.type === "disadvantage_on_checks")
-      && entry.params
-      && typeof entry.params.ability === "string"
+      && typeof p.ability === "string"
     ) {
       lines.push(
-        `${entry.type === "advantage_on_checks" ? "Advantage" : "Disadvantage"}: ${entry.params.ability} checks`,
+        `${entry.type === "advantage_on_checks" ? "Advantage" : "Disadvantage"}: ${p.ability} checks`,
       );
-    } else if (entry.type === "modify_stat" && entry.params && typeof entry.params.stat === "string") {
-      lines.push(`Effect: ${entry.params.stat}`);
-    } else if (entry.type === "apply_condition" && entry.params && typeof entry.params.condition === "string") {
-      lines.push(`Condition: ${entry.params.condition}`);
+    } else if (entry.type === "modify_stat" && typeof p.stat === "string") {
+      lines.push(`Effect: ${p.stat}`);
+    } else if (entry.type === "apply_condition" && typeof p.condition === "string") {
+      lines.push(`Condition: ${p.condition}`);
+    } else if (entry.type === "grant_temp_hp") {
+      const rolled = typeof metadata.rolled_temp_hp === "number" ? metadata.rolled_temp_hp : null;
+      const applied = metadata.applied_temp_hp === true;
+      const final = typeof metadata.final_temp_hp === "number" ? metadata.final_temp_hp : null;
+      if (applied && final !== null) {
+        lines.push(`PV temporários concedidos: ${final}. Não expiram com a concentração.`);
+      } else if (rolled !== null) {
+        lines.push(`PV temporários: ${rolled} (aguardando aplicação)`);
+      }
+    } else if (entry.type === "passive_skill_bonus" && typeof p.skill === "string" && typeof p.bonus === "number") {
+      lines.push(`Bônus passivo: +${p.bonus} em ${p.skill}`);
+    } else if (entry.type === "carrying_capacity_multiplier" && typeof p.multiplier === "number") {
+      lines.push(`Capacidade de carga: x${p.multiplier}`);
+    } else if (entry.type === "fall_damage_immunity_threshold" && typeof p.max_distance_meters === "number") {
+      lines.push(`Imunidade a queda: até ${p.max_distance_meters}m`);
     }
   }
   return lines;
