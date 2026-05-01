@@ -393,4 +393,36 @@ describe("systemSpellCatalog upcast helpers", () => {
     const result = buildPayload(form, true);
     expect(result.error).toContain("Chave de variante duplicada");
   });
+
+  it("blocks incomplete manual notes in the admin helper", () => {
+    const form = createEmptyForm();
+    form.canonicalKey = "enhance_ability";
+    form.nameEn = "Enhance Ability";
+    form.descriptionEn = "Choose one ability.";
+    form.variants = [
+      {
+        key: "owls_wisdom",
+        labelPt: "Sabedoria da Coruja",
+        effects: [
+          {
+            type: "advantage_on_checks",
+            target: "selected_target",
+            duration: { type: "manual" },
+            params: { ability: "wisdom", against: "any" },
+          },
+        ],
+        onEndEffects: [],
+        manualNotes: [
+          {
+            key: "",
+            label: "Percepção passiva",
+            description: "",
+          },
+        ],
+      },
+    ];
+
+    const result = buildPayload(form, true, "pt");
+    expect(result.error).toMatch(/nota manual/i);
+  });
 });

@@ -14,7 +14,7 @@ type Props = {
 };
 
 export const CreateSpellCatalogForm = ({ onCreate }: Props) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [state, setState] = useState(createEmptySpellEditorState);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,7 +24,7 @@ export const CreateSpellCatalogForm = ({ onCreate }: Props) => {
     Boolean(state.descriptionEn.trim()) &&
     state.level >= 0 &&
     state.level <= 9 &&
-    getSpellCatalogEditorVariantErrors(state).length === 0;
+    getSpellCatalogEditorVariantErrors(state, locale).length === 0;
 
   const handleCreate = async () => {
     if (!canSave || isSaving) {
@@ -33,7 +33,7 @@ export const CreateSpellCatalogForm = ({ onCreate }: Props) => {
 
     setIsSaving(true);
     try {
-      const created = await onCreate(buildSpellCreatePayload(state));
+      const created = await onCreate(buildSpellCreatePayload(state, locale));
       if (created) {
         setState(createEmptySpellEditorState());
       }

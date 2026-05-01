@@ -1,4 +1,5 @@
 import type { BaseSpell, BaseSpellWritePayload, CastingTimeType } from "../../entities/base-spell";
+import type { Locale } from "../../shared/i18n";
 import {
   SpellSource as SpellSourceValues,
   SpellSchool as SpellSchoolValues,
@@ -283,6 +284,7 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
 export const buildPayload = (
   form: FormState,
   isNew: boolean,
+  locale: Locale = "pt",
 ): { payload?: BaseSpellWritePayload; error?: string } => {
   const canonicalKey = normalizeCanonicalKey(form.canonicalKey);
   if (!canonicalKey) return { error: catalogPtBRDictionary["catalog.spells.validation.canonicalKeyRequired"] };
@@ -379,7 +381,7 @@ export const buildPayload = (
     if (!form.upcastUnlockSummary.trim()) return { error: catalogPtBRDictionary["catalog.spells.validation.extraEffectRequiresSummary"] };
   }
 
-  const normalizedVariants = normalizeSpellVariantsForPayload(form.variants);
+  const normalizedVariants = normalizeSpellVariantsForPayload(form.variants, locale);
   if (normalizedVariants.errors.length > 0) {
     return { error: normalizedVariants.errors[0] };
   }
