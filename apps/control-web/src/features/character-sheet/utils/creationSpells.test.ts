@@ -556,7 +556,7 @@ describe("creation spell progression", () => {
  * No catalog seeding needed — counts are derived from class config + progression tables alone.
  *
  * Backend counterpart: the slot progression side is covered in
- *   apps/control-server/tests/test_class_progression.py (SpellSlotContractTests).
+ *   apps/control-server/tests/test_class_progression.py (SpellcastingProgressionContractTests).
  * Prepared/known counts are a frontend-only concept (creation flow).
  */
 describe("getStartingSpellLimits — prepared/known spell count contract", () => {

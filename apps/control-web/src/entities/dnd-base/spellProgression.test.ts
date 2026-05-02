@@ -6,10 +6,13 @@ import {
 } from "./spellProgression";
 
 /**
- * Contract tests: frontend spell progression tables (spellProgression.ts).
+ * Contract/sanity tests: frontend spell progression tables (spellProgression.ts).
+ *
+ * These are NOT a shared source of truth — TS and Python are separate implementations.
+ * They ensure behavioral equivalence, not code reuse. Do not attempt to unify them.
  *
  * Each scenario here must have an equivalent test on the backend side in:
- *   apps/control-server/tests/test_class_progression.py  (SpellSlotContractTests)
+ *   apps/control-server/tests/test_class_progression.py  (SpellcastingProgressionContractTests)
  *
  * If you change a slot table here and these tests still pass but the backend
  * tests fail (or vice versa), that is a FE/BE drift signal.

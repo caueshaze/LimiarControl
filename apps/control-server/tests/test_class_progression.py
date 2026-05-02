@@ -182,14 +182,17 @@ class SpellSlotTableTests(unittest.TestCase):
         self.assertIsNone(get_spell_slots_for_class_level("unknown", 5))
 
 
-# ── FE/BE Contract Tests ───────────────────────────────────────────────────────
+# ── FE/BE Contract / Sanity Tests ─────────────────────────────────────────────
+# These are NOT a shared source of truth — TS and Python are separate implementations.
+# They ensure behavioral equivalence, not code reuse. Do not attempt to unify them.
+#
 # Each scenario here must have an equivalent test on the frontend side in:
 #   apps/control-web/src/entities/dnd-base/spellProgression.test.ts
 #
 # If you change a slot table here and these tests still pass but the TS tests
 # fail (or vice versa), that is a FE/BE drift signal.
 
-class SpellSlotContractTests(unittest.TestCase):
+class SpellcastingProgressionContractTests(unittest.TestCase):
     def test_sorcerer_level_3_full_caster_unlocks_second_level_slots(self):
         slots = get_spell_slots_for_class_level("sorcerer", 3)
         self.assertEqual(slots, {1: 4, 2: 2})
