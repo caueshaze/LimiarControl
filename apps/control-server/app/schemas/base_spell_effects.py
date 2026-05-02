@@ -56,6 +56,7 @@ SpellDeclarativeRestrictActionKind = Literal[
     "movement",
 ]
 SpellDeclarativeEffectStacking = Literal["stack", "replace"]
+SpellDeclarativeAgainst = Literal["selected_target", "effect_target", "any"]
 
 
 class SpellDeclarativeDuration(BaseModel):
@@ -89,6 +90,7 @@ class ModifyStatParams(BaseModel):
 
 class CheckModifierParams(BaseModel):
     ability: AbilityName
+    against: SpellDeclarativeAgainst | None = None
 
 
 class RestrictActionParams(BaseModel):

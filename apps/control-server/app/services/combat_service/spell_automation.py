@@ -132,6 +132,7 @@ class CombatSpellAutomationMixin:
             "save_ability": None, "save_dc": None, "save_success_outcome": None,
             "effect_dice": None, "effect_bonus": None, "pending_spell_id": None,
             "effect_roll_required": False, "summary_text": summary_text,
+            "applied_declarative_effects_by_target": None,
             "inventory_refresh_required": inventory_refresh_required,
             "__log_message": log_message, "__player_state_ids_to_emit": set(),
             "__entity_hp_update_target": None, "__entity_previous_hp": None,

@@ -307,6 +307,24 @@ class ModalPendingResolutionTests(unittest.IsolatedAsyncioTestCase):
             result["manual_notes_by_target"][0]["variant_key"],
             "bears_endurance",
         )
+        self.assertEqual(
+            result["applied_declarative_effects_by_target"],
+            [
+                {
+                    "target_display_name": "Target B",
+                    "target_participant_id": "e2",
+                    "target_ref_id": "enemy-2",
+                    "variant_key": "foxs_cunning",
+                    "variant_label": "Esperteza da Raposa",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "params": {"ability": "intelligence"},
+                        }
+                    ],
+                }
+            ],
+        )
         final_log = mock_emit_log.await_args.args[1]["message"]
         self.assertIn("Target B: Observação", final_log)
         self.assertIn("Target A: PV temporários", final_log)

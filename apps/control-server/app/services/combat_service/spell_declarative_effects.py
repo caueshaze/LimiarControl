@@ -14,6 +14,58 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 
 class CombatSpellDeclarativeEffectsMixin:
     @classmethod
+    def _build_applied_declarative_effects_by_target(
+        cls,
+        applied_effects: list[dict] | None,
+    ) -> list[dict]:
+        if not isinstance(applied_effects, list) or not applied_effects:
+            return []
+
+        grouped: dict[tuple[str | None, str | None, str], dict] = {}
+        for active_effect in applied_effects:
+            if not isinstance(active_effect, dict):
+                continue
+            metadata = cls._get_effect_metadata(active_effect)
+            declarative = metadata.get("declarative_effect")
+            if not isinstance(declarative, dict):
+                continue
+
+            target_participant_id = metadata.get("effect_target_participant_id")
+            if not isinstance(target_participant_id, str):
+                target_participant_id = None
+            target_ref_id = metadata.get("effect_target_ref_id")
+            if not isinstance(target_ref_id, str):
+                target_ref_id = None
+            target_display_name = metadata.get("effect_target_display_name")
+            if not isinstance(target_display_name, str) or not target_display_name.strip():
+                target_display_name = (
+                    target_participant_id
+                    or target_ref_id
+                    or "Target"
+                )
+            key = (target_participant_id, target_ref_id, target_display_name)
+            target_entry = grouped.setdefault(
+                key,
+                {
+                    "target_display_name": target_display_name,
+                    "target_participant_id": target_participant_id,
+                    "target_ref_id": target_ref_id,
+                    "variant_key": metadata.get("selected_variant_key"),
+                    "variant_label": metadata.get("selected_variant_label"),
+                    "effects": [],
+                },
+            )
+            target_entry["effects"].append(
+                {
+                    "type": declarative.get("type"),
+                    "params": declarative.get("params")
+                    if isinstance(declarative.get("params"), dict)
+                    else {},
+                }
+            )
+        return list(grouped.values())
+
+    @classmethod
     def _normalize_declarative_effects(cls, raw_effects: object) -> list[SpellDeclarativeEffect]:
         if not isinstance(raw_effects, list):
             return []
@@ -119,9 +171,9 @@ class CombatSpellDeclarativeEffectsMixin:
     ) -> list[dict]:
         metadata = {
             "declarative_effect_group_id": effect_group_id,
-            "declarative_effect": effect.model_dump(mode="json"),
+            "declarative_effect": effect.model_dump(mode="json", exclude_none=True),
             "declarative_on_end_effects": [
-                entry.model_dump(mode="json") for entry in on_end_effects
+                entry.model_dump(mode="json", exclude_none=True) for entry in on_end_effects
             ],
             "caster_participant_id": attacker.get("id"),
             "selected_target_participant_id": target_participant.get("id")
@@ -155,7 +207,7 @@ class CombatSpellDeclarativeEffectsMixin:
         metadata["effect_target_ref_id"] = resolved_target.get("ref_id")
         metadata["effect_target_display_name"] = resolved_target.get("display_name")
 
-        params = effect.params.model_dump(mode="json")
+        params = effect.params.model_dump(mode="json", exclude_none=True)
         if effect.type in {"advantage_on_checks", "disadvantage_on_checks"}:
             metadata["against"] = params.get("against") or "any"
         if effect.stacking == "replace":
@@ -391,6 +443,9 @@ class CombatSpellDeclarativeEffectsMixin:
             extra={
                 "__declarative_effect_group_id": application["effect_group_id"],
                 "__applied_effect_count": len(applied_effects),
+                "applied_declarative_effects_by_target": cls._build_applied_declarative_effects_by_target(
+                    applied_effects
+                ),
                 "concentration_group": application["effect_group_id"]
                 if spell_context.get("concentration")
                 else None,

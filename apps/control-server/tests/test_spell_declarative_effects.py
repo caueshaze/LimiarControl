@@ -581,3 +581,64 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
         declarative = effect["metadata"]["declarative_effect"]
         self.assertEqual(declarative["type"], "fall_damage_immunity_threshold")
         self.assertEqual(declarative["params"]["max_distance_meters"], 6.0)
+
+    def test_builds_applied_declarative_effects_summary_by_target(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "bulls_strength",
+            "selected_variant_label": "Força do Touro",
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"ability": "strength"},
+                },
+                {
+                    "type": "carrying_capacity_multiplier",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"multiplier": 2.0},
+                },
+            ],
+            "on_end_effects": [],
+        }
+
+        application = CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        summary = CombatService._build_applied_declarative_effects_by_target(
+            application["applied_effects"]
+        )
+
+        self.assertEqual(
+            summary,
+            [
+                {
+                    "target_display_name": "Target",
+                    "target_participant_id": "target-1",
+                    "target_ref_id": "entity-1",
+                    "variant_key": "bulls_strength",
+                    "variant_label": "Força do Touro",
+                    "effects": [
+                        {
+                            "type": "advantage_on_checks",
+                            "params": {"ability": "strength"},
+                        },
+                        {
+                            "type": "carrying_capacity_multiplier",
+                            "params": {"multiplier": 2.0},
+                        },
+                    ],
+                }
+            ],
+        )

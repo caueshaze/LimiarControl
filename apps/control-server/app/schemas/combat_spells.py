@@ -194,6 +194,20 @@ class CombatAreaGuardrailOutcome(BaseModel):
     guardrail_reason: str
 
 
+class AppliedDeclarativeEffectSummary(BaseModel):
+    type: str
+    params: dict = Field(default_factory=dict)
+
+
+class AppliedDeclarativeEffectsByTargetEntry(BaseModel):
+    target_display_name: str
+    target_participant_id: str | None = None
+    target_ref_id: str | None = None
+    variant_key: str | None = None
+    variant_label: str | None = None
+    effects: list[AppliedDeclarativeEffectSummary] = Field(default_factory=list)
+
+
 class CombatMapPreviewToken(BaseModel):
     token_id: str
     label: str
@@ -396,3 +410,4 @@ class CombatSpellResult(BaseModel):
     effect_instance_outcomes: list[EffectInstanceOutcome] = Field(default_factory=list)
     target_variant_assignments: list[dict] | None = None
     manual_notes_by_target: list[dict] | None = None
+    applied_declarative_effects_by_target: list[AppliedDeclarativeEffectsByTargetEntry] | None = None

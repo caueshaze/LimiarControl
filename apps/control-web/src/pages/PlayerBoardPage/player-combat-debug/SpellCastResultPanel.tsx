@@ -1,5 +1,6 @@
 import { RollResultCard } from "../../../features/rolls/components/RollResultCard";
 import {
+  formatAppliedDeclarativeEffectsByTarget,
   formatManualNotesByTarget,
   formatVariantAssignmentDebug,
   originLabel,
@@ -63,7 +64,23 @@ export const SpellCastResultPanel = ({
     result.target_variant_assignments,
     result.manual_notes_by_target,
   );
-  const manualNoteLines = formatManualNotesByTarget(result.manual_notes_by_target);
+  const appliedDeclarativeEffectsByTarget = formatAppliedDeclarativeEffectsByTarget(
+    result.applied_declarative_effects_by_target,
+    result.manual_notes_by_target,
+  );
+  const appliedTargetKeys = new Set(
+    (result.applied_declarative_effects_by_target ?? []).map(
+      (entry) => `${entry.target_participant_id ?? ""}:${entry.target_ref_id ?? ""}`,
+    ),
+  );
+  const manualNoteLines = formatManualNotesByTarget(
+    appliedTargetKeys.size
+      ? (result.manual_notes_by_target ?? []).filter(
+          (entry) =>
+            !appliedTargetKeys.has(`${entry.target_participant_id ?? ""}:${entry.target_ref_id ?? ""}`),
+        )
+      : result.manual_notes_by_target,
+  );
 
   return (
     <div className="mt-5 space-y-4">
@@ -150,6 +167,22 @@ export const SpellCastResultPanel = ({
             {result.concentration_group ? (
               <p>Concentração: {result.concentration_group}</p>
             ) : null}
+          </div>
+        ) : null}
+        {appliedDeclarativeEffectsByTarget.length ? (
+          <div className="mt-3 space-y-3 text-xs text-emerald-100">
+            {appliedDeclarativeEffectsByTarget.map((entry, index) => (
+              <div key={`${entry.targetDisplayName}:${index}`} className="space-y-1">
+                <p className="font-semibold text-emerald-200">{entry.targetDisplayName}</p>
+                {entry.variantLabel ? <p>Variante: {entry.variantLabel}</p> : null}
+                {entry.effectLines.map((line, lineIndex) => (
+                  <p key={`effect:${index}:${lineIndex}`}>{line}</p>
+                ))}
+                {entry.manualNoteLines.map((line, lineIndex) => (
+                  <p key={`effect-note:${index}:${lineIndex}`}>{line}</p>
+                ))}
+              </div>
+            ))}
           </div>
         ) : null}
         {manualNoteLines.length ? (

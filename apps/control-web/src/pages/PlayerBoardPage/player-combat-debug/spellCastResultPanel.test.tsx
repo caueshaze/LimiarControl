@@ -244,4 +244,62 @@ describe("SpellCastResultPanel", () => {
     expect(markup).toContain("Goblin B: Sabedoria da Coruja");
     expect(markup).toContain("Manual B - Descricao B");
   });
+
+  it("exibe efeitos declarativos aplicados por alvo sem duplicar nota manual equivalente", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Enhance Ability",
+          spell_canonical_key: "enhance_ability",
+          action_kind: "utility",
+          effect_kind: "damage",
+          damage: 0,
+          healing: 0,
+          target_display_name: "Fighter",
+          target_kind: "player",
+          applied_declarative_effects_by_target: [
+            {
+              target_display_name: "Fighter",
+              target_participant_id: "ally-1",
+              variant_key: "bulls_strength",
+              variant_label: "Força do Touro",
+              effects: [
+                {
+                  type: "carrying_capacity_multiplier",
+                  params: { multiplier: 2 },
+                },
+              ],
+            },
+          ],
+          manual_notes_by_target: [
+            {
+              target_participant_id: "ally-1",
+              target_display_name: "Fighter",
+              variant_key: "bulls_strength",
+              variant_label: "Força do Touro",
+              manual_notes: [
+                {
+                  key: "carrying_capacity_multiplier",
+                  label: "Capacidade de carga",
+                  description: "Duplicada",
+                },
+                {
+                  key: "reminder",
+                  label: "Lembrete",
+                  description: "Conferir mochila",
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Fighter");
+    expect(markup).toContain("Variante: Força do Touro");
+    expect(markup).toContain("Capacidade de carga: x2");
+    expect(markup).toContain("Lembrete - Conferir mochila");
+    expect(markup).not.toContain("Capacidade de carga - Duplicada");
+  });
 });
