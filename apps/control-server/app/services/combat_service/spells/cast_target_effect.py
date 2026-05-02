@@ -90,6 +90,7 @@ class CastTargetEffectMixin:
             target_participant=target_participant,
         )
         manual_notes_by_target = pending_spell_context.get("manual_notes_by_target")
+        applied_declarative_effects_by_target = None
 
         effect_rolls: list[int] = []
         base_effect = 0
@@ -137,11 +138,14 @@ class CastTargetEffectMixin:
         if target_participant is not None and cls._spell_context_has_declarative_effects(
             pending_spell_context
         ):
-            cls._apply_declarative_spell_effects(
+            declarative_application = cls._apply_declarative_spell_effects(
                 state=state,
                 attacker=attacker,
                 target_participant=target_participant,
                 spell_context=pending_spell_context,
+            )
+            applied_declarative_effects_by_target = cls._build_applied_declarative_effects_by_target(
+                declarative_application.get("applied_effects")
             )
 
         cls._clear_participant_pending_attack(attacker)
@@ -241,4 +245,5 @@ class CastTargetEffectMixin:
             "effect_roll_source": req.roll_source,
             "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
             "manual_notes_by_target": manual_notes_by_target,
+            "applied_declarative_effects_by_target": applied_declarative_effects_by_target,
         }

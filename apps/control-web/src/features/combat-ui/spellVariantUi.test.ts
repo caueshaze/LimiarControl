@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPendingSaveReason,
+  filterManualNotesByAppliedEffects,
+  formatAppliedDeclarativeEffectsByTarget,
+  formatDeclarativeEffectSummaryLine,
   formatEffectContextDebug,
   formatManualNotesByTarget,
   formatVariantAssignmentDebug,
@@ -123,5 +126,63 @@ describe("spellVariantUi", () => {
     expect(lines).toContain("Against: selected target");
     expect(lines).toContain("Concentration: group-1");
     expect(lines).toContain("Advantage: charisma checks");
+  });
+
+  it("formata efeitos declarativos aplicados por alvo e remove notas duplicadas", () => {
+    const entries = formatAppliedDeclarativeEffectsByTarget(
+      [
+        {
+          target_display_name: "Goblin A",
+          target_participant_id: "enemy-a",
+          variant_label: "Força do Touro",
+          effects: [{ type: "carrying_capacity_multiplier", params: { multiplier: 2 } }],
+        },
+      ],
+      [
+        {
+          target_participant_id: "enemy-a",
+          target_display_name: "Goblin A",
+          variant_key: "bulls_strength",
+          variant_label: "Força do Touro",
+          manual_notes: [
+            {
+              key: "carrying_capacity_multiplier",
+              label: "Capacidade de carga",
+              description: "Duplicada",
+            },
+            {
+              key: "reminder",
+              label: "Lembrete",
+              description: "Residual",
+            },
+          ],
+        },
+      ],
+    );
+
+    expect(entries).toEqual([
+      {
+        targetDisplayName: "Goblin A",
+        variantLabel: "Força do Touro",
+        effectLines: ["Capacidade de carga: x2"],
+        manualNoteLines: ["Lembrete - Residual"],
+      },
+    ]);
+  });
+
+  it("faz fallback seguro quando params declarativos estão ausentes", () => {
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "fall_damage_immunity_threshold",
+        params: null,
+      }),
+    ).toBeNull();
+
+    expect(
+      filterManualNotesByAppliedEffects(
+        [{ key: "fall_damage_immunity_threshold", label: "Queda", description: "Manual" }],
+        [{ type: "fall_damage_immunity_threshold", params: null }],
+      ),
+    ).toEqual([]);
   });
 });

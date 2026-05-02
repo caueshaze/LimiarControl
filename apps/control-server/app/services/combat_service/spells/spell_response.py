@@ -296,4 +296,9 @@ class SpellResponseMixin:
                 if automation_result is not None
                 else spell_context.get("manual_notes_by_target")
             ),
+            "applied_declarative_effects_by_target": (
+                automation_result.get("applied_declarative_effects_by_target")
+                if automation_result is not None
+                else None
+            ),
         }

@@ -1620,13 +1620,16 @@
                 "ability": "strength"
               },
               "stacking": "replace"
-            }
-          ],
-          "manualNotes": [
+            },
             {
-              "key": "carrying_capacity_multiplier",
-              "label": "Capacidade de carga",
-              "description": "Dobre manualmente a capacidade de carga do alvo enquanto a magia durar."
+              "type": "carrying_capacity_multiplier",
+              "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
+              "params": {
+                "multiplier": 2
+              }
             }
           ]
         },
@@ -1642,13 +1645,16 @@
                 "ability": "dexterity"
               },
               "stacking": "replace"
-            }
-          ],
-          "manualNotes": [
+            },
             {
-              "key": "fall_damage_immunity_threshold",
-              "label": "Queda curta",
-              "description": "Ignore manualmente dano de queda de até 6 metros, se o alvo não estiver incapacitado."
+              "type": "fall_damage_immunity_threshold",
+              "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
+              "params": {
+                "max_distance_meters": 6
+              }
             }
           ]
         },

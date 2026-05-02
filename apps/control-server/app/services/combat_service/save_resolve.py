@@ -88,6 +88,7 @@ class CombatSaveResolveMixin:
             target_participant=target_p,
         )
         manual_notes_by_target = pending_spell_context.get("manual_notes_by_target")
+        applied_declarative_effects_by_target = None
 
         if effect_roll_required and (not is_saved or save_success_outcome == "half_damage"):
             if attacker:
@@ -182,6 +183,7 @@ class CombatSaveResolveMixin:
                 "concentration_group": pending_spell_context.get("concentration_group"),
                 "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
                 "manual_notes_by_target": manual_notes_by_target,
+                "applied_declarative_effects_by_target": applied_declarative_effects_by_target,
             }
             flag_modified(state, "participants")
             db.add(state)
@@ -256,4 +258,5 @@ class CombatSaveResolveMixin:
             "effect_roll_source": req.roll_source,
             "target_variant_assignments": pending_spell_context.get("target_variant_assignments"),
             "manual_notes_by_target": manual_notes_by_target,
+            "applied_declarative_effects_by_target": applied_declarative_effects_by_target,
         }

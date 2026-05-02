@@ -1,5 +1,9 @@
 import type { SpellVariantManualNote } from "../../entities/base-spell";
-import type { ActiveEffect, CombatSpellContextOrigin } from "../../shared/api/combatRepo";
+import type {
+  ActiveEffect,
+  AppliedDeclarativeEffectsByTargetEntry,
+  CombatSpellContextOrigin,
+} from "../../shared/api/combatRepo";
 
 type TargetVariantAssignmentLike = {
   target_participant_id?: string | null;
@@ -20,6 +24,11 @@ type ManualNotesByTargetEntryLike = {
 type TargetLookup = {
   targetParticipantId?: string | null;
   targetRefId?: string | null;
+};
+
+type DeclarativeEffectSummaryLike = {
+  type?: unknown;
+  params?: Record<string, unknown> | null;
 };
 
 const humanizeVariantKey = (variantKey: string) =>
@@ -186,6 +195,106 @@ const humanizeAgainst = (value: unknown) => {
   return null;
 };
 
+export const formatDeclarativeEffectSummaryLine = (
+  declarative: DeclarativeEffectSummaryLike | null | undefined,
+  metadata?: Record<string, unknown> | null,
+) => {
+  if (!declarative || typeof declarative !== "object") {
+    return null;
+  }
+  const p = declarative.params ?? {};
+  if (
+    (declarative.type === "advantage_on_checks" || declarative.type === "disadvantage_on_checks")
+    && typeof p.ability === "string"
+  ) {
+    return `${declarative.type === "advantage_on_checks" ? "Advantage" : "Disadvantage"}: ${p.ability} checks`;
+  }
+  if (declarative.type === "modify_stat" && typeof p.stat === "string") {
+    return `Effect: ${p.stat}`;
+  }
+  if (declarative.type === "apply_condition" && typeof p.condition === "string") {
+    return `Condition: ${p.condition}`;
+  }
+  if (declarative.type === "grant_temp_hp") {
+    const rolled = typeof metadata?.rolled_temp_hp === "number" ? metadata.rolled_temp_hp : null;
+    const applied = metadata?.applied_temp_hp === true;
+    const final = typeof metadata?.final_temp_hp === "number" ? metadata.final_temp_hp : null;
+    if (applied && final !== null) {
+      return `PV temporários concedidos: ${final}. Não expiram com a concentração.`;
+    }
+    if (rolled !== null) {
+      return `PV temporários: ${rolled} (aguardando aplicação)`;
+    }
+    if (typeof p.dice === "string") {
+      return `PV temporários: ${p.dice}`;
+    }
+    return null;
+  }
+  if (declarative.type === "passive_skill_bonus" && typeof p.skill === "string" && typeof p.bonus === "number") {
+    return `Bônus passivo: +${p.bonus} em ${p.skill}`;
+  }
+  if (declarative.type === "carrying_capacity_multiplier" && typeof p.multiplier === "number") {
+    return `Capacidade de carga: x${p.multiplier}`;
+  }
+  if (declarative.type === "fall_damage_immunity_threshold" && typeof p.max_distance_meters === "number") {
+    return `Imunidade a queda: até ${p.max_distance_meters}m`;
+  }
+  return null;
+};
+
+export const filterManualNotesByAppliedEffects = (
+  notes: SpellVariantManualNote[] | null | undefined,
+  effects: Array<DeclarativeEffectSummaryLike> | null | undefined,
+) => {
+  if (!notes?.length) {
+    return [];
+  }
+  const appliedKeys = new Set(
+    (effects ?? [])
+      .map((effect) => (typeof effect.type === "string" ? effect.type : null))
+      .filter((value): value is string => value !== null),
+  );
+  return notes.filter((note) => !appliedKeys.has(note.key));
+};
+
+export const formatAppliedDeclarativeEffectsByTarget = (
+  entries: AppliedDeclarativeEffectsByTargetEntry[] | null | undefined,
+  manualNotesByTarget: ManualNotesByTargetEntryLike[] | null | undefined,
+) => {
+  if (!entries?.length) {
+    return [];
+  }
+  return entries
+    .map((entry) => {
+      const lines = entry.effects
+        .map((effect) => formatDeclarativeEffectSummaryLine(effect))
+        .filter((line): line is string => Boolean(line));
+      if (!lines.length) {
+        return null;
+      }
+      const manualNotesEntry = findManualNotesForTarget(manualNotesByTarget, {
+        targetParticipantId: entry.target_participant_id,
+        targetRefId: entry.target_ref_id,
+      });
+      return {
+        targetDisplayName: entry.target_display_name,
+        variantLabel:
+          entry.variant_label
+          ?? resolveTargetVariantLabel({
+            manualNotesByTarget,
+            targetParticipantId: entry.target_participant_id,
+            targetRefId: entry.target_ref_id,
+          }),
+        effectLines: lines,
+        manualNoteLines: filterManualNotesByAppliedEffects(
+          manualNotesEntry?.manual_notes,
+          entry.effects,
+        ).map((note) => `${note.label} - ${note.description}`),
+      };
+    })
+    .filter((entry) => entry !== null);
+};
+
 export const formatEffectContextDebug = (
   effect: ActiveEffect,
   {
@@ -244,37 +353,12 @@ export const formatEffectContextDebug = (
   }
   const declarative = metadata.declarative_effect;
   if (declarative && typeof declarative === "object") {
-    const entry = declarative as {
-      type?: unknown;
-      params?: Record<string, unknown> | null;
-    };
-    const p = entry.params ?? {};
-    if (
-      (entry.type === "advantage_on_checks" || entry.type === "disadvantage_on_checks")
-      && typeof p.ability === "string"
-    ) {
-      lines.push(
-        `${entry.type === "advantage_on_checks" ? "Advantage" : "Disadvantage"}: ${p.ability} checks`,
-      );
-    } else if (entry.type === "modify_stat" && typeof p.stat === "string") {
-      lines.push(`Effect: ${p.stat}`);
-    } else if (entry.type === "apply_condition" && typeof p.condition === "string") {
-      lines.push(`Condition: ${p.condition}`);
-    } else if (entry.type === "grant_temp_hp") {
-      const rolled = typeof metadata.rolled_temp_hp === "number" ? metadata.rolled_temp_hp : null;
-      const applied = metadata.applied_temp_hp === true;
-      const final = typeof metadata.final_temp_hp === "number" ? metadata.final_temp_hp : null;
-      if (applied && final !== null) {
-        lines.push(`PV temporários concedidos: ${final}. Não expiram com a concentração.`);
-      } else if (rolled !== null) {
-        lines.push(`PV temporários: ${rolled} (aguardando aplicação)`);
-      }
-    } else if (entry.type === "passive_skill_bonus" && typeof p.skill === "string" && typeof p.bonus === "number") {
-      lines.push(`Bônus passivo: +${p.bonus} em ${p.skill}`);
-    } else if (entry.type === "carrying_capacity_multiplier" && typeof p.multiplier === "number") {
-      lines.push(`Capacidade de carga: x${p.multiplier}`);
-    } else if (entry.type === "fall_damage_immunity_threshold" && typeof p.max_distance_meters === "number") {
-      lines.push(`Imunidade a queda: até ${p.max_distance_meters}m`);
+    const summaryLine = formatDeclarativeEffectSummaryLine(
+      declarative as DeclarativeEffectSummaryLike,
+      metadata,
+    );
+    if (summaryLine) {
+      lines.push(summaryLine);
     }
   }
   return lines;

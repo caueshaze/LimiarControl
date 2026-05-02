@@ -63,6 +63,20 @@ export type CombatSpellContextOrigin =
   | "pending_save"
   | "pending_spell";
 
+export type AppliedDeclarativeEffectSummary = {
+  type?: string | null;
+  params?: Record<string, unknown> | null;
+};
+
+export type AppliedDeclarativeEffectsByTargetEntry = {
+  target_display_name: string;
+  target_participant_id?: string | null;
+  target_ref_id?: string | null;
+  variant_key?: string | null;
+  variant_label?: string | null;
+  effects: AppliedDeclarativeEffectSummary[];
+};
+
 export type TurnResources = {
   action_used: boolean;
   bonus_action_used: boolean;
@@ -136,6 +150,7 @@ export type SaveResolution = {
     variant_label?: string | null;
     manual_notes: SpellVariantManualNote[];
   }> | null;
+  applied_declarative_effects_by_target?: AppliedDeclarativeEffectsByTargetEntry[] | null;
 };
 
 export type CombatParticipant = {
@@ -445,6 +460,7 @@ export type CombatSpellResult = {
     variant_label?: string | null;
     manual_notes: SpellVariantManualNote[];
   }> | null;
+  applied_declarative_effects_by_target?: AppliedDeclarativeEffectsByTargetEntry[] | null;
 };
 
 export type CombatMapPreviewToken = {
