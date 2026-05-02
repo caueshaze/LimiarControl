@@ -1,10 +1,11 @@
 import { useDeferredValue, useEffect, useState } from "react";
+import { routes } from "../../app/routes/routes";
 import { adminSystemRepo } from "../../shared/api/adminSystemRepo";
 import type { AdminCampaign } from "../../entities/admin-system";
 import type { CampaignSystemType } from "../../entities/campaign";
 import { getCampaignSystemLabel } from "../../entities/campaign";
 import { useLocale, useToast } from "../../shared/hooks";
-import { Toast } from "../../shared/ui";
+import { BackButton, Toast } from "../../shared/ui";
 
 type SystemFilter = "ALL" | CampaignSystemType;
 
@@ -87,6 +88,13 @@ export const AdminCampaignsPage = () => {
     <>
       <Toast toast={toast} onClose={clearToast} />
       <section className="space-y-6">
+        <div className="flex items-start justify-start">
+          <BackButton
+            fallbackTo={routes.adminHome}
+            label={<><span aria-hidden>←</span>{t("campaignHome.back")}</>}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+          />
+        </div>
         <section className="rounded-[30px] border border-white/8 bg-white/4 p-6">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
             <label className="space-y-2">

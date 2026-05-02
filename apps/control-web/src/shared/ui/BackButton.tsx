@@ -7,6 +7,7 @@ type BackButtonProps = {
   fallbackTo?: string | null;
   className?: string;
   replace?: boolean;
+  forceFallback?: boolean;
 };
 
 export const BackButton = ({
@@ -14,10 +15,15 @@ export const BackButton = ({
   fallbackTo = null,
   className = "",
   replace = false,
+  forceFallback = false,
 }: BackButtonProps) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
+    if (forceFallback && fallbackTo) {
+      navigate(fallbackTo, replace ? { replace: true } : undefined);
+      return;
+    }
     navigateBackOrFallback(navigate, { fallbackTo, replace });
   };
 

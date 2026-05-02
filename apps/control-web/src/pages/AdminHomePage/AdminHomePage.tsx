@@ -4,6 +4,7 @@ import { routes } from "../../app/routes/routes";
 import { adminSystemRepo } from "../../shared/api/adminSystemRepo";
 import type { AdminOverview } from "../../entities/admin-system";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { BackButton } from "../../shared/ui";
 
 export const AdminHomePage = () => {
   const { t } = useLocale();
@@ -47,6 +48,14 @@ export const AdminHomePage = () => {
 
   return (
     <section className="space-y-6">
+      <div className="flex items-start justify-start">
+        <BackButton
+          fallbackTo={routes.workspaceHome}
+          forceFallback
+          label={<><span aria-hidden>←</span>{t("campaignHome.back")}</>}
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
+        />
+      </div>
       <section className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,24,39,0.82),rgba(7,10,18,0.94))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.24)]">
         <div className="grid gap-4 lg:grid-cols-2">
           <Link
