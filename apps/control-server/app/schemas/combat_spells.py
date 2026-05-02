@@ -197,6 +197,7 @@ class CombatAreaGuardrailOutcome(BaseModel):
 class AppliedDeclarativeEffectSummary(BaseModel):
     type: str
     params: dict = Field(default_factory=dict)
+    observability: dict | None = None
 
 
 class AppliedDeclarativeEffectsByTargetEntry(BaseModel):

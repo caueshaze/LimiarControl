@@ -185,4 +185,48 @@ describe("spellVariantUi", () => {
       ),
     ).toEqual([]);
   });
+
+  it("formata grant_temp_hp aplicado, substituido e ignorado", () => {
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "grant_temp_hp",
+        params: { dice: "2d6" },
+        observability: {
+          rolled_temp_hp: 7,
+          applied_temp_hp: true,
+          previous_temp_hp: 0,
+          final_temp_hp: 7,
+          does_not_expire_temp_hp: true,
+        },
+      }),
+    ).toBe("PV temporários: +7 (final: 7).");
+
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "grant_temp_hp",
+        params: { dice: "2d6" },
+        observability: {
+          rolled_temp_hp: 7,
+          applied_temp_hp: true,
+          previous_temp_hp: 3,
+          final_temp_hp: 7,
+          does_not_expire_temp_hp: true,
+        },
+      }),
+    ).toBe("PV temporários: +7 (final: 7).");
+
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "grant_temp_hp",
+        params: { dice: "2d6" },
+        observability: {
+          rolled_temp_hp: 5,
+          applied_temp_hp: true,
+          previous_temp_hp: 8,
+          final_temp_hp: 8,
+          does_not_expire_temp_hp: true,
+        },
+      }),
+    ).toBe("PV temporários: 5 rolados, mantidos 8 existentes.");
+  });
 });

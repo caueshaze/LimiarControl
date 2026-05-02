@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -265,6 +266,18 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
             active_area_effects=[],
             map_selection={"kind": "demo_map", "mapId": "demo"},
         )
+
+    def _make_player_target_state(self) -> CombatState:
+        state = self._make_state()
+        state.participants[1] = {
+            "id": "target-1",
+            "ref_id": "player-2",
+            "kind": "player",
+            "display_name": "Target Player",
+            "active_effects": [],
+            "status": "active",
+        }
+        return state
 
     def test_applies_friends_effect_and_on_end_hostility(self):
         state = self._make_state()
@@ -642,3 +655,219 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
                 }
             ],
         )
+
+    def test_builds_grant_temp_hp_summary_for_applied_and_replaced_cases(self):
+        state = self._make_player_target_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "bears_endurance",
+            "selected_variant_label": "Resistência do Urso",
+            "effects": [
+                {
+                    "type": "grant_temp_hp",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"dice": "2d6"},
+                }
+            ],
+            "on_end_effects": [],
+        }
+        target_model = MagicMock()
+        target_model.state_json = {"tempHP": 3}
+
+        with patch(
+            "app.services.combat_service.spell_declarative_effects._roll_dice_expression",
+            return_value=7,
+        ), patch.object(
+            CombatService,
+            "_get_stats",
+            return_value=(target_model, None, None, None, None, None),
+        ):
+            application = CombatService._apply_declarative_spell_effects(
+                state=state,
+                attacker=attacker,
+                target_participant=target,
+                spell_context=spell_context,
+            )
+            CombatService._apply_temp_hp_from_granted_effects(
+                MagicMock(),
+                state,
+                application["applied_effects"],
+            )
+
+        summary = CombatService._build_applied_declarative_effects_by_target(
+            application["applied_effects"]
+        )
+        self.assertEqual(
+            summary[0]["effects"][0]["observability"],
+            {
+                "rolled_temp_hp": 7,
+                "applied_temp_hp": True,
+                "previous_temp_hp": 3,
+                "final_temp_hp": 7,
+                "does_not_expire_temp_hp": True,
+            },
+        )
+
+    def test_builds_grant_temp_hp_summary_when_existing_value_is_kept(self):
+        state = self._make_player_target_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "bears_endurance",
+            "selected_variant_label": "Resistência do Urso",
+            "effects": [
+                {
+                    "type": "grant_temp_hp",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"dice": "2d6"},
+                }
+            ],
+            "on_end_effects": [],
+        }
+        target_model = MagicMock()
+        target_model.state_json = {"tempHP": 8}
+
+        with patch(
+            "app.services.combat_service.spell_declarative_effects._roll_dice_expression",
+            return_value=5,
+        ), patch.object(
+            CombatService,
+            "_get_stats",
+            return_value=(target_model, None, None, None, None, None),
+        ):
+            application = CombatService._apply_declarative_spell_effects(
+                state=state,
+                attacker=attacker,
+                target_participant=target,
+                spell_context=spell_context,
+            )
+            CombatService._apply_temp_hp_from_granted_effects(
+                MagicMock(),
+                state,
+                application["applied_effects"],
+            )
+
+        summary = CombatService._build_applied_declarative_effects_by_target(
+            application["applied_effects"]
+        )
+        self.assertEqual(
+            summary[0]["effects"][0]["observability"],
+            {
+                "rolled_temp_hp": 5,
+                "applied_temp_hp": True,
+                "previous_temp_hp": 8,
+                "final_temp_hp": 8,
+                "does_not_expire_temp_hp": True,
+            },
+        )
+
+    def test_clearing_concentration_removes_tracking_effect_but_keeps_temp_hp(self):
+        state = self._make_player_target_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "bears_endurance",
+            "selected_variant_label": "Resistência do Urso",
+            "effects": [
+                {
+                    "type": "grant_temp_hp",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"dice": "2d6"},
+                }
+            ],
+            "on_end_effects": [],
+        }
+        target_model = MagicMock()
+        target_model.state_json = {"tempHP": 0}
+
+        with patch(
+            "app.services.combat_service.spell_declarative_effects._roll_dice_expression",
+            return_value=9,
+        ), patch.object(
+            CombatService,
+            "_get_stats",
+            return_value=(target_model, None, None, None, None, None),
+        ):
+            application = CombatService._apply_declarative_spell_effects(
+                state=state,
+                attacker=attacker,
+                target_participant=target,
+                spell_context=spell_context,
+            )
+            CombatService._apply_temp_hp_from_granted_effects(
+                MagicMock(),
+                state,
+                application["applied_effects"],
+            )
+
+        self.assertEqual(target_model.state_json["tempHP"], 9)
+        result = CombatService._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+        )
+        self.assertEqual(len(result["removed_effects"]), 1)
+        self.assertEqual(result["removed_effects"][0]["kind"], "temp_hp_granted")
+        self.assertEqual(target["active_effects"], [])
+        self.assertEqual(target_model.state_json["tempHP"], 9)
+
+    def test_declarative_cast_log_includes_temp_hp_summary(self):
+        state = self._make_player_target_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        target_model = MagicMock()
+        target_model.state_json = {"tempHP": 8}
+        spell_context = {
+            "spell_name": "Enhance Ability",
+            "spell_canonical_key": "enhance_ability",
+            "spell_mode": "utility",
+            "concentration": True,
+            "selected_variant_key": "bears_endurance",
+            "selected_variant_label": "Resistência do Urso",
+            "effects": [
+                {
+                    "type": "grant_temp_hp",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"dice": "2d6"},
+                }
+            ],
+            "on_end_effects": [],
+        }
+
+        with patch(
+            "app.services.combat_service.spell_declarative_effects._roll_dice_expression",
+            return_value=5,
+        ), patch.object(
+            CombatService,
+            "_get_stats",
+            return_value=(target_model, None, None, None, None, None),
+        ):
+            result = asyncio.run(
+                CombatService._cast_spell_via_declarative_effects(
+                    MagicMock(),
+                    "session-1",
+                    attacker=attacker,
+                    attacker_model=MagicMock(),
+                    actor_user_id="user-1",
+                    is_gm=False,
+                    req=MagicMock(),
+                    state=state,
+                    spell_context=spell_context,
+                    target_participant=target,
+                )
+            )
+
+        self.assertIn("Target Player: PV temporários: 5 rolados, mantidos 8 existentes.", result["__log_message"])

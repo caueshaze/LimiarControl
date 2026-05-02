@@ -66,6 +66,13 @@ export type CombatSpellContextOrigin =
 export type AppliedDeclarativeEffectSummary = {
   type?: string | null;
   params?: Record<string, unknown> | null;
+  observability?: {
+    rolled_temp_hp?: number | null;
+    applied_temp_hp?: boolean | null;
+    previous_temp_hp?: number | null;
+    final_temp_hp?: number | null;
+    does_not_expire_temp_hp?: boolean | null;
+  } | null;
 };
 
 export type AppliedDeclarativeEffectsByTargetEntry = {
