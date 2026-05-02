@@ -25,12 +25,13 @@ beforeAll(() => {
     { canonicalKey: "healing_word", name: "Healing Word", level: 1, school: "Evocation", castingTime: "1 bonus action", range: "18 m", components: "V", duration: "Instantaneous", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid"] },
     { canonicalKey: "hunters_mark", name: "Hunter's Mark", level: 1, school: "Divination", castingTime: "1 bonus action", range: "27 m", components: "V", duration: "Up to 1 hour", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Ranger"] },
     { canonicalKey: "guardian_beacon", name: "Guardian Beacon", level: 1, school: "Abjuration", castingTime: "1 action", range: "9 m", components: "V, S", duration: "1 minute", concentration: false, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Guardian"] },
+    { canonicalKey: "enhance_ability", name: "Enhance Ability", level: 2, school: "Transmutation", castingTime: "1 action", range: "Touch", components: "V, S, M", duration: "Up to 1 hour", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Bard", "Cleric", "Druid", "Sorcerer"] },
   ]);
 });
 
-const buildSpellSelection = (className: string, cantripCount: number, leveledCount: number) => {
+const buildSpellSelection = (className: string, level: number, cantripCount: number, leveledCount: number) => {
   const cls = getClass(className);
-  const spells = getAvailableStartingSpells(className);
+  const spells = getAvailableStartingSpells(className, level);
   const mode = getClassCreationConfig(className)?.startingSpells?.leveledMode ?? "known";
 
   return {
@@ -118,7 +119,7 @@ describe("validateCreationSheet", () => {
       alignment: "Neutral Good",
       playerName: "Player Two",
       classSkillChoices: ["history", "religion"],
-      spellcasting: buildSpellSelection("cleric", 2, 0),
+      spellcasting: buildSpellSelection("cleric", 1, 2, 0),
     });
 
     expect(result.isValid).toBe(false);
@@ -133,7 +134,7 @@ describe("validateCreationSheet", () => {
   });
 
   it("uses the ranger spell list and level-aware slot limits for guardian", () => {
-    expect(getAvailableStartingSpells("guardian").leveled.map((spell) => spell.canonicalKey)).toEqual([
+    expect(getAvailableStartingSpells("guardian", 2).leveled.map((spell) => spell.canonicalKey)).toEqual([
       "animal_friendship",
       "cure_wounds",
       "goodberry",
@@ -155,7 +156,7 @@ describe("validateCreationSheet", () => {
   it("requires paladin spell picks once spellcasting unlocks", () => {
     const result = validateCreationSheet({
       ...buildBaseCreationSheet("paladin", 2),
-      spellcasting: buildSpellSelection("paladin", 0, 0),
+      spellcasting: buildSpellSelection("paladin", 2, 0, 0),
     });
 
     expect(result.isValid).toBe(false);
@@ -172,7 +173,7 @@ describe("validateCreationSheet", () => {
   it("requires ranger spell picks once spellcasting unlocks", () => {
     const result = validateCreationSheet({
       ...buildBaseCreationSheet("ranger", 2),
-      spellcasting: buildSpellSelection("ranger", 0, 0),
+      spellcasting: buildSpellSelection("ranger", 2, 0, 0),
     });
 
     expect(result.isValid).toBe(false);
@@ -199,7 +200,7 @@ describe("validateCreationSheet", () => {
       classSkillChoices: ["history", "religion"],
       classEquipmentSelections: getInitialClassEquipmentSelections("cleric"),
       languageChoices: ["Élfico", "Anão", "Gnomo"],
-      spellcasting: buildSpellSelection("cleric", 3, 1),
+      spellcasting: buildSpellSelection("cleric", 1, 3, 1),
     });
 
     expect(result.isValid).toBe(true);
@@ -233,7 +234,7 @@ describe("validateCreationSheet", () => {
       ...buildBaseCreationSheet("guardian", 3),
       subclass: "hunter",
       fightingStyle: "archery",
-      spellcasting: buildSpellSelection("guardian", 0, 1),
+      spellcasting: buildSpellSelection("guardian", 3, 0, 1),
     });
 
     expect(result.missingRequiredFields).not.toContain("subclass");
@@ -283,7 +284,7 @@ describe("validateCreationSheet", () => {
       ...buildBaseCreationSheet("sorcerer", 1),
       subclass: "draconic_bloodline",
       subclassConfig: { draconicAncestry: "red" },
-      spellcasting: buildSpellSelection("sorcerer", 4, 2),
+      spellcasting: buildSpellSelection("sorcerer", 1, 4, 2),
     });
 
     expect(result.missingRequiredFields).not.toContain("subclassConfig");

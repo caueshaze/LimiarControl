@@ -164,9 +164,15 @@ export const Spellcasting = ({
       {startingSpellLimits && creationConfig && onToggleCreationSpell && (
         <>
           <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/3"}`}>
-            <p className="font-semibold text-slate-200">
-              {t("sheet.spells.levelSlots").replace("{n}", "1")}: <span className="text-violet-300">{startingSpellLimits.levelOneSlots}</span>
-            </p>
+            <div className="space-y-1">
+              {Object.entries(startingSpellLimits.slots)
+                .filter(([, slotCount]) => slotCount > 0)
+                .map(([slotLevel, slotCount]) => (
+                  <p key={`creation-slot-${slotLevel}`} className="font-semibold text-slate-200">
+                    {t("sheet.spells.levelSlots").replace("{n}", slotLevel)}: <span className="text-violet-300">{slotCount}</span>
+                  </p>
+                ))}
+            </div>
             <p className="mt-1">
               {spellcasting.mode === "spellbook"
                 ? t("sheet.spells.spellbookMode")

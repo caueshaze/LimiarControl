@@ -18,7 +18,7 @@ export type StartingSpellMode = SpellcastingMode;
 export type StartingSpellConfig = {
   minimumLevel?: number;
   cantrips: number;
-  leveledSpells: number;
+  leveledSpells?: number;
   leveledMode: SpellcastingMode;
   preparationAbility?: AbilityName;
   levelOneSlots?: number;

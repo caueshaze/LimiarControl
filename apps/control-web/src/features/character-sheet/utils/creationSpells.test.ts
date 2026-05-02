@@ -2,8 +2,11 @@ import { describe, expect, it, afterEach } from "vitest";
 import { seedSpellCatalogCache } from "../../../entities/dnd-base";
 import { INITIAL_SHEET } from "../model/initialSheet";
 import {
+  getAvailableStartingSpells,
+  getStartingSpellLimits,
   normalizeCreationSpellSelection,
-  selectCatalogSpellForSheet
+  selectCatalogSpellForSheet,
+  toggleStartingSpell,
 } from "./creationSpells";
 
 const BASE_SPELL = {
@@ -257,5 +260,290 @@ describe("toSheetSpell / selectCatalogSpellForSheet", () => {
         }),
       ]),
     );
+  });
+});
+
+describe("creation spell progression", () => {
+  it("unlocks level 2 sorcerer spells at character level 3", () => {
+    seedSpellCatalogCache([
+      {
+        canonicalKey: "light",
+        name: "Light",
+        level: 0,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, M",
+        duration: "1 hour",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+      {
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: "Force",
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+      {
+        canonicalKey: "enhance_ability",
+        name: "Enhance Ability",
+        level: 2,
+        school: "Transmutation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+    ]);
+
+    expect(
+      getAvailableStartingSpells("sorcerer", 3).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).toEqual(["magic_missile", "enhance_ability"]);
+
+    expect(getStartingSpellLimits("sorcerer", INITIAL_SHEET.abilities, 3)).toMatchObject({
+      leveledSpells: 4,
+      maxSpellLevel: 2,
+      slots: {
+        1: 4,
+        2: 2,
+      },
+    });
+  });
+
+  it("keeps higher-level creation spells when normalizing a level 3 sorcerer", () => {
+    seedSpellCatalogCache([
+      {
+        canonicalKey: "light",
+        name: "Light",
+        level: 0,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, M",
+        duration: "1 hour",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+      {
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: "Force",
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+      {
+        canonicalKey: "enhance_ability",
+        name: "Enhance Ability",
+        level: 2,
+        school: "Transmutation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+    ]);
+
+    const updated = toggleStartingSpell(
+      {
+        ability: "charisma",
+        mode: "known",
+        slots: { 1: { max: 4, used: 0 }, 2: { max: 2, used: 0 } },
+        spells: [],
+      },
+      "sorcerer",
+      INITIAL_SHEET.abilities,
+      3,
+      "Enhance Ability"
+    );
+
+    expect(updated?.spells).toEqual([
+      expect.objectContaining({
+        canonicalKey: "enhance_ability",
+        level: 2,
+      }),
+    ]);
+    expect(updated?.slots).toMatchObject({
+      1: { max: 4, used: 0 },
+      2: { max: 2, used: 0 },
+    });
+  });
+
+  it("surfaces Enhance Ability for full casters once level 2 spells unlock", () => {
+    seedSpellCatalogCache([
+      {
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: "Force",
+        savingThrow: null,
+        classes: ["Bard", "Sorcerer", "Wizard"],
+      },
+      {
+        canonicalKey: "bless",
+        name: "Bless",
+        level: 1,
+        school: "Enchantment",
+        castingTime: "1 action",
+        range: "9 m",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Cleric"],
+      },
+      {
+        canonicalKey: "cure_wounds",
+        name: "Cure Wounds",
+        level: 1,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Druid", "Cleric", "Bard"],
+      },
+      {
+        canonicalKey: "enhance_ability",
+        name: "Enhance Ability",
+        level: 2,
+        school: "Transmutation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Bard", "Cleric", "Druid", "Sorcerer"],
+      },
+    ]);
+
+    expect(
+      getAvailableStartingSpells("sorcerer", 3).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).toContain("enhance_ability");
+    expect(
+      getAvailableStartingSpells("bard", 3).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).toContain("enhance_ability");
+    expect(
+      getAvailableStartingSpells("cleric", 3).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).toContain("enhance_ability");
+    expect(
+      getAvailableStartingSpells("druid", 3).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).toContain("enhance_ability");
+  });
+
+  it("keeps Enhance Ability hidden for sorcerers before level 3", () => {
+    seedSpellCatalogCache([
+      {
+        canonicalKey: "magic_missile",
+        name: "Magic Missile",
+        level: 1,
+        school: "Evocation",
+        castingTime: "1 action",
+        range: "36 m",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "",
+        damageType: "Force",
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+      {
+        canonicalKey: "enhance_ability",
+        name: "Enhance Ability",
+        level: 2,
+        school: "Transmutation",
+        castingTime: "1 action",
+        range: "Touch",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "",
+        damageType: null,
+        savingThrow: null,
+        classes: ["Sorcerer"],
+      },
+    ]);
+
+    expect(
+      getAvailableStartingSpells("sorcerer", 1).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).not.toContain("enhance_ability");
+    expect(
+      getAvailableStartingSpells("sorcerer", 2).leveled.map(
+        (spell) => spell.canonicalKey
+      )
+    ).not.toContain("enhance_ability");
   });
 });
