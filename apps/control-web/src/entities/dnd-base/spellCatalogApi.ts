@@ -25,6 +25,7 @@ import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 export type BaseSpell = {
   canonicalKey: string;
   name: string;
+  namePt: string | null;
   /** Authority id for campaign-scope spell entries. Null for base-scope spells. */
   campaignSpellId: string | null;
   level: number;
@@ -113,6 +114,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   campaignSpellId: scope === "campaign" ? api.id : null,
   canonicalKey: api.canonicalKey,
   name: api.nameEn,
+  namePt: api.namePt ?? null,
   level: api.level,
   school: api.school || "Evocation",
   castingTimeType: api.castingTimeType ?? null,

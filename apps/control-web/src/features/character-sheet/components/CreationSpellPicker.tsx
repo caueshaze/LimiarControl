@@ -86,6 +86,7 @@ export const CreationSpellPicker = ({
         limitReached={selectedCantripCount >= availableCantrips}
         selectedNames={selectedNames}
         names={options.cantrips.map((spell) => spell.name)}
+        displayNames={options.cantrips.map((spell) => spell.namePt || spell.name)}
         fixedNames={fixedSpellNames}
         onToggle={onToggle}
       />
@@ -102,6 +103,7 @@ export const CreationSpellPicker = ({
               limitReached={selectedLeveledCount >= availableLeveled}
               selectedNames={selectedNames}
               names={group.spells.map((spell) => spell.name)}
+              displayNames={group.spells.map((spell) => spell.namePt || spell.name)}
               fixedNames={fixedSpellNames}
               onToggle={onToggle}
             />
@@ -118,10 +120,11 @@ type SpellChoiceGroupProps = {
   selectedNames: Set<string>;
   fixedNames: Set<string>;
   names: string[];
+  displayNames: string[];
   onToggle: SheetActions["toggleCreationSpellSelection"];
 };
 
-const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, names, onToggle }: SpellChoiceGroupProps) => {
+const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, names, displayNames, onToggle }: SpellChoiceGroupProps) => {
   const { t } = useLocale();
 
   return (
@@ -134,7 +137,7 @@ const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, name
         <p className="text-[10px] italic text-slate-600">{t("sheet.spells.noSpellsInCircle")}</p>
       ) : (
         <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto pr-1">
-          {names.map((name) => {
+          {names.map((name, index) => {
             const selected = selectedNames.has(name.toLowerCase());
             const fixed = fixedNames.has(name.toLowerCase());
             return (
@@ -151,7 +154,7 @@ const SpellChoiceGroup = ({ title, limitReached, selectedNames, fixedNames, name
                     : "border-white/8 bg-white/2 text-slate-300 hover:border-white/14 hover:text-slate-100"
                 } ${fixed ? "cursor-default opacity-80" : ""}`}
               >
-                {name}
+                {displayNames[index]}
               </button>
             );
           })}
