@@ -135,6 +135,18 @@ export const PREPARED_SPELL_LEVEL_DIVISOR_BY_CLASS: Record<string, number> = {
   wizard: 1,
 };
 
+export const SPELLCASTING_TYPE_BY_CLASS: Record<string, "known" | "prepared" | "spellbook"> = {
+  bard:     "known",
+  cleric:   "prepared",
+  druid:    "prepared",
+  guardian: "known",
+  paladin:  "prepared",
+  ranger:   "known",
+  sorcerer: "known",
+  warlock:  "known",
+  wizard:   "spellbook",
+};
+
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 const clampCharacterLevel = (level: number) => Math.max(1, Math.min(20, level));
