@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { combatRepo, type CombatActiveAreaEffect } from "../../../shared/api/combatRepo";
 import type { SpellMapHighlight } from "./combatMapHighlight.types";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 export type CombatMapSelectionMode = "none" | "select-token" | "select-cell";
 
@@ -167,6 +168,7 @@ export const CombatMapFrame = ({
   onCellHovered,
   onTokenSelected,
 }: Props) => {
+  const { t } = useLocale();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [frameLoaded, setFrameLoaded] = useState(false);
   const [mapReady, setMapReady] = useState(false);

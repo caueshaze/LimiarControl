@@ -1556,9 +1556,9 @@
       "system": "DND5E",
       "canonicalKey": "enhance_ability",
       "nameEn": "Enhance Ability",
-      "namePt": "Aprimorar Habilidade",
-      "descriptionEn": "You touch a creature and grant it a magical enhancement. Choose one of six abilities; the target gains the chosen benefit for the duration.",
-      "descriptionPt": "Você toca uma criatura e concede a ela um aprimoramento mágico. Escolha uma de seis habilidades; o alvo recebe o benefício escolhido pela duração.",
+      "namePt": "Melhorar Habilidade",
+      "descriptionEn": "You touch a creature and grant it magical enhancement. Choose one ability. The target has advantage on ability checks using the chosen ability for the duration. Additional effects apply depending on the chosen option.",
+      "descriptionPt": "Você toca uma criatura e concede a ela um aprimoramento mágico. Escolha uma habilidade. O alvo recebe vantagem em testes dessa habilidade pela duração. Efeitos adicionais podem se aplicar dependendo da opção escolhida.",
       "level": 2,
       "school": "transmutation",
       "classesJson": [
@@ -1571,13 +1571,13 @@
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
-      "duration": "Concentration, up to 1 hour",
+      "duration": "Up to 1 hour",
       "componentsJson": [
         "V",
         "S",
         "M"
       ],
-      "materialComponentText": "fur or a feather from a beast",
+      "materialComponentText": "Fur or a feather from a beast",
       "concentration": true,
       "ritual": false,
       "resolutionType": "buff",
@@ -1590,34 +1590,51 @@
           "key": "bears_endurance",
           "labelPt": "Resistência do Urso",
           "labelEn": "Bear's Endurance",
+          "descriptionPt": "Vantagem em testes de Constituição.",
+          "descriptionEn": "Advantage on Constitution checks.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "constitution"
+                "ability": "constitution",
+                "against": "any"
               },
               "stacking": "replace"
+            },
+            {
+              "type": "grant_temp_hp",
+              "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
+              "params": {
+                "dice": "2d6"
+              }
             }
           ],
-          "manualNotes": [
-            {
-              "key": "grant_temp_hp",
-              "label": "PV temporários",
-              "description": "Conceda 2d6 pontos de vida temporários manualmente enquanto a magia durar."
-            }
-          ]
+          "onEndEffects": [],
+          "manualNotes": []
         },
         {
           "key": "bulls_strength",
           "labelPt": "Força do Touro",
           "labelEn": "Bull's Strength",
+          "descriptionPt": "Vantagem em testes de Força.",
+          "descriptionEn": "Advantage on Strength checks.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "strength"
+                "ability": "strength",
+                "against": "any"
               },
               "stacking": "replace"
             },
@@ -1631,18 +1648,26 @@
                 "multiplier": 2
               }
             }
-          ]
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
         },
         {
           "key": "cats_grace",
-          "labelPt": "Graça do Gato",
+          "labelPt": "Agilidade do Gato",
           "labelEn": "Cat's Grace",
+          "descriptionPt": "Vantagem em testes de Destreza.",
+          "descriptionEn": "Advantage on Dexterity checks.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "dexterity"
+                "ability": "dexterity",
+                "against": "any"
               },
               "stacking": "replace"
             },
@@ -1656,75 +1681,106 @@
                 "max_distance_meters": 6
               }
             }
-          ]
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
         },
         {
           "key": "eagles_splendor",
           "labelPt": "Esplendor da Águia",
           "labelEn": "Eagle's Splendor",
+          "descriptionPt": "Vantagem em testes de Carisma.",
+          "descriptionEn": "Advantage on Charisma checks.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "charisma"
+                "ability": "charisma",
+                "against": "any"
               },
               "stacking": "replace"
             }
-          ]
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
         },
         {
           "key": "foxs_cunning",
-          "labelPt": "Esperteza da Raposa",
+          "labelPt": "Astúcia da Raposa",
           "labelEn": "Fox's Cunning",
+          "descriptionPt": "Vantagem em testes de Inteligência.",
+          "descriptionEn": "Advantage on Intelligence checks.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "intelligence"
+                "ability": "intelligence",
+                "against": "any"
               },
               "stacking": "replace"
             }
-          ]
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
         },
         {
           "key": "owls_wisdom",
           "labelPt": "Sabedoria da Coruja",
           "labelEn": "Owl's Wisdom",
+          "descriptionPt": "Vantagem em testes de Sabedoria e +5 na Percepção passiva.",
+          "descriptionEn": "Advantage on Wisdom checks and +5 bonus to passive Perception.",
           "effects": [
             {
               "type": "advantage_on_checks",
               "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
               "params": {
-                "ability": "wisdom"
+                "ability": "wisdom",
+                "against": "any"
               },
               "stacking": "replace"
+            },
+            {
+              "type": "passive_skill_bonus",
+              "target": "selected_target",
+              "duration": {
+                "type": "manual"
+              },
+              "stacking": "replace",
+              "params": {
+                "skill": "perception",
+                "bonus": 5
+              }
             }
           ],
-          "manualNotes": [
-            {
-              "key": "passive_perception_bonus",
-              "label": "Percepção passiva",
-              "description": "Aplique manualmente +5 à Percepção Passiva do alvo enquanto a magia durar."
-            }
-          ]
+          "onEndEffects": [],
+          "manualNotes": []
         }
       ],
       "source": "seed_json_bootstrap",
-      "isSrd": true,
+      "isSrd": false,
       "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
       "targetType": "touch",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "persistent"
+      "effectTiming": "immediate",
+      "requiresTargetSight": null,
+      "requiresTargetEffect": null,
+      "requiresPointSight": null,
+      "requiresPointEffect": null
     }
   ]
 }

@@ -5,6 +5,7 @@ import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
 import { characterSheetDraftsRepo } from "../../shared/api/characterSheetDraftsRepo";
 import { characterSheetsRepo } from "../../shared/api/characterSheetsRepo";
+import { useLocale } from "../../shared/hooks/useLocale";
 import type {
   CharacterSheetRecord,
   PartyCharacterSheetDraftRecord,
@@ -46,6 +47,7 @@ type Props = {
 };
 
 export const usePartyDetailsResources = ({ activeSession, locale, party }: Props) => {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<PartyCharacterSheetDraftRecord[]>([]);

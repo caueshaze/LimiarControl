@@ -4,6 +4,7 @@ import {
   type CombatMapPreviewToken,
   type CombatMovementPreviewResponse,
 } from "../../../shared/api/combatRepo";
+import { useLocale } from "../../../shared/hooks/useLocale";
 
 export const MOVEMENT_METERS_PER_CELL = 1.5;
 export const PATH_COST_UNITS_PER_CELL = 5;
@@ -97,6 +98,7 @@ export function useMovementPreview({
   destinationCell,
   enabled = true,
 }: UseMovementPreviewOptions): MovementPreviewState {
+  const { t } = useLocale();
   const [state, setState] = useState<MovementPreviewState>(INITIAL);
 
   useEffect(() => {
