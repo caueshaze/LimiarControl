@@ -28,7 +28,7 @@ const USE_BACKEND = import.meta.env.VITE_USE_BACKEND_PROGRESSION === "true";
  * Only called when VITE_USE_BACKEND_PROGRESSION=true.
  * Returns null on any error so callers can fall back to local tables.
  */
-async function fetchFromBackend(
+export async function fetchFromBackend(
   className: string,
   level: number
 ): Promise<ClassSpellProgression | null> {
@@ -54,7 +54,7 @@ async function fetchFromBackend(
  * Build progression from local spellProgression.ts tables.
  * Guaranteed synchronous and offline-safe.
  */
-function fromLocalTables(
+export function fromLocalTables(
   className: string,
   level: number
 ): ClassSpellProgression | null {

@@ -44,4 +44,6 @@ export {
   getCantripCountForClassLevel,
 } from "./spellProgression";
 export type { ClassSpellProgression } from "./spellProgressionBackendAdapter";
-export { fetchClassSpellProgression } from "./spellProgressionBackendAdapter";
+export { fetchClassSpellProgression, fromLocalTables } from "./spellProgressionBackendAdapter";
+export { useClassSpellProgression } from "./useClassSpellProgression";
+export type { SpellProgressionResult } from "./useClassSpellProgression";
