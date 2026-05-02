@@ -6,6 +6,7 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
+import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
 import type { PlayerBoardStatusSummary } from "./playerBoard.types";
 import { buildPlayerBoardWeaponSummary } from "./playerBoardWeaponSummary";
@@ -20,6 +21,7 @@ type Props = {
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
   playerSheet: CharacterSheet | null;
+  activeEffects?: ActiveEffect[];
   selectedCampaignName?: string | null;
   t: (key: LocaleKey) => string;
 };
@@ -30,12 +32,21 @@ export const usePlayerBoardSummary = ({
   inventory,
   itemsById,
   playerSheet,
+  activeEffects = [],
   selectedCampaignName,
   t,
 }: Props) => {
   const { locale } = useLocale();
-  const { ac, hpPercent, initiative, passivePerception, spellAttack, spellSaveDC } =
-    useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET);
+  const {
+    ac,
+    hpPercent,
+    initiative,
+    passivePerception,
+    passivePerceptionBonus,
+    passivePerceptionBonusSources,
+    spellAttack,
+    spellSaveDC,
+  } = useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET, activeEffects);
   const xpState = getCharacterProgressState(
     playerSheet?.level ?? INITIAL_SHEET.level,
     playerSheet?.experiencePoints ?? INITIAL_SHEET.experiencePoints,
@@ -98,12 +109,27 @@ export const usePlayerBoardSummary = ({
       maxHp: playerSheet.maxHP,
       nextLevelThreshold: xpState.nextLevelThreshold,
       passivePerception,
+      passivePerceptionBonus,
+      passivePerceptionBonusSources,
       spellAttack,
       spellSaveDC,
       tempHp: playerSheet.tempHP,
       xpPercent: xpState.progressPercent,
     };
-  }, [ac, currentWeapon, hpPercent, initiative, passivePerception, playerSheet, spellAttack, spellSaveDC, xpState.nextLevelThreshold, xpState.progressPercent]);
+  }, [
+    ac,
+    currentWeapon,
+    hpPercent,
+    initiative,
+    passivePerception,
+    passivePerceptionBonus,
+    passivePerceptionBonusSources,
+    playerSheet,
+    spellAttack,
+    spellSaveDC,
+    xpState.nextLevelThreshold,
+    xpState.progressPercent,
+  ]);
 
   return {
     boardDescription,

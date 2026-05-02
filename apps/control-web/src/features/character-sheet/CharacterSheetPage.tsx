@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { buildCampaignDashboardPath, routes } from "../../app/routes/routes";
-import { useCampaignEvents } from "../sessions";
+import { useCampaignEvents, usePartyActiveSession } from "../sessions";
 import { partiesRepo } from "../../shared/api/partiesRepo";
 import type { RoleMode } from "../../shared/types/role";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { CharacterSheet } from "./components/CharacterSheet";
+import { useCombatUiState } from "../combat-ui/useCombatUiState";
 
 type Props = {
   viewerUserId?: string | null;
@@ -54,6 +55,16 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
     viewerRole === "GM" && requestedMode === "play"
       ? requestedPlayerName || "Selected Player"
       : null;
+  const { activeSession } = usePartyActiveSession(
+    requestedMode === "play" ? (partyId ?? null) : null,
+  );
+  const combat = useCombatUiState({
+    enabled: requestedMode === "play" && activeSession?.status === "ACTIVE" && !!playPlayerUserId,
+    pollMs: 15_000,
+    sessionId: activeSession?.id ?? "",
+    userId: playPlayerUserId,
+  });
+  const activeEffects = combat.myParticipant?.active_effects ?? [];
 
   useEffect(() => {
     if (!partyId || requestedCampaignId) {
@@ -114,6 +125,7 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
       backHref={backHref}
       backLabel={backLabel}
       playContextLabel={playContextLabel}
+      activeEffects={activeEffects}
     />
   );
 };

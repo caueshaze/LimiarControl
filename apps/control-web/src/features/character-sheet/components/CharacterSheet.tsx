@@ -30,6 +30,7 @@ import {
 } from "../utils/proficiencyCatalog";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCharacterSheetDerived } from "../hooks/useCharacterSheetDerived";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 
 type Props = {
   partyId?: string | null;
@@ -43,6 +44,7 @@ type Props = {
   backHref?: string | null;
   backLabel?: string | null;
   playContextLabel?: string | null;
+  activeEffects?: ActiveEffect[];
 };
 
 export const CharacterSheet = ({
@@ -57,6 +59,7 @@ export const CharacterSheet = ({
   backHref = null,
   backLabel = null,
   playContextLabel = null,
+  activeEffects = [],
 }: Props) => {
   const navigate = useNavigate();
   const actions = useCharacterSheet(partyId, mode, {
@@ -213,10 +216,11 @@ export const CharacterSheet = ({
     hpTextColor,
     initiative,
     passivePerception,
+    passivePerceptionBonus,
     profBonus,
     spellAttack,
     spellSaveDC,
-  } = useCharacterSheetDerived(sheet);
+  } = useCharacterSheetDerived(sheet, activeEffects);
 
   if (actions.loading) {
     return <CharacterSheetStateScreen />;
@@ -441,6 +445,7 @@ export const CharacterSheet = ({
                 skillProficiencies={sheet.skillProficiencies}
                 level={sheet.level}
                 onCycleProf={actions.cycleSkillProf}
+                passivePerceptionBonus={passivePerceptionBonus}
                 readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
               />
           </div>

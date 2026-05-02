@@ -1,5 +1,7 @@
 import {
   computeInitiative,
+  computePassiveSkillBonus,
+  computePassiveSkillBonusSources,
   computePassivePerception,
   computeSpellAttack,
   computeSpellSaveDC,
@@ -17,15 +19,21 @@ import {
   resolveElementalAffinityEligibility,
 } from "../data/draconicAncestry";
 import { resolveDragonbornLineageState } from "../data/dragonbornAncestries";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 
-export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
+export const useCharacterSheetDerived = (
+  sheet: CharacterSheet,
+  activeEffects: ActiveEffect[] = [],
+) => {
   const acResult = calculateArmorClass(buildCharacterAcStateFromSheet(sheet));
   const ac = acResult.total;
   const acBreakdown = getArmorClassBreakdownRows(acResult);
   const dexMod = getModifier(sheet.abilities.dexterity);
   const initiative = computeInitiative(dexMod);
   const profBonus = getProficiencyBonus(sheet.level);
-  const passivePerception = computePassivePerception(sheet);
+  const passivePerceptionBonus = computePassiveSkillBonus(activeEffects, "perception");
+  const passivePerceptionBonusSources = computePassiveSkillBonusSources(activeEffects, "perception");
+  const passivePerception = computePassivePerception(sheet) + passivePerceptionBonus;
 
   const spellAbilityScore = sheet.spellcasting
     ? sheet.abilities[sheet.spellcasting.ability]
@@ -69,6 +77,8 @@ export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
     hpTextColor,
     initiative,
     passivePerception,
+    passivePerceptionBonus,
+    passivePerceptionBonusSources,
     profBonus,
     dragonbornAncestry: dragonbornLineage.ancestry,
     dragonbornAncestryLabel: dragonbornLineage.ancestryLabel,

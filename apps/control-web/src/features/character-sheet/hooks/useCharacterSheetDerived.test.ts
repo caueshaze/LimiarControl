@@ -2,6 +2,27 @@ import { describe, expect, it } from "vitest";
 
 import { INITIAL_SHEET } from "../model/initialSheet";
 import { useCharacterSheetDerived } from "./useCharacterSheetDerived";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
+
+const makePassivePerceptionEffect = (
+  bonus: number,
+  label = "Owl's Wisdom",
+): ActiveEffect => ({
+  id: `effect-${label}-${bonus}`,
+  kind: "spell_effect",
+  duration_type: "rounds",
+  created_at: "2026-05-02T00:00:00Z",
+  display_label: label,
+  metadata: {
+    declarative_effect: {
+      type: "passive_skill_bonus",
+      params: {
+        skill: "perception",
+        bonus,
+      },
+    },
+  },
+});
 
 describe("useCharacterSheetDerived", () => {
   it("exposes dragonborn ancestry damage, resistance and breath weapon data", () => {
@@ -63,5 +84,35 @@ describe("useCharacterSheetDerived", () => {
     expect(derived.draconicResistanceType).toBeNull();
     expect(derived.hasElementalAffinity).toBe(false);
     expect(derived.resistances).toEqual([]);
+  });
+
+  it("adds passive perception bonus from active effects when present", () => {
+    const derived = useCharacterSheetDerived(INITIAL_SHEET, [
+      makePassivePerceptionEffect(5),
+    ]);
+
+    expect(derived.passivePerception).toBe(15);
+    expect(derived.passivePerceptionBonus).toBe(5);
+    expect(derived.passivePerceptionBonusSources).toEqual([
+      { label: "Owl's Wisdom", value: 5 },
+    ]);
+  });
+
+  it("stacks passive perception bonuses and preserves baseline without effects", () => {
+    const baseline = useCharacterSheetDerived(INITIAL_SHEET);
+    const derived = useCharacterSheetDerived(INITIAL_SHEET, [
+      makePassivePerceptionEffect(3, "Aura of Vigilance"),
+      makePassivePerceptionEffect(2, "Owl's Wisdom"),
+    ]);
+
+    expect(baseline.passivePerception).toBe(10);
+    expect(baseline.passivePerceptionBonus).toBe(0);
+    expect(baseline.passivePerceptionBonusSources).toEqual([]);
+    expect(derived.passivePerception).toBe(15);
+    expect(derived.passivePerceptionBonus).toBe(5);
+    expect(derived.passivePerceptionBonusSources).toEqual([
+      { label: "Aura of Vigilance", value: 3 },
+      { label: "Owl's Wisdom", value: 2 },
+    ]);
   });
 });
