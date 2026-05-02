@@ -109,6 +109,11 @@ export const PlayerBoardStatusPanel = ({
             <StatCard
               label={t("sheet.skills.passivePerception")}
               value={String(playerStatus.passivePerception)}
+              helper={
+                playerStatus.passivePerceptionBonus && playerStatus.passivePerceptionBonusSources?.length
+                  ? `Base ${playerStatus.passivePerception - playerStatus.passivePerceptionBonus}${playerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`
+                  : null
+              }
             />
             <WeaponCard
               combatActive={combatActive}

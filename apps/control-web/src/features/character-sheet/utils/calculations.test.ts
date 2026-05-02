@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeAbilityScoreTotal } from "./calculations";
+import { computeAbilityScoreTotal, computePassiveSkillBonus, computePassiveSkillBonusSources } from "./calculations";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import {
   computeBaseAbilitiesForPointAccounting,
   computeBaseAbilityScoreTotal,
@@ -187,5 +188,118 @@ describe("computeBaseAbilityScoreTotal", () => {
       1,
     );
     expect(usedPoints).toBe(computeAbilityScoreTotal(BASE_ABILITIES));
+  });
+});
+
+const makePassiveSkillBonusEffect = (
+  skill: string,
+  bonus: number,
+  overrides: Partial<ActiveEffect> = {},
+): ActiveEffect => ({
+  id: `effect-${skill}-${bonus}`,
+  kind: "spell_effect",
+  duration_type: "manual",
+  created_at: "2026-05-01T00:00:00Z",
+  display_label: "Enhance Ability",
+  metadata: {
+    source_spell_name: "Enhance Ability",
+    declarative_effect: {
+      type: "passive_skill_bonus",
+      params: { skill, bonus },
+    },
+  },
+  ...overrides,
+});
+
+describe("computePassiveSkillBonus", () => {
+  it("retorna 0 sem efeitos ativos", () => {
+    expect(computePassiveSkillBonus([], "perception")).toBe(0);
+  });
+
+  it("soma bônus de um único efeito matching", () => {
+    const effects = [makePassiveSkillBonusEffect("perception", 5)];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(5);
+  });
+
+  it("não conta efeito de skill diferente", () => {
+    const effects = [makePassiveSkillBonusEffect("stealth", 3)];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(0);
+  });
+
+  it("empilha múltiplos efeitos da mesma skill", () => {
+    const effects = [
+      makePassiveSkillBonusEffect("perception", 5),
+      makePassiveSkillBonusEffect("perception", 3),
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(8);
+  });
+
+  it("ignora efeito sem declarative_effect", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "no-declarative",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: { source_spell_name: "Something" },
+      },
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(0);
+  });
+
+  it("ignora efeito com metadata nula", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "null-meta",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: null,
+      },
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(0);
+  });
+
+  it("usa display_label com fallback para source_spell_name e default", () => {
+    const withDisplayLabel = makePassiveSkillBonusEffect("perception", 5, {
+      display_label: "Owl's Wisdom",
+    });
+    const withSpellName: ActiveEffect = {
+      id: "no-label",
+      kind: "spell_effect",
+      duration_type: "manual",
+      created_at: "2026-05-01T00:00:00Z",
+      display_label: null,
+      metadata: {
+        source_spell_name: "Enhance Ability",
+        declarative_effect: {
+          type: "passive_skill_bonus",
+          params: { skill: "perception", bonus: 3 },
+        },
+      },
+    };
+    const withNoLabel: ActiveEffect = {
+      id: "no-label-no-name",
+      kind: "spell_effect",
+      duration_type: "manual",
+      created_at: "2026-05-01T00:00:00Z",
+      display_label: null,
+      metadata: {
+        declarative_effect: {
+          type: "passive_skill_bonus",
+          params: { skill: "perception", bonus: 2 },
+        },
+      },
+    };
+
+    const sources = computePassiveSkillBonusSources(
+      [withDisplayLabel, withSpellName, withNoLabel],
+      "perception",
+    );
+
+    expect(sources[0].label).toBe("Owl's Wisdom");
+    expect(sources[1].label).toBe("Enhance Ability");
+    expect(sources[2].label).toBe("Passive skill bonus");
+    expect(sources.map((s) => s.value)).toEqual([5, 3, 2]);
   });
 });

@@ -5,6 +5,7 @@ import type {
   SkillName,
   Weapon,
 } from "../model/characterSheet.types";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import { SKILL_ABILITY_MAP, STANDARD_ARRAY } from "../constants";
 import { getFightingStyleAttackBonus } from "../data/classFeatures";
 
@@ -56,6 +57,41 @@ export const computeMaxHpAtLevel = (
 // ── Derived Stats ───────────────────────────────────────────────────────────
 
 export const computeInitiative = (dexMod: number): number => dexMod;
+
+export type PassiveSkillBonusSource = { label: string; value: number };
+
+export const computePassiveSkillBonusSources = (
+  activeEffects: ActiveEffect[],
+  skill: string,
+): PassiveSkillBonusSource[] => {
+  const sources: PassiveSkillBonusSource[] = [];
+  for (const effect of activeEffects) {
+    const metadata = effect.metadata;
+    if (!metadata || typeof metadata !== "object") continue;
+    const declarative = metadata.declarative_effect;
+    if (!declarative || typeof declarative !== "object") continue;
+    if ((declarative as Record<string, unknown>).type !== "passive_skill_bonus") continue;
+    const params = (declarative as Record<string, unknown>).params;
+    if (!params || typeof params !== "object") continue;
+    const p = params as Record<string, unknown>;
+    if (p.skill !== skill || typeof p.bonus !== "number") continue;
+    const label =
+      (typeof effect.display_label === "string" && effect.display_label) ||
+      (typeof metadata.source_spell_name === "string" && metadata.source_spell_name) ||
+      "Passive skill bonus";
+    sources.push({ label, value: p.bonus });
+  }
+  return sources;
+};
+
+export const computePassiveSkillBonus = (
+  activeEffects: ActiveEffect[],
+  skill: string,
+): number =>
+  computePassiveSkillBonusSources(activeEffects, skill).reduce(
+    (sum, s) => sum + s.value,
+    0,
+  );
 
 export const computePassivePerception = (sheet: CharacterSheet): number => {
   const wisMod = getModifier(sheet.abilities.wisdom);

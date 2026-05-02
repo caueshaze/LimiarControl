@@ -30,7 +30,9 @@ vi.mock("./player-board-status/PlayerBoardStatusCards", () => ({
   DeathSaveCard: () => <div>death</div>,
   ProgressCard: ({ label, value }: { label: string; value: string }) => <div>{label}:{value}</div>,
   RestCard: () => <div>rest</div>,
-  StatCard: ({ label, value }: { label: string; value: string }) => <div>{label}:{value}</div>,
+  StatCard: ({ label, value, helper }: { label: string; value: string; helper?: string | null }) => (
+    <div>{label}:{value}{helper ? <span>{helper}</span> : null}</div>
+  ),
   WeaponCard: () => <div>weapon</div>,
   getHpBarToneClass: () => "hp-bar",
   getHpToneClass: () => "hp-tone",
@@ -77,5 +79,64 @@ describe("PlayerBoardStatusPanel", () => {
     expect(markup).toContain("2/4 restantes");
     expect(markup).toContain("2º círculo");
     expect(markup).toContain("0/3 restantes");
+  });
+
+  it("mostra percepção passiva sem breakdown quando sem bônus", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Percepção passiva:13");
+    expect(markup).not.toContain("Owl");
+  });
+
+  it("mostra breakdown de percepção passiva quando passivePerceptionBonus está presente", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive
+        pendingRoll={null}
+        playerStatus={{
+          level: 4,
+          currentHp: 22,
+          maxHp: 30,
+          hpPercent: 73,
+          tempHp: 0,
+          xpPercent: 60,
+          nextLevelThreshold: 2700,
+          experiencePoints: 1800,
+          ac: 14,
+          initiative: 2,
+          passivePerception: 17,
+          passivePerceptionBonus: 5,
+          passivePerceptionBonusSources: [{ label: "Owl's Wisdom", value: 5 }],
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Percepção passiva:17");
+    expect(markup).toContain("Base 12");
+    expect(markup).toContain("Owl&#x27;s Wisdom 5");
   });
 });

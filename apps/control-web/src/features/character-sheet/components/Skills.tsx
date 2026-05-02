@@ -12,12 +12,13 @@ type Props = {
   skillProficiencies: CharacterSheet["skillProficiencies"];
   level: number;
   onCycleProf: SheetActions["cycleSkillProf"];
+  passivePerceptionBonus?: number;
   readOnly?: boolean;
 };
 
-export const Skills = ({ className, abilities, skillProficiencies, level, onCycleProf, readOnly = false }: Props) => {
+export const Skills = ({ className, abilities, skillProficiencies, level, onCycleProf, passivePerceptionBonus = 0, readOnly = false }: Props) => {
   const { t } = useLocale();
-  const passivePerception = computePassivePerception({ abilities, skillProficiencies, level } as CharacterSheet);
+  const passivePerception = computePassivePerception({ abilities, skillProficiencies, level } as CharacterSheet) + passivePerceptionBonus;
 
   return (
     <Section title={t("sheet.skills.title")} color="bg-cyan-500" className={className}>
