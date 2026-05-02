@@ -2,8 +2,8 @@ import { describe, expect, it, afterEach } from "vitest";
 import { seedSpellCatalogCache } from "../../../entities/dnd-base";
 import { INITIAL_SHEET } from "../model/initialSheet";
 import {
-  getAvailableStartingSpells,
-  getStartingSpellLimits,
+  getAvailableCreationSpells,
+  getCreationSpellLimits,
   normalizeCreationSpellSelection,
   selectCatalogSpellForSheet,
   toggleStartingSpell,
@@ -317,12 +317,12 @@ describe("creation spell progression", () => {
     ]);
 
     expect(
-      getAvailableStartingSpells("sorcerer", 3).leveled.map(
+      getAvailableCreationSpells("sorcerer", 3).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).toEqual(["magic_missile", "enhance_ability"]);
 
-    expect(getStartingSpellLimits("sorcerer", INITIAL_SHEET.abilities, 3)).toMatchObject({
+    expect(getCreationSpellLimits("sorcerer", INITIAL_SHEET.abilities, 3)).toMatchObject({
       leveledSpells: 4,
       maxSpellLevel: 2,
       slots: {
@@ -478,22 +478,22 @@ describe("creation spell progression", () => {
     ]);
 
     expect(
-      getAvailableStartingSpells("sorcerer", 3).leveled.map(
+      getAvailableCreationSpells("sorcerer", 3).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).toContain("enhance_ability");
     expect(
-      getAvailableStartingSpells("bard", 3).leveled.map(
+      getAvailableCreationSpells("bard", 3).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).toContain("enhance_ability");
     expect(
-      getAvailableStartingSpells("cleric", 3).leveled.map(
+      getAvailableCreationSpells("cleric", 3).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).toContain("enhance_ability");
     expect(
-      getAvailableStartingSpells("druid", 3).leveled.map(
+      getAvailableCreationSpells("druid", 3).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).toContain("enhance_ability");
@@ -536,12 +536,12 @@ describe("creation spell progression", () => {
     ]);
 
     expect(
-      getAvailableStartingSpells("sorcerer", 1).leveled.map(
+      getAvailableCreationSpells("sorcerer", 1).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).not.toContain("enhance_ability");
     expect(
-      getAvailableStartingSpells("sorcerer", 2).leveled.map(
+      getAvailableCreationSpells("sorcerer", 2).leveled.map(
         (spell) => spell.canonicalKey
       )
     ).not.toContain("enhance_ability");
@@ -549,7 +549,7 @@ describe("creation spell progression", () => {
 });
 
 /**
- * Contract tests: prepared/known spell counts via getStartingSpellLimits.
+ * Contract tests: prepared/known spell counts via getCreationSpellLimits.
  *
  * These validate the application-layer formula (level + modifier, floor(level/2) + modifier,
  * spellbook formula) that sits on top of the canonical tables in spellProgression.ts.
@@ -559,23 +559,23 @@ describe("creation spell progression", () => {
  *   apps/control-server/tests/test_class_progression.py (SpellcastingProgressionContractTests).
  * Prepared/known counts are a frontend-only concept (creation flow).
  */
-describe("getStartingSpellLimits — prepared/known spell count contract", () => {
+describe("getCreationSpellLimits — prepared/known spell count contract", () => {
   it("wizard level 5 spellbook: 6 + 2×(level-1) = 14 leveled spells", () => {
-    const limits = getStartingSpellLimits("wizard", INITIAL_SHEET.abilities, 5);
+    const limits = getCreationSpellLimits("wizard", INITIAL_SHEET.abilities, 5);
     expect(limits?.leveledSpells).toBe(14);
     expect(limits?.maxSpellLevel).toBe(3);
   });
 
   it("cleric level 7 WIS 16: level + modifier = 7 + 3 = 10 prepared spells", () => {
     const abilities = { ...INITIAL_SHEET.abilities, wisdom: 16 };
-    const limits = getStartingSpellLimits("cleric", abilities, 7);
+    const limits = getCreationSpellLimits("cleric", abilities, 7);
     expect(limits?.leveledSpells).toBe(10);
     expect(limits?.maxSpellLevel).toBe(4);
   });
 
   it("paladin level 5 CHA 16: floor(level/2) + modifier = 2 + 3 = 5 prepared spells", () => {
     const abilities = { ...INITIAL_SHEET.abilities, charisma: 16 };
-    const limits = getStartingSpellLimits("paladin", abilities, 5);
+    const limits = getCreationSpellLimits("paladin", abilities, 5);
     expect(limits?.leveledSpells).toBe(5);
     expect(limits?.maxSpellLevel).toBe(2);
     expect(limits?.slots).toEqual({ 1: 4, 2: 2 });

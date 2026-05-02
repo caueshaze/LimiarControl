@@ -7,7 +7,7 @@ export type {
   ClassCreationConfig,
   ClassEquipmentChoiceGroup,
   ClassEquipmentOption,
-  StartingSpellConfig,
+  CreationSpellConfig,
   StartingSpellMode,
   ToolProficiencyChoiceConfig,
 } from "./classCreation.types";

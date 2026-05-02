@@ -1,7 +1,7 @@
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useEffect, useState } from "react";
 import { loadSpellCatalog, isSpellCatalogLoaded } from "../../../entities/dnd-base";
-import { getAvailableStartingSpells, getFixedStartingSpells } from "../utils/creationSpells";
+import { getAvailableCreationSpells, getFixedCreationSpells } from "../utils/creationSpells";
 import type { CharacterSheet } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 
@@ -48,9 +48,9 @@ export const CreationSpellPicker = ({
     );
   }
 
-  const options = getAvailableStartingSpells(className, level, campaignId);
+  const options = getAvailableCreationSpells(className, level, campaignId);
   const fixedSpellNames = new Set(
-    getFixedStartingSpells(className, level, campaignId).map((spell) => spell.name.toLowerCase()),
+    getFixedCreationSpells(className, level, campaignId).map((spell) => spell.name.toLowerCase()),
   );
   const selectedNames = new Set(selectedSpells.map((spell) => spell.name.toLowerCase()));
   const selectedLeveledCount = selectedSpells.filter((spell) => spell.level > 0).length;

@@ -15,7 +15,7 @@ import {
 } from "../utils/creationItemCatalog";
 import { TEST_CREATION_BASE_ITEMS } from "../utils/creationItemCatalog.testData";
 import {
-  getAvailableStartingSpells,
+  getAvailableCreationSpells,
   selectCatalogSpellForSheet
 } from "../utils/creationSpells";
 import { validateCreationSheet } from "../utils/creationValidation";
@@ -377,8 +377,8 @@ describe("guardian creation flow", () => {
   });
 
   it("provides ranger-tagged spells for guardian through mechanics-family inheritance", () => {
-    const guardianSpells = getAvailableStartingSpells("guardian", 2);
-    const rangerSpells = getAvailableStartingSpells("ranger", 2);
+    const guardianSpells = getAvailableCreationSpells("guardian", 2);
+    const rangerSpells = getAvailableCreationSpells("ranger", 2);
 
     expect(guardianSpells.leveled.map((s) => s.canonicalKey)).toEqual(
       expect.arrayContaining(rangerSpells.leveled.map((s) => s.canonicalKey))

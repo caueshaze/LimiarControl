@@ -9,7 +9,7 @@ import { computeSpellAttack, computeSpellSaveDC, formatMod, safeParseInt } from 
 import { getClassCreationConfig } from "../data/classCreation";
 import {
   getCatalogSpellOptions,
-  getStartingSpellLimits,
+  getCreationSpellLimits,
 } from "../utils/creationSpells";
 import { CreationSpellPicker } from "./CreationSpellPicker";
 import { getAbilityLabel } from "../utils/abilityLabels";
@@ -50,7 +50,7 @@ export const Spellcasting = ({
 }: Props) => {
   const { t } = useLocale();
   const creationConfig = className ? getClassCreationConfig(className)?.startingSpells : null;
-  const creationSpellLimits = className ? getStartingSpellLimits(className, abilities, level) : null;
+  const creationSpellLimits = className ? getCreationSpellLimits(className, abilities, level) : null;
   const hasSpellError = missingRequiredFields.includes("cantrips") || missingRequiredFields.includes("leveledSpells");
   const shouldUseCatalogBackedEditing =
     catalogBackedSelection && !readOnly && !creationConfig;
@@ -116,8 +116,6 @@ export const Spellcasting = ({
   const abilityScore = abilities[spellcasting.ability];
   const saveDC = computeSpellSaveDC(level, abilityScore);
   const atkBonus = computeSpellAttack(level, abilityScore);
-  const startingSpellLimits = creationSpellLimits;
-
   return (
     <Section title={t("sheet.spells.title")} color="bg-violet-500">
       <div className="flex flex-wrap items-end gap-4">
@@ -161,11 +159,11 @@ export const Spellcasting = ({
         )}
       </div>
 
-      {startingSpellLimits && creationConfig && onToggleCreationSpell && (
+      {creationSpellLimits && creationConfig && onToggleCreationSpell && (
         <>
           <div className={`mt-4 rounded-2xl border p-4 px-4 py-3 text-xs text-slate-400 ${hasSpellError ? "border-red-500/30 bg-red-950/20" : "border-white/6 bg-white/3"}`}>
             <div className="space-y-1">
-              {Object.entries(startingSpellLimits.slots)
+              {Object.entries(creationSpellLimits.slots)
                 .filter(([, slotCount]) => slotCount > 0)
                 .map(([slotLevel, slotCount]) => (
                   <p key={`creation-slot-${slotLevel}`} className="font-semibold text-slate-200">
@@ -185,8 +183,8 @@ export const Spellcasting = ({
             campaignId={campaignId}
             className={className}
             level={level}
-            availableCantrips={startingSpellLimits.cantrips}
-            availableLeveled={startingSpellLimits.leveledSpells}
+            availableCantrips={creationSpellLimits.cantrips}
+            availableLeveled={creationSpellLimits.leveledSpells}
             selectedSpells={spellcasting.spells}
             onToggle={onToggleCreationSpell}
           />
