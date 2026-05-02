@@ -302,4 +302,88 @@ describe("SpellCastResultPanel", () => {
     expect(markup).toContain("Lembrete - Conferir mochila");
     expect(markup).not.toContain("Capacidade de carga - Duplicada");
   });
+
+  it("exibe grant_temp_hp aplicado por alvo", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Enhance Ability",
+          spell_canonical_key: "enhance_ability",
+          action_kind: "utility",
+          effect_kind: "damage",
+          damage: 0,
+          healing: 0,
+          target_display_name: "Barbarian",
+          target_kind: "player",
+          applied_declarative_effects_by_target: [
+            {
+              target_display_name: "Barbarian",
+              target_participant_id: "ally-2",
+              variant_key: "bears_endurance",
+              variant_label: "Resistência do Urso",
+              effects: [
+                {
+                  type: "grant_temp_hp",
+                  params: { dice: "2d6" },
+                  observability: {
+                    rolled_temp_hp: 7,
+                    applied_temp_hp: true,
+                    previous_temp_hp: 0,
+                    final_temp_hp: 7,
+                    does_not_expire_temp_hp: true,
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Barbarian");
+    expect(markup).toContain("Variante: Resistência do Urso");
+    expect(markup).toContain("PV temporários: +7 (final: 7).");
+  });
+
+  it("exibe grant_temp_hp ignorado quando alvo ja tinha valor maior", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Enhance Ability",
+          spell_canonical_key: "enhance_ability",
+          action_kind: "utility",
+          effect_kind: "damage",
+          damage: 0,
+          healing: 0,
+          target_display_name: "Barbarian",
+          target_kind: "player",
+          applied_declarative_effects_by_target: [
+            {
+              target_display_name: "Barbarian",
+              target_participant_id: "ally-2",
+              variant_key: "bears_endurance",
+              variant_label: "Resistência do Urso",
+              effects: [
+                {
+                  type: "grant_temp_hp",
+                  params: { dice: "2d6" },
+                  observability: {
+                    rolled_temp_hp: 5,
+                    applied_temp_hp: true,
+                    previous_temp_hp: 8,
+                    final_temp_hp: 8,
+                    does_not_expire_temp_hp: true,
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("PV temporários: 5 rolados, mantidos 8 existentes.");
+  });
 });

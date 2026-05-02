@@ -70,7 +70,7 @@ describe("ActiveEffectDebugPanel", () => {
       />,
     );
 
-    expect(markup).toContain("PV temporários concedidos: 9");
+    expect(markup).toContain("PV temporários: +9 (final: 9).");
     expect(markup).toContain("Não expiram com a concentração");
   });
 

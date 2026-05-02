@@ -14,6 +14,67 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 
 class CombatSpellDeclarativeEffectsMixin:
     @classmethod
+    def _build_temp_hp_observability_from_metadata(
+        cls,
+        metadata: dict,
+    ) -> dict | None:
+        rolled = metadata.get("rolled_temp_hp")
+        if not isinstance(rolled, int):
+            return None
+        observability = {
+            "rolled_temp_hp": rolled,
+            "applied_temp_hp": metadata.get("applied_temp_hp") is True,
+            "previous_temp_hp": metadata.get("previous_temp_hp")
+            if isinstance(metadata.get("previous_temp_hp"), int)
+            else None,
+            "final_temp_hp": metadata.get("final_temp_hp")
+            if isinstance(metadata.get("final_temp_hp"), int)
+            else None,
+            "does_not_expire_temp_hp": metadata.get("does_not_expire_temp_hp") is True,
+        }
+        return observability
+
+    @classmethod
+    def _format_temp_hp_observability_compact(
+        cls,
+        observability: dict | None,
+    ) -> str | None:
+        if not isinstance(observability, dict):
+            return None
+        rolled = observability.get("rolled_temp_hp")
+        previous = observability.get("previous_temp_hp")
+        final = observability.get("final_temp_hp")
+        if not isinstance(rolled, int):
+            return None
+        if isinstance(previous, int) and isinstance(final, int) and final <= previous:
+            return f"PV temporários: {rolled} rolados, mantidos {previous} existentes"
+        if isinstance(final, int):
+            return f"PV temporários: +{rolled} (final: {final})"
+        return f"PV temporários: +{rolled}"
+
+    @classmethod
+    def _format_applied_declarative_effects_for_log(
+        cls,
+        applied_declarative_effects_by_target: list[dict] | None,
+    ) -> str:
+        if not isinstance(applied_declarative_effects_by_target, list):
+            return ""
+        chunks: list[str] = []
+        for entry in applied_declarative_effects_by_target:
+            if not isinstance(entry, dict):
+                continue
+            target_name = entry.get("target_display_name")
+            if not isinstance(target_name, str) or not target_name.strip():
+                target_name = "Target"
+            for effect in entry.get("effects") or []:
+                if not isinstance(effect, dict) or effect.get("type") != "grant_temp_hp":
+                    continue
+                summary = cls._format_temp_hp_observability_compact(effect.get("observability"))
+                if summary:
+                    chunks.append(f"{target_name}: {summary}")
+        return f" {'; '.join(chunks)}." if chunks else ""
+
+    @classmethod
     def _build_applied_declarative_effects_by_target(
         cls,
         applied_effects: list[dict] | None,
@@ -55,14 +116,20 @@ class CombatSpellDeclarativeEffectsMixin:
                     "effects": [],
                 },
             )
-            target_entry["effects"].append(
-                {
-                    "type": declarative.get("type"),
-                    "params": declarative.get("params")
-                    if isinstance(declarative.get("params"), dict)
-                    else {},
-                }
+            effect_summary = {
+                "type": declarative.get("type"),
+                "params": declarative.get("params")
+                if isinstance(declarative.get("params"), dict)
+                else {},
+            }
+            observability = (
+                cls._build_temp_hp_observability_from_metadata(metadata)
+                if declarative.get("type") == "grant_temp_hp"
+                else None
             )
+            if observability is not None:
+                effect_summary["observability"] = observability
+            target_entry["effects"].append(effect_summary)
         return list(grouped.values())
 
     @classmethod
@@ -423,6 +490,9 @@ class CombatSpellDeclarativeEffectsMixin:
         )
         applied_effects = application["applied_effects"]
         cls._apply_temp_hp_from_granted_effects(db, state, applied_effects)
+        applied_declarative_effects_by_target = cls._build_applied_declarative_effects_by_target(
+            applied_effects
+        )
         summary_target = target_participant or attacker
         summary_text = (
             f"{spell_context['spell_name']} aplicou {len(applied_effects)} efeito(s)."
@@ -439,13 +509,12 @@ class CombatSpellDeclarativeEffectsMixin:
             log_message=(
                 f"{attacker['display_name']} conjurou {spell_context['spell_name']} em "
                 f"{summary_target.get('display_name') or 'Target'}."
+                f"{cls._format_applied_declarative_effects_for_log(applied_declarative_effects_by_target)}"
             ),
             extra={
                 "__declarative_effect_group_id": application["effect_group_id"],
                 "__applied_effect_count": len(applied_effects),
-                "applied_declarative_effects_by_target": cls._build_applied_declarative_effects_by_target(
-                    applied_effects
-                ),
+                "applied_declarative_effects_by_target": applied_declarative_effects_by_target,
                 "concentration_group": application["effect_group_id"]
                 if spell_context.get("concentration")
                 else None,

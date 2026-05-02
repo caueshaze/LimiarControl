@@ -29,6 +29,7 @@ type TargetLookup = {
 type DeclarativeEffectSummaryLike = {
   type?: unknown;
   params?: Record<string, unknown> | null;
+  observability?: Record<string, unknown> | null;
 };
 
 const humanizeVariantKey = (variantKey: string) =>
@@ -216,11 +217,20 @@ export const formatDeclarativeEffectSummaryLine = (
     return `Condition: ${p.condition}`;
   }
   if (declarative.type === "grant_temp_hp") {
-    const rolled = typeof metadata?.rolled_temp_hp === "number" ? metadata.rolled_temp_hp : null;
-    const applied = metadata?.applied_temp_hp === true;
-    const final = typeof metadata?.final_temp_hp === "number" ? metadata.final_temp_hp : null;
-    if (applied && final !== null) {
-      return `PV temporários concedidos: ${final}. Não expiram com a concentração.`;
+    const observed = declarative.observability ?? metadata ?? null;
+    const rolled = typeof observed?.rolled_temp_hp === "number" ? observed.rolled_temp_hp : null;
+    const applied = observed?.applied_temp_hp === true;
+    const previous = typeof observed?.previous_temp_hp === "number" ? observed.previous_temp_hp : null;
+    const final = typeof observed?.final_temp_hp === "number" ? observed.final_temp_hp : null;
+    const noExpire =
+      metadata && observed?.does_not_expire_temp_hp === true
+        ? " Não expiram com a concentração."
+        : "";
+    if (applied && rolled !== null && previous !== null && final !== null && final <= previous) {
+      return `PV temporários: ${rolled} rolados, mantidos ${previous} existentes.${noExpire}`;
+    }
+    if (applied && rolled !== null && final !== null) {
+      return `PV temporários: +${rolled} (final: ${final}).${noExpire}`;
     }
     if (rolled !== null) {
       return `PV temporários: ${rolled} (aguardando aplicação)`;
