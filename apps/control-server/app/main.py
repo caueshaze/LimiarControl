@@ -24,6 +24,7 @@ from app.api.routes import (
     character_sheets_router,
     combat_router,
     wild_shape_router,
+    rules_router,
     dev_router,
     inventory_router,
     items_router,
@@ -123,6 +124,7 @@ app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(me_router, prefix="/api/me", tags=["me"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(combat_router, prefix="/api", tags=["combat"])
+app.include_router(rules_router, prefix="/api/rules", tags=["rules"])
 app.include_router(wild_shape_router, prefix="/api", tags=["wild-shape"])
 app.include_router(uploads_router, prefix="/api", tags=["uploads"])
 app.include_router(assets_router, prefix="/api/assets", tags=["assets"])

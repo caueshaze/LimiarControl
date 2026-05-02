@@ -123,6 +123,42 @@ _CLASS_MECHANICS_FAMILIES: dict[str, str] = {
     "guardian": "ranger",
 }
 
+# ── Cantrip progression (PHB) ─────────────────────────────────────────────────
+# Frontend counterpart: apps/control-web/src/entities/dnd-base/spellProgression.ts (CANTRIPS_BY_CLASS)
+_CANTRIPS_BY_CLASS: dict[str, dict[int, int]] = {
+    "bard":     {1:2,2:2,3:2,4:3,5:3,6:3,7:3,8:3,9:3,10:4,11:4,12:4,13:4,14:4,15:4,16:4,17:4,18:4,19:4,20:4},
+    "cleric":   {1:3,2:3,3:3,4:4,5:4,6:4,7:4,8:4,9:4,10:5,11:5,12:5,13:5,14:5,15:5,16:5,17:5,18:5,19:5,20:5},
+    "druid":    {1:2,2:2,3:2,4:3,5:3,6:3,7:3,8:3,9:3,10:4,11:4,12:4,13:4,14:4,15:4,16:4,17:4,18:4,19:4,20:4},
+    "sorcerer": {1:4,2:4,3:4,4:5,5:5,6:5,7:5,8:5,9:5,10:6,11:6,12:6,13:6,14:6,15:6,16:6,17:6,18:6,19:6,20:6},
+    "warlock":  {1:2,2:2,3:2,4:3,5:3,6:3,7:3,8:3,9:3,10:4,11:4,12:4,13:4,14:4,15:4,16:4,17:4,18:4,19:4,20:4},
+    "wizard":   {1:3,2:3,3:3,4:4,5:4,6:4,7:4,8:4,9:4,10:5,11:5,12:5,13:5,14:5,15:5,16:5,17:5,18:5,19:5,20:5},
+}
+
+# ── Leveled spells known — known-spell casters only (PHB) ─────────────────────
+# Frontend counterpart: apps/control-web/src/entities/dnd-base/spellProgression.ts (LEVELED_SPELLS_KNOWN_BY_CLASS)
+# Prepared casters (cleric, druid, paladin, wizard) are NOT in this table.
+_LEVELED_SPELLS_KNOWN_BY_CLASS: dict[str, dict[int, int]] = {
+    "bard":     {1:4,2:5,3:6,4:7,5:8,6:9,7:10,8:11,9:12,10:14,11:15,12:15,13:16,14:18,15:19,16:19,17:20,18:22,19:22,20:22},
+    "ranger":   {1:0,2:2,3:3,4:3,5:4,6:4,7:5,8:5,9:6,10:6,11:7,12:7,13:8,14:8,15:9,16:9,17:10,18:10,19:11,20:11},
+    "sorcerer": {1:2,2:3,3:4,4:5,5:6,6:7,7:8,8:9,9:10,10:11,11:12,12:12,13:13,14:13,15:14,16:14,17:15,18:15,19:15,20:15},
+    "warlock":  {1:2,2:3,3:4,4:5,5:6,6:7,7:8,8:9,9:10,10:10,11:11,12:11,13:12,14:12,15:13,16:13,17:14,18:14,19:15,20:15},
+}
+
+# ── Spellcasting type by class ─────────────────────────────────────────────────
+# "known"    — knows a fixed list of spells (bard, ranger, sorcerer, warlock)
+# "prepared" — prepares from full class list using level + modifier (cleric, druid, paladin)
+# "spellbook"— wizard: maintains a spellbook, prepares from it each day
+_SPELLCASTING_TYPE_BY_CLASS: dict[str, str] = {
+    "bard":     "known",
+    "cleric":   "prepared",
+    "druid":    "prepared",
+    "paladin":  "prepared",
+    "ranger":   "known",
+    "sorcerer": "known",
+    "warlock":  "known",
+    "wizard":   "spellbook",
+}
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 
@@ -137,6 +173,44 @@ def get_spell_slots_for_class_level(class_id: str, level: int) -> dict[int, int]
     if table is None:
         return None
     return dict(table.get(max(1, min(level, 20)), {}))
+
+
+def get_class_spell_progression(class_id: str, level: int) -> dict | None:
+    """Return pure class spell progression data for a given class and character level.
+
+    Returns None for non-caster classes.
+    Does NOT include prepared spell counts (those depend on character ability scores).
+
+    Keys:
+      className         — normalized class id
+      level             — clamped character level (1–20)
+      slots             — {slot_level: count}, empty dict if no slots yet
+      maxSpellLevel     — highest slot level with count > 0 (0 if none)
+      cantrips          — cantrip count at this level, or 0 for non-cantrip classes
+      leveledSpellsKnown — spells known count for known-spell classes, None for prepared/spellbook
+      spellcastingType  — "known" | "prepared" | "spellbook", or None for non-casters
+    """
+    normalized = _normalize_class(class_id)
+    slots = get_spell_slots_for_class_level(normalized, level)
+    if slots is None:
+        return None
+
+    clamped_level = max(1, min(level, 20))
+    max_spell_level = max(slots.keys(), default=0)
+    cantrips = _CANTRIPS_BY_CLASS.get(normalized, {}).get(clamped_level, 0)
+    leveled_known_table = _LEVELED_SPELLS_KNOWN_BY_CLASS.get(normalized)
+    leveled_spells_known = leveled_known_table.get(clamped_level) if leveled_known_table else None
+    spellcasting_type = _SPELLCASTING_TYPE_BY_CLASS.get(normalized)
+
+    return {
+        "className": normalized,
+        "level": clamped_level,
+        "slots": slots,
+        "maxSpellLevel": max_spell_level,
+        "cantrips": cantrips,
+        "leveledSpellsKnown": leveled_spells_known,
+        "spellcastingType": spellcasting_type,
+    }
 
 
 def get_hp_gain_per_level(class_id: str, constitution_score: int = 10) -> int:

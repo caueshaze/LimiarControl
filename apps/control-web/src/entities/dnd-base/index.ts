@@ -38,7 +38,10 @@ export {
   CANTRIPS_BY_CLASS,
   LEVELED_SPELLS_KNOWN_BY_CLASS,
   PREPARED_SPELL_LEVEL_DIVISOR_BY_CLASS,
+  SPELLCASTING_TYPE_BY_CLASS,
   getSlotProgressionForLevel,
   getMaxUnlockedSpellLevel,
   getCantripCountForClassLevel,
 } from "./spellProgression";
+export type { ClassSpellProgression } from "./spellProgressionBackendAdapter";
+export { fetchClassSpellProgression } from "./spellProgressionBackendAdapter";
