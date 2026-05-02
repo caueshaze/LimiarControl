@@ -547,3 +547,37 @@ describe("creation spell progression", () => {
     ).not.toContain("enhance_ability");
   });
 });
+
+/**
+ * Contract tests: prepared/known spell counts via getStartingSpellLimits.
+ *
+ * These validate the application-layer formula (level + modifier, floor(level/2) + modifier,
+ * spellbook formula) that sits on top of the canonical tables in spellProgression.ts.
+ * No catalog seeding needed — counts are derived from class config + progression tables alone.
+ *
+ * Backend counterpart: the slot progression side is covered in
+ *   apps/control-server/tests/test_class_progression.py (SpellSlotContractTests).
+ * Prepared/known counts are a frontend-only concept (creation flow).
+ */
+describe("getStartingSpellLimits — prepared/known spell count contract", () => {
+  it("wizard level 5 spellbook: 6 + 2×(level-1) = 14 leveled spells", () => {
+    const limits = getStartingSpellLimits("wizard", INITIAL_SHEET.abilities, 5);
+    expect(limits?.leveledSpells).toBe(14);
+    expect(limits?.maxSpellLevel).toBe(3);
+  });
+
+  it("cleric level 7 WIS 16: level + modifier = 7 + 3 = 10 prepared spells", () => {
+    const abilities = { ...INITIAL_SHEET.abilities, wisdom: 16 };
+    const limits = getStartingSpellLimits("cleric", abilities, 7);
+    expect(limits?.leveledSpells).toBe(10);
+    expect(limits?.maxSpellLevel).toBe(4);
+  });
+
+  it("paladin level 5 CHA 16: floor(level/2) + modifier = 2 + 3 = 5 prepared spells", () => {
+    const abilities = { ...INITIAL_SHEET.abilities, charisma: 16 };
+    const limits = getStartingSpellLimits("paladin", abilities, 5);
+    expect(limits?.leveledSpells).toBe(5);
+    expect(limits?.maxSpellLevel).toBe(2);
+    expect(limits?.slots).toEqual({ 1: 4, 2: 2 });
+  });
+});

@@ -182,6 +182,77 @@ class SpellSlotTableTests(unittest.TestCase):
         self.assertIsNone(get_spell_slots_for_class_level("unknown", 5))
 
 
+# ── FE/BE Contract Tests ───────────────────────────────────────────────────────
+# Each scenario here must have an equivalent test on the frontend side in:
+#   apps/control-web/src/entities/dnd-base/spellProgression.test.ts
+#
+# If you change a slot table here and these tests still pass but the TS tests
+# fail (or vice versa), that is a FE/BE drift signal.
+
+class SpellSlotContractTests(unittest.TestCase):
+    def test_sorcerer_level_3_full_caster_unlocks_second_level_slots(self):
+        slots = get_spell_slots_for_class_level("sorcerer", 3)
+        self.assertEqual(slots, {1: 4, 2: 2})
+
+    def test_sorcerer_level_3_max_spell_level_is_2(self):
+        slots = get_spell_slots_for_class_level("sorcerer", 3)
+        self.assertEqual(max(slots.keys()), 2)
+
+    def test_wizard_level_5_full_caster_unlocks_third_level_slots(self):
+        slots = get_spell_slots_for_class_level("wizard", 5)
+        self.assertEqual(slots, {1: 4, 2: 3, 3: 2})
+
+    def test_wizard_level_5_max_spell_level_is_3(self):
+        slots = get_spell_slots_for_class_level("wizard", 5)
+        self.assertEqual(max(slots.keys()), 3)
+
+    def test_cleric_level_7_full_caster_unlocks_fourth_level_slots(self):
+        slots = get_spell_slots_for_class_level("cleric", 7)
+        self.assertEqual(slots, {1: 4, 2: 3, 3: 3, 4: 1})
+
+    def test_cleric_level_7_max_spell_level_is_4(self):
+        slots = get_spell_slots_for_class_level("cleric", 7)
+        self.assertEqual(max(slots.keys()), 4)
+
+    def test_paladin_level_5_half_caster_unlocks_second_level_slots(self):
+        slots = get_spell_slots_for_class_level("paladin", 5)
+        self.assertEqual(slots, {1: 4, 2: 2})
+
+    def test_paladin_level_5_max_spell_level_is_2(self):
+        slots = get_spell_slots_for_class_level("paladin", 5)
+        self.assertEqual(max(slots.keys()), 2)
+
+    def test_warlock_level_3_pact_magic_upgrades_to_second_level_slot(self):
+        slots = get_spell_slots_for_class_level("warlock", 3)
+        self.assertEqual(slots, {2: 2})
+
+    def test_warlock_level_3_max_spell_level_is_2(self):
+        slots = get_spell_slots_for_class_level("warlock", 3)
+        self.assertEqual(max(slots.keys()), 2)
+
+    def test_ranger_level_5_half_caster_unlocks_second_level_slots(self):
+        slots = get_spell_slots_for_class_level("ranger", 5)
+        self.assertEqual(slots, {1: 4, 2: 2})
+
+    def test_ranger_level_5_max_spell_level_is_2(self):
+        slots = get_spell_slots_for_class_level("ranger", 5)
+        self.assertEqual(max(slots.keys()), 2)
+
+    def test_guardian_level_5_inherits_ranger_half_caster_progression(self):
+        self.assertEqual(
+            get_spell_slots_for_class_level("guardian", 5),
+            get_spell_slots_for_class_level("ranger", 5),
+        )
+
+    def test_guardian_level_5_max_spell_level_is_2(self):
+        slots = get_spell_slots_for_class_level("guardian", 5)
+        self.assertEqual(max(slots.keys()), 2)
+
+    def test_paladin_level_1_has_no_slots(self):
+        slots = get_spell_slots_for_class_level("paladin", 1)
+        self.assertEqual(slots, {})
+
+
 # ── apply_level_up_stats ───────────────────────────────────────────────────────
 
 
