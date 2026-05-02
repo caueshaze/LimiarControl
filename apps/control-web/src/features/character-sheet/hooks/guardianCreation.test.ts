@@ -377,8 +377,8 @@ describe("guardian creation flow", () => {
   });
 
   it("provides ranger-tagged spells for guardian through mechanics-family inheritance", () => {
-    const guardianSpells = getAvailableStartingSpells("guardian");
-    const rangerSpells = getAvailableStartingSpells("ranger");
+    const guardianSpells = getAvailableStartingSpells("guardian", 2);
+    const rangerSpells = getAvailableStartingSpells("ranger", 2);
 
     expect(guardianSpells.leveled.map((s) => s.canonicalKey)).toEqual(
       expect.arrayContaining(rangerSpells.leveled.map((s) => s.canonicalKey))

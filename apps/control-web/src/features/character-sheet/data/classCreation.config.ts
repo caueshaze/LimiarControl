@@ -251,7 +251,7 @@ export const CLASS_CREATION_CONFIG: Record<string, ClassCreationConfig> = {
       { id: "wizard-focus", label: "Escolha seu foco", options: packOptions(["Bolsa de Componentes", "Component Pouch"], ["Foco Arcano", "Arcane Focus"]) },
       { id: "wizard-pack", label: "Escolha sua mochila", options: packOptions(["Mochila do Estudioso", "Scholar's Pack"], ["Mochila do Explorador", "Explorer's Pack"]) },
     ],
-    startingSpells: { cantrips: 3, leveledSpells: 6, leveledMode: "spellbook", preparationAbility: "intelligence", levelOneSlots: 2 },
+    startingSpells: { cantrips: 3, leveledMode: "spellbook", preparationAbility: "intelligence", levelOneSlots: 2 },
   },
 };
 

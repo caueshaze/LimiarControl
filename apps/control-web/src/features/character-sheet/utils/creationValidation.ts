@@ -136,7 +136,7 @@ export const validateCreationSheet = (
   const spellLimits = getStartingSpellLimits(sheet.class, sheet.abilities, sheet.level);
   if (spellLimits) {
     const selectedCantrips = sheet.spellcasting?.spells.filter((spell) => spell.level === 0).length ?? 0;
-    const selectedLevelOneSpells = sheet.spellcasting?.spells.filter((spell) => spell.level === 1).length ?? 0;
+    const selectedLeveledSpells = sheet.spellcasting?.spells.filter((spell) => spell.level > 0).length ?? 0;
     const selectedSpellKeys = new Set(
       (sheet.spellcasting?.spells ?? [])
         .map((spell) => spell.canonicalKey?.toLowerCase())
@@ -146,7 +146,7 @@ export const validateCreationSheet = (
       .some((spellKey) => !selectedSpellKeys.has(spellKey.toLowerCase()));
 
     const needCantrips = selectedCantrips < spellLimits.cantrips;
-    const needLeveled = selectedLevelOneSpells < spellLimits.leveledSpells || missingRequiredSpells;
+    const needLeveled = selectedLeveledSpells < spellLimits.leveledSpells || missingRequiredSpells;
 
     if (needCantrips) missingRequiredFields.push("cantrips");
     if (needLeveled) missingRequiredFields.push("leveledSpells");
@@ -155,7 +155,7 @@ export const validateCreationSheet = (
       spellDetails = {
         selectedCantrips,
         totalCantrips: spellLimits.cantrips,
-        selectedLeveled: selectedLevelOneSpells,
+        selectedLeveled: selectedLeveledSpells,
         totalLeveled: spellLimits.leveledSpells,
       };
     }

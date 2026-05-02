@@ -48,11 +48,12 @@ export const CreationSpellPicker = ({
     );
   }
 
-  const options = getAvailableStartingSpells(className, campaignId);
+  const options = getAvailableStartingSpells(className, level, campaignId);
   const fixedSpellNames = new Set(
     getFixedStartingSpells(className, level, campaignId).map((spell) => spell.name.toLowerCase()),
   );
   const selectedNames = new Set(selectedSpells.map((spell) => spell.name.toLowerCase()));
+  const selectedLeveledCount = selectedSpells.filter((spell) => spell.level > 0).length;
 
   return (
     <div className="mt-5 space-y-4">
@@ -64,14 +65,17 @@ export const CreationSpellPicker = ({
         fixedNames={fixedSpellNames}
         onToggle={onToggle}
       />
-      <SpellChoiceGroup
-        title={`Level 1 Spells (${selectedSpells.filter((spell) => spell.level === 1).length}/${availableLeveled})`}
-        limitReached={selectedSpells.filter((spell) => spell.level === 1).length >= availableLeveled}
-        selectedNames={selectedNames}
-        names={options.leveled.map((spell) => spell.name)}
-        fixedNames={fixedSpellNames}
-        onToggle={onToggle}
-      />
+      {options.leveledGroups.map((group) => (
+        <SpellChoiceGroup
+          key={`spell-level-${group.level}`}
+          title={`Level ${group.level} Spells (${selectedLeveledCount}/${availableLeveled})`}
+          limitReached={selectedLeveledCount >= availableLeveled}
+          selectedNames={selectedNames}
+          names={group.spells.map((spell) => spell.name)}
+          fixedNames={fixedSpellNames}
+          onToggle={onToggle}
+        />
+      ))}
     </div>
   );
 };
