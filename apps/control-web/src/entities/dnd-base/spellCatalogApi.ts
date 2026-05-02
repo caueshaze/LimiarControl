@@ -25,7 +25,7 @@ import { campaignSpellsRepo } from "../../shared/api/campaignSpellsRepo";
 export type BaseSpell = {
   canonicalKey: string;
   name: string;
-  namePt: string | null;
+  namePt?: string | null;
   /** Authority id for campaign-scope spell entries. Null for base-scope spells. */
   campaignSpellId: string | null;
   level: number;

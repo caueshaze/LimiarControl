@@ -322,7 +322,7 @@ export const CharacterSheet = ({
 
         <div className="grid gap-3 xl:grid-cols-12 xl:items-start">
           <div className="space-y-3 xl:col-span-8">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.95fr)] lg:items-start">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
               <AbilityScores
                 className={sheet.class}
                 abilities={sheet.abilities}
@@ -342,7 +342,7 @@ export const CharacterSheet = ({
                 readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
               />
             </div>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
               <CombatStats
                 sheet={sheet}
                 ac={ac}
@@ -382,56 +382,52 @@ export const CharacterSheet = ({
             </div>
             {isCreation && (
               <>
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
-                  <Proficiencies
-                    languages={sheet.languages}
-                    toolProficiencies={sheet.toolProficiencies}
-                    weaponProficiencies={sheet.weaponProficiencies}
-                    armorProficiencies={sheet.armorProficiencies}
-                    onAddTag={actions.addTag}
-                    onRemoveTag={actions.removeTag}
-                    readOnly={!isEditableCreationDraft}
-                    catalogOptions={draftProficiencyCatalogOptions}
-                  />
-                  <Spellcasting
-                    campaignId={campaignId}
-                    className={sheet.class}
-                    spellcasting={sheet.spellcasting}
-                    abilities={sheet.abilities}
-                    level={sheet.level}
-                    readOnly={!isEditableCreationDraft}
-                    missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
-                    onEnable={actions.enableSpellcasting}
-                    onDisable={actions.disableSpellcasting}
-                    onSetAbility={actions.setSpellAbility}
-                    onSetSlot={actions.setSpellSlot}
-                    onAddSpell={actions.addSpell}
-                    onSelectCatalogSpell={actions.selectCatalogSpell}
-                    onRemoveSpell={actions.removeSpell}
-                    onUpdateSpell={actions.updateSpell}
-                    onToggleCreationSpell={actions.toggleCreationSpellSelection}
-                    catalogBackedSelection={isEditableCreationDraft}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Equipment
-                    inventory={sheet.inventory}
+                <Proficiencies
+                  languages={sheet.languages}
+                  toolProficiencies={sheet.toolProficiencies}
+                  weaponProficiencies={sheet.weaponProficiencies}
+                  armorProficiencies={sheet.armorProficiencies}
+                  onAddTag={actions.addTag}
+                  onRemoveTag={actions.removeTag}
+                  readOnly={!isEditableCreationDraft}
+                  catalogOptions={draftProficiencyCatalogOptions}
+                />
+                <Spellcasting
+                  campaignId={campaignId}
+                  className={sheet.class}
+                  spellcasting={sheet.spellcasting}
+                  abilities={sheet.abilities}
+                  level={sheet.level}
+                  readOnly={!isEditableCreationDraft}
+                  missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
+                  onEnable={actions.enableSpellcasting}
+                  onDisable={actions.disableSpellcasting}
+                  onSetAbility={actions.setSpellAbility}
+                  onSetSlot={actions.setSpellSlot}
+                  onAddSpell={actions.addSpell}
+                  onSelectCatalogSpell={actions.selectCatalogSpell}
+                  onRemoveSpell={actions.removeSpell}
+                  onUpdateSpell={actions.updateSpell}
+                  onToggleCreationSpell={actions.toggleCreationSpellSelection}
+                  catalogBackedSelection={isEditableCreationDraft}
+                />
+                <Equipment
+                  inventory={sheet.inventory}
+                  currency={sheet.currency}
+                  onAdd={actions.addItem}
+                  onRemove={actions.removeItem}
+                  onUpdate={actions.updateItem}
+                  onSelectCatalogItem={actions.selectInventoryCatalogItem}
+                  creationCatalogBacked
+                  readOnly={!isEditableCreationDraft}
+                />
+                {isEditableCreationDraft ? (
+                  <Currency
                     currency={sheet.currency}
-                    onAdd={actions.addItem}
-                    onRemove={actions.removeItem}
-                    onUpdate={actions.updateItem}
-                    onSelectCatalogItem={actions.selectInventoryCatalogItem}
-                    creationCatalogBacked
-                    readOnly={!isEditableCreationDraft}
+                    setCurrency={actions.setCurrency}
+                    readOnly={false}
                   />
-                  {isEditableCreationDraft ? (
-                    <Currency
-                      currency={sheet.currency}
-                      setCurrency={actions.setCurrency}
-                      readOnly={false}
-                    />
-                  ) : null}
-                </div>
+                ) : null}
               </>
             )}
           </div>
