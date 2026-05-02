@@ -32,6 +32,8 @@ _HP_AVERAGE_BY_DIE: dict[int, int] = {
 # ── Spell Slot Tables (PHB) ────────────────────────────────────────────────────
 # Format: {character_level: {slot_level: count}}
 # Only non-zero slot counts are included per row.
+# Frontend counterpart (TypeScript):
+#   apps/control-web/src/entities/dnd-base/spellProgression.ts
 
 _FULL_CASTER_SLOTS: dict[int, dict[int, int]] = {
     1:  {1: 2},

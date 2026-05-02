@@ -30,3 +30,15 @@ export {
   resolveSpellSourceClassId,
   seedSpellCatalogCache
 } from "./spellCatalogApi";
+export {
+  FULL_CASTER_SLOTS,
+  HALF_CASTER_SLOTS,
+  WARLOCK_SLOTS,
+  SLOT_TABLES_BY_CLASS,
+  CANTRIPS_BY_CLASS,
+  LEVELED_SPELLS_KNOWN_BY_CLASS,
+  PREPARED_SPELL_LEVEL_DIVISOR_BY_CLASS,
+  getSlotProgressionForLevel,
+  getMaxUnlockedSpellLevel,
+  getCantripCountForClassLevel,
+} from "./spellProgression";
