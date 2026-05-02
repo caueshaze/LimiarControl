@@ -1,5 +1,5 @@
 import {
-  getStartingSpellLimits,
+  getCreationSpellLimits,
   normalizeCreationSpellSelection,
 } from "../utils/creationSpells";
 import { getClass } from "../data/classes";
@@ -100,7 +100,7 @@ export const buildCreationSpellcasting = (
   existing: SpellcastingData | null,
   campaignId?: string | null,
 ) => {
-  const limits = getStartingSpellLimits(className, abilities, level);
+  const limits = getCreationSpellLimits(className, abilities, level);
   if (!limits || !spellcastingAbility) return null;
   const creationConfig = getClassCreationConfig(className);
   return normalizeCreationSpellSelection(

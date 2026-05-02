@@ -21,7 +21,7 @@ import type {
   SpellcastingData
 } from "../model/characterSheet.types";
 
-type StartingSpellOptionGroup = {
+type CreationSpellOptionGroup = {
   level: number;
   spells: ReturnType<typeof getBaseSpellsForClass>;
 };
@@ -194,7 +194,7 @@ const prioritizeFixedSpells = (spells: Spell[], fixedSpellKeys: string[]) => {
   return [...fixed, ...rest];
 };
 
-export const getFixedStartingSpellCanonicalKeys = (
+export const getFixedCreationSpellCanonicalKeys = (
   className: string,
   level: number
 ): string[] =>
@@ -203,19 +203,19 @@ export const getFixedStartingSpellCanonicalKeys = (
     ...getFixedSpellKeys(className, level, "leveled")
   ]);
 
-export const getFixedStartingSpells = (
+export const getFixedCreationSpells = (
   className: string,
   level: number,
   campaignId?: string | null
 ) =>
-  getFixedStartingSpellCanonicalKeys(className, level)
+  getFixedCreationSpellCanonicalKeys(className, level)
     .map((spellKey) => findBaseSpell(spellKey, campaignId))
     .filter(
       (spell): spell is NonNullable<ReturnType<typeof findBaseSpell>> =>
         spell !== undefined
     );
 
-// Private helpers used by getLeveledSpellCountForClassLevel and getStartingSpellLimits.
+// Private helpers used by getLeveledSpellCountForClassLevel and getCreationSpellLimits.
 // The underlying data tables live in entities/dnd-base/spellProgression.ts.
 const clampCharacterLevel = (level: number) => Math.max(1, Math.min(20, level));
 const normalizeSpellProgressionClassId = (className: string) =>
@@ -253,7 +253,7 @@ const getLeveledSpellCountForClassLevel = (
   ]?.[clampedLevel];
 };
 
-export const getStartingSpellLimits = (
+export const getCreationSpellLimits = (
   className: string,
   abilities: CharacterSheet["abilities"],
   level: number
@@ -316,7 +316,7 @@ export const getStartingSpellLimits = (
   };
 };
 
-export const getAvailableStartingSpells = (
+export const getAvailableCreationSpells = (
   className: string,
   level = 1,
   campaignId?: string | null
@@ -326,14 +326,14 @@ export const getAvailableStartingSpells = (
     return {
       cantrips: [],
       leveled: [],
-      leveledGroups: [] as StartingSpellOptionGroup[],
+      leveledGroups: [] as CreationSpellOptionGroup[],
     };
   }
   if (config.minimumLevel && level < config.minimumLevel) {
     return {
       cantrips: [],
       leveled: [],
-      leveledGroups: [] as StartingSpellOptionGroup[],
+      leveledGroups: [] as CreationSpellOptionGroup[],
     };
   }
 
@@ -370,7 +370,7 @@ export const normalizeCreationSpellSelection = (
 
   const config = getClassCreationConfig(className)?.startingSpells;
   if (!config) return spellcasting;
-  const limits = getStartingSpellLimits(className, abilities, level);
+  const limits = getCreationSpellLimits(className, abilities, level);
   if (!limits) return null;
 
   const mode = spellcasting.mode;
@@ -431,11 +431,11 @@ export const toggleStartingSpell = (
   campaignId?: string | null
 ): SpellcastingData | null => {
   if (!spellcasting) return null;
-  const limits = getStartingSpellLimits(className, abilities, level);
+  const limits = getCreationSpellLimits(className, abilities, level);
   const spell = findBaseSpell(spellName, campaignId);
   if (!limits || !spell || spell.level > limits.maxSpellLevel) return spellcasting;
   if (
-    getFixedStartingSpellCanonicalKeys(className, level).includes(
+    getFixedCreationSpellCanonicalKeys(className, level).includes(
       spell.canonicalKey
     )
   ) {

@@ -5,13 +5,13 @@ import { getClass } from "../data/classes";
 import { getClassCreationConfig } from "../data/classCreation";
 import { INITIAL_SHEET } from "../model/initialSheet";
 import { seedSpellCatalogCache } from "../../../entities/dnd-base";
-import { getAvailableStartingSpells } from "./creationSpells";
-import { getStartingSpellLimits } from "./creationSpells";
+import { getAvailableCreationSpells } from "./creationSpells";
+import { getCreationSpellLimits } from "./creationSpells";
 import { validateCreationSheet } from "./creationValidation";
 import { getInitialClassEquipmentSelections } from "./creationEquipment";
 
 // Seed the API-backed spell catalog cache with test data
-// so that getAvailableStartingSpells works without a backend.
+// so that getAvailableCreationSpells works without a backend.
 beforeAll(() => {
   seedSpellCatalogCache([
     { canonicalKey: "guidance", name: "Guidance", level: 0, school: "Divination", castingTime: "1 action", range: "Touch", components: "V, S", duration: "Up to 1 minute", concentration: true, ritual: false, description: "", damageType: null, savingThrow: null, classes: ["Cleric", "Druid"] },
@@ -31,7 +31,7 @@ beforeAll(() => {
 
 const buildSpellSelection = (className: string, level: number, cantripCount: number, leveledCount: number) => {
   const cls = getClass(className);
-  const spells = getAvailableStartingSpells(className, level);
+  const spells = getAvailableCreationSpells(className, level);
   const mode = getClassCreationConfig(className)?.startingSpells?.leveledMode ?? "known";
 
   return {
@@ -134,20 +134,20 @@ describe("validateCreationSheet", () => {
   });
 
   it("uses the ranger spell list and level-aware slot limits for guardian", () => {
-    expect(getAvailableStartingSpells("guardian", 2).leveled.map((spell) => spell.canonicalKey)).toEqual([
+    expect(getAvailableCreationSpells("guardian", 2).leveled.map((spell) => spell.canonicalKey)).toEqual([
       "animal_friendship",
       "cure_wounds",
       "goodberry",
       "hunters_mark",
       "guardian_beacon",
     ]);
-    expect(getStartingSpellLimits("guardian", INITIAL_SHEET.abilities, 1)).toBeNull();
-    expect(getStartingSpellLimits("guardian", INITIAL_SHEET.abilities, 2)).toMatchObject({
+    expect(getCreationSpellLimits("guardian", INITIAL_SHEET.abilities, 1)).toBeNull();
+    expect(getCreationSpellLimits("guardian", INITIAL_SHEET.abilities, 2)).toMatchObject({
       cantrips: 0,
       leveledSpells: 2,
       levelOneSlots: 2,
     });
-    expect(getStartingSpellLimits("guardian", INITIAL_SHEET.abilities, 3)).toMatchObject({
+    expect(getCreationSpellLimits("guardian", INITIAL_SHEET.abilities, 3)).toMatchObject({
       leveledSpells: 3,
       levelOneSlots: 3,
     });

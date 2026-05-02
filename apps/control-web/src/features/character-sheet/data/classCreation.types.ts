@@ -15,23 +15,29 @@ export type ClassEquipmentChoiceGroup = {
 /** @deprecated Use `SpellcastingMode` from characterSheet.types.ts */
 export type StartingSpellMode = SpellcastingMode;
 
-export type StartingSpellConfig = {
+export type CreationSpellConfig = {
   minimumLevel?: number;
   cantrips: number;
   leveledSpells?: number;
   leveledMode: SpellcastingMode;
   preparationAbility?: AbilityName;
+  /** @legacy Fallback for classes configured before level-aware slot progression.
+   *  New classes should omit this; slots are derived from spellProgression tables. */
   levelOneSlots?: number;
   fixedCantripCanonicalKeys?: string[];
   fixedLeveledSpellCanonicalKeys?: string[];
   byLevel?: Partial<Record<number, {
     cantrips?: number;
     leveledSpells?: number;
+    /** @legacy See top-level levelOneSlots. */
     levelOneSlots?: number;
     fixedCantripCanonicalKeys?: string[];
     fixedLeveledSpellCanonicalKeys?: string[];
   }>>;
 };
+
+/** @deprecated Renamed to CreationSpellConfig */
+export type StartingSpellConfig = CreationSpellConfig;
 
 export type ToolProficiencyChoiceConfig = {
   count: number;
@@ -42,6 +48,6 @@ export type ToolProficiencyChoiceConfig = {
 export type ClassCreationConfig = {
   fixedEquipment: string[];
   equipmentChoices: ClassEquipmentChoiceGroup[];
-  startingSpells?: StartingSpellConfig;
+  startingSpells?: CreationSpellConfig;
   toolProficiencyChoices?: ToolProficiencyChoiceConfig;
 };

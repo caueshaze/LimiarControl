@@ -11,8 +11,8 @@ import {
 import { TEST_CREATION_BASE_ITEMS } from "../utils/creationItemCatalog.testData";
 import { getClassCreationConfig } from "../data/classCreation";
 import {
-  getAvailableStartingSpells,
-  getStartingSpellLimits
+  getAvailableCreationSpells,
+  getCreationSpellLimits
 } from "../utils/creationSpells";
 
 describe("paladin and ranger creation spellcasting", () => {
@@ -134,7 +134,7 @@ describe("paladin and ranger creation spellcasting", () => {
     );
 
     expect(level1Paladin.spellcasting).toBeNull();
-    expect(getStartingSpellLimits("paladin", level1Paladin.abilities, 1)).toBeNull();
+    expect(getCreationSpellLimits("paladin", level1Paladin.abilities, 1)).toBeNull();
 
     const level2Paladin = normalizeCreationAfterClassChange(
       {
@@ -154,13 +154,13 @@ describe("paladin and ranger creation spellcasting", () => {
       }
     });
     expect(level2Paladin.spellcasting?.spells).toEqual([]);
-    expect(getAvailableStartingSpells("paladin", 2).leveled.map((spell) => spell.canonicalKey)).toEqual([
+    expect(getAvailableCreationSpells("paladin", 2).leveled.map((spell) => spell.canonicalKey)).toEqual([
       "bless",
       "cure_wounds",
       "detect_magic"
     ]);
     expect(getClassCreationConfig("paladin")?.startingSpells).toBeTruthy();
-    expect(getStartingSpellLimits("paladin", level2Paladin.abilities, 2)).toMatchObject({
+    expect(getCreationSpellLimits("paladin", level2Paladin.abilities, 2)).toMatchObject({
       cantrips: 0,
       leveledSpells: 1,
       leveledMode: "prepared",
@@ -183,7 +183,7 @@ describe("paladin and ranger creation spellcasting", () => {
     );
 
     expect(level1Ranger.spellcasting).toBeNull();
-    expect(getStartingSpellLimits("ranger", level1Ranger.abilities, 1)).toBeNull();
+    expect(getCreationSpellLimits("ranger", level1Ranger.abilities, 1)).toBeNull();
 
     const level2Ranger = normalizeCreationAfterClassChange(
       {
@@ -203,7 +203,7 @@ describe("paladin and ranger creation spellcasting", () => {
       }
     });
     expect(level2Ranger.spellcasting?.spells).toEqual([]);
-    expect(getAvailableStartingSpells("ranger", 2).leveled.map((spell) => spell.canonicalKey)).toEqual(
+    expect(getAvailableCreationSpells("ranger", 2).leveled.map((spell) => spell.canonicalKey)).toEqual(
       expect.arrayContaining([
         "animal_friendship",
         "cure_wounds",
@@ -212,9 +212,9 @@ describe("paladin and ranger creation spellcasting", () => {
         "hunters_mark"
       ])
     );
-    expect(getAvailableStartingSpells("ranger", 2).leveled).toHaveLength(5);
+    expect(getAvailableCreationSpells("ranger", 2).leveled).toHaveLength(5);
     expect(getClassCreationConfig("ranger")?.startingSpells).toBeTruthy();
-    expect(getStartingSpellLimits("ranger", level2Ranger.abilities, 2)).toMatchObject({
+    expect(getCreationSpellLimits("ranger", level2Ranger.abilities, 2)).toMatchObject({
       cantrips: 0,
       leveledSpells: 2,
       leveledMode: "known",

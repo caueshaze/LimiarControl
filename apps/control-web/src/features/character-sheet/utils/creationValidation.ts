@@ -4,7 +4,7 @@ import { getRace, getRaceConfigFields, isRaceConfigValid } from "../data/races";
 import { getBackground } from "../data/backgrounds";
 import { LANGUAGE_CHOICE_SLOT } from "../data/languages";
 import type { CharacterSheet } from "../model/characterSheet.types";
-import { getFixedStartingSpellCanonicalKeys, getStartingSpellLimits } from "./creationSpells";
+import { getFixedCreationSpellCanonicalKeys, getCreationSpellLimits } from "./creationSpells";
 import { hasBlockedRaceConfigSkillSelections } from "./raceConfigSkills";
 
 export type RequiredField =
@@ -133,7 +133,7 @@ export const validateCreationSheet = (
   }
 
   let spellDetails: CreationValidationResult["spellDetails"];
-  const spellLimits = getStartingSpellLimits(sheet.class, sheet.abilities, sheet.level);
+  const spellLimits = getCreationSpellLimits(sheet.class, sheet.abilities, sheet.level);
   if (spellLimits) {
     const selectedCantrips = sheet.spellcasting?.spells.filter((spell) => spell.level === 0).length ?? 0;
     const selectedLeveledSpells = sheet.spellcasting?.spells.filter((spell) => spell.level > 0).length ?? 0;
@@ -142,7 +142,7 @@ export const validateCreationSheet = (
         .map((spell) => spell.canonicalKey?.toLowerCase())
         .filter((spellKey): spellKey is string => Boolean(spellKey)),
     );
-    const missingRequiredSpells = getFixedStartingSpellCanonicalKeys(sheet.class, sheet.level)
+    const missingRequiredSpells = getFixedCreationSpellCanonicalKeys(sheet.class, sheet.level)
       .some((spellKey) => !selectedSpellKeys.has(spellKey.toLowerCase()));
 
     const needCantrips = selectedCantrips < spellLimits.cantrips;
