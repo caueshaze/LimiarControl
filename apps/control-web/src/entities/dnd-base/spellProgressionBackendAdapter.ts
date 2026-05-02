@@ -37,6 +37,13 @@ async function fetchFromBackend(
     const response = await fetch(`/api/rules/spell-progression?${params}`);
     if (!response.ok) return null;
     const data = await response.json();
+    // JSON serializes dict[int, int] with string keys ("1", "2").
+    // Normalize to numeric keys so the shape matches getSlotProgressionForLevel.
+    if (data?.slots && typeof data.slots === "object") {
+      data.slots = Object.fromEntries(
+        Object.entries(data.slots).map(([k, v]) => [Number(k), v])
+      );
+    }
     return data as ClassSpellProgression;
   } catch {
     return null;
@@ -84,15 +91,20 @@ function fromLocalTables(
 }
 
 /**
- * Fetch class spell progression data.
+ * Fetch class spell progression data (optional async source).
  *
- * When VITE_USE_BACKEND_PROGRESSION=true: queries the backend API with
- * fallback to local tables on failure.
- * Otherwise: returns local tables directly (synchronous path wrapped in Promise).
+ * ## When to use this
+ * Async contexts only: debug panels, admin UIs, optional validation, prefetch hooks.
  *
- * Does NOT replace the synchronous creation flow — use getSlotProgressionForLevel
- * and related functions from spellProgression.ts for that.
- * This adapter is for components or hooks that can tolerate async loading.
+ * ## When NOT to use this
+ * The synchronous creation flow. That flow uses spellProgression.ts directly:
+ *   getSlotProgressionForLevel / getMaxUnlockedSpellLevel / getCantripCountForClassLevel
+ * This adapter does NOT replace those calls and must not be inserted into that path.
+ *
+ * ## Behavior by flag
+ * - VITE_USE_BACKEND_PROGRESSION=true  → fetch from /api/rules/spell-progression,
+ *                                         fall back to local tables on any error
+ * - flag off (default)                 → local tables only, no network request made
  */
 export async function fetchClassSpellProgression(
   className: string,
