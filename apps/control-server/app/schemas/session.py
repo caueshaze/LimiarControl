@@ -272,6 +272,17 @@ class RollResolvedActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class CombatLogEntryActivityEvent(BaseModel):
+    type: Literal["combat_log_entry"] = "combat_log_entry"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    message: str
+    source: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 ActivityEvent = Union[
     RollActivityEvent,
     PurchaseActivityEvent,
@@ -287,6 +298,7 @@ ActivityEvent = Union[
     PlayerHpActivityEvent,
     EntityActivityEvent,
     RollResolvedActivityEvent,
+    CombatLogEntryActivityEvent,
 ]
 
 

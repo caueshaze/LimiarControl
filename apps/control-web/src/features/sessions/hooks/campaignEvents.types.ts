@@ -338,6 +338,14 @@ export type CampaignEvent =
       version?: number;
     }
   | {
+      type: "session_activity_updated";
+      payload: {
+        campaignId: string;
+        sessionId: string;
+      };
+      version?: number;
+    }
+  | {
       type: "roll_resolved";
       payload: {
         event_id: string;

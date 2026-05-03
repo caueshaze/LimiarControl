@@ -137,8 +137,8 @@ class WeaponAttackRollMixin:
         cover_text = f", {cover_label(cover)}" if cover_label(cover) else ""
         adv_text = f" [{adv_ctx.describe()}]" if (adv_ctx.advantage_sources or adv_ctx.disadvantage_sources) else ""
         vis_text = f" [Target not directly visible: {vis_ctx.describe()}]" if not vis_ctx.is_directly_visible else ""
-        await cls._emit_log(
-            session_id,
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker["display_name"],
             {
                 "message": f"{attacker['display_name']} {hit_text} {target['display_name']} (AC {target_ac}{cover_text}) with {attack_context['name']} and roll {atk_roll}{adv_text}{vis_text}.{(' Damage roll pending.' if is_hit else '')}",
                 "actorUserId": actor_user_id,

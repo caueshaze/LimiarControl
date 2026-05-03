@@ -1,4 +1,4 @@
-import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
+import type { ActivityEvent, CombatLogEntryActivityEvent } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { formatSessionActivityOffset } from "./sessionActivity.utils";
 import { localizeRollContext, localizeRollMode } from "./sessionActivityRowUtils";
@@ -142,6 +142,24 @@ export const SessionActivitySpellCastRejectedRow = ({ event }: Props) => {
       <span className="mt-0.5 text-base">🚫</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white">{event.message}</p>
+      </div>
+      <span className="shrink-0 text-xs font-mono text-slate-500">
+        {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+      </span>
+    </div>
+  );
+};
+
+export const SessionActivityCombatLogRow = ({ event }: { event: CombatLogEntryActivityEvent }) => {
+  const icon =
+    event.source === "gm_override" ? "🛡️" :
+    event.source === "effect_expired" || event.source === "effect_applied" || event.source === "effect_removed" ? "✨" :
+    "⚔️";
+  return (
+    <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+      <span className="mt-0.5 text-base">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="whitespace-pre-wrap text-sm text-slate-200">{event.message}</p>
       </div>
       <span className="shrink-0 text-xs font-mono text-slate-500">
         {formatSessionActivityOffset(event.sessionOffsetSeconds)}

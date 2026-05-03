@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.session import (
     ActivityEvent,
     CombatActivityEvent,
+    CombatLogEntryActivityEvent,
     ConsumableActivityEvent,
     EntityActivityEvent,
     HitDiceActivityEvent,
@@ -370,6 +371,17 @@ def get_session_activity(
                     else None
                 ),
                 isGmRoll=bool(payload.get("is_gm_roll", False)),
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "combat_log_entry":
+            events.append(CombatLogEntryActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                message=str(payload.get("message") or ""),
+                source=payload.get("source") if isinstance(payload.get("source"), str) else None,
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

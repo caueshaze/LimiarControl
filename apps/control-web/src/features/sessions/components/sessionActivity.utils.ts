@@ -48,7 +48,22 @@ export const buildSessionActivityDisplayItems = (
           type: "combat-module",
         });
       }
-      combatWindow = [event];
+      // Absorb initiative roll requests/resolutions that immediately precede this combat
+      const initiativePrefix: ActivityEvent[] = [];
+      while (items.length > 0) {
+        const last = items[items.length - 1];
+        if (
+          last.type === "event" &&
+          (last.event.type === "roll_request" || last.event.type === "roll_resolved") &&
+          (last.event as { rollType?: string }).rollType === "initiative"
+        ) {
+          items.pop();
+          initiativePrefix.unshift(last.event);
+        } else {
+          break;
+        }
+      }
+      combatWindow = [...initiativePrefix, event];
       continue;
     }
 

@@ -318,6 +318,17 @@ export type RollResolvedActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type CombatLogEntryActivityEvent = {
+  type: "combat_log_entry";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  message: string;
+  source?: string | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
@@ -332,7 +343,8 @@ export type ActivityEvent =
   | ConsumableActivityEvent
   | PlayerHpActivityEvent
   | EntityActivityEvent
-  | RollResolvedActivityEvent;
+  | RollResolvedActivityEvent
+  | CombatLogEntryActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;

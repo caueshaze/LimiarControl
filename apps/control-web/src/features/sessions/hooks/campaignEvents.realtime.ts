@@ -32,6 +32,7 @@ const CAMPAIGN_EVENT_TYPES = new Set([
   "session_entity_added",
   "session_entity_removed",
   "roll_resolved",
+  "session_activity_updated",
 ]);
 
 export const isSupportedCampaignEventType = (type?: string): boolean =>

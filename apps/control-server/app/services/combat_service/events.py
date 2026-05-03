@@ -3,14 +3,17 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import random
 from math import floor
+from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
 
 from app.models.base_item import BaseItemKind, BaseItemWeaponRangeType
 from app.models.campaign import Campaign, SystemType
+from app.models.campaign_member import CampaignMember
 from app.models.combat import CombatPhase, CombatState
 from app.models.session import Session as CampaignSession
+from app.models.session_command_event import SessionCommandEvent
 from app.models.session_entity import SessionEntity
 from app.models.session_state import SessionState
 from app.models.campaign_entity import CampaignEntity
@@ -80,6 +83,42 @@ class CombatEventsMixin:
         channel = session_channel(session_id)
         event = build_event("combat_log_added", log_payload)
         await centrifugo.publish(channel, event)
+
+    @classmethod
+    async def _emit_and_persist_log(
+        cls,
+        db: Session,
+        session_id: str,
+        actor_user_id: str | None,
+        actor_name: str | None,
+        log_payload: dict,
+    ):
+        await cls._emit_log(session_id, log_payload)
+        if not actor_user_id or db is None:
+            return
+        entry = cls._get_session_entry(db, session_id)
+        if not entry:
+            return
+        member = db.exec(
+            select(CampaignMember).where(
+                CampaignMember.campaign_id == entry.campaign_id,
+                CampaignMember.user_id == actor_user_id,
+            )
+        ).first()
+        if not member or not member.id:
+            return
+        db.add(SessionCommandEvent(
+            id=str(uuid4()),
+            session_id=session_id,
+            user_id=actor_user_id,
+            member_id=member.id,
+            actor_name=actor_name,
+            command_type="combat_log_entry",
+            payload_json=log_payload,
+        ))
+        db.commit()
+        notify = build_event("session_activity_updated", {"sessionId": session_id, "campaignId": entry.campaign_id})
+        await centrifugo.publish(campaign_channel(entry.campaign_id), notify)
 
     @classmethod
     def _get_session_entry(cls, db: Session, session_id: str) -> CampaignSession | None:

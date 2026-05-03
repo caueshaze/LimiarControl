@@ -192,8 +192,8 @@ class CastTargetEffectMixin:
             f"{cls._format_concentration_group_for_log(pending_spell_context.get('concentration_group'))}"
         ).strip()
 
-        await cls._emit_log(
-            session_id,
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker.get("display_name"),
             {
                 "message": log_message,
                 "actorUserId": actor_user_id,

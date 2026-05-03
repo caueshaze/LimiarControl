@@ -65,8 +65,8 @@ class CastTargetCommitMixin:
             action_cost=action_cost,
             custom_log_message=custom_log_message,
         )
-        await cls._emit_log(
-            session_id,
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker.get("display_name"),
             {
                 "message": log_message,
                 "actorUserId": actor_user_id,

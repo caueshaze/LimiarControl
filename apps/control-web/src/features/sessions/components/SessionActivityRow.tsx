@@ -1,6 +1,7 @@
 import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import {
+  SessionActivityCombatLogRow,
   SessionActivityCombatRow,
   SessionActivityRestRow,
   SessionActivityRewardRow,
@@ -73,6 +74,10 @@ export const SessionActivityRow = ({ event, isGm = false }: { event: ActivityEve
 
   if (event.type === "roll_resolved") {
     return <SessionActivityRollResolvedRow event={event} actor={actor} />;
+  }
+
+  if (event.type === "combat_log_entry") {
+    return <SessionActivityCombatLogRow event={event} />;
   }
 
   return <SessionActivityPurchaseRow event={event} actor={actor} />;

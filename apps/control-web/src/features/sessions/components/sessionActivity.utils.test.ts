@@ -44,6 +44,75 @@ describe("sessionActivity.utils", () => {
     expect(items[1]?.type).toBe("event");
   });
 
+  it("absorbs initiative roll requests immediately before combat start into the combat module", () => {
+    const events: ActivityEvent[] = [
+      {
+        displayName: "GM",
+        expression: "d20",
+        mode: null,
+        rollType: "initiative",
+        sessionOffsetSeconds: 15,
+        timestamp: "2026-03-24T10:00:15Z",
+        type: "roll_request",
+      },
+      {
+        action: "started",
+        displayName: "GM",
+        sessionOffsetSeconds: 20,
+        timestamp: "2026-03-24T10:00:20Z",
+        type: "combat",
+      },
+      {
+        action: "ended",
+        displayName: "GM",
+        sessionOffsetSeconds: 40,
+        timestamp: "2026-03-24T10:00:40Z",
+        type: "combat",
+      },
+    ];
+
+    const items = buildSessionActivityDisplayItems(events);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("combat-module");
+    // roll_request + combat started + combat ended = 3
+    expect(items[0]?.type === "combat-module" ? items[0].events : []).toHaveLength(3);
+  });
+
+  it("does not absorb non-initiative roll requests into combat module", () => {
+    const events: ActivityEvent[] = [
+      {
+        displayName: "GM",
+        expression: "d20",
+        mode: null,
+        rollType: "ability",
+        sessionOffsetSeconds: 10,
+        timestamp: "2026-03-24T10:00:10Z",
+        type: "roll_request",
+      },
+      {
+        action: "started",
+        displayName: "GM",
+        sessionOffsetSeconds: 20,
+        timestamp: "2026-03-24T10:00:20Z",
+        type: "combat",
+      },
+      {
+        action: "ended",
+        displayName: "GM",
+        sessionOffsetSeconds: 40,
+        timestamp: "2026-03-24T10:00:40Z",
+        type: "combat",
+      },
+    ];
+
+    const items = buildSessionActivityDisplayItems(events);
+
+    expect(items).toHaveLength(2);
+    expect(items[0]?.type).toBe("combat-module");
+    expect(items[1]?.type).toBe("event");
+  });
+
   it("filters entity added records out of session activity", () => {
     const events: ActivityEvent[] = [
       {

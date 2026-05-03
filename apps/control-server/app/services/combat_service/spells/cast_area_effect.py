@@ -169,7 +169,7 @@ class CastAreaEffectMixin:
             if summaries:
                 log_text = f"{log_text} {' '.join(summaries)}".strip()
 
-        await cls._emit_log(session_id, {
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker.get("display_name"), {
             "message": log_text,
             "actorUserId": actor_user_id,
             "source": "gm_override" if is_gm else "player_turn",

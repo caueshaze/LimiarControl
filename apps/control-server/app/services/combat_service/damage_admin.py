@@ -50,7 +50,7 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
         db.refresh(state)
         await cls._emit_player_state_update(db, session_id, target["ref_id"], target_model)
         await cls._emit_state(session_id, state)
-        await cls._emit_log(session_id, {"message": f"{target['display_name']} foi revivido com {data['currentHP']} PV.", "actorUserId": actor_user_id, "source": "gm_override"})
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, None, {"message": f"{target['display_name']} foi revivido com {data['currentHP']} PV.", "actorUserId": actor_user_id, "source": "gm_override"})
         return {"new_hp": int(data["currentHP"]), "status": status}
 
     @classmethod
@@ -77,7 +77,7 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
         if state:
             await cls._emit_state(session_id, state)
         summary = f" {concentration_check['summary_text']}" if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str) else ""
-        await cls._emit_log(session_id, {"message": f"GM applied {req.amount} damage.{effect_msg}{summary}", "source": "gm_override", "actorUserId": actor_user_id})
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, None, {"message": f"GM applied {req.amount} damage.{effect_msg}{summary}", "source": "gm_override", "actorUserId": actor_user_id})
         return {"new_hp": new_hp, "concentration_check": concentration_check}
 
     @classmethod
@@ -94,5 +94,5 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             await cls._emit_entity_hp_update(db, session_id, req.target_ref_id, previous_hp)
         if state:
             await cls._emit_state(session_id, state)
-        await cls._emit_log(session_id, {"message": f"GM applied {req.amount} healing.{effect_msg}", "source": "gm_override", "actorUserId": actor_user_id})
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, None, {"message": f"GM applied {req.amount} healing.{effect_msg}", "source": "gm_override", "actorUserId": actor_user_id})
         return {"new_hp": new_hp}

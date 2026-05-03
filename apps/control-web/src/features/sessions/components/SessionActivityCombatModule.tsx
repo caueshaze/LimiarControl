@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { CombatLogEntries } from "../../combat-ui/components/CombatLogEntries";
-import { useCombatUiState } from "../../combat-ui/useCombatUiState";
 import { SessionActivityRow } from "./SessionActivityRow";
 import { formatSessionActivityOffset } from "./sessionActivity.utils";
 
@@ -16,19 +14,11 @@ type Props = {
 export const SessionActivityCombatModule = ({
   events,
   isGm = false,
-  isLatest,
-  sessionId,
 }: Props) => {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
-  const combatState = useCombatUiState({
-    enabled: open && isLatest,
-    historyLimit: 18,
-    pollMs: 10_000,
-    sessionId,
-  });
 
-  const fallbackEvents = useMemo(() => [...events].reverse(), [events]);
+  const displayEvents = useMemo(() => [...events].reverse(), [events]);
   const startOffset = events[0]?.sessionOffsetSeconds ?? null;
   const endOffset = events[events.length - 1]?.sessionOffsetSeconds ?? null;
   const offsetLabel =
@@ -37,7 +27,6 @@ export const SessionActivityCombatModule = ({
       : endOffset == null || startOffset === endOffset
         ? formatSessionActivityOffset(startOffset)
         : `${formatSessionActivityOffset(startOffset)} - ${formatSessionActivityOffset(endOffset)}`;
-  const shouldShowCombatLog = isLatest && combatState.logs.length > 0;
 
   return (
     <article className="overflow-hidden rounded-3xl border border-amber-500/20 bg-amber-500/8">
@@ -64,13 +53,9 @@ export const SessionActivityCombatModule = ({
 
       {open ? (
         <div className="border-t border-amber-500/15 px-4 py-4">
-          {combatState.loading && isLatest ? (
-            <p className="text-sm text-slate-400">{t("combatUi.loadingState")}</p>
-          ) : shouldShowCombatLog ? (
-            <CombatLogEntries compact emptyLabel={t("combatUi.logEmpty")} logs={combatState.logs} />
-          ) : fallbackEvents.length > 0 ? (
+          {displayEvents.length > 0 ? (
             <div className="space-y-2">
-              {fallbackEvents.map((event, index) => (
+              {displayEvents.map((event, index) => (
                 <SessionActivityRow key={`${event.type}-${event.timestamp}-${index}`} event={event} isGm={isGm} />
               ))}
             </div>

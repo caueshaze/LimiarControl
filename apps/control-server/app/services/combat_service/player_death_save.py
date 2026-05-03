@@ -78,8 +78,8 @@ class CombatPlayerDeathSaveMixin:
         await cls._emit_player_state_update(
             db, session_id, attacker_p["ref_id"], target_model
         )
-        await cls._emit_log(
-            session_id,
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker_p["display_name"],
             {
                 "message": f"{attacker_p['display_name']} {msg}",
                 "actorUserId": actor_user_id,

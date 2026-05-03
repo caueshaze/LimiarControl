@@ -277,7 +277,7 @@ class CastAreaMixin:
                 log_message = "\n".join([log_message, *blocked_lines])
             if was_overridden:
                 log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
-            await cls._emit_log(session_id, {
+            await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker.get("display_name"), {
                 "message": log_message,
                 "actorUserId": actor_user_id,
                 "source": "gm_override" if is_gm else "player_turn",
@@ -416,7 +416,7 @@ class CastAreaMixin:
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
 
-        await cls._emit_log(session_id, {
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker.get("display_name"), {
             "message": log_message,
             "actorUserId": actor_user_id,
             "source": "gm_override" if is_gm else "player_turn",
@@ -572,7 +572,7 @@ class CastAreaMixin:
         )
         if was_overridden:
             log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
-        await cls._emit_log(session_id, {
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker.get("display_name"), {
             "message": log_message,
             "actorUserId": actor_user_id,
             "source": "gm_override" if is_gm else "player_turn",

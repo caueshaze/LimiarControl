@@ -28,8 +28,8 @@ class CombatNpcActionCommitMixin:
         elif target_p and result["previous_hp"] is not None and result["previous_hp"] != result["new_hp"]:
             await cls._emit_entity_hp_update(db, session_id, target_p["ref_id"], result["previous_hp"])
         await cls._emit_state(session_id, state)
-        await cls._emit_log(
-            session_id,
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker.get("display_name"),
             {
                 "message": cls._build_npc_log_message(
                     attacker=attacker,

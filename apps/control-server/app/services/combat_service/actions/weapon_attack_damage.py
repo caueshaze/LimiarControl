@@ -80,7 +80,7 @@ class WeaponAttackDamageMixin:
             await cls._emit_entity_hp_update(db, session_id, target_ref_id, previous_hp)
         await cls._emit_state(session_id, state)
         concentration_summary = f" {concentration_check['summary_text']}" if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str) else ""
-        await cls._emit_log(session_id, {"message": f"{attacker['display_name']} rolled damage with {pending_attack.get('weapon_name') or 'Attack'} against {target_display_name}: {damage + extra_damage} damage.{extra_damage_label}{effect_msg}{concentration_summary}", "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn"})
+        await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker["display_name"], {"message": f"{attacker['display_name']} rolled damage with {pending_attack.get('weapon_name') or 'Attack'} against {target_display_name}: {damage + extra_damage} damage.{extra_damage_label}{effect_msg}{concentration_summary}", "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn"})
         return {
             "roll": cls._safe_int(pending_attack.get("roll"), 0),
             "is_hit": True,
