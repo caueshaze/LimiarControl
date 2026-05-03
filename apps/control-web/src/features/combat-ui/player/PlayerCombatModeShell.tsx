@@ -329,6 +329,13 @@ export const PlayerCombatModeShell = ({
             ),
           )
       : null;
+  const encumbranceMovementWarning =
+    movementPreview.preview != null &&
+    enrichedPlayerStatus &&
+    enrichedPlayerStatus.baseSpeedMeters > 0 &&
+    pathCostUnitsToMeters(movementPreview.preview.path_cost_units) > enrichedPlayerStatus.effectiveSpeedMeters
+      ? t("playerBoard.encumbranceMovementExceed")
+      : null;
   const movementHintMessage = movementRejectionReason ?? movementPreview.error;
   const mapHint =
     movementEnabled && movementHintMessage
@@ -336,7 +343,9 @@ export const PlayerCombatModeShell = ({
       : movementEnabled && movementPreview.loading && movementSelectedCell
       ? t("combatUi.movementChecking")
       : movementEnabled && movementPreviewMessage
-      ? movementPreviewMessage
+      ? encumbranceMovementWarning
+        ? `${movementPreviewMessage}\n${encumbranceMovementWarning}`
+        : movementPreviewMessage
       : movementEnabled
       ? t("combatUi.mapHintMove")
       : activeActionPanel === "attack"
@@ -482,6 +491,19 @@ export const PlayerCombatModeShell = ({
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("combatUi.armorClass")}</p>
                   <p className="mt-2 text-xl font-semibold text-white">{enrichedPlayerStatus?.ac ?? "-"}</p>
+                </div>
+                <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("playerBoard.speedLabel")}</p>
+                  <p className="mt-2 text-xl font-semibold text-white">
+                    {enrichedPlayerStatus && enrichedPlayerStatus.baseSpeedMeters > 0
+                      ? `${enrichedPlayerStatus.effectiveSpeedMeters} m`
+                      : "-"}
+                  </p>
+                  {enrichedPlayerStatus && enrichedPlayerStatus.effectiveSpeedMeters < enrichedPlayerStatus.baseSpeedMeters ? (
+                    <p className="mt-1 text-[10px] text-amber-400">
+                      {`${t("playerBoard.speedPenaltyHint")} (base ${enrichedPlayerStatus.baseSpeedMeters} m)`}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("sheet.skills.passivePerception")}</p>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyEncumbranceMovementPenalty,
   computeAbilityScoreTotal,
   computeCarryingCapacity,
   computeCarryingCapacityMultiplier,
@@ -640,6 +641,44 @@ describe("computeEncumbranceTier", () => {
     expect(justBelow.tier).toBe("normal");
     const justAbove = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: thresholdKg + 0.01 });
     expect(justAbove.tier).toBe("encumbered");
+  });
+});
+
+describe("applyEncumbranceMovementPenalty", () => {
+  it("normal → sem alteração", () => {
+    expect(applyEncumbranceMovementPenalty(9, "normal")).toBe(9);
+  });
+
+  it("encumbered → -3", () => {
+    expect(applyEncumbranceMovementPenalty(9, "encumbered")).toBe(6);
+  });
+
+  it("heavily_encumbered → -6", () => {
+    expect(applyEncumbranceMovementPenalty(9, "heavily_encumbered")).toBe(3);
+  });
+
+  it("overloaded → 0", () => {
+    expect(applyEncumbranceMovementPenalty(9, "overloaded")).toBe(0);
+  });
+
+  it("nunca negativo", () => {
+    expect(applyEncumbranceMovementPenalty(2, "heavily_encumbered")).toBe(0);
+    expect(applyEncumbranceMovementPenalty(1, "encumbered")).toBe(0);
+  });
+
+  it("speed 0 → 0 em qualquer tier", () => {
+    expect(applyEncumbranceMovementPenalty(0, "normal")).toBe(0);
+    expect(applyEncumbranceMovementPenalty(0, "encumbered")).toBe(0);
+    expect(applyEncumbranceMovementPenalty(0, "heavily_encumbered")).toBe(0);
+    expect(applyEncumbranceMovementPenalty(0, "overloaded")).toBe(0);
+  });
+
+  it("anões (8m) encumbered → 5m", () => {
+    expect(applyEncumbranceMovementPenalty(8, "encumbered")).toBe(5);
+  });
+
+  it("wood elf (11m) heavily_encumbered → 5m", () => {
+    expect(applyEncumbranceMovementPenalty(11, "heavily_encumbered")).toBe(5);
   });
 });
 

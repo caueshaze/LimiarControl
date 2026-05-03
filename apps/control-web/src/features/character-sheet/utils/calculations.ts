@@ -251,6 +251,16 @@ export const computeEncumbranceTier = ({
   };
 };
 
+export const applyEncumbranceMovementPenalty = (
+  baseSpeedMeters: number,
+  tier: EncumbranceTier,
+): number => {
+  if (tier === "overloaded") return 0;
+  if (tier === "heavily_encumbered") return Math.max(0, baseSpeedMeters - 6);
+  if (tier === "encumbered") return Math.max(0, baseSpeedMeters - 3);
+  return baseSpeedMeters;
+};
+
 export type CarryingCapacitySource = { label: string; multiplier: number; groupKey: string };
 
 function carryingCapacityGroupKey(
