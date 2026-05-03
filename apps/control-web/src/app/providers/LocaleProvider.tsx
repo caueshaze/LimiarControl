@@ -1,16 +1,8 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Locale, LocaleKey } from "../../shared/i18n";
 import { dictionaries } from "../../shared/i18n";
-
-type LocaleContextValue = {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  toggleLocale: () => void;
-  t: (key: LocaleKey) => string;
-};
-
-const LocaleContext = createContext<LocaleContextValue | null>(null);
+import { LocaleContext } from "./localeContext";
 
 const LOCALE_STORAGE_KEY = "app-locale";
 
@@ -30,23 +22,15 @@ export const LocaleProvider = ({ children }: { children: ReactNode }) => {
     setLocale(next);
   };
 
-  const value = useMemo<LocaleContextValue>(
+  const value = useMemo(
     () => ({
       locale,
       setLocale: changeLocale,
       toggleLocale: () => changeLocale(locale === "en" ? "pt" : "en"),
-      t: (key) => dictionaries[locale][key] ?? dictionaries.en[key],
+      t: (key: LocaleKey) => dictionaries[locale][key] ?? dictionaries.en[key],
     }),
     [locale]
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
-};
-
-export const useLocaleContext = () => {
-  const context = useContext(LocaleContext);
-  if (!context) {
-    throw new Error("useLocale must be used within LocaleProvider");
-  }
-  return context;
 };
