@@ -23,6 +23,9 @@ _MOVEMENT_BLOCKING_CONDITIONS = frozenset(
 )
 _MOVEMENT_HALVING_CONDITIONS = frozenset({"prone"})
 
+_LB_TO_KG = 0.45359237
+_ENCUMBRANCE_AFFECTING_ABILITIES = frozenset({"strength", "dexterity", "constitution"})
+
 
 def _iter_declarative_spell_effects(participant: dict):
     for effect in participant.get("active_effects") or []:
@@ -142,6 +145,26 @@ def is_lightly_obscured(participant: dict) -> bool:
     return has_condition(participant, "lightly_obscured")
 
 
+def _get_encumbrance_tier_for_participant(participant: dict) -> str:
+    tier = participant.get("encumbrance_tier")
+    if isinstance(tier, str) and tier in ("normal", "encumbered", "heavily_encumbered", "overloaded"):
+        return tier
+
+    strength = participant.get("strength_score")
+    weight_kg = participant.get("total_weight_kg")
+    if isinstance(strength, (int, float)) and isinstance(weight_kg, (int, float)) and strength > 0:
+        weight_lb = weight_kg / _LB_TO_KG
+        if weight_lb > strength * 15:
+            return "overloaded"
+        if weight_lb > strength * 10:
+            return "heavily_encumbered"
+        if weight_lb > strength * 5:
+            return "encumbered"
+        return "normal"
+
+    return "normal"
+
+
 def resolve_check_advantage_mode(
     participant: dict,
     ability: AbilityName,
@@ -191,6 +214,10 @@ def resolve_check_advantage_mode(
         elif effect_type == "disadvantage_on_checks":
             automatic_mode = combine_advantage_modes(automatic_mode, "disadvantage")
             matched += 1
+    encumbrance_tier = _get_encumbrance_tier_for_participant(participant)
+    if encumbrance_tier in ("heavily_encumbered", "overloaded") and ability in _ENCUMBRANCE_AFFECTING_ABILITIES:
+        automatic_mode = combine_advantage_modes(automatic_mode, "disadvantage")
+
     final = combine_advantage_modes(manual_mode, automatic_mode)
     logger.info(
         "[resolve_check_advantage_mode] matched=%s manual_mode=%s automatic_mode=%s final=%s",
@@ -289,6 +316,22 @@ def explain_check_modifier_sources(
 
         entry["applied"] = True
         explanations.append(entry)
+    encumbrance_tier = _get_encumbrance_tier_for_participant(participant)
+    if encumbrance_tier in ("heavily_encumbered", "overloaded") and ability in _ENCUMBRANCE_AFFECTING_ABILITIES:
+        explanations.append({
+            "source_label": "Carga",
+            "modifier_type": "disadvantage",
+            "roll_type": roll_type,
+            "ability": ability,
+            "skill": skill if roll_type == "skill" else None,
+            "against": "any",
+            "selected_target_participant_id": None,
+            "selected_target_display_name": None,
+            "applied": True,
+            "skip_reason": None,
+            "reason": "encumbrance",
+        })
+
     logger.info(
         "[explain_check_modifier_sources] explanations_count=%s applied_count=%s",
         len(explanations),
