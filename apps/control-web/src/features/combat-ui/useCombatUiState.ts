@@ -21,7 +21,7 @@ type Props = {
 
 export const useCombatUiState = ({
   enabled = true,
-  historyLimit = 8,
+  historyLimit = 500,
   pollMs = 4_000,
   sessionId,
   userId = null,

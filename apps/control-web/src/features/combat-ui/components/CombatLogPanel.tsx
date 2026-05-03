@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { CombatLogEntries } from "./CombatLogEntries";
 import type { CombatLogEntry } from "../types";
@@ -8,6 +9,13 @@ type Props = {
 
 export const CombatLogPanel = ({ logs }: Props) => {
   const { t } = useLocale();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   return (
     <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(2,6,23,0.94))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
@@ -20,7 +28,7 @@ export const CombatLogPanel = ({ logs }: Props) => {
         </div>
       </div>
 
-      <div className="mt-4">
+      <div ref={scrollRef} className="mt-4 max-h-96 overflow-y-auto pr-1">
         <CombatLogEntries emptyLabel={t("combatUi.logEmpty")} logs={logs} />
       </div>
     </section>
