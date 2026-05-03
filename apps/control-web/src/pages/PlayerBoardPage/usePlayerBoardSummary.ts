@@ -6,6 +6,7 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
+import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
@@ -90,6 +91,19 @@ export const usePlayerBoardSummary = ({
     [inventory, itemsById, locale, playerSheet],
   );
 
+  const totalWeightKg = useMemo(
+    () => (playerSheet ? computeTotalWeight(playerSheet.inventory) * LB_TO_KG : 0),
+    [playerSheet],
+  );
+
+  const encumbrance = useMemo(
+    () =>
+      playerSheet
+        ? computeEncumbranceTier({ strengthScore: playerSheet.abilities.strength, totalWeightKg })
+        : null,
+    [playerSheet, totalWeightKg],
+  );
+
   const playerStatus = useMemo<PlayerBoardStatusSummary | null>(() => {
     if (!playerSheet) return null;
     return {
@@ -101,6 +115,10 @@ export const usePlayerBoardSummary = ({
       currentWeapon,
       deathSaveFailures: playerSheet.deathSaves.failures,
       deathSaveSuccesses: playerSheet.deathSaves.successes,
+      encumbranceTier: encumbrance?.tier ?? "normal",
+      encumbranceNormalMaxKg: encumbrance?.normalMaxKg ?? 0,
+      encumbranceEncumberedMaxKg: encumbrance?.encumberedMaxKg ?? 0,
+      encumbranceHeavilyEncumberedMaxKg: encumbrance?.heavilyEncumberedMaxKg ?? 0,
       experiencePoints: playerSheet.experiencePoints,
       hitDiceRemaining: playerSheet.hitDiceRemaining,
       hitDiceTotal: playerSheet.hitDiceTotal,
@@ -115,9 +133,10 @@ export const usePlayerBoardSummary = ({
       spellAttack,
       spellSaveDC,
       tempHp: playerSheet.tempHP,
+      totalWeightKg: Math.round(totalWeightKg),
       xpPercent: xpState.progressPercent,
     };
-  }, [ac, baseCarryingCapacityKg, carryingCapacityKg, carryingCapacitySources, currentWeapon, hpPercent, initiative, passivePerception, playerSheet, pushDragLiftKg, spellAttack, spellSaveDC, xpState.nextLevelThreshold, xpState.progressPercent]);
+  }, [ac, baseCarryingCapacityKg, carryingCapacityKg, carryingCapacitySources, currentWeapon, encumbrance, hpPercent, initiative, passivePerception, playerSheet, pushDragLiftKg, spellAttack, spellSaveDC, totalWeightKg, xpState.nextLevelThreshold, xpState.progressPercent]);
 
   return {
     boardDescription,

@@ -414,6 +414,7 @@ export const CharacterSheet = ({
                 <Equipment
                   inventory={sheet.inventory}
                   currency={sheet.currency}
+                  strengthScore={sheet.abilities.strength}
                   onAdd={actions.addItem}
                   onRemove={actions.removeItem}
                   onUpdate={actions.updateItem}
@@ -448,6 +449,7 @@ export const CharacterSheet = ({
               <Equipment
                 inventory={sheet.inventory}
                 currency={sheet.currency}
+                strengthScore={sheet.abilities.strength}
                 onAdd={actions.addItem}
                 onRemove={actions.removeItem}
                 onUpdate={actions.updateItem}

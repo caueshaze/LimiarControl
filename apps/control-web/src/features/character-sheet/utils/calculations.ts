@@ -198,6 +198,47 @@ export const computeTotalWeight = (
 
 export const LB_TO_KG = 0.45359237;
 
+// ── Encumbrance Tier (Variant: Encumbrance) ─────────────────────────────────
+
+export type EncumbranceTier = "normal" | "encumbered" | "heavily_encumbered" | "overloaded";
+
+export type EncumbranceResult = {
+  tier: EncumbranceTier;
+  normalMaxKg: number;
+  encumberedMaxKg: number;
+  heavilyEncumberedMaxKg: number;
+};
+
+export const computeEncumbranceTier = ({
+  strengthScore,
+  totalWeightKg,
+}: {
+  strengthScore: number;
+  totalWeightKg: number;
+}): EncumbranceResult => {
+  const totalWeightLb = totalWeightKg / LB_TO_KG;
+
+  const normalMaxLb = strengthScore * 5;
+  const encumberedMaxLb = strengthScore * 10;
+  const heavilyMaxLb = strengthScore * 15;
+
+  let tier: EncumbranceTier = "normal";
+  if (totalWeightLb > heavilyMaxLb) {
+    tier = "overloaded";
+  } else if (totalWeightLb > encumberedMaxLb) {
+    tier = "heavily_encumbered";
+  } else if (totalWeightLb > normalMaxLb) {
+    tier = "encumbered";
+  }
+
+  return {
+    tier,
+    normalMaxKg: Math.round(normalMaxLb * LB_TO_KG),
+    encumberedMaxKg: Math.round(encumberedMaxLb * LB_TO_KG),
+    heavilyEncumberedMaxKg: Math.round(heavilyMaxLb * LB_TO_KG),
+  };
+};
+
 export type CarryingCapacitySource = { label: string; multiplier: number; groupKey: string };
 
 function carryingCapacityGroupKey(

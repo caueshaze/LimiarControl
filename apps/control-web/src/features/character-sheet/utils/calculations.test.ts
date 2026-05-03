@@ -4,6 +4,7 @@ import {
   computeCarryingCapacity,
   computeCarryingCapacityMultiplier,
   computeCarryingCapacityMultiplierSources,
+  computeEncumbranceTier,
   computePassiveSkillBonus,
   computePassiveSkillBonusSources,
   LB_TO_KG,
@@ -579,5 +580,64 @@ describe("computeCarryingCapacity", () => {
     const result = computeCarryingCapacity(0, []);
     expect(result.carryingCapacityKg).toBe(0);
     expect(result.pushDragLiftKg).toBe(0);
+  });
+});
+
+describe("computeEncumbranceTier", () => {
+  it("STR 10, 20 kg → normal", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 20 });
+    expect(result.tier).toBe("normal");
+    expect(result.normalMaxKg).toBe(Math.round(50 * LB_TO_KG));
+    expect(result.encumberedMaxKg).toBe(Math.round(100 * LB_TO_KG));
+    expect(result.heavilyEncumberedMaxKg).toBe(Math.round(150 * LB_TO_KG));
+  });
+
+  it("STR 10, 25 kg → encumbered", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 25 });
+    expect(result.tier).toBe("encumbered");
+  });
+
+  it("STR 10, 50 kg → heavily_encumbered", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 50 });
+    expect(result.tier).toBe("heavily_encumbered");
+  });
+
+  it("STR 10, 70 kg → overloaded", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 70 });
+    expect(result.tier).toBe("overloaded");
+  });
+
+  it("STR 16, limite exato normal → normal", () => {
+    const thresholdKg = 16 * 5 * LB_TO_KG;
+    const result = computeEncumbranceTier({ strengthScore: 16, totalWeightKg: thresholdKg });
+    expect(result.tier).toBe("normal");
+  });
+
+  it("STR 16, acima do limite normal → encumbered", () => {
+    const thresholdKg = 16 * 5 * LB_TO_KG + 0.01;
+    const result = computeEncumbranceTier({ strengthScore: 16, totalWeightKg: thresholdKg });
+    expect(result.tier).toBe("encumbered");
+  });
+
+  it("STR 0, qualquer peso → overloaded (thresholds zerados)", () => {
+    const result = computeEncumbranceTier({ strengthScore: 0, totalWeightKg: 100 });
+    expect(result.tier).toBe("overloaded");
+    expect(result.normalMaxKg).toBe(0);
+    expect(result.encumberedMaxKg).toBe(0);
+    expect(result.heavilyEncumberedMaxKg).toBe(0);
+  });
+
+  it("STR 0, 0 kg → normal (sem carga)", () => {
+    const result = computeEncumbranceTier({ strengthScore: 0, totalWeightKg: 0 });
+    expect(result.tier).toBe("normal");
+  });
+
+  it("multiplicadores de carrying capacity não afetam thresholds", () => {
+    const normalMaxLb = 10 * 5;
+    const thresholdKg = normalMaxLb * LB_TO_KG;
+    const justBelow = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: thresholdKg });
+    expect(justBelow.tier).toBe("normal");
+    const justAbove = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: thresholdKg + 0.01 });
+    expect(justAbove.tier).toBe("encumbered");
   });
 });

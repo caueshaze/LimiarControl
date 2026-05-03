@@ -172,4 +172,5 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.carryingCapacityLabel": "Carrying Capacity",
   "playerBoard.carryingCapacityBase": "Base",
   "playerBoard.pushDragLiftLabel": "Push/Drag/Lift",
+  "playerBoard.encumbranceTierLabel": "Encumbrance",
 } as const;
