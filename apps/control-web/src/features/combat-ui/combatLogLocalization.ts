@@ -262,6 +262,14 @@ const localizeKnownEnglishMessage = (message: string, locale: Locale) => {
   if (message === "Initiative updated.") {
     return "Iniciativa atualizada.";
   }
+  if (message === "Initiative set! GM must position tokens before combat begins.") {
+    return "Iniciativa definida! O GM precisa posicionar os tokens antes do combate começar.";
+  }
+
+  match = message.match(/^Combat placement confirmed! It is now (.+?)'s turn\.$/i);
+  if (match) {
+    return `Posicionamento confirmado! Agora é o turno de ${match[1]}.`;
+  }
 
   return replaceTokenSet(replaceTokenSet(message, "pt", DAMAGE_TOKENS), "pt", EFFECT_TOKENS);
 };
