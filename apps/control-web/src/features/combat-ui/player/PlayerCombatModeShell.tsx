@@ -226,9 +226,10 @@ export const PlayerCombatModeShell = ({
       ability: (pendingRoll.ability ?? null) as AbilityName | null,
       skill: (pendingRoll.skill ?? null) as SkillName | null,
       targetParticipantId: pendingRoll.targetParticipantId ?? null,
+      encumbranceTier: playerStatus?.encumbranceTier,
     });
     return preview.length > 0 ? preview : undefined;
-  }, [myParticipant, pendingRoll]);
+  }, [myParticipant, pendingRoll, playerStatus?.encumbranceTier]);
   const movementEnabled =
     movementMode &&
     combat.state?.use_map !== false &&
