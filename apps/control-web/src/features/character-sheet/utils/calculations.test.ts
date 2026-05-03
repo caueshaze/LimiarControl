@@ -7,6 +7,7 @@ import {
   computeEncumbranceTier,
   computePassiveSkillBonus,
   computePassiveSkillBonusSources,
+  declarativeEffectGroupKey,
   LB_TO_KG,
 } from "./calculations";
 import type { ActiveEffect } from "../../../shared/api/combatRepo";
@@ -639,5 +640,70 @@ describe("computeEncumbranceTier", () => {
     expect(justBelow.tier).toBe("normal");
     const justAbove = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: thresholdKg + 0.01 });
     expect(justAbove.tier).toBe("encumbered");
+  });
+});
+
+describe("declarativeEffectGroupKey", () => {
+  const makeEffect = (id = "eff-1"): ActiveEffect => ({
+    id,
+    kind: "spell_effect",
+    duration_type: "manual",
+    created_at: "2026-05-01T00:00:00Z",
+  });
+
+  it("prioriza declarative_effect_group_id", () => {
+    const metadata = { declarative_effect_group_id: "group-abc" };
+    const key = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|5", 0);
+    expect(key).toBe("group-abc");
+  });
+
+  it("gera composite key a partir de source_spell_key", () => {
+    const metadata = { source_spell_key: "owls_wisdom", selected_variant_key: "owls_wisdom" };
+    const key = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|5", 0);
+    expect(key).toBe("owls_wisdom|owls_wisdom|passive_skill_bonus|perception|5");
+  });
+
+  it("gera composite key a partir de source_spell_name como fallback", () => {
+    const metadata = { source_spell_name: "Owl's Wisdom" };
+    const key = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|5", 0);
+    expect(key).toBe("Owl's Wisdom||passive_skill_bonus|perception|5");
+  });
+
+  it("inclui effectType e paramsKey na composite key", () => {
+    const metadata = { source_spell_key: "enhance_ability", selected_variant_key: "bulls_strength" };
+    const key = declarativeEffectGroupKey(metadata, makeEffect(), "carrying_capacity_multiplier", "2", 0);
+    expect(key).toBe("enhance_ability|bulls_strength|carrying_capacity_multiplier|2");
+  });
+
+  it("cai para effect.id quando não há metadata", () => {
+    const key = declarativeEffectGroupKey({}, makeEffect("my-id"), "advantage_on_checks", "wisdom", 0);
+    expect(key).toBe("my-id");
+  });
+
+  it("cai para __unknown_{fallbackIndex} quando não há effect.id", () => {
+    const effect = { ...makeEffect(), id: undefined as unknown as string };
+    const key = declarativeEffectGroupKey({}, effect, "advantage_on_checks", "wisdom", 42);
+    expect(key).toBe("__unknown_42");
+  });
+
+  it("group_id vazio é tratado como ausente", () => {
+    const metadata = { declarative_effect_group_id: "" };
+    const key = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|5", 0);
+    expect(key).not.toBe("");
+  });
+
+  it("paramsKeys diferentes produzem grupos diferentes", () => {
+    const metadata = { source_spell_key: "owls_wisdom" };
+    const key1 = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|5", 0);
+    const key2 = declarativeEffectGroupKey(metadata, makeEffect(), "passive_skill_bonus", "perception|3", 0);
+    expect(key1).not.toBe(key2);
+  });
+
+  it("não usa Math.random()", () => {
+    const effect = { ...makeEffect(), id: undefined as unknown as string };
+    const key1 = declarativeEffectGroupKey({}, effect, "test", "", 7);
+    const key2 = declarativeEffectGroupKey({}, effect, "test", "", 7);
+    expect(key1).toBe(key2);
+    expect(key1).toBe("__unknown_7");
   });
 });

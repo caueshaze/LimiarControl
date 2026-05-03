@@ -225,7 +225,7 @@ class CombatFlowTestsMixin:
             self.assertEqual(state.participants[0]["id"], "p1")
             self.assertEqual(state.participants[0]["initiative"], 15)
             mock_emit_state.assert_called_once()
-            mock_emit_log.assert_called_once()
+            self.assertEqual(mock_emit_log.call_count, 2)
 
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
@@ -2580,10 +2580,10 @@ class CombatFlowTestsMixin:
     @patch("app.services.combat.CombatService._emit_player_state_update")
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")
-    @patch("app.services.combat.CombatService._emit_log")
+    @patch("app.services.combat.CombatService._emit_and_persist_log")
     async def test_animal_friendship_applies_charmed_on_failed_save_only(
         self,
-        mock_emit_log,
+        mock_emit_and_persist_log,
         mock_emit_state,
         mock_emit_entity_hp_update,
         mock_emit_player_state_update,
