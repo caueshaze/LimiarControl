@@ -230,7 +230,7 @@ export const PlayerActionPanels = ({
             <div className="min-w-0">
               <h3 className="text-lg font-semibold text-white">{t("combatUi.castSpell")}</h3>
               <p className="mt-2 text-sm text-slate-300">
-                {selectedSpell?.name ?? t("combatUi.noSpellcasting")}
+                {((locale === "pt" && selectedSpell?.namePt) ? selectedSpell.namePt : selectedSpell?.name) ?? t("combatUi.noSpellcasting")}
               </p>
               {selectedSpell?.sourceType === "magic_item" && selectedSpell.sourceItemName ? (
                 <p className="mt-2 text-xs text-slate-400">
@@ -288,7 +288,7 @@ export const PlayerActionPanels = ({
                 spellOptions.map((spell) => (
                   <option key={spell.id} value={spell.id}>
                     {(locale === "pt" && spell.namePt) ? spell.namePt : spell.name}
-                    {spell.level === 0 ? " · cantrip" : ""}
+                    {spell.level === 0 ? ` · ${locale === "pt" ? "truque" : "cantrip"}` : ""}
                     {spell.level !== 0 && spell.sourceType !== "magic_item" && (spell.availableSlotLevels?.length ?? 0) === 0
                       ? " · sem slots"
                       : ""}
