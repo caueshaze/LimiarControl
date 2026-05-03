@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
 from app.schemas.base_spell import BaseSpellCreate
@@ -871,3 +871,85 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
             )
 
         self.assertIn("Target Player: PV temporários: 5 rolados, mantidos 8 existentes.", result["__log_message"])
+
+    def test_commit_cast_result_marks_participants_dirty_for_nested_effect_updates(self):
+        state = self._make_player_target_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        target["active_effects"] = [
+            {
+                "id": "effect-1",
+                "kind": "spell_effect",
+                "duration_type": "manual",
+                "created_at": "2026-05-02T00:00:00+00:00",
+                "metadata": {
+                    "source_spell_name": "Sabedoria da Coruja",
+                    "declarative_effect": {
+                        "type": "advantage_on_checks",
+                        "params": {"ability": "wisdom", "against": "any"},
+                    },
+                },
+            }
+        ]
+        resolution = {
+            "result": MagicMock(damage=0, healing=0, previous_hp=None, new_hp=None),
+            "spell_mode": "utility",
+            "effect_kind": None,
+            "effect_bonus": 0,
+            "save_success_outcome": None,
+            "slot_spent": False,
+            "inventory_refresh_required": False,
+            "summary_text": None,
+            "custom_log_message": None,
+            "automation_player_state_ids": set(),
+            "was_overridden": False,
+            "action_cost": "action",
+            "target_p": target,
+            "automation_result": None,
+        }
+
+        with patch(
+            "app.services.combat_service.spells.cast_target_commit.flag_modified"
+        ) as mock_flag_modified, patch.object(
+            CombatService,
+            "_emit_player_state_update",
+            new=AsyncMock(),
+        ), patch.object(
+            CombatService,
+            "_emit_entity_hp_update",
+            new=AsyncMock(),
+        ), patch.object(
+            CombatService,
+            "_emit_state",
+            new=AsyncMock(),
+        ), patch.object(
+            CombatService,
+            "_emit_log",
+            new=AsyncMock(),
+        ), patch.object(
+            CombatService,
+            "_build_cast_log_message",
+            return_value="log",
+        ), patch.object(
+            CombatService,
+            "_build_cast_response",
+            return_value={"ok": True},
+        ):
+            result = asyncio.run(
+                CombatService._commit_cast_result(
+                    MagicMock(),
+                    "session-1",
+                    state,
+                    attacker,
+                    {
+                        "spell_name": "Enhance Ability",
+                        "spell_canonical_key": "enhance_ability",
+                    },
+                    resolution,
+                    "user-1",
+                    False,
+                )
+            )
+
+        mock_flag_modified.assert_called_once_with(state, "participants")
+        self.assertEqual(result, {"ok": True})

@@ -104,6 +104,9 @@ async def _publish_roll_result(
 
     payload["partyId"] = session_entry.party_id
 
+    if isinstance(payload.get("check_modifier_sources"), list):
+        payload["check_modifier_sources"] = payload["check_modifier_sources"]
+
     await centrifugo.publish(
         session_channel(session_entry.id),
         build_event("roll_resolved", payload, version=event_version(timestamp)),

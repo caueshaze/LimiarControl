@@ -1,7 +1,7 @@
 import type { ActivityEvent } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { formatSessionActivityOffset } from "./sessionActivity.utils";
-import { localizeRollMode } from "./sessionActivityRowUtils";
+import { localizeRollContext, localizeRollMode } from "./sessionActivityRowUtils";
 
 // Covers event types: roll, shop, roll_request, combat, rest, reward
 
@@ -68,6 +68,16 @@ export const SessionActivityRollRequestRow = ({ event, actor }: Props) => {
   if (event.type !== "roll_request") return null;
   const target = event.targetDisplayName ?? t("sessionActivity.allPlayers");
   const modeLabel = localizeRollMode(event.mode, t);
+  const rollTypeLabel: Record<string, string> = {
+    ability: t("rolls.abilityCheck"),
+    save: t("rolls.savingThrow"),
+    skill: t("rolls.skillCheck"),
+    initiative: t("rolls.initiative"),
+    attack: t("rolls.attackRoll"),
+  };
+  const label = event.rollType ? (rollTypeLabel[event.rollType] ?? event.rollType) : event.expression;
+  const context = localizeRollContext(event.ability, event.skill, t);
+  const dcLabel = event.dc != null ? `${t("sessionActivity.rollAgainstDc")} ${event.dc}` : null;
   return (
     <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
       <span className="mt-0.5 text-base">🎯</span>
@@ -77,17 +87,22 @@ export const SessionActivityRollRequestRow = ({ event, actor }: Props) => {
           {" "}
           {t("sessionActivity.rollRequested")}
           {" "}
-          <span className="font-mono text-limiar-300">{event.expression}</span>
+          <span className="font-mono text-limiar-300">{label}</span>
+          {context && (
+            <span className="ml-1 text-slate-300">({context})</span>
+          )}
           {" "}
           {t("sessionActivity.rollRequestedTarget")}
           {" "}
           <span className="font-semibold text-slate-200">{target}</span>
         </p>
-        {(event.reason || event.mode) && (
+        {(event.reason || event.mode || dcLabel) && (
           <p className="mt-0.5 text-xs text-slate-400">
             {event.reason ? `${t("sessionActivity.reason")} ${event.reason}` : ""}
-            {event.reason && event.mode ? " · " : ""}
+            {event.reason && (event.mode || dcLabel) ? " · " : ""}
             {modeLabel ?? ""}
+            {modeLabel && dcLabel ? " · " : ""}
+            {dcLabel ?? ""}
           </p>
         )}
       </div>

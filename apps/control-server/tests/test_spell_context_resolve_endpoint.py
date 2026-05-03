@@ -320,7 +320,7 @@ class ResolveSpellContextTests(unittest.TestCase):
                 actor_participant_id="p1",
                 spell_canonical_key="enhance_ability",
                 spell_mode="utility",
-                slot_level=3,
+                slot_level=2,
                 variant_key="owls_wisdom",
             ),
             _catalog_spell(

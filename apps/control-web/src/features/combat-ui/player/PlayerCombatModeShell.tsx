@@ -6,6 +6,7 @@ import type {
   SkillName,
 } from "../../../entities/roll/rollResolution.types";
 import { AuthoritativeRollDialog } from "../../../features/rolls/components/AuthoritativeRollDialog";
+import { deriveCheckModifierPreviewSources } from "../../../features/rolls/checkModifierSources";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
 import { CombatLogPanel } from "../components/CombatLogPanel";
@@ -210,6 +211,24 @@ export const PlayerCombatModeShell = ({
   const [activePendingSave, setActivePendingSave] = useState<(
     PendingSave & { participantId: string; participantRefId: string; participantName: string }
   ) | null>(null);
+  const pendingRollDebugModifiers = useMemo(() => {
+    if (!pendingRoll || !myParticipant) {
+      return pendingRoll?.debugModifiers ?? undefined;
+    }
+    if (pendingRoll.debugModifiers?.length) {
+      return pendingRoll.debugModifiers;
+    }
+    if (pendingRoll.rollType !== "ability" && pendingRoll.rollType !== "skill") {
+      return undefined;
+    }
+    const preview = deriveCheckModifierPreviewSources(myParticipant.active_effects, {
+      rollType: pendingRoll.rollType,
+      ability: (pendingRoll.ability ?? null) as AbilityName | null,
+      skill: (pendingRoll.skill ?? null) as SkillName | null,
+      targetParticipantId: pendingRoll.targetParticipantId ?? null,
+    });
+    return preview.length > 0 ? preview : undefined;
+  }, [myParticipant, pendingRoll]);
   const movementEnabled =
     movementMode &&
     combat.state?.use_map !== false &&
@@ -588,7 +607,7 @@ export const PlayerCombatModeShell = ({
             targetParticipantId: pendingRoll.targetParticipantId ?? undefined,
             reason: pendingRoll.reason,
             issuedBy: pendingRoll.issuedBy,
-            debugModifiers: pendingRoll.debugModifiers ?? undefined,
+            debugModifiers: pendingRollDebugModifiers,
           }}
           sessionId={sessionId}
           actorKind="player"

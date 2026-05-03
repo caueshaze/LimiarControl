@@ -2,6 +2,7 @@ import type { ActivityEvent, PurchaseActivityEvent } from "../../../shared/api/s
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { formatSessionActivityOffset } from "./sessionActivity.utils";
 import {
+  formatCheckModifierSource,
   formatCurrentHp,
   formatEntityDisplayName,
   formatResolvedRollBreakdown,
@@ -218,6 +219,12 @@ export const SessionActivityRollResolvedRow = ({ event }: Props) => {
   }
   if (event.advantageMode !== "normal" && advantageMode) {
     detailParts.push(advantageMode);
+  }
+  const appliedCheckModifierSources = (event.check_modifier_sources ?? [])
+    .filter((entry) => entry.applied)
+    .map((entry) => formatCheckModifierSource(entry));
+  if (appliedCheckModifierSources.length > 0) {
+    detailParts.push(appliedCheckModifierSources.join(" · "));
   }
   if (event.isGmRoll) {
     detailParts.push(t("sessionActivity.gmBadge"));

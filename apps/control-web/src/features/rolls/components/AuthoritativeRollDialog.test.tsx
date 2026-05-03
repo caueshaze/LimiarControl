@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AuthoritativeRollDialog } from "./AuthoritativeRollDialog";
 
+const useRollResolutionMock = vi.hoisted(() => vi.fn());
+
 vi.mock("../../../shared/hooks/useLocale", () => ({
   useLocale: () => ({
     t: (key: string) => key,
@@ -9,13 +11,7 @@ vi.mock("../../../shared/hooks/useLocale", () => ({
 }));
 
 vi.mock("../hooks/useRollResolution", () => ({
-  useRollResolution: () => ({
-    result: null,
-    loading: false,
-    error: null,
-    submitRoll: vi.fn(),
-    clearResult: vi.fn(),
-  }),
+  useRollResolution: () => useRollResolutionMock(),
 }));
 
 vi.mock("./RollResultCard", () => ({
@@ -23,7 +19,70 @@ vi.mock("./RollResultCard", () => ({
 }));
 
 describe("AuthoritativeRollDialog", () => {
+  it("exibe vantagem contextual vinda do backend", () => {
+    useRollResolutionMock.mockReturnValue({
+      result: {
+        event_id: "roll-1",
+        roll_type: "ability",
+        actor_kind: "player",
+        actor_ref_id: "player-1",
+        actor_display_name: "Hero",
+        rolls: [12, 19],
+        selected_roll: 19,
+        advantage_mode: "advantage",
+        modifier_used: 2,
+        override_used: false,
+        formula: "1d20 + 2",
+        total: 21,
+        check_modifier_sources: [
+          {
+            source_label: "Sabedoria da Coruja",
+            modifier_type: "advantage",
+            roll_type: "ability",
+            ability: "wisdom",
+            against: "any",
+            applied: true,
+            skip_reason: null,
+          },
+        ],
+        is_gm_roll: false,
+        roll_source: "system",
+        timestamp: "2026-05-01T00:00:00Z",
+      },
+      loading: false,
+      error: null,
+      submitRoll: vi.fn(),
+      clearResult: vi.fn(),
+    });
+
+    const markup = renderToStaticMarkup(
+      <AuthoritativeRollDialog
+        request={{
+          rollType: "ability",
+          ability: "wisdom",
+          advantageMode: "normal",
+          reason: "Wisdom check",
+        }}
+        sessionId="session-1"
+        actorKind="player"
+        actorRefId="player-1"
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Vantagem automática");
+    expect(markup).toContain("Vantagem por Sabedoria da Coruja em wisdom");
+  });
+
   it("renderiza explicacoes debug aplicadas e puladas", () => {
+    useRollResolutionMock.mockReturnValue({
+      result: null,
+      loading: false,
+      error: null,
+      submitRoll: vi.fn(),
+      clearResult: vi.fn(),
+    });
+
     const markup = renderToStaticMarkup(
       <AuthoritativeRollDialog
         request={{
@@ -64,8 +123,8 @@ describe("AuthoritativeRollDialog", () => {
       />,
     );
 
-    expect(markup).toContain("Effect Context");
-    expect(markup).toContain("Friends: advantage em charisma contra Guard Captain");
+    expect(markup).toContain("Contexto do efeito");
+    expect(markup).toContain("Vantagem por Friends em charisma");
     expect(markup).toContain("Não aplicado: Friends só vale contra Other Guard");
   });
 });

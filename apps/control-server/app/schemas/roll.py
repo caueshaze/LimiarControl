@@ -94,6 +94,7 @@ class RollResult(BaseModel):
     dc: int | None = None
     target_ac: int | None = None
     success: bool | None = None  # None if no dc/target_ac provided
+    check_modifier_sources: list[dict] | None = None
 
     is_gm_roll: bool = False
     roll_source: RollSource = "system"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm.attributes import flag_modified
+
 
 class CastTargetCommitMixin:
     @classmethod
@@ -22,6 +24,9 @@ class CastTargetCommitMixin:
         target_p = resolution["target_p"]
         automation_result = resolution["automation_result"]
 
+        # Spell casts mutate nested participant JSON (turn resources, pending saves,
+        # declarative active effects). Mark it dirty so the combat state persists.
+        flag_modified(state, "participants")
         db.add(state)
         db.commit()
         db.refresh(state)

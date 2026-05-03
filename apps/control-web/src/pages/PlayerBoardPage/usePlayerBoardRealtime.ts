@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { isRollEventKnown } from "../../features/rolls/knownRollEvents";
+import { formatRollResolvedToastDescription } from "../../features/sessions/components/sessionActivityRowUtils";
 import { usePlayerBoardRollRequests } from "./usePlayerBoardRollRequests";
 import type { UsePlayerBoardRealtimeProps } from "./player-board-realtime.types";
 
@@ -259,7 +260,7 @@ export const usePlayerBoardRealtime = ({
         showToast({
           variant: "info",
           title: `${String(p.actor_display_name ?? "")}: ${String(p.roll_type ?? "")}`,
-          description: `${String(p.formula ?? "")} = ${String(p.total ?? 0)}${p.success === true ? " ✓" : p.success === false ? " ✗" : ""}`,
+          description: formatRollResolvedToastDescription(p),
           duration: 4000,
         });
       }

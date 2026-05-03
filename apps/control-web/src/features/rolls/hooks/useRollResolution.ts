@@ -23,6 +23,26 @@ export type AuthoritativeRollParams = {
   manualRolls?: [number, number] | null;
 };
 
+export const buildRollResolutionBody = (
+  actorKind: "player" | "session_entity",
+  actorRefId: string,
+  params: AuthoritativeRollParams,
+) => ({
+  actor_kind: actorKind,
+  actor_ref_id: actorRefId,
+  ...(params.rollType === "ability" || params.rollType === "save"
+    ? { ability: params.ability }
+    : {}),
+  ...(params.rollType === "skill" ? { skill: params.skill } : {}),
+  ...(params.rollType === "attack" ? { target_ac: params.targetAc ?? undefined } : {}),
+  advantage_mode: params.advantageMode,
+  bonus_override: params.bonusOverride ?? undefined,
+  target_participant_id: params.targetParticipantId ?? undefined,
+  roll_source: params.rollSource,
+  manual_roll: params.manualRoll ?? undefined,
+  manual_rolls: params.manualRolls ?? undefined,
+});
+
 export const useRollResolution = (
   sessionId: string | null,
   actorKind: "player" | "session_entity",
@@ -42,16 +62,7 @@ export const useRollResolution = (
       setResult(null);
 
       try {
-        const base = {
-          actor_kind: actorKind,
-          actor_ref_id: actorRefId,
-          advantage_mode: params.advantageMode,
-          bonus_override: params.bonusOverride ?? undefined,
-          target_participant_id: params.targetParticipantId ?? undefined,
-          roll_source: params.rollSource,
-          manual_roll: params.manualRoll ?? undefined,
-          manual_rolls: params.manualRolls ?? undefined,
-        };
+        const base = buildRollResolutionBody(actorKind, actorRefId, params);
 
         let res: RollResult;
 

@@ -112,8 +112,40 @@ class CombatLifecycleTurnsMixin:
         state = cls.get_state(db, session_id)
         if not state:
             raise CombatServiceError("Combat not found", 404)
+
+        concentration_source_ids: set[str] = set()
+        for participant in state.participants:
+            for effect in cls._get_participant_effects(participant):
+                metadata = cls._get_effect_metadata(effect)
+                if (
+                    effect.get("source_participant_id")
+                    and metadata.get("concentration") is True
+                    and isinstance(metadata.get("concentration_group"), str)
+                ):
+                    concentration_source_ids.add(effect["source_participant_id"])
+
+        all_removed: list[dict] = []
+        for source_id in concentration_source_ids:
+            result = cls._clear_concentration_for_source(state, source_participant_id=source_id)
+            all_removed.extend(result["removed_effects"])
+
+        for participant in state.participants:
+            remaining = cls._get_participant_effects(participant)
+            all_removed.extend(
+                {**effect, "target_participant_id": participant.get("id"), "target_display_name": participant.get("display_name", "")}
+                for effect in remaining
+            )
+            cls._set_participant_effects(participant, [])
+            participant.pop("pending_save", None)
+            participant.pop("pending_attack", None)
+            participant["turn_resources"] = dict(cls._DEFAULT_TURN_RESOURCES)
+
         state.phase = CombatPhase.ended
         state.active_area_effects = []
+
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(state, "participants")
         db.add(state)
         db.commit()
         db.refresh(state)

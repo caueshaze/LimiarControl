@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from app.schemas.campaign_entity_shared import AbilityName
+
+logger = logging.getLogger(__name__)
 
 _INCAPACITATING_CONDITIONS = frozenset(
     {"incapacitated", "paralyzed", "stunned", "unconscious", "petrified"}
@@ -31,6 +34,52 @@ def _iter_declarative_spell_effects(participant: dict):
         declarative = metadata.get("declarative_effect")
         if isinstance(declarative, dict):
             yield declarative
+
+
+def combine_advantage_modes(*modes: str | None) -> Literal["advantage", "normal", "disadvantage"]:
+    advantage_count = 0
+    disadvantage_count = 0
+    for mode in modes:
+        if mode == "advantage":
+            advantage_count += 1
+        elif mode == "disadvantage":
+            disadvantage_count += 1
+    if advantage_count > disadvantage_count:
+        return "advantage"
+    if disadvantage_count > advantage_count:
+        return "disadvantage"
+    return "normal"
+
+
+def resolve_actor_participant(session_state, actor_ref_id: str) -> dict | None:
+    if not actor_ref_id:
+        logger.info("[resolve_actor_participant] empty actor_ref_id")
+        return None
+    participants = getattr(session_state, "participants", None)
+    if not isinstance(participants, list):
+        logger.info("[resolve_actor_participant] no participants list")
+        return None
+
+    def _match(entry: dict, key: str) -> bool:
+        value = entry.get(key)
+        return isinstance(value, str) and value == actor_ref_id
+
+    for key in ("ref_id", "actor_user_id", "character_id"):
+        for entry in participants:
+            if not isinstance(entry, dict):
+                continue
+            if _match(entry, key):
+                logger.info(
+                    "[resolve_actor_participant] matched key=%s participant_id=%s ref_id=%s actor_user_id=%s character_id=%s",
+                    key,
+                    entry.get("id"),
+                    entry.get("ref_id"),
+                    entry.get("actor_user_id"),
+                    entry.get("character_id"),
+                )
+                return entry
+    logger.info("[resolve_actor_participant] no match for actor_ref_id=%s participants_count=%s", actor_ref_id, len(participants))
+    return None
 
 
 def has_condition(participant: dict, condition_type: str) -> bool:
@@ -96,11 +145,22 @@ def is_lightly_obscured(participant: dict) -> bool:
 def resolve_check_advantage_mode(
     participant: dict,
     ability: AbilityName,
+    skill: str | None = None,
     target_participant_id: str | None = None,
+    manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
 ) -> Literal["advantage", "normal", "disadvantage"]:
-    has_adv = False
-    has_dis = False
-    for effect in participant.get("active_effects") or []:
+    automatic_mode = "normal"
+    active_effects = participant.get("active_effects") or []
+    logger.info(
+        "[resolve_check_advantage_mode] participant_id=%s ability=%s skill=%s target_participant_id=%s active_effects_count=%s",
+        participant.get("id") or participant.get("ref_id"),
+        ability,
+        skill,
+        target_participant_id,
+        len(active_effects),
+    )
+    matched = 0
+    for effect in active_effects:
         if effect.get("kind") != "spell_effect":
             continue
         metadata = effect.get("metadata")
@@ -115,27 +175,24 @@ def resolve_check_advantage_mode(
         if not isinstance(params, dict) or params.get("ability") != ability:
             continue
 
-        # Check "against" constraint if present
         against = params.get("against")
-        if against == "selected_target":
-            # Only applies if target matches the spell's selected target
-            if target_participant_id != metadata.get("selected_target_participant_id"):
-                continue
-        elif against == "effect_target":
-            # For advantage_on_checks applied to caster, effect_target is caster
-            # (this constraint doesn't filter based on target_participant_id)
-            pass
-        # "any" or None means no constraint
-
+        if against == "selected_target" and target_participant_id != metadata.get("selected_target_participant_id"):
+            continue
         if effect_type == "advantage_on_checks":
-            has_adv = True
+            automatic_mode = combine_advantage_modes(automatic_mode, "advantage")
+            matched += 1
         elif effect_type == "disadvantage_on_checks":
-            has_dis = True
-    if has_adv and not has_dis:
-        return "advantage"
-    if has_dis and not has_adv:
-        return "disadvantage"
-    return "normal"
+            automatic_mode = combine_advantage_modes(automatic_mode, "disadvantage")
+            matched += 1
+    final = combine_advantage_modes(manual_mode, automatic_mode)
+    logger.info(
+        "[resolve_check_advantage_mode] matched=%s manual_mode=%s automatic_mode=%s final=%s",
+        matched,
+        manual_mode,
+        automatic_mode,
+        final,
+    )
+    return final
 
 
 def explain_check_modifier_sources(
@@ -147,7 +204,17 @@ def explain_check_modifier_sources(
     target_participant_id: str | None = None,
 ) -> list[dict]:
     explanations: list[dict] = []
-    for effect in participant.get("active_effects") or []:
+    active_effects = participant.get("active_effects") or []
+    logger.info(
+        "[explain_check_modifier_sources] participant_id=%s ability=%s roll_type=%s skill=%s target_participant_id=%s active_effects_count=%s",
+        participant.get("id") or participant.get("ref_id"),
+        ability,
+        roll_type,
+        skill,
+        target_participant_id,
+        len(active_effects),
+    )
+    for effect in active_effects:
         if effect.get("kind") != "spell_effect":
             continue
         metadata = effect.get("metadata")
@@ -209,17 +276,51 @@ def explain_check_modifier_sources(
 
         entry["applied"] = True
         explanations.append(entry)
+    logger.info(
+        "[explain_check_modifier_sources] explanations_count=%s applied_count=%s",
+        len(explanations),
+        sum(1 for e in explanations if e.get("applied")),
+    )
     return explanations
 
 
+def _passive_bonus_group_key(metadata: dict, effect: dict, params: dict) -> str:
+    group_id = metadata.get("declarative_effect_group_id")
+    if isinstance(group_id, str) and group_id:
+        return group_id
+    source = metadata.get("source_spell_key") or metadata.get("source_spell_name")
+    if isinstance(source, str) and source:
+        variant = metadata.get("selected_variant_key") or ""
+        skill = params.get("skill", "")
+        bonus = params.get("bonus", "")
+        return f"{source}|{variant}|passive_skill_bonus|{skill}|{bonus}"
+    effect_id = effect.get("id")
+    if isinstance(effect_id, str) and effect_id:
+        return effect_id
+    return f"__unknown_{id(effect)}"
+
+
 def get_passive_skill_bonus(participant: dict, skill: str) -> int:
-    total = 0
-    for declarative in _iter_declarative_spell_effects(participant):
+    groups: dict[str, int] = {}
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
         if declarative.get("type") != "passive_skill_bonus":
             continue
         params = declarative.get("params")
-        if isinstance(params, dict) and params.get("skill") == skill:
-            bonus = params.get("bonus")
-            if isinstance(bonus, int):
-                total += bonus
-    return total
+        if not isinstance(params, dict) or params.get("skill") != skill:
+            continue
+        bonus = params.get("bonus")
+        if not isinstance(bonus, int):
+            continue
+        key = _passive_bonus_group_key(metadata, effect, params)
+        current = groups.get(key)
+        if current is None or bonus > current:
+            groups[key] = bonus
+    return sum(groups.values())

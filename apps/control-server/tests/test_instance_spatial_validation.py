@@ -100,6 +100,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
             return_value=mock_service or MagicMock(validate=MagicMock(return_value=_valid_result())),
         ):
             return CombatService._validate_instance_spatial_targets(
+                db=MagicMock(),
                 state=state,
                 attacker=_build_attacker(),
                 spell_context=spell_context,
@@ -131,6 +132,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
         ):
             with self.assertRaises(CombatServiceError) as ctx:
                 CombatService._validate_instance_spatial_targets(
+                    db=MagicMock(),
                     state=_build_state(),
                     attacker=_build_attacker(),
                     spell_context=_build_spell_context(),
@@ -150,6 +152,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
         ):
             with self.assertRaises(CombatServiceError) as ctx:
                 CombatService._validate_instance_spatial_targets(
+                    db=MagicMock(),
                     state=_build_state(),
                     attacker=_build_attacker(),
                     spell_context=_build_spell_context(),
@@ -168,6 +171,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
         ):
             with self.assertRaises(CombatServiceError) as ctx:
                 CombatService._validate_instance_spatial_targets(
+                    db=MagicMock(),
                     state=_build_state(),
                     attacker=_build_attacker(),
                     spell_context=_build_spell_context(),
@@ -191,6 +195,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
             return_value=mock_svc,
         ):
             CombatService._validate_instance_spatial_targets(
+                db=MagicMock(),
                 state=_build_state(),
                 attacker=_build_attacker(),
                 spell_context=_build_spell_context(),
@@ -219,6 +224,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
         ):
             with self.assertRaises(CombatServiceError) as ctx:
                 CombatService._validate_instance_spatial_targets(
+                    db=MagicMock(),
                     state=_build_state(),
                     attacker=_build_attacker(),
                     spell_context=_build_spell_context(),
@@ -235,6 +241,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
             return_value=MagicMock(validate=MagicMock(return_value=_valid_result())),
         ) as mock_factory:
             CombatService._validate_instance_spatial_targets(
+                db=MagicMock(),
                 state=_build_state(use_map=False),
                 attacker=_build_attacker(),
                 spell_context=_build_spell_context(),
@@ -256,6 +263,7 @@ class ValidateInstanceSpatialTargetsTests(unittest.TestCase):
             ) as mock_resolve:
                 with self.assertRaises(CombatServiceError):
                     CombatService._validate_instance_spatial_targets(
+                        db=MagicMock(),
                         state=_build_state(),
                         attacker=_build_attacker(),
                         spell_context=_build_spell_context(),
@@ -281,6 +289,7 @@ class ValidateInstanceSpatialTargetsReturnTests(unittest.TestCase):
             return_value=mock_svc,
         ):
             result = CombatService._validate_instance_spatial_targets(
+                db=MagicMock(),
                 state=_build_state(),
                 attacker=_build_attacker(),
                 spell_context=_build_spell_context(),
@@ -299,6 +308,7 @@ class ValidateInstanceSpatialTargetsReturnTests(unittest.TestCase):
             return_value=mock_svc,
         ):
             result = CombatService._validate_instance_spatial_targets(
+                db=MagicMock(),
                 state=_build_state(),
                 attacker=_build_attacker(),
                 spell_context=_build_spell_context(),

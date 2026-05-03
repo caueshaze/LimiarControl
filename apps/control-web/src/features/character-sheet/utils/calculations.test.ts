@@ -226,12 +226,92 @@ describe("computePassiveSkillBonus", () => {
     expect(computePassiveSkillBonus(effects, "perception")).toBe(0);
   });
 
-  it("empilha múltiplos efeitos da mesma skill", () => {
+  it("empilha efeitos de grupos declarativos diferentes", () => {
     const effects = [
-      makePassiveSkillBonusEffect("perception", 5),
-      makePassiveSkillBonusEffect("perception", 3),
+      makePassiveSkillBonusEffect("perception", 5, {
+        metadata: {
+          source_spell_name: "Owl's Wisdom",
+          declarative_effect_group_id: "group-a",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 5 },
+          },
+        },
+      }),
+      makePassiveSkillBonusEffect("perception", 3, {
+        metadata: {
+          source_spell_name: "Guidance",
+          declarative_effect_group_id: "group-b",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 3 },
+          },
+        },
+      }),
     ];
     expect(computePassiveSkillBonus(effects, "perception")).toBe(8);
+  });
+
+  it("deduplica efeitos do mesmo grupo declarativo pegando o maior bônus", () => {
+    const effects = [
+      makePassiveSkillBonusEffect("perception", 5, {
+        id: "effect-dup-a",
+        metadata: {
+          source_spell_name: "Owl's Wisdom",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 5 },
+          },
+        },
+      }),
+      makePassiveSkillBonusEffect("perception", 7, {
+        id: "effect-dup-b",
+        metadata: {
+          source_spell_name: "Owl's Wisdom",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 7 },
+          },
+        },
+      }),
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(7);
+  });
+
+  it("deduplica por chave composta quando não há group_id", () => {
+    const effects = [
+      makePassiveSkillBonusEffect("perception", 5, {
+        metadata: {
+          source_spell_key: "owls_wisdom",
+          source_spell_name: "Owl's Wisdom",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 5 },
+          },
+        },
+      }),
+      makePassiveSkillBonusEffect("perception", 5, {
+        metadata: {
+          source_spell_key: "owls_wisdom",
+          source_spell_name: "Owl's Wisdom",
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 5 },
+          },
+        },
+      }),
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(5);
+  });
+
+  it("não deduplica efeitos sem metadata de agrupamento — cada efeito é grupo único", () => {
+    const effects = [
+      makePassiveSkillBonusEffect("perception", 3, { id: "uniq-a" }),
+      makePassiveSkillBonusEffect("perception", 2, { id: "uniq-b" }),
+    ];
+    expect(computePassiveSkillBonus(effects, "perception")).toBe(5);
   });
 
   it("ignora efeito sem declarative_effect", () => {

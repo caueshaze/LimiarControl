@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal
 from uuid import uuid4
 
+from app.models.combat import CombatPhase
 from app.schemas.base_spell import SpellDeclarativeEffect
+
+logger = logging.getLogger(__name__)
 from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, SkillName
 from .condition_effects_predicates import (
     explain_check_modifier_sources,
+    resolve_actor_participant,
     resolve_check_advantage_mode,
 )
 from .exceptions import CombatServiceError, _roll_dice_expression
@@ -531,21 +536,31 @@ class CombatSpellDeclarativeEffectsMixin:
         actor_ref_id: str,
         ability: AbilityName,
         target_participant_id: str | None = None,
+        manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
     ) -> str:
         state = cls.get_state(db, session_id)
         if state is None:
+            logger.info("[_resolve_check_advantage_mode_for_actor] no combat state session_id=%s", session_id)
             return "normal"
-        participant = next(
-            (
-                entry
-                for entry in state.participants
-                if entry.get("kind") == actor_kind and entry.get("ref_id") == actor_ref_id
-            ),
-            None,
-        )
+        if state.phase == CombatPhase.ended:
+            logger.info("[_resolve_check_advantage_mode_for_actor] combat ended session_id=%s", session_id)
+            return "normal"
+        participant = resolve_actor_participant(state, actor_ref_id)
         if not isinstance(participant, dict):
+            logger.info("[_resolve_check_advantage_mode_for_actor] no participant session_id=%s actor_ref_id=%s", session_id, actor_ref_id)
             return "normal"
-        return resolve_check_advantage_mode(participant, ability, target_participant_id=target_participant_id)
+        if participant.get("kind") != actor_kind:
+            logger.info(
+                "[_resolve_check_advantage_mode_for_actor] kind mismatch session_id=%s actor_ref_id=%s expected=%s got=%s",
+                session_id, actor_ref_id, actor_kind, participant.get("kind"),
+            )
+            return "normal"
+        return resolve_check_advantage_mode(
+            participant,
+            ability,
+            target_participant_id=target_participant_id,
+            manual_mode=manual_mode,
+        )
 
     @classmethod
     def _resolve_skill_check_advantage_mode_for_actor(
@@ -557,6 +572,7 @@ class CombatSpellDeclarativeEffectsMixin:
         actor_ref_id: str,
         skill: SkillName,
         target_participant_id: str | None = None,
+        manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
     ) -> str:
         return cls._resolve_check_advantage_mode_for_actor(
             db,
@@ -565,6 +581,7 @@ class CombatSpellDeclarativeEffectsMixin:
             actor_ref_id=actor_ref_id,
             ability=SKILL_ABILITY_MAP[skill],
             target_participant_id=target_participant_id,
+            manual_mode=manual_mode,
         )
 
     @classmethod
@@ -582,16 +599,20 @@ class CombatSpellDeclarativeEffectsMixin:
     ) -> list[dict]:
         state = cls.get_state(db, session_id)
         if state is None:
+            logger.info("[_explain_check_modifier_sources_for_actor] no combat state session_id=%s", session_id)
             return []
-        participant = next(
-            (
-                entry
-                for entry in state.participants
-                if entry.get("kind") == actor_kind and entry.get("ref_id") == actor_ref_id
-            ),
-            None,
-        )
+        if state.phase == CombatPhase.ended:
+            logger.info("[_explain_check_modifier_sources_for_actor] combat ended session_id=%s", session_id)
+            return []
+        participant = resolve_actor_participant(state, actor_ref_id)
         if not isinstance(participant, dict):
+            logger.info("[_explain_check_modifier_sources_for_actor] no participant session_id=%s actor_ref_id=%s", session_id, actor_ref_id)
+            return []
+        if participant.get("kind") != actor_kind:
+            logger.info(
+                "[_explain_check_modifier_sources_for_actor] kind mismatch session_id=%s actor_ref_id=%s expected=%s got=%s",
+                session_id, actor_ref_id, actor_kind, participant.get("kind"),
+            )
             return []
         return explain_check_modifier_sources(
             participant,

@@ -1,9 +1,11 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlmodel import Session as DbSession, select
 
 from app.models.campaign_member import CampaignMember
+from app.models.combat import CombatPhase, CombatState
 from app.models.session import Session
 from app.models.session_state import SessionState
 from app.schemas.session import SessionCommandRequest
@@ -39,6 +41,8 @@ CHECK_MODIFIER_SKIP_REASONS = {
     "skill_mismatch",
     "missing_target",
 }
+
+logger = logging.getLogger(__name__)
 
 
 def record_gm_activity(
@@ -84,6 +88,17 @@ async def send_session_command_service(
     if payload.type == "request_roll":
         expression = payload_data.get("expression")
         roll_type = payload_data.get("rollType")
+        logger.info(
+            "[request_roll] session_id=%s expression=%s rollType=%s ability=%s skill=%s dc=%s targetUserId=%s mode=%s",
+            entry_id,
+            expression,
+            roll_type,
+            payload_data.get("ability"),
+            payload_data.get("skill"),
+            payload_data.get("dc"),
+            payload_data.get("targetUserId"),
+            payload_data.get("mode"),
+        )
         if roll_type is not None:
             if not isinstance(roll_type, str) or roll_type not in AUTHORITATIVE_ROLL_TYPES:
                 raise HTTPException(status_code=400, detail="Invalid roll type")
@@ -343,6 +358,17 @@ async def send_session_command_service(
     session.commit()
     for state in states:
         session.refresh(state)
+
+    if ended_rest_type == "long_rest":
+        ended_combat = session.exec(
+            select(CombatState).where(
+                CombatState.session_id == entry_id,
+                CombatState.phase == CombatPhase.ended,
+            )
+        ).first()
+        if ended_combat is not None:
+            session.delete(ended_combat)
+            session.commit()
 
     event_type = "rest_ended"
     event_payload["restType"] = ended_rest_type

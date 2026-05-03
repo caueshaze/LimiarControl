@@ -6,6 +6,7 @@ log the result, and publish a realtime event.  They do NOT mutate HP, status, or
 
 from __future__ import annotations
 
+import logging
 from math import floor
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -44,6 +45,7 @@ from app.services.roll_resolution import (
 from ._shared import record_session_activity
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +173,15 @@ def _build_entity_stats(db: DbSession, session_entity_id: str) -> RollActorStats
     )
 
 
+def _attach_check_modifier_sources(
+    result: RollResult,
+    sources: list[dict],
+) -> RollResult:
+    if sources:
+        result.check_modifier_sources = sources
+    return result
+
+
 def _build_actor_stats(
     db: DbSession, session_id: str, actor_kind: str, actor_ref_id: str
 ) -> RollActorStats:
@@ -221,22 +232,36 @@ async def roll_ability(
     entry, member = _get_session_and_member(session_id, user, db)
     is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
-    derived_advantage_mode = CombatService._resolve_check_advantage_mode_for_actor(
+    logger.info(
+        "[roll_ability] session=%s actor_kind=%s actor_ref_id=%s ability=%s target_participant_id=%s manual_mode=%s",
+        session_id, body.actor_kind, body.actor_ref_id, body.ability, body.target_participant_id, body.advantage_mode,
+    )
+    effective_advantage_mode = CombatService._resolve_check_advantage_mode_for_actor(
         db,
         session_id,
         actor_kind=body.actor_kind,
         actor_ref_id=body.actor_ref_id,
         ability=body.ability,
         target_participant_id=body.target_participant_id,
+        manual_mode=body.advantage_mode,
     )
-    effective_advantage_mode = (
-        body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
-    )
+    logger.info("[roll_ability] effective_advantage_mode=%s", effective_advantage_mode)
 
     result = resolve_ability_check(
         stats, body.ability, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
     )
+    modifier_sources = CombatService._explain_check_modifier_sources_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        ability=body.ability,
+        roll_type="ability",
+        target_participant_id=body.target_participant_id,
+    )
+    logger.info("[roll_ability] modifier_sources_count=%s", len(modifier_sources))
+    _attach_check_modifier_sources(result, modifier_sources)
     result.is_gm_roll = is_gm
     result.roll_source = body.roll_source
 
@@ -276,22 +301,37 @@ async def roll_skill(
     entry, member = _get_session_and_member(session_id, user, db)
     is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
-    derived_advantage_mode = CombatService._resolve_skill_check_advantage_mode_for_actor(
+    logger.info(
+        "[roll_skill] session=%s actor_kind=%s actor_ref_id=%s skill=%s ability=%s target_participant_id=%s manual_mode=%s",
+        session_id, body.actor_kind, body.actor_ref_id, body.skill, SKILL_ABILITY_MAP[body.skill], body.target_participant_id, body.advantage_mode,
+    )
+    effective_advantage_mode = CombatService._resolve_skill_check_advantage_mode_for_actor(
         db,
         session_id,
         actor_kind=body.actor_kind,
         actor_ref_id=body.actor_ref_id,
         skill=body.skill,
         target_participant_id=body.target_participant_id,
+        manual_mode=body.advantage_mode,
     )
-    effective_advantage_mode = (
-        body.advantage_mode if body.advantage_mode != "normal" else derived_advantage_mode
-    )
+    logger.info("[roll_skill] effective_advantage_mode=%s", effective_advantage_mode)
 
     result = resolve_skill_check(
         stats, body.skill, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
     )
+    modifier_sources = CombatService._explain_check_modifier_sources_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        ability=SKILL_ABILITY_MAP[body.skill],
+        roll_type="skill",
+        skill=body.skill,
+        target_participant_id=body.target_participant_id,
+    )
+    logger.info("[roll_skill] modifier_sources_count=%s", len(modifier_sources))
+    _attach_check_modifier_sources(result, modifier_sources)
     result.is_gm_roll = is_gm
     result.roll_source = body.roll_source
 

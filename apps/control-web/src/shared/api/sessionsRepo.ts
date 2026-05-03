@@ -297,9 +297,22 @@ export type RollResolvedActivityEvent = {
   total: number;
   modifierUsed: number;
   advantageMode: string;
+  formula?: string | null;
   dc?: number | null;
   targetAc?: number | null;
   success?: boolean | null;
+  check_modifier_sources?: Array<{
+    source_label: string;
+    modifier_type: "advantage" | "disadvantage";
+    roll_type: "ability" | "skill";
+    ability?: string | null;
+    skill?: string | null;
+    against?: "any" | "effect_target" | "selected_target" | null;
+    selected_target_participant_id?: string | null;
+    selected_target_display_name?: string | null;
+    applied: boolean;
+    skip_reason?: "target_mismatch" | "ability_mismatch" | "skill_mismatch" | "missing_target" | null;
+  }> | null;
   isGmRoll: boolean;
   timestamp: string;
   sessionOffsetSeconds: number;

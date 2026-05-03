@@ -106,3 +106,35 @@ export function formatResolvedRollBreakdown(
 
   return `${rollDetailLabel} ${rollsText} ${formatSignedModifier(event.modifierUsed)}`;
 }
+
+export function formatCheckModifierSource(entry: NonNullable<RollResolvedActivityEvent["check_modifier_sources"]>[number]): string {
+  const subject = entry.roll_type === "skill"
+    ? entry.skill ?? entry.ability ?? "check"
+    : entry.ability ?? "check";
+  const source = entry.source_label || "efeito ativo";
+
+  if (entry.applied) {
+    return `Vantagem por ${source} em ${subject}`;
+  }
+  if (entry.skip_reason === "ability_mismatch") {
+    return `Não aplicado: ${source} não afeta ${entry.ability ?? "este atributo"}`;
+  }
+  if (entry.skip_reason === "skill_mismatch") {
+    return `Não aplicado: ${source} não afeta ${entry.skill ?? "esta perícia"}`;
+  }
+  if (entry.skip_reason === "missing_target") {
+    return `Não aplicado: ${source} exige alvo contextual`;
+  }
+  if (entry.skip_reason === "target_mismatch" && entry.selected_target_display_name) {
+    return `Não aplicado: ${source} só vale contra ${entry.selected_target_display_name}`;
+  }
+  return `Não aplicado: ${source}`;
+}
+
+export function formatRollResolvedToastDescription(event: RollResolvedActivityEvent): string {
+  const base = `${String(event.formula ?? "")} = ${String(event.total ?? 0)}${event.success === true ? " ✓" : event.success === false ? " ✗" : ""}`;
+  const appliedSources = (event.check_modifier_sources ?? [])
+    .filter((entry) => entry.applied)
+    .map((entry) => formatCheckModifierSource(entry));
+  return [base, ...appliedSources].join(" · ");
+}

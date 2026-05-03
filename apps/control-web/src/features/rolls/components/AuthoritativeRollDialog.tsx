@@ -9,6 +9,7 @@ import type {
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useRollResolution } from "../hooks/useRollResolution";
 import { RollResultCard } from "./RollResultCard";
+import { formatCheckModifierSource } from "../../sessions/components/sessionActivityRowUtils";
 
 export type AuthoritativeRollRequest = {
   rollType: RollType;
@@ -76,6 +77,13 @@ export const AuthoritativeRollDialog = ({
   const isLoading = overrideLoading || loading;
   const needsTwoRolls = request.advantageMode !== "normal";
   const selectingSecond = needsTwoRolls && manualD20 !== null && manualD20Second === null;
+  const modifierSources = displayedResult?.check_modifier_sources ?? request.debugModifiers ?? [];
+  const manualAdvantageLabel =
+    request.advantageMode === "advantage"
+      ? "Vantagem (manual)"
+      : request.advantageMode === "disadvantage"
+        ? "Desvantagem (manual)"
+        : null;
 
   const rollTypeLabels: Record<string, string> = {
     ability: t("rolls.abilityCheck" as Parameters<typeof t>[0]),
@@ -151,31 +159,6 @@ export const AuthoritativeRollDialog = ({
   };
 
   const context = request.ability ?? request.skill ?? null;
-  const debugModifiers = request.debugModifiers ?? [];
-
-  const formatDebugModifier = (entry: NonNullable<typeof request.debugModifiers>[number]) => {
-    const subject = entry.roll_type === "skill" ? entry.skill ?? entry.ability ?? "check" : entry.ability ?? "check";
-    const base = `${entry.source_label}: ${entry.modifier_type} em ${subject}`;
-    if (entry.applied) {
-      if (entry.against === "selected_target" && entry.selected_target_display_name) {
-        return `${base} contra ${entry.selected_target_display_name}`;
-      }
-      return base;
-    }
-    if (entry.skip_reason === "target_mismatch" && entry.selected_target_display_name) {
-      return `Não aplicado: ${entry.source_label} só vale contra ${entry.selected_target_display_name}`;
-    }
-    if (entry.skip_reason === "missing_target") {
-      return `Não aplicado: ${entry.source_label} exige um alvo contextual`;
-    }
-    if (entry.skip_reason === "skill_mismatch") {
-      return `Não aplicado: ${entry.source_label} não afeta ${entry.skill ?? "esta perícia"}`;
-    }
-    if (entry.skip_reason === "ability_mismatch") {
-      return `Não aplicado: ${entry.source_label} não afeta ${entry.ability ?? "este atributo"}`;
-    }
-    return `Não aplicado: ${base}`;
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
@@ -194,14 +177,15 @@ export const AuthoritativeRollDialog = ({
               {context}
             </h2>
           )}
-          {request.advantageMode === "advantage" && (
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-              {t("rolls.advantage" as Parameters<typeof t>[0])}
-            </span>
-          )}
-          {request.advantageMode === "disadvantage" && (
-            <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-400">
-              {t("rolls.disadvantage" as Parameters<typeof t>[0])}
+          {manualAdvantageLabel && (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+                request.advantageMode === "advantage"
+                  ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
+                  : "border border-red-500/30 bg-red-500/15 text-red-400"
+              }`}
+            >
+              {manualAdvantageLabel}
             </span>
           )}
         </div>
@@ -212,15 +196,15 @@ export const AuthoritativeRollDialog = ({
           </p>
         )}
 
-        {debugModifiers.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-200">
-              Effect Context
+        {modifierSources.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-200">
+              {displayedResult ? "Vantagem automática" : "Contexto do efeito"}
             </p>
-            <div className="mt-2 space-y-1 text-xs text-slate-200">
-              {debugModifiers.map((entry, index) => (
+            <div className="mt-2 space-y-1 text-xs text-slate-100">
+              {modifierSources.map((entry, index) => (
                 <p key={`${entry.source_label}:${entry.modifier_type}:${index}`}>
-                  {formatDebugModifier(entry)}
+                  {formatCheckModifierSource(entry)}
                 </p>
               ))}
             </div>

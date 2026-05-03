@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RollResolvedActivityEvent } from "../../../shared/api/sessionsRepo";
-import { formatResolvedRollBreakdown } from "./sessionActivityRowUtils";
+import {
+  formatCheckModifierSource,
+  formatResolvedRollBreakdown,
+  formatRollResolvedToastDescription,
+} from "./sessionActivityRowUtils";
 
 const baseEvent: RollResolvedActivityEvent = {
   type: "roll_resolved",
@@ -38,5 +42,42 @@ describe("sessionActivityRowUtils", () => {
         "d20:",
       ),
     ).toBe("d20: [8, 14] → 14 + 3");
+  });
+
+  it("formats contextual advantage sources", () => {
+    expect(
+      formatCheckModifierSource({
+        source_label: "Sabedoria da Coruja",
+        modifier_type: "advantage",
+        roll_type: "skill",
+        skill: "perception",
+        ability: "wisdom",
+        against: "any",
+        applied: true,
+        skip_reason: null,
+      }),
+    ).toBe("Vantagem por Sabedoria da Coruja em perception");
+  });
+
+  it("includes contextual advantage sources in roll resolved toast text", () => {
+    expect(
+      formatRollResolvedToastDescription({
+        ...baseEvent,
+        formula: "1d20 + 0",
+        total: 14,
+        success: true,
+        check_modifier_sources: [
+          {
+            source_label: "Sabedoria da Coruja",
+            modifier_type: "advantage",
+            roll_type: "ability",
+            ability: "wisdom",
+            against: "any",
+            applied: true,
+            skip_reason: null,
+          },
+        ],
+      }),
+    ).toBe("1d20 + 0 = 14 ✓ · Vantagem por Sabedoria da Coruja em wisdom");
   });
 });

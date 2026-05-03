@@ -360,9 +360,15 @@ def get_session_activity(
                 total=int(payload.get("total", 0) or 0),
                 modifierUsed=int(payload.get("modifier_used", 0) or 0),
                 advantageMode=payload.get("advantage_mode") or "normal",
+                formula=payload.get("formula") if isinstance(payload.get("formula"), str) else None,
                 dc=payload.get("dc") if isinstance(payload.get("dc"), int) else None,
                 targetAc=payload.get("target_ac") if isinstance(payload.get("target_ac"), int) else None,
                 success=payload.get("success") if isinstance(payload.get("success"), bool) else None,
+                check_modifier_sources=(
+                    payload.get("check_modifier_sources")
+                    if isinstance(payload.get("check_modifier_sources"), list)
+                    else None
+                ),
                 isGmRoll=bool(payload.get("is_gm_roll", False)),
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),

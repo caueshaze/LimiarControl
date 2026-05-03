@@ -262,9 +262,11 @@ class RollResolvedActivityEvent(BaseModel):
     total: int
     modifierUsed: int
     advantageMode: str
+    formula: Optional[str] = None
     dc: Optional[int] = None
     targetAc: Optional[int] = None
     success: Optional[bool] = None
+    check_modifier_sources: Optional[List[dict]] = None
     isGmRoll: bool = False
     timestamp: datetime
     sessionOffsetSeconds: int

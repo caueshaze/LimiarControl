@@ -58,13 +58,31 @@ export const computeMaxHpAtLevel = (
 
 export const computeInitiative = (dexMod: number): number => dexMod;
 
-export type PassiveSkillBonusSource = { label: string; value: number };
+export type PassiveSkillBonusSource = { label: string; value: number; groupKey: string };
+
+function passiveBonusGroupKey(
+  metadata: Record<string, unknown>,
+  effect: ActiveEffect,
+  params: Record<string, unknown>,
+): string {
+  const groupId = metadata.declarative_effect_group_id;
+  if (typeof groupId === "string" && groupId) return groupId;
+  const source = (metadata.source_spell_key as string) || (metadata.source_spell_name as string);
+  if (typeof source === "string" && source) {
+    const variant = (metadata.selected_variant_key as string) || "";
+    const sk = (params.skill as string) || "";
+    const bonus = params.bonus ?? "";
+    return `${source}|${variant}|passive_skill_bonus|${sk}|${bonus}`;
+  }
+  if (typeof effect.id === "string" && effect.id) return effect.id;
+  return `__unknown_${effect.id ?? Math.random()}`;
+}
 
 export const computePassiveSkillBonusSources = (
   activeEffects: ActiveEffect[],
   skill: string,
 ): PassiveSkillBonusSource[] => {
-  const sources: PassiveSkillBonusSource[] = [];
+  const groupBest = new Map<string, PassiveSkillBonusSource>();
   for (const effect of activeEffects) {
     const metadata = effect.metadata;
     if (!metadata || typeof metadata !== "object") continue;
@@ -79,9 +97,13 @@ export const computePassiveSkillBonusSources = (
       (typeof effect.display_label === "string" && effect.display_label) ||
       (typeof metadata.source_spell_name === "string" && metadata.source_spell_name) ||
       "Passive skill bonus";
-    sources.push({ label, value: p.bonus });
+    const key = passiveBonusGroupKey(metadata as Record<string, unknown>, effect, p);
+    const existing = groupBest.get(key);
+    if (!existing || p.bonus > existing.value) {
+      groupBest.set(key, { label, value: p.bonus, groupKey: key });
+    }
   }
-  return sources;
+  return Array.from(groupBest.values());
 };
 
 export const computePassiveSkillBonus = (
