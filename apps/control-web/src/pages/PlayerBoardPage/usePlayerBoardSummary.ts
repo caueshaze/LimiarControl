@@ -6,7 +6,7 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
-import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
+import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
@@ -104,6 +104,11 @@ export const usePlayerBoardSummary = ({
     [playerSheet, totalWeightKg],
   );
 
+  const baseSpeedMeters = playerSheet?.speedMeters ?? 0;
+  const effectiveSpeedMeters = encumbrance
+    ? applyEncumbranceMovementPenalty(baseSpeedMeters, encumbrance.tier)
+    : baseSpeedMeters;
+
   const playerStatus = useMemo<PlayerBoardStatusSummary | null>(() => {
     if (!playerSheet) return null;
     return {
@@ -119,6 +124,8 @@ export const usePlayerBoardSummary = ({
       encumbranceNormalMaxKg: encumbrance?.normalMaxKg ?? 0,
       encumbranceEncumberedMaxKg: encumbrance?.encumberedMaxKg ?? 0,
       encumbranceHeavilyEncumberedMaxKg: encumbrance?.heavilyEncumberedMaxKg ?? 0,
+      baseSpeedMeters,
+      effectiveSpeedMeters,
       experiencePoints: playerSheet.experiencePoints,
       hitDiceRemaining: playerSheet.hitDiceRemaining,
       hitDiceTotal: playerSheet.hitDiceTotal,
@@ -136,7 +143,7 @@ export const usePlayerBoardSummary = ({
       totalWeightKg: Math.round(totalWeightKg),
       xpPercent: xpState.progressPercent,
     };
-  }, [ac, baseCarryingCapacityKg, carryingCapacityKg, carryingCapacitySources, currentWeapon, encumbrance, hpPercent, initiative, passivePerception, playerSheet, pushDragLiftKg, spellAttack, spellSaveDC, totalWeightKg, xpState.nextLevelThreshold, xpState.progressPercent]);
+  }, [ac, baseCarryingCapacityKg, baseSpeedMeters, carryingCapacityKg, carryingCapacitySources, currentWeapon, effectiveSpeedMeters, encumbrance, hpPercent, initiative, passivePerception, playerSheet, pushDragLiftKg, spellAttack, spellSaveDC, totalWeightKg, xpState.nextLevelThreshold, xpState.progressPercent]);
 
   return {
     boardDescription,

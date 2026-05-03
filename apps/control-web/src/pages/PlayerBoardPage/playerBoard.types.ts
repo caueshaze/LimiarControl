@@ -42,6 +42,8 @@ export type PlayerBoardStatusSummary = {
   encumbranceNormalMaxKg: number;
   encumbranceEncumberedMaxKg: number;
   encumbranceHeavilyEncumberedMaxKg: number;
+  baseSpeedMeters: number;
+  effectiveSpeedMeters: number;
   experiencePoints: number;
   hitDiceRemaining: number;
   hitDiceTotal: number;

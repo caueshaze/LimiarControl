@@ -108,10 +108,22 @@ export const PlayerBoardStatusPanel = ({
 
           <DeathSaveCard combatActive={combatActive} playerStatus={playerStatus} />
 
-          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,1.64fr)]">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,1.64fr)]">
             <StatCard
               label={t("playerBoard.initiativeLabel")}
               value={`${playerStatus.initiative >= 0 ? "+" : ""}${playerStatus.initiative}`}
+            />
+            <StatCard
+              label={t("playerBoard.speedLabel")}
+              value={playerStatus.baseSpeedMeters > 0 ? `${playerStatus.effectiveSpeedMeters} m` : "-"}
+              accent={playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
+                ? encumbranceAccentMap[playerStatus.encumbranceTier]
+                : undefined}
+              helper={
+                playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
+                  ? `${t("playerBoard.speedPenaltyHint")} (base ${playerStatus.baseSpeedMeters} m)`
+                  : null
+              }
             />
             <StatCard
               label={t("sheet.skills.passivePerception")}

@@ -173,4 +173,7 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.carryingCapacityBase": "Base",
   "playerBoard.pushDragLiftLabel": "Push/Drag/Lift",
   "playerBoard.encumbranceTierLabel": "Encumbrance",
+  "playerBoard.speedLabel": "Speed",
+  "playerBoard.speedPenaltyHint": "Penalized by encumbrance",
+  "playerBoard.encumbranceMovementExceed": "This path exceeds your effective speed due to encumbrance.",
 } as const;

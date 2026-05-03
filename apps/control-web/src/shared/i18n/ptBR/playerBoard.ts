@@ -173,4 +173,7 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.carryingCapacityBase": "Base",
   "playerBoard.pushDragLiftLabel": "Empurrar/Puxar/Levantar",
   "playerBoard.encumbranceTierLabel": "Carga",
+  "playerBoard.speedLabel": "Velocidade",
+  "playerBoard.speedPenaltyHint": "Penalizado por carga",
+  "playerBoard.encumbranceMovementExceed": "Este trajeto excede sua velocidade efetiva por carga.",
 } as const;
