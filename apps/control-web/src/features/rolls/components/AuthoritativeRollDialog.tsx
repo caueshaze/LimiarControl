@@ -9,7 +9,7 @@ import type {
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useRollResolution } from "../hooks/useRollResolution";
 import { RollResultCard } from "./RollResultCard";
-import { formatCheckModifierSource } from "../../sessions/components/sessionActivityRowUtils";
+import { formatCheckModifierSource, localizeRollContext } from "../../sessions/components/sessionActivityRowUtils";
 
 export type AuthoritativeRollRequest = {
   rollType: RollType;
@@ -158,7 +158,7 @@ export const AuthoritativeRollDialog = ({
     }
   };
 
-  const context = request.ability ?? request.skill ?? null;
+  const context = localizeRollContext(request.ability, request.skill, t);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
