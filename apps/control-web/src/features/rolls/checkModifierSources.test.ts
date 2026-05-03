@@ -131,3 +131,110 @@ describe("deriveCheckModifierPreviewSources", () => {
     expect(preview[1]?.applied).toBe(true);
   });
 });
+
+describe("deriveCheckModifierPreviewSources — encumbrance disadvantage", () => {
+  it("heavily_encumbered + STR → disadvantage aplicada", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "strength",
+      encumbranceTier: "heavily_encumbered",
+    });
+
+    expect(preview).toHaveLength(1);
+    expect(preview[0]?.applied).toBe(true);
+    expect(preview[0]?.modifier_type).toBe("disadvantage");
+    expect(preview[0]?.source_label).toBe("Carga");
+    expect(preview[0]?.ability).toBe("strength");
+  });
+
+  it("heavily_encumbered + INT → nenhuma entry de encumbrance", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "intelligence",
+      encumbranceTier: "heavily_encumbered",
+    });
+
+    expect(preview).toHaveLength(0);
+  });
+
+  it("overloaded + DEX → disadvantage aplicada", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "dexterity",
+      encumbranceTier: "overloaded",
+    });
+
+    expect(preview).toHaveLength(1);
+    expect(preview[0]?.applied).toBe(true);
+    expect(preview[0]?.modifier_type).toBe("disadvantage");
+  });
+
+  it("encumbered + STR → nenhuma entry de encumbrance", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "strength",
+      encumbranceTier: "encumbered",
+    });
+
+    expect(preview).toHaveLength(0);
+  });
+
+  it("normal + STR → nenhuma entry de encumbrance", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "strength",
+      encumbranceTier: "normal",
+    });
+
+    expect(preview).toHaveLength(0);
+  });
+
+  it("sem encumbranceTier → funciona como antes", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "strength",
+    });
+
+    expect(preview).toHaveLength(0);
+  });
+
+  it("advantage (effect) + encumbrance disadvantage → ambas aplicadas", () => {
+    const owlsWisdomEffect = {
+      id: "effect-1",
+      kind: "spell_effect" as const,
+      duration_type: "manual" as const,
+      created_at: "2026-05-02T00:00:00Z",
+      metadata: {
+        source_spell_name: "Bless",
+        declarative_effect: {
+          type: "advantage_on_checks",
+          params: { ability: "strength", against: "any" },
+        },
+      },
+    };
+    const preview = deriveCheckModifierPreviewSources([owlsWisdomEffect], {
+      rollType: "ability",
+      ability: "strength",
+      encumbranceTier: "heavily_encumbered",
+    });
+
+    expect(preview).toHaveLength(2);
+    expect(preview[0]?.modifier_type).toBe("advantage");
+    expect(preview[0]?.applied).toBe(true);
+    expect(preview[1]?.modifier_type).toBe("disadvantage");
+    expect(preview[1]?.applied).toBe(true);
+    expect(preview[1]?.source_label).toBe("Carga");
+  });
+
+  it("heavily_encumbered + CON → disadvantage aplicada", () => {
+    const preview = deriveCheckModifierPreviewSources([], {
+      rollType: "ability",
+      ability: "constitution",
+      encumbranceTier: "heavily_encumbered",
+    });
+
+    expect(preview).toHaveLength(1);
+    expect(preview[0]?.modifier_type).toBe("disadvantage");
+    expect(preview[0]?.ability).toBe("constitution");
+  });
+});

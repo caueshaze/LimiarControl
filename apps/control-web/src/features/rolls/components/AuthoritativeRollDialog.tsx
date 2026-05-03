@@ -199,7 +199,15 @@ export const AuthoritativeRollDialog = ({
         {modifierSources.length > 0 ? (
           <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-200">
-              {displayedResult ? "Vantagem automática" : "Contexto do efeito"}
+              {(() => {
+                if (!displayedResult) return "Contexto do efeito";
+                const applied = modifierSources.filter((s) => s.applied);
+                const hasAdv = applied.some((s) => s.modifier_type === "advantage");
+                const hasDis = applied.some((s) => s.modifier_type === "disadvantage");
+                if (hasAdv && hasDis) return "Modificadores automáticos";
+                if (hasDis) return "Desvantagem automática";
+                return "Vantagem automática";
+              })()}
             </p>
             <div className="mt-2 space-y-1 text-xs text-slate-100">
               {modifierSources.map((entry, index) => (

@@ -59,6 +59,20 @@ describe("sessionActivityRowUtils", () => {
     ).toBe("Vantagem por Sabedoria da Coruja em perception");
   });
 
+  it("formats contextual disadvantage sources", () => {
+    expect(
+      formatCheckModifierSource({
+        source_label: "Carga",
+        modifier_type: "disadvantage",
+        roll_type: "ability",
+        ability: "strength",
+        against: "any",
+        applied: true,
+        skip_reason: null,
+      }),
+    ).toBe("Desvantagem por Carga em strength");
+  });
+
   it("includes contextual advantage sources in roll resolved toast text", () => {
     expect(
       formatRollResolvedToastDescription({

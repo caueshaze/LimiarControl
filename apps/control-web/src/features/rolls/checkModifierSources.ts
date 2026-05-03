@@ -1,7 +1,7 @@
 import type { AbilityName, SkillName } from "../../entities/roll/rollResolution.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import { SKILL_ABILITY_MAP } from "../character-sheet/constants";
-import { declarativeEffectGroupKey } from "../character-sheet/utils/calculations";
+import { declarativeEffectGroupKey, type EncumbranceTier } from "../character-sheet/utils/calculations";
 
 type RequestRollType = "ability" | "skill";
 
@@ -23,6 +23,7 @@ type RollPreviewRequest = {
   ability?: AbilityName | null;
   skill?: SkillName | null;
   targetParticipantId?: string | null;
+  encumbranceTier?: EncumbranceTier | null;
 };
 
 const CHECK_MODIFIER_TYPES = new Set(["advantage_on_checks", "disadvantage_on_checks"]);
@@ -126,6 +127,22 @@ export const deriveCheckModifierPreviewSources = (
 
     entry.applied = true;
     previewSources.push(entry);
+  }
+
+  const ENCUMBRANCE_DISADVANTAGE_ABILITIES = new Set(["strength", "dexterity", "constitution"]);
+  const tier = request.encumbranceTier;
+  if (
+    (tier === "heavily_encumbered" || tier === "overloaded") &&
+    ENCUMBRANCE_DISADVANTAGE_ABILITIES.has(requestAbility)
+  ) {
+    previewSources.push({
+      source_label: "Carga",
+      modifier_type: "disadvantage",
+      roll_type: request.rollType,
+      ability: requestAbility,
+      skill: request.rollType === "skill" ? request.skill ?? null : null,
+      applied: true,
+    });
   }
 
   return previewSources;

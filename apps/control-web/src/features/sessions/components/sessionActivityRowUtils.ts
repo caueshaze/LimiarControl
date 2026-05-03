@@ -114,6 +114,9 @@ export function formatCheckModifierSource(entry: NonNullable<RollResolvedActivit
   const source = entry.source_label || "efeito ativo";
 
   if (entry.applied) {
+    if (entry.modifier_type === "disadvantage") {
+      return `Desvantagem por ${source} em ${subject}`;
+    }
     return `Vantagem por ${source} em ${subject}`;
   }
   if (entry.skip_reason === "ability_mismatch") {
