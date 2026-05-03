@@ -65,7 +65,13 @@ export const useCombatUiState = ({
     }
     const data = message as { payload?: Record<string, unknown>; type?: string };
     if (data.type === "combat_state_updated") {
-      setState(data.payload as CombatState);
+      const newState = data.payload as CombatState;
+      if (activeCombatIdRef.current && activeCombatIdRef.current !== newState.id) {
+        setLogs([]);
+        logSequenceRef.current = 0;
+      }
+      activeCombatIdRef.current = newState.id;
+      setState(newState);
       setError(null);
       return;
     }
@@ -75,11 +81,14 @@ export const useCombatUiState = ({
     }
   }, [appendLogs]);
 
+  const activeCombatIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     setState(null);
     setLogs([]);
     setError(null);
     logSequenceRef.current = 0;
+    activeCombatIdRef.current = undefined;
   }, [sessionId]);
 
   useEffect(() => {
@@ -90,7 +99,7 @@ export const useCombatUiState = ({
     let active = true;
     const channel = `session:${sessionId}`;
     const replayHistory = (publications: RealtimeHistoryPublication[]) => {
-      const combatLogEntries: CombatLogEntry[] = [];
+      let combatLogEntries: CombatLogEntry[] = [];
       [...publications]
         .sort((left, right) => {
           const leftOffset = left.offset ? Number(left.offset) : 0;
@@ -100,7 +109,13 @@ export const useCombatUiState = ({
         .forEach((publication) => {
           const data = publication.data as { payload?: Record<string, unknown>; type?: string };
           if (data.type === "combat_state_updated") {
-            setState(data.payload as CombatState);
+            const newState = data.payload as CombatState;
+            if (activeCombatIdRef.current && activeCombatIdRef.current !== newState.id) {
+              combatLogEntries = [];
+              logSequenceRef.current = 0;
+            }
+            activeCombatIdRef.current = newState.id;
+            setState(newState);
             return;
           }
           if (data.type === "combat_log_added" && data.payload) {
