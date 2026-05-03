@@ -1,6 +1,7 @@
 import type { AbilityName, SkillName } from "../../entities/roll/rollResolution.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import { SKILL_ABILITY_MAP } from "../character-sheet/constants";
+import { declarativeEffectGroupKey } from "../character-sheet/utils/calculations";
 
 type RequestRollType = "ability" | "skill";
 
@@ -49,7 +50,9 @@ export const deriveCheckModifierPreviewSources = (
   }
 
   const previewSources: CheckModifierSourcePreview[] = [];
-  for (const effect of activeEffects ?? []) {
+  const seenKeys = new Set<string>();
+  for (let i = 0; i < (activeEffects ?? []).length; i++) {
+    const effect = (activeEffects ?? [])[i];
     if (effect.kind !== "spell_effect" || !effect.metadata || typeof effect.metadata !== "object") {
       continue;
     }
@@ -69,6 +72,13 @@ export const deriveCheckModifierPreviewSources = (
     const effectAbility = typeof (params as Record<string, unknown>).ability === "string"
       ? ((params as Record<string, unknown>).ability as string)
       : null;
+
+    const dedupKey = `${declarativeEffectGroupKey(effect.metadata as Record<string, unknown>, effect, String(effectType), effectAbility ?? "", i)}|${effectType}`;
+    if (seenKeys.has(dedupKey)) {
+      continue;
+    }
+    seenKeys.add(dedupKey);
+
     const against = normalizeAgainst((params as Record<string, unknown>).against);
     const selectedTargetParticipantId =
       typeof (effect.metadata as Record<string, unknown>).selected_target_participant_id === "string"

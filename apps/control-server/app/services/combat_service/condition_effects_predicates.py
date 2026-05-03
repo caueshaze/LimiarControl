@@ -160,6 +160,7 @@ def resolve_check_advantage_mode(
         len(active_effects),
     )
     matched = 0
+    seen_keys: set[str] = set()
     for effect in active_effects:
         if effect.get("kind") != "spell_effect":
             continue
@@ -178,6 +179,12 @@ def resolve_check_advantage_mode(
         against = params.get("against")
         if against == "selected_target" and target_participant_id != metadata.get("selected_target_participant_id"):
             continue
+
+        dedup_key = f"{_declarative_effect_group_key(metadata, effect, effect_type, ability)}|{effect_type}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+
         if effect_type == "advantage_on_checks":
             automatic_mode = combine_advantage_modes(automatic_mode, "advantage")
             matched += 1
@@ -214,6 +221,7 @@ def explain_check_modifier_sources(
         target_participant_id,
         len(active_effects),
     )
+    seen_keys: set[str] = set()
     for effect in active_effects:
         if effect.get("kind") != "spell_effect":
             continue
@@ -231,6 +239,11 @@ def explain_check_modifier_sources(
         params = declarative.get("params")
         if not isinstance(params, dict):
             continue
+
+        dedup_key = f"{_declarative_effect_group_key(metadata, effect, effect_type, params.get('ability', ''))}|{effect_type}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
 
         against = (
             params.get("against")
@@ -284,20 +297,38 @@ def explain_check_modifier_sources(
     return explanations
 
 
-def _passive_bonus_group_key(metadata: dict, effect: dict, params: dict) -> str:
+def _declarative_effect_group_key(
+    metadata: dict, effect: dict, effect_type: str, params_key: str
+) -> str:
     group_id = metadata.get("declarative_effect_group_id")
     if isinstance(group_id, str) and group_id:
         return group_id
     source = metadata.get("source_spell_key") or metadata.get("source_spell_name")
     if isinstance(source, str) and source:
         variant = metadata.get("selected_variant_key") or ""
-        skill = params.get("skill", "")
-        bonus = params.get("bonus", "")
-        return f"{source}|{variant}|passive_skill_bonus|{skill}|{bonus}"
+        return f"{source}|{variant}|{effect_type}|{params_key}"
     effect_id = effect.get("id")
     if isinstance(effect_id, str) and effect_id:
         return effect_id
     return f"__unknown_{id(effect)}"
+
+
+def _passive_bonus_group_key(metadata: dict, effect: dict, params: dict) -> str:
+    return _declarative_effect_group_key(
+        metadata,
+        effect,
+        "passive_skill_bonus",
+        f"{params.get('skill', '')}|{params.get('bonus', '')}",
+    )
+
+
+def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
+    return _declarative_effect_group_key(
+        metadata,
+        effect,
+        "carrying_capacity_multiplier",
+        str(params.get("multiplier", "")),
+    )
 
 
 def get_passive_skill_bonus(participant: dict, skill: str) -> int:
@@ -324,21 +355,6 @@ def get_passive_skill_bonus(participant: dict, skill: str) -> int:
         if current is None or bonus > current:
             groups[key] = bonus
     return sum(groups.values())
-
-
-def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
-    group_id = metadata.get("declarative_effect_group_id")
-    if isinstance(group_id, str) and group_id:
-        return group_id
-    source = metadata.get("source_spell_key") or metadata.get("source_spell_name")
-    if isinstance(source, str) and source:
-        variant = metadata.get("selected_variant_key") or ""
-        multiplier = params.get("multiplier", "")
-        return f"{source}|{variant}|carrying_capacity_multiplier|{multiplier}"
-    effect_id = effect.get("id")
-    if isinstance(effect_id, str) and effect_id:
-        return effect_id
-    return f"__unknown_{id(effect)}"
 
 
 def get_carrying_capacity_multiplier(participant: dict) -> float:

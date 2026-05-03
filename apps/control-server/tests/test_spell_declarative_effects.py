@@ -8,7 +8,13 @@ from app.models.combat import CombatPhase, CombatState
 from app.schemas.base_spell import BaseSpellCreate
 from app.schemas.roll import RollActorStats
 from app.services.combat import CombatService
-from app.services.combat_service.condition_effects_predicates import get_carrying_capacity_multiplier
+from app.services.combat_service.condition_effects_predicates import (
+    _declarative_effect_group_key,
+    explain_check_modifier_sources,
+    get_carrying_capacity_multiplier,
+    get_passive_skill_bonus,
+    resolve_check_advantage_mode,
+)
 
 
 class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
@@ -925,7 +931,7 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
             new=AsyncMock(),
         ), patch.object(
             CombatService,
-            "_emit_log",
+            "_emit_and_persist_log",
             new=AsyncMock(),
         ), patch.object(
             CombatService,
@@ -1029,3 +1035,224 @@ class TestCarryingCapacityMultiplier(unittest.TestCase):
         effects = [{"id": "no-meta", "kind": "spell_effect", "metadata": None}]
         participant = self._make_participant(effects)
         self.assertEqual(get_carrying_capacity_multiplier(participant), 1.0)
+
+
+class TestDeclarativeEffectGroupKey(unittest.TestCase):
+    def _effect(self, effect_id="eff-1"):
+        return {"id": effect_id}
+
+    def test_prefers_declarative_effect_group_id(self):
+        metadata = {"declarative_effect_group_id": "group-abc"}
+        key = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|5")
+        self.assertEqual(key, "group-abc")
+
+    def test_composite_key_from_source_spell_key(self):
+        metadata = {"source_spell_key": "owls_wisdom", "selected_variant_key": "owls_wisdom"}
+        key = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|5")
+        self.assertEqual(key, "owls_wisdom|owls_wisdom|passive_skill_bonus|perception|5")
+
+    def test_composite_key_from_source_spell_name_fallback(self):
+        metadata = {"source_spell_name": "Owl's Wisdom"}
+        key = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|5")
+        self.assertEqual(key, "Owl's Wisdom||passive_skill_bonus|perception|5")
+
+    def test_composite_key_includes_effect_type_and_params_key(self):
+        metadata = {"source_spell_key": "enhance_ability", "selected_variant_key": "bulls_strength"}
+        key = _declarative_effect_group_key(metadata, self._effect(), "carrying_capacity_multiplier", "2")
+        self.assertEqual(key, "enhance_ability|bulls_strength|carrying_capacity_multiplier|2")
+
+    def test_falls_back_to_effect_id(self):
+        metadata = {}
+        key = _declarative_effect_group_key(metadata, self._effect("my-id"), "advantage_on_checks", "wisdom")
+        self.assertEqual(key, "my-id")
+
+    def test_falls_back_to_unknown_with_python_id(self):
+        metadata = {}
+        effect = {}
+        key = _declarative_effect_group_key(metadata, effect, "advantage_on_checks", "wisdom")
+        self.assertTrue(key.startswith("__unknown_"))
+
+    def test_empty_group_id_treated_as_absent(self):
+        metadata = {"declarative_effect_group_id": ""}
+        key = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|5")
+        self.assertNotEqual(key, "")
+
+    def test_different_params_keys_produce_different_groups(self):
+        metadata = {"source_spell_key": "owls_wisdom"}
+        key1 = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|5")
+        key2 = _declarative_effect_group_key(metadata, self._effect(), "passive_skill_bonus", "perception|3")
+        self.assertNotEqual(key1, key2)
+
+
+class TestAdvantageOnChecksDedup(unittest.TestCase):
+    def _make_participant(self, effects):
+        return {"id": "p-1", "active_effects": effects, "status": "active"}
+
+    def _advantage_effect(self, ability="wisdom", group_id=None, source_spell_key=None, effect_id="eff-1"):
+        metadata = {
+            "declarative_effect": {
+                "type": "advantage_on_checks",
+                "params": {"ability": ability, "against": "any"},
+            },
+            "source_spell_name": "Test Spell",
+        }
+        if group_id:
+            metadata["declarative_effect_group_id"] = group_id
+        if source_spell_key:
+            metadata["source_spell_key"] = source_spell_key
+        return {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "metadata": metadata,
+        }
+
+    def test_two_identical_advantages_same_group_resolve_to_advantage(self):
+        effects = [
+            self._advantage_effect(group_id="group-1", effect_id="eff-1"),
+            self._advantage_effect(group_id="group-1", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        mode = resolve_check_advantage_mode(participant, "wisdom")
+        self.assertEqual(mode, "advantage")
+
+    def test_two_identical_advantages_same_source_key_resolve_to_advantage(self):
+        effects = [
+            self._advantage_effect(source_spell_key="owls_wisdom", effect_id="eff-1"),
+            self._advantage_effect(source_spell_key="owls_wisdom", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        mode = resolve_check_advantage_mode(participant, "wisdom")
+        self.assertEqual(mode, "advantage")
+
+    def test_different_groups_both_contribute(self):
+        effects = [
+            self._advantage_effect(group_id="group-a", effect_id="eff-1"),
+            self._advantage_effect(group_id="group-b", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        mode = resolve_check_advantage_mode(participant, "wisdom")
+        self.assertEqual(mode, "advantage")
+
+    def test_advantage_plus_disadvantage_same_group_cancels(self):
+        adv = self._advantage_effect(group_id="group-1", effect_id="eff-1")
+        dis = self._advantage_effect(group_id="group-1", effect_id="eff-2")
+        dis["metadata"]["declarative_effect"]["type"] = "disadvantage_on_checks"
+        participant = self._make_participant([adv, dis])
+        mode = resolve_check_advantage_mode(participant, "wisdom")
+        self.assertEqual(mode, "normal")
+
+    def test_effects_without_metadata_are_skipped(self):
+        effects = [
+            {"id": "no-meta", "kind": "spell_effect", "metadata": None},
+            self._advantage_effect(effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        mode = resolve_check_advantage_mode(participant, "wisdom")
+        self.assertEqual(mode, "advantage")
+
+
+class TestExplainCheckModifierSourcesDedup(unittest.TestCase):
+    def _make_participant(self, effects):
+        return {"id": "p-1", "active_effects": effects, "status": "active"}
+
+    def _advantage_effect(self, ability="wisdom", group_id=None, source_spell_key=None, effect_id="eff-1"):
+        metadata = {
+            "declarative_effect": {
+                "type": "advantage_on_checks",
+                "params": {"ability": ability, "against": "any"},
+            },
+            "source_spell_name": "Test Spell",
+        }
+        if group_id:
+            metadata["declarative_effect_group_id"] = group_id
+        if source_spell_key:
+            metadata["source_spell_key"] = source_spell_key
+        return {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "metadata": metadata,
+        }
+
+    def test_two_identical_effects_same_group_returns_one_entry(self):
+        effects = [
+            self._advantage_effect(group_id="group-1", effect_id="eff-1"),
+            self._advantage_effect(group_id="group-1", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        explanations = explain_check_modifier_sources(participant, ability="wisdom", roll_type="ability")
+        self.assertEqual(len(explanations), 1)
+        self.assertTrue(explanations[0]["applied"])
+
+    def test_two_identical_effects_same_source_key_returns_one_entry(self):
+        effects = [
+            self._advantage_effect(source_spell_key="owls_wisdom", effect_id="eff-1"),
+            self._advantage_effect(source_spell_key="owls_wisdom", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        explanations = explain_check_modifier_sources(participant, ability="wisdom", roll_type="ability")
+        self.assertEqual(len(explanations), 1)
+
+    def test_different_groups_returns_both(self):
+        effects = [
+            self._advantage_effect(group_id="group-a", effect_id="eff-1"),
+            self._advantage_effect(group_id="group-b", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        explanations = explain_check_modifier_sources(participant, ability="wisdom", roll_type="ability")
+        self.assertEqual(len(explanations), 2)
+
+    def test_no_metadata_effects_are_skipped(self):
+        effects = [
+            {"id": "no-meta", "kind": "spell_effect", "metadata": None},
+            self._advantage_effect(effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        explanations = explain_check_modifier_sources(participant, ability="wisdom", roll_type="ability")
+        self.assertEqual(len(explanations), 1)
+
+
+class TestPassiveSkillBonusDedup(unittest.TestCase):
+    def _make_participant(self, effects):
+        return {"id": "p-1", "active_effects": effects, "status": "active"}
+
+    def _bonus_effect(self, skill="perception", bonus=5, group_id=None, source_spell_key=None, effect_id="eff-1"):
+        metadata = {
+            "declarative_effect": {
+                "type": "passive_skill_bonus",
+                "params": {"skill": skill, "bonus": bonus},
+            },
+            "source_spell_name": "Test Spell",
+        }
+        if group_id:
+            metadata["declarative_effect_group_id"] = group_id
+        if source_spell_key:
+            metadata["source_spell_key"] = source_spell_key
+        return {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "metadata": metadata,
+        }
+
+    def test_two_same_group_bonuses_uses_max(self):
+        effects = [
+            self._bonus_effect(bonus=5, group_id="group-1", effect_id="eff-1"),
+            self._bonus_effect(bonus=3, group_id="group-1", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_passive_skill_bonus(participant, "perception"), 5)
+
+    def test_two_same_source_key_bonuses_uses_max(self):
+        effects = [
+            self._bonus_effect(bonus=5, source_spell_key="owls_wisdom", effect_id="eff-1"),
+            self._bonus_effect(bonus=5, source_spell_key="owls_wisdom", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_passive_skill_bonus(participant, "perception"), 5)
+
+    def test_different_groups_sum(self):
+        effects = [
+            self._bonus_effect(bonus=5, group_id="group-a", effect_id="eff-1"),
+            self._bonus_effect(bonus=3, group_id="group-b", effect_id="eff-2"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_passive_skill_bonus(participant, "perception"), 8)
