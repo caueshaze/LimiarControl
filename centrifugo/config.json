@@ -12,8 +12,8 @@
     {
       "name": "session",
       "presence": false,
-      "history_size": 50,
-      "history_ttl": "300s",
+      "history_size": 300,
+      "history_ttl": "600s",
       "force_recovery": true,
       "allow_subscribe_for_client": true,
       "allow_history_for_subscriber": true

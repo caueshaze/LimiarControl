@@ -133,7 +133,7 @@ export const useCombatUiState = ({
     }, pollMs);
     const unsubscribe = subscribe(channel, {
       onSubscribed: () => {
-        void getHistory(channel, Math.max(historyLimit * 3, 20))
+        void getHistory(channel, 300)
           .then((publications) => {
             if (active) {
               replayHistory(publications);
