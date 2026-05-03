@@ -12,6 +12,13 @@ import {
   WeaponCard,
 } from "./player-board-status/PlayerBoardStatusCards";
 
+const encumbranceAccentMap: Record<PlayerBoardStatusSummary["encumbranceTier"], string> = {
+  normal: "text-slate-300",
+  encumbered: "text-amber-400",
+  heavily_encumbered: "text-red-400",
+  overloaded: "text-red-600",
+};
+
 type Props = {
   combatActive: boolean;
   pendingRoll: PendingRoll | null;
@@ -121,6 +128,16 @@ export const PlayerBoardStatusPanel = ({
               helper={
                 playerStatus.carryingCapacitySources?.length
                   ? `${t("playerBoard.carryingCapacityBase")}: ${playerStatus.baseCarryingCapacityKg} kg\u2003${playerStatus.carryingCapacitySources.map((s) => `${s.label} ×${s.multiplier}`).join(", ")}`
+                  : null
+              }
+            />
+            <StatCard
+              label={t("playerBoard.encumbranceTierLabel")}
+              value={`${playerStatus.totalWeightKg} kg`}
+              accent={encumbranceAccentMap[playerStatus.encumbranceTier]}
+              helper={
+                playerStatus.encumbranceTier !== "normal"
+                  ? `${playerStatus.encumbranceNormalMaxKg} kg`
                   : null
               }
             />

@@ -38,6 +38,10 @@ export type PlayerBoardStatusSummary = {
   currentWeapon: PlayerBoardWeaponSummary | null;
   deathSaveFailures: number;
   deathSaveSuccesses: number;
+  encumbranceTier: "normal" | "encumbered" | "heavily_encumbered" | "overloaded";
+  encumbranceNormalMaxKg: number;
+  encumbranceEncumberedMaxKg: number;
+  encumbranceHeavilyEncumberedMaxKg: number;
   experiencePoints: number;
   hitDiceRemaining: number;
   hitDiceTotal: number;
@@ -54,6 +58,7 @@ export type PlayerBoardStatusSummary = {
   spellAttack: number | null;
   spellSaveDC: number | null;
   tempHp: number;
+  totalWeightKg: number;
   xpPercent: number;
 };
 

@@ -3,7 +3,8 @@ import type { CharacterSheet, InventoryItem } from "../model/characterSheet.type
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section, RemoveBtn } from "./Section";
 import { input, fieldLabel, btnPrimary } from "./styles";
-import { computeTotalWeight, LB_TO_KG, safeParseInt } from "../utils/calculations";
+import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG, safeParseInt } from "../utils/calculations";
+import type { EncumbranceTier } from "../utils/calculations";
 import {
   findCreationItemByCanonicalKey,
   getCreationCatalogItemsSorted,
@@ -21,6 +22,7 @@ import { buildWalletDisplay } from "../../shop/utils/shopCurrency";
 type Props = {
   inventory: CharacterSheet["inventory"];
   currency?: CharacterSheet["currency"];
+  strengthScore: number;
   onAdd: SheetActions["addItem"];
   onRemove: SheetActions["removeItem"];
   onUpdate: SheetActions["updateItem"];
@@ -29,9 +31,17 @@ type Props = {
   readOnly?: boolean;
 };
 
+const encumbranceTierColor: Record<EncumbranceTier, string> = {
+  normal: "text-slate-300",
+  encumbered: "text-amber-400",
+  heavily_encumbered: "text-red-400",
+  overloaded: "text-red-600",
+};
+
 export const Equipment = ({
   inventory,
   currency,
+  strengthScore,
   onAdd,
   onRemove,
   onUpdate,
@@ -41,6 +51,10 @@ export const Equipment = ({
 }: Props) => {
   const { t, locale } = useLocale();
   const totalWeight = computeTotalWeight(inventory);
+  const totalWeightKg = totalWeight * LB_TO_KG;
+  const encumbrance = computeEncumbranceTier({ strengthScore, totalWeightKg });
+  const tierColorClass = encumbranceTierColor[encumbrance.tier];
+  const isEncumbered = encumbrance.tier !== "normal";
   const hasCurrency = Boolean(
     currency && Object.values(currency).some((value) => value > 0),
   );
@@ -79,7 +93,15 @@ export const Equipment = ({
         <div className="space-y-1">
           <span className="block text-xs text-slate-500">
             {t("sheet.equipment.totalWeight")}:{" "}
-            <span className="font-semibold text-slate-300">{Math.round(totalWeight * LB_TO_KG)} kg</span>
+            {isEncumbered ? (
+              <span className={`font-semibold ${tierColorClass}`}>
+                {Math.round(totalWeightKg)} / {encumbrance.normalMaxKg} kg
+                {" — "}
+                {t(`sheet.equipment.encumbrance.${encumbrance.tier}`)}
+              </span>
+            ) : (
+              <span className="font-semibold text-slate-300">{Math.round(totalWeightKg)} kg</span>
+            )}
           </span>
           {readOnly && hasCurrency && (
             <div className="pt-1">

@@ -172,4 +172,5 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.carryingCapacityLabel": "Capacidade de Carga",
   "playerBoard.carryingCapacityBase": "Base",
   "playerBoard.pushDragLiftLabel": "Empurrar/Puxar/Levantar",
+  "playerBoard.encumbranceTierLabel": "Carga",
 } as const;
