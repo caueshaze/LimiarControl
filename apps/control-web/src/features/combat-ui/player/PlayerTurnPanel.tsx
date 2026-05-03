@@ -314,6 +314,8 @@ export const PlayerTurnPanel = ({
                 </select>
               </label>
 
+            <hr className="border-white/10" />
+
             <PlayerActionPanels
               activeActionPanel={activeActionPanel}
               actionUsed={actionUsed}
