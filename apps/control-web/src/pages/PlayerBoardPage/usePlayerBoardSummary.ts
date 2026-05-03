@@ -3,9 +3,11 @@ import type { Item } from "../../entities/item";
 import { useMemo } from "react";
 import type { InventoryItem } from "../../entities/inventory";
 import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/useCharacterSheetDerived";
+import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
+import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
 import type { PlayerBoardStatusSummary } from "./playerBoard.types";
 import { buildPlayerBoardWeaponSummary } from "./playerBoardWeaponSummary";
@@ -15,6 +17,7 @@ type ActiveSessionLike = {
 };
 
 type Props = {
+  activeEffects?: ActiveEffect[] | null;
   activeSession: ActiveSessionLike | null;
   effectiveCampaignId: string | null;
   inventory: InventoryItem[] | null;
@@ -25,6 +28,7 @@ type Props = {
 };
 
 export const usePlayerBoardSummary = ({
+  activeEffects,
   activeSession,
   effectiveCampaignId,
   inventory,
@@ -36,6 +40,12 @@ export const usePlayerBoardSummary = ({
   const { locale } = useLocale();
   const { ac, hpPercent, initiative, passivePerception, spellAttack, spellSaveDC } =
     useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET);
+  const {
+    baseCarryingCapacityKg,
+    carryingCapacityKg,
+    pushDragLiftKg,
+    sources: carryingCapacitySources,
+  } = useCarryingCapacity(playerSheet?.abilities.strength ?? INITIAL_SHEET.abilities.strength, activeEffects);
   const xpState = getCharacterProgressState(
     playerSheet?.level ?? INITIAL_SHEET.level,
     playerSheet?.experiencePoints ?? INITIAL_SHEET.experiencePoints,
@@ -84,6 +94,9 @@ export const usePlayerBoardSummary = ({
     if (!playerSheet) return null;
     return {
       ac,
+      baseCarryingCapacityKg,
+      carryingCapacityKg,
+      carryingCapacitySources,
       currentHp: playerSheet.currentHP,
       currentWeapon,
       deathSaveFailures: playerSheet.deathSaves.failures,
@@ -98,12 +111,13 @@ export const usePlayerBoardSummary = ({
       maxHp: playerSheet.maxHP,
       nextLevelThreshold: xpState.nextLevelThreshold,
       passivePerception,
+      pushDragLiftKg,
       spellAttack,
       spellSaveDC,
       tempHp: playerSheet.tempHP,
       xpPercent: xpState.progressPercent,
     };
-  }, [ac, currentWeapon, hpPercent, initiative, passivePerception, playerSheet, spellAttack, spellSaveDC, xpState.nextLevelThreshold, xpState.progressPercent]);
+  }, [ac, baseCarryingCapacityKg, carryingCapacityKg, carryingCapacitySources, currentWeapon, hpPercent, initiative, passivePerception, playerSheet, pushDragLiftKg, spellAttack, spellSaveDC, xpState.nextLevelThreshold, xpState.progressPercent]);
 
   return {
     boardDescription,

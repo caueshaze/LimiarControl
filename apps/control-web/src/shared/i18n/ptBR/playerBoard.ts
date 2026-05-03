@@ -169,4 +169,7 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.threeFailedDeathSaves": "Você atingiu 3 falhas nos testes de morte.",
   "playerBoard.deathSaveSucceeded": "Teste contra a morte bem-sucedido.",
   "playerBoard.deathSaveFailed": "Teste contra a morte falhou.",
+  "playerBoard.carryingCapacityLabel": "Capacidade de Carga",
+  "playerBoard.carryingCapacityBase": "Base",
+  "playerBoard.pushDragLiftLabel": "Empurrar/Puxar/Levantar",
 } as const;

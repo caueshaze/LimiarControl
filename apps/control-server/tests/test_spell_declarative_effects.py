@@ -8,6 +8,7 @@ from app.models.combat import CombatPhase, CombatState
 from app.schemas.base_spell import BaseSpellCreate
 from app.schemas.roll import RollActorStats
 from app.services.combat import CombatService
+from app.services.combat_service.condition_effects_predicates import get_carrying_capacity_multiplier
 
 
 class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
@@ -953,3 +954,78 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
 
         mock_flag_modified.assert_called_once_with(state, "participants")
         self.assertEqual(result, {"ok": True})
+
+
+class TestCarryingCapacityMultiplier(unittest.TestCase):
+    def _make_participant(self, effects=None):
+        return {
+            "id": "p-1",
+            "ref_id": "ref-1",
+            "kind": "player",
+            "display_name": "Test",
+            "active_effects": effects or [],
+        }
+
+    def _carry_effect(self, multiplier, group_id=None, source_name=None):
+        metadata = {
+            "source_spell_name": source_name or "Enhance Ability",
+            "declarative_effect": {
+                "type": "carrying_capacity_multiplier",
+                "params": {"multiplier": multiplier},
+            },
+        }
+        if group_id:
+            metadata["declarative_effect_group_id"] = group_id
+        return {
+            "id": f"eff-{multiplier}-{group_id or source_name or 'default'}",
+            "kind": "spell_effect",
+            "metadata": metadata,
+        }
+
+    def test_no_effects_returns_one(self):
+        participant = self._make_participant([])
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 1.0)
+
+    def test_single_x2_multiplier(self):
+        participant = self._make_participant([self._carry_effect(2.0)])
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 2.0)
+
+    def test_two_same_group_x2_does_not_double(self):
+        effects = [
+            self._carry_effect(2.0, group_id="g1"),
+            self._carry_effect(2.0, group_id="g1"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 2.0)
+
+    def test_different_groups_x2_and_x3_uses_max(self):
+        effects = [
+            self._carry_effect(2.0, group_id="g1"),
+            self._carry_effect(3.0, group_id="g2"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 3.0)
+
+    def test_same_group_x2_and_x3_uses_max(self):
+        effects = [
+            self._carry_effect(2.0, group_id="g1"),
+            self._carry_effect(3.0, group_id="g1"),
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 3.0)
+
+    def test_ignores_non_spell_effects(self):
+        effects = [
+            {
+                "id": "condition-eff",
+                "kind": "condition",
+                "condition_type": "prone",
+            }
+        ]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 1.0)
+
+    def test_ignores_null_metadata(self):
+        effects = [{"id": "no-meta", "kind": "spell_effect", "metadata": None}]
+        participant = self._make_participant(effects)
+        self.assertEqual(get_carrying_capacity_multiplier(participant), 1.0)

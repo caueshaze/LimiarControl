@@ -193,3 +193,79 @@ export const computeTotalWeight = (
   items: CharacterSheet["inventory"],
 ): number =>
   items.reduce((sum, item) => sum + item.weight * item.quantity, 0);
+
+// ── Carrying Capacity ────────────────────────────────────────────────────────
+
+export const LB_TO_KG = 0.45359237;
+
+export type CarryingCapacitySource = { label: string; multiplier: number; groupKey: string };
+
+function carryingCapacityGroupKey(
+  metadata: Record<string, unknown>,
+  effect: ActiveEffect,
+  params: Record<string, unknown>,
+): string {
+  const groupId = metadata.declarative_effect_group_id;
+  if (typeof groupId === "string" && groupId) return groupId;
+  const source = (metadata.source_spell_key as string) || (metadata.source_spell_name as string);
+  if (typeof source === "string" && source) {
+    const variant = (metadata.selected_variant_key as string) || "";
+    const mult = params.multiplier ?? "";
+    return `${source}|${variant}|carrying_capacity_multiplier|${mult}`;
+  }
+  if (typeof effect.id === "string" && effect.id) return effect.id;
+  return `__unknown_${effect.id ?? Math.random()}`;
+}
+
+export const computeCarryingCapacityMultiplierSources = (
+  activeEffects: ActiveEffect[],
+): CarryingCapacitySource[] => {
+  const groupBest = new Map<string, CarryingCapacitySource>();
+  for (const effect of activeEffects) {
+    const metadata = effect.metadata;
+    if (!metadata || typeof metadata !== "object") continue;
+    const declarative = metadata.declarative_effect;
+    if (!declarative || typeof declarative !== "object") continue;
+    if ((declarative as Record<string, unknown>).type !== "carrying_capacity_multiplier") continue;
+    const params = (declarative as Record<string, unknown>).params;
+    if (!params || typeof params !== "object") continue;
+    const p = params as Record<string, unknown>;
+    if (typeof p.multiplier !== "number") continue;
+    const label =
+      (typeof effect.display_label === "string" && effect.display_label) ||
+      (typeof metadata.source_spell_name === "string" && metadata.source_spell_name) ||
+      "Carrying capacity bonus";
+    const key = carryingCapacityGroupKey(metadata as Record<string, unknown>, effect, p);
+    const existing = groupBest.get(key);
+    if (!existing || p.multiplier > existing.multiplier) {
+      groupBest.set(key, { label, multiplier: p.multiplier, groupKey: key });
+    }
+  }
+  return Array.from(groupBest.values());
+};
+
+export const computeCarryingCapacityMultiplier = (activeEffects: ActiveEffect[]): number => {
+  const sources = computeCarryingCapacityMultiplierSources(activeEffects);
+  if (sources.length === 0) return 1.0;
+  return Math.max(...sources.map((s) => s.multiplier));
+};
+
+export const computeCarryingCapacity = (
+  strengthScore: number,
+  activeEffects: ActiveEffect[],
+) => {
+  const multiplier = computeCarryingCapacityMultiplier(activeEffects);
+  const baseKg = strengthScore * 15 * LB_TO_KG;
+  const effectiveKg = baseKg * multiplier;
+  const carryingCapacityKg = Math.round(effectiveKg);
+  const pushDragLiftKg = Math.round(effectiveKg * 2);
+  const baseCarryingCapacityKg = Math.round(baseKg);
+
+  return {
+    baseCarryingCapacityKg,
+    carryingCapacityKg,
+    pushDragLiftKg,
+    multiplier,
+    sources: computeCarryingCapacityMultiplierSources(activeEffects),
+  };
+};

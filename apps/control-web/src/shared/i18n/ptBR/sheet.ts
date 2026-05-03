@@ -104,7 +104,7 @@ export const sheetPtBRDictionary = {
   "sheet.equipment.itemName": "Nome do Item",
   "sheet.equipment.itemNamePlaceholder": "Nome do item",
   "sheet.equipment.qty": "Qtd",
-  "sheet.equipment.weight": "Peso (lb)",
+  "sheet.equipment.weight": "Peso (kg)",
   "sheet.equipment.notes": "Observações",
   "sheet.equipment.notesPlaceholder": "Observações...",
   "sheet.equipment.removeItem": "Remover item",

@@ -324,3 +324,46 @@ def get_passive_skill_bonus(participant: dict, skill: str) -> int:
         if current is None or bonus > current:
             groups[key] = bonus
     return sum(groups.values())
+
+
+def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
+    group_id = metadata.get("declarative_effect_group_id")
+    if isinstance(group_id, str) and group_id:
+        return group_id
+    source = metadata.get("source_spell_key") or metadata.get("source_spell_name")
+    if isinstance(source, str) and source:
+        variant = metadata.get("selected_variant_key") or ""
+        multiplier = params.get("multiplier", "")
+        return f"{source}|{variant}|carrying_capacity_multiplier|{multiplier}"
+    effect_id = effect.get("id")
+    if isinstance(effect_id, str) and effect_id:
+        return effect_id
+    return f"__unknown_{id(effect)}"
+
+
+def get_carrying_capacity_multiplier(participant: dict) -> float:
+    groups: dict[str, float] = {}
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "carrying_capacity_multiplier":
+            continue
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        multiplier = params.get("multiplier")
+        if not isinstance(multiplier, (int, float)):
+            continue
+        key = _carrying_capacity_group_key(metadata, effect, params)
+        current = groups.get(key)
+        if current is None or multiplier > current:
+            groups[key] = float(multiplier)
+    if not groups:
+        return 1.0
+    return max(groups.values())

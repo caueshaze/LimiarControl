@@ -104,7 +104,7 @@ export const sheetEnUSDictionary = {
   "sheet.equipment.itemName": "Item Name",
   "sheet.equipment.itemNamePlaceholder": "Item name",
   "sheet.equipment.qty": "Qty",
-  "sheet.equipment.weight": "Weight (lb)",
+  "sheet.equipment.weight": "Weight (kg)",
   "sheet.equipment.notes": "Notes",
   "sheet.equipment.notesPlaceholder": "Notes...",
   "sheet.equipment.removeItem": "Remove item",

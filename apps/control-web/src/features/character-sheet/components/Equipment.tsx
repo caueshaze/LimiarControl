@@ -3,7 +3,7 @@ import type { CharacterSheet, InventoryItem } from "../model/characterSheet.type
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section, RemoveBtn } from "./Section";
 import { input, fieldLabel, btnPrimary } from "./styles";
-import { computeTotalWeight, safeParseInt } from "../utils/calculations";
+import { computeTotalWeight, LB_TO_KG, safeParseInt } from "../utils/calculations";
 import {
   findCreationItemByCanonicalKey,
   getCreationCatalogItemsSorted,
@@ -79,7 +79,7 @@ export const Equipment = ({
         <div className="space-y-1">
           <span className="block text-xs text-slate-500">
             {t("sheet.equipment.totalWeight")}:{" "}
-            <span className="font-semibold text-slate-300">{totalWeight} lb</span>
+            <span className="font-semibold text-slate-300">{Math.round(totalWeight * LB_TO_KG)} kg</span>
           </span>
           {readOnly && hasCurrency && (
             <div className="pt-1">
@@ -191,9 +191,9 @@ const ItemRow = ({
               type="number"
               min={0}
               step={0.1}
-              value={catalogItem?.weight ?? item.weight}
+              value={(() => { const raw = catalogItem?.weight ?? item.weight; return Math.round(raw * LB_TO_KG * 100) / 100; })()}
               disabled={readOnly || creationCatalogBacked}
-              onChange={(e) => onUpdate(item.id, "weight", Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={(e) => onUpdate(item.id, "weight", Math.max(0, parseFloat(e.target.value) || 0) / LB_TO_KG)}
               className={input}
             />
           </div>
@@ -268,7 +268,7 @@ const buildCatalogDetailBits = (
       : null,
     item.strengthRequirement ? `${strengthLabel} ${item.strengthRequirement}` : null,
     item.versatileDamage ? `${versatileLabel} ${item.versatileDamage}` : null,
-    item.weight ? `${t("shop.card.weight")} ${item.weight}` : null,
+    item.weight ? `${t("shop.card.weight")} ${Math.round(item.weight * LB_TO_KG * 100) / 100} kg` : null,
   ];
 
   return bits.filter((bit): bit is string => Boolean(bit));
