@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { computeAbilityScoreTotal, computePassiveSkillBonus, computePassiveSkillBonusSources } from "./calculations";
+import {
+  computeAbilityScoreTotal,
+  computeCarryingCapacity,
+  computeCarryingCapacityMultiplier,
+  computeCarryingCapacityMultiplierSources,
+  computePassiveSkillBonus,
+  computePassiveSkillBonusSources,
+  LB_TO_KG,
+} from "./calculations";
 import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import {
   computeBaseAbilitiesForPointAccounting,
@@ -381,5 +389,195 @@ describe("computePassiveSkillBonus", () => {
     expect(sources[1].label).toBe("Enhance Ability");
     expect(sources[2].label).toBe("Passive skill bonus");
     expect(sources.map((s) => s.value)).toEqual([5, 3, 2]);
+  });
+});
+
+const makeCarryingCapacityEffect = (
+  multiplier: number,
+  overrides: Partial<ActiveEffect> = {},
+): ActiveEffect => ({
+  id: `effect-carry-${multiplier}`,
+  kind: "spell_effect",
+  duration_type: "manual",
+  created_at: "2026-05-01T00:00:00Z",
+  display_label: "Enhance Ability",
+  metadata: {
+    source_spell_name: "Enhance Ability",
+    declarative_effect: {
+      type: "carrying_capacity_multiplier",
+      params: { multiplier },
+    },
+  },
+  ...overrides,
+});
+
+describe("computeCarryingCapacity", () => {
+  it("STR 10 → base 68 kg, push/drag/lift 136 kg", () => {
+    const result = computeCarryingCapacity(10, []);
+    expect(result.baseCarryingCapacityKg).toBe(Math.round(10 * 15 * LB_TO_KG));
+    expect(result.carryingCapacityKg).toBe(result.baseCarryingCapacityKg);
+    expect(result.pushDragLiftKg).toBe(result.baseCarryingCapacityKg * 2);
+    expect(result.multiplier).toBe(1.0);
+  });
+
+  it("STR 16 → base 109 kg, push/drag/lift 218 kg", () => {
+    const result = computeCarryingCapacity(16, []);
+    expect(result.baseCarryingCapacityKg).toBe(Math.round(16 * 15 * LB_TO_KG));
+    expect(result.carryingCapacityKg).toBe(result.baseCarryingCapacityKg);
+    expect(result.pushDragLiftKg).toBe(result.baseCarryingCapacityKg * 2);
+  });
+
+  it("STR 16 + Bull's Strength (×2) → 218 kg carrying", () => {
+    const effects = [makeCarryingCapacityEffect(2)];
+    const result = computeCarryingCapacity(16, effects);
+    expect(result.carryingCapacityKg).toBe(Math.round(16 * 15 * LB_TO_KG * 2));
+    expect(result.pushDragLiftKg).toBe(Math.round(16 * 15 * LB_TO_KG * 4));
+    expect(result.multiplier).toBe(2);
+  });
+
+  it("dois efeitos ×2 → continua 218 kg (não 436)", () => {
+    const effects = [
+      makeCarryingCapacityEffect(2, {
+        id: "effect-carry-dup-a",
+        metadata: {
+          source_spell_name: "Enhance Ability",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "carrying_capacity_multiplier", params: { multiplier: 2 } },
+        },
+      }),
+      makeCarryingCapacityEffect(2, {
+        id: "effect-carry-dup-b",
+        metadata: {
+          source_spell_name: "Enhance Ability",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "carrying_capacity_multiplier", params: { multiplier: 2 } },
+        },
+      }),
+    ];
+    const result = computeCarryingCapacity(16, effects);
+    expect(result.multiplier).toBe(2);
+    expect(result.carryingCapacityKg).toBe(Math.round(16 * 15 * LB_TO_KG * 2));
+  });
+
+  it("efeito ×3 vs ×2 → usa ×3 (max, não sum)", () => {
+    const effects = [
+      makeCarryingCapacityEffect(2, {
+        id: "effect-carry-x2",
+        metadata: {
+          source_spell_name: "Enhance Ability",
+          declarative_effect_group_id: "group-x2",
+          declarative_effect: { type: "carrying_capacity_multiplier", params: { multiplier: 2 } },
+        },
+      }),
+      makeCarryingCapacityEffect(3, {
+        id: "effect-carry-x3",
+        metadata: {
+          source_spell_name: "Another Spell",
+          declarative_effect_group_id: "group-x3",
+          declarative_effect: { type: "carrying_capacity_multiplier", params: { multiplier: 3 } },
+        },
+      }),
+    ];
+    const result = computeCarryingCapacity(16, effects);
+    expect(result.multiplier).toBe(3);
+  });
+
+  it("pushDragLiftKg não acumula erro de arredondamento", () => {
+    const effects = [makeCarryingCapacityEffect(3)];
+    const result = computeCarryingCapacity(7, effects);
+    const baseKg = 7 * 15 * LB_TO_KG * 3;
+    expect(result.pushDragLiftKg).toBe(Math.round(baseKg * 2));
+    expect(result.carryingCapacityKg).toBe(Math.round(baseKg));
+  });
+
+  it("sem active_effects → multiplier 1.0, valores base", () => {
+    const result = computeCarryingCapacity(10, []);
+    expect(result.multiplier).toBe(1.0);
+    expect(result.carryingCapacityKg).toBe(result.baseCarryingCapacityKg);
+    expect(result.sources).toEqual([]);
+  });
+
+  it("ignora efeito sem declarative_effect", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "no-declarative",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: { source_spell_name: "Something" },
+      },
+    ];
+    expect(computeCarryingCapacityMultiplier(effects)).toBe(1.0);
+  });
+
+  it("ignora efeito com metadata nula", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "null-meta",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: null,
+      },
+    ];
+    expect(computeCarryingCapacityMultiplier(effects)).toBe(1.0);
+  });
+
+  it("usa display_label com fallback para source_spell_name e default", () => {
+    const withDisplayLabel = makeCarryingCapacityEffect(2, {
+      id: "eff-label-1",
+      display_label: "Força do Touro",
+      metadata: {
+        source_spell_name: "Força do Touro",
+        declarative_effect_group_id: "group-a",
+        declarative_effect: {
+          type: "carrying_capacity_multiplier",
+          params: { multiplier: 2 },
+        },
+      },
+    });
+    const withSpellName: ActiveEffect = {
+      id: "eff-label-2",
+      kind: "spell_effect",
+      duration_type: "manual",
+      created_at: "2026-05-01T00:00:00Z",
+      display_label: null,
+      metadata: {
+        source_spell_name: "Enhance Ability",
+        declarative_effect_group_id: "group-b",
+        declarative_effect: {
+          type: "carrying_capacity_multiplier",
+          params: { multiplier: 2 },
+        },
+      },
+    };
+    const withNoLabel: ActiveEffect = {
+      id: "eff-label-3",
+      kind: "spell_effect",
+      duration_type: "manual",
+      created_at: "2026-05-01T00:00:00Z",
+      display_label: null,
+      metadata: {
+        declarative_effect_group_id: "group-c",
+        declarative_effect: {
+          type: "carrying_capacity_multiplier",
+          params: { multiplier: 2 },
+        },
+      },
+    };
+
+    const sources = computeCarryingCapacityMultiplierSources(
+      [withDisplayLabel, withSpellName, withNoLabel],
+    );
+
+    expect(sources[0].label).toBe("Força do Touro");
+    expect(sources[1].label).toBe("Enhance Ability");
+    expect(sources[2].label).toBe("Carrying capacity bonus");
+  });
+
+  it("STR 0 → 0 kg", () => {
+    const result = computeCarryingCapacity(0, []);
+    expect(result.carryingCapacityKg).toBe(0);
+    expect(result.pushDragLiftKg).toBe(0);
   });
 });

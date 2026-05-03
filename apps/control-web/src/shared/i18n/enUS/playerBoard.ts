@@ -169,4 +169,7 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.threeFailedDeathSaves": "You reached 3 failed death saves.",
   "playerBoard.deathSaveSucceeded": "Death save succeeded.",
   "playerBoard.deathSaveFailed": "Death save failed.",
+  "playerBoard.carryingCapacityLabel": "Carrying Capacity",
+  "playerBoard.carryingCapacityBase": "Base",
+  "playerBoard.pushDragLiftLabel": "Push/Drag/Lift",
 } as const;

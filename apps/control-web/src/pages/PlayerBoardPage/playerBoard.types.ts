@@ -31,6 +31,9 @@ export type PendingRoll = {
 
 export type PlayerBoardStatusSummary = {
   ac: number;
+  baseCarryingCapacityKg: number;
+  carryingCapacityKg: number;
+  carryingCapacitySources?: Array<{ label: string; multiplier: number }> | null;
   currentHp: number;
   currentWeapon: PlayerBoardWeaponSummary | null;
   deathSaveFailures: number;
@@ -47,6 +50,7 @@ export type PlayerBoardStatusSummary = {
   passivePerception: number;
   passivePerceptionBonus?: number | null;
   passivePerceptionBonusSources?: Array<{ label: string; value: number }> | null;
+  pushDragLiftKg: number;
   spellAttack: number | null;
   spellSaveDC: number | null;
   tempHp: number;

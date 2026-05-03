@@ -101,7 +101,7 @@ export const PlayerBoardStatusPanel = ({
 
           <DeathSaveCard combatActive={combatActive} playerStatus={playerStatus} />
 
-          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,1.64fr)]">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,1.64fr)]">
             <StatCard
               label={t("playerBoard.initiativeLabel")}
               value={`${playerStatus.initiative >= 0 ? "+" : ""}${playerStatus.initiative}`}
@@ -114,6 +114,19 @@ export const PlayerBoardStatusPanel = ({
                   ? `Base ${playerStatus.passivePerception - playerStatus.passivePerceptionBonus}${playerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`
                   : null
               }
+            />
+            <StatCard
+              label={t("playerBoard.carryingCapacityLabel")}
+              value={`${playerStatus.carryingCapacityKg} kg`}
+              helper={
+                playerStatus.carryingCapacitySources?.length
+                  ? `${t("playerBoard.carryingCapacityBase")}: ${playerStatus.baseCarryingCapacityKg} kg\u2003${playerStatus.carryingCapacitySources.map((s) => `${s.label} ×${s.multiplier}`).join(", ")}`
+                  : null
+              }
+            />
+            <StatCard
+              label={t("playerBoard.pushDragLiftLabel")}
+              value={`${playerStatus.pushDragLiftKg} kg`}
             />
             <WeaponCard
               combatActive={combatActive}

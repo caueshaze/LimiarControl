@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Item } from "../../../entities/item";
 import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { LB_TO_KG } from "../../../features/character-sheet/utils/calculations";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { localizedItemName } from "../utils/localizedItemName";
 import { formatItemPrice } from "../utils/shopCurrency";
@@ -27,7 +28,7 @@ export const ShopItemCard = ({
   const detailBits = [
     item.damageDice ? `${t("shop.card.damage")} ${item.damageDice}` : null,
     item.rangeMeters ? `${t("shop.card.range")} ${item.rangeMeters}m` : null,
-    item.weight ? `${t("shop.card.weight")} ${item.weight}` : null,
+    item.weight ? `${t("shop.card.weight")} ${Math.round(item.weight * LB_TO_KG * 100) / 100} kg` : null,
   ].filter(Boolean);
   const hasExpandableContent =
     item.description.length > 96 || propertyLabels.length > 0 || detailBits.length > 0;

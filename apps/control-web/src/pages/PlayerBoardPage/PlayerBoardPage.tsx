@@ -112,6 +112,12 @@ export const PlayerBoardPage = () => {
     userId: user?.userId,
   });
 
+  const combatBarState = useCombatUiState({
+    enabled: Boolean(activeSession?.id) && combatActive && !combatModeVisible,
+    sessionId: activeSession?.id ?? "",
+    userId: user?.userId,
+  });
+
   const {
     boardDescription,
     campaignTitle,
@@ -120,6 +126,7 @@ export const PlayerBoardPage = () => {
     sessionStatusLabel,
     sessionStatusTone,
   } = usePlayerBoardSummary({
+    activeEffects: combatBarState.myParticipant?.active_effects,
     activeSession,
     effectiveCampaignId,
     inventory: myInventory,
@@ -127,11 +134,6 @@ export const PlayerBoardPage = () => {
     playerSheet,
     selectedCampaignName: selectedCampaign?.name,
     t,
-  });
-  const combatBarState = useCombatUiState({
-    enabled: Boolean(activeSession?.id) && combatActive && !combatModeVisible,
-    sessionId: activeSession?.id ?? "",
-    userId: user?.userId,
   });
   const {
     armorOptions,
