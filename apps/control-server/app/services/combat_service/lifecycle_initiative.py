@@ -53,6 +53,15 @@ class CombatLifecycleInitiativeMixin:
         return "active"
 
     @classmethod
+    def _build_initiative_order_message(cls, state) -> str:
+        entries = [
+            f"{p['display_name']} ({p.get('initiative') or 0})"
+            for p in state.participants
+            if p.get("initiative") is not None
+        ]
+        return "Initiative order: " + " · ".join(entries)
+
+    @classmethod
     async def apply_initiative_roll(cls, db, session_id: str, actor_kind: str, actor_ref_id: str, initiative: int):
         state = cls.get_state(db, session_id)
         if not state or state.phase in (CombatPhase.ended, "ended") or state.phase not in (CombatPhase.initiative, "initiative"):
@@ -71,9 +80,11 @@ class CombatLifecycleInitiativeMixin:
         await cls._emit_state(session_id, state)
         if transition == "active" and state.participants:
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
+            await cls._emit_log(session_id, {"message": cls._build_initiative_order_message(state)})
             await cls._emit_log(session_id, {"message": f"Initiative set! It is now {state.participants[0]['display_name']}'s turn."})
         elif transition == "placement":
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
+            await cls._emit_log(session_id, {"message": cls._build_initiative_order_message(state)})
             await cls._emit_log(session_id, {"message": "Initiative set! GM must position tokens before combat begins."})
         return state
 
@@ -172,9 +183,11 @@ class CombatLifecycleInitiativeMixin:
         if transition == "active":
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
             active_name = state.participants[0]["display_name"] if state.participants else "Unknown"
+            await cls._emit_log(session_id, {"message": cls._build_initiative_order_message(state)})
             await cls._emit_log(session_id, {"message": f"Initiative set! It is now {active_name}'s turn."})
         elif transition == "placement":
             maybe_project_combat_start_to_limiar_map(db, session_id, state)
+            await cls._emit_log(session_id, {"message": cls._build_initiative_order_message(state)})
             await cls._emit_log(session_id, {"message": "Initiative set! GM must position tokens before combat begins."})
         else:
             await cls._emit_log(session_id, {"message": "Initiative updated."})

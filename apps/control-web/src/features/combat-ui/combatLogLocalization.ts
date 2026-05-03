@@ -266,6 +266,11 @@ const localizeKnownEnglishMessage = (message: string, locale: Locale) => {
     return "Iniciativa definida! O GM precisa posicionar os tokens antes do combate começar.";
   }
 
+  match = message.match(/^Initiative order: (.+)$/i);
+  if (match) {
+    return `Ordem de iniciativa: ${match[1]}`;
+  }
+
   match = message.match(/^Combat placement confirmed! It is now (.+?)'s turn\.$/i);
   if (match) {
     return `Posicionamento confirmado! Agora é o turno de ${match[1]}.`;
