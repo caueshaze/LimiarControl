@@ -89,39 +89,68 @@ export const Equipment = ({
         ))}
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-3">
-        <div className="space-y-1">
-          <span className="block text-xs text-slate-500">
-            {t("sheet.equipment.totalWeight")}:{" "}
-            {isEncumbered ? (
-              <span className={`font-semibold ${tierColorClass}`}>
-                {Math.round(totalWeightKg)} / {encumbrance.normalMaxKg} kg
-                {" — "}
-                {t(`sheet.equipment.encumbrance.${encumbrance.tier}`)}
-              </span>
-            ) : (
-              <span className="font-semibold text-slate-300">{Math.round(totalWeightKg)} kg</span>
-            )}
-          </span>
-          {readOnly && hasCurrency && (
-            <div className="pt-1">
-              <span className="block text-xs text-slate-500">
-                {t("sheet.equipment.lockedFunds")}:
-              </span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {walletCoins.map((coin) => (
-                  <span key={coin.coin} className={coin.className} title={coin.longLabel}>
-                    {coin.amount} {coin.shortLabel}
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="text-xs text-slate-500">{t("sheet.equipment.totalWeight")}:</span>
+              <span className={`text-xs font-semibold ${tierColorClass}`}>
+                {Math.round(totalWeightKg)} kg
+                {isEncumbered && (
+                  <span className="font-normal">
+                    {" "}({t("sheet.equipment.encumbrance.limit")}: {encumbrance.normalMaxKg} kg)
                   </span>
-                ))}
-              </div>
+                )}
+              </span>
+              {isEncumbered && (
+                <span className={`text-xs font-semibold ${tierColorClass}`}>
+                  — {t(`sheet.equipment.encumbrance.${encumbrance.tier}`)}
+                </span>
+              )}
             </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              {(
+                [
+                  { label: t("sheet.equipment.encumbrance.normal"), max: encumbrance.normalMaxKg, tier: "normal" as const },
+                  { label: t("sheet.equipment.encumbrance.encumbered"), max: encumbrance.encumberedMaxKg, tier: "encumbered" as const },
+                  { label: t("sheet.equipment.encumbrance.heavily_encumbered"), max: encumbrance.heavilyEncumberedMaxKg, tier: "heavily_encumbered" as const },
+                ] as const
+              ).map(({ label, max, tier: t_ }) => (
+                <span
+                  key={t_}
+                  title={t(`sheet.equipment.encumbrance.desc.${t_}`)}
+                  className={`text-[11px] ${encumbrance.tier === t_ ? encumbranceTierColor[t_] : "text-slate-600"}`}
+                >
+                  {label}: {t("sheet.equipment.encumbrance.upTo")} {max} kg
+                </span>
+              ))}
+              <span
+                title={t("sheet.equipment.encumbrance.desc.overloaded")}
+                className={`text-[11px] ${encumbrance.tier === "overloaded" ? encumbranceTierColor.overloaded : "text-slate-600"}`}
+              >
+                {t("sheet.equipment.encumbrance.overloaded")}: {t("sheet.equipment.encumbrance.above")} {encumbrance.heavilyEncumberedMaxKg} kg
+              </span>
+            </div>
+          </div>
+          {!readOnly && (
+            <button type="button" onClick={onAdd} disabled={!canAddCatalogItem} className={`${btnPrimary} shrink-0 disabled:cursor-not-allowed disabled:opacity-50`}>
+              {t("sheet.equipment.addItem")}
+            </button>
           )}
         </div>
-        {!readOnly && (
-          <button type="button" onClick={onAdd} disabled={!canAddCatalogItem} className={`${btnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}>
-            {t("sheet.equipment.addItem")}
-          </button>
+        {readOnly && hasCurrency && (
+          <div className="mt-3 pt-1">
+            <span className="block text-xs text-slate-500">
+              {t("sheet.equipment.lockedFunds")}:
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {walletCoins.map((coin) => (
+                <span key={coin.coin} className={coin.className} title={coin.longLabel}>
+                  {coin.amount} {coin.shortLabel}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </Section>
