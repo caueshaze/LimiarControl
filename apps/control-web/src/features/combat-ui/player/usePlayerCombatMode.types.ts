@@ -27,6 +27,7 @@ export type CombatSpellOption = {
   sourceType?: "sheet" | "magic_item";
   level: number;
   name: string;
+  namePt?: string | null;
   fixedCastLevel?: number | null;
   ignoreComponents?: boolean;
   noFreeHandRequired?: boolean;

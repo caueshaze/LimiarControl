@@ -28,6 +28,7 @@ export type CombatShellData = {
 export type SpellOption = {
   id: string;
   name: string;
+  namePt?: string | null;
   level?: number;
   range?: string | null;
   rangeMeters?: number | null;

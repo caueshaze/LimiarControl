@@ -287,7 +287,7 @@ export const PlayerActionPanels = ({
               ) : (
                 spellOptions.map((spell) => (
                   <option key={spell.id} value={spell.id}>
-                    {spell.name}
+                    {(locale === "pt" && spell.namePt) ? spell.namePt : spell.name}
                     {spell.level === 0 ? " · cantrip" : ""}
                     {spell.level !== 0 && spell.sourceType !== "magic_item" && (spell.availableSlotLevels?.length ?? 0) === 0
                       ? " · sem slots"
