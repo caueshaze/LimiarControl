@@ -1,6 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SpellAoeFootprintPreview } from "./SpellAoeFootprintPreview";
+
+vi.mock("../../shared/hooks/useLocale", () => ({
+  useLocale: () => ({
+    t: (key: string) => key,
+  }),
+}));
 
 const defaultProps = {
   areaShape: "",
@@ -59,7 +65,7 @@ describe("SpellAoeFootprintPreview", () => {
       />,
     );
     expect(markup).toContain("data-testid=\"spell-aoe-preview\"");
-    expect(markup).toContain("célula");
+    expect(markup).toContain("catalog.spells.preview.affectedCellsPlural");
     expect(markup).not.toContain("data-testid=\"spell-aoe-preview-warning\"");
   });
 
