@@ -190,6 +190,7 @@ export const useCharacterSheet = (
     loadError: state.loadError,
     saveError: state.saveError,
     remoteId: state.remoteId,
+    activeSpellEffects: state.activeSpellEffects,
     characterRecord: state.characterRecord,
     draftRecord: state.draftRecord,
     importError: state.importError,

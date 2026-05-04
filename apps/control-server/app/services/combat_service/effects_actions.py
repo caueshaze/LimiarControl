@@ -111,6 +111,9 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
         db.refresh(state)
         await cls._emit_state(session_id, state)
         await cls._emit_log(session_id, {"message": f"Effect '{cls._effect_label(removed)}' removed from {target['display_name']}.", "source": "effect_removed"})
+        if target.get("kind") == "player":
+            from .persistent_effects import sync_effect_removal_to_state_json
+            sync_effect_removal_to_state_json(db, session_id, target, removed.get("id"))
         return state
 
     @classmethod

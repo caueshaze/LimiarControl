@@ -3,6 +3,7 @@ import type {
   PartyCharacterSheetDraftRecord,
 } from "../../../entities/character";
 import type { CharacterSheet } from "../model/characterSheet.types";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import { INITIAL_SHEET } from "../model/initialSheet";
 
 export type CharacterSheetHookState = {
@@ -19,6 +20,7 @@ export type CharacterSheetHookState = {
   playSessionId: string | null;
   playCampaignId: string | null;
   playPlayerUserId: string | null;
+  activeSpellEffects: ActiveEffect[];
 };
 
 export type CharacterSheetHookAction =
@@ -32,6 +34,7 @@ export type CharacterSheetHookAction =
       playSessionId?: string | null;
       playCampaignId?: string | null;
       playPlayerUserId?: string | null;
+      activeSpellEffects?: ActiveEffect[];
     }
   | { type: "load_fail"; error: string }
   | { type: "update_sheet"; updater: (sheet: CharacterSheet) => CharacterSheet }
@@ -62,6 +65,7 @@ export const initialCharacterSheetHookState: CharacterSheetHookState = {
   playSessionId: null,
   playCampaignId: null,
   playPlayerUserId: null,
+  activeSpellEffects: [],
 };
 
 export function characterSheetHookReducer(
@@ -83,6 +87,7 @@ export function characterSheetHookReducer(
         playSessionId: action.playSessionId ?? null,
         playCampaignId: action.playCampaignId ?? null,
         playPlayerUserId: action.playPlayerUserId ?? null,
+        activeSpellEffects: action.activeSpellEffects ?? [],
       };
     case "load_fail":
       return { ...state, loading: false, loadError: action.error };

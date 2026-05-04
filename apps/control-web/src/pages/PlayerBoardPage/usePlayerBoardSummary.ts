@@ -39,8 +39,9 @@ export const usePlayerBoardSummary = ({
   t,
 }: Props) => {
   const { locale } = useLocale();
-  const { ac, hpPercent, initiative, passivePerception, spellAttack, spellSaveDC } =
-    useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET);
+  const { ac, hpPercent, initiative, passivePerception, passivePerceptionBonus,
+          passivePerceptionBonusSources, spellAttack, spellSaveDC } =
+    useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET, activeEffects);
   const {
     baseCarryingCapacityKg,
     carryingCapacityKg,
@@ -136,6 +137,8 @@ export const usePlayerBoardSummary = ({
       maxHp: playerSheet.maxHP,
       nextLevelThreshold: xpState.nextLevelThreshold,
       passivePerception,
+      passivePerceptionBonus,
+      passivePerceptionBonusSources,
       pushDragLiftKg,
       spellAttack,
       spellSaveDC,

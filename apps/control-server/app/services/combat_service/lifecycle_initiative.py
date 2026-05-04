@@ -159,6 +159,8 @@ class CombatLifecycleInitiativeMixin:
             }
             if p.kind == "player":
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(db, session_id, p.ref_id)
+                from .persistent_effects import restore_persisted_effects
+                restore_persisted_effects(db, session_id, entry)
             built_participants.append(entry)
 
         new_state = CombatState(

@@ -154,7 +154,7 @@ export async function loadPlayCharacterSheet(
   partyId: string,
   playerUserId: string,
   useOwnState: boolean,
-): Promise<{ id: string | null; sheet: CharacterSheet; sessionId: string; campaignId: string }> {
+): Promise<{ id: string | null; sheet: CharacterSheet; sessionId: string; campaignId: string; activeSpellEffects: Record<string, unknown>[] }> {
   const activeSession = await partiesRepo.getPartyActiveSession(partyId);
   const record = useOwnState
     ? await sessionStatesRepo.getMine(activeSession.id)
@@ -165,6 +165,7 @@ export async function loadPlayCharacterSheet(
     sheet,
     sessionId: activeSession.id,
     campaignId: activeSession.campaignId,
+    activeSpellEffects: (record.state as Record<string, unknown>)?.active_spell_effects as Record<string, unknown>[] ?? [],
   };
 }
 

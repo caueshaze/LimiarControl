@@ -57,6 +57,7 @@ export function useCharacterSheetLoader(
           playSessionId: result.sessionId,
           playCampaignId: result.campaignId,
           playPlayerUserId: params.playPlayerUserId,
+          activeSpellEffects: result.activeSpellEffects as import("../../../shared/api/combatRepo").ActiveEffect[],
         });
         return;
       }
