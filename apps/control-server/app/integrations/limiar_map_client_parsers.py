@@ -329,4 +329,14 @@ def parse_movement_response(
         movement_budget=int(payload.get("movementBudget") or 0),
         movement_speed_cells=max(1, int(payload.get("movementSpeedCells") or 1)),
         remaining_budget=int(payload.get("remainingBudget") or 0),
+        source_elevation_meters=(
+            float(payload["sourceElevationMeters"])
+            if isinstance(payload.get("sourceElevationMeters"), (int, float))
+            else None
+        ),
+        destination_elevation_meters=(
+            float(payload["destinationElevationMeters"])
+            if isinstance(payload.get("destinationElevationMeters"), (int, float))
+            else None
+        ),
     )

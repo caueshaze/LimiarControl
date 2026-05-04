@@ -11,6 +11,7 @@ from app.schemas.combat import (
     CombatMovementPreviewResponse,
 )
 from .exceptions import CombatServiceError
+from .fall_damage import FALL_DAMAGE_METERS_PER_DIE
 from .movement_hazards import compute_movement_hazard_outcomes
 from .spells.area_targeting import AreaTargetingMixin
 
@@ -78,6 +79,14 @@ class CombatMovementMixin(AreaTargetingMixin):
                 actor=actor,
                 response=response,
                 actor_user_id=actor_user_id,
+            )
+            await cls._apply_movement_fall(
+                db,
+                session_id=session_id,
+                actor=actor,
+                response=response,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
             )
 
         return CombatMovementPreviewResponse(
@@ -185,6 +194,34 @@ class CombatMovementMixin(AreaTargetingMixin):
                     "metersTraversed": outcome.get("meters_inside"),
                 },
             )
+
+    @classmethod
+    async def _apply_movement_fall(
+        cls,
+        db: Session,
+        *,
+        session_id: str,
+        actor: dict[str, Any],
+        response: Any,
+        actor_user_id: str,
+        is_gm: bool,
+    ) -> None:
+        source_elevation = response.source_elevation_meters if response.source_elevation_meters is not None else 0.0
+        dest_elevation = response.destination_elevation_meters if response.destination_elevation_meters is not None else 0.0
+        delta = dest_elevation - source_elevation
+        if delta >= 0:
+            return
+        fall_height = abs(delta)
+        if fall_height < FALL_DAMAGE_METERS_PER_DIE:
+            return
+        await cls.resolve_fall(
+            db,
+            session_id,
+            actor["id"],
+            fall_height,
+            actor_user_id,
+            is_gm,
+        )
 
     @classmethod
     async def preview_movement(
