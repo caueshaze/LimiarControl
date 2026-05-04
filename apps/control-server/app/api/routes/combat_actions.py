@@ -12,6 +12,7 @@ from app.schemas.combat import (
     CombatDeathSaveRequest,
     CombatEntityActionRequest,
     CombatEntityActionResult,
+    CombatFallRequest,
     CombatReactionRequestRequest,
     CombatReactionResolveRequest,
     CombatRemoveEffectRequest,
@@ -248,3 +249,20 @@ def list_effects(
     if not state:
         return []
     return CombatService.get_all_effects(state)
+
+
+@router.post("/sessions/{session_id}/combat/action/fall")
+async def action_fall(
+    session_id: str,
+    req: CombatFallRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return await CombatService.resolve_fall(
+        db,
+        session_id,
+        req.participant_id,
+        req.height_meters,
+        user.id,
+        _is_session_gm(db, session_id, user),
+    )
