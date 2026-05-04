@@ -301,5 +301,159 @@ class TestResolveFallDamage(unittest.IsolatedAsyncioTestCase):
         )
 
 
+def _make_cats_grace_effect(threshold_m: float = 6.0, label: str = "Graça do Gato") -> dict:
+    return {
+        "id": "effect-cg-1",
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "manual",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": label,
+        "metadata": {
+            "source_spell_name": label,
+            "declarative_effect": {
+                "type": "fall_damage_immunity_threshold",
+                "params": {"max_distance_meters": threshold_m},
+            },
+        },
+    }
+
+
+def _make_incapacitated_effect() -> dict:
+    return {
+        "id": "cond-1",
+        "kind": "condition",
+        "condition_type": "incapacitated",
+        "duration_type": "manual",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+
+
+def _make_state_with_effects(effects: list) -> CombatState:
+    state = _make_active_state()
+    state.participants[1]["active_effects"] = effects
+    return state
+
+
+@patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+@patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+@patch.object(CombatService, "get_state")
+class TestResolveFallDamagePrevention(unittest.IsolatedAsyncioTestCase):
+    async def test_cats_grace_prevents_6m_fall(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertTrue(resolution["prevented"])
+        self.assertFalse(resolution["applied_damage"])
+        self.assertEqual(resolution["damage_total"], 0)
+        self.assertEqual(resolution["prevention_sources"], ["Graça do Gato"])
+        self.assertIsNone(result["new_hp"])
+
+    async def test_cats_grace_prevents_3m_fall(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 3.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertTrue(resolution["prevented"])
+        self.assertFalse(resolution["applied_damage"])
+        self.assertEqual(resolution["damage_total"], 0)
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=9)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_cats_grace_does_not_prevent_9m_fall(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        mock_apply_damage.return_value = (5, "", 14, None)
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 9.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertFalse(resolution["prevented"])
+        self.assertTrue(resolution["applied_damage"])
+        self.assertEqual(resolution["damage_total"], 9)
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_no_cats_grace_6m_fall_takes_damage(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects([])
+        mock_apply_damage.return_value = (3, "", 10, None)
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertFalse(resolution["prevented"])
+        self.assertTrue(resolution["applied_damage"])
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_cats_grace_incapacitated_6m_takes_damage(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects(
+            [_make_cats_grace_effect(6.0), _make_incapacitated_effect()]
+        )
+        mock_apply_damage.return_value = (3, "", 10, None)
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertFalse(resolution["prevented"])
+        self.assertTrue(resolution["applied_damage"])
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression")
+    async def test_prevented_fall_does_not_call_dice_roller(
+        self, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        mock_roll.assert_not_called()
+
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_prevented_fall_does_not_call_apply_damage(
+        self, mock_apply_damage, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        mock_apply_damage.assert_not_called()
+
+    async def test_prevented_fall_log_message_contains_label(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        log_payload = mock_emit_log.call_args[0][4]
+        self.assertIn("Graça do Gato", log_payload["message"])
+        self.assertTrue(log_payload["prevented"])
+        self.assertEqual(log_payload["source"], "environmental_fall")
+
+    async def test_multiple_immunity_effects_uses_highest_threshold(
+        self, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        effects = [
+            _make_cats_grace_effect(5.0, "Efeito A"),
+            {**_make_cats_grace_effect(8.0, "Efeito B"), "id": "effect-cg-2"},
+        ]
+        mock_get_state.return_value = _make_state_with_effects(effects)
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 7.0, "user-1", is_gm=True,
+        )
+        resolution = result["resolution"]
+        self.assertTrue(resolution["prevented"])
+        self.assertEqual(resolution["prevention_sources"], ["Efeito B"])
+
+
 if __name__ == "__main__":
     unittest.main()

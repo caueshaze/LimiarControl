@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.services.session_state_finalize import finalize_session_state_data
 
+from .condition_effects_predicates import get_fall_damage_immunity_threshold, is_incapacitated
 from .damage_core import CombatDamageCoreMixin
 from .exceptions import CombatServiceError, _roll_dice_expression
 from .fall_damage import FallDamageResolution, compute_fall_damage
@@ -149,6 +150,45 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                     "participantId": participant_id,
                     "heightMeters": height_meters,
                     "causesDamage": False,
+                },
+            )
+            return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
+        immunity_threshold, immunity_label = get_fall_damage_immunity_threshold(participant)
+        if (
+            immunity_threshold is not None
+            and computation.effective_height_meters <= immunity_threshold
+            and not is_incapacitated(participant)
+        ):
+            resolution = FallDamageResolution(
+                participant_id=participant_id,
+                height_meters=computation.height_meters,
+                effective_height_meters=computation.effective_height_meters,
+                dice_count=computation.dice_count,
+                dice_sides=computation.dice_sides,
+                damage_formula=computation.damage_formula,
+                damage_type=computation.damage_type,
+                damage_total=0,
+                causes_damage=True,
+                applied_damage=False,
+                prevented=True,
+                prevention_sources=[immunity_label],
+            )
+            db.commit()
+            await cls._emit_state(session_id, state)
+            await cls._emit_and_persist_log(
+                db,
+                session_id,
+                actor_user_id,
+                None,
+                {
+                    "message": f"{display_name} cai {height_meters}m e não sofre dano por {immunity_label}.",
+                    "source": "environmental_fall",
+                    "actorUserId": actor_user_id,
+                    "participantId": participant_id,
+                    "heightMeters": height_meters,
+                    "causesDamage": False,
+                    "prevented": True,
+                    "preventionSources": [immunity_label],
                 },
             )
             return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}

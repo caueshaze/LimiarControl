@@ -92,6 +92,32 @@ def has_condition(participant: dict, condition_type: str) -> bool:
     return False
 
 
+def is_incapacitated(participant: dict) -> bool:
+    return any(has_condition(participant, c) for c in _INCAPACITATING_CONDITIONS)
+
+
+def get_fall_damage_immunity_threshold(participant: dict) -> tuple[float | None, str | None]:
+    best: float | None = None
+    label: str | None = None
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata") or {}
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "fall_damage_immunity_threshold":
+            continue
+        params = declarative.get("params") or {}
+        threshold = params.get("max_distance_meters")
+        if not isinstance(threshold, (int, float)):
+            continue
+        if best is None or float(threshold) > best:
+            best = float(threshold)
+            label = effect.get("display_label") or metadata.get("source_spell_name") or "Graça do Gato"
+    return best, label
+
+
 def is_action_blocked(participant: dict) -> bool:
     for effect in participant.get("active_effects") or []:
         if effect.get("kind") == "condition" and effect.get("condition_type") in _INCAPACITATING_CONDITIONS:
