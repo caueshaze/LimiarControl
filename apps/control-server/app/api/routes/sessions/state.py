@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session as DbSession, select
 
 from app.api.deps import get_current_user
@@ -161,6 +162,13 @@ async def update_player_session_state(
         player_user_id,
         "player",
     )
+    if combat_state:
+        tier_changed = CombatService.recompute_participant_encumbrance_tier(
+            session, session_id, combat_state, player_user_id,
+        )
+        if tier_changed:
+            flag_modified(combat_state, "participants")
+            session.add(combat_state)
     session.add(state)
     previous_hp = previous_state.get("currentHP") if isinstance(previous_state.get("currentHP"), int) else None
     current_hp = state.state_json.get("currentHP") if isinstance(state.state_json.get("currentHP"), int) else None

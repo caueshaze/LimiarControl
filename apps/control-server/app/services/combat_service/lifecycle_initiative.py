@@ -151,6 +151,32 @@ class CombatLifecycleInitiativeMixin:
         return new_state
 
     @classmethod
+    def recompute_participant_encumbrance_tier(
+        cls,
+        db,
+        session_id: str,
+        state,
+        player_user_id: str,
+    ) -> bool:
+        """Recalcula encumbrance_tier para um participant e atualiza o CombatState.
+
+        Retorna True se o tier mudou (caller deve chamar flag_modified + commit).
+        Não opera em combates encerrados ou fases diferentes de active.
+        """
+        phase = getattr(state, "phase", None)
+        if phase not in (CombatPhase.active, "active"):
+            return False
+        participant = cls._get_participant_by_ref(state, player_user_id)
+        if not participant:
+            return False
+        new_tier = _encumbrance_tier_for_player(db, session_id, player_user_id)
+        old_tier = participant.get("encumbrance_tier", "normal")
+        if new_tier == old_tier:
+            return False
+        participant["encumbrance_tier"] = new_tier
+        return True
+
+    @classmethod
     def _resolve_map_selection(cls, db, session_id: str, req) -> dict:
         requested_kind = req.selectedMap.kind if req.selectedMap is not None else "demo_map"
         if requested_kind == "demo_map":
