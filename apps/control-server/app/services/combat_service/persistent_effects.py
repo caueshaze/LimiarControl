@@ -42,6 +42,7 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
             if e.get("kind") in _PERSISTABLE_KINDS
             and e.get("duration_type") == "manual"
         ]
+        surviving = enforce_single_persisted_concentration_group(surviving)
         if not surviving:
             continue
         ref_id = participant.get("ref_id")
@@ -87,6 +88,21 @@ def restore_persisted_effects(
     persisted = (session_state.state_json or {}).get("active_spell_effects")
     if not isinstance(persisted, list) or not persisted:
         return
+    original_persisted = list(persisted)
+    persisted = enforce_single_persisted_concentration_group(persisted)
+    if not persisted:
+        data = dict(session_state.state_json)
+        data.pop("active_spell_effects", None)
+        session_state.state_json = finalize_session_state_data(data)
+        flag_modified(session_state, "state_json")
+        db.add(session_state)
+        return
+    if persisted != original_persisted:
+        data = dict(session_state.state_json)
+        data["active_spell_effects"] = persisted
+        session_state.state_json = finalize_session_state_data(data)
+        flag_modified(session_state, "state_json")
+        db.add(session_state)
     existing = participant.get("active_effects")
     if not isinstance(existing, list):
         existing = []
@@ -205,3 +221,69 @@ def clear_persisted_concentration_effects(
     else:
         data.pop("active_spell_effects", None)
     return data
+
+
+def enforce_single_persisted_concentration_group(
+    effects: list[dict],
+) -> list[dict]:
+    """Keep only the newest concentration group; preserve non-concentration effects.
+
+    Selection rule: highest valid ``created_at`` among concentration groups.
+    Fallback (missing/invalid timestamps): last concentration group encountered.
+    """
+    non_concentration: list[dict] = []
+    groups: dict[str, list[dict]] = {}           # group_key → [effect, ...]
+    group_order: list[str] = []                  # insertion order for fallback
+
+    for effect in effects:
+        metadata = effect.get("metadata") or {}
+        if not metadata.get("concentration"):
+            non_concentration.append(effect)
+            continue
+        group_key = metadata.get("concentration_group") or _solo_group_key(effect)
+        groups.setdefault(group_key, []).append(effect)
+        if group_key not in group_order:
+            group_order.append(group_key)
+
+    if not groups:
+        return list(effects)
+
+    winning = _pick_winning_concentration_group(groups, group_order)
+    winning_effects = groups[winning]
+
+    # preserve original order: non-concentration first, then winning group effects
+    return non_concentration + winning_effects
+
+
+def _solo_group_key(effect: dict) -> str:
+    """Synthetic key for concentration effects without a concentration_group."""
+    return f"__solo__:{effect.get('id', id(effect))}"
+
+
+def _pick_winning_concentration_group(
+    groups: dict[str, list[dict]],
+    group_order: list[str],
+) -> str:
+    best_group: str | None = None
+    best_ts: str | None = None
+    for gkey in group_order:
+        ts = _max_created_at(groups[gkey])
+        if ts is None:
+            continue
+        if best_ts is None or ts > best_ts:
+            best_ts = ts
+            best_group = gkey
+    if best_group is not None:
+        return best_group
+    # fallback: last group in list order
+    return group_order[-1]
+
+
+def _max_created_at(effects: list[dict]) -> str | None:
+    best: str | None = None
+    for e in effects:
+        ts = e.get("created_at")
+        if isinstance(ts, str) and ts:
+            if best is None or ts > best:
+                best = ts
+    return best
