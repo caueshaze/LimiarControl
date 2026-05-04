@@ -245,6 +245,15 @@ export class InMemoryEncounterRepository {
     return this.saveEncounter(encounter);
   }
 
+  getCellElevationMeters(sessionId: string, cell: { x: number; y: number }): number {
+    const encounter = this.getEncounter(sessionId);
+    if (!encounter) return 0;
+    const entry = encounter.cellElevations.find(
+      (e) => e.cell.x === cell.x && e.cell.y === cell.y
+    );
+    return entry?.elevationMeters ?? 0;
+  }
+
   setActiveAreaEffects(sessionId: string, activeAreaEffects: ActiveAreaEffect[]): EncounterState {
     const encounter = this.requireEncounter(sessionId);
     encounter.activeAreaEffects = activeAreaEffects;

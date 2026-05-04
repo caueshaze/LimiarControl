@@ -127,6 +127,8 @@ export const movementPreviewResponseSchema = z.object({
   movementBudget: z.number().int().nonnegative(),
   movementSpeedCells: z.number().int().positive(),
   remainingBudget: z.number().int().nonnegative(),
+  sourceElevationMeters: z.number().nullable().optional(),
+  destinationElevationMeters: z.number().nullable().optional(),
 });
 
 export type InitiativeEntry = z.infer<typeof initiativeEntrySchema>;

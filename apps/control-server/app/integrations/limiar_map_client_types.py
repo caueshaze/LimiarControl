@@ -103,6 +103,8 @@ class LimiarMapMovementResponse:
     movement_budget: int
     movement_speed_cells: int
     remaining_budget: int
+    source_elevation_meters: float | None = None
+    destination_elevation_meters: float | None = None
 
 
 @dataclass(frozen=True)

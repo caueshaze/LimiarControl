@@ -35,6 +35,8 @@ function toMovementResponse(
     movementBudget?: number;
     movementSpeedCells?: number;
     remainingBudget?: number;
+    sourceElevationMeters?: number | null;
+    destinationElevationMeters?: number | null;
   }
 ) {
   return movementPreviewResponseSchema.parse({
@@ -51,7 +53,9 @@ function toMovementResponse(
     pathCostUnits: result.pathCostUnits ?? 0,
     movementBudget: result.movementBudget ?? 0,
     movementSpeedCells: result.movementSpeedCells ?? 1,
-    remainingBudget: result.remainingBudget ?? result.movementBudget ?? 0
+    remainingBudget: result.remainingBudget ?? result.movementBudget ?? 0,
+    sourceElevationMeters: result.sourceElevationMeters ?? null,
+    destinationElevationMeters: result.destinationElevationMeters ?? null
   });
 }
 
@@ -81,8 +85,16 @@ export function registerMovementRoutes(
     );
 
     const result = movementService.previewMovement(sessionId, combatantId, destinationCell);
+    const sourceElevation = result.source
+      ? repository.getCellElevationMeters(sessionId, result.source)
+      : null;
+    const destinationElevation = repository.getCellElevationMeters(sessionId, destinationCell);
     return reply.status(200).send(
-      toMovementResponse(sessionId, actionId, encounter.combatState.version, result)
+      toMovementResponse(sessionId, actionId, encounter.combatState.version, {
+        ...result,
+        sourceElevationMeters: sourceElevation,
+        destinationElevationMeters: destinationElevation
+      })
     );
   });
 
@@ -106,6 +118,11 @@ export function registerMovementRoutes(
 
     const result = movementService.moveCombatant(sessionId, combatantId, destinationCell, actionId);
     const currentEncounter = "encounter" in result ? result.encounter : encounter;
+    const sourceForElevation = "source" in result ? result.source : currentEncounter.tokens.find((token) => token.combatantId === combatantId)?.position;
+    const sourceElevation = sourceForElevation
+      ? repository.getCellElevationMeters(sessionId, sourceForElevation)
+      : null;
+    const destinationElevation = repository.getCellElevationMeters(sessionId, destinationCell);
     const response = toMovementResponse(sessionId, actionId, currentEncounter.combatState.version, {
       accepted: result.accepted,
       rejectionReason: result.rejectionReason,
@@ -120,7 +137,9 @@ export function registerMovementRoutes(
         "movementSpeedCells" in result
           ? result.movementSpeedCells
           : currentEncounter.tokens.find((token) => token.combatantId === combatantId)?.movementSpeedCells,
-      remainingBudget: result.remainingBudget
+      remainingBudget: result.remainingBudget,
+      sourceElevationMeters: sourceElevation,
+      destinationElevationMeters: destinationElevation
     });
 
     if (result.accepted && response.tokenId && response.sourceCell) {
