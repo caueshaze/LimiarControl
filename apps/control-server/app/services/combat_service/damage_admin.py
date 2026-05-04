@@ -11,10 +11,41 @@ from app.services.session_state_finalize import finalize_session_state_data
 from .condition_effects_predicates import get_fall_damage_immunity_threshold, has_condition, is_incapacitated
 from .damage_core import CombatDamageCoreMixin
 from .exceptions import CombatServiceError, _roll_dice_expression
-from .fall_damage import FallDamageResolution, compute_fall_damage
+from .fall_damage import FallDamageComputation, FallDamageResolution, compute_fall_damage
 
 
 class CombatDamageAdminMixin(CombatDamageCoreMixin):
+    @staticmethod
+    def _build_fall_log_payload(
+        *,
+        message: str,
+        actor_user_id: str,
+        participant_id: str,
+        computation: FallDamageComputation,
+        damage_total: int,
+        applied_damage: bool,
+        prevented: bool,
+        prevention_sources: list[str],
+        applied_conditions: list[str],
+    ) -> dict:
+        return {
+            "message": message,
+            "source": "environmental_fall",
+            "actorUserId": actor_user_id,
+            "participantId": participant_id,
+            "heightMeters": computation.height_meters,
+            "effectiveHeightMeters": computation.effective_height_meters,
+            "damageType": computation.damage_type,
+            "damageTotal": damage_total,
+            "damageFormula": computation.damage_formula,
+            "diceCount": computation.dice_count,
+            "causesDamage": computation.causes_damage,
+            "appliedDamage": applied_damage,
+            "prevented": prevented,
+            "preventionSources": prevention_sources,
+            "appliedConditions": applied_conditions,
+        }
+
     @classmethod
     async def revive_player(
         cls,
@@ -146,14 +177,17 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                 session_id,
                 actor_user_id,
                 None,
-                {
-                    "message": f"{display_name} falls {height_meters}m and takes no damage.",
-                    "source": "environmental_fall",
-                    "actorUserId": actor_user_id,
-                    "participantId": participant_id,
-                    "heightMeters": height_meters,
-                    "causesDamage": False,
-                },
+                cls._build_fall_log_payload(
+                    message=f"{display_name} cai {height_meters}m e não sofre dano.",
+                    actor_user_id=actor_user_id,
+                    participant_id=participant_id,
+                    computation=computation,
+                    damage_total=0,
+                    applied_damage=False,
+                    prevented=False,
+                    prevention_sources=[],
+                    applied_conditions=[],
+                ),
             )
             return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
         immunity_threshold, immunity_label = get_fall_damage_immunity_threshold(participant)
@@ -183,16 +217,17 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                 session_id,
                 actor_user_id,
                 None,
-                {
-                    "message": f"{display_name} cai {height_meters}m e não sofre dano por {immunity_label}.",
-                    "source": "environmental_fall",
-                    "actorUserId": actor_user_id,
-                    "participantId": participant_id,
-                    "heightMeters": height_meters,
-                    "causesDamage": False,
-                    "prevented": True,
-                    "preventionSources": [immunity_label],
-                },
+                cls._build_fall_log_payload(
+                    message=f"{display_name} cai {height_meters}m e não sofre dano por {immunity_label}.",
+                    actor_user_id=actor_user_id,
+                    participant_id=participant_id,
+                    computation=computation,
+                    damage_total=0,
+                    applied_damage=False,
+                    prevented=True,
+                    prevention_sources=[immunity_label],
+                    applied_conditions=[],
+                ),
             )
             return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
         damage_total = _roll_dice_expression(computation.damage_formula)
@@ -235,24 +270,23 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
         if state:
             await cls._emit_state(session_id, state)
         prone_suffix = " e fica caído" if prone_applied else ""
+        applied_conditions = ["prone"] if prone_applied else []
         await cls._emit_and_persist_log(
             db,
             session_id,
             actor_user_id,
             None,
-            {
-                "message": f"{display_name} cai {height_meters}m, sofre {damage_total} de dano contundente{prone_suffix}.{effect_msg}",
-                "source": "environmental_fall",
-                "actorUserId": actor_user_id,
-                "participantId": participant_id,
-                "heightMeters": height_meters,
-                "damageTotal": damage_total,
-                "damageType": computation.damage_type,
-                "damageFormula": computation.damage_formula,
-                "diceCount": computation.dice_count,
-                "causesDamage": True,
-                "proneApplied": prone_applied,
-            },
+            cls._build_fall_log_payload(
+                message=f"{display_name} cai {height_meters}m, sofre {damage_total} de dano contundente{prone_suffix}.{effect_msg}",
+                actor_user_id=actor_user_id,
+                participant_id=participant_id,
+                computation=computation,
+                damage_total=damage_total,
+                applied_damage=True,
+                prevented=False,
+                prevention_sources=[],
+                applied_conditions=applied_conditions,
+            ),
         )
         resolution = FallDamageResolution(
             participant_id=participant_id,
@@ -265,6 +299,6 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             damage_total=damage_total,
             causes_damage=True,
             applied_damage=True,
-            applied_conditions=["prone"] if prone_applied else [],
+            applied_conditions=applied_conditions,
         )
         return {"resolution": resolution.model_dump(mode="json"), "new_hp": new_hp, "concentration_check": concentration_check}

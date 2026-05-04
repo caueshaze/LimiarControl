@@ -71,6 +71,7 @@ class CombatMovementMixin(AreaTargetingMixin):
                 503,
             ) from exc
 
+        fall_result: dict[str, Any] | None = None
         if confirm and response.is_valid:
             await cls._apply_movement_hazards(
                 db,
@@ -80,7 +81,7 @@ class CombatMovementMixin(AreaTargetingMixin):
                 response=response,
                 actor_user_id=actor_user_id,
             )
-            await cls._apply_movement_fall(
+            fall_result = await cls._apply_movement_fall(
                 db,
                 session_id=session_id,
                 actor=actor,
@@ -107,6 +108,9 @@ class CombatMovementMixin(AreaTargetingMixin):
             movement_speed_cells=response.movement_speed_cells,
             remaining_budget=response.remaining_budget,
             map_version=response.version,
+            fall_result=fall_result,
+            source_elevation_meters=response.source_elevation_meters,
+            destination_elevation_meters=response.destination_elevation_meters,
         )
 
     @classmethod
@@ -205,16 +209,16 @@ class CombatMovementMixin(AreaTargetingMixin):
         response: Any,
         actor_user_id: str,
         is_gm: bool,
-    ) -> None:
+    ) -> dict[str, Any] | None:
         source_elevation = response.source_elevation_meters if response.source_elevation_meters is not None else 0.0
         dest_elevation = response.destination_elevation_meters if response.destination_elevation_meters is not None else 0.0
         delta = dest_elevation - source_elevation
         if delta >= 0:
-            return
+            return None
         fall_height = abs(delta)
         if fall_height < FALL_DAMAGE_METERS_PER_DIE:
-            return
-        await cls.resolve_fall(
+            return None
+        result = await cls.resolve_fall(
             db,
             session_id,
             actor["id"],
@@ -222,6 +226,7 @@ class CombatMovementMixin(AreaTargetingMixin):
             actor_user_id,
             is_gm,
         )
+        return result["resolution"]
 
     @classmethod
     async def preview_movement(

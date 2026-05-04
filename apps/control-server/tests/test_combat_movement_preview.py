@@ -485,6 +485,7 @@ class TestConfirmMovementFallDetection(unittest.TestCase):
             source_elevation=6.0, dest_elevation=3.0,
         )
         mock_build_client.return_value = client
+        mock_resolve_fall.return_value = {"resolution": {}, "new_hp": None, "concentration_check": None}
 
         _run(CombatService.confirm_movement(
             db=MagicMock(), session_id="session-1",
@@ -516,6 +517,7 @@ class TestConfirmMovementFallDetection(unittest.TestCase):
             source_elevation=6.0, dest_elevation=0.0,
         )
         mock_build_client.return_value = client
+        mock_resolve_fall.return_value = {"resolution": {}, "new_hp": None, "concentration_check": None}
 
         _run(CombatService.confirm_movement(
             db=MagicMock(), session_id="session-1",
@@ -613,6 +615,126 @@ class TestConfirmMovementFallDetection(unittest.TestCase):
         ))
 
         mock_resolve_fall.assert_not_called()
+
+    @patch.object(CombatService, "_apply_movement_hazards")
+    @patch.object(CombatService, "resolve_fall")
+    @patch.object(CombatService, "_require_movement_capable")
+    @patch.object(CombatService, "_require_actor_status")
+    @patch.object(CombatService, "_require_active")
+    @patch.object(CombatService, "_resolve_actor_participant")
+    @patch.object(CombatService, "get_state")
+    @patch.object(CombatService, "_build_limiar_map_client")
+    def test_confirmed_fall_includes_fall_result_in_response(
+        self, mock_build_client, mock_get_state, mock_resolve_actor,
+        _mock_require_active, _mock_require_status, _mock_require_movement,
+        mock_resolve_fall, mock_hazards,
+    ):
+        mock_get_state.return_value = SimpleNamespace(use_map=True, active_area_effects=[])
+        mock_resolve_actor.return_value = {"id": "participant-1", "ref_id": "combatant-1", "status": "active"}
+        client = MagicMock()
+        client.move_combatant.return_value = _movement_response_with_elevation(
+            source_elevation=6.0, dest_elevation=0.0,
+        )
+        mock_build_client.return_value = client
+        fake_resolution = {"participant_id": "participant-1", "damage_total": 7, "prevented": False}
+        mock_resolve_fall.return_value = {"resolution": fake_resolution, "new_hp": 3, "concentration_check": None}
+
+        result = _run(CombatService.confirm_movement(
+            db=MagicMock(), session_id="session-1",
+            req=CombatMovementPreviewRequest(destination_cell={"x": 3, "y": 1}),
+            actor_user_id="user-1", is_gm=True,
+        ))
+
+        self.assertEqual(result.fall_result, fake_resolution)
+
+    @patch.object(CombatService, "_apply_movement_hazards")
+    @patch.object(CombatService, "resolve_fall")
+    @patch.object(CombatService, "_require_movement_capable")
+    @patch.object(CombatService, "_require_actor_status")
+    @patch.object(CombatService, "_require_active")
+    @patch.object(CombatService, "_resolve_actor_participant")
+    @patch.object(CombatService, "get_state")
+    @patch.object(CombatService, "_build_limiar_map_client")
+    def test_no_fall_movement_fall_result_is_none(
+        self, mock_build_client, mock_get_state, mock_resolve_actor,
+        _mock_require_active, _mock_require_status, _mock_require_movement,
+        mock_resolve_fall, mock_hazards,
+    ):
+        mock_get_state.return_value = SimpleNamespace(use_map=True, active_area_effects=[])
+        mock_resolve_actor.return_value = {"id": "participant-1", "ref_id": "combatant-1", "status": "active"}
+        client = MagicMock()
+        client.move_combatant.return_value = _movement_response_with_elevation(
+            source_elevation=3.0, dest_elevation=3.0,
+        )
+        mock_build_client.return_value = client
+
+        result = _run(CombatService.confirm_movement(
+            db=MagicMock(), session_id="session-1",
+            req=CombatMovementPreviewRequest(destination_cell={"x": 3, "y": 1}),
+            actor_user_id="user-1", is_gm=True,
+        ))
+
+        self.assertIsNone(result.fall_result)
+
+    @patch.object(CombatService, "_apply_movement_hazards")
+    @patch.object(CombatService, "resolve_fall")
+    @patch.object(CombatService, "_require_movement_capable")
+    @patch.object(CombatService, "_require_actor_status")
+    @patch.object(CombatService, "_require_active")
+    @patch.object(CombatService, "_resolve_actor_participant")
+    @patch.object(CombatService, "get_state")
+    @patch.object(CombatService, "_build_limiar_map_client")
+    def test_preview_fall_result_is_none(
+        self, mock_build_client, mock_get_state, mock_resolve_actor,
+        _mock_require_active, _mock_require_status, _mock_require_movement,
+        mock_resolve_fall, mock_hazards,
+    ):
+        mock_get_state.return_value = SimpleNamespace(use_map=True, active_area_effects=[])
+        mock_resolve_actor.return_value = {"id": "participant-1", "ref_id": "combatant-1", "status": "active"}
+        client = MagicMock()
+        client.preview_movement.return_value = _movement_response_with_elevation(
+            source_elevation=6.0, dest_elevation=0.0,
+        )
+        mock_build_client.return_value = client
+
+        result = _run(CombatService.preview_movement(
+            db=MagicMock(), session_id="session-1",
+            req=CombatMovementPreviewRequest(destination_cell={"x": 3, "y": 1}),
+            actor_user_id="user-1", is_gm=True,
+        ))
+
+        self.assertIsNone(result.fall_result)
+
+    @patch.object(CombatService, "_apply_movement_hazards")
+    @patch.object(CombatService, "resolve_fall")
+    @patch.object(CombatService, "_require_movement_capable")
+    @patch.object(CombatService, "_require_actor_status")
+    @patch.object(CombatService, "_require_active")
+    @patch.object(CombatService, "_resolve_actor_participant")
+    @patch.object(CombatService, "get_state")
+    @patch.object(CombatService, "_build_limiar_map_client")
+    def test_response_includes_elevation_data(
+        self, mock_build_client, mock_get_state, mock_resolve_actor,
+        _mock_require_active, _mock_require_status, _mock_require_movement,
+        mock_resolve_fall, mock_hazards,
+    ):
+        mock_get_state.return_value = SimpleNamespace(use_map=True, active_area_effects=[])
+        mock_resolve_actor.return_value = {"id": "participant-1", "ref_id": "combatant-1", "status": "active"}
+        client = MagicMock()
+        client.move_combatant.return_value = _movement_response_with_elevation(
+            source_elevation=9.0, dest_elevation=3.0,
+        )
+        mock_build_client.return_value = client
+        mock_resolve_fall.return_value = {"resolution": {}, "new_hp": None, "concentration_check": None}
+
+        result = _run(CombatService.confirm_movement(
+            db=MagicMock(), session_id="session-1",
+            req=CombatMovementPreviewRequest(destination_cell={"x": 3, "y": 1}),
+            actor_user_id="user-1", is_gm=True,
+        ))
+
+        self.assertEqual(result.source_elevation_meters, 9.0)
+        self.assertEqual(result.destination_elevation_meters, 3.0)
 
 
 if __name__ == "__main__":
