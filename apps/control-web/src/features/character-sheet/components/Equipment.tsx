@@ -131,7 +131,7 @@ export const Equipment = ({
               </span>
             </div>
 
-            {encumbrance.nextThresholdKg !== null && (
+            {encumbrance.nextThresholdKg !== null && encumbrance.nextThresholdKg > 0 && (
               <p className="text-[11px] text-slate-400">
                 ⚡ {t("sheet.equipment.encumbrance.remainingUntil").replace("{kg}", String(encumbrance.remainingKg))}{" "}
                 {encumbrance.tier === "normal"
@@ -142,12 +142,25 @@ export const Equipment = ({
               </p>
             )}
 
-            <p className="text-[11px] text-slate-400">
-              {encumbrance.tier === "normal" && "✅ "}
-              {encumbrance.tier !== "normal" && encumbrance.tier !== "overloaded" && "🔻 "}
-              {encumbrance.tier === "overloaded" && "🚫 "}
-              {t(`sheet.equipment.encumbrance.impact.${encumbrance.tier}`)}
-            </p>
+            {encumbrance.tier !== "overloaded" && (
+              <p className="text-[11px] text-slate-400">
+                {encumbrance.tier === "normal" && "✅ "}
+                {encumbrance.tier === "encumbered" && "🔻 "}
+                {encumbrance.tier === "heavily_encumbered" && "🔻 "}
+                {t(`sheet.equipment.encumbrance.impact.${encumbrance.tier}`)}
+              </p>
+            )}
+
+            {encumbrance.tier === "overloaded" && (
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                🚫 {t("sheet.equipment.encumbrance.impact.overloaded")}
+                {" — "}
+                {t("sheet.equipment.encumbrance.exceededBy").replace(
+                  "{kg}",
+                  String(Math.round((totalWeightKg - encumbrance.heavilyEncumberedMaxKg) * 10) / 10),
+                )}
+              </div>
+            )}
           </div>
           {!readOnly && (
             <button type="button" onClick={onAdd} disabled={!canAddCatalogItem} className={`${btnPrimary} shrink-0 disabled:cursor-not-allowed disabled:opacity-50`}>

@@ -204,7 +204,11 @@ export const computeWeaponDamage = (
 export const computeTotalWeight = (
   items: CharacterSheet["inventory"],
 ): number =>
-  items.reduce((sum, item) => sum + item.weight * item.quantity, 0);
+  items.reduce((sum, item) => {
+    const weight = Number.isFinite(item.weight) ? item.weight : 0;
+    const quantity = Math.max(0, item.quantity ?? 0);
+    return sum + weight * quantity;
+  }, 0);
 
 // ── Carrying Capacity ────────────────────────────────────────────────────────
 
@@ -230,11 +234,14 @@ export const computeEncumbranceTier = ({
   strengthScore: number;
   totalWeightKg: number;
 }): EncumbranceResult => {
-  const totalWeightLb = totalWeightKg / LB_TO_KG;
+  const safeStr = Number.isFinite(strengthScore) && strengthScore > 0 ? strengthScore : 0;
+  const safeWeight = Number.isFinite(totalWeightKg) ? Math.max(0, totalWeightKg) : 0;
 
-  const normalMaxLb = strengthScore * 5;
-  const encumberedMaxLb = strengthScore * 10;
-  const heavilyMaxLb = strengthScore * 15;
+  const totalWeightLb = safeWeight / LB_TO_KG;
+
+  const normalMaxLb = safeStr * 5;
+  const encumberedMaxLb = safeStr * 10;
+  const heavilyMaxLb = safeStr * 15;
 
   let tier: EncumbranceTier = "normal";
   if (totalWeightLb > heavilyMaxLb) {
@@ -248,13 +255,13 @@ export const computeEncumbranceTier = ({
   let remainingKg: number;
   let nextThresholdKg: number | null;
   if (tier === "normal") {
-    remainingKg = Math.max(0, normalMaxLb * LB_TO_KG - totalWeightKg);
+    remainingKg = Math.max(0, normalMaxLb * LB_TO_KG - safeWeight);
     nextThresholdKg = Math.round(normalMaxLb * LB_TO_KG);
   } else if (tier === "encumbered") {
-    remainingKg = Math.max(0, encumberedMaxLb * LB_TO_KG - totalWeightKg);
+    remainingKg = Math.max(0, encumberedMaxLb * LB_TO_KG - safeWeight);
     nextThresholdKg = Math.round(encumberedMaxLb * LB_TO_KG);
   } else if (tier === "heavily_encumbered") {
-    remainingKg = Math.max(0, heavilyMaxLb * LB_TO_KG - totalWeightKg);
+    remainingKg = Math.max(0, heavilyMaxLb * LB_TO_KG - safeWeight);
     nextThresholdKg = Math.round(heavilyMaxLb * LB_TO_KG);
   } else {
     remainingKg = 0;
@@ -280,7 +287,8 @@ export const computeProjectedEncumbranceTier = ({
   currentWeightKg: number;
   addedWeightLb: number;
 }): EncumbranceResult => {
-  const addedKg = addedWeightLb * LB_TO_KG;
+  const safeAdded = Number.isFinite(addedWeightLb) ? addedWeightLb : 0;
+  const addedKg = safeAdded * LB_TO_KG;
   return computeEncumbranceTier({
     strengthScore,
     totalWeightKg: currentWeightKg + addedKg,
