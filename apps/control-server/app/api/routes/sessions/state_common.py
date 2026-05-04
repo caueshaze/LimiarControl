@@ -18,6 +18,7 @@ from app.models.session_state import SessionState
 from app.schemas.session_state import SessionStateRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version
+from app.services.combat_service.persistent_effects import derive_active_concentration
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.session_state_merge import merge_session_state_data
@@ -43,6 +44,7 @@ REQUIRED_SHEET_KEYS = {
 
 
 def to_state_read(entry: SessionState) -> SessionStateRead:
+    state_json = entry.state_json or {}
     return SessionStateRead(
         id=require_identifier(entry.id, "Session state is missing an id"),
         sessionId=entry.session_id,
@@ -50,7 +52,8 @@ def to_state_read(entry: SessionState) -> SessionStateRead:
         state=entry.state_json,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
-        activeSpellEffects=(entry.state_json or {}).get("active_spell_effects"),
+        activeSpellEffects=state_json.get("active_spell_effects"),
+        activeConcentration=derive_active_concentration(state_json),
     )
 
 

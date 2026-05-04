@@ -11,6 +11,7 @@ class SessionStateRead(BaseModel):
     createdAt: datetime
     updatedAt: datetime | None
     activeSpellEffects: list[dict] | None = None
+    activeConcentration: dict | None = None
 
 
 class SessionStateUpdate(BaseModel):

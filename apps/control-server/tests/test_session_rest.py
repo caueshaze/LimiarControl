@@ -190,5 +190,31 @@ class SessionRestTests(unittest.TestCase):
         self.assertEqual(next_data["customField"], "should survive")
 
 
+    def test_long_rest_clears_concentration_from_active_spell_effects(self):
+        from app.services.combat_service.persistent_effects import derive_active_concentration
+
+        conc_effect = {
+            "id": "eff-conc",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Bless",
+            },
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [conc_effect],
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+        self.assertIsNone(derive_active_concentration(next_data))
+
+
 if __name__ == "__main__":
     unittest.main()
