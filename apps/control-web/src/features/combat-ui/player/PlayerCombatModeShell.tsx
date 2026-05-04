@@ -9,6 +9,7 @@ import { AuthoritativeRollDialog } from "../../../features/rolls/components/Auth
 import { deriveCheckModifierPreviewSources } from "../../../features/rolls/checkModifierSources";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../../shared/ui/SpellSlotSummary";
+import { formatPassiveBonusBreakdown } from "../../../features/character-sheet/utils/passiveSkillBonusDisplay";
 import { CombatLogPanel } from "../components/CombatLogPanel";
 import { CombatModeBar } from "../components/CombatModeBar";
 import { CombatParticipantRoster } from "../components/CombatParticipantRoster";
@@ -499,7 +500,10 @@ export const PlayerCombatModeShell = ({
                   <p className="mt-2 text-xl font-semibold text-white">{playerStatus?.passivePerception ?? "-"}</p>
                   {playerStatus?.passivePerceptionBonus && playerStatus.passivePerceptionBonusSources?.length ? (
                     <p className="mt-1 text-[10px] text-sky-300">
-                      {`Base ${playerStatus.passivePerception - playerStatus.passivePerceptionBonus}${playerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`}
+                      {formatPassiveBonusBreakdown(
+                        playerStatus.passivePerception - playerStatus.passivePerceptionBonus,
+                        playerStatus.passivePerceptionBonusSources,
+                      )}
                     </p>
                   ) : null}
                 </div>

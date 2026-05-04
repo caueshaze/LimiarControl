@@ -214,6 +214,7 @@ export const CharacterSheet = ({
     initiative,
     passivePerception,
     passivePerceptionBonus,
+    passivePerceptionBonusSources,
     profBonus,
     spellAttack,
     spellSaveDC,
@@ -239,6 +240,8 @@ export const CharacterSheet = ({
         initiative={initiative}
         profBonus={profBonus}
         passivePerception={passivePerception}
+        passivePerceptionBonus={passivePerceptionBonus}
+        passivePerceptionBonusSources={passivePerceptionBonusSources}
         spellSaveDC={spellSaveDC}
         spellAttack={spellAttack}
         hpTextColor={hpTextColor}
@@ -441,6 +444,7 @@ export const CharacterSheet = ({
                 onCycleProf={actions.cycleSkillProf}
                 readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
                 passivePerceptionBonus={passivePerceptionBonus ?? 0}
+                passivePerceptionBonusSources={passivePerceptionBonusSources}
               />
           </div>
         </div>

@@ -136,7 +136,6 @@ describe("PlayerBoardStatusPanel", () => {
     );
 
     expect(markup).toContain("Percepção passiva:17");
-    expect(markup).toContain("Base 12");
-    expect(markup).toContain("Owl&#x27;s Wisdom 5");
+    expect(markup).toContain("Base 12 + Owl&#x27;s Wisdom +5");
   });
 });
