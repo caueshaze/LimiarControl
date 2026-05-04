@@ -5,12 +5,13 @@ import type { GridEditInteraction } from "./types";
 import { battleMapStore } from "./battle-map-store";
 import { submitMovement } from "./use-movement-actions";
 import { submitEdgeObstaclePaint, submitObstaclePaint } from "./use-obstacle-paint-actions";
+import { submitElevationPaint } from "./use-elevation-paint-actions";
 import { submitPlacement } from "./use-placement-actions";
 import { getEdgeBrushPreset, getObstacleBrushPreset } from "./obstacle-presets";
 import { HttpClient } from "../../services/http-client";
 import { postEmbeddedCellHovered, postEmbeddedCellSelected, postEmbeddedTokenSelected } from "../../services/embedded-map-bridge";
 import { buildFailureExplanation } from "../targeting/diagnostics-to-explanation";
-import { drawCellFills, drawEdgeObstacles, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
+import { drawCellFills, drawEdgeObstacles, drawCellElevationBadges, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
 import { canControlToken, canInteractWithToken, computePath, getSelectionBlockedMessage, pixelToGrid } from "./utils";
 
 type Snapshot = {
@@ -105,6 +106,12 @@ export function bindPixiStageEvents(
       if (currentActor.actorType === "gm" && !uiState.pendingObstaclePaintActionId && !uiState.pendingEdgePaintActionId) {
         if (uiState.obstaclePaintTarget === "edge") submitEdgeObstaclePaint(encounter.sessionId, coord, uiState.edgeDirection);
         else submitObstaclePaint(encounter.sessionId, coord);
+      }
+      return;
+    }
+    if (uiState.isElevationPaintMode) {
+      if (currentActor.actorType === "gm" && !uiState.pendingElevationPaintActionId) {
+        submitElevationPaint(encounter.sessionId, coord);
       }
       return;
     }
@@ -232,6 +239,7 @@ export function buildDrawFunction(
       drawCellFills(refs.cellFillsGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.obstacles, uiState.movementPreview, uiState.targetingPreview, uiState.embeddedPreview, [...(encounter.activeAreaEffects ?? []), ...uiState.embeddedActiveAreaEffects], uiState.embeddedSelectedCell ?? null);
     }
     if (refs.edgeObstaclesGfxRef.current) drawEdgeObstacles(refs.edgeObstaclesGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.edgeObstacles ?? []);
+    if (refs.edgeObstaclesGfxRef.current) drawCellElevationBadges(refs.edgeObstaclesGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.cellElevations ?? []);
     if (refs.tokenContainerRef.current) drawTokenLayer(refs.tokenContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, selectedTokenId, uiState.embeddedSelectedTargetRefId ?? null, encounter.combatState.activeCombatantId);
     if (refs.spellHighlightContainerRef.current) drawSpellHighlightRings(refs.spellHighlightContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.embeddedSpellHighlights);
     if (refs.tacticalOverlayContainerRef.current) drawTacticalTokenOverlay(refs.tacticalOverlayContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.tacticalPreview);

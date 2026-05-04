@@ -13,6 +13,11 @@ export function submitMovement(sessionId: string, tokenId: string, path: Coordin
     return;
   }
 
+  if (battleMapStore.getState().isElevationPaintMode) {
+    battleMapStore.setMessage("Saia do modo de elevação antes de mover tokens.");
+    return;
+  }
+
   battleMapStore.setMovementPreview(path);
   void new HttpClient()
     .submitMovement(sessionId, {

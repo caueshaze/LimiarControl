@@ -76,6 +76,11 @@ export interface BattleMapUIState {
   edgeDirection: EdgeDirection;
   edgeBrushPresetId: EdgeBrushPresetId;
   pendingEdgePaintActionId?: string;
+  isElevationPaintMode: boolean;
+  elevationBrushPresetMeters: number;
+  elevationBrushRadius: number;
+  elevationBrushMode: "paint" | "erase";
+  pendingElevationPaintActionId?: string;
   mapImageAspectRatio: number;
   mapImageNaturalWidthPx: number;
   mapImageNaturalHeightPx: number;

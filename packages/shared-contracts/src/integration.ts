@@ -22,6 +22,7 @@ export const integrationSpatialEventTypeSchema = z.enum([
   "obstacles.updated",
   "edge_obstacles.updated",
   "grid.calibration.updated",
+  "elevation.updated",
 ]);
 
 export const integrationSpatialEventEnvelopeSchema = z.object({
