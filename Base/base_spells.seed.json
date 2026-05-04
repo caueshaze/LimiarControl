@@ -1654,7 +1654,7 @@
         },
         {
           "key": "cats_grace",
-          "labelPt": "Agilidade do Gato",
+          "labelPt": "Graça do Gato",
           "labelEn": "Cat's Grace",
           "descriptionPt": "Vantagem em testes de Destreza.",
           "descriptionEn": "Advantage on Dexterity checks.",

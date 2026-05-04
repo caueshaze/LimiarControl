@@ -114,7 +114,12 @@ def get_fall_damage_immunity_threshold(participant: dict) -> tuple[float | None,
             continue
         if best is None or float(threshold) > best:
             best = float(threshold)
-            label = effect.get("display_label") or metadata.get("source_spell_name") or "Graça do Gato"
+            label = (
+                metadata.get("selected_variant_label")
+                or effect.get("display_label")
+                or metadata.get("source_spell_name")
+                or "Graça do Gato"
+            )
     return best, label
 
 
