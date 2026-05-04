@@ -22,6 +22,9 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "sheet.skills.passivePerception": "Percepção passiva",
         "playerBoard.spellResourcesTitle": "Slots de magia",
         "playerBoard.noSpellSlots": "Sem slots de magia ativos.",
+        "playerBoard.activeConcentrationLabel": "Concentração",
+        "playerBoard.clearConcentration": "Encerrar concentração",
+        "playerBoard.clearingConcentration": "Encerrando...",
       }[key] ?? key),
   }),
 }));
@@ -71,6 +74,7 @@ describe("PlayerBoardStatusPanel", () => {
         restState="exploration"
         usingHitDie={false}
         onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
       />,
     );
 
@@ -102,6 +106,7 @@ describe("PlayerBoardStatusPanel", () => {
         restState="exploration"
         usingHitDie={false}
         onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
       />,
     );
 
@@ -132,10 +137,273 @@ describe("PlayerBoardStatusPanel", () => {
         restState="exploration"
         usingHitDie={false}
         onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
       />,
     );
 
     expect(markup).toContain("Percepção passiva:17");
     expect(markup).toContain("Base 12 + Owl&#x27;s Wisdom +5");
+  });
+
+  it("renderiza label de concentração ativa quando activeConcentration existe", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellName: "Bless",
+          variantLabel: "Ally",
+          effectIds: ["eff-1"],
+        }}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Concentração");
+    expect(markup).toContain("Bless — Ally");
+    expect(markup).toContain("Encerrar concentração");
+  });
+
+  it("prefere spellName + variantLabel no label de concentração", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellName: "Bless",
+          variantLabel: "Ally",
+          spellKey: "bless",
+          effectIds: ["eff-1"],
+        }}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Bless — Ally");
+  });
+
+  it("fallback para spellName sozinho quando variantLabel está ausente", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellName: "Bless",
+          effectIds: ["eff-1"],
+        }}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Bless");
+    expect(markup).not.toContain("—");
+  });
+
+  it("fallback para spellKey quando ambos os nomes estão ausentes", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellKey: "bless",
+          effectIds: ["eff-1"],
+        }}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("bless");
+  });
+
+  it("desabilita botão de encerrar concentração quando clearingConcentration é true", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellName: "Bless",
+          effectIds: ["eff-1"],
+        }}
+        clearingConcentration
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("disabled");
+    expect(markup).toContain("Encerrando...");
+  });
+
+  it("não renderiza card de concentração quando activeConcentration é nulo", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={null}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markup).not.toContain("Concentração");
+    expect(markup).not.toContain("Encerrar concentração");
+  });
+
+  it("atualiza percepção passiva após remoção de bônus (simula clear de concentração)", () => {
+    const baseStatus = {
+      level: 4,
+      currentHp: 22,
+      maxHp: 30,
+      hpPercent: 73,
+      tempHp: 0,
+      xpPercent: 60,
+      nextLevelThreshold: 2700,
+      experiencePoints: 1800,
+      ac: 14,
+      initiative: 2,
+    };
+
+    const withBonus = {
+      ...baseStatus,
+      passivePerception: 17,
+      passivePerceptionBonus: 5,
+      passivePerceptionBonusSources: [{ label: "Owl's Wisdom", value: 5 }],
+    };
+
+    const withoutBonus = {
+      ...baseStatus,
+      passivePerception: 12,
+      passivePerceptionBonus: 0,
+      passivePerceptionBonusSources: [],
+    };
+
+    const markupWith = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={{
+          spellName: "Owl's Wisdom",
+          effectIds: ["eff-1"],
+        }}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={withBonus as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markupWith).toContain("Percepção passiva:17");
+    expect(markupWith).toContain("Base 12 + Owl&#x27;s Wisdom +5");
+
+    const markupWithout = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeConcentration={null}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={withoutBonus as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+      />,
+    );
+
+    expect(markupWithout).toContain("Percepção passiva:12");
+    expect(markupWithout).not.toContain("Owl");
   });
 });

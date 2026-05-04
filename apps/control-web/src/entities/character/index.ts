@@ -1,4 +1,5 @@
 export type {
+  ActiveConcentration,
   CharacterSheetRecord,
   PartyCharacterSheetDraftRecord,
   SessionStateRecord,

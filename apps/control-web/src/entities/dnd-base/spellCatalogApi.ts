@@ -27,7 +27,7 @@ export type BaseSpell = {
   name: string;
   namePt?: string | null;
   /** Authority id for campaign-scope spell entries. Null for base-scope spells. */
-  campaignSpellId: string | null;
+  campaignSpellId?: string | null;
   level: number;
   school: string;
   castingTimeType?: string | null;

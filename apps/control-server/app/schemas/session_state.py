@@ -14,6 +14,10 @@ class SessionStateRead(BaseModel):
     activeConcentration: dict | None = None
 
 
+class ClearConcentrationRequest(BaseModel):
+    concentrationGroup: str | None = None
+
+
 class SessionStateUpdate(BaseModel):
     state: dict
 

@@ -1,7 +1,9 @@
+import type { ActiveConcentration } from "../../entities/character";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
+import { formatActiveConcentrationLabel } from "./concentrationLabel";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -21,7 +23,10 @@ const encumbranceAccentMap: Record<PlayerBoardStatusSummary["encumbranceTier"], 
 };
 
 type Props = {
+  activeConcentration?: ActiveConcentration | null;
+  clearingConcentration?: boolean;
   combatActive: boolean;
+  onClearConcentration: () => void;
   pendingRoll: PendingRoll | null;
   playerSheet?: CharacterSheet | null;
   playerStatus: PlayerBoardStatusSummary | null;
@@ -31,7 +36,10 @@ type Props = {
 };
 
 export const PlayerBoardStatusPanel = ({
+  activeConcentration,
+  clearingConcentration,
   combatActive,
+  onClearConcentration,
   pendingRoll,
   playerSheet,
   playerStatus,
@@ -175,6 +183,31 @@ export const PlayerBoardStatusPanel = ({
                 title={t("playerBoard.spellResourcesTitle")}
                 emptyLabel={t("playerBoard.noSpellSlots")}
               />
+            </div>
+          ) : null}
+
+          {activeConcentration ? (
+            <div className="mt-5 rounded-3xl border border-violet-500/20 bg-violet-500/8 px-4 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
+                    {t("playerBoard.activeConcentrationLabel")}
+                  </p>
+                  <h3 className="mt-2 text-lg font-semibold text-white">
+                    {formatActiveConcentrationLabel(activeConcentration) ?? t("playerBoard.activeConcentrationLabel")}
+                  </h3>
+                </div>
+              </div>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={onClearConcentration}
+                  disabled={clearingConcentration}
+                  className="rounded-full bg-violet-200 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-950 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {clearingConcentration ? t("playerBoard.clearingConcentration") : t("playerBoard.clearConcentration")}
+                </button>
+              </div>
             </div>
           ) : null}
 

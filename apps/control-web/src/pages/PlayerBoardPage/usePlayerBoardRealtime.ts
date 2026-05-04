@@ -255,11 +255,11 @@ export const usePlayerBoardRealtime = ({
       return;
     }
     if (lastEvent.type === "roll_resolved") {
-      const p = lastEvent.payload;
-      if (!isRollEventKnown(String(p.event_id ?? ""))) {
+      const p = lastEvent.payload as unknown as Parameters<typeof formatRollResolvedToastDescription>[0];
+      if (!isRollEventKnown(String((p as Record<string, unknown>).event_id ?? ""))) {
         showToast({
           variant: "info",
-          title: `${String(p.actor_display_name ?? "")}: ${String(p.roll_type ?? "")}`,
+          title: `${String((p as Record<string, unknown>).actor_display_name ?? "")}: ${String((p as Record<string, unknown>).roll_type ?? "")}`,
           description: formatRollResolvedToastDescription(p),
           duration: 4000,
         });

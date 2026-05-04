@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -19,9 +19,11 @@ import { PlayerBoardRollDialog } from "./PlayerBoardRollDialog";
 import { usePlayerBoardCallbacks } from "./usePlayerBoardCallbacks";
 import { usePlayerBoardRestActions } from "./usePlayerBoardRestActions";
 import { PlayerBoardStatusPanel } from "./PlayerBoardStatusPanel";
+import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
 import { usePlayerBoardLoadout } from "./usePlayerBoardLoadout";
 import { usePlayerBoardRestFeedback } from "./usePlayerBoardRestFeedback";
 import { usePlayerBoardRealtime } from "./usePlayerBoardRealtime";
+import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
 import { useSession } from "../../features/sessions";
@@ -44,6 +46,7 @@ export const PlayerBoardPage = () => {
   const { toast, showToast, clearToast } = useToast();
   const navigate = useNavigate();
   const {
+    activeConcentration,
     activeSession,
     catalogItems,
     clearCommand,
@@ -62,6 +65,7 @@ export const PlayerBoardPage = () => {
     roll,
     rollEvents,
     sessionEndedAt,
+    setActiveConcentration,
     setMyInventory,
     setPlayerSheet,
     setPlayerWallet,
@@ -160,6 +164,25 @@ export const PlayerBoardPage = () => {
     showToast,
     t,
   });
+  const [clearingConcentration, setClearingConcentration] = useState(false);
+
+  const handleClearConcentration = async () => {
+    if (!activeSession?.id || clearingConcentration) return;
+    setClearingConcentration(true);
+    try {
+      const record = await sessionStatesRepo.clearConcentration(activeSession.id);
+      setPlayerSheet(parseCharacterSheet(record.state));
+      setActiveConcentration(record.activeConcentration ?? null);
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("playerBoard.clearConcentrationErrorTitle"),
+        description: t("playerBoard.clearConcentrationErrorDescription"),
+      });
+    } finally {
+      setClearingConcentration(false);
+    }
+  };
 
   usePlayerBoardRestFeedback({
     lastEvent,
@@ -273,7 +296,10 @@ export const PlayerBoardPage = () => {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-6">
       <PlayerBoardStatusPanel
+        activeConcentration={activeConcentration}
+        clearingConcentration={clearingConcentration}
         combatActive={combatActive}
+        onClearConcentration={handleClearConcentration}
         pendingRoll={pendingRoll}
         playerSheet={playerSheet}
         playerStatus={playerStatus}

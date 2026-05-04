@@ -49,7 +49,7 @@ describe("ActiveEffectDebugPanel", () => {
         effects={[
           {
             id: "effect-2",
-            kind: "temp_hp_granted",
+            kind: "temp_hp_granted" as ActiveEffect["kind"],
             duration_type: "manual",
             created_at: "2026-05-01T00:00:00Z",
             display_label: "Enhance Ability",
@@ -81,7 +81,7 @@ describe("ActiveEffectDebugPanel", () => {
         effects={[
           {
             id: "effect-3",
-            kind: "temp_hp_granted",
+            kind: "temp_hp_granted" as ActiveEffect["kind"],
             duration_type: "manual",
             created_at: "2026-05-01T00:00:00Z",
             display_label: "Enhance Ability",
@@ -196,7 +196,7 @@ describe("ActiveEffectDebugPanel", () => {
           },
           {
             id: "partial-effect",
-            kind: "temp_hp_granted",
+            kind: "temp_hp_granted" as ActiveEffect["kind"],
             duration_type: "manual",
             created_at: "2024-01-01T00:00:00Z",
             display_label: "Bear's Endurance",

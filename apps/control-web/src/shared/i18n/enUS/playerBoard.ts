@@ -176,4 +176,9 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.speedLabel": "Speed",
   "playerBoard.speedPenaltyHint": "Penalized by encumbrance",
   "playerBoard.encumbranceMovementExceed": "This path exceeds your effective speed due to encumbrance.",
+  "playerBoard.activeConcentrationLabel": "Concentration",
+  "playerBoard.clearConcentration": "End concentration",
+  "playerBoard.clearingConcentration": "Ending...",
+  "playerBoard.clearConcentrationErrorTitle": "Failed to end concentration",
+  "playerBoard.clearConcentrationErrorDescription": "Could not end concentration.",
 } as const;

@@ -24,6 +24,15 @@ export type PartyCharacterSheetDraftRecord = {
   updatedAt?: string | null;
 };
 
+export type ActiveConcentration = {
+  spellKey?: string | null;
+  spellName?: string | null;
+  variantKey?: string | null;
+  variantLabel?: string | null;
+  concentrationGroup?: string | null;
+  effectIds: string[];
+};
+
 export type SessionStateRecord = {
   id: string;
   sessionId: string;
@@ -31,4 +40,6 @@ export type SessionStateRecord = {
   state: unknown;
   createdAt: string;
   updatedAt?: string | null;
+  activeSpellEffects?: Record<string, unknown>[] | null;
+  activeConcentration?: ActiveConcentration | null;
 };

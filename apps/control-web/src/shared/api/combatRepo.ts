@@ -444,6 +444,8 @@ export type CombatSpellResult = {
     cover?: string | null;
     base_ac?: number | null;
     effective_ac?: number | null;
+    base_save_dc?: number | null;
+    effective_save_dc?: number | null;
     cover_modifier?: number;
   }>;
   target_count?: number;

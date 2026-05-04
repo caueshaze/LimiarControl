@@ -18,7 +18,7 @@ export const SessionActivityToggle = ({
   const [events, setEvents] = useState<ActivityEvent[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const intervalRef = useRef<number | null>(null);
   const requestIdRef = useRef(0);
   const loadingRef = useRef(false);
 
