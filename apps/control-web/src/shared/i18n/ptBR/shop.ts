@@ -98,4 +98,7 @@ export const shopPtBRDictionary = {
   "shop.noActiveSession": "Nenhuma sessão ativa",
   "shop.failedToLoadSpells": "Falha ao carregar magias",
   "shop.currency.electrum": "Electrum",
+  "shop.card.encumbranceWarning.encumbered": "⚠ Este item deixará o personagem Sobrecarregado",
+  "shop.card.encumbranceWarning.heavily_encumbered": "⚠ Este item deixará o personagem Muito Sobrecarregado",
+  "shop.card.encumbranceWarning.overloaded": "⚠ Este item deixará o personagem Imóvel",
 } as const;

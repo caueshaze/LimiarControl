@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Item } from "../../../entities/item";
 import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { LB_TO_KG } from "../../../features/character-sheet/utils/calculations";
+import { LB_TO_KG, computeProjectedEncumbranceTier } from "../../../features/character-sheet/utils/calculations";
+import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { localizedItemName } from "../utils/localizedItemName";
 import { formatItemPrice } from "../utils/shopCurrency";
@@ -13,6 +14,15 @@ type ShopItemCardProps = {
   isBuying?: boolean;
   didJustBuy?: boolean;
   onBuy?: (itemId: string) => Promise<void> | void;
+  strengthScore?: number;
+  currentTotalWeightKg?: number;
+  currentEncumbranceTier?: EncumbranceTier;
+};
+
+const encumbranceWarningColor: Record<string, string> = {
+  encumbered: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  heavily_encumbered: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+  overloaded: "border-red-500/30 bg-red-500/10 text-red-300",
 };
 
 export const ShopItemCard = ({
@@ -21,9 +31,23 @@ export const ShopItemCard = ({
   isBuying = false,
   didJustBuy = false,
   onBuy,
+  strengthScore,
+  currentTotalWeightKg,
+  currentEncumbranceTier,
 }: ShopItemCardProps) => {
   const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState(false);
+
+  const projectedTier = useMemo(() => {
+    if (strengthScore == null || currentTotalWeightKg == null || !currentEncumbranceTier) return null;
+    const result = computeProjectedEncumbranceTier({
+      strengthScore,
+      currentWeightKg: currentTotalWeightKg,
+      addedWeightLb: item.weight ?? 0,
+    });
+    return result.tier !== currentEncumbranceTier ? result.tier : null;
+  }, [strengthScore, currentTotalWeightKg, currentEncumbranceTier, item.weight]);
+
   const propertyLabels = getItemPropertyLabels(item.properties, locale);
   const detailBits = [
     item.damageDice ? `${t("shop.card.damage")} ${item.damageDice}` : null,
@@ -56,6 +80,11 @@ export const ShopItemCard = ({
             {didJustBuy && (
               <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
                 {t("shop.card.added")}
+              </span>
+            )}
+            {projectedTier && projectedTier !== "normal" && (
+              <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] ${encumbranceWarningColor[projectedTier] ?? ""}`}>
+                {t(`shop.card.encumbranceWarning.${projectedTier}`)}
               </span>
             )}
           </div>

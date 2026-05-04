@@ -98,4 +98,7 @@ export const shopEnUSDictionary = {
   "shop.noActiveSession": "No active session",
   "shop.failedToLoadSpells": "Failed to load spells",
   "shop.currency.electrum": "Electrum",
+  "shop.card.encumbranceWarning.encumbered": "⚠ This item will make the character Encumbered",
+  "shop.card.encumbranceWarning.heavily_encumbered": "⚠ This item will make the character Heavily Encumbered",
+  "shop.card.encumbranceWarning.overloaded": "⚠ This item will make the character Overloaded",
 } as const;

@@ -54,7 +54,6 @@ export const Equipment = ({
   const totalWeightKg = totalWeight * LB_TO_KG;
   const encumbrance = computeEncumbranceTier({ strengthScore, totalWeightKg });
   const tierColorClass = encumbranceTierColor[encumbrance.tier];
-  const isEncumbered = encumbrance.tier !== "normal";
   const hasCurrency = Boolean(
     currency && Object.values(currency).some((value) => value > 0),
   );
@@ -91,23 +90,23 @@ export const Equipment = ({
 
       <div className="mt-3 border-t border-slate-800 pt-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
+          <div className="w-full space-y-2">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <span className="text-xs text-slate-500">{t("sheet.equipment.totalWeight")}:</span>
               <span className={`text-xs font-semibold ${tierColorClass}`}>
-                {Math.round(totalWeightKg)} kg
-                {isEncumbered && (
-                  <span className="font-normal">
-                    {" "}({t("sheet.equipment.encumbrance.limit")}: {encumbrance.normalMaxKg} kg)
-                  </span>
-                )}
+                {Math.round(totalWeightKg)} kg — {t(`sheet.equipment.encumbrance.${encumbrance.tier}`)}
               </span>
-              {isEncumbered && (
-                <span className={`text-xs font-semibold ${tierColorClass}`}>
-                  — {t(`sheet.equipment.encumbrance.${encumbrance.tier}`)}
-                </span>
-              )}
             </div>
+
+            <EncumbranceBar
+              totalWeightKg={totalWeightKg}
+              strengthScore={strengthScore}
+              tier={encumbrance.tier}
+              normalMaxKg={encumbrance.normalMaxKg}
+              encumberedMaxKg={encumbrance.encumberedMaxKg}
+              heavilyMaxKg={encumbrance.heavilyEncumberedMaxKg}
+            />
+
             <div className="flex flex-wrap gap-x-3 gap-y-0.5">
               {(
                 [
@@ -131,6 +130,24 @@ export const Equipment = ({
                 {t("sheet.equipment.encumbrance.overloaded")}: {t("sheet.equipment.encumbrance.above")} {encumbrance.heavilyEncumberedMaxKg} kg
               </span>
             </div>
+
+            {encumbrance.nextThresholdKg !== null && (
+              <p className="text-[11px] text-slate-400">
+                ⚡ {t("sheet.equipment.encumbrance.remainingUntil").replace("{kg}", String(encumbrance.remainingKg))}{" "}
+                {encumbrance.tier === "normal"
+                  ? t("sheet.equipment.encumbrance.encumbered")
+                  : encumbrance.tier === "encumbered"
+                    ? t("sheet.equipment.encumbrance.heavily_encumbered")
+                    : t("sheet.equipment.encumbrance.overloaded")}
+              </p>
+            )}
+
+            <p className="text-[11px] text-slate-400">
+              {encumbrance.tier === "normal" && "✅ "}
+              {encumbrance.tier !== "normal" && encumbrance.tier !== "overloaded" && "🔻 "}
+              {encumbrance.tier === "overloaded" && "🚫 "}
+              {t(`sheet.equipment.encumbrance.impact.${encumbrance.tier}`)}
+            </p>
           </div>
           {!readOnly && (
             <button type="button" onClick={onAdd} disabled={!canAddCatalogItem} className={`${btnPrimary} shrink-0 disabled:cursor-not-allowed disabled:opacity-50`}>
@@ -154,6 +171,57 @@ export const Equipment = ({
         )}
       </div>
     </Section>
+  );
+};
+
+const encumbranceBarTierColor: Record<EncumbranceTier, string> = {
+  normal: "bg-emerald-500",
+  encumbered: "bg-amber-500",
+  heavily_encumbered: "bg-red-400",
+  overloaded: "bg-red-600",
+};
+
+const EncumbranceBar = ({
+  totalWeightKg,
+  strengthScore,
+  tier,
+  normalMaxKg,
+  encumberedMaxKg,
+  heavilyMaxKg,
+}: {
+  totalWeightKg: number;
+  strengthScore: number;
+  tier: EncumbranceTier;
+  normalMaxKg: number;
+  encumberedMaxKg: number;
+  heavilyMaxKg: number;
+}) => {
+  const maxKg = heavilyMaxKg;
+  const percent = maxKg > 0 ? Math.min(100, (totalWeightKg / maxKg) * 100) : 0;
+  const normalPct = maxKg > 0 ? (normalMaxKg / maxKg) * 100 : 0;
+  const encumberedPct = maxKg > 0 ? (encumberedMaxKg / maxKg) * 100 : 0;
+
+  return (
+    <div className="space-y-1">
+      <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-800">
+        <div
+          className="absolute inset-y-0 left-0 opacity-20"
+          style={{ width: `${normalPct}%`, backgroundColor: "#22c55e" }}
+        />
+        <div
+          className="absolute inset-y-0 opacity-20"
+          style={{ left: `${normalPct}%`, width: `${encumberedPct - normalPct}%`, backgroundColor: "#f59e0b" }}
+        />
+        <div
+          className="absolute inset-y-0 opacity-20"
+          style={{ left: `${encumberedPct}%`, width: `${100 - encumberedPct}%`, backgroundColor: "#ef4444" }}
+        />
+        <div
+          className={`absolute inset-y-0 left-0 rounded-full transition-all ${encumbranceBarTierColor[tier]}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 };
 

@@ -8,6 +8,7 @@ import type {
   CurrencyWallet,
   InventorySellResult,
 } from "../../../shared/api/inventoryRepo";
+import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
 import { ShopItemList } from "./ShopItemList";
 import { ShopFilterBar } from "./ShopFilterBar";
 import { useShop } from "../hooks/useShop";
@@ -38,6 +39,9 @@ type ShopPanelProps = {
   onBuyError?: (message?: string) => void;
   onSell?: (item: Item, result: InventorySellResult) => void;
   onSellError?: (message?: string) => void;
+  strengthScore?: number;
+  currentTotalWeightKg?: number;
+  currentEncumbranceTier?: EncumbranceTier;
 };
 
 export const ShopPanel = ({
@@ -51,6 +55,9 @@ export const ShopPanel = ({
   onBuyError,
   onSell,
   onSellError,
+  strengthScore,
+  currentTotalWeightKg,
+  currentEncumbranceTier,
 }: ShopPanelProps) => {
   const { t, locale } = useLocale();
   const { items, itemsLoading, itemsError, buyItem, sellItem, loadItems } = useShop({
@@ -276,6 +283,9 @@ export const ShopPanel = ({
                 ownedByItemId={ownedByItemId}
                 pendingItemId={pendingItemId}
                 recentItemId={recentItemId}
+                strengthScore={strengthScore}
+                currentTotalWeightKg={currentTotalWeightKg}
+                currentEncumbranceTier={currentEncumbranceTier}
                 onBuy={async (id) => {
                   const selectedItem = items.find((item) => item.id === id);
                   if (!selectedItem) {
