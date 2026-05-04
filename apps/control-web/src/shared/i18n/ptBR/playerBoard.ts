@@ -176,4 +176,9 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.speedLabel": "Velocidade",
   "playerBoard.speedPenaltyHint": "Penalizado por carga",
   "playerBoard.encumbranceMovementExceed": "Este trajeto excede sua velocidade efetiva por carga.",
+  "playerBoard.activeConcentrationLabel": "Concentração",
+  "playerBoard.clearConcentration": "Encerrar concentração",
+  "playerBoard.clearingConcentration": "Encerrando...",
+  "playerBoard.clearConcentrationErrorTitle": "Erro ao encerrar concentração",
+  "playerBoard.clearConcentrationErrorDescription": "Não foi possível encerrar a concentração.",
 } as const;

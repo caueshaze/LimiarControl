@@ -5,6 +5,7 @@ import { itemsRepo } from "../../shared/api/itemsRepo";
 import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
+import type { ActiveConcentration } from "../../entities/character";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
@@ -49,6 +50,7 @@ export const usePlayerBoardResources = ({
   const [catalogItems, setCatalogItems] = useState<Record<string, Item>>({});
   const [playerWallet, setPlayerWallet] = useState<CurrencyWallet | null>(null);
   const [playerSheet, setPlayerSheet] = useState<CharacterSheet | null>(null);
+  const [activeConcentration, setActiveConcentration] = useState<ActiveConcentration | null>(null);
 
   const applyRealtimeStateSnapshot = useCallback((rawState: unknown): boolean => {
     try {
@@ -102,6 +104,7 @@ export const usePlayerBoardResources = ({
     if (!activeSession?.id) {
       setPlayerWallet(null);
       setPlayerSheet(null);
+      setActiveConcentration(null);
       return;
     }
     try {
@@ -111,9 +114,11 @@ export const usePlayerBoardResources = ({
         (record.state as { currency?: unknown } | null | undefined)?.currency,
       );
       setPlayerWallet(nextWallet);
+      setActiveConcentration(record.activeConcentration ?? null);
     } catch {
       setPlayerWallet(EMPTY_WALLET);
       setPlayerSheet(null);
+      setActiveConcentration(null);
     }
   }, [activeSession?.id]);
 
@@ -164,8 +169,9 @@ export const usePlayerBoardResources = ({
       return;
     }
 
+    const payload = lastEvent.payload as Record<string, unknown>;
     const eventPartyId =
-      typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+      typeof payload.partyId === "string" ? payload.partyId : null;
     if (eventPartyId && partyId && eventPartyId !== partyId) {
       return;
     }
@@ -306,6 +312,7 @@ export const usePlayerBoardResources = ({
   }, [effectiveCampaignId, activeSession, refresh]);
 
   return {
+    activeConcentration,
     activeSession,
     catalogItems,
     clearCommand,
@@ -325,6 +332,7 @@ export const usePlayerBoardResources = ({
     roll,
     rollEvents,
     sessionEndedAt,
+    setActiveConcentration,
     setMyInventory,
     setPlayerSheet,
     setPlayerWallet,

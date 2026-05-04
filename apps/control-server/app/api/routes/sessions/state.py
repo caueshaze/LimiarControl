@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session as DbSession, select
 
@@ -8,11 +8,13 @@ from app.models.campaign_member import CampaignMember
 from app.models.item import ItemType
 from app.models.session_state import SessionState
 from app.schemas.session_state import (
+    ClearConcentrationRequest,
     SessionStateLoadoutUpdate,
     SessionStateRead,
     SessionStateUpdate,
 )
 from app.services.combat import CombatService
+from app.services.combat_service.persistent_effects import clear_persisted_concentration_effects
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from ._shared import record_session_activity, require_identifier
@@ -210,4 +212,41 @@ async def update_player_session_state(
     )
     if combat_state:
         await CombatService._emit_state(session_id, combat_state)
+    return to_state_read(state)
+
+
+@router.post("/sessions/{session_id}/state/me/concentration/clear", response_model=SessionStateRead)
+async def clear_my_concentration(
+    session_id: str,
+    payload: ClearConcentrationRequest = Body(default_factory=ClearConcentrationRequest),
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_view_access(entry, user, session, user.id)
+    state = session.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == user.id,
+        )
+    ).first()
+    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session state not found")
+
+    updated = clear_persisted_concentration_effects(
+        state.state_json,
+        concentration_group=payload.concentrationGroup,
+    )
+    state.state_json = finalize_session_state_data(updated)
+    session.add(state)
+    session.commit()
+    session.refresh(state)
+
+    await publish_state_update(
+        entry,
+        user.id,
+        state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
+    )
     return to_state_read(state)

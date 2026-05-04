@@ -13,4 +13,8 @@ export const sessionStatesRepo = {
     http.get<SessionStateRecord>(`/sessions/${sessionId}/state/${playerUserId}`),
   updateByPlayer: (sessionId: string, playerUserId: string, state: unknown) =>
     http.put<SessionStateRecord>(`/sessions/${sessionId}/state/${playerUserId}`, { state }),
+  clearConcentration: (sessionId: string, concentrationGroup?: string | null) =>
+    http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/concentration/clear`, {
+      concentrationGroup: concentrationGroup ?? null,
+    }),
 };

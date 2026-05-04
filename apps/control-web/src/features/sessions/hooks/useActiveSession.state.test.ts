@@ -11,11 +11,14 @@ const session = (id: string): ActiveSession =>
   ({
     id,
     campaignId: "camp-1",
+    number: 1,
     title: "Session",
     status: "ACTIVE",
+    isActive: true,
     createdAt: "2026-04-19T00:00:00.000Z",
     activatedAt: "2026-04-19T00:00:00.000Z",
     partyId: "party-1",
+    durationSeconds: 0,
   }) as ActiveSession;
 
 describe("useActiveSession.state", () => {

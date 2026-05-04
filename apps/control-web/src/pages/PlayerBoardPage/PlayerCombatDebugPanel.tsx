@@ -9,6 +9,7 @@ import {
   spellRequiresExternalTarget,
 } from "./player-combat-debug/areaTargetingUi";
 import type { PlayerCombatDebugPanelProps } from "./player-combat-debug/types";
+import { useLocale } from "../../shared/hooks/useLocale";
 import { usePlayerCombatDebugState } from "./player-combat-debug/usePlayerCombatDebugState";
 
 export const PlayerCombatDebugPanel = ({
@@ -18,6 +19,7 @@ export const PlayerCombatDebugPanel = ({
   sessionId,
   userId,
 }: PlayerCombatDebugPanelProps) => {
+  const { t } = useLocale();
   const {
     activeTab,
     attackDialogOpen,

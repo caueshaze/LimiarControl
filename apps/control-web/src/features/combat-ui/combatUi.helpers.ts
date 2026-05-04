@@ -33,6 +33,7 @@ const CONDITION_LABELS: Record<NonNullable<ActiveEffect["condition_type"]>, Loca
   blinded: "combatUi.condition.blinded",
   frightened: "combatUi.condition.frightened",
   charmed: "combatUi.condition.charmed",
+  hostile_to_caster: "combatUi.condition.hostile_to_caster",
 };
 
 type BuildCombatParticipantViewsOptions = {
