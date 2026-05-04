@@ -6,7 +6,8 @@ from sqlmodel import Session
 from app.services.session_state_finalize import finalize_session_state_data
 
 from .damage_core import CombatDamageCoreMixin
-from .exceptions import CombatServiceError
+from .exceptions import CombatServiceError, _roll_dice_expression
+from .fall_damage import FallDamageResolution, compute_fall_damage
 
 
 class CombatDamageAdminMixin(CombatDamageCoreMixin):
@@ -96,3 +97,107 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             await cls._emit_state(session_id, state)
         await cls._emit_and_persist_log(db, session_id, actor_user_id, None, {"message": f"GM applied {req.amount} healing.{effect_msg}", "source": "gm_override", "actorUserId": actor_user_id})
         return {"new_hp": new_hp}
+
+    @classmethod
+    async def resolve_fall(
+        cls,
+        db: Session,
+        session_id: str,
+        participant_id: str,
+        height_meters: float,
+        actor_user_id: str,
+        is_gm: bool,
+    ) -> dict:
+        if not is_gm:
+            raise CombatServiceError("Only GM can resolve fall damage", 403)
+        state = cls.get_state(db, session_id)
+        cls._require_active(state)
+        participant = next(
+            (p for p in state.participants if p.get("id") == participant_id),
+            None,
+        )
+        if not participant:
+            raise CombatServiceError("Participant not found in combat", 404)
+        ref_id = participant.get("ref_id")
+        kind = participant.get("kind")
+        display_name = participant.get("display_name") or "Combatant"
+        computation = compute_fall_damage(height_meters)
+        if not computation.causes_damage:
+            resolution = FallDamageResolution(
+                participant_id=participant_id,
+                height_meters=computation.height_meters,
+                effective_height_meters=computation.effective_height_meters,
+                dice_count=computation.dice_count,
+                dice_sides=computation.dice_sides,
+                damage_formula=computation.damage_formula,
+                damage_type=computation.damage_type,
+                damage_total=0,
+                causes_damage=False,
+                applied_damage=False,
+            )
+            db.commit()
+            await cls._emit_state(session_id, state)
+            await cls._emit_and_persist_log(
+                db,
+                session_id,
+                actor_user_id,
+                None,
+                {
+                    "message": f"{display_name} falls {height_meters}m and takes no damage.",
+                    "source": "environmental_fall",
+                    "actorUserId": actor_user_id,
+                    "participantId": participant_id,
+                    "heightMeters": height_meters,
+                    "causesDamage": False,
+                },
+            )
+            return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
+        damage_total = _roll_dice_expression(computation.damage_formula)
+        new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+            db,
+            ref_id,
+            kind,
+            damage_total,
+            damage_type=computation.damage_type,
+            is_crit=False,
+            state=state,
+        )
+        db.commit()
+        if kind == "player":
+            target_state, *_ = cls._get_stats(db, ref_id, kind, session_id)
+            await cls._emit_player_state_update(db, session_id, ref_id, target_state)
+        elif previous_hp != new_hp:
+            await cls._emit_entity_hp_update(db, session_id, ref_id, previous_hp)
+        if state:
+            await cls._emit_state(session_id, state)
+        await cls._emit_and_persist_log(
+            db,
+            session_id,
+            actor_user_id,
+            None,
+            {
+                "message": f"{display_name} falls {height_meters}m and takes {damage_total} {computation.damage_type} damage.{effect_msg}",
+                "source": "environmental_fall",
+                "actorUserId": actor_user_id,
+                "participantId": participant_id,
+                "heightMeters": height_meters,
+                "damageTotal": damage_total,
+                "damageType": computation.damage_type,
+                "damageFormula": computation.damage_formula,
+                "diceCount": computation.dice_count,
+                "causesDamage": True,
+            },
+        )
+        resolution = FallDamageResolution(
+            participant_id=participant_id,
+            height_meters=computation.height_meters,
+            effective_height_meters=computation.effective_height_meters,
+            dice_count=computation.dice_count,
+            dice_sides=computation.dice_sides,
+            damage_formula=computation.damage_formula,
+            damage_type=computation.damage_type,
+            damage_total=damage_total,
+            causes_damage=True,
+            applied_damage=True,
+        )
+        return {"resolution": resolution.model_dump(mode="json"), "new_hp": new_hp, "concentration_check": concentration_check}

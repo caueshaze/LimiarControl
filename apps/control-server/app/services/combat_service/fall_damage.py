@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 FALL_DAMAGE_METERS_PER_DIE = 3
 FALL_DAMAGE_DIE_SIDES = 6
@@ -40,3 +40,18 @@ def compute_fall_damage(height_meters: float) -> FallDamageComputation:
         damage_formula=f"{dice_count}d{FALL_DAMAGE_DIE_SIDES}" if causes_damage else None,
         causes_damage=causes_damage,
     )
+
+
+class FallDamageResolution(BaseModel):
+    participant_id: str
+    height_meters: float
+    effective_height_meters: float
+    dice_count: int
+    dice_sides: int
+    damage_formula: str | None
+    damage_type: str
+    damage_total: int
+    causes_damage: bool
+    applied_damage: bool
+    prevented: bool = False
+    prevention_sources: list[str] = Field(default_factory=list)

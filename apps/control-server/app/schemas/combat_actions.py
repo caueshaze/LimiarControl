@@ -265,3 +265,8 @@ class CombatStandardActionResult(BaseModel):
     effect_roll_source: RollSource | None = None
     uses_remaining: int | None = None
     concentration_check: CombatConcentrationCheckResult | None = None
+
+
+class CombatFallRequest(BaseModel):
+    participant_id: str
+    height_meters: float = Field(ge=0)
