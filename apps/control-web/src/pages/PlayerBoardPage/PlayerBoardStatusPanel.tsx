@@ -1,6 +1,7 @@
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
+import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -130,7 +131,10 @@ export const PlayerBoardStatusPanel = ({
               value={String(playerStatus.passivePerception)}
               helper={
                 playerStatus.passivePerceptionBonus && playerStatus.passivePerceptionBonusSources?.length
-                  ? `Base ${playerStatus.passivePerception - playerStatus.passivePerceptionBonus}${playerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`
+                  ? formatPassiveBonusBreakdown(
+                      playerStatus.passivePerception - playerStatus.passivePerceptionBonus,
+                      playerStatus.passivePerceptionBonusSources,
+                    )
                   : null
               }
             />

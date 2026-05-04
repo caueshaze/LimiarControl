@@ -3,7 +3,8 @@ import type { SheetActions } from "../hooks/useCharacterSheet";
 import { Section } from "./Section";
 import { chk } from "./styles";
 import { ABILITY_SHORT, SKILL_ABILITY_MAP, SKILL_LABELS, SKILL_NAMES } from "../constants";
-import { computePassivePerception, computeSkillMod, formatMod } from "../utils/calculations";
+import { computePassivePerception, computeSkillMod, formatMod, type PassiveSkillBonusSource } from "../utils/calculations";
+import { formatPassiveBonusBreakdown } from "../utils/passiveSkillBonusDisplay";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type Props = {
@@ -13,12 +14,17 @@ type Props = {
   level: number;
   onCycleProf: SheetActions["cycleSkillProf"];
   passivePerceptionBonus?: number;
+  passivePerceptionBonusSources?: PassiveSkillBonusSource[];
   readOnly?: boolean;
 };
 
-export const Skills = ({ className, abilities, skillProficiencies, level, onCycleProf, passivePerceptionBonus = 0, readOnly = false }: Props) => {
+export const Skills = ({ className, abilities, skillProficiencies, level, onCycleProf, passivePerceptionBonus = 0, passivePerceptionBonusSources, readOnly = false }: Props) => {
   const { t } = useLocale();
-  const passivePerception = computePassivePerception({ abilities, skillProficiencies, level } as CharacterSheet) + passivePerceptionBonus;
+  const basePassivePerception = computePassivePerception({ abilities, skillProficiencies, level } as CharacterSheet);
+  const passivePerception = basePassivePerception + passivePerceptionBonus;
+  const ppBreakdown = passivePerceptionBonus && passivePerceptionBonusSources?.length
+    ? formatPassiveBonusBreakdown(basePassivePerception, passivePerceptionBonusSources)
+    : null;
 
   return (
     <Section title={t("sheet.skills.title")} color="bg-cyan-500" className={className}>
@@ -40,9 +46,12 @@ export const Skills = ({ className, abilities, skillProficiencies, level, onCycl
           );
         })}
       </div>
-      <div className="mt-3 flex items-center gap-2 border-t border-white/6 pt-3 text-xs text-slate-400">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/6 pt-3 text-xs text-slate-400">
         <span className="font-bold">{t("sheet.skills.passivePerception")}:</span>
         <span className="text-sm font-bold text-slate-200">{passivePerception}</span>
+        {ppBreakdown && (
+          <span className="text-[10px] text-sky-300">{ppBreakdown}</span>
+        )}
       </div>
     </Section>
   );

@@ -4,7 +4,8 @@ import type { CharacterSheet } from "../model/characterSheet.types";
 import type { CharacterSheetMode } from "../model/characterSheet.types";
 import type { SheetActions } from "../hooks/useCharacterSheet";
 import type { RequiredField } from "../utils/creationValidation";
-import { formatMod } from "../utils/calculations";
+import { formatMod, type PassiveSkillBonusSource } from "../utils/calculations";
+import { formatPassiveBonusBreakdown } from "../utils/passiveSkillBonusDisplay";
 import { CONDITION_LABELS, CONDITION_NAMES } from "../constants";
 import { formatClassDisplayName } from "../data/classes";
 import { useLocale } from "../../../shared/hooks/useLocale";
@@ -43,6 +44,8 @@ type Props = {
   initiative: number;
   profBonus: number;
   passivePerception: number;
+  passivePerceptionBonus?: number;
+  passivePerceptionBonusSources?: PassiveSkillBonusSource[];
   spellSaveDC: number | null;
   spellAttack: number | null;
   hpTextColor: string;
@@ -70,6 +73,7 @@ type Props = {
 
 export const CharacterHeader = ({
   sheet, mode, canSave, showResetImport, ac, initiative, profBonus, passivePerception,
+  passivePerceptionBonus, passivePerceptionBonusSources,
   spellSaveDC, spellAttack, hpTextColor,
   partyId, backHref, backLabel, isDirty, saving, saveError, saveDisabledReason, missingRequiredFields = [], onSave,
   draftName, draftNamePlaceholder, draftNameDisabled = false, onDraftNameChange,
@@ -188,7 +192,18 @@ export const CharacterHeader = ({
             <StatChip label="AC" value={String(ac)} />
             <StatChip label="Init" value={formatMod(initiative)} />
             <StatChip label="Prof" value={formatMod(profBonus)} className="text-limiar-400" />
-            <StatChip label="PP" value={String(passivePerception)} />
+            <StatChip
+              label="PP"
+              value={String(passivePerception)}
+              helper={
+                passivePerceptionBonus && passivePerceptionBonusSources?.length
+                  ? formatPassiveBonusBreakdown(
+                      passivePerception - passivePerceptionBonus,
+                      passivePerceptionBonusSources,
+                    )
+                  : undefined
+              }
+            />
             {spellSaveDC !== null && (
               <>
                 <StatChip label="Spell DC" value={String(spellSaveDC)} className="text-violet-400" />
@@ -279,9 +294,26 @@ const SaveStatus = ({
   return null;
 };
 
-const StatChip = ({ label, value, className = "text-slate-200" }: { label: string; value: string; className?: string }) => (
-  <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/3 px-3 py-1.5 text-xs">
+const StatChip = ({
+  label,
+  value,
+  className = "text-slate-200",
+  helper,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  helper?: string;
+}) => (
+  <div
+    className="flex items-center gap-2 rounded-full border border-white/8 bg-white/3 px-3 py-1.5 text-xs"
+    title={helper}
+    aria-label={helper ? `${label} ${value}. ${helper}` : undefined}
+  >
     <span className="font-bold uppercase tracking-[0.2em] text-slate-500">{label}</span>
     <span className={className}>{value}</span>
+    {helper && (
+      <span className="text-[10px] text-sky-300">{helper}</span>
+    )}
   </div>
 );
