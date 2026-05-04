@@ -227,6 +227,9 @@ def apply_long_rest(data: dict | None) -> dict:
     next_data = _force_revert_wild_shape_inline(next_data)
     next_data = _recharge_wild_shape_inline(next_data)
     next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
+
+    next_data.pop("active_spell_effects", None)
+
     return next_data
 
 

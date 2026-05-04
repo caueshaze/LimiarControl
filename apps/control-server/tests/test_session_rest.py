@@ -138,6 +138,57 @@ class SessionRestTests(unittest.TestCase):
             ],
         )
 
+    def test_long_rest_clears_persisted_active_spell_effects(self):
+        owl_wisdom = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "source_spell_name": "Owl's Wisdom",
+                "declarative_effect": {
+                    "type": "passive_skill_bonus",
+                    "params": {"skill": "perception", "bonus": 5},
+                },
+            },
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [owl_wisdom],
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+        self.assertEqual(next_data["currentHP"], 8)
+
+    def test_long_rest_with_no_active_spell_effects_is_safe(self):
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+        self.assertEqual(next_data["currentHP"], 8)
+
+    def test_long_rest_preserves_other_state_json_fields(self):
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [{"id": "eff-1"}],
+                "customField": "should survive",
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+        self.assertEqual(next_data["customField"], "should survive")
+
 
 if __name__ == "__main__":
     unittest.main()
