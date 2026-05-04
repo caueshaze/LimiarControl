@@ -10,6 +10,7 @@ class SessionStateRead(BaseModel):
     state: dict
     createdAt: datetime
     updatedAt: datetime | None
+    activeSpellEffects: list[dict] | None = None
 
 
 class SessionStateUpdate(BaseModel):

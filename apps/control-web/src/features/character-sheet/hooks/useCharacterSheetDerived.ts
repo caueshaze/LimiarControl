@@ -1,6 +1,8 @@
 import {
   computeInitiative,
   computePassivePerception,
+  computePassiveSkillBonus,
+  computePassiveSkillBonusSources,
   computeSpellAttack,
   computeSpellSaveDC,
   getModifier,
@@ -12,20 +14,31 @@ import {
   getArmorClassBreakdownRows,
 } from "../utils/armorClass";
 import type { CharacterSheet } from "../model/characterSheet.types";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import {
   getDraconicLineageState,
   resolveElementalAffinityEligibility,
 } from "../data/draconicAncestry";
 import { resolveDragonbornLineageState } from "../data/dragonbornAncestries";
 
-export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
+export const useCharacterSheetDerived = (
+  sheet: CharacterSheet,
+  activeEffects?: ActiveEffect[] | null,
+) => {
   const acResult = calculateArmorClass(buildCharacterAcStateFromSheet(sheet));
   const ac = acResult.total;
   const acBreakdown = getArmorClassBreakdownRows(acResult);
   const dexMod = getModifier(sheet.abilities.dexterity);
   const initiative = computeInitiative(dexMod);
   const profBonus = getProficiencyBonus(sheet.level);
-  const passivePerception = computePassivePerception(sheet);
+  const basePassivePerception = computePassivePerception(sheet);
+  const passivePerceptionBonus = activeEffects?.length
+    ? computePassiveSkillBonus(activeEffects, "perception")
+    : 0;
+  const passivePerception = basePassivePerception + passivePerceptionBonus;
+  const passivePerceptionBonusSources = activeEffects?.length
+    ? computePassiveSkillBonusSources(activeEffects, "perception")
+    : undefined;
 
   const spellAbilityScore = sheet.spellcasting
     ? sheet.abilities[sheet.spellcasting.ability]
@@ -69,6 +82,8 @@ export const useCharacterSheetDerived = (sheet: CharacterSheet) => {
     hpTextColor,
     initiative,
     passivePerception,
+    passivePerceptionBonus: passivePerceptionBonus || undefined,
+    passivePerceptionBonusSources,
     profBonus,
     dragonbornAncestry: dragonbornLineage.ancestry,
     dragonbornAncestryLabel: dragonbornLineage.ancestryLabel,

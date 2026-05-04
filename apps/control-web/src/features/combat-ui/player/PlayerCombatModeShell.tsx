@@ -14,7 +14,7 @@ import { CombatModeBar } from "../components/CombatModeBar";
 import { CombatParticipantRoster } from "../components/CombatParticipantRoster";
 import { ActiveEffectDebugPanel } from "../components/ActiveEffectDebugPanel";
 import { buildCombatParticipantViews, getCombatEffectLabel, getCombatStatusLabel } from "../combatUi.helpers";
-import { computePassiveSkillBonus, computePassiveSkillBonusSources } from "../../../features/character-sheet/utils/calculations";
+
 import { PlayerAttackRollDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerAttackRollDialog";
 import { PlayerSpellCastDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerSpellCastDialog";
 import { PlayerBoardRollDialog } from "../../../pages/PlayerBoardPage/PlayerBoardRollDialog";
@@ -185,18 +185,6 @@ export const PlayerCombatModeShell = ({
   );
 
   const myParticipant = combat.myParticipant;
-  const enrichedPlayerStatus = useMemo(() => {
-    if (!playerStatus) return null;
-    const activeEffects = myParticipant?.active_effects ?? [];
-    const bonus = computePassiveSkillBonus(activeEffects, "perception");
-    if (!bonus) return playerStatus;
-    return {
-      ...playerStatus,
-      passivePerception: playerStatus.passivePerception + bonus,
-      passivePerceptionBonus: bonus,
-      passivePerceptionBonusSources: computePassiveSkillBonusSources(activeEffects, "perception"),
-    };
-  }, [playerStatus, myParticipant?.active_effects]);
 
   const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
   const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
@@ -332,9 +320,9 @@ export const PlayerCombatModeShell = ({
       : null;
   const encumbranceMovementWarning =
     movementPreview.preview != null &&
-    enrichedPlayerStatus &&
-    enrichedPlayerStatus.baseSpeedMeters > 0 &&
-    pathCostUnitsToMeters(movementPreview.preview.path_cost_units) > enrichedPlayerStatus.effectiveSpeedMeters
+    playerStatus &&
+    playerStatus.baseSpeedMeters > 0 &&
+    pathCostUnitsToMeters(movementPreview.preview.path_cost_units) > playerStatus.effectiveSpeedMeters
       ? t("playerBoard.encumbranceMovementExceed")
       : null;
   const movementHintMessage = movementRejectionReason ?? movementPreview.error;
@@ -446,7 +434,7 @@ export const PlayerCombatModeShell = ({
             lastUseObjectResult={lastUseObjectResult}
             myParticipant={myParticipant}
             pendingRoll={pendingRoll}
-            playerStatus={enrichedPlayerStatus}
+            playerStatus={playerStatus}
             selectedConsumable={selectedConsumable}
             selectedSpell={selectedSpell}
             selectedSpellId={selectedSpellId}
@@ -486,43 +474,43 @@ export const PlayerCombatModeShell = ({
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("combatUi.hp")}</p>
                   <p className="mt-2 text-xl font-semibold text-white">
-                    {enrichedPlayerStatus ? `${enrichedPlayerStatus.currentHp}/${enrichedPlayerStatus.maxHp}` : "-"}
+                    {playerStatus ? `${playerStatus.currentHp}/${playerStatus.maxHp}` : "-"}
                   </p>
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("combatUi.armorClass")}</p>
-                  <p className="mt-2 text-xl font-semibold text-white">{enrichedPlayerStatus?.ac ?? "-"}</p>
+                  <p className="mt-2 text-xl font-semibold text-white">{playerStatus?.ac ?? "-"}</p>
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("playerBoard.speedLabel")}</p>
                   <p className="mt-2 text-xl font-semibold text-white">
-                    {enrichedPlayerStatus && enrichedPlayerStatus.baseSpeedMeters > 0
-                      ? `${enrichedPlayerStatus.effectiveSpeedMeters} m`
+                    {playerStatus && playerStatus.baseSpeedMeters > 0
+                      ? `${playerStatus.effectiveSpeedMeters} m`
                       : "-"}
                   </p>
-                  {enrichedPlayerStatus && enrichedPlayerStatus.effectiveSpeedMeters < enrichedPlayerStatus.baseSpeedMeters ? (
+                  {playerStatus && playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters ? (
                     <p className="mt-1 text-[10px] text-amber-400">
-                      {`${t("playerBoard.speedPenaltyHint")} (base ${enrichedPlayerStatus.baseSpeedMeters} m)`}
+                      {`${t("playerBoard.speedPenaltyHint")} (base ${playerStatus.baseSpeedMeters} m)`}
                     </p>
                   ) : null}
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("sheet.skills.passivePerception")}</p>
-                  <p className="mt-2 text-xl font-semibold text-white">{enrichedPlayerStatus?.passivePerception ?? "-"}</p>
-                  {enrichedPlayerStatus?.passivePerceptionBonus && enrichedPlayerStatus.passivePerceptionBonusSources?.length ? (
+                  <p className="mt-2 text-xl font-semibold text-white">{playerStatus?.passivePerception ?? "-"}</p>
+                  {playerStatus?.passivePerceptionBonus && playerStatus.passivePerceptionBonusSources?.length ? (
                     <p className="mt-1 text-[10px] text-sky-300">
-                      {`Base ${enrichedPlayerStatus.passivePerception - enrichedPlayerStatus.passivePerceptionBonus}${enrichedPlayerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`}
+                      {`Base ${playerStatus.passivePerception - playerStatus.passivePerceptionBonus}${playerStatus.passivePerceptionBonusSources.map((s) => ` + ${s.label} ${s.value}`).join("")}`}
                     </p>
                   ) : null}
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4 sm:col-span-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{t("combatUi.currentWeapon")}</p>
                   <p className="mt-2 text-sm font-semibold text-white">
-                    {enrichedPlayerStatus?.currentWeapon?.name ?? t("combatUi.noWeapon")}
+                    {playerStatus?.currentWeapon?.name ?? t("combatUi.noWeapon")}
                   </p>
-                  {enrichedPlayerStatus?.currentWeapon ? (
+                  {playerStatus?.currentWeapon ? (
                     <p className="mt-2 text-xs text-slate-300">
-                      {enrichedPlayerStatus.currentWeapon.damageLabel}
+                      {playerStatus.currentWeapon.damageLabel}
                     </p>
                   ) : null}
                 </div>

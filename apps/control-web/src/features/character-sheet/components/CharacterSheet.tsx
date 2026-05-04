@@ -67,7 +67,7 @@ export const CharacterSheet = ({
     canEditPlay,
     campaignId,
   });
-  const { sheet } = actions;
+  const { sheet, activeSpellEffects } = actions;
   const { t } = useLocale();
   const isCreation = mode === "creation";
   const isCreationDraft = isCreation && creationDraftMode;
@@ -213,10 +213,11 @@ export const CharacterSheet = ({
     hpTextColor,
     initiative,
     passivePerception,
+    passivePerceptionBonus,
     profBonus,
     spellAttack,
     spellSaveDC,
-  } = useCharacterSheetDerived(sheet);
+  } = useCharacterSheetDerived(sheet, activeSpellEffects);
 
   if (actions.loading) {
     return <CharacterSheetStateScreen />;
@@ -439,6 +440,7 @@ export const CharacterSheet = ({
                 level={sheet.level}
                 onCycleProf={actions.cycleSkillProf}
                 readOnly={isCreation ? !isEditableCreationDraft : isPlayReadOnly || isSheetLocked}
+                passivePerceptionBonus={passivePerceptionBonus ?? 0}
               />
           </div>
         </div>

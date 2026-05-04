@@ -7,6 +7,7 @@ from .limiar_map_projection import (
     maybe_project_combat_advance_to_limiar_map as _project_combat_advance_to_limiar_map,
     maybe_project_combat_end_to_limiar_map as _project_combat_end_to_limiar_map,
 )
+from .persistent_effects import persist_surviving_spell_effects
 
 
 def maybe_project_combat_advance_to_limiar_map(session_id: str, state) -> None:
@@ -128,6 +129,8 @@ class CombatLifecycleTurnsMixin:
         for source_id in concentration_source_ids:
             result = cls._clear_concentration_for_source(state, source_participant_id=source_id)
             all_removed.extend(result["removed_effects"])
+
+        persist_surviving_spell_effects(db, state)
 
         for participant in state.participants:
             remaining = cls._get_participant_effects(participant)

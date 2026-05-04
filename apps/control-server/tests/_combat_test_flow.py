@@ -146,7 +146,17 @@ class CombatFlowTestsMixin:
             calibration_width=0.7,
             calibration_height=0.6,
         )
-        self.db.exec.side_effect = [session_result, campaign_map_result]
+        call_count = 0
+        side_effect_results = [session_result, campaign_map_result]
+        def exec_side_effect(*args, **kwargs):
+            nonlocal call_count
+            if call_count < len(side_effect_results):
+                result = side_effect_results[call_count]
+                call_count += 1
+                return result
+            call_count += 1
+            return MagicMock(first=MagicMock(return_value=None))
+        self.db.exec.side_effect = exec_side_effect
 
         req = CombatStartRequest(
             participants=[

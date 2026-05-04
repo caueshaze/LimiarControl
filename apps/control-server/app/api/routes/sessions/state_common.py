@@ -50,6 +50,7 @@ def to_state_read(entry: SessionState) -> SessionStateRead:
         state=entry.state_json,
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
+        activeSpellEffects=(entry.state_json or {}).get("active_spell_effects"),
     )
 
 
