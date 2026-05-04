@@ -8,6 +8,7 @@ from app.models.session import Session as CampaignSession
 from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, decode_obstacles
 from app.schemas.combat import CombatMapSelection
 
+from .condition_effects_predicates import compute_encumbrance_tier_from_lb
 from .exceptions import CombatServiceError
 from .limiar_map_projection import (
     maybe_project_combat_start_to_limiar_map as _project_combat_start_to_limiar_map,
@@ -26,6 +27,28 @@ def maybe_project_combat_start_to_limiar_map(db, session_id: str, state) -> None
         projection(db, session_id, state)
         return
     _project_combat_start_to_limiar_map(db, session_id, state)
+
+def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str) -> str:
+    from app.models.session_state import SessionState
+
+    entry = db.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == player_user_id,
+        )
+    ).first()
+    if not entry:
+        return "normal"
+    sj = entry.state_json or {}
+    strength = float((sj.get("abilities") or {}).get("strength") or 10)
+    inventory = sj.get("inventory") or []
+    total_lb = sum(
+        float(item.get("weight") or 0) * max(1, int(item.get("quantity") or 1))
+        for item in inventory
+        if isinstance(item, dict)
+    )
+    return compute_encumbrance_tier_from_lb(strength, total_lb)
+
 
 class CombatLifecycleInitiativeMixin:
     @classmethod
@@ -97,12 +120,22 @@ class CombatLifecycleInitiativeMixin:
         map_selection = cls._resolve_map_selection(db, session_id, req)
         from app.models.combat import CombatState
 
+        built_participants = []
+        for p in req.participants:
+            entry = {
+                **p.model_dump(),
+                "status": "active" if p.kind == "player" else ("active" if not getattr(p, "is_defeated", False) else "defeated"),
+            }
+            if p.kind == "player":
+                entry["encumbrance_tier"] = _encumbrance_tier_for_player(db, session_id, p.ref_id)
+            built_participants.append(entry)
+
         new_state = CombatState(
             session_id=session_id,
             phase=CombatPhase.initiative,
             round=1,
             current_turn_index=0,
-            participants=[{**participant.model_dump(), "status": "active" if participant.kind == "player" else ("active" if not getattr(participant, "is_defeated", False) else "defeated")} for participant in req.participants],
+            participants=built_participants,
             map_selection=map_selection,
             use_map=req.useMap,
         )
