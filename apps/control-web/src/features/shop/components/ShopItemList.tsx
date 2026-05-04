@@ -1,4 +1,5 @@
 import type { Item } from "../../../entities/item";
+import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
 import { ShopItemCard } from "./ShopItemCard";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
@@ -9,6 +10,9 @@ type ShopItemListProps = {
   pendingItemId?: string | null;
   recentItemId?: string | null;
   onBuy?: (itemId: string) => Promise<void> | void;
+  strengthScore?: number;
+  currentTotalWeightKg?: number;
+  currentEncumbranceTier?: EncumbranceTier;
 };
 
 export const ShopItemList = ({
@@ -18,6 +22,9 @@ export const ShopItemList = ({
   pendingItemId = null,
   recentItemId = null,
   onBuy,
+  strengthScore,
+  currentTotalWeightKg,
+  currentEncumbranceTier,
 }: ShopItemListProps) => {
   const { t } = useLocale();
   if (items.length === 0) {
@@ -38,6 +45,9 @@ export const ShopItemList = ({
           isBuying={pendingItemId === item.id}
           didJustBuy={recentItemId === item.id}
           onBuy={onBuy}
+          strengthScore={strengthScore}
+          currentTotalWeightKg={currentTotalWeightKg}
+          currentEncumbranceTier={currentEncumbranceTier}
         />
       ))}
     </div>

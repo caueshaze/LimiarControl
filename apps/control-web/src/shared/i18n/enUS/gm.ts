@@ -281,4 +281,7 @@ export const gmEnUSDictionary = {
   "gm.dashboard.failedToRemoveEffect": "Failed to remove effect",
   "gm.dashboard.playerTag": "(Player)",
   "gm.dashboard.npcTag": "(NPC)",
+  "gm.dashboard.encumbranceWarning.encumbered": "⚠ This item will make the character Encumbered",
+  "gm.dashboard.encumbranceWarning.heavily_encumbered": "⚠ This item will make the character Heavily Encumbered",
+  "gm.dashboard.encumbranceWarning.overloaded": "⚠ This item will make the character Overloaded",
 } as const;

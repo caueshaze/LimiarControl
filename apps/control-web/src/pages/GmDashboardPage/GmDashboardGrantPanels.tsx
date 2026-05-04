@@ -1,9 +1,12 @@
+import { useMemo } from "react";
 import type { Item } from "../../entities/item";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import type { CurrencyUnit } from "../../shared/utils/money";
 import { EMPTY_WALLET, buildWalletDisplay } from "../../features/shop/utils/shopCurrency";
 import { localizedItemName } from "../../features/shop/utils/localizedItemName";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { computeProjectedEncumbranceTier } from "../../features/character-sheet/utils/calculations";
+import type { EncumbranceTier } from "../../features/character-sheet/utils/calculations";
 import type { CurrencyDraft, GrantFeedback, ItemDraft } from "./gmDashboard.types";
 
 type Props = {
@@ -20,6 +23,9 @@ type Props = {
   onGrantItem: () => void;
   setCurrencyDraft: (updater: (current: CurrencyDraft | undefined) => CurrencyDraft) => void;
   setItemDraft: (updater: (current: ItemDraft | undefined) => ItemDraft) => void;
+  strengthScore?: number;
+  currentTotalWeightKg?: number;
+  currentEncumbranceTier?: EncumbranceTier;
 };
 
 export const GmDashboardGrantPanels = ({
@@ -36,8 +42,26 @@ export const GmDashboardGrantPanels = ({
   onGrantItem,
   setCurrencyDraft,
   setItemDraft,
+  strengthScore,
+  currentTotalWeightKg,
+  currentEncumbranceTier,
 }: Props) => {
   const { t } = useLocale();
+
+  const encumbranceWarningTier = useMemo(() => {
+    if (strengthScore == null || currentTotalWeightKg == null || !currentEncumbranceTier) return null;
+    const selectedItem = sortedCatalogItems.find((item) => item.id === (itemDraft?.itemId ?? ""));
+    if (!selectedItem) return null;
+    const quantity = Number(itemDraft?.quantity) || 1;
+    const addedWeightLb = (selectedItem.weight ?? 0) * quantity;
+    if (addedWeightLb <= 0) return null;
+    const result = computeProjectedEncumbranceTier({
+      strengthScore,
+      currentWeightKg: currentTotalWeightKg,
+      addedWeightLb,
+    });
+    return result.tier !== currentEncumbranceTier ? result.tier : null;
+  }, [strengthScore, currentTotalWeightKg, currentEncumbranceTier, itemDraft, sortedCatalogItems]);
 
   return (
     <>
@@ -138,6 +162,11 @@ export const GmDashboardGrantPanels = ({
               {grantingItemForUserId === userId ? t("gm.dashboard.sending") : t("gm.dashboard.give")}
             </button>
           </div>
+          {encumbranceWarningTier && encumbranceWarningTier !== "normal" && (
+            <p className={`mt-2 text-[11px] ${encumbranceWarningTier === "overloaded" ? "text-red-400" : encumbranceWarningTier === "heavily_encumbered" ? "text-orange-400" : "text-amber-400"}`}>
+              {t(`gm.dashboard.encumbranceWarning.${encumbranceWarningTier}`)}
+            </p>
+          )}
         </div>
       </div>
 

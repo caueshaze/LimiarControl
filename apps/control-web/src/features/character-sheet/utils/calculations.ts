@@ -219,6 +219,8 @@ export type EncumbranceResult = {
   normalMaxKg: number;
   encumberedMaxKg: number;
   heavilyEncumberedMaxKg: number;
+  remainingKg: number;
+  nextThresholdKg: number | null;
 };
 
 export const computeEncumbranceTier = ({
@@ -243,12 +245,46 @@ export const computeEncumbranceTier = ({
     tier = "encumbered";
   }
 
+  let remainingKg: number;
+  let nextThresholdKg: number | null;
+  if (tier === "normal") {
+    remainingKg = Math.max(0, normalMaxLb * LB_TO_KG - totalWeightKg);
+    nextThresholdKg = Math.round(normalMaxLb * LB_TO_KG);
+  } else if (tier === "encumbered") {
+    remainingKg = Math.max(0, encumberedMaxLb * LB_TO_KG - totalWeightKg);
+    nextThresholdKg = Math.round(encumberedMaxLb * LB_TO_KG);
+  } else if (tier === "heavily_encumbered") {
+    remainingKg = Math.max(0, heavilyMaxLb * LB_TO_KG - totalWeightKg);
+    nextThresholdKg = Math.round(heavilyMaxLb * LB_TO_KG);
+  } else {
+    remainingKg = 0;
+    nextThresholdKg = null;
+  }
+
   return {
     tier,
     normalMaxKg: Math.round(normalMaxLb * LB_TO_KG),
     encumberedMaxKg: Math.round(encumberedMaxLb * LB_TO_KG),
     heavilyEncumberedMaxKg: Math.round(heavilyMaxLb * LB_TO_KG),
+    remainingKg: Math.round(remainingKg * 10) / 10,
+    nextThresholdKg,
   };
+};
+
+export const computeProjectedEncumbranceTier = ({
+  strengthScore,
+  currentWeightKg,
+  addedWeightLb,
+}: {
+  strengthScore: number;
+  currentWeightKg: number;
+  addedWeightLb: number;
+}): EncumbranceResult => {
+  const addedKg = addedWeightLb * LB_TO_KG;
+  return computeEncumbranceTier({
+    strengthScore,
+    totalWeightKg: currentWeightKg + addedKg,
+  });
 };
 
 export const applyEncumbranceMovementPenalty = (

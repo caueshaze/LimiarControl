@@ -352,6 +352,9 @@ export const PlayerBoardPage = () => {
                 campaignId={effectiveCampaignId}
                 inventoryItems={myInventory}
                 wallet={playerWallet}
+                strengthScore={playerSheet?.abilities.strength}
+                currentTotalWeightKg={playerStatus?.totalWeightKg}
+                currentEncumbranceTier={playerStatus?.encumbranceTier}
                 onBuy={(item, inventoryItem) => {
                   upsertInventoryEntry(inventoryItem);
                   void refreshInventoryData();

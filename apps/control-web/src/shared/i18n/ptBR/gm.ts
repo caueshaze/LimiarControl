@@ -281,4 +281,7 @@ export const gmPtBRDictionary = {
   "gm.dashboard.failedToRemoveEffect": "Falha ao remover efeito",
   "gm.dashboard.playerTag": "(Jogador)",
   "gm.dashboard.npcTag": "(NPC)",
+  "gm.dashboard.encumbranceWarning.encumbered": "⚠ Este item deixará o personagem Sobrecarregado",
+  "gm.dashboard.encumbranceWarning.heavily_encumbered": "⚠ Este item deixará o personagem Muito Sobrecarregado",
+  "gm.dashboard.encumbranceWarning.overloaded": "⚠ Este item deixará o personagem Imóvel",
 } as const;

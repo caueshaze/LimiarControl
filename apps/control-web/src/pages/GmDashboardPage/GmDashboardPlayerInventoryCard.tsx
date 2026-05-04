@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { routes } from "../../app/routes/routes";
 import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
@@ -11,6 +12,7 @@ import { GmDashboardInventoryFilters } from "./GmDashboardInventoryFilters";
 import { GmDashboardInventoryItemList } from "./GmDashboardInventoryItemList";
 import { GmDashboardGrantPanels } from "./GmDashboardGrantPanels";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 
 type Props = {
   activeSessionPartyId: string | null;
@@ -106,6 +108,13 @@ export const GmDashboardPlayerInventoryCard = ({
     hpActionState?.userId === player.userId && hpActionState.action === "damage";
   const isHealing =
     hpActionState?.userId === player.userId && hpActionState.action === "heal";
+
+  const encumbranceData = useMemo(() => {
+    if (!sheet) return null;
+    const totalWeightKg = computeTotalWeight(sheet.inventory) * LB_TO_KG;
+    const result = computeEncumbranceTier({ strengthScore: sheet.abilities.strength, totalWeightKg });
+    return { strengthScore: sheet.abilities.strength, totalWeightKg, tier: result.tier };
+  }, [sheet]);
 
   const playSheetRoute = activeSessionPartyId
     ? `${routes.characterSheetParty.replace(":partyId", activeSessionPartyId)}?${new URLSearchParams({
@@ -227,6 +236,9 @@ export const GmDashboardPlayerInventoryCard = ({
             onGrantItem={onGrantItem}
             setCurrencyDraft={setCurrencyDraft}
             setItemDraft={setItemDraft}
+            strengthScore={encumbranceData?.strengthScore}
+            currentTotalWeightKg={encumbranceData?.totalWeightKg}
+            currentEncumbranceTier={encumbranceData?.tier}
           />
         </div>
       )}
