@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -328,6 +328,9 @@ class CombatMovementPreviewResponse(BaseModel):
     movement_speed_cells: int = Field(ge=1)
     remaining_budget: int = Field(ge=0)
     map_version: int | None = None
+    fall_result: dict[str, Any] | None = None
+    source_elevation_meters: float | None = None
+    destination_elevation_meters: float | None = None
 
 
 class EffectInstanceOutcome(BaseModel):

@@ -249,7 +249,8 @@ class TestResolveFallDamage(unittest.IsolatedAsyncioTestCase):
         )
 
         log_payload = mock_emit_log.call_args[0][4]
-        self.assertIn("takes no damage", log_payload["message"])
+        self.assertIn("não sofre dano", log_payload["message"])
+        self.assertNotIn("falls", log_payload["message"])
         self.assertEqual(log_payload["source"], "environmental_fall")
 
     @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
@@ -402,7 +403,7 @@ class TestResolveFallDamage(unittest.IsolatedAsyncioTestCase):
 
         log_payload = mock_emit_log.call_args[0][4]
         self.assertIn("fica caído", log_payload["message"])
-        self.assertTrue(log_payload["proneApplied"])
+        self.assertEqual(log_payload["appliedConditions"], ["prone"])
 
 
 def _get_active_effects_for(state: CombatState, participant_id: str) -> list:
@@ -598,6 +599,77 @@ class TestResolveFallDamagePrevention(unittest.IsolatedAsyncioTestCase):
         prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
         self.assertEqual(len(prone_effects), 1)
         self.assertEqual(result["resolution"]["applied_conditions"], ["prone"])
+
+
+@patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+@patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+@patch.object(CombatService, "get_state")
+class TestFallLogPayloads(unittest.IsolatedAsyncioTestCase):
+    _EXPECTED_KEYS = {
+        "message", "source", "actorUserId", "participantId",
+        "heightMeters", "effectiveHeightMeters", "damageType",
+        "damageTotal", "damageFormula", "diceCount", "causesDamage",
+        "appliedDamage", "prevented", "preventionSources", "appliedConditions",
+    }
+
+    async def test_no_damage_log_payload_has_all_fields(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_active_state()
+        await CombatService.resolve_fall(MagicMock(), "session-1", "entity-e1", 0.0, "user-1", is_gm=True)
+        payload = mock_emit_log.call_args[0][4]
+        self.assertTrue(self._EXPECTED_KEYS.issubset(payload.keys()))
+        self.assertEqual(payload["damageTotal"], 0)
+        self.assertFalse(payload["appliedDamage"])
+        self.assertFalse(payload["prevented"])
+        self.assertEqual(payload["preventionSources"], [])
+        self.assertEqual(payload["appliedConditions"], [])
+        self.assertIsNotNone(payload["effectiveHeightMeters"])
+        self.assertNotIn("proneApplied", payload)
+
+    async def test_prevented_fall_log_payload_has_all_fields(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        await CombatService.resolve_fall(MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True)
+        payload = mock_emit_log.call_args[0][4]
+        self.assertTrue(self._EXPECTED_KEYS.issubset(payload.keys()))
+        self.assertTrue(payload["prevented"])
+        self.assertEqual(payload["preventionSources"], ["Graça do Gato"])
+        self.assertFalse(payload["appliedDamage"])
+        self.assertTrue(payload["causesDamage"])
+        self.assertEqual(payload["damageTotal"], 0)
+        self.assertEqual(payload["appliedConditions"], [])
+        self.assertNotIn("proneApplied", payload)
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_damaging_fall_log_payload_has_all_fields(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_active_state()
+        mock_apply_damage.return_value = (3, "", 10, None)
+        await CombatService.resolve_fall(MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True)
+        payload = mock_emit_log.call_args[0][4]
+        self.assertTrue(self._EXPECTED_KEYS.issubset(payload.keys()))
+        self.assertTrue(payload["causesDamage"])
+        self.assertTrue(payload["appliedDamage"])
+        self.assertEqual(payload["damageTotal"], 7)
+        self.assertFalse(payload["prevented"])
+        self.assertEqual(payload["preventionSources"], [])
+        self.assertEqual(payload["appliedConditions"], ["prone"])
+        self.assertNotIn("proneApplied", payload)
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=5)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_damaging_fall_already_prone_applied_conditions_empty(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        state = _make_active_state()
+        state.participants[1]["active_effects"] = [_make_prone_effect()]
+        mock_get_state.return_value = state
+        mock_apply_damage.return_value = (3, "", 10, None)
+        await CombatService.resolve_fall(MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True)
+        payload = mock_emit_log.call_args[0][4]
+        self.assertEqual(payload["appliedConditions"], [])
 
 
 if __name__ == "__main__":
