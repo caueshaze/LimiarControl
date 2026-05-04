@@ -155,6 +155,16 @@ def compute_encumbrance_tier_from_lb(strength_score: float, weight_lb: float) ->
     return "normal"
 
 
+def apply_encumbrance_movement_penalty(base_speed_meters: float, encumbrance_tier: str) -> float:
+    if encumbrance_tier == "overloaded":
+        return 0.0
+    if encumbrance_tier == "heavily_encumbered":
+        return max(0.0, base_speed_meters - 6)
+    if encumbrance_tier == "encumbered":
+        return max(0.0, base_speed_meters - 3)
+    return base_speed_meters
+
+
 def _get_encumbrance_tier_for_participant(participant: dict) -> str:
     tier = participant.get("encumbrance_tier")
     if isinstance(tier, str) and tier in ("normal", "encumbered", "heavily_encumbered", "overloaded"):
