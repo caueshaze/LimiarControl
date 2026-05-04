@@ -28,6 +28,42 @@ def maybe_project_combat_start_to_limiar_map(db, session_id: str, state) -> None
         return
     _project_combat_start_to_limiar_map(db, session_id, state)
 
+def get_player_total_inventory_weight_lb(db, session_id: str, player_user_id: str) -> float:
+    from sqlalchemy import func
+    from app.models.campaign_member import CampaignMember
+    from app.models.inventory import InventoryItem
+    from app.models.item import Item
+
+    session_entry = db.exec(
+        select(CampaignSession).where(CampaignSession.id == session_id)
+    ).first()
+    if not session_entry:
+        return 0.0
+
+    member = db.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == session_entry.campaign_id,
+            CampaignMember.user_id == player_user_id,
+        )
+    ).first()
+    if not member:
+        return 0.0
+
+    result = db.exec(
+        select(func.coalesce(
+            func.sum(func.coalesce(Item.weight, 0.0) * InventoryItem.quantity),
+            0.0,
+        ))
+        .select_from(InventoryItem)
+        .join(Item, InventoryItem.item_id == Item.id)
+        .where(
+            InventoryItem.campaign_id == session_entry.campaign_id,
+            InventoryItem.member_id == member.id,
+        )
+    ).scalar()
+    return float(result or 0.0)
+
+
 def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str) -> str:
     from app.models.session_state import SessionState
 
@@ -41,12 +77,7 @@ def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str) -> st
         return "normal"
     sj = entry.state_json or {}
     strength = float((sj.get("abilities") or {}).get("strength") or 10)
-    inventory = sj.get("inventory") or []
-    total_lb = sum(
-        float(item.get("weight") or 0) * max(1, int(item.get("quantity") or 1))
-        for item in inventory
-        if isinstance(item, dict)
-    )
+    total_lb = get_player_total_inventory_weight_lb(db, session_id, player_user_id)
     return compute_encumbrance_tier_from_lb(strength, total_lb)
 
 
@@ -175,6 +206,29 @@ class CombatLifecycleInitiativeMixin:
             return False
         participant["encumbrance_tier"] = new_tier
         return True
+
+    @classmethod
+    def get_state_and_recompute_encumbrance(
+        cls,
+        db,
+        session_id: str,
+        player_user_id: str,
+    ):
+        """Recomputa encumbrance_tier e marca o CombatState para o próximo commit.
+
+        Retorna (state, changed). Caller deve fazer session.commit() e, se changed,
+        session.refresh(state) + await _emit_state(session_id, state).
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+
+        state = cls.get_state(db, session_id)
+        if not state:
+            return None, False
+        changed = cls.recompute_participant_encumbrance_tier(db, session_id, state, player_user_id)
+        if changed:
+            flag_modified(state, "participants")
+            db.add(state)
+        return state, changed
 
     @classmethod
     def _resolve_map_selection(cls, db, session_id: str, req) -> dict:
