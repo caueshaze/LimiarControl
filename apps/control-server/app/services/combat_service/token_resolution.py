@@ -10,6 +10,7 @@ from app.models.campaign_entity import CampaignEntity
 from app.models.session_entity import SessionEntity
 from app.models.session_state import SessionState
 
+from .condition_effects_predicates import apply_encumbrance_movement_penalty
 from .participant_attributes import (
     resolve_entity_movement_speed,
     resolve_entity_size,
@@ -276,11 +277,12 @@ def resolve_sync_entry(
         excluded_token_ids=excluded_token_ids,
     )
 
-    movement_speed_cells = (
-        meters_to_movement_cells(movement_speed_base)
-        if movement_speed_base is not None
-        else None
-    )
+    if movement_speed_base is not None:
+        encumbrance_tier = participant.get("encumbrance_tier", "normal")
+        effective_speed = apply_encumbrance_movement_penalty(movement_speed_base, encumbrance_tier)
+        movement_speed_cells = meters_to_movement_cells(effective_speed)
+    else:
+        movement_speed_cells = None
     size_category_enum = normalize_size_category(size_raw)
     size_category = (
         size_category_enum.value if size_category_enum != SizeCategory.MEDIUM else None
