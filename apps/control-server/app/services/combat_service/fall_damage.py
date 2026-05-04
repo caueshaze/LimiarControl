@@ -55,3 +55,4 @@ class FallDamageResolution(BaseModel):
     applied_damage: bool
     prevented: bool = False
     prevention_sources: list[str] = Field(default_factory=list)
+    applied_conditions: list[str] = Field(default_factory=list)
