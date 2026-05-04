@@ -270,8 +270,8 @@ class TestResolveFallDamage(unittest.IsolatedAsyncioTestCase):
         )
 
         log_payload = mock_emit_log.call_args[0][4]
-        self.assertIn("falls 6.0m and takes", log_payload["message"])
-        self.assertIn("7 bludgeoning damage", log_payload["message"])
+        self.assertIn("cai 6.0m", log_payload["message"])
+        self.assertIn("sofre 7 de dano contundente", log_payload["message"])
         self.assertEqual(log_payload["source"], "environmental_fall")
 
     @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=5)
@@ -299,6 +299,125 @@ class TestResolveFallDamage(unittest.IsolatedAsyncioTestCase):
             db, "player-ref-1", "player", 5,
             damage_type="bludgeoning", is_crit=False, state=mock_get_state.return_value,
         )
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
+    @patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    @patch.object(CombatService, "get_state")
+    async def test_damaging_fall_applies_prone(
+        self, mock_get_state, mock_apply_damage, mock_emit_hp, mock_emit_state, mock_emit_log, mock_roll,
+    ):
+        mock_get_state.return_value = _make_active_state()
+        mock_apply_damage.return_value = (3, "", 10, None)
+        db = MagicMock()
+
+        result = await CombatService.resolve_fall(
+            db, "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+
+        effects = _get_active_effects_for(mock_get_state.return_value, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 1)
+        self.assertEqual(result["resolution"]["applied_conditions"], ["prone"])
+
+    @patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+    @patch.object(CombatService, "get_state")
+    async def test_no_damage_fall_does_not_apply_prone(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_active_state()
+        db = MagicMock()
+
+        result = await CombatService.resolve_fall(
+            db, "session-1", "entity-e1", 2.0, "user-1", is_gm=True,
+        )
+
+        effects = _get_active_effects_for(mock_get_state.return_value, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 0)
+        self.assertEqual(result["resolution"]["applied_conditions"], [])
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=5)
+    @patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    @patch.object(CombatService, "get_state")
+    async def test_damaging_fall_does_not_duplicate_prone(
+        self, mock_get_state, mock_apply_damage, mock_emit_hp, mock_emit_state, mock_emit_log, mock_roll,
+    ):
+        state = _make_active_state()
+        state.participants[1]["active_effects"] = [_make_prone_effect()]
+        mock_get_state.return_value = state
+        mock_apply_damage.return_value = (3, "", 10, None)
+        db = MagicMock()
+
+        await CombatService.resolve_fall(
+            db, "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+
+        effects = _get_active_effects_for(state, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 1)
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=0)
+    @patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    @patch.object(CombatService, "get_state")
+    async def test_zero_damage_total_does_not_apply_prone(
+        self, mock_get_state, mock_apply_damage, mock_emit_hp, mock_emit_state, mock_emit_log, mock_roll,
+    ):
+        mock_get_state.return_value = _make_active_state()
+        mock_apply_damage.return_value = (10, "", 10, None)
+        db = MagicMock()
+
+        result = await CombatService.resolve_fall(
+            db, "session-1", "entity-e1", 3.0, "user-1", is_gm=True,
+        )
+
+        effects = _get_active_effects_for(mock_get_state.return_value, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 0)
+        self.assertEqual(result["resolution"]["applied_conditions"], [])
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=7)
+    @patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_state", new_callable=AsyncMock)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    @patch.object(CombatService, "get_state")
+    async def test_damaging_fall_log_includes_prone(
+        self, mock_get_state, mock_apply_damage, mock_emit_hp, mock_emit_state, mock_emit_log, mock_roll,
+    ):
+        mock_get_state.return_value = _make_active_state()
+        mock_apply_damage.return_value = (3, "", 10, None)
+        db = MagicMock()
+
+        await CombatService.resolve_fall(
+            db, "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+
+        log_payload = mock_emit_log.call_args[0][4]
+        self.assertIn("fica caído", log_payload["message"])
+        self.assertTrue(log_payload["proneApplied"])
+
+
+def _get_active_effects_for(state: CombatState, participant_id: str) -> list:
+    p = next((p for p in state.participants if p["id"] == participant_id), None)
+    return (p.get("active_effects") or []) if p else []
+
+
+def _make_prone_effect() -> dict:
+    return {
+        "id": "prone-existing",
+        "kind": "condition",
+        "condition_type": "prone",
+        "duration_type": "manual",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
 
 
 def _make_cats_grace_effect(threshold_m: float = 6.0, label: str = "Graça do Gato") -> dict:
@@ -453,6 +572,32 @@ class TestResolveFallDamagePrevention(unittest.IsolatedAsyncioTestCase):
         resolution = result["resolution"]
         self.assertTrue(resolution["prevented"])
         self.assertEqual(resolution["prevention_sources"], ["Efeito B"])
+
+    async def test_prevented_fall_does_not_apply_prone(self, mock_get_state, mock_emit_state, mock_emit_log):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True,
+        )
+        effects = _get_active_effects_for(mock_get_state.return_value, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 0)
+        self.assertEqual(result["resolution"]["applied_conditions"], [])
+
+    @patch("app.services.combat_service.damage_admin._roll_dice_expression", return_value=9)
+    @patch.object(CombatService, "_emit_entity_hp_update", new_callable=AsyncMock)
+    @patch.object(CombatService, "_apply_damage_to_target")
+    async def test_cats_grace_9m_fall_applies_prone(
+        self, mock_apply_damage, mock_emit_hp, mock_roll, mock_get_state, mock_emit_state, mock_emit_log,
+    ):
+        mock_get_state.return_value = _make_state_with_effects([_make_cats_grace_effect(6.0)])
+        mock_apply_damage.return_value = (5, "", 14, None)
+        result = await CombatService.resolve_fall(
+            MagicMock(), "session-1", "entity-e1", 9.0, "user-1", is_gm=True,
+        )
+        effects = _get_active_effects_for(mock_get_state.return_value, "entity-e1")
+        prone_effects = [e for e in effects if e.get("condition_type") == "prone"]
+        self.assertEqual(len(prone_effects), 1)
+        self.assertEqual(result["resolution"]["applied_conditions"], ["prone"])
 
 
 if __name__ == "__main__":

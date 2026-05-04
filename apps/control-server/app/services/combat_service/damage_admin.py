@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.services.session_state_finalize import finalize_session_state_data
 
-from .condition_effects_predicates import get_fall_damage_immunity_threshold, is_incapacitated
+from .condition_effects_predicates import get_fall_damage_immunity_threshold, has_condition, is_incapacitated
 from .damage_core import CombatDamageCoreMixin
 from .exceptions import CombatServiceError, _roll_dice_expression
 from .fall_damage import FallDamageResolution, compute_fall_damage
@@ -202,6 +205,27 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             is_crit=False,
             state=state,
         )
+        prone_applied = False
+        if damage_total > 0 and not has_condition(participant, "prone"):
+            prone_effect = {
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "condition",
+                "condition_type": "prone",
+                "numeric_value": None,
+                "duration_type": "manual",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": participant_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {"source": "environmental_fall"},
+                "display_label": None,
+            }
+            effects = cls._get_participant_effects(participant)
+            effects.append(prone_effect)
+            cls._set_participant_effects(participant, effects)
+            flag_modified(state, "participants")
+            prone_applied = True
         db.commit()
         if kind == "player":
             target_state, *_ = cls._get_stats(db, ref_id, kind, session_id)
@@ -210,13 +234,14 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             await cls._emit_entity_hp_update(db, session_id, ref_id, previous_hp)
         if state:
             await cls._emit_state(session_id, state)
+        prone_suffix = " e fica caído" if prone_applied else ""
         await cls._emit_and_persist_log(
             db,
             session_id,
             actor_user_id,
             None,
             {
-                "message": f"{display_name} falls {height_meters}m and takes {damage_total} {computation.damage_type} damage.{effect_msg}",
+                "message": f"{display_name} cai {height_meters}m, sofre {damage_total} de dano contundente{prone_suffix}.{effect_msg}",
                 "source": "environmental_fall",
                 "actorUserId": actor_user_id,
                 "participantId": participant_id,
@@ -226,6 +251,7 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                 "damageFormula": computation.damage_formula,
                 "diceCount": computation.dice_count,
                 "causesDamage": True,
+                "proneApplied": prone_applied,
             },
         )
         resolution = FallDamageResolution(
@@ -239,5 +265,6 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
             damage_total=damage_total,
             causes_damage=True,
             applied_damage=True,
+            applied_conditions=["prone"] if prone_applied else [],
         )
         return {"resolution": resolution.model_dump(mode="json"), "new_hp": new_hp, "concentration_check": concentration_check}
