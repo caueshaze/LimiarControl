@@ -33,6 +33,7 @@ from .shop_common import (
     to_item_read,
 )
 from app.models.inventory import InventoryItem
+from app.services.combat import CombatService
 from app.services.magic_item_effects import inventory_item_supports_stacking
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
@@ -161,10 +162,14 @@ async def buy_session_shop_item_service(
     if existing and inventory_item_supports_stacking(item):
         existing.quantity += payload.quantity
         session.add(existing)
+        _cs_buy, _tier_buy = CombatService.get_state_and_recompute_encumbrance(session, session_id, user.id)
         session.commit()
         session.refresh(purchase_event)
         session.refresh(existing)
         session.refresh(state)
+        if _tier_buy and _cs_buy:
+            session.refresh(_cs_buy)
+            await CombatService._emit_state(session_id, _cs_buy)
         await publish_purchase_realtime(entry, purchase_event, member.display_name)
         await _publish_session_state_realtime(
             entry,
@@ -181,10 +186,14 @@ async def buy_session_shop_item_service(
         quantity=payload.quantity,
     )
     session.add(new_entry)
+    _cs_buy, _tier_buy = CombatService.get_state_and_recompute_encumbrance(session, session_id, user.id)
     session.commit()
     session.refresh(purchase_event)
     session.refresh(new_entry)
     session.refresh(state)
+    if _tier_buy and _cs_buy:
+        session.refresh(_cs_buy)
+        await CombatService._emit_state(session_id, _cs_buy)
     await publish_purchase_realtime(entry, purchase_event, member.display_name)
     await _publish_session_state_realtime(
         entry,
@@ -242,10 +251,14 @@ async def sell_session_shop_item_service(
         updated_inventory_entry = None
         session.delete(inventory_entry)
 
+    _cs_sell, _tier_sell = CombatService.get_state_and_recompute_encumbrance(session, session_id, user.id)
     session.commit()
     session.refresh(state)
     if updated_inventory_entry:
         session.refresh(updated_inventory_entry)
+    if _tier_sell and _cs_sell:
+        session.refresh(_cs_sell)
+        await CombatService._emit_state(session_id, _cs_sell)
 
     refund_currency = {"copperValue": refund_cp}
     refund_label = _format_cp_label(refund_cp)

@@ -17,6 +17,7 @@ from app.schemas.session_reward import (
     SessionGrantXpRequest,
 )
 from app.services.character_progression import build_progression_snapshot, grant_experience
+from app.services.combat import CombatService
 from app.services.magic_item_effects import inventory_item_supports_stacking
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
@@ -192,9 +193,15 @@ async def grant_session_item_service(
         created_at=issued_at,
     )
 
+    _cs_grant, _tier_grant = CombatService.get_state_and_recompute_encumbrance(
+        session, session_id, payload.playerUserId
+    )
     session.commit()
     session.refresh(state)
     session.refresh(inventory_entry)
+    if _tier_grant and _cs_grant:
+        session.refresh(_cs_grant)
+        await CombatService._emit_state(session_id, _cs_grant)
 
     inventory_version = inventory_entry.updated_at or inventory_entry.created_at
     event_payload = {
