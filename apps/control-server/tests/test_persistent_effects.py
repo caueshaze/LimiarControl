@@ -16,6 +16,7 @@ from app.models.session_state import SessionState
 from app.services.combat_service.persistent_effects import (
     clear_persisted_concentration_effects,
     derive_active_concentration,
+    enforce_single_persisted_concentration_group,
     persist_surviving_spell_effects,
     restore_persisted_effects,
     sync_effect_removal_to_state_json,
@@ -489,6 +490,281 @@ class TestToStateReadActiveConcentration(unittest.TestCase):
         result = to_state_read(mock)
 
         self.assertIsNone(result.activeConcentration)
+
+
+class TestEnforceSinglePersistedConcentrationGroup(unittest.TestCase):
+    def test_no_concentration_effects_unchanged(self):
+        effects = [_manual_spell_effect("eff-1"), _temp_ac_bonus_effect("eff-ac")]
+        result = enforce_single_persisted_concentration_group(effects)
+        self.assertEqual(result, effects)
+
+    def test_single_concentration_group_unchanged(self):
+        effects = [
+            _manual_spell_effect("eff-a", concentration=True),
+            _manual_spell_effect("eff-b", concentration=True),
+        ]
+        result = enforce_single_persisted_concentration_group(effects)
+        self.assertEqual(len(result), 2)
+        self.assertEqual({e["id"] for e in result}, {"eff-a", "eff-b"})
+
+    def test_two_groups_keeps_newest_by_created_at(self):
+        older = {
+            "id": "eff-old",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-old",
+                "source_spell_name": "Old Spell",
+            },
+        }
+        newer = {
+            "id": "eff-new",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        result = enforce_single_persisted_concentration_group([older, newer])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], "eff-new")
+
+    def test_multiple_effects_in_winning_group_all_kept(self):
+        older = {
+            "id": "eff-old",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-old",
+                "source_spell_name": "Old Spell",
+            },
+        }
+        new_a = {
+            "id": "eff-new-a",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        new_b = {
+            "id": "eff-new-b",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        result = enforce_single_persisted_concentration_group([older, new_a, new_b])
+        self.assertEqual(len(result), 2)
+        ids = {e["id"] for e in result}
+        self.assertEqual(ids, {"eff-new-a", "eff-new-b"})
+
+    def test_non_concentration_effects_survive(self):
+        non_conc = _manual_spell_effect("eff-non")
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        result = enforce_single_persisted_concentration_group([non_conc, conc])
+        self.assertEqual(len(result), 2)
+        ids = {e["id"] for e in result}
+        self.assertEqual(ids, {"eff-non", "eff-conc"})
+
+    def test_invalid_created_at_falls_back_to_last_group(self):
+        first = {
+            "id": "eff-first",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-first",
+            },
+        }
+        second = {
+            "id": "eff-second",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-second",
+            },
+        }
+        result = enforce_single_persisted_concentration_group([first, second])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], "eff-second")
+
+    def test_preserves_original_ordering(self):
+        non1 = _manual_spell_effect("eff-non-1")
+        non2 = _temp_ac_bonus_effect("eff-ac")
+        conc = {
+            "id": "eff-conc",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+            },
+        }
+        result = enforce_single_persisted_concentration_group([non1, conc, non2])
+        self.assertEqual([e["id"] for e in result], ["eff-non-1", "eff-ac", "eff-conc"])
+
+    def test_solo_concentration_without_group_key(self):
+        solo = {
+            "id": "eff-solo",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "source_spell_name": "Solo Spell",
+            },
+        }
+        result = enforce_single_persisted_concentration_group([solo])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], "eff-solo")
+
+
+class TestPersistSurvivingConcentrationNormalization(unittest.TestCase):
+    def test_persist_surviving_keeps_only_newest_concentration_group(self):
+        older = {
+            "id": "eff-old",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-old",
+                "source_spell_name": "Old Spell",
+            },
+        }
+        newer = {
+            "id": "eff-new",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        state = _make_state_with_participants([older, newer])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-new")
+
+    def test_persist_surviving_preserves_non_concentration(self):
+        non_conc = _manual_spell_effect("eff-non")
+        conc = {
+            "id": "eff-conc",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Conc Spell",
+            },
+        }
+        state = _make_state_with_participants([non_conc, conc])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 2)
+        ids = {e["id"] for e in persisted}
+        self.assertEqual(ids, {"eff-non", "eff-conc"})
+
+
+class TestRestorePersistedConcentrationNormalization(unittest.TestCase):
+    def test_restore_normalizes_multiple_concentration_groups(self):
+        older = {
+            "id": "eff-old",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-old",
+                "source_spell_name": "Old Spell",
+            },
+        }
+        newer = {
+            "id": "eff-new",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        participant = {"kind": "player", "ref_id": "player-1", "active_effects": []}
+        db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [older, newer]})
+        db.exec.return_value.first.return_value = session_state
+
+        restore_persisted_effects(db, "session-1", participant)
+
+        self.assertEqual(len(participant["active_effects"]), 1)
+        self.assertEqual(participant["active_effects"][0]["id"], "eff-new")
+
+    def test_restore_syncs_back_to_state_json(self):
+        older = {
+            "id": "eff-old",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-old",
+                "source_spell_name": "Old Spell",
+            },
+        }
+        newer = {
+            "id": "eff-new",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "created_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-new",
+                "source_spell_name": "New Spell",
+            },
+        }
+        participant = {"kind": "player", "ref_id": "player-1", "active_effects": []}
+        db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [older, newer]})
+        db.exec.return_value.first.return_value = session_state
+
+        restore_persisted_effects(db, "session-1", participant)
+
+        # state_json should be normalized too
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-new")
 
 
 if __name__ == "__main__":
