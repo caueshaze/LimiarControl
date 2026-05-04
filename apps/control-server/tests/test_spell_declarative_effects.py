@@ -728,6 +728,107 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
         ]
         self.assertEqual(fall_effects, [])
 
+    def test_all_enhance_ability_variants_apply_correct_effects(self):
+        variants = [
+            {
+                "key": "bears_endurance",
+                "label": "Resistência do Urso",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "constitution", "against": "any"},
+                     "stacking": "replace"},
+                    {"type": "grant_temp_hp", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"dice": "2d6"}},
+                ],
+                "expected_types": {"spell_effect", "temp_hp_granted"},
+            },
+            {
+                "key": "bulls_strength",
+                "label": "Força do Touro",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "strength", "against": "any"},
+                     "stacking": "replace"},
+                    {"type": "carrying_capacity_multiplier", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"multiplier": 2}},
+                ],
+                "expected_types": {"spell_effect"},
+            },
+            {
+                "key": "cats_grace",
+                "label": "Graça do Gato",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "dexterity", "against": "any"},
+                     "stacking": "replace"},
+                    {"type": "fall_damage_immunity_threshold", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"max_distance_meters": 6}},
+                ],
+                "expected_types": {"spell_effect"},
+            },
+            {
+                "key": "eagles_splendor",
+                "label": "Esplendor da Águia",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "charisma", "against": "any"},
+                     "stacking": "replace"},
+                ],
+                "expected_types": {"spell_effect"},
+            },
+            {
+                "key": "foxs_cunning",
+                "label": "Astúcia da Raposa",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "intelligence", "against": "any"},
+                     "stacking": "replace"},
+                ],
+                "expected_types": {"spell_effect"},
+            },
+            {
+                "key": "owls_wisdom",
+                "label": "Sabedoria da Coruja",
+                "effects": [
+                    {"type": "advantage_on_checks", "target": "selected_target",
+                     "duration": {"type": "manual"}, "params": {"ability": "wisdom", "against": "any"},
+                     "stacking": "replace"},
+                    {"type": "passive_skill_bonus", "target": "selected_target",
+                     "duration": {"type": "manual"}, "stacking": "replace",
+                     "params": {"skill": "perception", "bonus": 5}},
+                ],
+                "expected_types": {"spell_effect"},
+            },
+        ]
+
+        for variant in variants:
+            with self.subTest(variant=variant["key"]):
+                state = self._make_state()
+                attacker = state.participants[0]
+                target = state.participants[1]
+                spell_context = {
+                    "spell_name": "Melhorar Habilidade",
+                    "spell_canonical_key": "enhance_ability",
+                    "concentration": True,
+                    "selected_variant_key": variant["key"],
+                    "selected_variant_label": variant["label"],
+                    "effects": variant["effects"],
+                    "on_end_effects": [],
+                }
+
+                CombatService._apply_declarative_spell_effects(
+                    state=state,
+                    attacker=attacker,
+                    target_participant=target,
+                    spell_context=spell_context,
+                )
+
+                actual_types = {e["kind"] for e in target["active_effects"]}
+                self.assertEqual(actual_types, variant["expected_types"])
+                for effect in target["active_effects"]:
+                    self.assertEqual(effect["metadata"]["selected_variant_key"], variant["key"])
+                    self.assertEqual(effect["metadata"]["selected_variant_label"], variant["label"])
+
     def test_builds_applied_declarative_effects_summary_by_target(self):
         state = self._make_state()
         attacker = state.participants[0]
