@@ -8,6 +8,8 @@ import {
   computeEncumbranceTier,
   computePassiveSkillBonus,
   computePassiveSkillBonusSources,
+  computeProjectedEncumbranceTier,
+  computeTotalWeight,
   declarativeEffectGroupKey,
   LB_TO_KG,
 } from "./calculations";
@@ -744,5 +746,146 @@ describe("declarativeEffectGroupKey", () => {
     const key2 = declarativeEffectGroupKey({}, effect, "test", "", 7);
     expect(key1).toBe(key2);
     expect(key1).toBe("__unknown_7");
+  });
+});
+
+const makeInventoryItem = (overrides: Partial<{
+  id: string;
+  name: string;
+  quantity: number;
+  weight: number;
+  notes: string;
+  canonicalKey: string | null;
+}> = {}) => ({
+  id: "1",
+  name: "item",
+  quantity: 1,
+  weight: 1,
+  notes: "",
+  canonicalKey: null,
+  ...overrides,
+});
+
+describe("computeTotalWeight — edge cases", () => {
+  it("item com weight null → tratado como 0", () => {
+    const items = [makeInventoryItem({ weight: null as unknown as number, quantity: 1 })];
+    expect(computeTotalWeight(items)).toBe(0);
+  });
+
+  it("item com quantity 0 → 0", () => {
+    const items = [makeInventoryItem({ weight: 5, quantity: 0 })];
+    expect(computeTotalWeight(items)).toBe(0);
+  });
+
+  it("item com quantity negativa → tratado como 0", () => {
+    const items = [makeInventoryItem({ weight: 5, quantity: -10 })];
+    expect(computeTotalWeight(items)).toBe(0);
+  });
+
+  it("item com weight null E quantity negativa → 0 (não NaN)", () => {
+    const items = [makeInventoryItem({ weight: null as unknown as number, quantity: -10 })];
+    const result = computeTotalWeight(items);
+    expect(result).toBe(0);
+    expect(Number.isNaN(result)).toBe(false);
+  });
+
+  it("weight NaN → tratado como 0", () => {
+    const items = [makeInventoryItem({ weight: NaN, quantity: 3 })];
+    expect(computeTotalWeight(items)).toBe(0);
+  });
+
+  it("itens válidos + item inválido → soma ignora inválido", () => {
+    const items = [
+      makeInventoryItem({ weight: 10, quantity: 2 }),
+      makeInventoryItem({ weight: null as unknown as number, quantity: 5 }),
+      makeInventoryItem({ weight: 3, quantity: -1 }),
+    ];
+    expect(computeTotalWeight(items)).toBe(20);
+  });
+});
+
+describe("computeEncumbranceTier — hardening", () => {
+  it("strengthScore NaN → thresholds 0, tier normal (0 kg)", () => {
+    const r = computeEncumbranceTier({ strengthScore: NaN, totalWeightKg: 0 });
+    expect(r.tier).toBe("normal");
+    expect(r.normalMaxKg).toBe(0);
+    expect(Number.isNaN(r.remainingKg)).toBe(false);
+  });
+
+  it("strengthScore NaN + peso → overloaded", () => {
+    const r = computeEncumbranceTier({ strengthScore: NaN, totalWeightKg: 10 });
+    expect(r.tier).toBe("overloaded");
+    expect(r.remainingKg).toBe(0);
+    expect(r.nextThresholdKg).toBeNull();
+  });
+
+  it("totalWeightKg NaN → normal, remainingKg = normalMaxKg", () => {
+    const r = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: NaN });
+    expect(r.tier).toBe("normal");
+    expect(r.remainingKg).toBe(Math.round(10 * 5 * LB_TO_KG * 10) / 10);
+    expect(Number.isNaN(r.remainingKg)).toBe(false);
+  });
+
+  it("strengthScore negativa → treated as 0 → overloaded com peso", () => {
+    const r = computeEncumbranceTier({ strengthScore: -5, totalWeightKg: 10 });
+    expect(r.tier).toBe("overloaded");
+    expect(r.normalMaxKg).toBe(0);
+  });
+
+  it("strengthScore negativa, 0 kg → normal", () => {
+    const r = computeEncumbranceTier({ strengthScore: -5, totalWeightKg: 0 });
+    expect(r.tier).toBe("normal");
+    expect(r.normalMaxKg).toBe(0);
+  });
+
+  it("strengthScore 0, weight 0 → normal, remaining 0, threshold 0", () => {
+    const r = computeEncumbranceTier({ strengthScore: 0, totalWeightKg: 0 });
+    expect(r.tier).toBe("normal");
+    expect(r.remainingKg).toBe(0);
+    expect(r.nextThresholdKg).toBe(0);
+  });
+
+  it("ambos NaN → normal, todos os campos 0", () => {
+    const r = computeEncumbranceTier({ strengthScore: NaN, totalWeightKg: NaN });
+    expect(r.tier).toBe("normal");
+    expect(r.normalMaxKg).toBe(0);
+    expect(r.remainingKg).toBe(0);
+    expect(Number.isNaN(r.remainingKg)).toBe(false);
+  });
+
+  it("strengthScore undefined → treated as 0", () => {
+    const r = computeEncumbranceTier({ strengthScore: undefined as unknown as number, totalWeightKg: 5 });
+    expect(r.tier).toBe("overloaded");
+    expect(r.normalMaxKg).toBe(0);
+  });
+
+  it("totalWeightKg negativo → treated as 0 → normal", () => {
+    const r = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: -5 });
+    expect(r.tier).toBe("normal");
+    expect(r.remainingKg).toBe(Math.round(10 * 5 * LB_TO_KG * 10) / 10);
+  });
+});
+
+describe("computeProjectedEncumbranceTier — hardening", () => {
+  it("addedWeightLb null → não quebra, retorna resultado válido", () => {
+    const r = computeProjectedEncumbranceTier({ strengthScore: 10, currentWeightKg: 5, addedWeightLb: null as unknown as number });
+    expect(r.tier).toBe("normal");
+    expect(Number.isNaN(r.remainingKg)).toBe(false);
+  });
+
+  it("addedWeightLb NaN → tratado como 0", () => {
+    const r = computeProjectedEncumbranceTier({ strengthScore: 10, currentWeightKg: 5, addedWeightLb: NaN });
+    expect(r.tier).toBe("normal");
+  });
+
+  it("addedWeightLb undefined → tratado como 0", () => {
+    const r = computeProjectedEncumbranceTier({ strengthScore: 10, currentWeightKg: 5, addedWeightLb: undefined as unknown as number });
+    expect(r.tier).toBe("normal");
+  });
+
+  it("currentWeightKg NaN → normal (safeWeight 0)", () => {
+    const r = computeProjectedEncumbranceTier({ strengthScore: 10, currentWeightKg: NaN, addedWeightLb: 0 });
+    expect(r.tier).toBe("normal");
+    expect(Number.isNaN(r.remainingKg)).toBe(false);
   });
 });
