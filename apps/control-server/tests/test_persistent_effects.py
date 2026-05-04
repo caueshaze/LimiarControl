@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch
 from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.services.combat_service.persistent_effects import (
+    clear_persisted_concentration_effects,
+    derive_active_concentration,
     persist_surviving_spell_effects,
     restore_persisted_effects,
     sync_effect_removal_to_state_json,
@@ -151,7 +153,7 @@ class TestPersistSurvivingSpellEffects(unittest.TestCase):
         self.assertEqual(len(persisted), 1)
         self.assertEqual(persisted[0]["id"], "eff-1")
 
-    def test_discards_concentration_effect(self):
+    def test_persists_concentration_effect(self):
         effect = _manual_spell_effect("eff-1", concentration=True)
         state = _make_state_with_participants([effect])
         db = MagicMock()
@@ -160,7 +162,10 @@ class TestPersistSurvivingSpellEffects(unittest.TestCase):
 
         persist_surviving_spell_effects(db, state)
 
-        self.assertNotIn("active_spell_effects", session_state.state_json)
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-1")
+        self.assertTrue(persisted[0]["metadata"]["concentration"])
 
     def test_discards_condition_effect(self):
         effect = _condition_effect("eff-cond")
@@ -279,6 +284,211 @@ class TestSyncEffectRemovalToStateJson(unittest.TestCase):
         sync_effect_removal_to_state_json(db, "session-1", participant, "eff-1")
 
         db.exec.assert_not_called()
+
+
+class TestPersistSurvivingConcentrationEffects(unittest.TestCase):
+    def test_persists_concentration_and_non_concentration_together(self):
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        non_conc = _manual_spell_effect("eff-non")
+        state = _make_state_with_participants([conc, non_conc])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 2)
+        ids = {e["id"] for e in persisted}
+        self.assertEqual(ids, {"eff-conc", "eff-non"})
+
+
+class TestDeriveActiveConcentration(unittest.TestCase):
+    def test_returns_none_when_no_effects(self):
+        self.assertIsNone(derive_active_concentration({}))
+        self.assertIsNone(derive_active_concentration(None))
+
+    def test_returns_none_when_only_non_concentration_effects(self):
+        effect = _manual_spell_effect("eff-1", concentration=False)
+        result = derive_active_concentration({"active_spell_effects": [effect]})
+        self.assertIsNone(result)
+
+    def test_returns_concentration_info_for_single_effect(self):
+        effect = _manual_spell_effect("eff-1", concentration=True)
+        result = derive_active_concentration({"active_spell_effects": [effect]})
+        self.assertIsNotNone(result)
+        self.assertEqual(result["spellName"], "Owl's Wisdom")
+        self.assertEqual(result["effectIds"], ["eff-1"])
+        self.assertEqual(result["concentrationGroup"], "group-1")
+
+    def test_groups_effects_by_concentration_group(self):
+        eff1 = {
+            "id": "eff-a",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-bless",
+                "source_spell_key": "bless",
+                "source_spell_name": "Bless",
+            },
+        }
+        eff2 = {
+            "id": "eff-b",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-bless",
+                "source_spell_key": "bless",
+                "source_spell_name": "Bless",
+            },
+        }
+        non_conc = _manual_spell_effect("eff-other")
+        result = derive_active_concentration({
+            "active_spell_effects": [eff1, eff2, non_conc],
+        })
+        self.assertIsNotNone(result)
+        self.assertEqual(result["concentrationGroup"], "grp-bless")
+        self.assertIn("eff-a", result["effectIds"])
+        self.assertIn("eff-b", result["effectIds"])
+        self.assertEqual(len(result["effectIds"]), 2)
+
+    def test_returns_first_group_when_multiple_groups(self):
+        eff1 = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-first",
+                "source_spell_name": "Spell A",
+            },
+        }
+        eff2 = {
+            "id": "eff-2",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-second",
+                "source_spell_name": "Spell B",
+            },
+        }
+        result = derive_active_concentration({
+            "active_spell_effects": [eff2, eff1],
+        })
+        self.assertIsNotNone(result)
+        self.assertEqual(result["concentrationGroup"], "grp-second")
+        self.assertEqual(result["effectIds"], ["eff-2"])
+
+    def test_handles_effect_without_concentration_group(self):
+        eff = {
+            "id": "eff-solo",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "source_spell_name": "Solo Spell",
+            },
+        }
+        result = derive_active_concentration({"active_spell_effects": [eff]})
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["concentrationGroup"])
+        self.assertEqual(result["effectIds"], ["eff-solo"])
+
+
+class TestClearPersistedConcentrationEffects(unittest.TestCase):
+    def test_removes_all_concentration_effects_by_default(self):
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        non_conc = _manual_spell_effect("eff-other")
+        state_json = {"active_spell_effects": [conc, non_conc]}
+
+        result = clear_persisted_concentration_effects(state_json)
+
+        persisted = result["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-other")
+
+    def test_removes_only_targeted_group_when_concentration_group_given(self):
+        eff_a = {
+            "id": "eff-a",
+            "kind": "spell_effect",
+            "metadata": {"concentration": True, "concentration_group": "grp-a"},
+        }
+        eff_b = {
+            "id": "eff-b",
+            "kind": "spell_effect",
+            "metadata": {"concentration": True, "concentration_group": "grp-b"},
+        }
+        state_json = {"active_spell_effects": [eff_a, eff_b]}
+
+        result = clear_persisted_concentration_effects(state_json, concentration_group="grp-a")
+
+        persisted = result["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-b")
+
+    def test_preserves_non_concentration_effects(self):
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        non_conc = _manual_spell_effect("eff-other")
+        state_json = {"active_spell_effects": [conc, non_conc]}
+
+        result = clear_persisted_concentration_effects(state_json)
+
+        self.assertEqual(len(result["active_spell_effects"]), 1)
+        self.assertEqual(result["active_spell_effects"][0]["id"], "eff-other")
+
+    def test_removes_all_when_only_concentration_effects(self):
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        state_json = {"active_spell_effects": [conc]}
+
+        result = clear_persisted_concentration_effects(state_json)
+
+        self.assertNotIn("active_spell_effects", result)
+
+    def test_safe_when_no_effects(self):
+        result = clear_persisted_concentration_effects({})
+        self.assertNotIn("active_spell_effects", result)
+
+    def test_safe_when_no_concentration_effects(self):
+        non_conc = _manual_spell_effect("eff-1")
+        state_json = {"active_spell_effects": [non_conc]}
+
+        result = clear_persisted_concentration_effects(state_json)
+
+        self.assertEqual(len(result["active_spell_effects"]), 1)
+
+
+class TestToStateReadActiveConcentration(unittest.TestCase):
+    def test_active_concentration_derived_in_response(self):
+        from app.api.routes.sessions.state_common import to_state_read
+
+        conc = _manual_spell_effect("eff-conc", concentration=True)
+        mock = MagicMock(spec=SessionState)
+        mock.id = "ss-1"
+        mock.session_id = "session-1"
+        mock.player_user_id = "player-1"
+        mock.state_json = {"active_spell_effects": [conc]}
+        mock.created_at = "2026-01-01T00:00:00+00:00"
+        mock.updated_at = None
+
+        result = to_state_read(mock)
+
+        self.assertIsNotNone(result.activeConcentration)
+        self.assertEqual(result.activeConcentration["spellName"], "Owl's Wisdom")
+        self.assertIn("eff-conc", result.activeConcentration["effectIds"])
+
+    def test_active_concentration_none_when_no_concentration(self):
+        from app.api.routes.sessions.state_common import to_state_read
+
+        non_conc = _manual_spell_effect("eff-1")
+        mock = MagicMock(spec=SessionState)
+        mock.id = "ss-1"
+        mock.session_id = "session-1"
+        mock.player_user_id = "player-1"
+        mock.state_json = {"active_spell_effects": [non_conc]}
+        mock.created_at = "2026-01-01T00:00:00+00:00"
+        mock.updated_at = None
+
+        result = to_state_read(mock)
+
+        self.assertIsNone(result.activeConcentration)
 
 
 if __name__ == "__main__":

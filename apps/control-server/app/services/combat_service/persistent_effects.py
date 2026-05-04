@@ -4,8 +4,8 @@
 non-combat spell effects.  Only effects with:
   - kind in {"spell_effect", "temp_ac_bonus"}
   - duration_type == "manual"
-  - concentration == False
-are persisted.  Round-based and turn-based effects expire naturally during combat.
+are persisted (including concentration effects).  Round-based and turn-based
+effects expire naturally during combat.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ _PERSISTABLE_KINDS = {"spell_effect", "temp_ac_bonus"}
 
 
 def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
-    """Transfer manual-duration, non-concentration spell effects to state_json.
+    """Transfer manual-duration spell effects (including concentration) to state_json.
 
     Called during end_combat() AFTER concentration has been cleared but BEFORE
     remaining participant effects are wiped.
@@ -41,7 +41,6 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
             e for e in effects
             if e.get("kind") in _PERSISTABLE_KINDS
             and e.get("duration_type") == "manual"
-            and not (e.get("metadata") or {}).get("concentration")
         ]
         if not surviving:
             continue
@@ -135,3 +134,74 @@ def sync_effect_removal_to_state_json(
     session_state.state_json = finalize_session_state_data(data)
     flag_modified(session_state, "state_json")
     db.add(session_state)
+
+
+def derive_active_concentration(state_json: dict | None) -> dict | None:
+    persisted = (state_json or {}).get("active_spell_effects")
+    if not isinstance(persisted, list):
+        return None
+
+    first_group: str | None = None
+    first_metadata: dict | None = None
+    for effect in persisted:
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if not metadata.get("concentration"):
+            continue
+        first_group = metadata.get("concentration_group")
+        first_metadata = metadata
+        break
+
+    if first_metadata is None:
+        return None
+
+    if isinstance(first_group, str) and first_group:
+        grouped = [
+            e for e in persisted
+            if (e.get("metadata") or {}).get("concentration_group") == first_group
+        ]
+        effect_ids = [e.get("id") for e in grouped if e.get("id")]
+    else:
+        effect_ids = [e.get("id") for e in persisted
+                      if (e.get("metadata") or {}).get("concentration")
+                      and e.get("id")][:1]
+
+    return {
+        "spellKey": first_metadata.get("source_spell_key"),
+        "spellName": first_metadata.get("source_spell_name"),
+        "variantKey": first_metadata.get("selected_variant_key"),
+        "variantLabel": first_metadata.get("selected_variant_label"),
+        "concentrationGroup": first_group,
+        "effectIds": effect_ids,
+    }
+
+
+def clear_persisted_concentration_effects(
+    state_json: dict | None,
+    *,
+    concentration_group: str | None = None,
+) -> dict:
+    data = dict(state_json or {})
+    persisted = data.get("active_spell_effects")
+    if not isinstance(persisted, list):
+        return data
+
+    if concentration_group is not None:
+        filtered = [
+            e for e in persisted
+            if (e.get("metadata") or {}).get("concentration_group") != concentration_group
+        ]
+    else:
+        filtered = [
+            e for e in persisted
+            if not (e.get("metadata") or {}).get("concentration")
+        ]
+
+    if len(filtered) == len(persisted):
+        return data
+    if filtered:
+        data["active_spell_effects"] = filtered
+    else:
+        data.pop("active_spell_effects", None)
+    return data
