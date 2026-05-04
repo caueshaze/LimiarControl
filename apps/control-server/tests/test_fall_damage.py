@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
 from app.services.combat import CombatService, CombatServiceError
+from app.services.combat_service.condition_effects_predicates import get_fall_damage_immunity_threshold
 from app.services.combat_service.fall_damage import (
     FALL_DAMAGE_DIE_SIDES,
     FALL_DAMAGE_METERS_PER_DIE,
@@ -670,6 +671,82 @@ class TestFallLogPayloads(unittest.IsolatedAsyncioTestCase):
         await CombatService.resolve_fall(MagicMock(), "session-1", "entity-e1", 6.0, "user-1", is_gm=True)
         payload = mock_emit_log.call_args[0][4]
         self.assertEqual(payload["appliedConditions"], [])
+
+
+def _make_realistic_cats_grace_effect(
+    threshold_m: float = 6.0,
+    variant_label: str | None = "Graça do Gato",
+    display_label: str | None = None,
+) -> dict:
+    return {
+        "id": "effect-cg-prod-1",
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "manual",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": display_label,
+        "metadata": {
+            "source_spell_name": "Melhorar Habilidade",
+            "source_spell_key": "enhance_ability",
+            "selected_variant_key": "cats_grace",
+            "selected_variant_label": variant_label,
+            "declarative_effect": {
+                "type": "fall_damage_immunity_threshold",
+                "params": {"max_distance_meters": threshold_m},
+            },
+        },
+    }
+
+
+class TestFallImmunityLabelResolution(unittest.TestCase):
+    def _participant_with_effects(self, *effects: dict) -> dict:
+        return {"active_effects": list(effects)}
+
+    def test_label_from_selected_variant_label(self):
+        effect = _make_realistic_cats_grace_effect(variant_label="Graça do Gato", display_label=None)
+        participant = self._participant_with_effects(effect)
+        threshold, label = get_fall_damage_immunity_threshold(participant)
+        self.assertEqual(threshold, 6.0)
+        self.assertEqual(label, "Graça do Gato")
+
+    def test_label_prefers_variant_over_display(self):
+        effect = _make_realistic_cats_grace_effect(
+            variant_label="Graça do Gato", display_label="Melhorar Habilidade",
+        )
+        participant = self._participant_with_effects(effect)
+        _, label = get_fall_damage_immunity_threshold(participant)
+        self.assertEqual(label, "Graça do Gato")
+
+    def test_label_falls_back_to_display_label(self):
+        effect = _make_realistic_cats_grace_effect(variant_label=None, display_label="Melhorar Habilidade")
+        participant = self._participant_with_effects(effect)
+        _, label = get_fall_damage_immunity_threshold(participant)
+        self.assertEqual(label, "Melhorar Habilidade")
+
+    def test_label_falls_back_to_source_spell_name(self):
+        effect = _make_realistic_cats_grace_effect(variant_label=None, display_label=None)
+        participant = self._participant_with_effects(effect)
+        _, label = get_fall_damage_immunity_threshold(participant)
+        self.assertEqual(label, "Melhorar Habilidade")
+
+    def test_label_hardcoded_fallback(self):
+        effect = {
+            "id": "effect-minimal",
+            "kind": "spell_effect",
+            "source_participant_id": "caster-1",
+            "duration_type": "manual",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "display_label": None,
+            "metadata": {
+                "declarative_effect": {
+                    "type": "fall_damage_immunity_threshold",
+                    "params": {"max_distance_meters": 6.0},
+                },
+            },
+        }
+        participant = self._participant_with_effects(effect)
+        _, label = get_fall_damage_immunity_threshold(participant)
+        self.assertEqual(label, "Graça do Gato")
 
 
 if __name__ == "__main__":

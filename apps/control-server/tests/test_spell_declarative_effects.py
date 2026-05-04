@@ -602,6 +602,132 @@ class TestSpellDeclarativeEffectRuntime(unittest.TestCase):
         self.assertEqual(declarative["type"], "fall_damage_immunity_threshold")
         self.assertEqual(declarative["params"]["max_distance_meters"], 6.0)
 
+    def test_cats_grace_creates_fall_immunity_with_variant_label(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Melhorar Habilidade",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "cats_grace",
+            "selected_variant_label": "Graça do Gato",
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"ability": "dexterity", "against": "any"},
+                    "stacking": "replace",
+                },
+                {
+                    "type": "fall_damage_immunity_threshold",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"max_distance_meters": 6.0},
+                },
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        fall_effect = next(
+            e for e in target["active_effects"]
+            if e["metadata"]["declarative_effect"]["type"] == "fall_damage_immunity_threshold"
+        )
+        self.assertEqual(fall_effect["metadata"]["selected_variant_label"], "Graça do Gato")
+        self.assertEqual(
+            fall_effect["metadata"]["declarative_effect"]["params"]["max_distance_meters"], 6.0,
+        )
+
+    def test_cats_grace_creates_dexterity_advantage(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Melhorar Habilidade",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "cats_grace",
+            "selected_variant_label": "Graça do Gato",
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"ability": "dexterity", "against": "any"},
+                    "stacking": "replace",
+                },
+                {
+                    "type": "fall_damage_immunity_threshold",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"max_distance_meters": 6.0},
+                },
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        dex_effect = next(
+            e for e in target["active_effects"]
+            if e["metadata"]["declarative_effect"]["type"] == "advantage_on_checks"
+        )
+        self.assertEqual(dex_effect["metadata"]["declarative_effect"]["params"]["ability"], "dexterity")
+
+    def test_other_variant_no_fall_immunity(self):
+        state = self._make_state()
+        attacker = state.participants[0]
+        target = state.participants[1]
+        spell_context = {
+            "spell_name": "Melhorar Habilidade",
+            "spell_canonical_key": "enhance_ability",
+            "concentration": True,
+            "selected_variant_key": "bulls_strength",
+            "selected_variant_label": "Força do Touro",
+            "effects": [
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"ability": "strength", "against": "any"},
+                    "stacking": "replace",
+                },
+                {
+                    "type": "carrying_capacity_multiplier",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"multiplier": 2.0},
+                },
+            ],
+            "on_end_effects": [],
+        }
+
+        CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=attacker,
+            target_participant=target,
+            spell_context=spell_context,
+        )
+
+        fall_effects = [
+            e for e in target["active_effects"]
+            if e["metadata"]["declarative_effect"]["type"] == "fall_damage_immunity_threshold"
+        ]
+        self.assertEqual(fall_effects, [])
+
     def test_builds_applied_declarative_effects_summary_by_target(self):
         state = self._make_state()
         attacker = state.participants[0]
