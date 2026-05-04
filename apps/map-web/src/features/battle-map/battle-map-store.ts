@@ -66,7 +66,12 @@ class BattleMapStore {
     obstaclePaintTarget: "cell" as "cell" | "edge",
     edgeDirection: "E" as EdgeDirection,
     edgeBrushPresetId: "edge_wall" as EdgeBrushPresetId,
-    pendingEdgePaintActionId: undefined
+    pendingEdgePaintActionId: undefined,
+    isElevationPaintMode: false,
+    elevationBrushPresetMeters: 3,
+    elevationBrushRadius: 1,
+    elevationBrushMode: "paint" as "paint" | "erase",
+    pendingElevationPaintActionId: undefined
   };
   private readonly listeners = new Set<Listener>();
 
@@ -149,7 +154,7 @@ class BattleMapStore {
   }
 
   startGridEdit(cal: GridCalibration, gw: number, gh: number): void {
-    this.set({ isGridEditMode: true, isObstaclePaintMode: false, gridCalibrationDraft: cal, gridWidthDraft: gw, gridHeightDraft: gh, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, message: undefined });
+    this.set({ isGridEditMode: true, isObstaclePaintMode: false, isElevationPaintMode: false, gridCalibrationDraft: cal, gridWidthDraft: gw, gridHeightDraft: gh, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
   }
 
   updateGridCalibrationDraft(cal: GridCalibration): void { this.set({ gridCalibrationDraft: cal }); }
@@ -159,11 +164,11 @@ class BattleMapStore {
   }
 
   startObstaclePaint(): void {
-    this.set({ isObstaclePaintMode: true, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, message: undefined });
+    this.set({ isObstaclePaintMode: true, isElevationPaintMode: false, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
   }
 
   cancelObstaclePaint(): void {
-    this.set({ isObstaclePaintMode: false, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined });
+    this.set({ isObstaclePaintMode: false, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined });
   }
 
   markObstaclePaintPending(id: string): void { this.set({ pendingObstaclePaintActionId: id }); }
@@ -187,6 +192,22 @@ class BattleMapStore {
   failObstaclePaintUpdate(id?: string): boolean { return this.completePending("pendingObstaclePaintActionId", id); }
   completeEdgePaintUpdate(id?: string): boolean { return this.completePending("pendingEdgePaintActionId", id); }
   failEdgePaintUpdate(id?: string): boolean { return this.completePending("pendingEdgePaintActionId", id); }
+
+  startElevationPaint(): void {
+    this.set({ isElevationPaintMode: true, isObstaclePaintMode: false, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
+  }
+
+  cancelElevationPaint(): void {
+    this.set({ isElevationPaintMode: false, pendingElevationPaintActionId: undefined });
+  }
+
+  setElevationBrushPreset(meters: number): void { this.set({ elevationBrushPresetMeters: meters }); }
+  setElevationBrushRadius(radius: number): void { this.set({ elevationBrushRadius: radius }); }
+  setElevationBrushMode(mode: "paint" | "erase"): void { this.set({ elevationBrushMode: mode }); }
+
+  markElevationPaintPending(id: string): void { this.set({ pendingElevationPaintActionId: id }); }
+  completeElevationPaintUpdate(id?: string): boolean { return this.completePending("pendingElevationPaintActionId", id); }
+  failElevationPaintUpdate(id?: string): boolean { return this.completePending("pendingElevationPaintActionId", id); }
 
   activateTacticalPreview(sourceTokenId: string, actionType: "move" | "attack" | "spell"): void {
     this.state = { ...this.state, tacticalPreview: { ...this.state.tacticalPreview, active: true, sourceTokenId, actionType } };

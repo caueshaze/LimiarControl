@@ -195,6 +195,25 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
       } else {
         repository.setEdgeObstacles(sessionId, []);
       }
+
+      if (parse.data.battleMap?.cellElevations?.length) {
+        const seenElevations = new Set<string>();
+        const validElevations = parse.data.battleMap.cellElevations
+          .filter((entry) => {
+            if (entry.cell.x < 0 || entry.cell.y < 0 || entry.cell.x >= gridWidth || entry.cell.y >= gridHeight) {
+              return false;
+            }
+            const key = `${entry.cell.x}:${entry.cell.y}`;
+            if (seenElevations.has(key)) return false;
+            seenElevations.add(key);
+            return true;
+          })
+          .map((entry) => ({
+            cell: { x: entry.cell.x, y: entry.cell.y },
+            elevationMeters: entry.elevationMeters,
+          }));
+        repository.setCellElevations(sessionId, validElevations);
+      }
     }
 
     request.log.info(

@@ -262,7 +262,7 @@ export function useBattleMapPixi(params: {
 
   useEffect(() => {
     if (
-      (uiState.isGridEditMode || uiState.isObstaclePaintMode) &&
+      (uiState.isGridEditMode || uiState.isObstaclePaintMode || uiState.isElevationPaintMode) &&
       selectedTokenId
     )
       setSelectedTokenId(null);
@@ -270,7 +270,8 @@ export function useBattleMapPixi(params: {
     selectedTokenId,
     setSelectedTokenId,
     uiState.isGridEditMode,
-    uiState.isObstaclePaintMode
+    uiState.isObstaclePaintMode,
+    uiState.isElevationPaintMode
   ]);
 
   useEffect(() => {

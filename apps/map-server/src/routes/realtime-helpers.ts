@@ -153,6 +153,21 @@ function getEdgeObstaclePaintRejectionDetails(reason: string): string {
   }
 }
 
+function getElevationPaintRejectionDetails(reason: string): string {
+  switch (reason) {
+    case "not_gm":
+      return "Only the GM can paint elevation";
+    case "outside_map":
+      return "Elevation brush center must stay inside the map";
+    case "invalid_elevation_brush":
+      return "Elevation brush did not cover any valid map cells";
+    case "duplicate_action":
+      return "Elevation paint action was already processed";
+    default:
+      return "Elevation paint rejected";
+  }
+}
+
 function getTargetingRejectionDetails(reason: string): string {
   switch (reason) {
     case "no_line_of_sight":
@@ -224,6 +239,7 @@ export {
   getMovementRejectionDetails,
   getObstaclePaintRejectionDetails,
   getEdgeObstaclePaintRejectionDetails,
+  getElevationPaintRejectionDetails,
   getTargetingRejectionDetails,
   emitRejection,
   ensureEncounter

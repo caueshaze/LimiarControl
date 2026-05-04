@@ -82,6 +82,12 @@ export type CampaignEdgeObstacle = {
   cover: ObstacleCover;
 };
 
+export type CampaignCellElevation = {
+  x: number;
+  y: number;
+  elevationMeters: number;
+};
+
 export type ObstaclePresetId =
   | "solid_wall"
   | "dense_obstacle"
@@ -288,6 +294,8 @@ export type CampaignMapConfig = {
   obstacles?: CampaignObstacle[] | null;
   /** Canonical semantic edge obstacles authored between adjacent cells. */
   edgeObstacles?: CampaignEdgeObstacle[] | null;
+  /** Per-cell elevation metadata for fall detection. */
+  cellElevations?: CampaignCellElevation[] | null;
   /** @deprecated Legacy movement-only blocked cells for pre-semantic maps. */
   blockedCells?: BlockedCell[] | null;
   createdAt: string;

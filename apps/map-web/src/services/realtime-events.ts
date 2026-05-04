@@ -245,12 +245,28 @@ export function handleRealtimePublication(data: unknown): void {
       }
       return;
     }
+    case "elevation.updated": {
+      const cellElevations = Array.isArray(event.payload.cellElevations)
+        ? event.payload.cellElevations
+        : null;
+      if (!cellElevations) return;
+      updateSnapshot((snapshot) => ({
+        ...snapshot,
+        cellElevations: cellElevations as typeof snapshot.cellElevations,
+        combatState: { ...snapshot.combatState, version: event.version }
+      }));
+      if (battleMapStore.completeElevationPaintUpdate(event.actionId)) {
+        battleMapStore.setMessage(undefined);
+      }
+      return;
+    }
     case "action.rejected": {
       battleMapStore.setMovementPreview([]);
       battleMapStore.setTargetingPreview([]);
       battleMapStore.failGridCalibrationUpdate(event.actionId);
       battleMapStore.failObstaclePaintUpdate(event.actionId);
       battleMapStore.failEdgePaintUpdate(event.actionId);
+      battleMapStore.failElevationPaintUpdate(event.actionId);
       const reason =
         typeof event.payload.reason === "string"
           ? event.payload.reason

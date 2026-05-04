@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  cellElevationSchema,
   combatStateSchema,
   coordinateSchema,
   edgeDirectionSchema,
@@ -75,6 +76,16 @@ export const edgeObstaclePaintRequestSchema = z.object({
   style: obstacleStyleSchema.optional()
 });
 
+export const elevationPaintRequestSchema = z.object({
+  actionId: z.string(),
+  sessionId: z.string(),
+  knownVersion: z.number().int().nonnegative(),
+  mode: obstaclePaintModeSchema,
+  centerCell: coordinateSchema,
+  radius: z.number().int().nonnegative().max(12),
+  elevationMeters: z.number().finite().min(0).max(100).optional()
+});
+
 export const movementAppliedEventSchema = realtimeActionEventSchema.extend({
   payload: z.object({
     tokenId: z.string(),
@@ -126,6 +137,13 @@ export const edgeObstaclesUpdatedEventSchema = realtimeActionEventSchema.extend(
   }
 );
 
+export const elevationUpdatedEventSchema = realtimeActionEventSchema.extend({
+  payload: z.object({
+    battleMapId: z.string(),
+    cellElevations: z.array(cellElevationSchema)
+  })
+});
+
 export const actionRejectedEventSchema = realtimeActionEventSchema.extend({
   payload: z.object({
     reason: z.string(),
@@ -160,4 +178,6 @@ export type ObstaclesUpdatedEvent = z.infer<typeof obstaclesUpdatedEventSchema>;
 export type EdgeObstaclesUpdatedEvent = z.infer<
   typeof edgeObstaclesUpdatedEventSchema
 >;
+export type ElevationPaintRequest = z.infer<typeof elevationPaintRequestSchema>;
+export type ElevationUpdatedEvent = z.infer<typeof elevationUpdatedEventSchema>;
 export type ActionRejectedEvent = z.infer<typeof actionRejectedEventSchema>;

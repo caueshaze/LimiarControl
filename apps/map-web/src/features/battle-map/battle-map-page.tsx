@@ -12,6 +12,7 @@ import { TokenPlacementBar } from "./token-placement-bar";
 import { battleMapStore } from "./battle-map-store";
 import { GridCalibrationPanel } from "./grid-calibration-panel";
 import { ObstacleEditorPanel } from "./obstacle-editor-panel";
+import { ElevationEditorPanel } from "./elevation-editor-panel";
 import { CombatPanel } from "../combat/combat-panel";
 import { DebugPanel } from "../debug/debug-panel";
 import { getMapSessionId, isEmbeddedMapView } from "../../services/map-runtime-config";
@@ -236,6 +237,7 @@ export function BattleMapPage(): React.JSX.Element {
         <DebugPanel />
         <GridCalibrationPanel />
         <ObstacleEditorPanel />
+        <ElevationEditorPanel />
 
         <div
           style={{

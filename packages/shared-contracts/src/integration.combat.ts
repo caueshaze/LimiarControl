@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   battleMapSchema,
   activeAreaEffectSchema,
+  cellElevationSchema,
   combatStateSchema,
   coordinateSchema,
   controllerTypeSchema,
@@ -51,6 +52,7 @@ export const integrationBattleMapSchema = z.object({
   obstacles: z.array(campaignObstacleInputSchema).optional(),
   edgeObstacles: z.array(campaignEdgeObstacleInputSchema).optional(),
   blockedCells: z.array(coordinateSchema).optional(),
+  cellElevations: z.array(cellElevationSchema).optional(),
 });
 
 export const startCombatRequestSchema = z.object({
@@ -101,6 +103,7 @@ export const integrationStateResponseSchema = z.object({
   obstacles: z.array(obstacleSchema),
   edgeObstacles: z.array(edgeObstacleSchema).default([]),
   activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
+  cellElevations: z.array(cellElevationSchema).default([]),
 });
 
 export const movementPreviewRequestSchema = z.object({

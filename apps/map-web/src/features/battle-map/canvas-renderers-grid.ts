@@ -1,5 +1,6 @@
 import { Graphics } from "pixi.js";
 import type {
+  CellElevation,
   Coordinate,
   ActiveAreaEffect,
   EdgeDirection,
@@ -289,5 +290,48 @@ export function drawEdgeObstacles(
     }
 
     gfx.moveTo(x1, y1).lineTo(x2, y2).stroke({ width, color, alpha });
+  }
+}
+
+const ELEVATION_COLORS: Record<number, number> = {
+  0: 0x4b5563,
+  3: 0x3b82f6,
+  6: 0x8b5cf6,
+  9: 0xec4899,
+  12: 0xef4444,
+};
+
+function getElevationColor(meters: number): number {
+  // Find the closest preset color
+  const keys = Object.keys(ELEVATION_COLORS).map(Number).sort((a, b) => a - b);
+  let color = ELEVATION_COLORS[0];
+  for (const key of keys) {
+    if (meters >= key) {
+      color = ELEVATION_COLORS[key];
+    }
+  }
+  return color;
+}
+
+export function drawCellElevationBadges(
+  gfx: Graphics,
+  cal: GridCalibration,
+  gridW: number,
+  gridH: number,
+  canvasW: number,
+  canvasH: number,
+  cellElevations: CellElevation[]
+): void {
+  for (const entry of cellElevations) {
+    if (entry.elevationMeters <= 0) continue;
+
+    const { x, y, w, h } = cellRect(entry.cell.x, entry.cell.y, cal, gridW, gridH, canvasW, canvasH);
+    const badgeSize = Math.max(6, Math.min(w, h) * 0.25);
+    const color = getElevationColor(entry.elevationMeters);
+
+    // Small colored square in the top-right corner
+    gfx.rect(x + w - badgeSize - 2, y + 2, badgeSize, badgeSize)
+      .fill({ color, alpha: 0.85 })
+      .stroke({ width: 1, color: 0x000000, alpha: 0.4 });
   }
 }

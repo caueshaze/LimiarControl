@@ -1,6 +1,7 @@
 import type {
   ActiveAreaEffect,
   BattleMap,
+  CellElevation,
   Coordinate,
   EdgeObstacle,
   Obstacle,
@@ -19,6 +20,11 @@ export interface GridState {
    * lives on `obstacles`; these never mutate the campaign map.
    */
   activeAreaEffects?: ActiveAreaEffect[];
+  /**
+   * Per-cell elevation metadata for fall detection and vertical movement.
+   * Default elevation for missing cells is 0.
+   */
+  cellElevations?: CellElevation[];
 }
 
 export function isInsideMap(
@@ -140,4 +146,29 @@ export function getEdgeCover(
 ): "none" | "half" | "threeQuarters" | "full" {
   const edge = getEdgeBetweenCells(gridState, fromCell, toCell);
   return edge?.cover ?? "none";
+}
+
+/**
+ * Build a coordinate-keyed index from a CellElevation array.
+ * Construct once per context (e.g. before a path-cost loop) and reuse.
+ */
+export function buildElevationIndex(
+  cellElevations: CellElevation[] = []
+): Map<string, number> {
+  const index = new Map<string, number>();
+  for (const entry of cellElevations) {
+    index.set(coordinateKey(entry.cell), entry.elevationMeters);
+  }
+  return index;
+}
+
+/**
+ * Look up the elevation for a single cell using a pre-built index.
+ * Returns 0 for cells not in the index.
+ */
+export function getCellElevation(
+  elevationIndex: Map<string, number>,
+  cell: Coordinate
+): number {
+  return elevationIndex.get(coordinateKey(cell)) ?? 0;
 }

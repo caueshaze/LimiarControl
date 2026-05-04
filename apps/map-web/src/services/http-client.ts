@@ -8,7 +8,8 @@ import type {
   ResyncResponse,
   TargetingSubmitRequest,
   ObstaclePaintRequest,
-  EdgeObstaclePaintRequest
+  EdgeObstaclePaintRequest,
+  ElevationPaintRequest
 } from "@limiarmap/shared-contracts";
 import type { TacticalDiagnostics } from "../features/battle-map/battle-map-store";
 
@@ -201,6 +202,17 @@ export class HttpClient {
   ): Promise<EncounterSnapshotResponse> {
     return this.postJson<EncounterSnapshotResponse>(
       `/sessions/${sessionId}/actions/edge-obstacles`,
+      payload,
+      true
+    );
+  }
+
+  async submitElevationPaint(
+    sessionId: string,
+    payload: ElevationPaintRequest
+  ): Promise<EncounterSnapshotResponse> {
+    return this.postJson<EncounterSnapshotResponse>(
+      `/sessions/${sessionId}/actions/elevation`,
       payload,
       true
     );

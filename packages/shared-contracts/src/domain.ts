@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const MAX_GRID_DIMENSION = 150;
 
+/** Initial tactical ceiling for cell elevation in meters. Not a system rule — adjust as needed. */
+export const MAX_ELEVATION_METERS = 100;
+
 /**
  * Default map scale: 1.5 meters per cell.
  * Compatible with standard D&D 5e grids (5 ft ≈ 1.5 m per cell).
@@ -249,6 +252,11 @@ export const realtimeActionEventSchema = z.object({
   replaySafe: z.boolean().default(true)
 });
 
+export const cellElevationSchema = z.object({
+  cell: coordinateSchema,
+  elevationMeters: z.number().finite().min(0).max(MAX_ELEVATION_METERS),
+});
+
 export type Coordinate = z.infer<typeof coordinateSchema>;
 export type GridCalibration = z.infer<typeof gridCalibrationSchema>;
 export type GridDimensions = z.infer<typeof gridDimensionsSchema>;
@@ -267,3 +275,4 @@ export type MovementAction = z.infer<typeof movementActionSchema>;
 export type TargetingTemplate = z.infer<typeof targetingTemplateSchema>;
 export type ActiveAreaEffect = z.infer<typeof activeAreaEffectSchema>;
 export type RealtimeActionEvent = z.infer<typeof realtimeActionEventSchema>;
+export type CellElevation = z.infer<typeof cellElevationSchema>;
