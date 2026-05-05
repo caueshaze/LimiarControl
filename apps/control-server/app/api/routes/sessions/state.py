@@ -286,18 +286,47 @@ async def remove_my_persisted_effect(
     if not state:
         raise HTTPException(status_code=404, detail="Session state not found")
 
+    # Extract effect metadata BEFORE removal
+    effect_metadata = None
+    state_json = state.state_json if isinstance(state.state_json, dict) else {}
+    for eff in state_json.get("active_spell_effects", []) or []:
+        if isinstance(eff, dict) and eff.get("id") == effect_id:
+            effect_metadata = eff.get("metadata") if isinstance(eff.get("metadata"), dict) else None
+            break
+
     updated = remove_persisted_effect(state.state_json, effect_id)
     state.state_json = finalize_session_state_data(updated)
     session.add(state)
+
+    # Cross-clear concentration group for ally-target effects
+    affected_allies: list[SessionState] = []
+    if effect_metadata:
+        was_concentration = effect_metadata.get("concentration") is True
+        caster_id = effect_metadata.get("caster_player_user_id")
+        target_id = effect_metadata.get("target_player_user_id")
+        is_ally_target = caster_id is not None and target_id is not None and caster_id != target_id
+        concentration_group = effect_metadata.get("concentration_group")
+        if was_concentration and is_ally_target and concentration_group:
+            affected_allies = clear_concentration_group_across_session(
+                session, session_id, concentration_group, exclude_user_id=user.id
+            )
+
     session.commit()
     session.refresh(state)
 
-    await publish_state_update(
-        entry,
-        user.id,
-        state.updated_at or state.created_at,
-        state.state_json if isinstance(state.state_json, dict) else None,
-    )
+    # Publish updates for all modified players (deduped by player_user_id)
+    states_to_publish: dict[str, SessionState] = {user.id: state}
+    for ally in affected_allies:
+        if ally.player_user_id not in states_to_publish:
+            states_to_publish[ally.player_user_id] = ally
+
+    for player_id, st in states_to_publish.items():
+        await publish_state_update(
+            entry,
+            player_id,
+            st.updated_at or st.created_at,
+            st.state_json if isinstance(st.state_json, dict) else None,
+        )
     return to_state_read(state)
 
 
