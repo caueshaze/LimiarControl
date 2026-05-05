@@ -49,6 +49,11 @@ export type CharacterSheetHookAction =
   | { type: "saving_fail"; error: string }
   | { type: "import_success"; sheet: CharacterSheet }
   | { type: "import_fail"; error: string }
+  | {
+      type: "active_effects_updated";
+      sheet: CharacterSheet;
+      activeSpellEffects: ActiveEffect[];
+    }
   | { type: "reset" };
 
 export const initialCharacterSheetHookState: CharacterSheetHookState = {
@@ -112,6 +117,12 @@ export function characterSheetHookReducer(
       return { ...state, sheet: action.sheet, isDirty: true, importError: null };
     case "import_fail":
       return { ...state, importError: action.error };
+    case "active_effects_updated":
+      return {
+        ...state,
+        sheet: action.sheet,
+        activeSpellEffects: action.activeSpellEffects,
+      };
     case "reset":
       return {
         ...state,
