@@ -250,6 +250,21 @@ describe("OutOfCombatSpellCastCard", () => {
       expect(markup).toContain("Ally One");
       expect(markup).toContain("Ally Two");
     });
+
+    it("shows target selector for ally-only spell when allies exist", () => {
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ outOfCombatTarget: "ally" })]}
+          casting={false}
+          onCast={() => undefined}
+          targetOptions={targetOptions}
+        />,
+      );
+      expect(markup).toContain("Alvo");
+      expect(markup).toContain("Ally One");
+      expect(markup).toContain("Ally Two");
+    });
   });
 
   describe("cast callback", () => {
@@ -314,6 +329,27 @@ describe("OutOfCombatSpellCastCard", () => {
 
       expect(onCast).toHaveBeenCalledTimes(1);
       expect(onCast).toHaveBeenCalledWith("spell-1", 1, null, null);
+    });
+
+    it("cast with ally-only spell sends selected targetPlayerUserId", () => {
+      const onCast = vi.fn();
+      const expandedSpellId = "spell-1";
+      const selectedTargetsWithAlly = { "spell-1": "ally-1" };
+      mockState.overrides = [expandedSpellId, {}, {}, selectedTargetsWithAlly];
+
+      const tree = OutOfCombatSpellCastCard({
+        spells: [makeSpell({ outOfCombatTarget: "ally" })],
+        casting: false,
+        onCast,
+        targetOptions,
+      });
+
+      const button = findCastButton(tree);
+      expect(button).not.toBeNull();
+      button?.props?.onClick?.();
+
+      expect(onCast).toHaveBeenCalledTimes(1);
+      expect(onCast).toHaveBeenCalledWith("spell-1", 1, null, "ally-1");
     });
   });
 });

@@ -195,6 +195,149 @@ def _slots_state(level: int = 2, used: int = 0, max_slots: int = 3) -> dict:
     }
 
 
+def _make_multiplayer_cast_setup(
+    mock_get_entry: MagicMock,
+    mock_ensure: MagicMock,
+    campaign_spell: MagicMock,
+    *,
+    caster_user_id: str = "caster-1",
+    target_user_id: str = "target-2",
+    third_user_id: str | None = None,
+    slot_level: int = 1,
+    caster_active_effects: list[dict] | None = None,
+    target_active_effects: list[dict] | None = None,
+    third_active_effects: list[dict] | None = None,
+) -> tuple[MagicMock, MagicMock, MagicMock, MagicMock | None]:
+    """Create a multiplayer cast setup with 2–3 SessionState mocks.
+
+    Builds caster + target (+ optional third player) with MagicMock
+    SessionState objects containing state_json with spell slots and
+    optional pre-seeded ``active_spell_effects``.  Handles the full
+    ``db.exec`` query sequence from ``cast_spell_out_of_combat``
+    **without** patching ``clear_concentration_group_across_session``::
+
+        0. .first()  → caster state  (select … where player_user_id == user.id)
+        1. .first()  → target state  (select … where player_user_id == target)
+        2. .first()  → campaign spell lookup
+        3. .all()    → all session states
+                       (used by clear_concentration_group_across_session)
+
+    Pre-seed ``active_spell_effects`` on any player to test concentration
+    replacement, dedup, or marker placement scenarios.
+
+    Typical usage (caller provides the standard decorator set)::
+
+        @patch("app.api.routes.sessions.state.get_session_entry")
+        @patch("app.api.routes.sessions.state.require_session_view_access")
+        @patch("app.api.routes.sessions.state.ensure_session_state")
+        @patch("app.api.routes.sessions.state.finalize_session_state_data",
+               side_effect=lambda d: d)
+        @patch("app.api.routes.sessions.state.publish_state_update")
+        @patch("app.api.routes.sessions.state.to_state_read")
+        async def test_…(
+            self, mock_to_state, mock_pub, mock_fin,
+            mock_ensure, mock_req, mock_entry,
+        ):
+            mock_to_state.return_value = MagicMock()
+            db, caster, target, third = _make_multiplayer_cast_setup(
+                mock_entry, mock_ensure, spell,
+                caster_active_effects=[…],
+            )
+            …
+
+    .. note::
+       When a test exercises real concentration-group clearing (i.e. an
+       ``old_group`` exists and ``clear_concentration_group_across_session``
+       runs), the caller should also patch
+       ``app.services.combat_service.persistent_effects.finalize_session_state_data``
+       with ``side_effect=lambda d: d``.
+
+    Returns (db, caster_state, target_state, third_state) where
+    ``third_state`` is ``None`` when ``third_user_id`` is not given.
+    """
+    # --- Session entry mock ---
+    entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+    mock_get_entry.return_value = entry
+
+    # --- Caster state ---
+    caster_json = _slots_state(level=slot_level, used=0, max_slots=3)
+    caster_json["spellcasting"]["spells"] = [
+        {
+            "id": "spell-1",
+            "canonicalKey": campaign_spell.canonical_key,
+            "level": slot_level,
+            "prepared": True,
+        }
+    ]
+    if caster_active_effects:
+        caster_json["active_spell_effects"] = list(caster_active_effects)
+
+    caster_state = MagicMock()
+    caster_state.state_json = caster_json
+    caster_state.id = "ss-caster"
+    caster_state.session_id = "session-1"
+    caster_state.player_user_id = caster_user_id
+    caster_state.created_at = "2026-01-01T00:00:00+00:00"
+    caster_state.updated_at = None
+
+    # --- Target state ---
+    target_json: dict = {}
+    if target_active_effects:
+        target_json["active_spell_effects"] = list(target_active_effects)
+
+    target_state = MagicMock()
+    target_state.state_json = target_json
+    target_state.id = "ss-target"
+    target_state.session_id = "session-1"
+    target_state.player_user_id = target_user_id
+    target_state.created_at = "2026-01-01T00:00:00+00:00"
+    target_state.updated_at = None
+
+    # --- Optional third-player state ---
+    third_state: MagicMock | None = None
+    if third_user_id is not None:
+        third_json: dict = {}
+        if third_active_effects:
+            third_json["active_spell_effects"] = list(third_active_effects)
+        third_state = MagicMock()
+        third_state.state_json = third_json
+        third_state.id = "ss-third"
+        third_state.session_id = "session-1"
+        third_state.player_user_id = third_user_id
+        third_state.created_at = "2026-01-01T00:00:00+00:00"
+        third_state.updated_at = None
+
+    # --- Wire mock_ensure ---
+    mock_ensure.return_value = caster_state
+
+    # --- All states (for clear_concentration_group_across_session .all()) ---
+    all_states = [caster_state, target_state]
+    if third_state is not None:
+        all_states.append(third_state)
+
+    # --- Wire db.exec with sequential query returns ---
+    db = MagicMock()
+    call_count = [0]
+    first_results = [caster_state, target_state, campaign_spell]
+
+    def exec_side(q, **kw):
+        r = MagicMock()
+        idx = call_count[0]
+        call_count[0] += 1
+        if idx < len(first_results):
+            r.first.return_value = first_results[idx]
+        elif idx == len(first_results):
+            # clear_concentration_group_across_session uses .all()
+            r.all.return_value = list(all_states)
+        else:
+            r.first.return_value = None
+            r.all.return_value = []
+        return r
+
+    db.exec.side_effect = exec_side
+    return db, caster_state, target_state, third_state
+
+
 # ---------------------------------------------------------------------------
 # Unit tests: check_out_of_combat_cast_eligibility
 # ---------------------------------------------------------------------------
@@ -1109,6 +1252,258 @@ class TestCastMutationSafety(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
+# Tests: ally-target mutation safety
+# ---------------------------------------------------------------------------
+
+class TestAllyMutationSafety(unittest.IsolatedAsyncioTestCase):
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    async def test_invalid_ally_target_does_not_mutate_state(
+        self, mock_ensure, mock_require_view, mock_get_entry
+    ):
+        from fastapi import HTTPException
+
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        mock_get_entry.return_value = entry
+
+        state_json = _slots_state(level=1, used=0, max_slots=3)
+        state_json["spellcasting"]["spells"] = [
+            {"id": "spell-1", "canonicalKey": "shield_of_faith", "level": 1, "prepared": True}
+        ]
+        state_json["active_spell_effects"] = []
+        db = MagicMock()
+        state = MagicMock()
+        state.state_json = state_json
+        state.id = "ss-caster"
+        state.session_id = "session-1"
+        state.player_user_id = "caster-1"
+        state.created_at = "2026-01-01T00:00:00+00:00"
+        state.updated_at = None
+
+        call_count = [0]
+
+        def exec_side(q, **kw):
+            r = MagicMock()
+            r.first.return_value = state if call_count[0] == 0 else None
+            call_count[0] += 1
+            return r
+
+        db.exec.side_effect = exec_side
+        mock_ensure.return_value = state
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="ghost-user"
+        )
+
+        slots_before = state.state_json["spellcasting"]["slots"]["1"]["used"]
+        effects_before = len(state.state_json.get("active_spell_effects", []))
+
+        with self.assertRaises(HTTPException) as ctx:
+            await cast_spell_out_of_combat(
+                session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("participant", ctx.exception.detail)
+
+        self.assertEqual(
+            state.state_json["spellcasting"]["slots"]["1"]["used"],
+            slots_before,
+            "Caster slots must not change after invalid target rejection",
+        )
+        self.assertEqual(
+            len(state.state_json.get("active_spell_effects", [])),
+            effects_before,
+            "Caster effects must not change after invalid target rejection",
+        )
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    async def test_self_only_spell_targeting_ally_does_not_mutate_state(
+        self, mock_ensure, mock_require_view, mock_get_entry
+    ):
+        from fastapi import HTTPException
+
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        mock_get_entry.return_value = entry
+
+        caster_json = _slots_state(level=1, used=0, max_slots=3)
+        caster_json["spellcasting"]["spells"] = [
+            {"id": "spell-1", "canonicalKey": "shield_of_faith", "level": 1, "prepared": True}
+        ]
+        caster_json["active_spell_effects"] = []
+        caster_state = MagicMock()
+        caster_state.state_json = caster_json
+        caster_state.id = "ss-caster"
+        caster_state.session_id = "session-1"
+        caster_state.player_user_id = "caster-1"
+        caster_state.created_at = "2026-01-01T00:00:00+00:00"
+        caster_state.updated_at = None
+
+        target_state = MagicMock()
+        target_state.state_json = {}
+        target_state.id = "ss-target"
+        target_state.session_id = "session-1"
+        target_state.player_user_id = "target-2"
+        target_state.created_at = "2026-01-01T00:00:00+00:00"
+        target_state.updated_at = None
+
+        shield = _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+        )
+        shield.out_of_combat_target = "self"
+
+        db = MagicMock()
+        call_count = [0]
+
+        def exec_side(q, **kw):
+            r = MagicMock()
+            idx = call_count[0]
+            call_count[0] += 1
+            if idx == 0:
+                r.first.return_value = caster_state
+            elif idx == 1:
+                r.first.return_value = target_state
+            elif idx == 2:
+                r.first.return_value = shield
+            else:
+                r.first.return_value = None
+                r.all.return_value = []
+            return r
+
+        db.exec.side_effect = exec_side
+        mock_ensure.return_value = caster_state
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="target-2"
+        )
+
+        slots_before = caster_state.state_json["spellcasting"]["slots"]["1"]["used"]
+        effects_before = len(caster_state.state_json.get("active_spell_effects", []))
+        target_effects_before = len(target_state.state_json.get("active_spell_effects", []))
+
+        with self.assertRaises(HTTPException) as ctx:
+            await cast_spell_out_of_combat(
+                session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("allies", ctx.exception.detail)
+
+        self.assertEqual(
+            caster_state.state_json["spellcasting"]["slots"]["1"]["used"],
+            slots_before,
+            "Caster slots must not change after self-only targeting ally rejection",
+        )
+        self.assertEqual(
+            len(caster_state.state_json.get("active_spell_effects", [])),
+            effects_before,
+            "Caster effects must not change after self-only targeting ally rejection",
+        )
+        self.assertEqual(
+            len(target_state.state_json.get("active_spell_effects", [])),
+            target_effects_before,
+            "Target effects must not change after self-only targeting ally rejection",
+        )
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    async def test_no_slot_ally_cast_does_not_mutate_state(
+        self, mock_ensure, mock_require_view, mock_get_entry
+    ):
+        from fastapi import HTTPException
+
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        mock_get_entry.return_value = entry
+
+        caster_json = _slots_state(level=1, used=3, max_slots=3)
+        caster_json["spellcasting"]["spells"] = [
+            {"id": "spell-1", "canonicalKey": "shield_of_faith", "level": 1, "prepared": True}
+        ]
+        caster_json["active_spell_effects"] = []
+        caster_state = MagicMock()
+        caster_state.state_json = caster_json
+        caster_state.id = "ss-caster"
+        caster_state.session_id = "session-1"
+        caster_state.player_user_id = "caster-1"
+        caster_state.created_at = "2026-01-01T00:00:00+00:00"
+        caster_state.updated_at = None
+
+        target_state = MagicMock()
+        target_state.state_json = {}
+        target_state.id = "ss-target"
+        target_state.session_id = "session-1"
+        target_state.player_user_id = "target-2"
+        target_state.created_at = "2026-01-01T00:00:00+00:00"
+        target_state.updated_at = None
+
+        shield = _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+        )
+        shield.out_of_combat_target = "self_or_ally"
+
+        db = MagicMock()
+        call_count = [0]
+
+        def exec_side(q, **kw):
+            r = MagicMock()
+            idx = call_count[0]
+            call_count[0] += 1
+            if idx == 0:
+                r.first.return_value = caster_state
+            elif idx == 1:
+                r.first.return_value = target_state
+            elif idx == 2:
+                r.first.return_value = shield
+            else:
+                r.first.return_value = None
+                r.all.return_value = []
+            return r
+
+        db.exec.side_effect = exec_side
+        mock_ensure.return_value = caster_state
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="target-2"
+        )
+
+        slots_before = caster_state.state_json["spellcasting"]["slots"]["1"]["used"]
+        effects_before = len(caster_state.state_json.get("active_spell_effects", []))
+        target_effects_before = len(target_state.state_json.get("active_spell_effects", []))
+
+        with self.assertRaises(HTTPException) as ctx:
+            await cast_spell_out_of_combat(
+                session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+
+        self.assertEqual(
+            caster_state.state_json["spellcasting"]["slots"]["1"]["used"],
+            slots_before,
+            "Caster slots must not change after no-slot rejection",
+        )
+        self.assertEqual(
+            len(caster_state.state_json.get("active_spell_effects", [])),
+            effects_before,
+            "Caster effects must not change after no-slot rejection",
+        )
+        self.assertEqual(
+            len(target_state.state_json.get("active_spell_effects", [])),
+            target_effects_before,
+            "Target effects must not change after no-slot rejection",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Tests: Enhance Ability variant regression
 # ---------------------------------------------------------------------------
 
@@ -1307,6 +1702,82 @@ class TestShieldOfFaithRegression(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(meta.get("concentration_group"))
 
 
+class TestSelfTargetConcentrationRegression(unittest.IsolatedAsyncioTestCase):
+
+    def _make_shield_spell(self):
+        return _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+            name_pt="Escudo da Fé",
+            name_en="Shield of Faith",
+        )
+
+    def _setup_cast(self, mock_get_entry, mock_ensure):
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        mock_get_entry.return_value = entry
+
+        state_json = _slots_state(level=1, used=0, max_slots=3)
+        state_json["spellcasting"]["spells"] = [
+            {"id": "spell-sof-1", "canonicalKey": "shield_of_faith", "level": 1, "prepared": True}
+        ]
+        state = MagicMock()
+        state.state_json = state_json
+        state.id = "ss-1"
+        state.session_id = "session-1"
+        state.player_user_id = "user-1"
+        state.created_at = "2026-01-01T00:00:00+00:00"
+        state.updated_at = None
+
+        shield = self._make_shield_spell()
+        shield.out_of_combat_target = "self"
+        call_count = [0]
+
+        def exec_side(q, **kw):
+            r = MagicMock()
+            r.first.return_value = state if call_count[0] == 0 else shield
+            call_count[0] += 1
+            return r
+
+        db = MagicMock()
+        db.exec.side_effect = exec_side
+        mock_ensure.return_value = state
+        return db, state
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_self_target_concentration_does_not_create_marker(
+        self, mock_to_state, mock_pub, mock_fin, mock_ensure, mock_req, mock_entry
+    ):
+        mock_to_state.return_value = MagicMock()
+        db, state = self._setup_cast(mock_entry, mock_ensure)
+
+        req = OutOfCombatCastRequest(spellId="spell-sof-1", slotLevel=1, variantKey=None)
+        await cast_spell_out_of_combat(
+            session_id="session-1", req=req, user=_make_user(), session=db
+        )
+
+        effects = state.state_json.get("active_spell_effects", [])
+        self.assertTrue(len(effects) >= 1)
+
+        markers = [e for e in effects if e.get("metadata", {}).get("concentration_marker")]
+        self.assertEqual(len(markers), 0, "Self-target must not create a separate concentration marker")
+
+        ac_effs = [e for e in effects if e.get("kind") == "temp_ac_bonus"]
+        self.assertEqual(len(ac_effs), 1, "Buff effect must land directly on caster state")
+
+        ac_meta = ac_effs[0].get("metadata", {})
+        self.assertTrue(ac_meta.get("concentration"), "Buff effect must have concentration=True")
+        self.assertIsNotNone(ac_meta.get("concentration_group"), "Buff effect must have concentration_group")
+        self.assertIsNone(ac_meta.get("concentration_marker"), "Buff effect must not have concentration_marker flag")
+
+
 # ---------------------------------------------------------------------------
 # Tests: build_concentration_marker
 # ---------------------------------------------------------------------------
@@ -1405,6 +1876,359 @@ class TestSerializerGaps(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Tests: ally targeting (endpoint integration)
 # ---------------------------------------------------------------------------
+
+class TestAllyConcentrationReplacement(unittest.IsolatedAsyncioTestCase):
+    """Golden test: real concentration-group clearing across session states."""
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.services.combat_service.persistent_effects.finalize_session_state_data", side_effect=lambda d: d)
+    async def test_ally_concentration_replacement_cleans_old_target_effect(
+        self,
+        mock_pe_finalize,
+        mock_to_state,
+        mock_pub,
+        mock_fin,
+        mock_ensure,
+        mock_req,
+        mock_entry,
+    ):
+        mock_to_state.return_value = MagicMock()
+
+        shield = _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+            name_pt="Escudo da Fé",
+            name_en="Shield of Faith",
+        )
+        shield.out_of_combat_target = "self_or_ally"
+
+        # --- Pre-seed effects ---
+        old_concentration_marker = {
+            "id": "old-marker",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": True,
+                "concentration_marker": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "bless",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+
+        old_buff_on_ally_a = {
+            "id": "old-buff",
+            "kind": "temp_ac_bonus",
+            "duration_type": "until_long_rest",
+            "numeric_value": 1,
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "bless",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+                "declarative_effect": {
+                    "type": "modify_stat",
+                    "target": "selected_target",
+                    "params": {"stat": "temp_ac_bonus", "value": 1},
+                    "stacking": "replace",
+                },
+            },
+        }
+
+        unrelated_effect_on_ally_a = {
+            "id": "unrelated-ally-a",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": False,
+                "concentration_group": None,
+                "source_spell_key": "guidance",
+            },
+        }
+
+        unrelated_effect_on_ally_b = {
+            "id": "unrelated-ally-b",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": False,
+                "concentration_group": None,
+                "source_spell_key": "resistance",
+            },
+        }
+
+        db, caster_state, target_state, third_state = _make_multiplayer_cast_setup(
+            mock_entry,
+            mock_ensure,
+            shield,
+            caster_user_id="caster-1",
+            target_user_id="ally-b",
+            third_user_id="ally-a",
+            slot_level=1,
+            caster_active_effects=[old_concentration_marker],
+            target_active_effects=[unrelated_effect_on_ally_b],
+            third_active_effects=[old_buff_on_ally_a, unrelated_effect_on_ally_a],
+        )
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="ally-b"
+        )
+        await cast_spell_out_of_combat(
+            session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+        )
+
+        # --- Assertions ---
+
+        caster_effs = caster_state.state_json.get("active_spell_effects", [])
+        ally_a_effs = third_state.state_json.get("active_spell_effects", [])
+        ally_b_effs = target_state.state_json.get("active_spell_effects", [])
+
+        # 1. Old concentration group "old-grp" removed from caster state
+        old_grp_on_caster = [
+            e for e in caster_effs
+            if (e.get("metadata") or {}).get("concentration_group") == "old-grp"
+        ]
+        self.assertEqual(len(old_grp_on_caster), 0,
+                         "Old concentration group must be removed from caster")
+
+        # 2. Old concentration group "old-grp" removed from Ally A state
+        old_grp_on_ally_a = [
+            e for e in ally_a_effs
+            if (e.get("metadata") or {}).get("concentration_group") == "old-grp"
+        ]
+        self.assertEqual(len(old_grp_on_ally_a), 0,
+                         "Old concentration group must be removed from Ally A")
+
+        # 3. New concentration group exists on caster state as marker
+        new_markers = [
+            e for e in caster_effs
+            if (e.get("metadata") or {}).get("concentration_marker") is True
+        ]
+        self.assertEqual(len(new_markers), 1,
+                         "Caster must have exactly one concentration marker")
+        new_grp = new_markers[0]["metadata"]["concentration_group"]
+        self.assertNotEqual(new_grp, "old-grp",
+                            "New concentration group must differ from old one")
+
+        # 4. New concentration group exists on Ally B state as buff effect
+        new_buffs = [
+            e for e in ally_b_effs
+            if (e.get("metadata") or {}).get("concentration_group") == new_grp
+               and "declarative_effect" in (e.get("metadata") or {})
+        ]
+        self.assertEqual(len(new_buffs), 1,
+                         "Ally B must have the new buff effect with declarative_effect")
+
+        # 5. Ally A keeps unrelated non-concentration effects
+        ally_a_unrelated_ids = [
+            e["id"] for e in ally_a_effs
+            if not (e.get("metadata") or {}).get("concentration")
+        ]
+        self.assertIn("unrelated-ally-a", ally_a_unrelated_ids,
+                       "Ally A must keep unrelated non-concentration effect")
+
+        # 6. Ally B keeps unrelated existing effects + new buff
+        ally_b_ids = [e["id"] for e in ally_b_effs]
+        self.assertIn("unrelated-ally-b", ally_b_ids,
+                      "Ally B must keep unrelated existing effect")
+        new_buff_ids = [e["id"] for e in new_buffs]
+        self.assertTrue(len(new_buff_ids) >= 1,
+                        "Ally B must have the new buff effect")
+
+        # 7. Caster's slot decremented by 1
+        caster_used = caster_state.state_json["spellcasting"]["slots"]["1"]["used"]
+        self.assertEqual(caster_used, 1, "Caster slot must be decremented by 1")
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
+    async def test_ally_concentration_replacement_publishes_each_state_once(
+        self,
+        mock_clear,
+        mock_to_state,
+        mock_pub,
+        mock_fin,
+        mock_ensure,
+        mock_req,
+        mock_entry,
+    ):
+        mock_to_state.return_value = MagicMock()
+
+        shield = _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+            name_pt="Escudo da Fé",
+            name_en="Shield of Faith",
+        )
+        shield.out_of_combat_target = "self_or_ally"
+
+        old_marker = {
+            "id": "old-marker",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": True,
+                "concentration_marker": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "shield_of_faith",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+
+        old_buff = {
+            "id": "old-buff",
+            "kind": "temp_ac_bonus",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "shield_of_faith",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+
+        db, caster_state, new_target_state, old_target_state = _make_multiplayer_cast_setup(
+            mock_entry,
+            mock_ensure,
+            shield,
+            caster_user_id="caster-1",
+            target_user_id="ally-b",
+            third_user_id="ally-a",
+            slot_level=1,
+            caster_active_effects=[old_marker],
+            target_active_effects=[],
+            third_active_effects=[old_buff],
+        )
+
+        mock_clear.return_value = [old_target_state]
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="ally-b"
+        )
+        await cast_spell_out_of_combat(
+            session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+        )
+
+        self.assertEqual(mock_pub.call_count, 3,
+                         "Should publish exactly 3 state updates (caster, old target, new target)")
+
+        published_ids = {call.args[1] for call in mock_pub.call_args_list}
+        self.assertEqual(
+            published_ids,
+            {"caster-1", "ally-a", "ally-b"},
+            "Each affected player must be published exactly once",
+        )
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
+    async def test_ally_concentration_replacement_no_duplicate_publish_when_same_target(
+        self,
+        mock_clear,
+        mock_to_state,
+        mock_pub,
+        mock_fin,
+        mock_ensure,
+        mock_req,
+        mock_entry,
+    ):
+        mock_to_state.return_value = MagicMock()
+
+        shield = _make_campaign_spell(
+            canonical_key="shield_of_faith",
+            level=1,
+            concentration=True,
+            out_of_combat_castable=True,
+            effects_json=[_ac_bonus_effect(2)],
+            name_pt="Escudo da Fé",
+            name_en="Shield of Faith",
+        )
+        shield.out_of_combat_target = "self_or_ally"
+
+        old_marker = {
+            "id": "old-marker",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": True,
+                "concentration_marker": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "shield_of_faith",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+
+        old_buff = {
+            "id": "old-buff",
+            "kind": "temp_ac_bonus",
+            "duration_type": "until_long_rest",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "old-grp",
+                "source_spell_key": "shield_of_faith",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+
+        db, caster_state, target_state, _ = _make_multiplayer_cast_setup(
+            mock_entry,
+            mock_ensure,
+            shield,
+            caster_user_id="caster-1",
+            target_user_id="ally-a",
+            third_user_id=None,
+            slot_level=1,
+            caster_active_effects=[old_marker],
+            target_active_effects=[old_buff],
+        )
+
+        mock_clear.return_value = [target_state]
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="ally-a"
+        )
+        await cast_spell_out_of_combat(
+            session_id="session-1", req=req, user=_make_user("caster-1"), session=db
+        )
+
+        self.assertEqual(
+            mock_pub.call_count,
+            2,
+            "Should publish exactly 2 state updates (caster + target), not 3",
+        )
+
+        published_ids = {call.args[1] for call in mock_pub.call_args_list}
+        self.assertEqual(
+            published_ids,
+            {"caster-1", "ally-a"},
+            "Must not duplicate publish when old target == new target",
+        )
+
 
 class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     def _make_shield_spell(self):
@@ -1787,3 +2611,52 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(markers), 0, "Self-target must not create a separate concentration marker")
         ac_effs = [e for e in caster_effs if e.get("kind") == "temp_ac_bonus"]
         self.assertEqual(len(ac_effs), 1, "Buff effect must land directly on caster state")
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
+    async def test_target_effect_has_matching_concentration_group(
+        self, mock_clear_across, mock_to_state, mock_pub, mock_fin, mock_ensure, mock_req, mock_entry
+    ):
+        """Target effect concentration_group must match caster marker concentration_group."""
+        mock_to_state.return_value = MagicMock()
+        shield = self._make_shield_spell()
+        shield.out_of_combat_target = "self_or_ally"
+        db, caster_state, target_state = self._setup_two_player_cast(
+            mock_entry, mock_ensure, shield
+        )
+        caster_user = _make_user("caster-1")
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1", slotLevel=1, variantKey=None, targetPlayerUserId="target-2"
+        )
+        await cast_spell_out_of_combat(
+            session_id="session-1", req=req, user=caster_user, session=db
+        )
+
+        caster_effs = caster_state.state_json.get("active_spell_effects", [])
+        markers = [e for e in caster_effs if e.get("metadata", {}).get("concentration_marker")]
+        self.assertEqual(len(markers), 1, "Caster must have a concentration marker")
+        caster_marker = markers[0]
+        caster_meta = caster_marker["metadata"]
+
+        target_effs = target_state.state_json.get("active_spell_effects", [])
+        ac_effects = [e for e in target_effs if e.get("kind") == "temp_ac_bonus"]
+        self.assertEqual(len(ac_effects), 1, "Target must have a temp_ac_bonus effect")
+        target_effect = ac_effects[0]
+        target_meta = target_effect["metadata"]
+
+        self.assertEqual(
+            target_meta["concentration_group"],
+            caster_meta["concentration_group"],
+            "Target effect concentration_group must match caster marker concentration_group",
+        )
+        self.assertIn("declarative_effect", target_meta)
+        self.assertNotIn("declarative_effect", caster_meta)
+        self.assertEqual(target_meta["caster_player_user_id"], "caster-1")
+        self.assertEqual(caster_meta["caster_player_user_id"], "caster-1")
+        self.assertEqual(target_meta["target_player_user_id"], "target-2")
