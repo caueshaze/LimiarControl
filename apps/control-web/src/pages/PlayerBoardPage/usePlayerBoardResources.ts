@@ -6,7 +6,7 @@ import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { ActiveConcentration } from "../../entities/character";
-import type { ActiveEffect } from "../../shared/api/combatRepo";
+import type { ActiveEffect, PendingSpellPreparation } from "../../shared/api/combatRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
@@ -53,6 +53,7 @@ export const usePlayerBoardResources = ({
   const [playerSheet, setPlayerSheet] = useState<CharacterSheet | null>(null);
   const [activeConcentration, setActiveConcentration] = useState<ActiveConcentration | null>(null);
   const [activeSpellEffects, setActiveSpellEffects] = useState<ActiveEffect[] | null>(null);
+  const [pendingSpellPreparation, setPendingSpellPreparation] = useState<PendingSpellPreparation | null>(null);
 
   const applyRealtimeStateSnapshot = useCallback((rawState: unknown): boolean => {
     try {
@@ -108,6 +109,7 @@ export const usePlayerBoardResources = ({
       setPlayerSheet(null);
       setActiveConcentration(null);
       setActiveSpellEffects(null);
+      setPendingSpellPreparation(null);
       return;
     }
     try {
@@ -121,11 +123,15 @@ export const usePlayerBoardResources = ({
       setActiveSpellEffects(
         (record.activeSpellEffects as ActiveEffect[] | null | undefined) ?? null,
       );
+      setPendingSpellPreparation(
+        (record.pendingSpellPreparation as PendingSpellPreparation | null | undefined) ?? null,
+      );
     } catch {
       setPlayerWallet(EMPTY_WALLET);
       setPlayerSheet(null);
       setActiveConcentration(null);
       setActiveSpellEffects(null);
+      setPendingSpellPreparation(null);
     }
   }, [activeSession?.id]);
 
@@ -318,7 +324,7 @@ export const usePlayerBoardResources = ({
     return () => window.clearInterval(handle);
   }, [effectiveCampaignId, activeSession, refresh]);
 
-  return {
+    return {
     activeConcentration,
     activeSession,
     activeSpellEffects,
@@ -330,6 +336,7 @@ export const usePlayerBoardResources = ({
     lastCommand,
     lastEvent,
     myInventory,
+    pendingSpellPreparation,
     playerSheet,
     playerWallet,
     refresh,
@@ -343,6 +350,7 @@ export const usePlayerBoardResources = ({
     setActiveConcentration,
     setActiveSpellEffects,
     setMyInventory,
+    setPendingSpellPreparation,
     setPlayerSheet,
     setPlayerWallet,
     setSelectedSessionId,

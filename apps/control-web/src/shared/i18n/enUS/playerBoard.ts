@@ -199,4 +199,13 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.lifecycleLongRest": "Clears on long rest",
   "playerBoard.concentrationReplacedTitle": "Concentration replaced",
   "playerBoard.concentrationReplacedDescription": "Previous concentration ended: {previous}. New concentration: {next}.",
+  "playerBoard.prepareSpellsPrompt": "Prepare spells",
+  "playerBoard.prepareSpellsDescription": "You completed a long rest. Review your prepared spells.",
+  "playerBoard.prepareSpellsButton": "Prepare spells",
+  "playerBoard.prepareSpellsSelected": "Selected: {count} / {limit}",
+  "playerBoard.prepareSpellsOverLimit": "Limit exceeded",
+  "playerBoard.prepareSpellsCantrips": "Cantrips",
+  "playerBoard.prepareSpellsLevel": "Level {level}",
+  "playerBoard.prepareSpellsErrorTitle": "Failed to prepare spells",
+  "playerBoard.prepareSpellsErrorDescription": "Could not save prepared spells.",
 } as const;

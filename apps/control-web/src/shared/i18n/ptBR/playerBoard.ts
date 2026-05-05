@@ -199,4 +199,13 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.lifecycleLongRest": "Limpa no descanso longo",
   "playerBoard.concentrationReplacedTitle": "Concentração substituída",
   "playerBoard.concentrationReplacedDescription": "Concentração anterior encerrada: {previous}. Nova concentração: {next}.",
+  "playerBoard.prepareSpellsPrompt": "Preparar magias",
+  "playerBoard.prepareSpellsDescription": "Você concluiu um descanso longo. Revise suas magias preparadas.",
+  "playerBoard.prepareSpellsButton": "Preparar magias",
+  "playerBoard.prepareSpellsSelected": "Selecionadas: {count} / {limit}",
+  "playerBoard.prepareSpellsOverLimit": "Limite excedido",
+  "playerBoard.prepareSpellsCantrips": "Truques",
+  "playerBoard.prepareSpellsLevel": "Nível {level}",
+  "playerBoard.prepareSpellsErrorTitle": "Erro ao preparar magias",
+  "playerBoard.prepareSpellsErrorDescription": "Não foi possível salvar as magias preparadas.",
 } as const;

@@ -42,4 +42,5 @@ export type SessionStateRecord = {
   updatedAt?: string | null;
   activeSpellEffects?: Record<string, unknown>[] | null;
   activeConcentration?: ActiveConcentration | null;
+  pendingSpellPreparation?: Record<string, unknown> | null;
 };

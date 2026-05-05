@@ -9,6 +9,7 @@ from app.models.item import ItemType
 from app.models.session_state import SessionState
 from app.schemas.session_state import (
     ClearConcentrationRequest,
+    PrepareSpellsRequest,
     SessionStateLoadoutUpdate,
     SessionStateRead,
     SessionStateUpdate,
@@ -20,6 +21,7 @@ from app.services.combat_service.persistent_effects import (
 )
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
+from app.services.spell_preparation import apply_prepared_spells
 from ._shared import record_session_activity, require_identifier
 from .state_common import (
     ensure_session_state,
@@ -276,6 +278,68 @@ async def remove_my_persisted_effect(
 
     updated = remove_persisted_effect(state.state_json, effect_id)
     state.state_json = finalize_session_state_data(updated)
+    session.add(state)
+    session.commit()
+    session.refresh(state)
+
+    await publish_state_update(
+        entry,
+        user.id,
+        state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
+    )
+    return to_state_read(state)
+
+
+@router.post("/sessions/{session_id}/state/me/spells/prepare", response_model=SessionStateRead)
+async def prepare_my_spells(
+    session_id: str,
+    payload: PrepareSpellsRequest,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_view_access(entry, user, session, user.id)
+
+    state = session.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == user.id,
+        )
+    ).first()
+    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session state not found")
+
+    pending = (state.state_json or {}).get("pending_spell_preparation")
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending spell preparation.")
+
+    spellcasting = (state.state_json or {}).get("spellcasting")
+    spells = spellcasting.get("spells", []) if isinstance(spellcasting, dict) else []
+    spell_id_set = {s.get("id") for s in spells if isinstance(s, dict)}
+
+    for sid in payload.preparedSpellIds:
+        if sid not in spell_id_set:
+            raise HTTPException(status_code=400, detail=f"Unknown spell id: {sid}")
+
+    leveled_count = sum(
+        1
+        for s in spells
+        if isinstance(s, dict)
+        and s.get("id") in payload.preparedSpellIds
+        and s.get("level", 0) > 0
+    )
+    limit = pending.get("prepared_limit", 0)
+    if leveled_count > limit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Prepared spell count ({leveled_count}) exceeds limit ({limit}).",
+        )
+
+    state.state_json = apply_prepared_spells(state.state_json, payload.preparedSpellIds)
+    state.state_json = finalize_session_state_data(state.state_json)
+    flag_modified(state, "state_json")
     session.add(state)
     session.commit()
     session.refresh(state)
