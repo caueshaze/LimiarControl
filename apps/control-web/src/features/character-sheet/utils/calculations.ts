@@ -305,7 +305,53 @@ export const applyEncumbranceMovementPenalty = (
   return baseSpeedMeters;
 };
 
+function movementSpeedGroupKey(
+  metadata: Record<string, unknown>,
+  effect: ActiveEffect,
+  params: Record<string, unknown>,
+  index: number,
+): string {
+  const bonus = params.bonus_meters ?? "";
+  return declarativeEffectGroupKey(metadata, effect, "modify_movement_speed", `${bonus}`, index);
+}
+
+export const computeMovementSpeedBonusSources = (
+  activeEffects: ActiveEffect[],
+): MovementSpeedBonusSource[] => {
+  const groupBest = new Map<string, MovementSpeedBonusSource>();
+  for (let i = 0; i < activeEffects.length; i++) {
+    const effect = activeEffects[i];
+    const metadata = effect.metadata;
+    if (!metadata || typeof metadata !== "object") continue;
+    const declarative = metadata.declarative_effect;
+    if (!declarative || typeof declarative !== "object") continue;
+    if ((declarative as Record<string, unknown>).type !== "modify_movement_speed") continue;
+    const params = (declarative as Record<string, unknown>).params;
+    if (!params || typeof params !== "object") continue;
+    const p = params as Record<string, unknown>;
+    if (typeof p.bonus_meters !== "number") continue;
+    const label =
+      (typeof effect.display_label === "string" && effect.display_label) ||
+      (typeof metadata.source_spell_name === "string" && metadata.source_spell_name) ||
+      "Movement speed bonus";
+    const key = movementSpeedGroupKey(metadata as Record<string, unknown>, effect, p, i);
+    const existing = groupBest.get(key);
+    if (!existing || p.bonus_meters > existing.value) {
+      groupBest.set(key, { label, value: p.bonus_meters, groupKey: key });
+    }
+  }
+  return Array.from(groupBest.values());
+};
+
+export const computeMovementSpeedBonus = (activeEffects: ActiveEffect[]): number =>
+  computeMovementSpeedBonusSources(activeEffects).reduce(
+    (sum, s) => sum + s.value,
+    0,
+  );
+
 export type CarryingCapacitySource = { label: string; multiplier: number; groupKey: string };
+
+export type MovementSpeedBonusSource = { label: string; value: number; groupKey: string };
 
 function carryingCapacityGroupKey(
   metadata: Record<string, unknown>,

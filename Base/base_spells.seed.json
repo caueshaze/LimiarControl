@@ -859,7 +859,21 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "persistent"
+      "effectTiming": "persistent",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "modify_movement_speed",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "bonus_meters": 3
+          }
+        }
+      ]
     },
     {
       "system": "DND5E",

@@ -142,13 +142,21 @@ export const PlayerBoardStatusPanel = ({
             <StatCard
               label={t("playerBoard.speedLabel")}
               value={playerStatus.baseSpeedMeters > 0 ? `${playerStatus.effectiveSpeedMeters} m` : "-"}
-              accent={playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
-                ? encumbranceAccentMap[playerStatus.encumbranceTier]
-                : undefined}
-              helper={
+              accent={
                 playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
-                  ? `${t("playerBoard.speedPenaltyHint")} (base ${playerStatus.baseSpeedMeters} m)`
-                  : null
+                  ? encumbranceAccentMap[playerStatus.encumbranceTier]
+                  : playerStatus.effectiveSpeedMeters > playerStatus.baseSpeedMeters
+                    ? "text-emerald-400"
+                    : undefined
+              }
+              helper={
+                playerStatus.movementSpeedBonus && playerStatus.movementSpeedBonusSources?.length
+                  ? playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
+                    ? `${t("playerBoard.speedPenaltyHint")} (base ${playerStatus.baseSpeedMeters} m) + ${playerStatus.movementSpeedBonusSources.map((s) => `${s.label} +${s.value}m`).join(", ")}`
+                    : `base ${playerStatus.baseSpeedMeters} m + ${playerStatus.movementSpeedBonusSources.map((s) => `${s.label} +${s.value}m`).join(", ")}`
+                  : playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
+                    ? `${t("playerBoard.speedPenaltyHint")} (base ${playerStatus.baseSpeedMeters} m)`
+                    : null
               }
             />
             <StatCard

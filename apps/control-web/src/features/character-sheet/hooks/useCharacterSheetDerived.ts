@@ -1,5 +1,7 @@
 import {
   computeInitiative,
+  computeMovementSpeedBonus,
+  computeMovementSpeedBonusSources,
   computePassivePerception,
   computePassiveSkillBonus,
   computePassiveSkillBonusSources,
@@ -39,6 +41,13 @@ export const useCharacterSheetDerived = (
   const passivePerceptionBonusSources = activeEffects?.length
     ? computePassiveSkillBonusSources(activeEffects, "perception")
     : undefined;
+  const movementSpeedBonus = activeEffects?.length
+    ? computeMovementSpeedBonus(activeEffects)
+    : 0;
+  const movementSpeedBonusSources = activeEffects?.length
+    ? computeMovementSpeedBonusSources(activeEffects)
+    : undefined;
+  const effectiveSpeedMeters = Math.max(0, sheet.speedMeters + movementSpeedBonus);
 
   const spellAbilityScore = sheet.spellcasting
     ? sheet.abilities[sheet.spellcasting.ability]
@@ -102,5 +111,8 @@ export const useCharacterSheetDerived = (
     resistances,
     spellAttack,
     spellSaveDC,
+    effectiveSpeedMeters,
+    movementSpeedBonus: movementSpeedBonus || undefined,
+    movementSpeedBonusSources,
   };
 };

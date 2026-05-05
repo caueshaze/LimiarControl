@@ -6,6 +6,8 @@ import {
   computeCarryingCapacityMultiplier,
   computeCarryingCapacityMultiplierSources,
   computeEncumbranceTier,
+  computeMovementSpeedBonus,
+  computeMovementSpeedBonusSources,
   computePassiveSkillBonus,
   computePassiveSkillBonusSources,
   computeProjectedEncumbranceTier,
@@ -887,5 +889,129 @@ describe("computeProjectedEncumbranceTier — hardening", () => {
     const r = computeProjectedEncumbranceTier({ strengthScore: 10, currentWeightKg: NaN, addedWeightLb: 0 });
     expect(r.tier).toBe("normal");
     expect(Number.isNaN(r.remainingKg)).toBe(false);
+  });
+});
+
+const makeMovementSpeedEffect = (
+  bonusMeters: number,
+  overrides: Partial<ActiveEffect> = {},
+): ActiveEffect => ({
+  id: `effect-ms-${bonusMeters}`,
+  kind: "spell_effect",
+  duration_type: "until_long_rest",
+  created_at: "2026-05-01T00:00:00Z",
+  display_label: "Passos Longos",
+  metadata: {
+    source_spell_name: "Passos Longos",
+    declarative_effect: {
+      type: "modify_movement_speed",
+      params: { bonus_meters: bonusMeters },
+    },
+  },
+  ...overrides,
+});
+
+describe("computeMovementSpeedBonus", () => {
+  it("returns 0 with no effects", () => {
+    expect(computeMovementSpeedBonus([])).toBe(0);
+  });
+
+  it("returns bonus from single effect", () => {
+    const effects = [makeMovementSpeedEffect(3)];
+    expect(computeMovementSpeedBonus(effects)).toBe(3);
+  });
+
+  it("sums multiple different sources", () => {
+    const effects = [
+      makeMovementSpeedEffect(3, {
+        id: "eff-a",
+        metadata: {
+          source_spell_name: "Passos Longos",
+          declarative_effect_group_id: "group-a",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 3 } },
+        },
+      }),
+      makeMovementSpeedEffect(2, {
+        id: "eff-b",
+        metadata: {
+          source_spell_name: "Outro Buff",
+          declarative_effect_group_id: "group-b",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 2 } },
+        },
+      }),
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(5);
+  });
+
+  it("deduplicates same group_id", () => {
+    const effects = [
+      makeMovementSpeedEffect(3, {
+        id: "eff-1",
+        metadata: {
+          source_spell_name: "Passos Longos",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 3 } },
+        },
+      }),
+      makeMovementSpeedEffect(3, {
+        id: "eff-1-dup",
+        metadata: {
+          source_spell_name: "Passos Longos",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 3 } },
+        },
+      }),
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(3);
+  });
+
+  it("ignores non-numeric bonus_meters", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "bad",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: {
+          declarative_effect: {
+            type: "modify_movement_speed",
+            params: { bonus_meters: "not a number" },
+          },
+        },
+      },
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(0);
+  });
+
+  it("ignores wrong effect type", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "wrong",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: {
+          declarative_effect: {
+            type: "passive_skill_bonus",
+            params: { skill: "perception", bonus: 5 },
+          },
+        },
+      },
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(0);
+  });
+});
+
+describe("computeMovementSpeedBonusSources", () => {
+  it("returns label and value", () => {
+    const effects = [makeMovementSpeedEffect(3)];
+    const sources = computeMovementSpeedBonusSources(effects);
+    expect(sources).toHaveLength(1);
+    expect(sources[0].label).toBe("Passos Longos");
+    expect(sources[0].value).toBe(3);
+  });
+
+  it("returns empty array with no effects", () => {
+    expect(computeMovementSpeedBonusSources([])).toEqual([]);
   });
 });

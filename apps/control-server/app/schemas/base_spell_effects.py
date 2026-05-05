@@ -16,6 +16,7 @@ SpellDeclarativeEffectType = Literal[
     "grant_temp_hp",
     "passive_skill_bonus",
     "carrying_capacity_multiplier",
+    "modify_movement_speed",
     "fall_damage_immunity_threshold",
 ]
 
@@ -114,6 +115,10 @@ class FallDamageImmunityThresholdParams(BaseModel):
     max_distance_meters: float
 
 
+class ModifyMovementSpeedParams(BaseModel):
+    bonus_meters: float
+
+
 class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
@@ -126,6 +131,7 @@ class SpellDeclarativeEffect(BaseModel):
         | GrantTempHpParams
         | PassiveSkillBonusParams
         | CarryingCapacityMultiplierParams
+        | ModifyMovementSpeedParams
         | FallDamageImmunityThresholdParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
@@ -150,4 +156,6 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("carrying_capacity_multiplier effects require CarryingCapacityMultiplierParams")
         if self.type == "fall_damage_immunity_threshold" and not isinstance(self.params, FallDamageImmunityThresholdParams):
             raise ValueError("fall_damage_immunity_threshold effects require FallDamageImmunityThresholdParams")
+        if self.type == "modify_movement_speed" and not isinstance(self.params, ModifyMovementSpeedParams):
+            raise ValueError("modify_movement_speed effects require ModifyMovementSpeedParams")
         return self

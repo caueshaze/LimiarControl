@@ -64,4 +64,41 @@ describe("useCharacterSheetDerived", () => {
     expect(derived.hasElementalAffinity).toBe(false);
     expect(derived.resistances).toEqual([]);
   });
+
+  it("exposes effectiveSpeedMeters as base speed with no active effects", () => {
+    const derived = useCharacterSheetDerived({
+      ...INITIAL_SHEET,
+      speedMeters: 9,
+    });
+    expect(derived.effectiveSpeedMeters).toBe(9);
+    expect(derived.movementSpeedBonus).toBeUndefined();
+  });
+
+  it("exposes effectiveSpeedMeters with movement speed bonus from active effects", () => {
+    const activeEffects = [
+      {
+        id: "eff-1",
+        kind: "spell_effect" as const,
+        duration_type: "until_long_rest" as const,
+        created_at: "2026-05-01T00:00:00Z",
+        display_label: "Passos Longos",
+        metadata: {
+          source_spell_name: "Passos Longos",
+          declarative_effect_group_id: "g1",
+          declarative_effect: {
+            type: "modify_movement_speed",
+            params: { bonus_meters: 3 },
+          },
+        },
+      },
+    ];
+    const derived = useCharacterSheetDerived(
+      { ...INITIAL_SHEET, speedMeters: 9 },
+      activeEffects,
+    );
+    expect(derived.effectiveSpeedMeters).toBe(12);
+    expect(derived.movementSpeedBonus).toBe(3);
+    expect(derived.movementSpeedBonusSources).toHaveLength(1);
+    expect(derived.movementSpeedBonusSources![0].label).toBe("Passos Longos");
+  });
 });
