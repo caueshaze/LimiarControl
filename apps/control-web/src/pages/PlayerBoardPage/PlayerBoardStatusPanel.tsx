@@ -5,6 +5,7 @@ import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
 import { formatActiveConcentrationLabel, formatActiveEffectLabel } from "./concentrationLabel";
+import { getActiveEffectLifecycleBadges } from "./activeEffectLifecycle";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -226,17 +227,26 @@ export const PlayerBoardStatusPanel = ({
               <ul className="mt-3 space-y-2">
                 {activeSpellEffects.map((effect) => {
                   const label = formatActiveEffectLabel(effect) ?? t("playerBoard.activeEffectFallback");
-                  const isConcentration = Boolean(
-                    (effect.metadata as Record<string, unknown> | null)?.concentration,
-                  );
+                  const lifecycleBadges = getActiveEffectLifecycleBadges(effect);
                   const isRemoving = removingEffectId === effect.id;
                   return (
                     <li key={effect.id} className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-white">{label}</p>
-                        {isConcentration ? (
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-400">
-                            {t("playerBoard.activeConcentrationLabel")}
+                        {lifecycleBadges.length > 0 ? (
+                          <p className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                            {lifecycleBadges.map((badge, index) => (
+                              <span key={badge.key} className="inline-flex items-center gap-x-1.5">
+                                {index > 0 ? (
+                                  <span className="text-[10px] text-slate-600">{"\u00B7"}</span>
+                                ) : null}
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-400">
+                                  {badge.params
+                                    ? t(badge.i18nKey).replace("{count}", String(badge.params.count))
+                                    : t(badge.i18nKey)}
+                                </span>
+                              </span>
+                            ))}
                           </p>
                         ) : null}
                       </div>

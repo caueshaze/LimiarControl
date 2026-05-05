@@ -187,4 +187,11 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.removingEffect": "Removing...",
   "playerBoard.removeEffectErrorTitle": "Failed to remove effect",
   "playerBoard.removeEffectErrorDescription": "Could not remove the effect.",
+  "playerBoard.lifecycleConcentration": "Concentration",
+  "playerBoard.lifecycleManual": "Manual",
+  "playerBoard.lifecycleRounds": "{count} rounds",
+  "playerBoard.lifecycleRoundsUnknown": "By rounds",
+  "playerBoard.lifecycleUntilTurnStart": "Until turn start",
+  "playerBoard.lifecycleUntilTurnEnd": "Until turn end",
+  "playerBoard.lifecycleLongRest": "Clears on long rest",
 } as const;
