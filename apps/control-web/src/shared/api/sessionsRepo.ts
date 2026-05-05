@@ -363,14 +363,18 @@ export type OutOfCombatEffectRemovedActivityEvent = {
   userId?: string | null;
   username?: string | null;
   displayName?: string | null;
+  actorUserId?: string | null;
   actorPlayerUserId?: string | null;
   actorDisplayName?: string | null;
+  targetPlayerUserId?: string | null;
+  targetDisplayName?: string | null;
   removedEffectId: string;
   effectLabel: string;
   sourceSpellName?: string | null;
   variantLabel?: string | null;
   concentrationGroup?: string | null;
   brokeConcentrationGroup: boolean;
+  removedByGm?: boolean;
   timestamp: string;
   sessionOffsetSeconds: number;
 };

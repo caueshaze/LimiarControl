@@ -36,6 +36,7 @@ export const sessionActivityPtBRDictionary = {
   "sessionActivity.usingSlotLevel": "usando espaco de",
   "sessionActivity.slotLevelSuffix": "º nivel.",
   "sessionActivity.removedEffectVerb": "removeu",
+  "sessionActivity.fromTarget": "de",
   "sessionActivity.concentrationEndedSentence": "A concentracao foi encerrada.",
   "sessionActivity.previousConcentrationEndedPrefix": "A concentracao anterior em",
   "sessionActivity.rollModeNormal": "Normal",

@@ -6,7 +6,11 @@ Covers route-level behavior of POST /sessions/{id}/state/me/concentration/clear.
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app.api.routes.sessions.state import clear_my_concentration, remove_my_persisted_effect
+from app.api.routes.sessions.state import (
+    clear_my_concentration,
+    remove_my_persisted_effect,
+    remove_player_persisted_effect,
+)
 from app.schemas.session_state import ClearConcentrationRequest, SessionStateRead
 
 
@@ -1004,6 +1008,426 @@ class TestOutOfCombatRemovalActivityLogging(unittest.IsolatedAsyncioTestCase):
 
         mock_record_activity.assert_not_called()
         mock_prune_activity.assert_not_called()
+
+
+class TestGmRemovePersistedEffect(unittest.IsolatedAsyncioTestCase):
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_can_remove_player_persisted_effect(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        effect = _non_concentration_effect("eff-a")
+        db, state = _make_db_session({"active_spell_effects": [effect]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-a",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        mock_require_gm.assert_called_once()
+        mock_require_participant.assert_called_once_with(
+            mock_get_entry.return_value,
+            db,
+            "ally-a",
+            label="Target",
+        )
+        self.assertEqual(mock_publish.await_count, 1)
+        published_player = mock_publish.await_args_list[0].args[1]
+        self.assertEqual(published_player, "ally-a")
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    async def test_non_gm_cannot_remove_other_player_effect(
+        self,
+        mock_require_gm,
+        mock_get_entry,
+    ):
+        from fastapi import HTTPException
+
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        mock_require_gm.side_effect = HTTPException(status_code=403, detail="GM required")
+
+        with self.assertRaises(HTTPException):
+            await remove_player_persisted_effect(
+                session_id="session-1",
+                player_user_id="ally-a",
+                effect_id="eff-a",
+                user=_make_user("player-1"),
+                session=MagicMock(),
+            )
+
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_remove_unknown_effect_is_idempotent(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        db, state = _make_db_session({"active_spell_effects": [_non_concentration_effect("eff-a")]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[_non_concentration_effect("eff-a")],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-unknown",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        mock_record_activity.assert_not_called()
+        mock_prune_activity.assert_not_called()
+        self.assertEqual(mock_publish.await_count, 1)
+
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=("member-gm", "GM"))
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_remove_activity_logs_actor_and_target(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+        mock_resolve_actor,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        effect = _non_concentration_effect("eff-a")
+        db, state = _make_db_session({"active_spell_effects": [effect]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-a",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        mock_record_activity.assert_called_once()
+        payload = mock_record_activity.call_args.kwargs["payload"]
+        self.assertEqual(payload["actor_user_id"], "gm-1")
+        self.assertEqual(payload["actor_player_user_id"], "gm-1")
+        self.assertEqual(payload["target_player_user_id"], "ally-a")
+        self.assertEqual(payload["target_display_name"], "ally-a")
+        self.assertTrue(payload["removed_by_gm"])
+        self.assertEqual(payload["removed_effect_id"], "eff-a")
+        mock_prune_activity.assert_called_once_with(db, "session-1")
+
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_remove_concentration_effect_breaks_linked_group(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+        mock_clear_cross_session,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        effect = {
+            "id": "eff-ally",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Bless",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+        db, state = _make_db_session({"active_spell_effects": [effect]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+
+        caster_state = MagicMock()
+        caster_state.player_user_id = "caster-1"
+        caster_state.updated_at = None
+        caster_state.created_at = "2026-01-01T00:00:00+00:00"
+        caster_state.state_json = {}
+        mock_clear_cross_session.return_value = [caster_state]
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-ally",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        mock_clear_cross_session.assert_called_once_with(
+            db,
+            "session-1",
+            "grp-1",
+            exclude_user_id="ally-a",
+        )
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda x: x)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_remove_preserves_unrelated_effects(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        removable = {
+            "id": "eff-remove",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Bless",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+        unrelated = _non_concentration_effect("eff-keep")
+        db, state = _make_db_session({"active_spell_effects": [removable, unrelated]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[unrelated],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-remove",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        remaining = state.state_json.get("active_spell_effects", [])
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0].get("id"), "eff-keep")
+
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_gm")
+    @patch("app.api.routes.sessions.state._require_session_participant")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_gm_remove_publishes_affected_states_deduped(
+        self,
+        mock_to_state_read,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_participant,
+        mock_require_gm,
+        mock_get_entry,
+        mock_clear_cross_session,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        effect = {
+            "id": "eff-ally",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Bless",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+        db, state = _make_db_session({"active_spell_effects": [effect]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+
+        caster_state = MagicMock()
+        caster_state.player_user_id = "caster-1"
+        caster_state.updated_at = None
+        caster_state.created_at = "2026-01-01T00:00:00+00:00"
+        caster_state.state_json = {}
+
+        target_dup = MagicMock()
+        target_dup.player_user_id = "ally-a"
+        target_dup.updated_at = None
+        target_dup.created_at = "2026-01-01T00:00:00+00:00"
+        target_dup.state_json = {}
+
+        mock_clear_cross_session.return_value = [caster_state, target_dup]
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+
+        await remove_player_persisted_effect(
+            session_id="session-1",
+            player_user_id="ally-a",
+            effect_id="eff-ally",
+            user=_make_user("gm-1"),
+            session=db,
+        )
+
+        self.assertEqual(mock_publish.await_count, 2)
+        published_players = [
+            mock_publish.await_args_list[i].args[1] for i in range(mock_publish.await_count)
+        ]
+        self.assertIn("ally-a", published_players)
+        self.assertIn("caster-1", published_players)
+
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state._remove_persisted_effect_for_player")
+    async def test_existing_me_remove_endpoint_still_works(
+        self,
+        mock_remove_helper,
+        mock_require_view,
+        mock_get_entry,
+    ):
+        expected = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="user-1",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        mock_remove_helper.return_value = expected
+
+        result = await remove_my_persisted_effect(
+            session_id="session-1",
+            effect_id="eff-a",
+            user=_make_user("user-1"),
+            session=MagicMock(),
+        )
+
+        self.assertEqual(result, expected)
+        mock_remove_helper.assert_awaited_once()
+        helper_call = mock_remove_helper.await_args
+        self.assertEqual(helper_call.kwargs["owner_player_user_id"], "user-1")
+        self.assertEqual(helper_call.kwargs["removed_by_gm"], False)
 
 
 if __name__ == "__main__":

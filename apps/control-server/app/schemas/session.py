@@ -317,14 +317,18 @@ class OutOfCombatEffectRemovedActivityEvent(BaseModel):
     userId: Optional[str] = None
     username: Optional[str] = None
     displayName: Optional[str] = None
+    actorUserId: Optional[str] = None
     actorPlayerUserId: Optional[str] = None
     actorDisplayName: Optional[str] = None
+    targetPlayerUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
     removedEffectId: str
     effectLabel: str
     sourceSpellName: Optional[str] = None
     variantLabel: Optional[str] = None
     concentrationGroup: Optional[str] = None
     brokeConcentrationGroup: bool = False
+    removedByGm: bool = False
     timestamp: datetime
     sessionOffsetSeconds: int
 
