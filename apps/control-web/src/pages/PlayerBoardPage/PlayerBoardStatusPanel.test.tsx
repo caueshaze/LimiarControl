@@ -25,6 +25,10 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "playerBoard.activeConcentrationLabel": "Concentração",
         "playerBoard.clearConcentration": "Encerrar concentração",
         "playerBoard.clearingConcentration": "Encerrando...",
+        "playerBoard.activeEffectsLabel": "Efeitos ativos",
+        "playerBoard.activeEffectFallback": "Efeito",
+        "playerBoard.removeEffect": "Remover",
+        "playerBoard.removingEffect": "Removendo...",
       }[key] ?? key),
   }),
 }));
@@ -75,6 +79,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -107,6 +112,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -138,6 +144,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -172,6 +179,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -208,6 +216,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -240,6 +249,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -273,6 +283,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -306,6 +317,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -336,6 +348,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -384,6 +397,7 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
@@ -400,10 +414,138 @@ describe("PlayerBoardStatusPanel", () => {
         usingHitDie={false}
         onUseHitDie={() => undefined}
         onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
       />,
     );
 
     expect(markupWithout).toContain("Percepção passiva:12");
     expect(markupWithout).not.toContain("Owl");
+  });
+
+  it("renderiza painel de efeitos ativos quando activeSpellEffects existem", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeSpellEffects={[
+          {
+            id: "eff-1",
+            kind: "spell_effect",
+            duration_type: "manual",
+            created_at: "2026-01-01T00:00:00Z",
+            display_label: "Owl's Wisdom",
+            metadata: {
+              source_spell_name: "Owl's Wisdom",
+              concentration: true,
+              concentration_group: "grp-1",
+            },
+          },
+          {
+            id: "eff-2",
+            kind: "spell_effect",
+            duration_type: "manual",
+            created_at: "2026-01-01T00:00:00Z",
+            metadata: {
+              source_spell_name: "Shield of Faith",
+            },
+          },
+        ] as any}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Efeitos ativos");
+    expect(markup).toContain("Owl&#x27;s Wisdom");
+    expect(markup).toContain("Concentração");
+    expect(markup).toContain("Shield of Faith");
+    expect(markup).toContain("Remover");
+  });
+
+  it("não renderiza painel de efeitos ativos quando a lista está vazia", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeSpellEffects={[]}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).not.toContain("Efeitos ativos");
+  });
+
+  it("desabilita botão de remover quando removingEffectId corresponde", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeSpellEffects={[
+          {
+            id: "eff-1",
+            kind: "spell_effect",
+            duration_type: "manual",
+            created_at: "2026-01-01T00:00:00Z",
+            display_label: "Bless",
+            metadata: {},
+          },
+        ] as any}
+        removingEffectId="eff-1"
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("disabled");
+    expect(markup).toContain("Removendo...");
   });
 });

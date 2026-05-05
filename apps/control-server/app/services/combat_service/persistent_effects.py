@@ -152,6 +152,44 @@ def sync_effect_removal_to_state_json(
     db.add(session_state)
 
 
+def remove_persisted_effect(
+    state_json: dict | None,
+    effect_id: str,
+) -> dict:
+    """Remove a persisted effect by id.
+
+    If the effect is part of a concentration group, the whole group is removed.
+    Idempotent: returns ``state_json`` unchanged if the effect is not found.
+    """
+    data = dict(state_json or {})
+    persisted = data.get("active_spell_effects")
+    if not isinstance(persisted, list):
+        return data
+
+    target: dict | None = None
+    for effect in persisted:
+        if effect.get("id") == effect_id:
+            target = effect
+            break
+
+    if target is None:
+        return data
+
+    metadata = target.get("metadata") or {}
+    concentration_group = metadata.get("concentration_group")
+    if metadata.get("concentration") and isinstance(concentration_group, str) and concentration_group:
+        return clear_persisted_concentration_effects(data, concentration_group=concentration_group)
+
+    filtered = [e for e in persisted if e.get("id") != effect_id]
+    if len(filtered) == len(persisted):
+        return data
+    if filtered:
+        data["active_spell_effects"] = filtered
+    else:
+        data.pop("active_spell_effects", None)
+    return data
+
+
 def derive_active_concentration(state_json: dict | None) -> dict | None:
     persisted = (state_json or {}).get("active_spell_effects")
     if not isinstance(persisted, list):

@@ -181,4 +181,10 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.clearingConcentration": "Encerrando...",
   "playerBoard.clearConcentrationErrorTitle": "Erro ao encerrar concentração",
   "playerBoard.clearConcentrationErrorDescription": "Não foi possível encerrar a concentração.",
+  "playerBoard.activeEffectsLabel": "Efeitos ativos",
+  "playerBoard.activeEffectFallback": "Efeito",
+  "playerBoard.removeEffect": "Remover",
+  "playerBoard.removingEffect": "Removendo...",
+  "playerBoard.removeEffectErrorTitle": "Erro ao remover efeito",
+  "playerBoard.removeEffectErrorDescription": "Não foi possível remover o efeito.",
 } as const;
