@@ -419,6 +419,15 @@ def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> 
     )
 
 
+def _movement_speed_group_key(metadata: dict, effect: dict, params: dict) -> str:
+    return _declarative_effect_group_key(
+        metadata,
+        effect,
+        "modify_movement_speed",
+        str(params.get("bonus_meters", "")),
+    )
+
+
 def get_passive_skill_bonus(participant: dict, skill: str) -> int:
     groups: dict[str, int] = {}
     for effect in participant.get("active_effects") or []:
@@ -471,3 +480,46 @@ def get_carrying_capacity_multiplier(participant: dict) -> float:
     if not groups:
         return 1.0
     return max(groups.values())
+
+
+def get_movement_speed_bonus_meters(participant: dict) -> tuple[float, list[dict]]:
+    total_bonus = 0.0
+    sources: list[dict] = []
+    groups: dict[str, float] = {}
+    group_sources: dict[str, dict] = {}
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "modify_movement_speed":
+            continue
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        bonus = params.get("bonus_meters")
+        if not isinstance(bonus, (int, float)):
+            continue
+        key = _movement_speed_group_key(metadata, effect, params)
+        current = groups.get(key)
+        if current is None or bonus > current:
+            groups[key] = float(bonus)
+            label = (
+                metadata.get("selected_variant_label")
+                or effect.get("display_label")
+                or metadata.get("source_spell_name")
+                or "Movement speed bonus"
+            )
+            group_sources[key] = {
+                "label": label,
+                "value": float(bonus),
+                "type": "modify_movement_speed",
+            }
+    for source in group_sources.values():
+        total_bonus += source["value"]
+        sources.append(source)
+    return total_bonus, sources

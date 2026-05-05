@@ -6,7 +6,7 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
-import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
+import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, computeMovementSpeedBonus, computeMovementSpeedBonusSources, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
@@ -106,9 +106,15 @@ export const usePlayerBoardSummary = ({
   );
 
   const baseSpeedMeters = playerSheet?.speedMeters ?? 0;
+  const movementSpeedBonus = activeEffects?.length
+    ? computeMovementSpeedBonus(activeEffects)
+    : 0;
+  const movementSpeedBonusSources = activeEffects?.length
+    ? computeMovementSpeedBonusSources(activeEffects)
+    : undefined;
   const effectiveSpeedMeters = encumbrance
-    ? applyEncumbranceMovementPenalty(baseSpeedMeters, encumbrance.tier)
-    : baseSpeedMeters;
+    ? Math.max(0, applyEncumbranceMovementPenalty(baseSpeedMeters, encumbrance.tier) + movementSpeedBonus)
+    : Math.max(0, baseSpeedMeters + movementSpeedBonus);
 
   const playerStatus = useMemo<PlayerBoardStatusSummary | null>(() => {
     if (!playerSheet) return null;
@@ -127,6 +133,8 @@ export const usePlayerBoardSummary = ({
       encumbranceHeavilyEncumberedMaxKg: encumbrance?.heavilyEncumberedMaxKg ?? 0,
       baseSpeedMeters,
       effectiveSpeedMeters,
+      movementSpeedBonus: movementSpeedBonus || undefined,
+      movementSpeedBonusSources,
       experiencePoints: playerSheet.experiencePoints,
       hitDiceRemaining: playerSheet.hitDiceRemaining,
       hitDiceTotal: playerSheet.hitDiceTotal,

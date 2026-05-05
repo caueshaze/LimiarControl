@@ -225,10 +225,13 @@ export const CharacterSheet = ({
   const {
     ac,
     acBreakdown,
+    effectiveSpeedMeters,
     hpColor,
     hpPercent,
     hpTextColor,
     initiative,
+    movementSpeedBonus,
+    movementSpeedBonusSources,
     passivePerception,
     passivePerceptionBonus,
     passivePerceptionBonusSources,
@@ -369,6 +372,9 @@ export const CharacterSheet = ({
                 ac={ac}
                 initiative={initiative}
                 acBreakdown={acBreakdown}
+                effectiveSpeedMeters={effectiveSpeedMeters}
+                movementSpeedBonus={movementSpeedBonus}
+                movementSpeedBonusSources={movementSpeedBonusSources}
                 set={actions.set}
                 selectArmor={actions.selectArmor}
                 toggleShield={actions.toggleShield}

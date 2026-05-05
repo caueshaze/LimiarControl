@@ -15,6 +15,9 @@ type Props = {
   ac: number;
   initiative: number;
   acBreakdown: { label: string; value: number }[];
+  effectiveSpeedMeters?: number;
+  movementSpeedBonus?: number;
+  movementSpeedBonusSources?: Array<{ label: string; value: number }>;
   set: SheetActions["set"];
   selectArmor: SheetActions["selectArmor"];
   toggleShield: SheetActions["toggleShield"];
@@ -27,6 +30,9 @@ export const CombatStats = ({
   ac,
   initiative,
   acBreakdown,
+  effectiveSpeedMeters,
+  movementSpeedBonus,
+  movementSpeedBonusSources,
   set,
   selectArmor,
   toggleShield,
@@ -66,8 +72,12 @@ export const CombatStats = ({
             />
             <CombatPreviewCard
               label="Speed"
-              value={sheet.speedMeters > 0 ? `${sheet.speedMeters}m` : "-"}
-              note={sheet.speedMeters > 0 ? t("sheet.combat.baseSpeed") : t("sheet.combat.selectRace")}
+              value={effectiveSpeedMeters != null && effectiveSpeedMeters > 0 ? `${effectiveSpeedMeters}m` : (sheet.speedMeters > 0 ? `${sheet.speedMeters}m` : "-")}
+              note={
+                movementSpeedBonus && movementSpeedBonusSources?.length
+                  ? `${sheet.speedMeters}m + ${movementSpeedBonusSources.map((s) => `${s.label} +${s.value}m`).join(", ")}`
+                  : (sheet.speedMeters > 0 ? t("sheet.combat.baseSpeed") : t("sheet.combat.selectRace"))
+              }
             />
           </div>
 

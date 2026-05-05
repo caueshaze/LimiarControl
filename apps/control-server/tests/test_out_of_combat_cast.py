@@ -3196,3 +3196,67 @@ class TestOutOfCombatActivityPrune(unittest.TestCase):
         self.assertIn("DELETE FROM session_command_event", delete_sql)
         self.assertIn("'evt-1'", delete_sql)
         self.assertIn("'evt-2'", delete_sql)
+
+
+class TestLongstriderOutOfCombatCast(unittest.TestCase):
+
+    def _make_longstrider_spell(self) -> MagicMock:
+        return _make_campaign_spell(
+            canonical_key="longstrider",
+            level=1,
+            concentration=False,
+            name_pt="Passada Larga",
+            name_en="Longstrider",
+            effects_json=[
+                {
+                    "type": "modify_movement_speed",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "params": {"bonus_meters": 3},
+                }
+            ],
+        )
+
+    def test_eligibility_ok(self):
+        spell = self._make_longstrider_spell()
+        state_json = _slots_state(level=1)
+        ok, reason = check_out_of_combat_cast_eligibility(
+            spell=spell,
+            state_json=state_json,
+            slot_level=1,
+            variant_key=None,
+            out_of_combat_target="self_or_ally",
+            target_user_id="user-1",
+            caster_user_id="user-1",
+        )
+        self.assertTrue(ok)
+        self.assertIsNone(reason)
+
+    def test_build_persisted_effects_contains_movement_speed(self):
+        spell = self._make_longstrider_spell()
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-1",
+            variant_key=None,
+        )
+        self.assertEqual(len(effects), 1)
+        effect = effects[0]
+        self.assertEqual(effect["kind"], "spell_effect")
+        self.assertEqual(effect["duration_type"], "until_long_rest")
+        metadata = effect["metadata"]
+        declarative = metadata["declarative_effect"]
+        self.assertEqual(declarative["type"], "modify_movement_speed")
+        self.assertEqual(declarative["params"]["bonus_meters"], 3)
+
+    def test_build_persisted_effects_metadata_has_source(self):
+        spell = self._make_longstrider_spell()
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-1",
+            variant_key=None,
+        )
+        metadata = effects[0]["metadata"]
+        self.assertEqual(metadata["source_spell_key"], "longstrider")
+        self.assertEqual(metadata["source_spell_name"], "Passada Larga")
