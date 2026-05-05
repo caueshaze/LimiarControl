@@ -4,8 +4,8 @@ import type { CharacterSheet } from "../../features/character-sheet/model/charac
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
-import { formatActiveConcentrationLabel, formatActiveEffectLabel } from "./concentrationLabel";
-import { getActiveEffectLifecycleBadges } from "./activeEffectLifecycle";
+import { formatActiveConcentrationLabel } from "./concentrationLabel";
+import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "../../features/active-effects";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,

@@ -30,6 +30,7 @@ import {
 } from "../utils/proficiencyCatalog";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { useCharacterSheetDerived } from "../hooks/useCharacterSheetDerived";
+import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "../../../features/active-effects";
 
 type Props = {
   partyId?: string | null;
@@ -69,6 +70,7 @@ export const CharacterSheet = ({
   });
   const { sheet, activeSpellEffects } = actions;
   const { t } = useLocale();
+  const sheetActiveEffects = activeSpellEffects ?? [];
   const isCreation = mode === "creation";
   const isCreationDraft = isCreation && creationDraftMode;
   const isPlay = mode === "play";
@@ -509,6 +511,41 @@ export const CharacterSheet = ({
             onToggle={actions.toggleCondition}
             readOnly={isRuntimeReadOnly || isSheetLocked}
           />
+        )}
+
+        {!isCreation && sheetActiveEffects.length > 0 && (
+          <section className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
+              {t("playerBoard.activeEffectsLabel")}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {sheetActiveEffects.map((effect) => {
+                const label = formatActiveEffectLabel(effect) ?? t("playerBoard.activeEffectFallback");
+                const badges = getActiveEffectLifecycleBadges(effect);
+                return (
+                  <li key={effect.id} className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">{label}</p>
+                    {badges.length > 0 ? (
+                      <p className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                        {badges.map((badge, index) => (
+                          <span key={badge.key} className="inline-flex items-center gap-x-1.5">
+                            {index > 0 ? (
+                              <span className="text-[10px] text-slate-600">{"\u00B7"}</span>
+                            ) : null}
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-400">
+                              {badge.params
+                                ? t(badge.i18nKey).replace("{count}", String(badge.params.count))
+                                : t(badge.i18nKey)}
+                            </span>
+                          </span>
+                        ))}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
 
         <FeaturesTraits

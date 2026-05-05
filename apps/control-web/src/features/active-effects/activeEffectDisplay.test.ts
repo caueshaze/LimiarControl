@@ -1,5 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { getActiveEffectLifecycleBadges } from "./activeEffectLifecycle";
+import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "./activeEffectDisplay";
+
+describe("formatActiveEffectLabel", () => {
+  it("returns spellName + variantLabel when both exist", () => {
+    const result = formatActiveEffectLabel({
+      metadata: { source_spell_name: "Bless", selected_variant_label: "Ally" },
+    });
+    expect(result).toBe("Bless — Ally");
+  });
+
+  it("falls back to variantLabel alone when spellName is missing", () => {
+    const result = formatActiveEffectLabel({
+      metadata: { selected_variant_label: "Ally" },
+    });
+    expect(result).toBe("Ally");
+  });
+
+  it("falls back to display_label when variantLabel is missing", () => {
+    const result = formatActiveEffectLabel({
+      display_label: "Owl's Wisdom",
+    });
+    expect(result).toBe("Owl's Wisdom");
+  });
+
+  it("falls back to spellName when display_label is missing", () => {
+    const result = formatActiveEffectLabel({
+      metadata: { source_spell_name: "Bless" },
+    });
+    expect(result).toBe("Bless");
+  });
+
+  it("falls back to spellKey when all names are missing", () => {
+    const result = formatActiveEffectLabel({
+      metadata: { source_spell_key: "bless" },
+    });
+    expect(result).toBe("bless");
+  });
+
+  it("returns null when nothing is available", () => {
+    const result = formatActiveEffectLabel({});
+    expect(result).toBeNull();
+  });
+});
 
 describe("getActiveEffectLifecycleBadges", () => {
   it("returns concentration + manual + long-rest for concentration manual effect", () => {
