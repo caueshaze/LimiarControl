@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from app.api.routes.sessions.state import (
+    _prune_out_of_combat_session_activity,
     cast_spell_out_of_combat,
     list_out_of_combat_castable_spells,
 )
@@ -2660,3 +2661,182 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(target_meta["caster_player_user_id"], "caster-1")
         self.assertEqual(caster_meta["caster_player_user_id"], "caster-1")
         self.assertEqual(target_meta["target_player_user_id"], "target-2")
+
+
+class TestOutOfCombatActivityLogging(unittest.IsolatedAsyncioTestCase):
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=("member-1", "Caster One"))
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    async def test_successful_cast_records_out_of_combat_spell_cast_activity(
+        self,
+        mock_to_state,
+        mock_publish,
+        mock_finalize,
+        mock_ensure,
+        mock_require_view,
+        mock_get_entry,
+        mock_clear_across,
+        mock_resolve_actor,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        mock_to_state.return_value = MagicMock()
+        spell = _make_campaign_spell(
+            canonical_key="enhance_ability",
+            level=2,
+            concentration=True,
+            out_of_combat_castable=True,
+            variants_json=[{
+                "key": "owls_wisdom",
+                "labelPt": "Sabedoria da Coruja",
+                "effects": [_advantage_effect("wisdom")],
+            }],
+            name_pt="Melhorar Habilidade",
+        )
+        spell.out_of_combat_target = "self_or_ally"
+
+        old_marker = {
+            "id": "old-marker",
+            "kind": "spell_effect",
+            "metadata": {
+                "concentration": True,
+                "concentration_marker": True,
+                "concentration_group": "old-grp",
+                "source_spell_name": "Melhorar Habilidade",
+                "selected_variant_label": "Sabedoria da Coruja",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+        db, _, _, _ = _make_multiplayer_cast_setup(
+            mock_get_entry,
+            mock_ensure,
+            spell,
+            caster_user_id="caster-1",
+            target_user_id="ally-b",
+            slot_level=2,
+            caster_active_effects=[old_marker],
+        )
+
+        req = OutOfCombatCastRequest(
+            spellId="spell-1",
+            slotLevel=2,
+            variantKey="owls_wisdom",
+            targetPlayerUserId="ally-b",
+        )
+        await cast_spell_out_of_combat(
+            session_id="session-1",
+            req=req,
+            user=_make_user("caster-1"),
+            session=db,
+        )
+
+        mock_record_activity.assert_called_once()
+        activity_call = mock_record_activity.call_args
+        self.assertEqual(activity_call.args[1], "out_of_combat_spell_cast")
+        payload = activity_call.kwargs["payload"]
+        self.assertEqual(payload["actor_player_user_id"], "caster-1")
+        self.assertEqual(payload["actor_display_name"], "Caster One")
+        self.assertEqual(payload["target_player_user_id"], "ally-b")
+        self.assertEqual(payload["target_display_name"], "ally-b")
+        self.assertEqual(payload["spell_key"], "enhance_ability")
+        self.assertEqual(payload["spell_name"], "Melhorar Habilidade")
+        self.assertEqual(payload["variant_key"], "owls_wisdom")
+        self.assertEqual(payload["variant_label"], "Sabedoria da Coruja")
+        self.assertEqual(payload["slot_level"], 2)
+        self.assertTrue(payload["replaced_concentration"])
+        self.assertEqual(payload["previous_concentration_group"], "old-grp")
+        self.assertEqual(payload["previous_spell_name"], "Melhorar Habilidade")
+        self.assertEqual(payload["previous_variant_label"], "Sabedoria da Coruja")
+        self.assertIsNotNone(payload["new_concentration_group"])
+        self.assertEqual(payload["concentration_group"], payload["new_concentration_group"])
+        self.assertGreaterEqual(len(payload["created_effect_ids"]), 1)
+        mock_prune_activity.assert_called_once_with(db, "session-1")
+
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    async def test_rejected_cast_does_not_record_activity(
+        self,
+        mock_ensure,
+        mock_require_view,
+        mock_get_entry,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        from fastapi import HTTPException
+
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        mock_get_entry.return_value = entry
+
+        state_json = _slots_state(level=3, used=0, max_slots=2)
+        state_json["spellcasting"]["spells"] = [
+            {"id": "spell-fb-1", "canonicalKey": "fireball", "level": 3, "prepared": True}
+        ]
+        state = MagicMock()
+        state.state_json = state_json
+        state.id = "ss-1"
+        state.session_id = "session-1"
+        state.player_user_id = "user-1"
+
+        fireball = _make_campaign_spell(
+            canonical_key="fireball",
+            level=3,
+            out_of_combat_castable=False,
+        )
+        call_count = [0]
+
+        def exec_side(q, **kw):
+            r = MagicMock()
+            r.first.return_value = state if call_count[0] == 0 else fireball
+            call_count[0] += 1
+            return r
+
+        db = MagicMock()
+        db.exec.side_effect = exec_side
+        mock_ensure.return_value = state
+
+        req = OutOfCombatCastRequest(spellId="spell-fb-1", slotLevel=3, variantKey=None)
+        with self.assertRaises(HTTPException):
+            await cast_spell_out_of_combat(
+                session_id="session-1",
+                req=req,
+                user=_make_user("user-1"),
+                session=db,
+            )
+
+        mock_record_activity.assert_not_called()
+        mock_prune_activity.assert_not_called()
+
+
+class TestOutOfCombatActivityPrune(unittest.TestCase):
+    def test_prune_keeps_only_ooc_types_with_cap_offset(self):
+        db = MagicMock()
+        first_result = MagicMock()
+        first_result.all.return_value = ["evt-1", "evt-2"]
+        db.exec.side_effect = [first_result, MagicMock()]
+
+        _prune_out_of_combat_session_activity(db, "session-1")
+
+        self.assertEqual(db.exec.call_count, 2)
+        select_query = db.exec.call_args_list[0].args[0]
+        select_sql = str(select_query.compile(compile_kwargs={"literal_binds": True}))
+        self.assertIn("session_command_event.command_type IN", select_sql)
+        self.assertIn("'out_of_combat_spell_cast'", select_sql)
+        self.assertIn("'out_of_combat_effect_removed'", select_sql)
+        self.assertIn("OFFSET 50", select_sql)
+
+        delete_query = db.exec.call_args_list[1].args[0]
+        delete_sql = str(delete_query.compile(compile_kwargs={"literal_binds": True}))
+        self.assertIn("DELETE FROM session_command_event", delete_sql)
+        self.assertIn("'evt-1'", delete_sql)
+        self.assertIn("'evt-2'", delete_sql)

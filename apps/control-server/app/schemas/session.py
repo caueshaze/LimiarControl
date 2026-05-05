@@ -283,6 +283,48 @@ class CombatLogEntryActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class OutOfCombatSpellCastActivityEvent(BaseModel):
+    type: Literal["out_of_combat_spell_cast"] = "out_of_combat_spell_cast"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    actorPlayerUserId: Optional[str] = None
+    actorDisplayName: Optional[str] = None
+    targetPlayerUserId: Optional[str] = None
+    targetDisplayName: Optional[str] = None
+    spellKey: Optional[str] = None
+    spellName: str
+    variantKey: Optional[str] = None
+    variantLabel: Optional[str] = None
+    slotLevel: Optional[int] = None
+    createdEffectIds: List[str]
+    concentrationGroup: Optional[str] = None
+    replacedConcentration: bool = False
+    previousConcentrationGroup: Optional[str] = None
+    newConcentrationGroup: Optional[str] = None
+    previousSpellName: Optional[str] = None
+    previousVariantLabel: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
+class OutOfCombatEffectRemovedActivityEvent(BaseModel):
+    type: Literal["out_of_combat_effect_removed"] = "out_of_combat_effect_removed"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    actorPlayerUserId: Optional[str] = None
+    actorDisplayName: Optional[str] = None
+    removedEffectId: str
+    effectLabel: str
+    sourceSpellName: Optional[str] = None
+    variantLabel: Optional[str] = None
+    concentrationGroup: Optional[str] = None
+    brokeConcentrationGroup: bool = False
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 ActivityEvent = Union[
     RollActivityEvent,
     PurchaseActivityEvent,
@@ -299,6 +341,8 @@ ActivityEvent = Union[
     EntityActivityEvent,
     RollResolvedActivityEvent,
     CombatLogEntryActivityEvent,
+    OutOfCombatSpellCastActivityEvent,
+    OutOfCombatEffectRemovedActivityEvent,
 ]
 
 
