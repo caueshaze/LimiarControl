@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import delete
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session as DbSession, select
 
@@ -7,6 +8,7 @@ from app.db.session import get_session
 from app.models.campaign_member import CampaignMember
 from app.models.campaign_spell import CampaignSpell
 from app.models.item import ItemType
+from app.models.session_command_event import SessionCommandEvent
 from app.models.session_state import SessionState
 from app.schemas.session_state import (
     ClearConcentrationRequest,
@@ -46,6 +48,73 @@ from .state_common import (
 )
 
 router = APIRouter()
+
+OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES = (
+    "out_of_combat_spell_cast",
+    "out_of_combat_effect_removed",
+)
+OUT_OF_COMBAT_ACTIVITY_CAP = 50
+
+
+def _find_effect_by_id(state_json: dict | None, effect_id: str) -> dict | None:
+    effects = (state_json or {}).get("active_spell_effects")
+    if not isinstance(effects, list):
+        return None
+    for effect in effects:
+        if isinstance(effect, dict) and effect.get("id") == effect_id:
+            return effect
+    return None
+
+
+def _derive_effect_label(effect: dict, fallback_effect_id: str) -> str:
+    display_label = effect.get("display_label")
+    if isinstance(display_label, str) and display_label.strip():
+        return display_label.strip()
+    metadata = effect.get("metadata") if isinstance(effect.get("metadata"), dict) else {}
+    spell_name = metadata.get("source_spell_name")
+    variant_label = metadata.get("selected_variant_label")
+    if isinstance(spell_name, str) and spell_name.strip():
+        if isinstance(variant_label, str) and variant_label.strip():
+            return f"{spell_name.strip()} — {variant_label.strip()}"
+        return spell_name.strip()
+    return fallback_effect_id
+
+
+def _resolve_ooc_activity_actor(entry, user, session: DbSession) -> tuple[str | None, str]:
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user.id,
+        )
+    ).first()
+    member_id = getattr(member, "id", None) if member else None
+    actor_display_name = getattr(member, "display_name", None) if member else None
+    resolved_member_id = member_id if isinstance(member_id, str) and member_id else None
+    resolved_actor = actor_display_name if isinstance(actor_display_name, str) and actor_display_name else user.id
+    return resolved_member_id, resolved_actor
+
+
+def _prune_out_of_combat_session_activity(session: DbSession, session_id: str) -> None:
+    stale_event_ids = [
+        event_id
+        for event_id in session.exec(
+            select(SessionCommandEvent.id)
+            .where(
+                SessionCommandEvent.session_id == session_id,
+                SessionCommandEvent.command_type.in_(OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES),  # type: ignore[arg-type]
+            )
+            .order_by(SessionCommandEvent.created_at.desc(), SessionCommandEvent.id.desc())
+            .offset(OUT_OF_COMBAT_ACTIVITY_CAP)
+        ).all()
+        if isinstance(event_id, str) and event_id
+    ]
+    if not stale_event_ids:
+        return
+    session.exec(
+        delete(SessionCommandEvent).where(
+            SessionCommandEvent.id.in_(stale_event_ids),  # type: ignore[arg-type]
+        )
+    )
 
 
 @router.get("/sessions/{session_id}/state/me", response_model=SessionStateRead)
@@ -286,13 +355,32 @@ async def remove_my_persisted_effect(
     if not state:
         raise HTTPException(status_code=404, detail="Session state not found")
 
-    # Extract effect metadata BEFORE removal
-    effect_metadata = None
+    # Capture effect payload BEFORE mutation (used for activity log + concentration break semantics).
     state_json = state.state_json if isinstance(state.state_json, dict) else {}
-    for eff in state_json.get("active_spell_effects", []) or []:
-        if isinstance(eff, dict) and eff.get("id") == effect_id:
-            effect_metadata = eff.get("metadata") if isinstance(eff.get("metadata"), dict) else None
-            break
+    removed_effect = _find_effect_by_id(state_json, effect_id)
+    effect_metadata = (
+        removed_effect.get("metadata")
+        if isinstance(removed_effect, dict) and isinstance(removed_effect.get("metadata"), dict)
+        else None
+    )
+    source_spell_name = (
+        effect_metadata.get("source_spell_name")
+        if effect_metadata and isinstance(effect_metadata.get("source_spell_name"), str)
+        else None
+    )
+    variant_label = (
+        effect_metadata.get("selected_variant_label")
+        if effect_metadata and isinstance(effect_metadata.get("selected_variant_label"), str)
+        else None
+    )
+    concentration_group = (
+        effect_metadata.get("concentration_group")
+        if effect_metadata and isinstance(effect_metadata.get("concentration_group"), str)
+        else None
+    )
+    was_concentration = bool(effect_metadata and effect_metadata.get("concentration") is True)
+    broke_concentration_group = bool(was_concentration and concentration_group)
+    effect_label = _derive_effect_label(removed_effect, effect_id) if removed_effect else effect_id
 
     updated = remove_persisted_effect(state.state_json, effect_id)
     state.state_json = finalize_session_state_data(updated)
@@ -301,15 +389,35 @@ async def remove_my_persisted_effect(
     # Cross-clear concentration group for ally-target effects
     affected_allies: list[SessionState] = []
     if effect_metadata:
-        was_concentration = effect_metadata.get("concentration") is True
         caster_id = effect_metadata.get("caster_player_user_id")
         target_id = effect_metadata.get("target_player_user_id")
         is_ally_target = caster_id is not None and target_id is not None and caster_id != target_id
-        concentration_group = effect_metadata.get("concentration_group")
         if was_concentration and is_ally_target and concentration_group:
             affected_allies = clear_concentration_group_across_session(
                 session, session_id, concentration_group, exclude_user_id=user.id
             )
+
+    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, user, session)
+    if removed_effect and actor_member_id:
+        record_session_activity(
+            entry,
+            "out_of_combat_effect_removed",
+            session,
+            member_id=actor_member_id,
+            user_id=user.id,
+            actor_name=actor_display_name,
+            payload={
+                "actor_player_user_id": user.id,
+                "actor_display_name": actor_display_name,
+                "removed_effect_id": effect_id,
+                "effect_label": effect_label,
+                "source_spell_name": source_spell_name,
+                "variant_label": variant_label,
+                "concentration_group": concentration_group,
+                "broke_concentration_group": broke_concentration_group,
+            },
+        )
+        _prune_out_of_combat_session_activity(session, session_id)
 
     session.commit()
     session.refresh(state)
@@ -539,14 +647,34 @@ async def cast_spell_out_of_combat(
     if not ok:
         raise HTTPException(status_code=400, detail=rejection)
 
-    # --- Capture old concentration group BEFORE any mutation ---
-    old_group: str | None = next(
+    # --- Capture previous concentration metadata BEFORE any mutation ---
+    previous_concentration_metadata = next(
         (
-            (e.get("metadata") or {}).get("concentration_group")
+            metadata
             for e in (state_json.get("active_spell_effects") or [])
-            if (e.get("metadata") or {}).get("concentration")
+            if isinstance(e, dict)
+            for metadata in [e.get("metadata")]
+            if isinstance(metadata, dict) and metadata.get("concentration")
         ),
         None,
+    )
+    old_group = (
+        previous_concentration_metadata.get("concentration_group")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("concentration_group"), str)
+        else None
+    )
+    previous_spell_name = (
+        previous_concentration_metadata.get("source_spell_name")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("source_spell_name"), str)
+        else None
+    )
+    previous_variant_label = (
+        previous_concentration_metadata.get("selected_variant_label")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("selected_variant_label"), str)
+        else None
     )
 
     # --- Spend slot and clear caster concentration ---
@@ -595,6 +723,9 @@ async def cast_spell_out_of_combat(
             caster_effs = list(updated.get("active_spell_effects") or [])
             caster_effs.append(marker)
             updated["active_spell_effects"] = caster_effs
+            marker_effect_id = marker.get("id") if isinstance(marker.get("id"), str) else None
+        else:
+            marker_effect_id = None
 
         # Buff effects land on the target
         target_json = dict(target_state.state_json or {})  # type: ignore[union-attr]
@@ -609,11 +740,66 @@ async def cast_spell_out_of_combat(
         existing_effects = list(updated.get("active_spell_effects") or [])
         existing_effects.extend(new_target_effects)
         updated["active_spell_effects"] = existing_effects
+        marker_effect_id = None
 
     # --- Persist caster state ---
     state.state_json = finalize_session_state_data(updated)
     flag_modified(state, "state_json")
     session.add(state)
+
+    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, user, session)
+    if actor_member_id:
+        spell_name = (
+            campaign_spell.name_pt
+            or campaign_spell.name_en
+            or campaign_spell.canonical_key
+        )
+        variant_label = (
+            (new_target_effects[0].get("metadata") or {}).get("selected_variant_label")
+            if new_target_effects
+            and isinstance(new_target_effects[0], dict)
+            and isinstance(new_target_effects[0].get("metadata"), dict)
+            else None
+        )
+        created_effect_ids = [
+            effect_id
+            for effect_id in (
+                [e.get("id") for e in new_target_effects]
+                + ([marker_effect_id] if marker_effect_id else [])
+            )
+            if isinstance(effect_id, str) and effect_id
+        ]
+        replaced_concentration = bool(campaign_spell.concentration and previous_concentration_metadata)
+        target_display_name = actor_display_name if not is_ally_target else target_user_id
+        activity_payload: dict = {
+            "actor_player_user_id": user.id,
+            "actor_display_name": actor_display_name,
+            "target_player_user_id": target_user_id,
+            "target_display_name": target_display_name,
+            "spell_key": campaign_spell.canonical_key,
+            "spell_name": spell_name,
+            "variant_key": req.variantKey,
+            "variant_label": variant_label,
+            "created_effect_ids": created_effect_ids,
+            "concentration_group": group_id,
+            "replaced_concentration": replaced_concentration,
+            "previous_concentration_group": old_group,
+            "new_concentration_group": group_id if campaign_spell.concentration else None,
+            "previous_spell_name": previous_spell_name,
+            "previous_variant_label": previous_variant_label,
+        }
+        if req.slotLevel is not None:
+            activity_payload["slot_level"] = req.slotLevel
+        record_session_activity(
+            entry,
+            "out_of_combat_spell_cast",
+            session,
+            member_id=actor_member_id,
+            user_id=user.id,
+            actor_name=actor_display_name,
+            payload=activity_payload,
+        )
+        _prune_out_of_combat_session_activity(session, session_id)
 
     # --- Single commit ---
     session.commit()

@@ -886,5 +886,125 @@ class TestAllyTargetConcentrationRemoval(unittest.IsolatedAsyncioTestCase):
         self.assertIn("caster-1", published_ids)
 
 
+class TestOutOfCombatRemovalActivityLogging(unittest.IsolatedAsyncioTestCase):
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=("member-1", "Ally A"))
+    @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    async def test_removing_existing_effect_records_out_of_combat_effect_removed(
+        self,
+        mock_publish,
+        mock_to_state_read,
+        mock_finalize,
+        mock_ensure,
+        mock_require_view,
+        mock_get_entry,
+        mock_clear_cross,
+        mock_resolve_actor,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        effect = {
+            "id": "eff-ally",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "display_label": "Melhorar Habilidade — Sabedoria da Coruja",
+            "metadata": {
+                "concentration": True,
+                "concentration_group": "grp-1",
+                "source_spell_name": "Melhorar Habilidade",
+                "selected_variant_label": "Sabedoria da Coruja",
+                "caster_player_user_id": "caster-1",
+                "target_player_user_id": "ally-a",
+            },
+        }
+        db, state = _make_db_session({"active_spell_effects": [effect]})
+        state.player_user_id = "ally-a"
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="ally-a",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[],
+            activeConcentration=None,
+        )
+
+        await remove_my_persisted_effect(
+            session_id="session-1",
+            effect_id="eff-ally",
+            user=_make_user("ally-a"),
+            session=db,
+        )
+
+        mock_record_activity.assert_called_once()
+        activity_call = mock_record_activity.call_args
+        self.assertEqual(activity_call.args[1], "out_of_combat_effect_removed")
+        payload = activity_call.kwargs["payload"]
+        self.assertEqual(payload["actor_player_user_id"], "ally-a")
+        self.assertEqual(payload["actor_display_name"], "Ally A")
+        self.assertEqual(payload["removed_effect_id"], "eff-ally")
+        self.assertEqual(payload["effect_label"], "Melhorar Habilidade — Sabedoria da Coruja")
+        self.assertEqual(payload["source_spell_name"], "Melhorar Habilidade")
+        self.assertEqual(payload["variant_label"], "Sabedoria da Coruja")
+        self.assertEqual(payload["concentration_group"], "grp-1")
+        self.assertTrue(payload["broke_concentration_group"])
+        mock_prune_activity.assert_called_once_with(db, "session-1")
+
+    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
+    @patch("app.api.routes.sessions.state.record_session_activity")
+    @patch("app.api.routes.sessions.state.get_session_entry")
+    @patch("app.api.routes.sessions.state.require_session_view_access")
+    @patch("app.api.routes.sessions.state.ensure_session_state")
+    @patch("app.api.routes.sessions.state.finalize_session_state_data")
+    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.api.routes.sessions.state.publish_state_update")
+    async def test_unknown_effect_removal_does_not_record_activity(
+        self,
+        mock_publish,
+        mock_to_state_read,
+        mock_finalize,
+        mock_ensure,
+        mock_require_view,
+        mock_get_entry,
+        mock_record_activity,
+        mock_prune_activity,
+    ):
+        mock_get_entry.return_value = MagicMock(party_id="party-1")
+        db, state = _make_db_session({"active_spell_effects": [_non_concentration_effect("eff-a")]})
+        mock_ensure.return_value = state
+        mock_finalize.side_effect = lambda x: x
+        mock_to_state_read.return_value = SessionStateRead(
+            id="ss-1",
+            sessionId="session-1",
+            playerUserId="user-1",
+            state={},
+            createdAt="2026-01-01T00:00:00+00:00",
+            updatedAt=None,
+            activeSpellEffects=[_non_concentration_effect("eff-a")],
+            activeConcentration=None,
+        )
+
+        await remove_my_persisted_effect(
+            session_id="session-1",
+            effect_id="eff-unknown",
+            user=_make_user("user-1"),
+            session=db,
+        )
+
+        mock_record_activity.assert_not_called()
+        mock_prune_activity.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

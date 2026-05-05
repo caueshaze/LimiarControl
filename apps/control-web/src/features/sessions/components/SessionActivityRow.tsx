@@ -15,6 +15,8 @@ import {
   SessionActivityEntityRow,
   SessionActivityHitDiceRow,
   SessionActivityLevelUpRow,
+  SessionActivityOutOfCombatEffectRemovedRow,
+  SessionActivityOutOfCombatSpellCastRow,
   SessionActivityPlayerHpRow,
   SessionActivityPurchaseRow,
   SessionActivityRollResolvedRow,
@@ -78,6 +80,14 @@ export const SessionActivityRow = ({ event, isGm = false }: { event: ActivityEve
 
   if (event.type === "combat_log_entry") {
     return <SessionActivityCombatLogRow event={event} />;
+  }
+
+  if (event.type === "out_of_combat_spell_cast") {
+    return <SessionActivityOutOfCombatSpellCastRow event={event} actor={actor} />;
+  }
+
+  if (event.type === "out_of_combat_effect_removed") {
+    return <SessionActivityOutOfCombatEffectRemovedRow event={event} actor={actor} />;
   }
 
   return <SessionActivityPurchaseRow event={event} actor={actor} />;

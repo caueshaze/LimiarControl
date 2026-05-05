@@ -329,6 +329,48 @@ export type CombatLogEntryActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type OutOfCombatSpellCastActivityEvent = {
+  type: "out_of_combat_spell_cast";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  actorPlayerUserId?: string | null;
+  actorDisplayName?: string | null;
+  targetPlayerUserId?: string | null;
+  targetDisplayName?: string | null;
+  spellKey?: string | null;
+  spellName: string;
+  variantKey?: string | null;
+  variantLabel?: string | null;
+  slotLevel?: number | null;
+  createdEffectIds: string[];
+  concentrationGroup?: string | null;
+  replacedConcentration: boolean;
+  previousConcentrationGroup?: string | null;
+  newConcentrationGroup?: string | null;
+  previousSpellName?: string | null;
+  previousVariantLabel?: string | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
+export type OutOfCombatEffectRemovedActivityEvent = {
+  type: "out_of_combat_effect_removed";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  actorPlayerUserId?: string | null;
+  actorDisplayName?: string | null;
+  removedEffectId: string;
+  effectLabel: string;
+  sourceSpellName?: string | null;
+  variantLabel?: string | null;
+  concentrationGroup?: string | null;
+  brokeConcentrationGroup: boolean;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
@@ -344,7 +386,9 @@ export type ActivityEvent =
   | PlayerHpActivityEvent
   | EntityActivityEvent
   | RollResolvedActivityEvent
-  | CombatLogEntryActivityEvent;
+  | CombatLogEntryActivityEvent
+  | OutOfCombatSpellCastActivityEvent
+  | OutOfCombatEffectRemovedActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;

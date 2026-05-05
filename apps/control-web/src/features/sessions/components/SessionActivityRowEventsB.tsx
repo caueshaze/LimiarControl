@@ -260,6 +260,96 @@ export const SessionActivityRollResolvedRow = ({ event }: Props) => {
   );
 };
 
+export const SessionActivityOutOfCombatSpellCastRow = ({ event, actor }: Props) => {
+  const { t } = useLocale();
+  if (event.type !== "out_of_combat_spell_cast") return null;
+
+  const actorLabel = event.actorDisplayName ?? actor;
+  const targetLabel = event.targetDisplayName ?? t("sessionActivity.unknownTarget");
+  const spellLabel = event.variantLabel
+    ? `${event.spellName} — ${event.variantLabel}`
+    : event.spellName;
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+      <span className="mt-0.5 text-base">✨</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white">
+          <span className="font-semibold">{actorLabel}</span>
+          {" "}
+          {t("sessionActivity.castVerb")}
+          {" "}
+          <span className="font-semibold text-slate-100">{spellLabel}</span>
+          {" "}
+          {t("sessionActivity.onTarget")}
+          {" "}
+          <span className="font-semibold text-slate-200">{targetLabel}</span>
+          {event.slotLevel != null
+            ? (
+              <>
+                {" "}
+                {t("sessionActivity.usingSlotLevel")}
+                {" "}
+                <span className="font-semibold text-slate-200">{event.slotLevel}</span>
+                {t("sessionActivity.slotLevelSuffix")}
+              </>
+            )
+            : "."}
+        </p>
+        {event.replacedConcentration && event.previousSpellName && (
+          <p className="mt-0.5 text-xs text-slate-400">
+            {t("sessionActivity.previousConcentrationEndedPrefix")}
+            {" "}
+            <span className="font-semibold text-slate-300">
+              {event.previousVariantLabel
+                ? `${event.previousSpellName} — ${event.previousVariantLabel}`
+                : event.previousSpellName}
+            </span>
+            .
+          </p>
+        )}
+      </div>
+      <span className="shrink-0 text-xs font-mono text-slate-500">
+        {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+      </span>
+    </div>
+  );
+};
+
+export const SessionActivityOutOfCombatEffectRemovedRow = ({ event, actor }: Props) => {
+  const { t } = useLocale();
+  if (event.type !== "out_of_combat_effect_removed") return null;
+
+  const actorLabel = event.actorDisplayName ?? actor;
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
+      <span className="mt-0.5 text-base">🧹</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white">
+          <span className="font-semibold">{actorLabel}</span>
+          {" "}
+          {t("sessionActivity.removedEffectVerb")}
+          {" "}
+          <span className="font-semibold text-slate-100">{event.effectLabel}</span>
+          .
+          {event.brokeConcentrationGroup
+            ? (
+              <>
+                {" "}
+                {t("sessionActivity.concentrationEndedSentence")}
+              </>
+            )
+            : null}
+        </p>
+      </div>
+      <span className="shrink-0 text-xs font-mono text-slate-500">
+        {formatSessionActivityOffset(event.sessionOffsetSeconds)}
+      </span>
+    </div>
+  );
+};
+
 export const SessionActivityPurchaseRow = ({ event, actor }: { event: PurchaseActivityEvent; actor: string }) => {
   const { t } = useLocale();
   return (

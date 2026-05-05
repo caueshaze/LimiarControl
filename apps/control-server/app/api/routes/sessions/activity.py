@@ -20,6 +20,8 @@ from app.schemas.session import (
     EntityActivityEvent,
     HitDiceActivityEvent,
     LevelUpActivityEvent,
+    OutOfCombatEffectRemovedActivityEvent,
+    OutOfCombatSpellCastActivityEvent,
     PlayerHpActivityEvent,
     PurchaseActivityEvent,
     RestActivityEvent,
@@ -382,6 +384,60 @@ def get_session_activity(
                 displayName=actor_name,
                 message=str(payload.get("message") or ""),
                 source=payload.get("source") if isinstance(payload.get("source"), str) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "out_of_combat_spell_cast":
+            events.append(OutOfCombatSpellCastActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                actorPlayerUserId=payload.get("actor_player_user_id") if isinstance(payload.get("actor_player_user_id"), str) else None,
+                actorDisplayName=payload.get("actor_display_name") if isinstance(payload.get("actor_display_name"), str) else actor_name,
+                targetPlayerUserId=payload.get("target_player_user_id") if isinstance(payload.get("target_player_user_id"), str) else None,
+                targetDisplayName=payload.get("target_display_name") if isinstance(payload.get("target_display_name"), str) else None,
+                spellKey=payload.get("spell_key") if isinstance(payload.get("spell_key"), str) else None,
+                spellName=str(payload.get("spell_name") or "Spell"),
+                variantKey=payload.get("variant_key") if isinstance(payload.get("variant_key"), str) else None,
+                variantLabel=payload.get("variant_label") if isinstance(payload.get("variant_label"), str) else None,
+                slotLevel=payload.get("slot_level") if isinstance(payload.get("slot_level"), int) else None,
+                createdEffectIds=[
+                    effect_id
+                    for effect_id in (payload.get("created_effect_ids") or [])
+                    if isinstance(effect_id, str)
+                ],
+                concentrationGroup=payload.get("concentration_group") if isinstance(payload.get("concentration_group"), str) else None,
+                replacedConcentration=bool(payload.get("replaced_concentration", False)),
+                previousConcentrationGroup=(
+                    payload.get("previous_concentration_group")
+                    if isinstance(payload.get("previous_concentration_group"), str)
+                    else None
+                ),
+                newConcentrationGroup=(
+                    payload.get("new_concentration_group")
+                    if isinstance(payload.get("new_concentration_group"), str)
+                    else None
+                ),
+                previousSpellName=payload.get("previous_spell_name") if isinstance(payload.get("previous_spell_name"), str) else None,
+                previousVariantLabel=payload.get("previous_variant_label") if isinstance(payload.get("previous_variant_label"), str) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "out_of_combat_effect_removed":
+            events.append(OutOfCombatEffectRemovedActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                actorPlayerUserId=payload.get("actor_player_user_id") if isinstance(payload.get("actor_player_user_id"), str) else None,
+                actorDisplayName=payload.get("actor_display_name") if isinstance(payload.get("actor_display_name"), str) else actor_name,
+                removedEffectId=str(payload.get("removed_effect_id") or ""),
+                effectLabel=str(payload.get("effect_label") or "Effect"),
+                sourceSpellName=payload.get("source_spell_name") if isinstance(payload.get("source_spell_name"), str) else None,
+                variantLabel=payload.get("variant_label") if isinstance(payload.get("variant_label"), str) else None,
+                concentrationGroup=payload.get("concentration_group") if isinstance(payload.get("concentration_group"), str) else None,
+                brokeConcentrationGroup=bool(payload.get("broke_concentration_group", False)),
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))
