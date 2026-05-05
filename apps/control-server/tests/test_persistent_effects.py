@@ -78,6 +78,42 @@ def _temp_ac_bonus_effect(effect_id: str = "eff-ac") -> dict:
     }
 
 
+def _until_long_rest_effect(effect_id: str = "eff-long") -> dict:
+    return {
+        "id": effect_id,
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "until_long_rest",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": "Bless",
+        "metadata": {"source_spell_name": "Bless"},
+    }
+
+
+def _until_short_rest_effect(effect_id: str = "eff-short") -> dict:
+    return {
+        "id": effect_id,
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "until_short_rest",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": "Shield of Faith",
+        "metadata": {"source_spell_name": "Shield of Faith"},
+    }
+
+
+def _until_removed_effect(effect_id: str = "eff-perm") -> dict:
+    return {
+        "id": effect_id,
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "until_removed",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": "Owl's Wisdom",
+        "metadata": {"source_spell_name": "Owl's Wisdom"},
+    }
+
+
 def _make_state_with_participants(effects: list[dict] | None = None) -> CombatState:
     return CombatState(
         id="combat-1",
@@ -179,6 +215,48 @@ class TestPersistSurvivingSpellEffects(unittest.TestCase):
         persist_surviving_spell_effects(db, state)
 
         self.assertNotIn("active_spell_effects", session_state.state_json)
+
+    def test_persists_until_long_rest_effect(self):
+        effect = _until_long_rest_effect("eff-long")
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-long")
+        self.assertEqual(persisted[0]["duration_type"], "until_long_rest")
+
+    def test_persists_until_short_rest_effect(self):
+        effect = _until_short_rest_effect("eff-short")
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-short")
+        self.assertEqual(persisted[0]["duration_type"], "until_short_rest")
+
+    def test_persists_until_removed_effect(self):
+        effect = _until_removed_effect("eff-perm")
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-perm")
+        self.assertEqual(persisted[0]["duration_type"], "until_removed")
 
     def test_skips_entity_participants(self):
         state = _make_state_with_participants()

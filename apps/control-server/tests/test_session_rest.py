@@ -215,6 +215,175 @@ class SessionRestTests(unittest.TestCase):
         self.assertNotIn("active_spell_effects", next_data)
         self.assertIsNone(derive_active_concentration(next_data))
 
+    def test_long_rest_clears_until_long_rest_effects(self):
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {"source_spell_name": "Bless"},
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+
+    def test_long_rest_clears_until_short_rest_effects(self):
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_short_rest",
+            "metadata": {"source_spell_name": "Shield of Faith"},
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertNotIn("active_spell_effects", next_data)
+
+    def test_long_rest_preserves_until_removed_effects(self):
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_removed",
+            "metadata": {"source_spell_name": "Owl's Wisdom"},
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertIn("active_spell_effects", next_data)
+        self.assertEqual(len(next_data["active_spell_effects"]), 1)
+        self.assertEqual(next_data["active_spell_effects"][0]["id"], "eff-1")
+
+    def test_long_rest_clears_mixed_lifecycle_effects_selectively(self):
+        until_long = {
+            "id": "eff-long",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {},
+        }
+        until_removed = {
+            "id": "eff-perm",
+            "kind": "spell_effect",
+            "duration_type": "until_removed",
+            "metadata": {},
+        }
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [until_long, until_removed],
+            }
+        )
+
+        self.assertIn("active_spell_effects", next_data)
+        self.assertEqual(len(next_data["active_spell_effects"]), 1)
+        self.assertEqual(next_data["active_spell_effects"][0]["id"], "eff-perm")
+
+    def test_short_rest_clears_until_short_rest_effects(self):
+        from app.services.session_rest import end_rest
+
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_short_rest",
+            "metadata": {"source_spell_name": "Cat's Grace"},
+        }
+        next_data, ended = end_rest(
+            {
+                "restState": "short_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertEqual(ended, "short_rest")
+        self.assertNotIn("active_spell_effects", next_data)
+
+    def test_short_rest_preserves_until_long_rest_effects(self):
+        from app.services.session_rest import end_rest
+
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_long_rest",
+            "metadata": {"source_spell_name": "Bless"},
+        }
+        next_data, ended = end_rest(
+            {
+                "restState": "short_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertEqual(ended, "short_rest")
+        self.assertIn("active_spell_effects", next_data)
+        self.assertEqual(len(next_data["active_spell_effects"]), 1)
+
+    def test_short_rest_preserves_until_removed_effects(self):
+        from app.services.session_rest import end_rest
+
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "until_removed",
+            "metadata": {"source_spell_name": "Owl's Wisdom"},
+        }
+        next_data, ended = end_rest(
+            {
+                "restState": "short_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertEqual(ended, "short_rest")
+        self.assertIn("active_spell_effects", next_data)
+        self.assertEqual(len(next_data["active_spell_effects"]), 1)
+
+    def test_short_rest_preserves_manual_effects(self):
+        from app.services.session_rest import end_rest
+
+        effect = {
+            "id": "eff-1",
+            "kind": "spell_effect",
+            "duration_type": "manual",
+            "metadata": {"source_spell_name": "Owl's Wisdom"},
+        }
+        next_data, ended = end_rest(
+            {
+                "restState": "short_rest",
+                "currentHP": 4,
+                "maxHP": 8,
+                "active_spell_effects": [effect],
+            }
+        )
+
+        self.assertEqual(ended, "short_rest")
+        self.assertIn("active_spell_effects", next_data)
+        self.assertEqual(len(next_data["active_spell_effects"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

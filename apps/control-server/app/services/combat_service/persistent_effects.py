@@ -23,6 +23,12 @@ if TYPE_CHECKING:
     from sqlmodel import Session as DbSession
 
 _PERSISTABLE_KINDS = {"spell_effect", "temp_ac_bonus"}
+_PERSISTABLE_DURATION_TYPES = {
+    "manual",
+    "until_long_rest",
+    "until_short_rest",
+    "until_removed",
+}
 
 
 def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
@@ -40,7 +46,7 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
         surviving = [
             e for e in effects
             if e.get("kind") in _PERSISTABLE_KINDS
-            and e.get("duration_type") == "manual"
+            and e.get("duration_type") in _PERSISTABLE_DURATION_TYPES
         ]
         surviving = enforce_single_persisted_concentration_group(surviving)
         if not surviving:

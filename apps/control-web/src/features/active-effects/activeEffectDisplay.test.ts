@@ -143,4 +143,48 @@ describe("getActiveEffectLifecycleBadges", () => {
     const badges = getActiveEffectLifecycleBadges(effect);
     expect(badges.map((b) => b.key)).toEqual(["concentration", "rounds"]);
   });
+
+  it("returns until-long-rest badge for until_long_rest duration", () => {
+    const effect = {
+      id: "eff-1",
+      kind: "spell_effect",
+      duration_type: "until_long_rest",
+      metadata: {},
+    };
+    const badges = getActiveEffectLifecycleBadges(effect);
+    expect(badges.map((b) => b.key)).toEqual(["until-long-rest"]);
+  });
+
+  it("returns until-short-rest badge for until_short_rest duration", () => {
+    const effect = {
+      id: "eff-1",
+      kind: "spell_effect",
+      duration_type: "until_short_rest",
+      metadata: {},
+    };
+    const badges = getActiveEffectLifecycleBadges(effect);
+    expect(badges.map((b) => b.key)).toEqual(["until-short-rest"]);
+  });
+
+  it("returns until-removed badge for until_removed duration", () => {
+    const effect = {
+      id: "eff-1",
+      kind: "spell_effect",
+      duration_type: "until_removed",
+      metadata: {},
+    };
+    const badges = getActiveEffectLifecycleBadges(effect);
+    expect(badges.map((b) => b.key)).toEqual(["until-removed"]);
+  });
+
+  it("returns manual + long-rest badges for legacy manual duration", () => {
+    const effect = {
+      id: "eff-1",
+      kind: "spell_effect",
+      duration_type: "manual",
+      metadata: {},
+    };
+    const badges = getActiveEffectLifecycleBadges(effect);
+    expect(badges.map((b) => b.key)).toEqual(["manual", "long-rest"]);
+  });
 });

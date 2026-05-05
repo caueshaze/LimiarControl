@@ -150,6 +150,9 @@ ActiveEffectDurationType = Literal[
     "rounds",
     "until_turn_start",
     "until_turn_end",
+    "until_long_rest",
+    "until_short_rest",
+    "until_removed",
 ]
 
 
