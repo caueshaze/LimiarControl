@@ -946,5 +946,80 @@ class TestRestorePersistedConcentrationNormalization(unittest.TestCase):
         self.assertEqual(persisted[0]["id"], "eff-new")
 
 
+class TestLongstriderLifecycle(unittest.TestCase):
+
+    @staticmethod
+    def _longstrider_effect(effect_id: str = "eff-ls") -> dict:
+        return {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "source_participant_id": None,
+            "duration_type": "until_long_rest",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "display_label": "Passos Longos",
+            "metadata": {
+                "source_spell_name": "Passos Longos",
+                "source_spell_key": "longstrider",
+                "context_origin": "out_of_combat_cast",
+                "declarative_effect": {
+                    "type": "modify_movement_speed",
+                    "params": {"bonus_meters": 3},
+                },
+            },
+        }
+
+    def test_persist_longstrider_until_long_rest(self):
+        effect = self._longstrider_effect("eff-ls")
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["id"], "eff-ls")
+        self.assertEqual(persisted[0]["duration_type"], "until_long_rest")
+        self.assertEqual(
+            persisted[0]["metadata"]["declarative_effect"]["type"],
+            "modify_movement_speed",
+        )
+        self.assertEqual(
+            persisted[0]["metadata"]["declarative_effect"]["params"]["bonus_meters"],
+            3,
+        )
+
+    def test_restore_longstrider_from_state_json(self):
+        effect = self._longstrider_effect("eff-ls")
+        participant = {"kind": "player", "ref_id": "player-1", "active_effects": []}
+        db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [effect]})
+        db.exec.return_value.first.return_value = session_state
+
+        restore_persisted_effects(db, "session-1", participant)
+
+        self.assertEqual(len(participant["active_effects"]), 1)
+        self.assertEqual(participant["active_effects"][0]["id"], "eff-ls")
+
+    def test_remove_longstrider_effect(self):
+        eff_ls = self._longstrider_effect("eff-ls")
+        eff_other = _manual_spell_effect("eff-other")
+        state_json = {"active_spell_effects": [eff_ls, eff_other]}
+
+        updated = remove_persisted_effect(state_json, "eff-ls")
+
+        self.assertEqual(len(updated["active_spell_effects"]), 1)
+        self.assertEqual(updated["active_spell_effects"][0]["id"], "eff-other")
+
+    def test_remove_last_longstrider_removes_key(self):
+        eff_ls = self._longstrider_effect("eff-ls")
+        state_json = {"active_spell_effects": [eff_ls]}
+
+        updated = remove_persisted_effect(state_json, "eff-ls")
+
+        self.assertNotIn("active_spell_effects", updated)
+
+
 if __name__ == "__main__":
     unittest.main()
