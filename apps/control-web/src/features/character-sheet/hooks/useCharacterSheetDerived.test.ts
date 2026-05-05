@@ -101,4 +101,46 @@ describe("useCharacterSheetDerived", () => {
     expect(derived.movementSpeedBonusSources).toHaveLength(1);
     expect(derived.movementSpeedBonusSources![0].label).toBe("Passos Longos");
   });
+
+  it("clamps effective speed to 0 with large negative bonus", () => {
+    const activeEffects = [
+      {
+        id: "eff-neg",
+        kind: "spell_effect" as const,
+        duration_type: "until_long_rest" as const,
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: {
+          source_spell_name: "Slow",
+          declarative_effect: {
+            type: "modify_movement_speed",
+            params: { bonus_meters: -15 },
+          },
+        },
+      },
+    ];
+    const derived = useCharacterSheetDerived(
+      { ...INITIAL_SHEET, speedMeters: 3 },
+      activeEffects,
+    );
+    expect(derived.effectiveSpeedMeters).toBe(0);
+  });
+
+  it("does not crash with empty active effects array", () => {
+    const derived = useCharacterSheetDerived(
+      { ...INITIAL_SHEET, speedMeters: 9 },
+      [],
+    );
+    expect(derived.effectiveSpeedMeters).toBe(9);
+    expect(derived.movementSpeedBonus).toBeUndefined();
+    expect(derived.movementSpeedBonusSources).toBeUndefined();
+  });
+
+  it("shows base speed equal to sheet speedMeters when no bonus", () => {
+    const derived = useCharacterSheetDerived({
+      ...INITIAL_SHEET,
+      speedMeters: 11,
+    });
+    expect(derived.effectiveSpeedMeters).toBe(11);
+    expect(derived.effectiveSpeedMeters).toBe(11);
+  });
 });

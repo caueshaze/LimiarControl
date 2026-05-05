@@ -191,10 +191,85 @@ class TestResolveSyncEntryMovementSpeedBonus(unittest.TestCase):
         speed = self._get_speed_cells(participant, speed_meters=9)
         self.assertEqual(speed, 10)
 
+    def test_float_bonus_converts_via_floor(self):
+        participant = _player(active_effects=[_movement_speed_effect(bonus_meters=1.5)])
+        speed = self._get_speed_cells(participant, speed_meters=8)
+        self.assertEqual(speed, 6)
+
 
 class TestEncumbranceOrder(unittest.TestCase):
 
     def test_penalty_first_then_bonus(self):
+        db = _make_db(9)
+        participant = _player(
+            encumbrance_tier="encumbered",
+            active_effects=[_movement_speed_effect(bonus_meters=3)],
+        )
+        _, spawn = resolve_sync_entry(db, "s1", participant, _map_state_empty())
+        self.assertIsNotNone(spawn)
+        self.assertEqual(spawn.movement_speed_cells, 6)
+
+
+class TestMovementSpeedEdgeCases(unittest.TestCase):
+
+    def test_effective_speed_clamps_to_zero(self):
+        db = _make_db(2)
+        participant = _player(
+            encumbrance_tier="heavily_encumbered",
+            active_effects=[_movement_speed_effect(bonus_meters=1)],
+        )
+        _, spawn = resolve_sync_entry(db, "s1", participant, _map_state_empty())
+        self.assertIsNotNone(spawn)
+        self.assertEqual(spawn.movement_speed_cells, 0)
+
+    def test_bonus_meters_float_value(self):
+        participant = _player(active_effects=[_movement_speed_effect(bonus_meters=1.5)])
+        total, sources = get_movement_speed_bonus_meters(participant)
+        self.assertEqual(total, 1.5)
+        self.assertEqual(len(sources), 1)
+
+    def test_negative_bonus_handled_defensively_not_in_catalog_v1(self):
+        participant = _player(active_effects=[_movement_speed_effect(bonus_meters=-3)])
+        total, sources = get_movement_speed_bonus_meters(participant)
+        self.assertEqual(total, -3.0)
+        self.assertEqual(len(sources), 1)
+        self.assertEqual(sources[0]["value"], -3.0)
+
+    def test_missing_params_ignored(self):
+        participant = _player(active_effects=[{
+            "id": "e1",
+            "kind": "spell_effect",
+            "metadata": {
+                "declarative_effect": {
+                    "type": "modify_movement_speed",
+                },
+                "source_spell_name": "NoParams",
+            },
+        }])
+        total, sources = get_movement_speed_bonus_meters(participant)
+        self.assertEqual(total, 0.0)
+        self.assertEqual(len(sources), 0)
+
+    def test_missing_declarative_effect_ignored(self):
+        participant = _player(active_effects=[{
+            "id": "e1",
+            "kind": "spell_effect",
+            "metadata": {
+                "source_spell_name": "Something",
+            },
+        }])
+        total, sources = get_movement_speed_bonus_meters(participant)
+        self.assertEqual(total, 0.0)
+        self.assertEqual(len(sources), 0)
+
+    def test_token_resolution_12m_base_plus_3m_bonus(self):
+        db = _make_db(12)
+        participant = _player(active_effects=[_movement_speed_effect(bonus_meters=3)])
+        _, spawn = resolve_sync_entry(db, "s1", participant, _map_state_empty())
+        self.assertIsNotNone(spawn)
+        self.assertEqual(spawn.movement_speed_cells, 10)
+
+    def test_encumbrance_order_9m_encumbered_plus_3m_bonus(self):
         db = _make_db(9)
         participant = _player(
             encumbrance_tier="encumbered",

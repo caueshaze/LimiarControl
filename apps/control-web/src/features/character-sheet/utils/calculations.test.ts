@@ -1014,4 +1014,63 @@ describe("computeMovementSpeedBonusSources", () => {
   it("returns empty array with no effects", () => {
     expect(computeMovementSpeedBonusSources([])).toEqual([]);
   });
+
+  it("ignores effect with null metadata", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "null-meta",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: null,
+      },
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(0);
+  });
+
+  it("ignores effect without declarative_effect", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "no-decl",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+        metadata: { source_spell_name: "Something" },
+      },
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(0);
+  });
+
+  it("handles float bonus_meters", () => {
+    const effects = [makeMovementSpeedEffect(1.5, {
+      metadata: {
+        source_spell_name: "Passos Longos",
+        declarative_effect_group_id: "g-float",
+        declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 1.5 } },
+      },
+    })];
+    expect(computeMovementSpeedBonus(effects)).toBe(1.5);
+  });
+
+  it("dedup keeps highest per group", () => {
+    const effects = [
+      makeMovementSpeedEffect(3, {
+        id: "eff-a",
+        metadata: {
+          source_spell_name: "Passos Longos",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 3 } },
+        },
+      }),
+      makeMovementSpeedEffect(5, {
+        id: "eff-b",
+        metadata: {
+          source_spell_name: "Passos Longos Upcast",
+          declarative_effect_group_id: "same-group",
+          declarative_effect: { type: "modify_movement_speed", params: { bonus_meters: 5 } },
+        },
+      }),
+    ];
+    expect(computeMovementSpeedBonus(effects)).toBe(5);
+  });
 });

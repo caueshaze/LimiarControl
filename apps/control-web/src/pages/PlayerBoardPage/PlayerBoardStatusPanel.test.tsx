@@ -39,6 +39,11 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "playerBoard.lifecycleUntilShortRest": "Até descanso curto",
         "playerBoard.lifecycleUntilRemoved": "Até remover",
         "playerBoard.lifecycleLongRest": "Limpa no descanso longo",
+        "playerBoard.speedLabel": "Deslocamento",
+        "playerBoard.speedPenaltyHint": "Penalidade de carga",
+        "playerBoard.carryingCapacityLabel": "Capacidade",
+        "playerBoard.pushDragLiftLabel": "Empurrar",
+        "playerBoard.encumbranceTierLabel": "Peso",
       }[key] ?? key),
   }),
 }));
@@ -774,5 +779,120 @@ describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
       />,
     );
     expect(lastCastCardProps?.onCast).toBe(handleCast);
+  });
+});
+
+describe("PlayerBoardStatusPanel – movement speed", () => {
+  const baseStatus = {
+    level: 3,
+    currentHp: 20,
+    maxHp: 20,
+    hpPercent: 100,
+    tempHp: 0,
+    xpPercent: 10,
+    nextLevelThreshold: 900,
+    experiencePoints: 100,
+    ac: 12,
+    initiative: 1,
+    passivePerception: 13,
+    baseSpeedMeters: 9,
+    effectiveSpeedMeters: 9,
+    encumbranceTier: "normal" as const,
+    encumbranceNormalMaxKg: 22,
+    encumbranceEncumberedMaxKg: 45,
+    encumbranceHeavilyEncumberedMaxKg: 68,
+    totalWeightKg: 10,
+    baseCarryingCapacityKg: 68,
+    carryingCapacityKg: 68,
+    pushDragLiftKg: 136,
+    hitDiceRemaining: 3,
+    hitDiceTotal: 3,
+    hitDieType: "d8",
+  };
+
+  it("shows base speed when no bonus", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{ ...baseStatus } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+    expect(markup).toContain("9 m");
+    expect(markup).not.toContain("Passos Longos");
+    expect(markup).not.toContain("Penalidade de carga");
+  });
+
+  it("shows boosted speed with bonus helper", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          ...baseStatus,
+          effectiveSpeedMeters: 12,
+          movementSpeedBonus: 3,
+          movementSpeedBonusSources: [{ label: "Passos Longos", value: 3 }],
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+    expect(markup).toContain("12 m");
+    expect(markup).toContain("Passos Longos");
+    expect(markup).toContain("base 9 m");
+  });
+
+  it("shows encumbrance penalty and bonus together", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          ...baseStatus,
+          effectiveSpeedMeters: 7,
+          baseSpeedMeters: 9,
+          encumbranceTier: "encumbered",
+          movementSpeedBonus: 1,
+          movementSpeedBonusSources: [{ label: "Passos Longos", value: 1 }],
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+    expect(markup).toContain("9 m");
+    expect(markup).toContain("Penalidade de carga");
+    expect(markup).toContain("Passos Longos");
+  });
+
+  it("does not crash with malformed movementSpeedBonusSources", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          ...baseStatus,
+          movementSpeedBonus: null,
+          movementSpeedBonusSources: null,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+    expect(markup).toContain("9 m");
   });
 });
