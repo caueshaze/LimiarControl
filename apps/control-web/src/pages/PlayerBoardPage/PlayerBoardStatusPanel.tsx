@@ -1,9 +1,10 @@
 import type { ActiveConcentration } from "../../entities/character";
+import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
-import { formatActiveConcentrationLabel } from "./concentrationLabel";
+import { formatActiveConcentrationLabel, formatActiveEffectLabel } from "./concentrationLabel";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -24,12 +25,15 @@ const encumbranceAccentMap: Record<PlayerBoardStatusSummary["encumbranceTier"], 
 
 type Props = {
   activeConcentration?: ActiveConcentration | null;
+  activeSpellEffects?: ActiveEffect[] | null;
   clearingConcentration?: boolean;
   combatActive: boolean;
   onClearConcentration: () => void;
+  onRemoveEffect: (effectId: string) => void;
   pendingRoll: PendingRoll | null;
   playerSheet?: CharacterSheet | null;
   playerStatus: PlayerBoardStatusSummary | null;
+  removingEffectId?: string | null;
   restState: "exploration" | "short_rest" | "long_rest";
   usingHitDie: boolean;
   onUseHitDie: () => void;
@@ -37,12 +41,15 @@ type Props = {
 
 export const PlayerBoardStatusPanel = ({
   activeConcentration,
+  activeSpellEffects,
   clearingConcentration,
   combatActive,
   onClearConcentration,
+  onRemoveEffect,
   pendingRoll,
   playerSheet,
   playerStatus,
+  removingEffectId,
   restState,
   usingHitDie,
   onUseHitDie,
@@ -208,6 +215,43 @@ export const PlayerBoardStatusPanel = ({
                   {clearingConcentration ? t("playerBoard.clearingConcentration") : t("playerBoard.clearConcentration")}
                 </button>
               </div>
+            </div>
+          ) : null}
+
+          {activeSpellEffects?.length ? (
+            <div className="mt-5 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
+                {t("playerBoard.activeEffectsLabel")}
+              </p>
+              <ul className="mt-3 space-y-2">
+                {activeSpellEffects.map((effect) => {
+                  const label = formatActiveEffectLabel(effect) ?? t("playerBoard.activeEffectFallback");
+                  const isConcentration = Boolean(
+                    (effect.metadata as Record<string, unknown> | null)?.concentration,
+                  );
+                  const isRemoving = removingEffectId === effect.id;
+                  return (
+                    <li key={effect.id} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white">{label}</p>
+                        {isConcentration ? (
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-400">
+                            {t("playerBoard.activeConcentrationLabel")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveEffect(effect.id)}
+                        disabled={isRemoving}
+                        className="shrink-0 rounded-full bg-white/8 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300 transition hover:bg-red-500/20 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isRemoving ? t("playerBoard.removingEffect") : t("playerBoard.removeEffect")}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           ) : null}
 

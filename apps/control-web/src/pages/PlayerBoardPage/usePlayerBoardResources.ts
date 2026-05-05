@@ -6,6 +6,7 @@ import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
 import type { ActiveConcentration } from "../../entities/character";
+import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
 import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
@@ -51,6 +52,7 @@ export const usePlayerBoardResources = ({
   const [playerWallet, setPlayerWallet] = useState<CurrencyWallet | null>(null);
   const [playerSheet, setPlayerSheet] = useState<CharacterSheet | null>(null);
   const [activeConcentration, setActiveConcentration] = useState<ActiveConcentration | null>(null);
+  const [activeSpellEffects, setActiveSpellEffects] = useState<ActiveEffect[] | null>(null);
 
   const applyRealtimeStateSnapshot = useCallback((rawState: unknown): boolean => {
     try {
@@ -105,6 +107,7 @@ export const usePlayerBoardResources = ({
       setPlayerWallet(null);
       setPlayerSheet(null);
       setActiveConcentration(null);
+      setActiveSpellEffects(null);
       return;
     }
     try {
@@ -115,10 +118,14 @@ export const usePlayerBoardResources = ({
       );
       setPlayerWallet(nextWallet);
       setActiveConcentration(record.activeConcentration ?? null);
+      setActiveSpellEffects(
+        (record.activeSpellEffects as ActiveEffect[] | null | undefined) ?? null,
+      );
     } catch {
       setPlayerWallet(EMPTY_WALLET);
       setPlayerSheet(null);
       setActiveConcentration(null);
+      setActiveSpellEffects(null);
     }
   }, [activeSession?.id]);
 
@@ -314,6 +321,7 @@ export const usePlayerBoardResources = ({
   return {
     activeConcentration,
     activeSession,
+    activeSpellEffects,
     catalogItems,
     clearCommand,
     clearSessionEnded,
@@ -333,6 +341,7 @@ export const usePlayerBoardResources = ({
     rollEvents,
     sessionEndedAt,
     setActiveConcentration,
+    setActiveSpellEffects,
     setMyInventory,
     setPlayerSheet,
     setPlayerWallet,

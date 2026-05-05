@@ -48,6 +48,7 @@ export const PlayerBoardPage = () => {
   const {
     activeConcentration,
     activeSession,
+    activeSpellEffects,
     catalogItems,
     clearCommand,
     clearSessionEnded,
@@ -66,6 +67,7 @@ export const PlayerBoardPage = () => {
     rollEvents,
     sessionEndedAt,
     setActiveConcentration,
+    setActiveSpellEffects,
     setMyInventory,
     setPlayerSheet,
     setPlayerWallet,
@@ -165,6 +167,7 @@ export const PlayerBoardPage = () => {
     t,
   });
   const [clearingConcentration, setClearingConcentration] = useState(false);
+  const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
 
   const handleClearConcentration = async () => {
     if (!activeSession?.id || clearingConcentration) return;
@@ -173,6 +176,9 @@ export const PlayerBoardPage = () => {
       const record = await sessionStatesRepo.clearConcentration(activeSession.id);
       setPlayerSheet(parseCharacterSheet(record.state));
       setActiveConcentration(record.activeConcentration ?? null);
+      setActiveSpellEffects(
+        (record.activeSpellEffects as import("../../shared/api/combatRepo").ActiveEffect[] | null | undefined) ?? null,
+      );
     } catch {
       showToast({
         variant: "error",
@@ -181,6 +187,27 @@ export const PlayerBoardPage = () => {
       });
     } finally {
       setClearingConcentration(false);
+    }
+  };
+
+  const handleRemoveEffect = async (effectId: string) => {
+    if (!activeSession?.id || removingEffectId) return;
+    setRemovingEffectId(effectId);
+    try {
+      const record = await sessionStatesRepo.removePersistedEffect(activeSession.id, effectId);
+      setPlayerSheet(parseCharacterSheet(record.state));
+      setActiveConcentration(record.activeConcentration ?? null);
+      setActiveSpellEffects(
+        (record.activeSpellEffects as import("../../shared/api/combatRepo").ActiveEffect[] | null | undefined) ?? null,
+      );
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("playerBoard.removeEffectErrorTitle"),
+        description: t("playerBoard.removeEffectErrorDescription"),
+      });
+    } finally {
+      setRemovingEffectId(null);
     }
   };
 
@@ -297,16 +324,19 @@ export const PlayerBoardPage = () => {
         <div className="space-y-6">
       <PlayerBoardStatusPanel
         activeConcentration={activeConcentration}
+        activeSpellEffects={activeSpellEffects}
         clearingConcentration={clearingConcentration}
         combatActive={combatActive}
         onClearConcentration={handleClearConcentration}
+        onRemoveEffect={handleRemoveEffect}
         pendingRoll={pendingRoll}
         playerSheet={playerSheet}
         playerStatus={playerStatus}
+        removingEffectId={removingEffectId}
         restState={restState}
         usingHitDie={usingHitDie}
-            onUseHitDie={handleUseHitDie}
-          />
+        onUseHitDie={handleUseHitDie}
+      />
           {activeSession?.id && (
             <PlayerEntityList
               sessionId={activeSession.id}

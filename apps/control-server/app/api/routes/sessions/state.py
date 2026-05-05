@@ -14,7 +14,10 @@ from app.schemas.session_state import (
     SessionStateUpdate,
 )
 from app.services.combat import CombatService
-from app.services.combat_service.persistent_effects import clear_persisted_concentration_effects
+from app.services.combat_service.persistent_effects import (
+    clear_persisted_concentration_effects,
+    remove_persisted_effect,
+)
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from ._shared import record_session_activity, require_identifier
@@ -238,6 +241,40 @@ async def clear_my_concentration(
         state.state_json,
         concentration_group=payload.concentrationGroup,
     )
+    state.state_json = finalize_session_state_data(updated)
+    session.add(state)
+    session.commit()
+    session.refresh(state)
+
+    await publish_state_update(
+        entry,
+        user.id,
+        state.updated_at or state.created_at,
+        state.state_json if isinstance(state.state_json, dict) else None,
+    )
+    return to_state_read(state)
+
+
+@router.delete("/sessions/{session_id}/state/me/effects/{effect_id}", response_model=SessionStateRead)
+async def remove_my_persisted_effect(
+    session_id: str,
+    effect_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_view_access(entry, user, session, user.id)
+    state = session.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == user.id,
+        )
+    ).first()
+    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session state not found")
+
+    updated = remove_persisted_effect(state.state_json, effect_id)
     state.state_json = finalize_session_state_data(updated)
     session.add(state)
     session.commit()

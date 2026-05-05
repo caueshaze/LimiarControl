@@ -18,6 +18,7 @@ from app.services.combat_service.persistent_effects import (
     derive_active_concentration,
     enforce_single_persisted_concentration_group,
     persist_surviving_spell_effects,
+    remove_persisted_effect,
     restore_persisted_effects,
     sync_effect_removal_to_state_json,
 )
@@ -490,6 +491,70 @@ class TestToStateReadActiveConcentration(unittest.TestCase):
         result = to_state_read(mock)
 
         self.assertIsNone(result.activeConcentration)
+
+
+class TestRemovePersistedEffect(unittest.TestCase):
+    def test_remove_non_concentration_effect(self):
+        eff_a = _manual_spell_effect("eff-a")
+        eff_b = _manual_spell_effect("eff-b")
+        state_json = {"active_spell_effects": [eff_a, eff_b]}
+        updated = remove_persisted_effect(state_json, "eff-a")
+        self.assertEqual(len(updated["active_spell_effects"]), 1)
+        self.assertEqual(updated["active_spell_effects"][0]["id"], "eff-b")
+
+    def test_remove_concentration_effect_clears_whole_group(self):
+        eff_a = _manual_spell_effect("eff-a", concentration=True)
+        eff_a["metadata"]["concentration_group"] = "grp-1"
+        eff_b = _manual_spell_effect("eff-b", concentration=True)
+        eff_b["metadata"]["concentration_group"] = "grp-1"
+        eff_c = _manual_spell_effect("eff-c")
+        state_json = {"active_spell_effects": [eff_a, eff_b, eff_c]}
+        updated = remove_persisted_effect(state_json, "eff-a")
+        self.assertEqual(len(updated["active_spell_effects"]), 1)
+        self.assertEqual(updated["active_spell_effects"][0]["id"], "eff-c")
+
+    def test_remove_concentration_preserves_unrelated_non_concentration(self):
+        eff_a = _manual_spell_effect("eff-a", concentration=True)
+        eff_a["metadata"]["concentration_group"] = "grp-1"
+        eff_b = _manual_spell_effect("eff-b")
+        eff_c = _manual_spell_effect("eff-c", concentration=True)
+        eff_c["metadata"]["concentration_group"] = "grp-2"
+        state_json = {"active_spell_effects": [eff_a, eff_b, eff_c]}
+        updated = remove_persisted_effect(state_json, "eff-a")
+        self.assertEqual(len(updated["active_spell_effects"]), 2)
+        self.assertEqual(updated["active_spell_effects"][0]["id"], "eff-b")
+        self.assertEqual(updated["active_spell_effects"][1]["id"], "eff-c")
+
+    def test_remove_unknown_effect_idempotent(self):
+        eff_a = _manual_spell_effect("eff-a")
+        state_json = {"active_spell_effects": [eff_a]}
+        updated = remove_persisted_effect(state_json, "eff-unknown")
+        self.assertEqual(updated["active_spell_effects"], [eff_a])
+
+    def test_remove_from_empty_state(self):
+        updated = remove_persisted_effect({}, "eff-x")
+        self.assertNotIn("active_spell_effects", updated)
+
+    def test_remove_from_missing_key(self):
+        updated = remove_persisted_effect({"currentHP": 10}, "eff-x")
+        self.assertEqual(updated["currentHP"], 10)
+        self.assertNotIn("active_spell_effects", updated)
+
+    def test_remove_last_effect_removes_key(self):
+        eff_a = _manual_spell_effect("eff-a")
+        state_json = {"active_spell_effects": [eff_a]}
+        updated = remove_persisted_effect(state_json, "eff-a")
+        self.assertNotIn("active_spell_effects", updated)
+
+    def test_remove_solo_concentration_without_group(self):
+        """Concentration effect without concentration_group is treated as non-concentration for removal."""
+        eff_a = _manual_spell_effect("eff-a", concentration=True)
+        del eff_a["metadata"]["concentration_group"]
+        eff_b = _manual_spell_effect("eff-b")
+        state_json = {"active_spell_effects": [eff_a, eff_b]}
+        updated = remove_persisted_effect(state_json, "eff-a")
+        self.assertEqual(len(updated["active_spell_effects"]), 1)
+        self.assertEqual(updated["active_spell_effects"][0]["id"], "eff-b")
 
 
 class TestEnforceSinglePersistedConcentrationGroup(unittest.TestCase):

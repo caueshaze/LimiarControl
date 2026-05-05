@@ -181,4 +181,10 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.clearingConcentration": "Ending...",
   "playerBoard.clearConcentrationErrorTitle": "Failed to end concentration",
   "playerBoard.clearConcentrationErrorDescription": "Could not end concentration.",
+  "playerBoard.activeEffectsLabel": "Active effects",
+  "playerBoard.activeEffectFallback": "Effect",
+  "playerBoard.removeEffect": "Remove",
+  "playerBoard.removingEffect": "Removing...",
+  "playerBoard.removeEffectErrorTitle": "Failed to remove effect",
+  "playerBoard.removeEffectErrorDescription": "Could not remove the effect.",
 } as const;

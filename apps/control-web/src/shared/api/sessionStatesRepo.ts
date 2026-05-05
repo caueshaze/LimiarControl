@@ -17,4 +17,7 @@ export const sessionStatesRepo = {
     http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/concentration/clear`, {
       concentrationGroup: concentrationGroup ?? null,
     }),
+
+  removePersistedEffect: (sessionId: string, effectId: string) =>
+    http.del<SessionStateRecord>(`/sessions/${sessionId}/state/me/effects/${effectId}`),
 };
