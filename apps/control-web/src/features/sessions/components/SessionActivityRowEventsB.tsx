@@ -265,19 +265,37 @@ export const SessionActivityOutOfCombatSpellCastRow = ({ event, actor }: Props) 
   if (event.type !== "out_of_combat_spell_cast") return null;
 
   const actorLabel = event.actorDisplayName ?? actor;
+  const casterLabel = event.casterDisplayName ?? event.casterPlayerUserId ?? actorLabel;
   const targetLabel = event.targetDisplayName ?? t("sessionActivity.unknownTarget");
   const spellLabel = event.variantLabel
     ? `${event.spellName} — ${event.variantLabel}`
     : event.spellName;
+  const renderedCastPrefix = event.castByGm
+    ? (
+      <>
+        <span className="font-semibold">{actorLabel}</span>
+        {" "}
+        {t("sessionActivity.castByGmDid")}
+        {" "}
+        <span className="font-semibold text-slate-200">{casterLabel}</span>
+        {" "}
+        {t("sessionActivity.castByGmCastVerb")}
+      </>
+    )
+    : (
+      <>
+        <span className="font-semibold">{actorLabel}</span>
+        {" "}
+        {t("sessionActivity.castVerb")}
+      </>
+    );
 
   return (
     <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
       <span className="mt-0.5 text-base">✨</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white">
-          <span className="font-semibold">{actorLabel}</span>
-          {" "}
-          {t("sessionActivity.castVerb")}
+          {renderedCastPrefix}
           {" "}
           <span className="font-semibold text-slate-100">{spellLabel}</span>
           {" "}

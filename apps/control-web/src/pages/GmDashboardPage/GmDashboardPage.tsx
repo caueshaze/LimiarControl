@@ -312,6 +312,7 @@ export const GmDashboardPage = () => {
 
             {activeSession?.status === "ACTIVE" && (
                 <GmDashboardPartyInventories
+                    activeSessionId={activeSession.id}
                     activeSessionPartyId={activeSession.partyId ?? null}
                     catalogItems={catalogItems}
                     currencyDraftByUserId={currencyDraftByUserId}

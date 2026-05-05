@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
 import type { InventoryItem } from "../../entities/inventory";
 import type { Item } from "../../entities/item";
+import type { OutOfCombatCastableSpell } from "../../entities/character";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { SessionInventoryFilterGroup } from "../../features/inventory/components/sessionInventoryPanel.utils";
 import type { CurrencyDraft, GrantFeedback, HpActionState, ItemDraft } from "./gmDashboard.types";
@@ -12,9 +13,12 @@ import { GmDashboardInventoryFilters } from "./GmDashboardInventoryFilters";
 import { GmDashboardInventoryItemList } from "./GmDashboardInventoryItemList";
 import { GmDashboardGrantPanels } from "./GmDashboardGrantPanels";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
+import { OutOfCombatSpellCastCard } from "../PlayerBoardPage/OutOfCombatSpellCastCard";
 import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 
 type Props = {
+  activeSessionId: string | null;
   activeSessionPartyId: string | null;
   catalogItems: Record<string, Item>;
   currencyDraft: CurrencyDraft | undefined;
@@ -40,6 +44,7 @@ type Props = {
   sortedCatalogItems: Item[];
   wallet: CurrencyWallet | undefined;
   xpDraft: string;
+  targetOptions: Array<{ playerUserId: string; label: string }>;
   onApproveLevelUp: () => void;
   onDamagePlayer: () => void;
   onDenyLevelUp: () => void;
@@ -58,6 +63,7 @@ type Props = {
 };
 
 export const GmDashboardPlayerInventoryCard = ({
+  activeSessionId,
   activeSessionPartyId,
   catalogItems,
   currencyDraft,
@@ -83,6 +89,7 @@ export const GmDashboardPlayerInventoryCard = ({
   sortedCatalogItems,
   wallet,
   xpDraft,
+  targetOptions,
   onApproveLevelUp,
   onDamagePlayer,
   onDenyLevelUp,
@@ -108,6 +115,10 @@ export const GmDashboardPlayerInventoryCard = ({
     hpActionState?.userId === player.userId && hpActionState.action === "damage";
   const isHealing =
     hpActionState?.userId === player.userId && hpActionState.action === "heal";
+  const [castableSpells, setCastableSpells] = useState<OutOfCombatCastableSpell[]>([]);
+  const [loadingCastableSpells, setLoadingCastableSpells] = useState(false);
+  const [castingSpell, setCastingSpell] = useState(false);
+  const [castFeedback, setCastFeedback] = useState<string | null>(null);
 
   const encumbranceData = useMemo(() => {
     if (!sheet) return null;
@@ -115,6 +126,54 @@ export const GmDashboardPlayerInventoryCard = ({
     const result = computeEncumbranceTier({ strengthScore: sheet.abilities.strength, totalWeightKg });
     return { strengthScore: sheet.abilities.strength, totalWeightKg, tier: result.tier };
   }, [sheet]);
+
+  const loadCastableSpells = useCallback(async () => {
+    if (!activeSessionId) {
+      setCastableSpells([]);
+      return;
+    }
+    setLoadingCastableSpells(true);
+    setCastFeedback(null);
+    try {
+      const spells = await sessionStatesRepo.listCastableOutOfCombatForPlayer(activeSessionId, player.userId);
+      setCastableSpells(spells);
+    } catch {
+      setCastableSpells([]);
+      setCastFeedback("Falha ao carregar magias OOC.");
+    } finally {
+      setLoadingCastableSpells(false);
+    }
+  }, [activeSessionId, player.userId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void loadCastableSpells();
+  }, [isOpen, loadCastableSpells]);
+
+  const handleCastSpellOutOfCombat = useCallback(async (
+    spellId: string,
+    slotLevel: number | null,
+    variantKey: string | null,
+    targetPlayerUserId: string | null,
+  ) => {
+    if (!activeSessionId || castingSpell) return;
+    setCastingSpell(true);
+    setCastFeedback(null);
+    try {
+      await sessionStatesRepo.castSpellOutOfCombatForPlayer(activeSessionId, player.userId, {
+        spellId,
+        slotLevel,
+        variantKey,
+        targetPlayerUserId,
+      });
+      setCastFeedback("Magia OOC lançada com sucesso.");
+      void loadCastableSpells();
+    } catch {
+      setCastFeedback("Nao foi possivel lançar a magia OOC.");
+    } finally {
+      setCastingSpell(false);
+    }
+  }, [activeSessionId, castingSpell, loadCastableSpells, player.userId]);
 
   const playSheetRoute = activeSessionPartyId
     ? `${routes.characterSheetParty.replace(":partyId", activeSessionPartyId)}?${new URLSearchParams({
@@ -202,6 +261,20 @@ export const GmDashboardPlayerInventoryCard = ({
           />
 
           <div className="mt-3 space-y-3">
+            {loadingCastableSpells ? (
+              <p className="text-xs text-slate-400">Carregando magias OOC...</p>
+            ) : (
+              <OutOfCombatSpellCastCard
+                spells={castableSpells}
+                casting={castingSpell}
+                onCast={handleCastSpellOutOfCombat}
+                targetOptions={targetOptions}
+              />
+            )}
+            {castFeedback ? (
+              <p className="text-xs text-slate-400">{castFeedback}</p>
+            ) : null}
+
             <GmDashboardInventoryFilters
               userId={player.userId}
               searchValue={inventorySearch}

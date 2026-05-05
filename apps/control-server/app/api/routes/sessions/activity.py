@@ -393,8 +393,19 @@ def get_session_activity(
                 userId=command.user_id,
                 username=command_user.username if command_user else None,
                 displayName=actor_name,
-                actorPlayerUserId=payload.get("actor_player_user_id") if isinstance(payload.get("actor_player_user_id"), str) else None,
+                actorUserId=payload.get("actor_user_id") if isinstance(payload.get("actor_user_id"), str) else None,
+                actorPlayerUserId=(
+                    payload.get("actor_player_user_id")
+                    if isinstance(payload.get("actor_player_user_id"), str)
+                    else (
+                        payload.get("actor_user_id")
+                        if isinstance(payload.get("actor_user_id"), str)
+                        else None
+                    )
+                ),
                 actorDisplayName=payload.get("actor_display_name") if isinstance(payload.get("actor_display_name"), str) else actor_name,
+                casterPlayerUserId=payload.get("caster_player_user_id") if isinstance(payload.get("caster_player_user_id"), str) else None,
+                casterDisplayName=payload.get("caster_display_name") if isinstance(payload.get("caster_display_name"), str) else None,
                 targetPlayerUserId=payload.get("target_player_user_id") if isinstance(payload.get("target_player_user_id"), str) else None,
                 targetDisplayName=payload.get("target_display_name") if isinstance(payload.get("target_display_name"), str) else None,
                 spellKey=payload.get("spell_key") if isinstance(payload.get("spell_key"), str) else None,
@@ -421,6 +432,7 @@ def get_session_activity(
                 ),
                 previousSpellName=payload.get("previous_spell_name") if isinstance(payload.get("previous_spell_name"), str) else None,
                 previousVariantLabel=payload.get("previous_variant_label") if isinstance(payload.get("previous_variant_label"), str) else None,
+                castByGm=bool(payload.get("cast_by_gm", False)),
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))

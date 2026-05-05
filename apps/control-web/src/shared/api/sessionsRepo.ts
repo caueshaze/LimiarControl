@@ -334,8 +334,11 @@ export type OutOfCombatSpellCastActivityEvent = {
   userId?: string | null;
   username?: string | null;
   displayName?: string | null;
+  actorUserId?: string | null;
   actorPlayerUserId?: string | null;
   actorDisplayName?: string | null;
+  casterPlayerUserId?: string | null;
+  casterDisplayName?: string | null;
   targetPlayerUserId?: string | null;
   targetDisplayName?: string | null;
   spellKey?: string | null;
@@ -350,6 +353,7 @@ export type OutOfCombatSpellCastActivityEvent = {
   newConcentrationGroup?: string | null;
   previousSpellName?: string | null;
   previousVariantLabel?: string | null;
+  castByGm?: boolean;
   timestamp: string;
   sessionOffsetSeconds: number;
 };

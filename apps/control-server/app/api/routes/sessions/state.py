@@ -8,6 +8,7 @@ from app.db.session import get_session
 from app.models.campaign_member import CampaignMember
 from app.models.campaign_spell import CampaignSpell
 from app.models.item import ItemType
+from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session_command_event import SessionCommandEvent
 from app.models.session_state import SessionState
 from app.schemas.session_state import (
@@ -92,6 +93,365 @@ def _resolve_ooc_activity_actor(entry, user, session: DbSession) -> tuple[str | 
     resolved_member_id = member_id if isinstance(member_id, str) and member_id else None
     resolved_actor = actor_display_name if isinstance(actor_display_name, str) and actor_display_name else user.id
     return resolved_member_id, resolved_actor
+
+
+def _require_session_participant(entry, session: DbSession, player_user_id: str, *, label: str) -> None:
+    if entry.party_id:
+        party_member = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == entry.party_id,
+                PartyMember.user_id == player_user_id,
+                PartyMember.status == PartyMemberStatus.JOINED,
+            )
+        ).first()
+        if not party_member:
+            raise HTTPException(status_code=400, detail=f"{label} is not a participant in this session")
+        return
+
+    campaign_member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == player_user_id,
+        )
+    ).first()
+    if not campaign_member:
+        raise HTTPException(status_code=400, detail=f"{label} is not a participant in this session")
+
+
+def _list_out_of_combat_castable_spells_for_player(
+    *,
+    entry,
+    session_id: str,
+    caster_user_id: str,
+    session: DbSession,
+) -> list[dict]:
+    state = session.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == caster_user_id,
+        )
+    ).first()
+    state = ensure_session_state(state, session_id, caster_user_id, entry.party_id, session)
+    if not state:
+        return []
+
+    spellcasting = (state.state_json or {}).get("spellcasting") or {}
+    player_spells = spellcasting.get("spells") or []
+
+    canonical_keys = [
+        s.get("canonicalKey") for s in player_spells
+        if isinstance(s, dict) and s.get("canonicalKey")
+    ]
+    if not canonical_keys:
+        return []
+
+    campaign_spells = session.exec(
+        select(CampaignSpell).where(
+            CampaignSpell.campaign_id == entry.campaign_id,
+            CampaignSpell.canonical_key.in_(canonical_keys),
+            CampaignSpell.out_of_combat_castable == True,  # noqa: E712
+            CampaignSpell.is_enabled == True,  # noqa: E712
+        )
+    ).all()
+
+    campaign_spells = [cs for cs in campaign_spells if has_castable_effects(cs)]
+    eligible_keys = {cs.canonical_key for cs in campaign_spells}
+
+    result: list[dict] = []
+    for player_spell in player_spells:
+        if not isinstance(player_spell, dict):
+            continue
+        spell_key = player_spell.get("canonicalKey")
+        if spell_key not in eligible_keys:
+            continue
+        campaign_spell = next((c for c in campaign_spells if c.canonical_key == spell_key), None)
+        if not campaign_spell:
+            continue
+        result.append({
+            "id": player_spell.get("id"),
+            "canonicalKey": campaign_spell.canonical_key,
+            "nameEn": campaign_spell.name_en,
+            "namePt": campaign_spell.name_pt,
+            "level": campaign_spell.level,
+            "concentration": campaign_spell.concentration,
+            "prepared": player_spell.get("prepared", False),
+            "variants": campaign_spell.variants_json or [],
+            "effects": campaign_spell.effects_json or [],
+            "outOfCombatTarget": campaign_spell.out_of_combat_target,
+        })
+    return result
+
+
+async def _cast_spell_out_of_combat_for_player(
+    *,
+    entry,
+    session_id: str,
+    req: OutOfCombatCastRequest,
+    actor_user,
+    caster_user_id: str,
+    session: DbSession,
+    cast_by_gm: bool,
+    enforce_target_membership: bool = False,
+) -> SessionStateRead:
+    # --- Load caster state ---
+    caster_state = session.exec(
+        select(SessionState).where(
+            SessionState.session_id == session_id,
+            SessionState.player_user_id == caster_user_id,
+        )
+    ).first()
+    caster_state = ensure_session_state(caster_state, session_id, caster_user_id, entry.party_id, session)
+    if not caster_state:
+        raise HTTPException(status_code=404, detail="Session state not found")
+
+    # --- Resolve target ---
+    target_user_id = req.targetPlayerUserId or caster_user_id
+    is_ally_target = target_user_id != caster_user_id
+
+    target_state: SessionState | None = None
+    if is_ally_target:
+        if enforce_target_membership:
+            _require_session_participant(entry, session, target_user_id, label="Target")
+        target_state = session.exec(
+            select(SessionState).where(
+                SessionState.session_id == session_id,
+                SessionState.player_user_id == target_user_id,
+            )
+        ).first()
+        if not target_state:
+            raise HTTPException(status_code=400, detail="Target is not a participant in this session")
+
+    # --- Validate spell ---
+    state_json = caster_state.state_json or {}
+    spellcasting = state_json.get("spellcasting") or {}
+    player_spells = spellcasting.get("spells") or []
+    player_spell = next(
+        (s for s in player_spells if isinstance(s, dict) and s.get("id") == req.spellId),
+        None,
+    )
+    if player_spell is None:
+        raise HTTPException(status_code=400, detail=f"Spell not found in character spell list: {req.spellId!r}")
+
+    canonical_key = player_spell.get("canonicalKey")
+    if not canonical_key:
+        raise HTTPException(status_code=400, detail="Spell entry is missing canonicalKey")
+
+    spell_level = player_spell.get("level", 0)
+    if spell_level > 0 and player_spell.get("prepared") is False:
+        raise HTTPException(status_code=400, detail="Spell is not prepared")
+
+    campaign_spell = session.exec(
+        select(CampaignSpell).where(
+            CampaignSpell.campaign_id == entry.campaign_id,
+            CampaignSpell.canonical_key == canonical_key,
+            CampaignSpell.is_enabled == True,  # noqa: E712
+        )
+    ).first()
+    if not campaign_spell:
+        raise HTTPException(status_code=400, detail=f"Spell not found in campaign catalog: {canonical_key!r}")
+
+    if campaign_spell.out_of_combat_target == "ally" and not req.targetPlayerUserId:
+        raise HTTPException(status_code=400, detail="Spell requires an ally target")
+
+    if is_ally_target and campaign_spell.out_of_combat_target not in ("ally", "self_or_ally"):
+        raise HTTPException(status_code=400, detail="Spell cannot target allies out of combat")
+
+    ok, rejection = check_out_of_combat_cast_eligibility(
+        spell=campaign_spell,
+        state_json=state_json,
+        slot_level=req.slotLevel,
+        variant_key=req.variantKey,
+        out_of_combat_target=campaign_spell.out_of_combat_target,
+        target_user_id=target_user_id,
+        caster_user_id=caster_user_id,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=rejection)
+
+    # --- Capture previous concentration metadata BEFORE any mutation ---
+    previous_concentration_metadata = next(
+        (
+            metadata
+            for effect in (state_json.get("active_spell_effects") or [])
+            if isinstance(effect, dict)
+            for metadata in [effect.get("metadata")]
+            if isinstance(metadata, dict) and metadata.get("concentration")
+        ),
+        None,
+    )
+    old_group = (
+        previous_concentration_metadata.get("concentration_group")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("concentration_group"), str)
+        else None
+    )
+    previous_spell_name = (
+        previous_concentration_metadata.get("source_spell_name")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("source_spell_name"), str)
+        else None
+    )
+    previous_variant_label = (
+        previous_concentration_metadata.get("selected_variant_label")
+        if isinstance(previous_concentration_metadata, dict)
+        and isinstance(previous_concentration_metadata.get("selected_variant_label"), str)
+        else None
+    )
+
+    # --- Spend slot and clear caster concentration ---
+    updated_caster_json = dict(state_json)
+
+    if spell_level > 0 and req.slotLevel is not None:
+        try:
+            updated_caster_json = consume_spell_slot(updated_caster_json, req.slotLevel)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    affected_allies: list[SessionState] = []
+    if campaign_spell.concentration:
+        updated_caster_json = clear_persisted_concentration_effects(updated_caster_json)
+        if old_group:
+            affected_allies = clear_concentration_group_across_session(
+                session, session_id, old_group, exclude_user_id=caster_user_id
+            )
+
+    # --- Build target effects ---
+    new_target_effects = build_persisted_effects(
+        spell=campaign_spell,
+        caster_user_id=caster_user_id,
+        target_user_id=target_user_id,
+        variant_key=req.variantKey,
+    )
+    if not new_target_effects:
+        raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
+
+    group_id: str | None = (
+        (new_target_effects[0].get("metadata") or {}).get("concentration_group")
+        if new_target_effects else None
+    )
+
+    # --- Apply effects ---
+    if is_ally_target:
+        # Concentration marker on the caster (no gameplay bonus)
+        if campaign_spell.concentration and group_id:
+            marker = build_concentration_marker(
+                spell=campaign_spell,
+                caster_user_id=caster_user_id,
+                target_user_id=target_user_id,
+                concentration_group=group_id,
+                variant_key=req.variantKey,
+            )
+            caster_effects = list(updated_caster_json.get("active_spell_effects") or [])
+            caster_effects.append(marker)
+            updated_caster_json["active_spell_effects"] = caster_effects
+            marker_effect_id = marker.get("id") if isinstance(marker.get("id"), str) else None
+        else:
+            marker_effect_id = None
+
+        # Buff effects land on the target
+        target_json = dict(target_state.state_json or {})  # type: ignore[union-attr]
+        target_effects = list(target_json.get("active_spell_effects") or [])
+        target_effects.extend(new_target_effects)
+        target_json["active_spell_effects"] = target_effects
+        target_state.state_json = finalize_session_state_data(target_json)  # type: ignore[union-attr]
+        flag_modified(target_state, "state_json")
+        session.add(target_state)
+    else:
+        # Self-target: original behaviour unchanged
+        existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
+        existing_effects.extend(new_target_effects)
+        updated_caster_json["active_spell_effects"] = existing_effects
+        marker_effect_id = None
+
+    # --- Persist caster state ---
+    caster_state.state_json = finalize_session_state_data(updated_caster_json)
+    flag_modified(caster_state, "state_json")
+    session.add(caster_state)
+
+    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
+    if actor_member_id:
+        spell_name = (
+            campaign_spell.name_pt
+            or campaign_spell.name_en
+            or campaign_spell.canonical_key
+        )
+        variant_label = (
+            (new_target_effects[0].get("metadata") or {}).get("selected_variant_label")
+            if new_target_effects
+            and isinstance(new_target_effects[0], dict)
+            and isinstance(new_target_effects[0].get("metadata"), dict)
+            else None
+        )
+        created_effect_ids = [
+            effect_id
+            for effect_id in (
+                [effect.get("id") for effect in new_target_effects]
+                + ([marker_effect_id] if marker_effect_id else [])
+            )
+            if isinstance(effect_id, str) and effect_id
+        ]
+        replaced_concentration = bool(campaign_spell.concentration and previous_concentration_metadata)
+        activity_payload: dict = {
+            "actor_user_id": actor_user.id,
+            "actor_player_user_id": actor_user.id,  # legacy compatibility
+            "actor_display_name": actor_display_name,
+            "caster_player_user_id": caster_user_id,
+            "caster_display_name": (
+                actor_display_name if caster_user_id == actor_user.id else caster_user_id
+            ),
+            "target_player_user_id": target_user_id,
+            "target_display_name": (
+                actor_display_name if target_user_id == actor_user.id else target_user_id
+            ),
+            "spell_key": campaign_spell.canonical_key,
+            "spell_name": spell_name,
+            "variant_key": req.variantKey,
+            "variant_label": variant_label,
+            "created_effect_ids": created_effect_ids,
+            "concentration_group": group_id,
+            "replaced_concentration": replaced_concentration,
+            "previous_concentration_group": old_group,
+            "new_concentration_group": group_id if campaign_spell.concentration else None,
+            "previous_spell_name": previous_spell_name,
+            "previous_variant_label": previous_variant_label,
+            "cast_by_gm": cast_by_gm,
+        }
+        if req.slotLevel is not None:
+            activity_payload["slot_level"] = req.slotLevel
+        record_session_activity(
+            entry,
+            "out_of_combat_spell_cast",
+            session,
+            member_id=actor_member_id,
+            user_id=actor_user.id,
+            actor_name=actor_display_name,
+            payload=activity_payload,
+        )
+        _prune_out_of_combat_session_activity(session, session_id)
+
+    # --- Single commit ---
+    session.commit()
+    session.refresh(caster_state)
+    if is_ally_target and target_state is not None:
+        session.refresh(target_state)
+
+    # --- Publish updates (deduped by player_user_id) ---
+    states_to_publish: dict[str, SessionState] = {caster_user_id: caster_state}
+    if is_ally_target and target_state is not None:
+        states_to_publish[target_user_id] = target_state
+    for ally in affected_allies:
+        if ally.player_user_id not in states_to_publish:
+            states_to_publish[ally.player_user_id] = ally
+
+    for player_id, state in states_to_publish.items():
+        await publish_state_update(
+            entry,
+            player_id,
+            state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
+        )
+
+    return to_state_read(caster_state)
 
 
 def _prune_out_of_combat_session_activity(session: DbSession, session_id: str) -> None:
@@ -508,60 +868,30 @@ def list_out_of_combat_castable_spells(
 ):
     entry = get_session_entry(session_id, session)
     require_session_view_access(entry, user, session, user.id)
-    state = session.exec(
-        select(SessionState).where(
-            SessionState.session_id == session_id,
-            SessionState.player_user_id == user.id,
-        )
-    ).first()
-    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
-    if not state:
-        return []
+    return _list_out_of_combat_castable_spells_for_player(
+        entry=entry,
+        session_id=session_id,
+        caster_user_id=user.id,
+        session=session,
+    )
 
-    spellcasting = (state.state_json or {}).get("spellcasting") or {}
-    player_spells = spellcasting.get("spells") or []
 
-    canonical_keys = [
-        s.get("canonicalKey") for s in player_spells
-        if isinstance(s, dict) and s.get("canonicalKey")
-    ]
-    if not canonical_keys:
-        return []
-
-    campaign_spells = session.exec(
-        select(CampaignSpell).where(
-            CampaignSpell.campaign_id == entry.campaign_id,
-            CampaignSpell.canonical_key.in_(canonical_keys),
-            CampaignSpell.out_of_combat_castable == True,  # noqa: E712
-            CampaignSpell.is_enabled == True,  # noqa: E712
-        )
-    ).all()
-
-    campaign_spells = [cs for cs in campaign_spells if has_castable_effects(cs)]
-    eligible_keys = {cs.canonical_key for cs in campaign_spells}
-
-    result = []
-    for s in player_spells:
-        if not isinstance(s, dict):
-            continue
-        if s.get("canonicalKey") not in eligible_keys:
-            continue
-        cs = next((c for c in campaign_spells if c.canonical_key == s.get("canonicalKey")), None)
-        if not cs:
-            continue
-        result.append({
-            "id": s.get("id"),
-            "canonicalKey": cs.canonical_key,
-            "nameEn": cs.name_en,
-            "namePt": cs.name_pt,
-            "level": cs.level,
-            "concentration": cs.concentration,
-            "prepared": s.get("prepared", False),
-            "variants": cs.variants_json or [],
-            "effects": cs.effects_json or [],
-            "outOfCombatTarget": cs.out_of_combat_target,
-        })
-    return result
+@router.get("/sessions/{session_id}/state/{player_user_id}/spells/castable-out-of-combat")
+def list_out_of_combat_castable_spells_for_player(
+    session_id: str,
+    player_user_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_gm(entry, user, session)
+    _require_session_participant(entry, session, player_user_id, label="Caster")
+    return _list_out_of_combat_castable_spells_for_player(
+        entry=entry,
+        session_id=session_id,
+        caster_user_id=player_user_id,
+        session=session,
+    )
 
 
 @router.post("/sessions/{session_id}/state/me/spells/cast", response_model=SessionStateRead)
@@ -573,254 +903,35 @@ async def cast_spell_out_of_combat(
 ):
     entry = get_session_entry(session_id, session)
     require_session_view_access(entry, user, session, user.id)
-
-    # --- Load caster state ---
-    state = session.exec(
-        select(SessionState).where(
-            SessionState.session_id == session_id,
-            SessionState.player_user_id == user.id,
-        )
-    ).first()
-    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
-    if not state:
-        raise HTTPException(status_code=404, detail="Session state not found")
-
-    # --- Resolve target ---
-    target_user_id = req.targetPlayerUserId or user.id
-    is_ally_target = target_user_id != user.id
-
-    target_state: SessionState | None = None
-    if is_ally_target:
-        target_state = session.exec(
-            select(SessionState).where(
-                SessionState.session_id == session_id,
-                SessionState.player_user_id == target_user_id,
-            )
-        ).first()
-        if not target_state:
-            raise HTTPException(status_code=400, detail="Target is not a participant in this session")
-
-    # --- Validate spell ---
-    state_json = state.state_json or {}
-    spellcasting = state_json.get("spellcasting") or {}
-    player_spells = spellcasting.get("spells") or []
-    player_spell = next(
-        (s for s in player_spells if isinstance(s, dict) and s.get("id") == req.spellId),
-        None,
-    )
-    if player_spell is None:
-        raise HTTPException(status_code=400, detail=f"Spell not found in character spell list: {req.spellId!r}")
-
-    canonical_key = player_spell.get("canonicalKey")
-    if not canonical_key:
-        raise HTTPException(status_code=400, detail="Spell entry is missing canonicalKey")
-
-    spell_level = player_spell.get("level", 0)
-    if spell_level > 0 and player_spell.get("prepared") is False:
-        raise HTTPException(status_code=400, detail="Spell is not prepared")
-
-    campaign_spell = session.exec(
-        select(CampaignSpell).where(
-            CampaignSpell.campaign_id == entry.campaign_id,
-            CampaignSpell.canonical_key == canonical_key,
-            CampaignSpell.is_enabled == True,  # noqa: E712
-        )
-    ).first()
-    if not campaign_spell:
-        raise HTTPException(status_code=400, detail=f"Spell not found in campaign catalog: {canonical_key!r}")
-
-    if campaign_spell.out_of_combat_target == "ally" and not req.targetPlayerUserId:
-        raise HTTPException(status_code=400, detail="Spell requires an ally target")
-
-    if is_ally_target and campaign_spell.out_of_combat_target not in ("ally", "self_or_ally"):
-        raise HTTPException(status_code=400, detail="Spell cannot target allies out of combat")
-
-    ok, rejection = check_out_of_combat_cast_eligibility(
-        spell=campaign_spell,
-        state_json=state_json,
-        slot_level=req.slotLevel,
-        variant_key=req.variantKey,
-        out_of_combat_target=campaign_spell.out_of_combat_target,
-        target_user_id=target_user_id,
+    return await _cast_spell_out_of_combat_for_player(
+        entry=entry,
+        session_id=session_id,
+        req=req,
+        actor_user=user,
         caster_user_id=user.id,
-    )
-    if not ok:
-        raise HTTPException(status_code=400, detail=rejection)
-
-    # --- Capture previous concentration metadata BEFORE any mutation ---
-    previous_concentration_metadata = next(
-        (
-            metadata
-            for e in (state_json.get("active_spell_effects") or [])
-            if isinstance(e, dict)
-            for metadata in [e.get("metadata")]
-            if isinstance(metadata, dict) and metadata.get("concentration")
-        ),
-        None,
-    )
-    old_group = (
-        previous_concentration_metadata.get("concentration_group")
-        if isinstance(previous_concentration_metadata, dict)
-        and isinstance(previous_concentration_metadata.get("concentration_group"), str)
-        else None
-    )
-    previous_spell_name = (
-        previous_concentration_metadata.get("source_spell_name")
-        if isinstance(previous_concentration_metadata, dict)
-        and isinstance(previous_concentration_metadata.get("source_spell_name"), str)
-        else None
-    )
-    previous_variant_label = (
-        previous_concentration_metadata.get("selected_variant_label")
-        if isinstance(previous_concentration_metadata, dict)
-        and isinstance(previous_concentration_metadata.get("selected_variant_label"), str)
-        else None
+        session=session,
+        cast_by_gm=False,
     )
 
-    # --- Spend slot and clear caster concentration ---
-    updated = dict(state_json)
 
-    if spell_level > 0 and req.slotLevel is not None:
-        try:
-            updated = consume_spell_slot(updated, req.slotLevel)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    affected_allies: list[SessionState] = []
-    if campaign_spell.concentration:
-        updated = clear_persisted_concentration_effects(updated)
-        if old_group:
-            affected_allies = clear_concentration_group_across_session(
-                session, session_id, old_group, exclude_user_id=user.id
-            )
-
-    # --- Build target effects ---
-    new_target_effects = build_persisted_effects(
-        spell=campaign_spell,
-        caster_user_id=user.id,
-        target_user_id=target_user_id,
-        variant_key=req.variantKey,
+@router.post("/sessions/{session_id}/state/{player_user_id}/spells/cast", response_model=SessionStateRead)
+async def cast_spell_out_of_combat_for_player(
+    session_id: str,
+    player_user_id: str,
+    req: OutOfCombatCastRequest,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_gm(entry, user, session)
+    _require_session_participant(entry, session, player_user_id, label="Caster")
+    return await _cast_spell_out_of_combat_for_player(
+        entry=entry,
+        session_id=session_id,
+        req=req,
+        actor_user=user,
+        caster_user_id=player_user_id,
+        session=session,
+        cast_by_gm=True,
+        enforce_target_membership=True,
     )
-    if not new_target_effects:
-        raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
-
-    group_id: str | None = (
-        (new_target_effects[0].get("metadata") or {}).get("concentration_group")
-        if new_target_effects else None
-    )
-
-    # --- Apply effects ---
-    if is_ally_target:
-        # Concentration marker on the caster (no gameplay bonus)
-        if campaign_spell.concentration and group_id:
-            marker = build_concentration_marker(
-                spell=campaign_spell,
-                caster_user_id=user.id,
-                target_user_id=target_user_id,
-                concentration_group=group_id,
-                variant_key=req.variantKey,
-            )
-            caster_effs = list(updated.get("active_spell_effects") or [])
-            caster_effs.append(marker)
-            updated["active_spell_effects"] = caster_effs
-            marker_effect_id = marker.get("id") if isinstance(marker.get("id"), str) else None
-        else:
-            marker_effect_id = None
-
-        # Buff effects land on the target
-        target_json = dict(target_state.state_json or {})  # type: ignore[union-attr]
-        target_effs = list(target_json.get("active_spell_effects") or [])
-        target_effs.extend(new_target_effects)
-        target_json["active_spell_effects"] = target_effs
-        target_state.state_json = finalize_session_state_data(target_json)  # type: ignore[union-attr]
-        flag_modified(target_state, "state_json")
-        session.add(target_state)
-    else:
-        # Self-target: original v1 behaviour unchanged
-        existing_effects = list(updated.get("active_spell_effects") or [])
-        existing_effects.extend(new_target_effects)
-        updated["active_spell_effects"] = existing_effects
-        marker_effect_id = None
-
-    # --- Persist caster state ---
-    state.state_json = finalize_session_state_data(updated)
-    flag_modified(state, "state_json")
-    session.add(state)
-
-    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, user, session)
-    if actor_member_id:
-        spell_name = (
-            campaign_spell.name_pt
-            or campaign_spell.name_en
-            or campaign_spell.canonical_key
-        )
-        variant_label = (
-            (new_target_effects[0].get("metadata") or {}).get("selected_variant_label")
-            if new_target_effects
-            and isinstance(new_target_effects[0], dict)
-            and isinstance(new_target_effects[0].get("metadata"), dict)
-            else None
-        )
-        created_effect_ids = [
-            effect_id
-            for effect_id in (
-                [e.get("id") for e in new_target_effects]
-                + ([marker_effect_id] if marker_effect_id else [])
-            )
-            if isinstance(effect_id, str) and effect_id
-        ]
-        replaced_concentration = bool(campaign_spell.concentration and previous_concentration_metadata)
-        target_display_name = actor_display_name if not is_ally_target else target_user_id
-        activity_payload: dict = {
-            "actor_player_user_id": user.id,
-            "actor_display_name": actor_display_name,
-            "target_player_user_id": target_user_id,
-            "target_display_name": target_display_name,
-            "spell_key": campaign_spell.canonical_key,
-            "spell_name": spell_name,
-            "variant_key": req.variantKey,
-            "variant_label": variant_label,
-            "created_effect_ids": created_effect_ids,
-            "concentration_group": group_id,
-            "replaced_concentration": replaced_concentration,
-            "previous_concentration_group": old_group,
-            "new_concentration_group": group_id if campaign_spell.concentration else None,
-            "previous_spell_name": previous_spell_name,
-            "previous_variant_label": previous_variant_label,
-        }
-        if req.slotLevel is not None:
-            activity_payload["slot_level"] = req.slotLevel
-        record_session_activity(
-            entry,
-            "out_of_combat_spell_cast",
-            session,
-            member_id=actor_member_id,
-            user_id=user.id,
-            actor_name=actor_display_name,
-            payload=activity_payload,
-        )
-        _prune_out_of_combat_session_activity(session, session_id)
-
-    # --- Single commit ---
-    session.commit()
-    session.refresh(state)
-    if is_ally_target and target_state is not None:
-        session.refresh(target_state)
-
-    # --- Publish updates (deduped by player_user_id) ---
-    states_to_publish: dict[str, SessionState] = {user.id: state}
-    if is_ally_target and target_state is not None:
-        states_to_publish[target_user_id] = target_state
-    for ally in affected_allies:
-        if ally.player_user_id not in states_to_publish:
-            states_to_publish[ally.player_user_id] = ally
-
-    for player_id, s in states_to_publish.items():
-        await publish_state_update(
-            entry,
-            player_id,
-            s.updated_at or s.created_at,
-            s.state_json if isinstance(s.state_json, dict) else None,
-        )
-
-    return to_state_read(state)

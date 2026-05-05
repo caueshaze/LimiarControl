@@ -11,6 +11,8 @@ vi.mock("../../../shared/hooks/useLocale", () => ({
         "sessionActivity.unknownTarget": "alvo desconhecido",
         "sessionActivity.onTarget": "em",
         "sessionActivity.castVerb": "lançou",
+        "sessionActivity.castByGmDid": "fez",
+        "sessionActivity.castByGmCastVerb": "lançar",
         "sessionActivity.usingSlotLevel": "usando espaço de",
         "sessionActivity.slotLevelSuffix": "º nível.",
         "sessionActivity.removedEffectVerb": "removeu",
@@ -75,6 +77,28 @@ describe("SessionActivityRow out-of-combat events", () => {
     expect(markup).toContain("em");
     expect(markup).toContain("Ally B");
     expect(markup).toContain("Escudo da Fé</span> em");
+  });
+
+  it("renders GM cast line with actor and caster when cast_by_gm is true", () => {
+    const markup = renderToStaticMarkup(
+      <SessionActivityRow
+        event={{
+          ...castBase,
+          castByGm: true,
+          actorDisplayName: "GM",
+          casterDisplayName: "Aelar",
+          targetDisplayName: "Luna",
+          spellName: "Melhorar Habilidade",
+          variantLabel: "Sabedoria da Coruja",
+        }}
+      />,
+    );
+    expect(markup).toContain("GM");
+    expect(markup).toContain("fez");
+    expect(markup).toContain("Aelar");
+    expect(markup).toContain("lançar");
+    expect(markup).toContain("Melhorar Habilidade — Sabedoria da Coruja");
+    expect(markup).toContain("Luna");
   });
 
   it("renders previous concentration context when replacement metadata exists", () => {

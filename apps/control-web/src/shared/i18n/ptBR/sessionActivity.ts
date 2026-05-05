@@ -31,6 +31,8 @@ export const sessionActivityPtBRDictionary = {
   "sessionActivity.usedConsumable": "usou",
   "sessionActivity.onTarget": "em",
   "sessionActivity.castVerb": "lancou",
+  "sessionActivity.castByGmDid": "fez",
+  "sessionActivity.castByGmCastVerb": "lancar",
   "sessionActivity.usingSlotLevel": "usando espaco de",
   "sessionActivity.slotLevelSuffix": "º nivel.",
   "sessionActivity.removedEffectVerb": "removeu",

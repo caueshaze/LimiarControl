@@ -10,6 +10,7 @@ import { GmDashboardPlayerInventoryCard } from "./GmDashboardPlayerInventoryCard
 import { useState } from "react";
 
 type Props = {
+  activeSessionId: string | null;
   activeSessionPartyId: string | null;
   catalogItems: Record<string, Item>;
   currencyDraftByUserId: Record<string, CurrencyDraft>;
@@ -47,6 +48,7 @@ type Props = {
 };
 
 export const GmDashboardPartyInventories = ({
+  activeSessionId,
   activeSessionPartyId,
   catalogItems,
   currencyDraftByUserId,
@@ -100,6 +102,7 @@ export const GmDashboardPartyInventories = ({
           return (
             <GmDashboardPlayerInventoryCard
               key={player.userId}
+              activeSessionId={activeSessionId}
               activeSessionPartyId={activeSessionPartyId}
               catalogItems={catalogItems}
               currencyDraft={currencyDraftByUserId[player.userId]}
@@ -125,6 +128,10 @@ export const GmDashboardPartyInventories = ({
               sortedCatalogItems={sortedCatalogItems}
               wallet={walletByUserId[player.userId]}
               xpDraft={xpDraftByUserId[player.userId] ?? ""}
+              targetOptions={partyPlayers.map((member) => ({
+                playerUserId: member.userId,
+                label: member.displayName || member.username || member.userId,
+              }))}
               onApproveLevelUp={() => onApproveLevelUp(player.userId)}
               onDamagePlayer={() => onDamagePlayer(player.userId)}
               onDenyLevelUp={() => onDenyLevelUp(player.userId)}
