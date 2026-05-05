@@ -41,7 +41,10 @@ export type ActiveEffectDurationType =
   | "manual"
   | "rounds"
   | "until_turn_start"
-  | "until_turn_end";
+  | "until_turn_end"
+  | "until_long_rest"
+  | "until_short_rest"
+  | "until_removed";
 
 export type ActiveEffect = {
   id: string;

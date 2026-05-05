@@ -78,6 +78,7 @@ def end_rest(data: dict | None) -> tuple[dict, RestState]:
         # Wild Shape recharges on short rest
         next_data = _recharge_wild_shape_inline(next_data)
         next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
+        next_data = _clear_rest_effects(next_data, "short_rest")
         return next_data, "short_rest"
 
     return apply_long_rest(next_data), "long_rest"
@@ -137,6 +138,37 @@ def _recharge_wild_shape_inline(data: dict) -> dict:
     if not isinstance(uses_max, int):
         uses_max = 99 if level >= 20 else 2
     return {**data, "wildShape": {**wild_shape, "usesRemaining": uses_max}}
+
+
+def _clear_rest_effects(data: dict, rest_type: Literal["short_rest", "long_rest"]) -> dict:
+    """Remove persisted active effects whose lifecycle matches the rest type.
+
+    - long_rest clears: manual, until_long_rest, until_short_rest
+    - short_rest clears: until_short_rest
+    - until_removed is never cleared by rest.
+    """
+    effects = data.get("active_spell_effects")
+    if not isinstance(effects, list):
+        return data
+
+    if rest_type == "long_rest":
+        cleared_types = {"manual", "until_long_rest", "until_short_rest"}
+    else:
+        cleared_types = {"until_short_rest"}
+
+    def _should_clear(effect: dict) -> bool:
+        dt = effect.get("duration_type")
+        # Legacy effects without duration_type are treated as manual for compatibility
+        if dt is None:
+            return rest_type == "long_rest"
+        return dt in cleared_types
+
+    remaining = [e for e in effects if not _should_clear(e)]
+    if remaining:
+        return {**data, "active_spell_effects": remaining}
+    next_data = dict(data)
+    next_data.pop("active_spell_effects", None)
+    return next_data
 
 
 def _recharge_dragonborn_breath_weapon_inline(data: dict) -> dict:
@@ -228,7 +260,7 @@ def apply_long_rest(data: dict | None) -> dict:
     next_data = _recharge_wild_shape_inline(next_data)
     next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
 
-    next_data.pop("active_spell_effects", None)
+    next_data = _clear_rest_effects(next_data, "long_rest")
 
     return next_data
 

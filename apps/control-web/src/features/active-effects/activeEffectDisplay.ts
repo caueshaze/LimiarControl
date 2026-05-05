@@ -66,6 +66,21 @@ export const getActiveEffectLifecycleBadges = (
       key: "until-turn-end",
       i18nKey: "playerBoard.lifecycleUntilTurnEnd",
     });
+  } else if (durationType === "until_long_rest") {
+    badges.push({
+      key: "until-long-rest",
+      i18nKey: "playerBoard.lifecycleUntilLongRest",
+    });
+  } else if (durationType === "until_short_rest") {
+    badges.push({
+      key: "until-short-rest",
+      i18nKey: "playerBoard.lifecycleUntilShortRest",
+    });
+  } else if (durationType === "until_removed") {
+    badges.push({
+      key: "until-removed",
+      i18nKey: "playerBoard.lifecycleUntilRemoved",
+    });
   }
 
   if (durationType === "manual") {
