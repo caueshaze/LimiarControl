@@ -25,6 +25,7 @@ from app.services.out_of_combat_cast import (
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     consume_spell_slot,
+    has_castable_effects,
 )
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
@@ -397,6 +398,7 @@ def list_out_of_combat_castable_spells(
         )
     ).all()
 
+    campaign_spells = [cs for cs in campaign_spells if has_castable_effects(cs)]
     eligible_keys = {cs.canonical_key for cs in campaign_spells}
 
     result = []

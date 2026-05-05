@@ -43,6 +43,11 @@ vi.mock("../../shared/hooks/useLocale", () => ({
   }),
 }));
 
+vi.mock("./OutOfCombatSpellCastCard", () => ({
+  OutOfCombatSpellCastCard: ({ spells }: { spells: unknown[] }) =>
+    spells.length > 0 ? <div data-testid="cast-card">cast-card</div> : null,
+}));
+
 vi.mock("./player-board-status/PlayerBoardStatusCards", () => ({
   DeathSaveCard: () => <div>death</div>,
   ProgressCard: ({ label, value }: { label: string; value: string }) => <div>{label}:{value}</div>,
@@ -643,5 +648,86 @@ describe("PlayerBoardStatusPanel", () => {
 
     expect(markup).toContain("disabled");
     expect(markup).toContain("Removendo...");
+  });
+});
+
+describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
+  const baseProps = {
+    combatActive: false,
+    pendingRoll: null,
+    playerStatus: {
+      level: 3,
+      currentHp: 20,
+      maxHp: 20,
+      hpPercent: 100,
+      tempHp: 0,
+      xpPercent: 10,
+      nextLevelThreshold: 900,
+      experiencePoints: 100,
+      ac: 12,
+      initiative: 1,
+      passivePerception: 13,
+    } as any,
+    restState: "exploration" as const,
+    usingHitDie: false,
+    onUseHitDie: () => undefined,
+    onClearConcentration: () => undefined,
+    onRemoveEffect: () => undefined,
+  };
+
+  const eligibleSpell = {
+    id: "spell-sof-1",
+    canonicalKey: "shield_of_faith",
+    nameEn: "Shield of Faith",
+    namePt: "Escudo da Fé",
+    level: 1,
+    concentration: true,
+    prepared: true,
+    variants: [],
+    effects: [],
+  } as any;
+
+  it("renders cast card when not in combat and spells are available", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[eligibleSpell]}
+        onCastSpell={() => undefined}
+      />,
+    );
+    expect(markup).toContain("cast-card");
+  });
+
+  it("hides cast card when combat is active", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        combatActive={true}
+        castableSpells={[eligibleSpell]}
+        onCastSpell={() => undefined}
+      />,
+    );
+    expect(markup).not.toContain("cast-card");
+  });
+
+  it("hides cast card when castableSpells is empty", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[]}
+        onCastSpell={() => undefined}
+      />,
+    );
+    expect(markup).not.toContain("cast-card");
+  });
+
+  it("hides cast card when onCastSpell is not provided", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[eligibleSpell]}
+      />,
+    );
+    expect(markup).not.toContain("cast-card");
   });
 });
