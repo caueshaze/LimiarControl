@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -59,6 +59,7 @@ export const PlayerBoardPage = () => {
     lastCommand,
     lastEvent,
     myInventory,
+    partyPlayers,
     pendingSpellPreparation,
     playerSheet,
     playerWallet,
@@ -250,10 +251,20 @@ export const PlayerBoardPage = () => {
     });
   }, [activeSession?.id, combatActive]);
 
+  const targetOptions = useMemo(
+    () =>
+      partyPlayers.map((m) => ({
+        playerUserId: m.userId,
+        label: m.displayName ?? m.username ?? m.userId,
+      })),
+    [partyPlayers],
+  );
+
   const handleCastSpellOutOfCombat = async (
     spellId: string,
     slotLevel: number | null,
     variantKey: string | null,
+    targetPlayerUserId: string | null,
   ) => {
     if (!activeSession?.id || castingSpell) return;
     setCastingSpell(true);
@@ -262,6 +273,7 @@ export const PlayerBoardPage = () => {
         spellId,
         slotLevel,
         variantKey,
+        targetPlayerUserId,
       });
       setPlayerSheet(parseCharacterSheet(record.state));
       setActiveConcentration(record.activeConcentration ?? null);
@@ -449,6 +461,7 @@ export const PlayerBoardPage = () => {
         playerStatus={playerStatus}
         removingEffectId={removingEffectId}
         restState={restState}
+        targetOptions={targetOptions}
         usingHitDie={usingHitDie}
         onUseHitDie={handleUseHitDie}
       />

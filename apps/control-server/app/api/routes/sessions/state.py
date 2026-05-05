@@ -18,10 +18,12 @@ from app.schemas.session_state import (
 )
 from app.services.combat import CombatService
 from app.services.combat_service.persistent_effects import (
+    clear_concentration_group_across_session,
     clear_persisted_concentration_effects,
     remove_persisted_effect,
 )
 from app.services.out_of_combat_cast import (
+    build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     consume_spell_slot,
@@ -420,6 +422,7 @@ def list_out_of_combat_castable_spells(
             "prepared": s.get("prepared", False),
             "variants": cs.variants_json or [],
             "effects": cs.effects_json or [],
+            "outOfCombatTarget": cs.out_of_combat_target,
         })
     return result
 
@@ -433,6 +436,8 @@ async def cast_spell_out_of_combat(
 ):
     entry = get_session_entry(session_id, session)
     require_session_view_access(entry, user, session, user.id)
+
+    # --- Load caster state ---
     state = session.exec(
         select(SessionState).where(
             SessionState.session_id == session_id,
@@ -443,6 +448,22 @@ async def cast_spell_out_of_combat(
     if not state:
         raise HTTPException(status_code=404, detail="Session state not found")
 
+    # --- Resolve target ---
+    target_user_id = req.targetPlayerUserId or user.id
+    is_ally_target = target_user_id != user.id
+
+    target_state: SessionState | None = None
+    if is_ally_target:
+        target_state = session.exec(
+            select(SessionState).where(
+                SessionState.session_id == session_id,
+                SessionState.player_user_id == target_user_id,
+            )
+        ).first()
+        if not target_state:
+            raise HTTPException(status_code=400, detail="Target is not a participant in this session")
+
+    # --- Validate spell ---
     state_json = state.state_json or {}
     spellcasting = state_json.get("spellcasting") or {}
     player_spells = spellcasting.get("spells") or []
@@ -471,15 +492,35 @@ async def cast_spell_out_of_combat(
     if not campaign_spell:
         raise HTTPException(status_code=400, detail=f"Spell not found in campaign catalog: {canonical_key!r}")
 
+    if campaign_spell.out_of_combat_target == "ally" and not req.targetPlayerUserId:
+        raise HTTPException(status_code=400, detail="Spell requires an ally target")
+
+    if is_ally_target and campaign_spell.out_of_combat_target not in ("ally", "self_or_ally"):
+        raise HTTPException(status_code=400, detail="Spell cannot target allies out of combat")
+
     ok, rejection = check_out_of_combat_cast_eligibility(
         spell=campaign_spell,
         state_json=state_json,
         slot_level=req.slotLevel,
         variant_key=req.variantKey,
+        out_of_combat_target=campaign_spell.out_of_combat_target,
+        target_user_id=target_user_id,
+        caster_user_id=user.id,
     )
     if not ok:
         raise HTTPException(status_code=400, detail=rejection)
 
+    # --- Capture old concentration group BEFORE any mutation ---
+    old_group: str | None = next(
+        (
+            (e.get("metadata") or {}).get("concentration_group")
+            for e in (state_json.get("active_spell_effects") or [])
+            if (e.get("metadata") or {}).get("concentration")
+        ),
+        None,
+    )
+
+    # --- Spend slot and clear caster concentration ---
     updated = dict(state_json)
 
     if spell_level > 0 and req.slotLevel is not None:
@@ -488,31 +529,83 @@ async def cast_spell_out_of_combat(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    new_effects = build_persisted_effects(
-        spell=campaign_spell,
-        caster_user_id=user.id,
-        variant_key=req.variantKey,
-    )
-    if not new_effects:
-        raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
-
+    affected_allies: list[SessionState] = []
     if campaign_spell.concentration:
         updated = clear_persisted_concentration_effects(updated)
+        if old_group:
+            affected_allies = clear_concentration_group_across_session(
+                session, session_id, old_group, exclude_user_id=user.id
+            )
 
-    existing_effects = list(updated.get("active_spell_effects") or [])
-    existing_effects.extend(new_effects)
-    updated["active_spell_effects"] = existing_effects
+    # --- Build target effects ---
+    new_target_effects = build_persisted_effects(
+        spell=campaign_spell,
+        caster_user_id=user.id,
+        target_user_id=target_user_id,
+        variant_key=req.variantKey,
+    )
+    if not new_target_effects:
+        raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
 
+    group_id: str | None = (
+        (new_target_effects[0].get("metadata") or {}).get("concentration_group")
+        if new_target_effects else None
+    )
+
+    # --- Apply effects ---
+    if is_ally_target:
+        # Concentration marker on the caster (no gameplay bonus)
+        if campaign_spell.concentration and group_id:
+            marker = build_concentration_marker(
+                spell=campaign_spell,
+                caster_user_id=user.id,
+                target_user_id=target_user_id,
+                concentration_group=group_id,
+                variant_key=req.variantKey,
+            )
+            caster_effs = list(updated.get("active_spell_effects") or [])
+            caster_effs.append(marker)
+            updated["active_spell_effects"] = caster_effs
+
+        # Buff effects land on the target
+        target_json = dict(target_state.state_json or {})  # type: ignore[union-attr]
+        target_effs = list(target_json.get("active_spell_effects") or [])
+        target_effs.extend(new_target_effects)
+        target_json["active_spell_effects"] = target_effs
+        target_state.state_json = finalize_session_state_data(target_json)  # type: ignore[union-attr]
+        flag_modified(target_state, "state_json")
+        session.add(target_state)
+    else:
+        # Self-target: original v1 behaviour unchanged
+        existing_effects = list(updated.get("active_spell_effects") or [])
+        existing_effects.extend(new_target_effects)
+        updated["active_spell_effects"] = existing_effects
+
+    # --- Persist caster state ---
     state.state_json = finalize_session_state_data(updated)
     flag_modified(state, "state_json")
     session.add(state)
+
+    # --- Single commit ---
     session.commit()
     session.refresh(state)
+    if is_ally_target and target_state is not None:
+        session.refresh(target_state)
 
-    await publish_state_update(
-        entry,
-        user.id,
-        state.updated_at or state.created_at,
-        state.state_json if isinstance(state.state_json, dict) else None,
-    )
+    # --- Publish updates (deduped by player_user_id) ---
+    states_to_publish: dict[str, SessionState] = {user.id: state}
+    if is_ally_target and target_state is not None:
+        states_to_publish[target_user_id] = target_state
+    for ally in affected_allies:
+        if ally.player_user_id not in states_to_publish:
+            states_to_publish[ally.player_user_id] = ally
+
+    for player_id, s in states_to_publish.items():
+        await publish_state_update(
+            entry,
+            player_id,
+            s.updated_at or s.created_at,
+            s.state_json if isinstance(s.state_json, dict) else None,
+        )
+
     return to_state_read(state)

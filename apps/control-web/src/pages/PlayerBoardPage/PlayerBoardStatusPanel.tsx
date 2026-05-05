@@ -32,7 +32,7 @@ type Props = {
   castingSpell?: boolean;
   clearingConcentration?: boolean;
   combatActive: boolean;
-  onCastSpell?: (spellId: string, slotLevel: number | null, variantKey: string | null) => void;
+  onCastSpell?: (spellId: string, slotLevel: number | null, variantKey: string | null, targetPlayerUserId: string | null) => void;
   onClearConcentration: () => void;
   onRemoveEffect: (effectId: string) => void;
   pendingRoll: PendingRoll | null;
@@ -40,6 +40,7 @@ type Props = {
   playerStatus: PlayerBoardStatusSummary | null;
   removingEffectId?: string | null;
   restState: "exploration" | "short_rest" | "long_rest";
+  targetOptions?: Array<{ playerUserId: string; label: string }>;
   usingHitDie: boolean;
   onUseHitDie: () => void;
 };
@@ -59,6 +60,7 @@ export const PlayerBoardStatusPanel = ({
   playerStatus,
   removingEffectId,
   restState,
+  targetOptions,
   usingHitDie,
   onUseHitDie,
 }: Props) => {
@@ -277,6 +279,7 @@ export const PlayerBoardStatusPanel = ({
               spells={castableSpells}
               casting={castingSpell}
               onCast={onCastSpell}
+              targetOptions={targetOptions}
             />
           )}
 

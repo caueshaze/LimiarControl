@@ -218,4 +218,6 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.notPrepared": "Não preparada",
   "playerBoard.concentration": "Concentração",
   "playerBoard.castSpellLoading": "Lançando...",
+  "playerBoard.selectTarget": "Alvo",
+  "playerBoard.targetSelf": "Você mesmo",
 } as const;

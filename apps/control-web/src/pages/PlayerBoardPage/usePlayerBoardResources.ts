@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { partiesRepo } from "../../shared/api/partiesRepo";
+import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import { inventoryRepo } from "../../shared/api/inventoryRepo";
 import { itemsRepo } from "../../shared/api/itemsRepo";
 import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
@@ -33,6 +34,7 @@ export const usePlayerBoardResources = ({
   userId = null,
 }: Props) => {
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [partyPlayers, setPartyPlayers] = useState<PartyMemberSummary[]>([]);
   const { activeSession, refresh } = usePartyActiveSession(partyId);
   const { selectedSessionId, setSelectedSessionId } = useSession();
   const {
@@ -69,6 +71,7 @@ export const usePlayerBoardResources = ({
   useEffect(() => {
     if (!partyId) {
       setCampaignId(null);
+      setPartyPlayers([]);
       return;
     }
 
@@ -77,11 +80,17 @@ export const usePlayerBoardResources = ({
       .then((party) => {
         if (active) {
           setCampaignId(party.campaignId);
+          setPartyPlayers(
+            party.members.filter(
+              (m) => m.role === "PLAYER" && m.status === "joined" && m.userId !== userId,
+            ),
+          );
         }
       })
       .catch(() => {
         if (active) {
           setCampaignId(null);
+          setPartyPlayers([]);
         }
       });
 
@@ -336,6 +345,7 @@ export const usePlayerBoardResources = ({
     lastCommand,
     lastEvent,
     myInventory,
+    partyPlayers,
     pendingSpellPreparation,
     playerSheet,
     playerWallet,

@@ -67,6 +67,7 @@ _FIELD_MAP: dict[str, str] = {
     "isSrd": "is_srd",
     "isActive": "is_active",
     "outOfCombatCastable": "out_of_combat_castable",
+    "outOfCombatTarget": "out_of_combat_target",
     "canonicalKey": "canonical_key",
 }
 

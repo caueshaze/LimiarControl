@@ -218,6 +218,10 @@ class BaseSpell(SQLModel, table=True):
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
+    out_of_combat_target: str = Field(
+        default="self",
+        sa_column=Column(String(20), nullable=False, server_default="self"),
+    )
 
     # --- Resolution (mechanical) ---
     resolution_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))

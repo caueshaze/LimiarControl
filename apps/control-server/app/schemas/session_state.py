@@ -23,6 +23,7 @@ class OutOfCombatCastRequest(BaseModel):
     spellId: str
     slotLevel: int | None = None
     variantKey: str | None = None
+    targetPlayerUserId: str | None = None
 
 
 class PrepareSpellsRequest(BaseModel):

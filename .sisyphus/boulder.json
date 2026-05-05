@@ -1,0 +1,52 @@
+{
+  "active_plan": "/home/caue/LimiarControl/.sisyphus/plans/ally-targeting-ooc-spells.md",
+  "started_at": "2026-05-05T15:41:45.613Z",
+  "session_ids": [
+    "ses_20746e655ffeDVPnV9IlClMJuM"
+  ],
+  "session_origins": {
+    "ses_20746e655ffeDVPnV9IlClMJuM": "direct"
+  },
+  "plan_name": "ally-targeting-ooc-spells",
+  "agent": "atlas",
+  "completed_at": "2026-05-05T16:30:00.000Z",
+  "status": "completed",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Fix 8 serializer gaps for outOfCombatTarget",
+      "session_id": "ses_20731348fffe7uGhJfJduylNCn",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T15:45:03.830Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Extend frontend types for ally targeting",
+      "session_id": "ses_207289d2cffe0dE2FvyNVp2J7V",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T15:53:24.723Z"
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Thread targetOptions through PlayerBoardPage and StatusPanel",
+      "session_id": "ses_207248baeffeH3rMJTUnVj0t5d",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-05T16:02:56.203Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Backend tests for serializer gaps + ally-only guard",
+      "session_id": "ses_2071e0cedffelimLhEMGG0a4DN",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-05T16:24:30.997Z"
+    }
+  }
+}

@@ -43,9 +43,14 @@ vi.mock("../../shared/hooks/useLocale", () => ({
   }),
 }));
 
+let lastCastCardProps: Record<string, unknown> | null = null;
+
 vi.mock("./OutOfCombatSpellCastCard", () => ({
-  OutOfCombatSpellCastCard: ({ spells }: { spells: unknown[] }) =>
-    spells.length > 0 ? <div data-testid="cast-card">cast-card</div> : null,
+  OutOfCombatSpellCastCard: (props: Record<string, unknown>) => {
+    lastCastCardProps = props;
+    const spells = props.spells as unknown[];
+    return spells.length > 0 ? <div data-testid="cast-card">cast-card</div> : null;
+  },
 }));
 
 vi.mock("./player-board-status/PlayerBoardStatusCards", () => ({
@@ -729,5 +734,45 @@ describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
       />,
     );
     expect(markup).not.toContain("cast-card");
+  });
+
+  it("passes targetOptions to OutOfCombatSpellCastCard", () => {
+    const targetOptions = [{ playerUserId: "u1", label: "Player 1" }];
+    lastCastCardProps = null;
+    renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[eligibleSpell]}
+        onCastSpell={() => undefined}
+        targetOptions={targetOptions}
+      />,
+    );
+    expect(lastCastCardProps?.targetOptions).toEqual(targetOptions);
+  });
+
+  it("passes castingSpell as casting to OutOfCombatSpellCastCard", () => {
+    lastCastCardProps = null;
+    renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[eligibleSpell]}
+        onCastSpell={() => undefined}
+        castingSpell={true}
+      />,
+    );
+    expect(lastCastCardProps?.casting).toBe(true);
+  });
+
+  it("passes onCastSpell as onCast to OutOfCombatSpellCastCard", () => {
+    const handleCast = () => undefined;
+    lastCastCardProps = null;
+    renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        {...baseProps}
+        castableSpells={[eligibleSpell]}
+        onCastSpell={handleCast}
+      />,
+    );
+    expect(lastCastCardProps?.onCast).toBe(handleCast);
   });
 });

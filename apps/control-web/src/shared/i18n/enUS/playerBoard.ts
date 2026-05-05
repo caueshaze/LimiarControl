@@ -218,4 +218,6 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.notPrepared": "Not prepared",
   "playerBoard.concentration": "Concentration",
   "playerBoard.castSpellLoading": "Casting...",
+  "playerBoard.selectTarget": "Target",
+  "playerBoard.targetSelf": "Self",
 } as const;
