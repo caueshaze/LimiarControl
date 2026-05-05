@@ -94,6 +94,7 @@ def to_campaign_spell_read(
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
         isActive=spell.is_enabled,
+        outOfCombatCastable=spell.out_of_combat_castable,
         aliases=[],
         automationMode=automation_dict["automationMode"],
         defaultSpellMode=automation_dict["defaultSpellMode"],

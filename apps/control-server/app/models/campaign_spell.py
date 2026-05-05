@@ -119,6 +119,10 @@ class CampaignSpell(SQLModel, table=True):
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
+    out_of_combat_castable: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
 
     # --- Resolution (mechanical) ---
     resolution_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))

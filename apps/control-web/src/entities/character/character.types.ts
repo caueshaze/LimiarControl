@@ -44,3 +44,30 @@ export type SessionStateRecord = {
   activeConcentration?: ActiveConcentration | null;
   pendingSpellPreparation?: Record<string, unknown> | null;
 };
+
+export type OutOfCombatCastRequest = {
+  spellId: string;
+  slotLevel?: number | null;
+  variantKey?: string | null;
+};
+
+export type OutOfCombatSpellVariant = {
+  key: string;
+  labelPt?: string | null;
+  labelEn?: string | null;
+  descriptionPt?: string | null;
+  descriptionEn?: string | null;
+  effects?: unknown[] | null;
+};
+
+export type OutOfCombatCastableSpell = {
+  id: string | null;
+  canonicalKey: string;
+  nameEn: string;
+  namePt?: string | null;
+  level: number;
+  concentration: boolean;
+  prepared: boolean;
+  variants: OutOfCombatSpellVariant[];
+  effects: unknown[];
+};

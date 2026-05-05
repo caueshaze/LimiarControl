@@ -76,6 +76,7 @@ def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
         isActive=spell.is_active,
+        outOfCombatCastable=spell.out_of_combat_castable,
         aliases=[],
         automationMode=automation_dict["automationMode"],
         defaultSpellMode=automation_dict["defaultSpellMode"],
@@ -138,4 +139,5 @@ def to_base_spell_seed_entry(spell: BaseSpell) -> BaseSpellCreate:
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
         isActive=spell.is_active,
+        outOfCombatCastable=spell.out_of_combat_castable,
     )

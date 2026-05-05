@@ -1,4 +1,4 @@
-import type { SessionStateRecord } from "../../entities/character";
+import type { OutOfCombatCastableSpell, OutOfCombatCastRequest, SessionStateRecord } from "../../entities/character";
 import { http } from "./http";
 
 export const sessionStatesRepo = {
@@ -24,4 +24,10 @@ export const sessionStatesRepo = {
     http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/spells/prepare`, {
       preparedSpellIds,
     }),
+  listCastableOutOfCombat: (sessionId: string) =>
+    http.get<OutOfCombatCastableSpell[]>(
+      `/sessions/${sessionId}/state/me/spells/castable-out-of-combat`,
+    ),
+  castSpellOutOfCombat: (sessionId: string, req: OutOfCombatCastRequest) =>
+    http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/spells/cast`, req),
 };

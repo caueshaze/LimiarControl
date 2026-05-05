@@ -19,6 +19,12 @@ class ClearConcentrationRequest(BaseModel):
     concentrationGroup: str | None = None
 
 
+class OutOfCombatCastRequest(BaseModel):
+    spellId: str
+    slotLevel: int | None = None
+    variantKey: str | None = None
+
+
 class PrepareSpellsRequest(BaseModel):
     preparedSpellIds: list[str]
 
