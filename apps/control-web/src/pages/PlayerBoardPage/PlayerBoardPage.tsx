@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaigns } from "../../features/campaign-select";
@@ -26,6 +26,7 @@ import { usePlayerBoardRealtime } from "./usePlayerBoardRealtime";
 import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
+import { getConcentrationReplacementNotice } from "./concentrationLabel";
 import { useSession } from "../../features/sessions";
 import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
 import { PlayerCombatModeShell } from "../../features/combat-ui/player/PlayerCombatModeShell";
@@ -168,6 +169,7 @@ export const PlayerBoardPage = () => {
   });
   const [clearingConcentration, setClearingConcentration] = useState(false);
   const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
+  const previousConcentrationRef = useRef<import("../../entities/character").ActiveConcentration | null>(null);
 
   const handleClearConcentration = async () => {
     if (!activeSession?.id || clearingConcentration) return;
@@ -242,6 +244,25 @@ export const PlayerBoardPage = () => {
       collapseCombatUi();
     }
   }, [collapseCombatUi, combatActive, combatUiExpanded, pendingRoll?.rollType]);
+
+  useEffect(() => {
+    const notice = getConcentrationReplacementNotice(
+      previousConcentrationRef.current,
+      activeConcentration,
+    );
+    previousConcentrationRef.current = activeConcentration ?? null;
+    if (notice) {
+      const prevLabel = notice.previousLabel ?? t("playerBoard.activeEffectFallback");
+      const nextLabel = notice.nextLabel ?? t("playerBoard.activeEffectFallback");
+      showToast({
+        variant: "info",
+        title: t("playerBoard.concentrationReplacedTitle"),
+        description: t("playerBoard.concentrationReplacedDescription")
+          .replace("{previous}", prevLabel)
+          .replace("{next}", nextLabel),
+      });
+    }
+  }, [activeConcentration, showToast, t]);
 
   return (
     <section className="space-y-6">

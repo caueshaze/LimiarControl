@@ -194,4 +194,6 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.lifecycleUntilTurnStart": "Até início do turno",
   "playerBoard.lifecycleUntilTurnEnd": "Até fim do turno",
   "playerBoard.lifecycleLongRest": "Limpa no descanso longo",
+  "playerBoard.concentrationReplacedTitle": "Concentração substituída",
+  "playerBoard.concentrationReplacedDescription": "Concentração anterior encerrada: {previous}. Nova concentração: {next}.",
 } as const;

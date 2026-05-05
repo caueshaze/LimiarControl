@@ -194,4 +194,6 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.lifecycleUntilTurnStart": "Until turn start",
   "playerBoard.lifecycleUntilTurnEnd": "Until turn end",
   "playerBoard.lifecycleLongRest": "Clears on long rest",
+  "playerBoard.concentrationReplacedTitle": "Concentration replaced",
+  "playerBoard.concentrationReplacedDescription": "Previous concentration ended: {previous}. New concentration: {next}.",
 } as const;
