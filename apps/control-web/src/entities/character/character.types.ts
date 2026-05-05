@@ -49,6 +49,7 @@ export type OutOfCombatCastRequest = {
   spellId: string;
   slotLevel?: number | null;
   variantKey?: string | null;
+  targetPlayerUserId?: string | null;
 };
 
 export type OutOfCombatSpellVariant = {
@@ -70,4 +71,5 @@ export type OutOfCombatCastableSpell = {
   prepared: boolean;
   variants: OutOfCombatSpellVariant[];
   effects: unknown[];
+  outOfCombatTarget?: "self" | "ally" | "self_or_ally";
 };

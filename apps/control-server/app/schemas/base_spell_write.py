@@ -95,6 +95,17 @@ class BaseSpellWrite(BaseModel):
     isSrd: Optional[bool] = None
     isActive: Optional[bool] = None
     outOfCombatCastable: Optional[bool] = None
+    outOfCombatTarget: Optional[str] = "self"
+
+    @field_validator("outOfCombatTarget", mode="before")
+    @classmethod
+    def validate_out_of_combat_target(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return "self"
+        allowed = {"self", "ally", "self_or_ally"}
+        if value not in allowed:
+            raise ValueError(f"outOfCombatTarget must be one of {sorted(allowed)}, got {value!r}")
+        return value
 
     @field_validator("nameEn", "descriptionEn", mode="before")
     @classmethod

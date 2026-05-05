@@ -2,17 +2,21 @@ import { useState } from "react";
 import type { OutOfCombatCastableSpell } from "../../entities/character";
 import { useLocale } from "../../shared/hooks/useLocale";
 
+type TargetOption = { playerUserId: string; label: string };
+
 type Props = {
   spells: OutOfCombatCastableSpell[];
   casting: boolean;
-  onCast: (spellId: string, slotLevel: number | null, variantKey: string | null) => void;
+  onCast: (spellId: string, slotLevel: number | null, variantKey: string | null, targetPlayerUserId: string | null) => void;
+  targetOptions?: TargetOption[];
 };
 
-export const OutOfCombatSpellCastCard = ({ spells, casting, onCast }: Props) => {
+export const OutOfCombatSpellCastCard = ({ spells, casting, onCast, targetOptions }: Props) => {
   const { t } = useLocale();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [selectedLevels, setSelectedLevels] = useState<Record<string, number>>({});
+  const [selectedTargets, setSelectedTargets] = useState<Record<string, string>>({});
 
   if (spells.length === 0) return null;
 
@@ -27,7 +31,10 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast }: Props) => 
       spell.variants.length > 0 ? (selectedVariants[spell.id] ?? null) : null;
     const slotLevel =
       spell.level > 0 ? (selectedLevels[spell.id] ?? spell.level) : null;
-    onCast(spell.id, slotLevel, variantKey);
+    const targetPlayerUserId = targetOptions?.length
+      ? (selectedTargets[spell.id] ?? null)
+      : null;
+    onCast(spell.id, slotLevel, variantKey, targetPlayerUserId);
   };
 
   const isCastable = (spell: OutOfCombatCastableSpell) => {
@@ -120,6 +127,28 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast }: Props) => 
                             </option>
                           ),
                         )}
+                      </select>
+                    </div>
+                  )}
+
+                  {targetOptions && targetOptions.length > 0 && spell.outOfCombatTarget !== "self" && (
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        {t("playerBoard.selectTarget")}
+                      </label>
+                      <select
+                        value={selectedTargets[id] ?? ""}
+                        onChange={(e) =>
+                          setSelectedTargets((cur) => ({ ...cur, [id]: e.target.value }))
+                        }
+                        className="w-full rounded bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                      >
+                        <option value="">{t("playerBoard.targetSelf")}</option>
+                        {targetOptions.map((opt) => (
+                          <option key={opt.playerUserId} value={opt.playerUserId}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   )}

@@ -22,6 +22,9 @@ def check_out_of_combat_cast_eligibility(
     state_json: dict,
     slot_level: int | None,
     variant_key: str | None,
+    out_of_combat_target: str | None = None,
+    target_user_id: str | None = None,
+    caster_user_id: str | None = None,
 ) -> tuple[bool, str | None]:
     """Return (ok, rejection_reason).  ok=True means the cast may proceed."""
     if not spell.out_of_combat_castable:
@@ -47,6 +50,14 @@ def check_out_of_combat_cast_eligibility(
         if slot.get("used", 0) >= slot.get("max", 0):
             return False, f"No spell slot of level {slot_level} remaining"
 
+    if (
+        out_of_combat_target == "self"
+        and target_user_id is not None
+        and caster_user_id is not None
+        and target_user_id != caster_user_id
+    ):
+        return False, "This spell can only target yourself"
+
     return True, None
 
 
@@ -58,6 +69,7 @@ def build_persisted_effects(
     *,
     spell,               # CampaignSpell
     caster_user_id: str,
+    target_user_id: str,
     variant_key: str | None,
 ) -> list[dict]:
     """Build the list of persisted effect dicts for an out-of-combat cast.
@@ -100,7 +112,7 @@ def build_persisted_effects(
             "concentration": bool(spell.concentration),
             "concentration_group": group_id if spell.concentration else None,
             "caster_player_user_id": caster_user_id,
-            "target_player_user_id": caster_user_id,
+            "target_player_user_id": target_user_id,
         }
 
         # Merge params into metadata (matches the else-branch in combat path)
@@ -126,6 +138,52 @@ def build_persisted_effects(
         })
 
     return results
+
+
+def build_concentration_marker(
+    *,
+    spell,               # CampaignSpell
+    caster_user_id: str,
+    target_user_id: str,
+    concentration_group: str,
+    variant_key: str | None,
+) -> dict:
+    """Lightweight concentration marker placed on the CASTER state when targeting an ally.
+
+    Has no ``metadata.declarative_effect`` so it never applies gameplay bonuses
+    to the caster. ``derive_active_concentration`` reads it to show the caster
+    their active concentration spell in the UI.
+    """
+    variant = _get_variant(spell, variant_key) if variant_key else None
+    variant_label = (variant.get("labelPt") or variant.get("labelEn")) if variant else None
+    spell_name = spell.name_pt or spell.name_en
+    display_label = spell_name if not variant_label else f"{spell_name} — {variant_label}"
+
+    return {
+        "id": str(uuid4()),
+        "source_participant_id": None,
+        "kind": "spell_effect",
+        "condition_type": None,
+        "numeric_value": None,
+        "duration_type": "until_long_rest",
+        "remaining_rounds": None,
+        "expires_on": None,
+        "expires_at_participant_id": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "metadata": {
+            "concentration": True,
+            "concentration_marker": True,
+            "concentration_group": concentration_group,
+            "source_spell_key": spell.canonical_key,
+            "source_spell_name": spell_name,
+            "selected_variant_key": variant_key,
+            "selected_variant_label": variant_label,
+            "context_origin": "out_of_combat_cast",
+            "caster_player_user_id": caster_user_id,
+            "target_player_user_id": target_user_id,
+        },
+        "display_label": display_label,
+    }
 
 
 # ---------------------------------------------------------------------------

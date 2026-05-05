@@ -1781,7 +1781,8 @@
       "requiresTargetEffect": null,
       "requiresPointSight": null,
       "requiresPointEffect": null,
-      "outOfCombatCastable": true
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally"
     },
     {
       "system": "DND5E",
@@ -1828,6 +1829,7 @@
       "isSrd": true,
       "isActive": true,
       "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
       "targetType": "touch",
       "selectionType": "creature",
       "originType": "caster",

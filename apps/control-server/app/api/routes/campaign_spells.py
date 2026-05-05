@@ -95,6 +95,7 @@ def to_campaign_spell_read(
         isSrd=spell.is_srd,
         isActive=spell.is_enabled,
         outOfCombatCastable=spell.out_of_combat_castable,
+        outOfCombatTarget=spell.out_of_combat_target,
         aliases=[],
         automationMode=automation_dict["automationMode"],
         defaultSpellMode=automation_dict["defaultSpellMode"],
@@ -215,6 +216,7 @@ def update_spell(
         "requiresTargetEffect": "requires_target_effect",
         "requiresPointSight": "requires_point_sight",
         "requiresPointEffect": "requires_point_effect",
+        "outOfCombatTarget": "out_of_combat_target",
     }
     data = {}
     for key, value in payload.model_dump(exclude_unset=True).items():

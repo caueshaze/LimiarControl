@@ -331,3 +331,36 @@ def _max_created_at(effects: list[dict]) -> str | None:
             if best is None or ts > best:
                 best = ts
     return best
+
+
+def clear_concentration_group_across_session(
+    db,
+    session_id: str,
+    concentration_group: str,
+    exclude_user_id: str | None = None,
+) -> list[SessionState]:
+    """Remove all effects with concentration_group from every SessionState in the
+    session, optionally skipping one player (the caster who handles their own state).
+
+    Stages changes via flag_modified but does NOT commit — the caller commits once.
+    Returns the list of modified SessionState objects.
+    """
+    states = db.exec(
+        sa_select(SessionState).where(SessionState.session_id == session_id)
+    ).all()
+
+    modified: list[SessionState] = []
+    for state in states:
+        if exclude_user_id and state.player_user_id == exclude_user_id:
+            continue
+        original = state.state_json
+        updated = clear_persisted_concentration_effects(
+            original, concentration_group=concentration_group
+        )
+        if updated is not original:
+            state.state_json = finalize_session_state_data(updated)
+            flag_modified(state, "state_json")
+            db.add(state)
+            modified.append(state)
+
+    return modified
