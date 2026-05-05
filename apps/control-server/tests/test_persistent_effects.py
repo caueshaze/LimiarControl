@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.services.combat_service.persistent_effects import (
+    clear_concentration_group_across_session,
     clear_persisted_concentration_effects,
     derive_active_concentration,
     enforce_single_persisted_concentration_group,
@@ -533,6 +534,41 @@ class TestClearPersistedConcentrationEffects(unittest.TestCase):
         result = clear_persisted_concentration_effects(state_json)
 
         self.assertEqual(len(result["active_spell_effects"]), 1)
+
+
+class TestClearConcentrationGroupAcrossSession(unittest.TestCase):
+    def test_only_matching_group_states_are_modified(self):
+        matching_group = _manual_spell_effect("eff-match", concentration=True)
+        matching_group["metadata"]["concentration_group"] = "grp-a"
+        other_group = _manual_spell_effect("eff-other-group", concentration=True)
+        other_group["metadata"]["concentration_group"] = "grp-b"
+        unrelated = _manual_spell_effect("eff-unrelated")
+
+        matching_state = _make_session_state(
+            {"active_spell_effects": [matching_group, unrelated]}
+        )
+        matching_state.player_user_id = "player-a"
+
+        untouched_state = _make_session_state(
+            {"active_spell_effects": [other_group, unrelated]}
+        )
+        untouched_state.player_user_id = "player-b"
+
+        db = MagicMock()
+        db.exec.return_value.all.return_value = [matching_state, untouched_state]
+
+        modified = clear_concentration_group_across_session(db, "session-1", "grp-a")
+
+        self.assertEqual(modified, [matching_state])
+        self.assertEqual(
+            [effect["id"] for effect in matching_state.state_json["active_spell_effects"]],
+            ["eff-unrelated"],
+        )
+        self.assertEqual(
+            [effect["id"] for effect in untouched_state.state_json["active_spell_effects"]],
+            ["eff-other-group", "eff-unrelated"],
+        )
+        self.assertEqual(db.add.call_count, 1)
 
 
 class TestToStateReadActiveConcentration(unittest.TestCase):

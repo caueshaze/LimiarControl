@@ -245,7 +245,7 @@ def clear_persisted_concentration_effects(
     data = dict(state_json or {})
     persisted = data.get("active_spell_effects")
     if not isinstance(persisted, list):
-        return data
+        return state_json if state_json is not None else data
 
     if concentration_group is not None:
         filtered = [
@@ -259,7 +259,7 @@ def clear_persisted_concentration_effects(
         ]
 
     if len(filtered) == len(persisted):
-        return data
+        return state_json if state_json is not None else data
     if filtered:
         data["active_spell_effects"] = filtered
     else:
