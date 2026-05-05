@@ -36,6 +36,7 @@ export const sessionActivityEnUSDictionary = {
   "sessionActivity.usingSlotLevel": "using a level",
   "sessionActivity.slotLevelSuffix": " slot.",
   "sessionActivity.removedEffectVerb": "removed",
+  "sessionActivity.fromTarget": "from",
   "sessionActivity.concentrationEndedSentence": "Concentration ended.",
   "sessionActivity.previousConcentrationEndedPrefix": "Previous concentration on",
   "sessionActivity.rollModeNormal": "Normal",

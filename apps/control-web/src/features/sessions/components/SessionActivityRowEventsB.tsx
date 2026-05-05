@@ -339,18 +339,37 @@ export const SessionActivityOutOfCombatEffectRemovedRow = ({ event, actor }: Pro
   if (event.type !== "out_of_combat_effect_removed") return null;
 
   const actorLabel = event.actorDisplayName ?? actor;
+  const removedByGm = event.removedByGm === true;
+  const targetLabel = event.targetDisplayName ?? event.targetPlayerUserId ?? t("sessionActivity.unknownTarget");
 
   return (
     <div className="flex items-start gap-3 rounded-xl bg-slate-950/60 px-4 py-3">
       <span className="mt-0.5 text-base">🧹</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white">
-          <span className="font-semibold">{actorLabel}</span>
-          {" "}
-          {t("sessionActivity.removedEffectVerb")}
-          {" "}
-          <span className="font-semibold text-slate-100">{event.effectLabel}</span>
-          .
+          {removedByGm ? (
+            <>
+              <span className="font-semibold">{actorLabel}</span>
+              {" "}
+              {t("sessionActivity.removedEffectVerb")}
+              {" "}
+              <span className="font-semibold text-slate-100">{event.effectLabel}</span>
+              {" "}
+              {t("sessionActivity.fromTarget")}
+              {" "}
+              <span className="font-semibold text-slate-200">{targetLabel}</span>
+              .
+            </>
+          ) : (
+            <>
+              <span className="font-semibold">{actorLabel}</span>
+              {" "}
+              {t("sessionActivity.removedEffectVerb")}
+              {" "}
+              <span className="font-semibold text-slate-100">{event.effectLabel}</span>
+              .
+            </>
+          )}
           {event.brokeConcentrationGroup
             ? (
               <>

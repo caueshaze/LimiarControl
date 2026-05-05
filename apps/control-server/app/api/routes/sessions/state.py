@@ -95,6 +95,19 @@ def _resolve_ooc_activity_actor(entry, user, session: DbSession) -> tuple[str | 
     return resolved_member_id, resolved_actor
 
 
+def _resolve_ooc_activity_target_display_name(entry, player_user_id: str, session: DbSession) -> str:
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == player_user_id,
+        )
+    ).first()
+    display_name = getattr(member, "display_name", None) if member else None
+    if isinstance(display_name, str) and display_name.strip():
+        return display_name.strip()
+    return player_user_id
+
+
 def _require_session_participant(entry, session: DbSession, player_user_id: str, *, label: str) -> None:
     if entry.party_id:
         party_member = session.exec(
@@ -705,13 +718,34 @@ async def remove_my_persisted_effect(
 ):
     entry = get_session_entry(session_id, session)
     require_session_view_access(entry, user, session, user.id)
+    return await _remove_persisted_effect_for_player(
+        session=session,
+        entry=entry,
+        session_id=session_id,
+        actor_user=user,
+        owner_player_user_id=user.id,
+        effect_id=effect_id,
+        removed_by_gm=False,
+    )
+
+
+async def _remove_persisted_effect_for_player(
+    *,
+    session: DbSession,
+    entry,
+    session_id: str,
+    actor_user,
+    owner_player_user_id: str,
+    effect_id: str,
+    removed_by_gm: bool,
+) -> SessionStateRead:
     state = session.exec(
         select(SessionState).where(
             SessionState.session_id == session_id,
-            SessionState.player_user_id == user.id,
+            SessionState.player_user_id == owner_player_user_id,
         )
     ).first()
-    state = ensure_session_state(state, session_id, user.id, entry.party_id, session)
+    state = ensure_session_state(state, session_id, owner_player_user_id, entry.party_id, session)
     if not state:
         raise HTTPException(status_code=404, detail="Session state not found")
 
@@ -754,27 +788,36 @@ async def remove_my_persisted_effect(
         is_ally_target = caster_id is not None and target_id is not None and caster_id != target_id
         if was_concentration and is_ally_target and concentration_group:
             affected_allies = clear_concentration_group_across_session(
-                session, session_id, concentration_group, exclude_user_id=user.id
+                session, session_id, concentration_group, exclude_user_id=owner_player_user_id
             )
 
-    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, user, session)
+    actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
     if removed_effect and actor_member_id:
+        target_display_name = _resolve_ooc_activity_target_display_name(
+            entry,
+            owner_player_user_id,
+            session,
+        )
         record_session_activity(
             entry,
             "out_of_combat_effect_removed",
             session,
             member_id=actor_member_id,
-            user_id=user.id,
+            user_id=actor_user.id,
             actor_name=actor_display_name,
             payload={
-                "actor_player_user_id": user.id,
+                "actor_user_id": actor_user.id,
+                "actor_player_user_id": actor_user.id,  # legacy compatibility
                 "actor_display_name": actor_display_name,
+                "target_player_user_id": owner_player_user_id,
+                "target_display_name": target_display_name,
                 "removed_effect_id": effect_id,
                 "effect_label": effect_label,
                 "source_spell_name": source_spell_name,
                 "variant_label": variant_label,
                 "concentration_group": concentration_group,
                 "broke_concentration_group": broke_concentration_group,
+                "removed_by_gm": removed_by_gm,
             },
         )
         _prune_out_of_combat_session_activity(session, session_id)
@@ -783,7 +826,7 @@ async def remove_my_persisted_effect(
     session.refresh(state)
 
     # Publish updates for all modified players (deduped by player_user_id)
-    states_to_publish: dict[str, SessionState] = {user.id: state}
+    states_to_publish: dict[str, SessionState] = {owner_player_user_id: state}
     for ally in affected_allies:
         if ally.player_user_id not in states_to_publish:
             states_to_publish[ally.player_user_id] = ally
@@ -796,6 +839,28 @@ async def remove_my_persisted_effect(
             st.state_json if isinstance(st.state_json, dict) else None,
         )
     return to_state_read(state)
+
+
+@router.delete("/sessions/{session_id}/state/{player_user_id}/effects/{effect_id}", response_model=SessionStateRead)
+async def remove_player_persisted_effect(
+    session_id: str,
+    player_user_id: str,
+    effect_id: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    entry = get_session_entry(session_id, session)
+    require_session_gm(entry, user, session)
+    _require_session_participant(entry, session, player_user_id, label="Target")
+    return await _remove_persisted_effect_for_player(
+        session=session,
+        entry=entry,
+        session_id=session_id,
+        actor_user=user,
+        owner_player_user_id=player_user_id,
+        effect_id=effect_id,
+        removed_by_gm=True,
+    )
 
 
 @router.post("/sessions/{session_id}/state/me/spells/prepare", response_model=SessionStateRead)

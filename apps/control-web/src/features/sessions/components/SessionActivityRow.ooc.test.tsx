@@ -16,6 +16,7 @@ vi.mock("../../../shared/hooks/useLocale", () => ({
         "sessionActivity.usingSlotLevel": "usando espaço de",
         "sessionActivity.slotLevelSuffix": "º nível.",
         "sessionActivity.removedEffectVerb": "removeu",
+        "sessionActivity.fromTarget": "de",
         "sessionActivity.concentrationEndedSentence": "A concentração foi encerrada.",
         "sessionActivity.previousConcentrationEndedPrefix": "A concentração anterior em",
       }[key] ?? key),
@@ -121,11 +122,14 @@ describe("SessionActivityRow out-of-combat events", () => {
       type: "out_of_combat_effect_removed",
       actorDisplayName: "Caue",
       actorPlayerUserId: "caster-1",
+      removedByGm: true,
       brokeConcentrationGroup: true,
       concentrationGroup: "grp-1",
       displayName: "Caue",
       effectLabel: "Escudo da Fé",
       removedEffectId: "eff-1",
+      targetPlayerUserId: "ally-a",
+      targetDisplayName: "Aelar",
       sessionOffsetSeconds: 5,
       sourceSpellName: "Escudo da Fé",
       timestamp: "2026-05-05T10:01:00Z",
@@ -136,6 +140,8 @@ describe("SessionActivityRow out-of-combat events", () => {
     expect(markup).toContain("Caue");
     expect(markup).toContain("removeu");
     expect(markup).toContain("Escudo da Fé");
+    expect(markup).toContain("de");
+    expect(markup).toContain("Aelar");
     expect(markup).toContain("A concentração foi encerrada.");
   });
 
@@ -159,6 +165,7 @@ describe("SessionActivityRow out-of-combat events", () => {
     expect(markup).toContain("Caue");
     expect(markup).toContain("removeu");
     expect(markup).toContain("Armadura Arcana");
+    expect(markup).not.toContain("Aelar");
     expect(markup).not.toContain("A concentração foi encerrada.");
   });
 });

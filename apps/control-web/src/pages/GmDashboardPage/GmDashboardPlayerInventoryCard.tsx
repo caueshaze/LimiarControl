@@ -15,6 +15,8 @@ import { GmDashboardGrantPanels } from "./GmDashboardGrantPanels";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { OutOfCombatSpellCastCard } from "../PlayerBoardPage/OutOfCombatSpellCastCard";
+import { CharacterActiveEffectsPanel } from "../../features/character-sheet/components/CharacterActiveEffectsPanel";
+import type { ActiveEffect } from "../../shared/api/combatRepo";
 import { computeTotalWeight, computeEncumbranceTier, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 
 type Props = {
@@ -119,6 +121,16 @@ export const GmDashboardPlayerInventoryCard = ({
   const [loadingCastableSpells, setLoadingCastableSpells] = useState(false);
   const [castingSpell, setCastingSpell] = useState(false);
   const [castFeedback, setCastFeedback] = useState<string | null>(null);
+  const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
+  const [loadingActiveEffects, setLoadingActiveEffects] = useState(false);
+  const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
+  const [effectFeedback, setEffectFeedback] = useState<string | null>(null);
+
+  const coerceActiveEffects = useCallback(
+    (effects: Record<string, unknown>[] | null | undefined): ActiveEffect[] =>
+      (Array.isArray(effects) ? effects : []) as ActiveEffect[],
+    [],
+  );
 
   const encumbranceData = useMemo(() => {
     if (!sheet) return null;
@@ -145,10 +157,29 @@ export const GmDashboardPlayerInventoryCard = ({
     }
   }, [activeSessionId, player.userId]);
 
+  const loadActiveEffects = useCallback(async () => {
+    if (!activeSessionId) {
+      setActiveEffects([]);
+      return;
+    }
+    setLoadingActiveEffects(true);
+    setEffectFeedback(null);
+    try {
+      const state = await sessionStatesRepo.getByPlayer(activeSessionId, player.userId);
+      setActiveEffects(coerceActiveEffects(state.activeSpellEffects));
+    } catch {
+      setActiveEffects([]);
+      setEffectFeedback("Falha ao carregar efeitos ativos.");
+    } finally {
+      setLoadingActiveEffects(false);
+    }
+  }, [activeSessionId, coerceActiveEffects, player.userId]);
+
   useEffect(() => {
     if (!isOpen) return;
     void loadCastableSpells();
-  }, [isOpen, loadCastableSpells]);
+    void loadActiveEffects();
+  }, [isOpen, loadCastableSpells, loadActiveEffects]);
 
   const handleCastSpellOutOfCombat = useCallback(async (
     spellId: string,
@@ -160,12 +191,13 @@ export const GmDashboardPlayerInventoryCard = ({
     setCastingSpell(true);
     setCastFeedback(null);
     try {
-      await sessionStatesRepo.castSpellOutOfCombatForPlayer(activeSessionId, player.userId, {
+      const record = await sessionStatesRepo.castSpellOutOfCombatForPlayer(activeSessionId, player.userId, {
         spellId,
         slotLevel,
         variantKey,
         targetPlayerUserId,
       });
+      setActiveEffects(coerceActiveEffects(record.activeSpellEffects));
       setCastFeedback("Magia OOC lançada com sucesso.");
       void loadCastableSpells();
     } catch {
@@ -173,7 +205,26 @@ export const GmDashboardPlayerInventoryCard = ({
     } finally {
       setCastingSpell(false);
     }
-  }, [activeSessionId, castingSpell, loadCastableSpells, player.userId]);
+  }, [activeSessionId, castingSpell, coerceActiveEffects, loadCastableSpells, player.userId]);
+
+  const handleRemoveActiveEffect = useCallback(async (effectId: string) => {
+    if (!activeSessionId || removingEffectId) return;
+    setRemovingEffectId(effectId);
+    setEffectFeedback(null);
+    try {
+      const record = await sessionStatesRepo.removePersistedEffectForPlayer(
+        activeSessionId,
+        player.userId,
+        effectId,
+      );
+      setActiveEffects(coerceActiveEffects(record.activeSpellEffects));
+      setEffectFeedback("Efeito removido com sucesso.");
+    } catch {
+      setEffectFeedback("Nao foi possivel remover o efeito.");
+    } finally {
+      setRemovingEffectId(null);
+    }
+  }, [activeSessionId, coerceActiveEffects, player.userId, removingEffectId]);
 
   const playSheetRoute = activeSessionPartyId
     ? `${routes.characterSheetParty.replace(":partyId", activeSessionPartyId)}?${new URLSearchParams({
@@ -273,6 +324,18 @@ export const GmDashboardPlayerInventoryCard = ({
             )}
             {castFeedback ? (
               <p className="text-xs text-slate-400">{castFeedback}</p>
+            ) : null}
+            {loadingActiveEffects ? (
+              <p className="text-xs text-slate-400">Carregando efeitos ativos...</p>
+            ) : (
+              <CharacterActiveEffectsPanel
+                activeEffects={activeEffects}
+                removingEffectId={removingEffectId}
+                onRemoveEffect={handleRemoveActiveEffect}
+              />
+            )}
+            {effectFeedback ? (
+              <p className="text-xs text-slate-400">{effectFeedback}</p>
             ) : null}
 
             <GmDashboardInventoryFilters
