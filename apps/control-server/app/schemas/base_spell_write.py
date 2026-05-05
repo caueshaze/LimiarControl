@@ -94,6 +94,7 @@ class BaseSpellWrite(BaseModel):
     sourceRef: Optional[str] = None
     isSrd: Optional[bool] = None
     isActive: Optional[bool] = None
+    outOfCombatCastable: Optional[bool] = None
 
     @field_validator("nameEn", "descriptionEn", mode="before")
     @classmethod

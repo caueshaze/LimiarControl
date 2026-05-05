@@ -1780,7 +1780,65 @@
       "requiresTargetSight": null,
       "requiresTargetEffect": null,
       "requiresPointSight": null,
-      "requiresPointEffect": null
+      "requiresPointEffect": null,
+      "outOfCombatCastable": true
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "shield_of_faith",
+      "nameEn": "Shield of Faith",
+      "namePt": "Escudo da Fé",
+      "descriptionEn": "A shimmering field appears and surrounds a creature of your choice within range, granting it a +2 bonus to AC for the duration.",
+      "descriptionPt": "Um campo cintilante aparece ao redor de uma criatura que você escolher dentro do alcance, concedendo a ela um bônus de +2 na CA pela duração.",
+      "level": 1,
+      "school": "abjuration",
+      "classesJson": [
+        "Cleric",
+        "Paladin"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 18,
+      "rangeText": "60 feet",
+      "duration": "Up to 10 minutes",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "A small parchment with a bit of holy text written on it",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "effects": [
+        {
+          "type": "modify_stat",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "stat": "temp_ac_bonus",
+            "value": 2
+          },
+          "stacking": "replace"
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "outOfCombatCastable": true,
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
     }
   ]
 }

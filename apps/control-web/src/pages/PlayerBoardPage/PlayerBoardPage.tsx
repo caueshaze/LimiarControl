@@ -174,6 +174,8 @@ export const PlayerBoardPage = () => {
   const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
   const [showPrepDialog, setShowPrepDialog] = useState(false);
   const [preparingSpells, setPreparingSpells] = useState(false);
+  const [castableSpells, setCastableSpells] = useState<import("../../entities/character").OutOfCombatCastableSpell[]>([]);
+  const [castingSpell, setCastingSpell] = useState(false);
   const previousConcentrationRef = useRef<import("../../entities/character").ActiveConcentration | null>(null);
 
   const handleClearConcentration = async () => {
@@ -236,6 +238,45 @@ export const PlayerBoardPage = () => {
       });
     } finally {
       setPreparingSpells(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeSession?.id || combatActive) return;
+    void sessionStatesRepo.listCastableOutOfCombat(activeSession.id).then((spells) => {
+      setCastableSpells(spells);
+    }).catch(() => {
+      setCastableSpells([]);
+    });
+  }, [activeSession?.id, combatActive]);
+
+  const handleCastSpellOutOfCombat = async (
+    spellId: string,
+    slotLevel: number | null,
+    variantKey: string | null,
+  ) => {
+    if (!activeSession?.id || castingSpell) return;
+    setCastingSpell(true);
+    try {
+      const record = await sessionStatesRepo.castSpellOutOfCombat(activeSession.id, {
+        spellId,
+        slotLevel,
+        variantKey,
+      });
+      setPlayerSheet(parseCharacterSheet(record.state));
+      setActiveConcentration(record.activeConcentration ?? null);
+      setActiveSpellEffects(
+        (record.activeSpellEffects as import("../../shared/api/combatRepo").ActiveEffect[] | null | undefined) ?? null,
+      );
+      showToast({ variant: "success", title: t("playerBoard.castSpellSuccess") });
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("playerBoard.castSpellErrorTitle"),
+        description: t("playerBoard.castSpellErrorDescription"),
+      });
+    } finally {
+      setCastingSpell(false);
     }
   };
 
@@ -396,8 +437,11 @@ export const PlayerBoardPage = () => {
       <PlayerBoardStatusPanel
         activeConcentration={activeConcentration}
         activeSpellEffects={activeSpellEffects}
+        castableSpells={castableSpells}
+        castingSpell={castingSpell}
         clearingConcentration={clearingConcentration}
         combatActive={combatActive}
+        onCastSpell={handleCastSpellOutOfCombat}
         onClearConcentration={handleClearConcentration}
         onRemoveEffect={handleRemoveEffect}
         pendingRoll={pendingRoll}

@@ -63,6 +63,7 @@ _FIELD_MAP: dict[str, str] = {
     "cantripScaling": "cantrip_scaling_json",
     "sourceRef": "source_ref",
     "isSrd": "is_srd",
+    "outOfCombatCastable": "out_of_combat_castable",
 }
 
 
@@ -156,6 +157,7 @@ def seed_campaign_spells(
                 source=base_spell.source,
                 source_ref=base_spell.source_ref,
                 is_srd=base_spell.is_srd,
+                out_of_combat_castable=base_spell.out_of_combat_castable,
                 is_custom=False,
                 is_enabled=True,
             )

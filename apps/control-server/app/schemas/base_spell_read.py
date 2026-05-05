@@ -88,4 +88,5 @@ class BaseSpellRead(BaseModel):
     sourceRef: Optional[str] = None
     isSrd: bool
     isActive: bool
+    outOfCombatCastable: bool = False
     aliases: list[BaseSpellAliasRead] = Field(default_factory=list)

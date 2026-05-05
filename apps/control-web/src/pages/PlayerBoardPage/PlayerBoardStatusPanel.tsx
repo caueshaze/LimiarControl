@@ -1,6 +1,7 @@
-import type { ActiveConcentration } from "../../entities/character";
+import type { ActiveConcentration, OutOfCombatCastableSpell } from "../../entities/character";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
+import { OutOfCombatSpellCastCard } from "./OutOfCombatSpellCastCard";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
@@ -27,8 +28,11 @@ const encumbranceAccentMap: Record<PlayerBoardStatusSummary["encumbranceTier"], 
 type Props = {
   activeConcentration?: ActiveConcentration | null;
   activeSpellEffects?: ActiveEffect[] | null;
+  castableSpells?: OutOfCombatCastableSpell[];
+  castingSpell?: boolean;
   clearingConcentration?: boolean;
   combatActive: boolean;
+  onCastSpell?: (spellId: string, slotLevel: number | null, variantKey: string | null) => void;
   onClearConcentration: () => void;
   onRemoveEffect: (effectId: string) => void;
   pendingRoll: PendingRoll | null;
@@ -43,8 +47,11 @@ type Props = {
 export const PlayerBoardStatusPanel = ({
   activeConcentration,
   activeSpellEffects,
+  castableSpells = [],
+  castingSpell = false,
   clearingConcentration,
   combatActive,
+  onCastSpell,
   onClearConcentration,
   onRemoveEffect,
   pendingRoll,
@@ -264,6 +271,14 @@ export const PlayerBoardStatusPanel = ({
               </ul>
             </div>
           ) : null}
+
+          {!combatActive && castableSpells.length > 0 && onCastSpell && (
+            <OutOfCombatSpellCastCard
+              spells={castableSpells}
+              casting={castingSpell}
+              onCast={onCastSpell}
+            />
+          )}
 
           <RestCard
             playerStatus={playerStatus}
