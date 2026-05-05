@@ -19,6 +19,7 @@ import { PlayerBoardRollDialog } from "./PlayerBoardRollDialog";
 import { usePlayerBoardCallbacks } from "./usePlayerBoardCallbacks";
 import { usePlayerBoardRestActions } from "./usePlayerBoardRestActions";
 import { PlayerBoardStatusPanel } from "./PlayerBoardStatusPanel";
+import { SpellPreparationDialog } from "./SpellPreparationDialog";
 import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
 import { usePlayerBoardLoadout } from "./usePlayerBoardLoadout";
 import { usePlayerBoardRestFeedback } from "./usePlayerBoardRestFeedback";
@@ -58,6 +59,7 @@ export const PlayerBoardPage = () => {
     lastCommand,
     lastEvent,
     myInventory,
+    pendingSpellPreparation,
     playerSheet,
     playerWallet,
     refresh,
@@ -70,6 +72,7 @@ export const PlayerBoardPage = () => {
     setActiveConcentration,
     setActiveSpellEffects,
     setMyInventory,
+    setPendingSpellPreparation,
     setPlayerSheet,
     setPlayerWallet,
     setSelectedSessionId,
@@ -169,6 +172,8 @@ export const PlayerBoardPage = () => {
   });
   const [clearingConcentration, setClearingConcentration] = useState(false);
   const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
+  const [showPrepDialog, setShowPrepDialog] = useState(false);
+  const [preparingSpells, setPreparingSpells] = useState(false);
   const previousConcentrationRef = useRef<import("../../entities/character").ActiveConcentration | null>(null);
 
   const handleClearConcentration = async () => {
@@ -210,6 +215,27 @@ export const PlayerBoardPage = () => {
       });
     } finally {
       setRemovingEffectId(null);
+    }
+  };
+
+  const handlePrepareSpells = async (preparedSpellIds: string[]) => {
+    if (!activeSession?.id || preparingSpells) return;
+    setPreparingSpells(true);
+    try {
+      const record = await sessionStatesRepo.prepareSpells(activeSession.id, preparedSpellIds);
+      setPlayerSheet(parseCharacterSheet(record.state));
+      setPendingSpellPreparation(
+        (record.pendingSpellPreparation as import("../../shared/api/combatRepo").PendingSpellPreparation | null | undefined) ?? null,
+      );
+      setShowPrepDialog(false);
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("playerBoard.prepareSpellsErrorTitle"),
+        description: t("playerBoard.prepareSpellsErrorDescription"),
+      });
+    } finally {
+      setPreparingSpells(false);
     }
   };
 
@@ -340,6 +366,30 @@ export const PlayerBoardPage = () => {
       ) : null}
 
       <PlayerBoardRestBanner restState={restState} />
+
+      {pendingSpellPreparation && !combatActive && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="rounded-2xl border border-amber-700/30 bg-amber-900/20 px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-amber-200">
+                  {t("playerBoard.prepareSpellsPrompt")}
+                </p>
+                <p className="text-xs text-amber-300/70">
+                  {t("playerBoard.prepareSpellsDescription")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrepDialog(true)}
+                className="shrink-0 rounded-full bg-amber-600/30 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-amber-200 transition hover:bg-amber-600/50"
+              >
+                {t("playerBoard.prepareSpellsButton")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-6">
@@ -498,6 +548,15 @@ export const PlayerBoardPage = () => {
           onVirtualRoll={handleRoll}
         />
       ) : null}
+      <SpellPreparationDialog
+        open={showPrepDialog}
+        onClose={() => setShowPrepDialog(false)}
+        spells={playerSheet?.spellcasting?.spells ?? []}
+        preparedLimit={pendingSpellPreparation?.preparedLimit ?? 0}
+        currentPreparedIds={pendingSpellPreparation?.currentPreparedSpellIds ?? []}
+        onSubmit={handlePrepareSpells}
+        isSubmitting={preparingSpells}
+      />
       <DiceVisualizer events={rollEvents} />
         </>
       )}

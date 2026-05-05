@@ -54,6 +54,7 @@ def to_state_read(entry: SessionState) -> SessionStateRead:
         updatedAt=entry.updated_at,
         activeSpellEffects=state_json.get("active_spell_effects"),
         activeConcentration=derive_active_concentration(state_json),
+        pendingSpellPreparation=state_json.get("pending_spell_preparation"),
     )
 
 

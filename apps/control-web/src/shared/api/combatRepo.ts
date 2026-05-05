@@ -61,6 +61,14 @@ export type ActiveEffect = {
   display_label?: string | null;
 };
 
+export type PendingSpellPreparation = {
+  source: string;
+  classKey: string;
+  preparedLimit: number;
+  currentPreparedSpellIds: string[];
+  createdAt: string;
+};
+
 export type CombatSpellContextOrigin =
   | "initial_cast"
   | "pending_save"

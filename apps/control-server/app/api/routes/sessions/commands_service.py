@@ -360,6 +360,8 @@ async def send_session_command_service(
         session.refresh(state)
 
     if ended_rest_type == "long_rest":
+        from app.services.spell_preparation import create_pending_spell_preparation
+
         ended_combat = session.exec(
             select(CombatState).where(
                 CombatState.session_id == entry_id,
@@ -369,6 +371,16 @@ async def send_session_command_service(
         if ended_combat is not None:
             session.delete(ended_combat)
             session.commit()
+
+        for state in states:
+            pending = create_pending_spell_preparation(state.state_json)
+            if pending:
+                state.state_json = {**state.state_json, "pending_spell_preparation": pending}
+                flag_modified(state, "state_json")
+                session.add(state)
+        session.commit()
+        for state in states:
+            session.refresh(state)
 
     event_type = "rest_ended"
     event_payload["restType"] = ended_rest_type

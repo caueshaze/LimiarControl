@@ -20,4 +20,8 @@ export const sessionStatesRepo = {
 
   removePersistedEffect: (sessionId: string, effectId: string) =>
     http.del<SessionStateRecord>(`/sessions/${sessionId}/state/me/effects/${effectId}`),
+  prepareSpells: (sessionId: string, preparedSpellIds: string[]) =>
+    http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/spells/prepare`, {
+      preparedSpellIds,
+    }),
 };

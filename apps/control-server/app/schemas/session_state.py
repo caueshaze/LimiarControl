@@ -12,10 +12,15 @@ class SessionStateRead(BaseModel):
     updatedAt: datetime | None
     activeSpellEffects: list[dict] | None = None
     activeConcentration: dict | None = None
+    pendingSpellPreparation: dict | None = None
 
 
 class ClearConcentrationRequest(BaseModel):
     concentrationGroup: str | None = None
+
+
+class PrepareSpellsRequest(BaseModel):
+    preparedSpellIds: list[str]
 
 
 class SessionStateUpdate(BaseModel):
