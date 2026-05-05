@@ -31,6 +31,8 @@ export const sessionActivityEnUSDictionary = {
   "sessionActivity.usedConsumable": "used",
   "sessionActivity.onTarget": "on",
   "sessionActivity.castVerb": "cast",
+  "sessionActivity.castByGmDid": "made",
+  "sessionActivity.castByGmCastVerb": "cast",
   "sessionActivity.usingSlotLevel": "using a level",
   "sessionActivity.slotLevelSuffix": " slot.",
   "sessionActivity.removedEffectVerb": "removed",

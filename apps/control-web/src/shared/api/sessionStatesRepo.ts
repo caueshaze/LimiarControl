@@ -28,6 +28,16 @@ export const sessionStatesRepo = {
     http.get<OutOfCombatCastableSpell[]>(
       `/sessions/${sessionId}/state/me/spells/castable-out-of-combat`,
     ),
+  listCastableOutOfCombatForPlayer: (sessionId: string, playerUserId: string) =>
+    http.get<OutOfCombatCastableSpell[]>(
+      `/sessions/${sessionId}/state/${playerUserId}/spells/castable-out-of-combat`,
+    ),
   castSpellOutOfCombat: (sessionId: string, req: OutOfCombatCastRequest) =>
     http.post<SessionStateRecord>(`/sessions/${sessionId}/state/me/spells/cast`, req),
+  castSpellOutOfCombatForPlayer: (
+    sessionId: string,
+    playerUserId: string,
+    req: OutOfCombatCastRequest,
+  ) =>
+    http.post<SessionStateRecord>(`/sessions/${sessionId}/state/${playerUserId}/spells/cast`, req),
 };

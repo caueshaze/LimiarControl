@@ -288,8 +288,11 @@ class OutOfCombatSpellCastActivityEvent(BaseModel):
     userId: Optional[str] = None
     username: Optional[str] = None
     displayName: Optional[str] = None
+    actorUserId: Optional[str] = None
     actorPlayerUserId: Optional[str] = None
     actorDisplayName: Optional[str] = None
+    casterPlayerUserId: Optional[str] = None
+    casterDisplayName: Optional[str] = None
     targetPlayerUserId: Optional[str] = None
     targetDisplayName: Optional[str] = None
     spellKey: Optional[str] = None
@@ -304,6 +307,7 @@ class OutOfCombatSpellCastActivityEvent(BaseModel):
     newConcentrationGroup: Optional[str] = None
     previousSpellName: Optional[str] = None
     previousVariantLabel: Optional[str] = None
+    castByGm: bool = False
     timestamp: datetime
     sessionOffsetSeconds: int
 

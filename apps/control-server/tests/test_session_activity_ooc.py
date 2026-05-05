@@ -28,8 +28,11 @@ class TestSessionActivityOutOfCombatEvents(unittest.TestCase):
         cast_cmd.command_type = "out_of_combat_spell_cast"
         cast_cmd.created_at = datetime(2026, 5, 5, 10, 0, 0, tzinfo=timezone.utc)
         cast_cmd.payload_json = {
+            "actor_user_id": "gm-1",
             "actor_player_user_id": "caster-1",
             "actor_display_name": "Caster One",
+            "caster_player_user_id": "ally-a",
+            "caster_display_name": "Aelar",
             "target_player_user_id": "ally-b",
             "target_display_name": "Ally B",
             "spell_key": "enhance_ability",
@@ -44,6 +47,7 @@ class TestSessionActivityOutOfCombatEvents(unittest.TestCase):
             "new_concentration_group": "grp-2",
             "previous_spell_name": "Benção",
             "previous_variant_label": None,
+            "cast_by_gm": True,
         }
 
         remove_cmd = MagicMock()
@@ -89,7 +93,10 @@ class TestSessionActivityOutOfCombatEvents(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].type, "out_of_combat_spell_cast")
         self.assertEqual(events[0].spellName, "Melhorar Habilidade")
+        self.assertEqual(events[0].actorUserId, "gm-1")
+        self.assertEqual(events[0].casterDisplayName, "Aelar")
         self.assertEqual(events[0].targetDisplayName, "Ally B")
+        self.assertTrue(events[0].castByGm)
         self.assertEqual(events[0].slotLevel, 2)
         self.assertEqual(events[1].type, "out_of_combat_effect_removed")
         self.assertEqual(events[1].effectLabel, "Escudo da Fé")
