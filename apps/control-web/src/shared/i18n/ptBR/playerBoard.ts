@@ -187,4 +187,11 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.removingEffect": "Removendo...",
   "playerBoard.removeEffectErrorTitle": "Erro ao remover efeito",
   "playerBoard.removeEffectErrorDescription": "Não foi possível remover o efeito.",
+  "playerBoard.lifecycleConcentration": "Concentração",
+  "playerBoard.lifecycleManual": "Manual",
+  "playerBoard.lifecycleRounds": "{count} rodadas",
+  "playerBoard.lifecycleRoundsUnknown": "Por rodadas",
+  "playerBoard.lifecycleUntilTurnStart": "Até início do turno",
+  "playerBoard.lifecycleUntilTurnEnd": "Até fim do turno",
+  "playerBoard.lifecycleLongRest": "Limpa no descanso longo",
 } as const;

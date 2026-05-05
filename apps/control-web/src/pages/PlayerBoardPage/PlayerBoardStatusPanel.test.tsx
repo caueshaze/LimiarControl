@@ -29,6 +29,13 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "playerBoard.activeEffectFallback": "Efeito",
         "playerBoard.removeEffect": "Remover",
         "playerBoard.removingEffect": "Removendo...",
+        "playerBoard.lifecycleConcentration": "Concentração",
+        "playerBoard.lifecycleManual": "Manual",
+        "playerBoard.lifecycleRounds": "{count} rodadas",
+        "playerBoard.lifecycleRoundsUnknown": "Por rodadas",
+        "playerBoard.lifecycleUntilTurnStart": "Até início do turno",
+        "playerBoard.lifecycleUntilTurnEnd": "Até fim do turno",
+        "playerBoard.lifecycleLongRest": "Limpa no descanso longo",
       }[key] ?? key),
   }),
 }));
@@ -476,6 +483,92 @@ describe("PlayerBoardStatusPanel", () => {
     expect(markup).toContain("Concentração");
     expect(markup).toContain("Shield of Faith");
     expect(markup).toContain("Remover");
+    // Lifecycle badges for concentration manual effect
+    expect(markup).toContain("Manual");
+    expect(markup).toContain("Limpa no descanso longo");
+  });
+
+  it("renderiza badges de ciclo de vida para efeito manual sem concentração", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeSpellEffects={[
+          {
+            id: "eff-1",
+            kind: "spell_effect",
+            duration_type: "manual",
+            created_at: "2026-01-01T00:00:00Z",
+            display_label: "Cat's Grace",
+            metadata: { source_spell_name: "Cat's Grace" },
+          },
+        ] as any}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Cat&#x27;s Grace");
+    expect(markup).toContain("Manual");
+    expect(markup).toContain("Limpa no descanso longo");
+    expect(markup).not.toContain("Concentração");
+  });
+
+  it("renderiza badge de rodadas para efeito com duration_type rounds", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        activeSpellEffects={[
+          {
+            id: "eff-1",
+            kind: "spell_effect",
+            duration_type: "rounds",
+            remaining_rounds: 5,
+            created_at: "2026-01-01T00:00:00Z",
+            display_label: "Haste",
+            metadata: {},
+          },
+        ] as any}
+        combatActive={false}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Haste");
+    expect(markup).toContain("5 rodadas");
   });
 
   it("não renderiza painel de efeitos ativos quando a lista está vazia", () => {
