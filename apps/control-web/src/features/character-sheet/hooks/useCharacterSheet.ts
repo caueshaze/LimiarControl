@@ -23,6 +23,8 @@ import {
   useCharacterSheetLevelUp,
   useCharacterSheetSave,
 } from "./useCharacterSheetSave";
+import { sessionStatesRepo } from "../../../shared/api/sessionStatesRepo";
+import { parseCharacterSheet } from "../model/characterSheet.schema";
 
 type UseCharacterSheetOptions = {
   playPlayerUserId?: string | null;
@@ -54,6 +56,7 @@ export const useCharacterSheet = (
   const [requestLevelUpError, setRequestLevelUpError] = useState<string | null>(null);
   const [acceptingSheet, setAcceptingSheet] = useState(false);
   const [acceptSheetError, setAcceptSheetError] = useState<string | null>(null);
+  const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
   const playPlayerUserId = options.playPlayerUserId ?? null;
   const creationPlayerUserId = options.creationPlayerUserId ?? null;
   const creationDraftId = options.creationDraftId ?? null;
@@ -166,6 +169,28 @@ export const useCharacterSheet = (
       })(sheet, ability, value),
     );
 
+  const removeActiveEffect = async (effectId: string) => {
+    if (!state.playSessionId || removingEffectId) return;
+    setRemovingEffectId(effectId);
+    try {
+      const record = await sessionStatesRepo.removePersistedEffect(
+        state.playSessionId,
+        effectId,
+      );
+      dispatch({
+        type: "active_effects_updated",
+        sheet: parseCharacterSheet(record.state),
+        activeSpellEffects:
+          (record.activeSpellEffects as
+            | import("../../../shared/api/combatRepo").ActiveEffect[]
+            | null
+            | undefined) ?? [],
+      });
+    } finally {
+      setRemovingEffectId(null);
+    }
+  };
+
   const baseActions = createBaseSheetActions(guardedUpdate, set, mode, {
     allowCreationEditing: creationDraftMode,
     campaignId,
@@ -199,8 +224,10 @@ export const useCharacterSheet = (
     requestLevelUpError,
     acceptingSheet,
     acceptSheetError,
+    removingEffectId,
     requestLevelUp,
     acceptPendingSheet,
+    removeActiveEffect,
     save,
     creationDraftMode,
     set,
