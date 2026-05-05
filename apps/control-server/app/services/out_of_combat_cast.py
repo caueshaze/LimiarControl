@@ -181,6 +181,18 @@ def _has_resolvable_effects(spell, variant_key: str | None) -> bool:
     return bool(_resolve_effects(spell, variant_key))
 
 
+def has_castable_effects(spell) -> bool:
+    """True if the spell has any supported declarative effects (direct or via variants).
+
+    Used by the eligible-list endpoint to exclude spells that would always be
+    rejected at cast time due to having no persistable effects.
+    """
+    if spell.effects_json:
+        return True
+    variants = spell.variants_json or []
+    return any(v.get("effects") for v in variants)
+
+
 _SKIP_EFFECT_TYPES = {"grant_temp_hp"}
 
 
