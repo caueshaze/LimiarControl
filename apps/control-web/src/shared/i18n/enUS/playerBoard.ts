@@ -201,6 +201,8 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.concentrationReplacedDescription": "Previous concentration ended: {previous}. New concentration: {next}.",
   "playerBoard.prepareSpellsPrompt": "Prepare spells",
   "playerBoard.prepareSpellsDescription": "You completed a long rest. Review your prepared spells.",
+  "playerBoard.prepareSpellsDuringLongRestPrompt": "Prepare spells during long rest",
+  "playerBoard.prepareSpellsDuringLongRestDescription": "The long rest is still in progress. Review your prepared spells now.",
   "playerBoard.prepareSpellsButton": "Prepare spells",
   "playerBoard.prepareSpellsSelected": "Selected: {count} / {limit}",
   "playerBoard.prepareSpellsOverLimit": "Limit exceeded",

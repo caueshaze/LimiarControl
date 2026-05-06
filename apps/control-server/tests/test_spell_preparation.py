@@ -12,8 +12,11 @@ import unittest
 
 from app.services.spell_preparation import (
     apply_prepared_spells,
+    apply_prepared_spells_with_long_rest_tracking,
     compute_prepared_spell_limit,
     create_pending_spell_preparation,
+    seed_long_rest_spell_preparation,
+    settle_long_rest_spell_preparation,
 )
 
 
@@ -77,6 +80,7 @@ class TestCreatePendingSpellPreparation(unittest.TestCase):
         self.assertEqual(pending["prepared_limit"], 8)  # 5 + 3
         self.assertEqual(pending["current_prepared_spell_ids"], ["s1"])
         self.assertEqual(pending["source"], "long_rest")
+        self.assertFalse(pending["available_during_rest"])
 
     def test_creates_pending_for_spellbook_caster(self):
         pending = create_pending_spell_preparation(
@@ -146,6 +150,159 @@ class TestCreatePendingSpellPreparation(unittest.TestCase):
     def test_cantrips_excluded_from_current_prepared(self):
         pending = create_pending_spell_preparation(self._base_state())
         self.assertEqual(pending["current_prepared_spell_ids"], ["s1"])
+
+
+class TestLongRestSpellPreparationLifecycle(unittest.TestCase):
+    def _base_state(self, **overrides):
+        defaults = {
+            "restState": "long_rest",
+            "class": "cleric",
+            "level": 5,
+            "abilities": {"wisdom": 16},
+            "spellcasting": {
+                "ability": "wisdom",
+                "spells": [
+                    {
+                        "id": "s1",
+                        "name": "Bless",
+                        "level": 1,
+                        "prepared": True,
+                    },
+                    {
+                        "id": "s2",
+                        "name": "Cure Wounds",
+                        "level": 1,
+                        "prepared": False,
+                    },
+                    {
+                        "id": "s3",
+                        "name": "Guidance",
+                        "level": 0,
+                        "prepared": True,
+                    },
+                ],
+            },
+        }
+        if "class_" in overrides:
+            overrides["class"] = overrides.pop("class_")
+        defaults.update(overrides)
+        return defaults
+
+    def test_seed_long_rest_spell_preparation_clears_stale_marker_and_marks_available(self):
+        seeded = seed_long_rest_spell_preparation(
+            self._base_state(
+                pending_spell_preparation={
+                    "source": "long_rest",
+                    "class_key": "cleric",
+                    "prepared_limit": 8,
+                    "current_prepared_spell_ids": ["old"],
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                    "available_during_rest": False,
+                },
+                spell_preparation_completed_during_long_rest=True,
+            )
+        )
+
+        self.assertIn("pending_spell_preparation", seeded)
+        self.assertTrue(seeded["pending_spell_preparation"]["available_during_rest"])
+        self.assertEqual(seeded["pending_spell_preparation"]["current_prepared_spell_ids"], ["s1"])
+        self.assertNotIn("spell_preparation_completed_during_long_rest", seeded)
+
+    def test_apply_prepared_spells_during_long_rest_sets_completion_marker(self):
+        state = self._base_state(
+            pending_spell_preparation={
+                "source": "long_rest",
+                "class_key": "cleric",
+                "prepared_limit": 8,
+                "current_prepared_spell_ids": ["s1"],
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "available_during_rest": True,
+            }
+        )
+
+        result = apply_prepared_spells_with_long_rest_tracking(state, ["s2"])
+
+        self.assertNotIn("pending_spell_preparation", result)
+        self.assertTrue(result["spell_preparation_completed_during_long_rest"])
+
+    def test_apply_prepared_spells_outside_long_rest_does_not_set_completion_marker(self):
+        state = self._base_state(
+            restState="exploration",
+            pending_spell_preparation={
+                "source": "long_rest",
+                "class_key": "cleric",
+                "prepared_limit": 8,
+                "current_prepared_spell_ids": ["s1"],
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "available_during_rest": True,
+            },
+        )
+
+        result = apply_prepared_spells_with_long_rest_tracking(state, ["s2"])
+
+        self.assertNotIn("pending_spell_preparation", result)
+        self.assertNotIn("spell_preparation_completed_during_long_rest", result)
+
+    def test_settle_long_rest_spell_preparation_keeps_existing_pending(self):
+        state = self._base_state(
+            restState="exploration",
+            pending_spell_preparation={
+                "source": "long_rest",
+                "class_key": "cleric",
+                "prepared_limit": 8,
+                "current_prepared_spell_ids": ["s1"],
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "available_during_rest": True,
+            },
+        )
+
+        result = settle_long_rest_spell_preparation(state)
+
+        self.assertIn("pending_spell_preparation", result)
+        self.assertTrue(result["pending_spell_preparation"]["available_during_rest"])
+        self.assertNotIn("spell_preparation_completed_during_long_rest", result)
+
+    def test_settle_long_rest_spell_preparation_skips_duplicate_when_marker_exists(self):
+        state = self._base_state(
+            restState="exploration",
+            spell_preparation_completed_during_long_rest=True,
+        )
+
+        result = settle_long_rest_spell_preparation(state)
+
+        self.assertNotIn("pending_spell_preparation", result)
+        self.assertNotIn("spell_preparation_completed_during_long_rest", result)
+
+    def test_settle_long_rest_spell_preparation_creates_fallback_when_missing(self):
+        result = settle_long_rest_spell_preparation(self._base_state(restState="exploration"))
+
+        self.assertIn("pending_spell_preparation", result)
+        self.assertFalse(result["pending_spell_preparation"]["available_during_rest"])
+        self.assertEqual(result["pending_spell_preparation"]["prepared_limit"], 8)
+        self.assertNotIn("spell_preparation_completed_during_long_rest", result)
+
+    def test_next_long_rest_can_create_pending_again_after_marker_cycle(self):
+        first_start = seed_long_rest_spell_preparation(self._base_state())
+        self.assertIn("pending_spell_preparation", first_start)
+        self.assertTrue(first_start["pending_spell_preparation"]["available_during_rest"])
+        self.assertNotIn("spell_preparation_completed_during_long_rest", first_start)
+
+        completed = apply_prepared_spells_with_long_rest_tracking(first_start, ["s2"])
+        self.assertNotIn("pending_spell_preparation", completed)
+        self.assertTrue(completed["spell_preparation_completed_during_long_rest"])
+
+        settled = settle_long_rest_spell_preparation(completed)
+        self.assertNotIn("pending_spell_preparation", settled)
+        self.assertNotIn("spell_preparation_completed_during_long_rest", settled)
+
+        second_start = seed_long_rest_spell_preparation(settled)
+        self.assertIn("pending_spell_preparation", second_start)
+        self.assertTrue(second_start["pending_spell_preparation"]["available_during_rest"])
+        self.assertEqual(
+            second_start["pending_spell_preparation"]["current_prepared_spell_ids"],
+            ["s2"],
+        )
+        self.assertNotIn("spell_preparation_completed_during_long_rest", second_start)
 
 
 class TestApplyPreparedSpells(unittest.TestCase):

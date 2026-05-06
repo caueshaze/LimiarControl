@@ -15,7 +15,7 @@ from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
-from app.schemas.session_state import SessionStateRead
+from app.schemas.session_state import PendingSpellPreparationRead, SessionStateRead
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version
 from app.services.combat_service.persistent_effects import derive_active_concentration
@@ -43,6 +43,44 @@ REQUIRED_SHEET_KEYS = {
 }
 
 
+def _serialize_pending_spell_preparation(pending: object) -> PendingSpellPreparationRead | None:
+    if not isinstance(pending, dict):
+        return None
+
+    source = pending.get("source")
+    class_key = pending.get("class_key")
+    prepared_limit = pending.get("prepared_limit")
+    current_prepared_spell_ids = pending.get("current_prepared_spell_ids")
+    created_at = pending.get("created_at")
+    available_during_rest = pending.get("available_during_rest")
+
+    if not isinstance(source, str):
+        source = "long_rest"
+    if not isinstance(class_key, str):
+        class_key = ""
+    if not isinstance(prepared_limit, int):
+        prepared_limit = 0
+    if not isinstance(current_prepared_spell_ids, list):
+        current_prepared_spell_ids = []
+    else:
+        current_prepared_spell_ids = [
+            spell_id for spell_id in current_prepared_spell_ids if isinstance(spell_id, str)
+        ]
+    if not isinstance(created_at, str):
+        created_at = ""
+    if not isinstance(available_during_rest, bool):
+        available_during_rest = False
+
+    return PendingSpellPreparationRead(
+        source=source,
+        classKey=class_key,
+        preparedLimit=prepared_limit,
+        currentPreparedSpellIds=current_prepared_spell_ids,
+        createdAt=created_at,
+        availableDuringRest=available_during_rest,
+    )
+
+
 def to_state_read(entry: SessionState) -> SessionStateRead:
     state_json = entry.state_json or {}
     return SessionStateRead(
@@ -54,7 +92,9 @@ def to_state_read(entry: SessionState) -> SessionStateRead:
         updatedAt=entry.updated_at,
         activeSpellEffects=state_json.get("active_spell_effects"),
         activeConcentration=derive_active_concentration(state_json),
-        pendingSpellPreparation=state_json.get("pending_spell_preparation"),
+        pendingSpellPreparation=_serialize_pending_spell_preparation(
+            state_json.get("pending_spell_preparation")
+        ),
     )
 
 

@@ -14,6 +14,10 @@ from app.services.session_rest import (
     end_rest as end_rest_state,
     start_rest as start_rest_state,
 )
+from app.services.spell_preparation import (
+    seed_long_rest_spell_preparation,
+    settle_long_rest_spell_preparation,
+)
 from app.services.session_state_finalize import finalize_session_state_data
 from ._shared import (
     get_or_create_session_runtime,
@@ -320,6 +324,8 @@ async def send_session_command_service(
                 state.state_json = finalize_session_state_data(
                     start_rest_state(state.state_json, target_rest_type)
                 )
+                if target_rest_type == "long_rest":
+                    state.state_json = seed_long_rest_spell_preparation(state.state_json)
             except SessionRestError as error:
                 raise HTTPException(status_code=400, detail=str(error)) from error
             session.add(state)
@@ -360,8 +366,6 @@ async def send_session_command_service(
         session.refresh(state)
 
     if ended_rest_type == "long_rest":
-        from app.services.spell_preparation import create_pending_spell_preparation
-
         ended_combat = session.exec(
             select(CombatState).where(
                 CombatState.session_id == entry_id,
@@ -373,11 +377,9 @@ async def send_session_command_service(
             session.commit()
 
         for state in states:
-            pending = create_pending_spell_preparation(state.state_json)
-            if pending:
-                state.state_json = {**state.state_json, "pending_spell_preparation": pending}
-                flag_modified(state, "state_json")
-                session.add(state)
+            state.state_json = settle_long_rest_spell_preparation(state.state_json)
+            flag_modified(state, "state_json")
+            session.add(state)
         session.commit()
         for state in states:
             session.refresh(state)

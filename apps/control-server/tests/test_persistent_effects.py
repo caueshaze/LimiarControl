@@ -607,6 +607,64 @@ class TestToStateReadActiveConcentration(unittest.TestCase):
         self.assertIsNone(result.activeConcentration)
 
 
+class TestToStateReadPendingSpellPreparation(unittest.TestCase):
+    def test_pending_spell_preparation_is_serialized_in_camel_case(self):
+        from app.api.routes.sessions.state_common import to_state_read
+
+        mock = MagicMock(spec=SessionState)
+        mock.id = "ss-1"
+        mock.session_id = "session-1"
+        mock.player_user_id = "player-1"
+        mock.state_json = {
+            "pending_spell_preparation": {
+                "source": "long_rest",
+                "class_key": "cleric",
+                "prepared_limit": 8,
+                "current_prepared_spell_ids": ["s1", "s2"],
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "available_during_rest": True,
+            }
+        }
+        mock.created_at = "2026-01-01T00:00:00+00:00"
+        mock.updated_at = None
+
+        result = to_state_read(mock)
+
+        self.assertIsNotNone(result.pendingSpellPreparation)
+        self.assertEqual(result.pendingSpellPreparation.classKey, "cleric")
+        self.assertEqual(result.pendingSpellPreparation.preparedLimit, 8)
+        self.assertEqual(
+            result.pendingSpellPreparation.currentPreparedSpellIds,
+            ["s1", "s2"],
+        )
+        self.assertEqual(result.pendingSpellPreparation.createdAt, "2026-01-01T00:00:00+00:00")
+        self.assertTrue(result.pendingSpellPreparation.availableDuringRest)
+
+    def test_pending_spell_preparation_defaults_available_during_rest_to_false(self):
+        from app.api.routes.sessions.state_common import to_state_read
+
+        mock = MagicMock(spec=SessionState)
+        mock.id = "ss-1"
+        mock.session_id = "session-1"
+        mock.player_user_id = "player-1"
+        mock.state_json = {
+            "pending_spell_preparation": {
+                "source": "long_rest",
+                "class_key": "cleric",
+                "prepared_limit": 8,
+                "current_prepared_spell_ids": ["s1"],
+                "created_at": "2026-01-01T00:00:00+00:00",
+            }
+        }
+        mock.created_at = "2026-01-01T00:00:00+00:00"
+        mock.updated_at = None
+
+        result = to_state_read(mock)
+
+        self.assertIsNotNone(result.pendingSpellPreparation)
+        self.assertFalse(result.pendingSpellPreparation.availableDuringRest)
+
+
 class TestRemovePersistedEffect(unittest.TestCase):
     def test_remove_non_concentration_effect(self):
         eff_a = _manual_spell_effect("eff-a")
