@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocale } from "../../shared/hooks/useLocale";
 import type { Spell } from "../../features/character-sheet/model/characterSheet.types";
+import { getSpellPreparationCopyKeys, type SpellPreparationCopyMode } from "./spellPreparationCopy";
 
 type Props = {
   open: boolean;
@@ -10,6 +11,7 @@ type Props = {
   currentPreparedIds: string[];
   onSubmit: (preparedIds: string[]) => void;
   isSubmitting?: boolean;
+  copyMode?: SpellPreparationCopyMode;
 };
 
 export const SpellPreparationDialog = ({
@@ -20,8 +22,10 @@ export const SpellPreparationDialog = ({
   currentPreparedIds,
   onSubmit,
   isSubmitting,
+  copyMode = "fallback",
 }: Props) => {
   const { t } = useLocale();
+  const copyKeys = getSpellPreparationCopyKeys(copyMode);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(currentPreparedIds),
   );
@@ -68,10 +72,10 @@ export const SpellPreparationDialog = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#0f172a] p-6 shadow-2xl">
         <h2 className="text-lg font-bold text-white">
-          {t("playerBoard.prepareSpellsPrompt")}
+          {t(copyKeys.title)}
         </h2>
         <p className="mt-1 text-sm text-slate-400">
-          {t("playerBoard.prepareSpellsDescription")}
+          {t(copyKeys.description)}
         </p>
 
         <div className="mt-4 flex items-center justify-between">

@@ -67,6 +67,7 @@ export type PendingSpellPreparation = {
   preparedLimit: number;
   currentPreparedSpellIds: string[];
   createdAt: string;
+  availableDuringRest: boolean;
 };
 
 export type CombatSpellContextOrigin =

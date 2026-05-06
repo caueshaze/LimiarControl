@@ -3,6 +3,15 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class PendingSpellPreparationRead(BaseModel):
+    source: str
+    classKey: str
+    preparedLimit: int
+    currentPreparedSpellIds: list[str]
+    createdAt: str
+    availableDuringRest: bool = False
+
+
 class SessionStateRead(BaseModel):
     id: str
     sessionId: str
@@ -12,7 +21,7 @@ class SessionStateRead(BaseModel):
     updatedAt: datetime | None
     activeSpellEffects: list[dict] | None = None
     activeConcentration: dict | None = None
-    pendingSpellPreparation: dict | None = None
+    pendingSpellPreparation: PendingSpellPreparationRead | None = None
 
 
 class ClearConcentrationRequest(BaseModel):

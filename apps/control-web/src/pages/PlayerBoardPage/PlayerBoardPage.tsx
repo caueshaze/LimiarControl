@@ -28,6 +28,10 @@ import { sessionStatesRepo } from "../../shared/api/sessionStatesRepo";
 import { usePlayerBoardResources } from "./usePlayerBoardResources";
 import { usePlayerBoardSummary } from "./usePlayerBoardSummary";
 import { getConcentrationReplacementNotice } from "./concentrationLabel";
+import {
+  getSpellPreparationCopyKeys,
+  resolveSpellPreparationCopyMode,
+} from "./spellPreparationCopy";
 import { useSession } from "../../features/sessions";
 import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
 import { PlayerCombatModeShell } from "../../features/combat-ui/player/PlayerCombatModeShell";
@@ -84,6 +88,13 @@ export const PlayerBoardPage = () => {
     setSelectedCampaignLocal,
     userId: user?.userId,
   });
+  const spellPreparationCopyMode = resolveSpellPreparationCopyMode(
+    pendingSpellPreparation,
+    restState,
+  );
+  const spellPreparationCopyKeys = getSpellPreparationCopyKeys(
+    spellPreparationCopyMode,
+  );
   const {
     clearPendingRoll,
     handleAuthoritativeRollResolved,
@@ -426,10 +437,10 @@ export const PlayerBoardPage = () => {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-amber-200">
-                  {t("playerBoard.prepareSpellsPrompt")}
+                  {t(spellPreparationCopyKeys.title)}
                 </p>
                 <p className="text-xs text-amber-300/70">
-                  {t("playerBoard.prepareSpellsDescription")}
+                  {t(spellPreparationCopyKeys.description)}
                 </p>
               </div>
               <button
@@ -446,25 +457,25 @@ export const PlayerBoardPage = () => {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <div className="space-y-6">
-      <PlayerBoardStatusPanel
-        activeConcentration={activeConcentration}
-        activeSpellEffects={activeSpellEffects}
-        castableSpells={castableSpells}
-        castingSpell={castingSpell}
-        clearingConcentration={clearingConcentration}
-        combatActive={combatActive}
-        onCastSpell={handleCastSpellOutOfCombat}
-        onClearConcentration={handleClearConcentration}
-        onRemoveEffect={handleRemoveEffect}
-        pendingRoll={pendingRoll}
-        playerSheet={playerSheet}
-        playerStatus={playerStatus}
-        removingEffectId={removingEffectId}
-        restState={restState}
-        targetOptions={targetOptions}
-        usingHitDie={usingHitDie}
-        onUseHitDie={handleUseHitDie}
-      />
+          <PlayerBoardStatusPanel
+            activeConcentration={activeConcentration}
+            activeSpellEffects={activeSpellEffects}
+            castableSpells={castableSpells}
+            castingSpell={castingSpell}
+            clearingConcentration={clearingConcentration}
+            combatActive={combatActive}
+            onCastSpell={handleCastSpellOutOfCombat}
+            onClearConcentration={handleClearConcentration}
+            onRemoveEffect={handleRemoveEffect}
+            pendingRoll={pendingRoll}
+            playerSheet={playerSheet}
+            playerStatus={playerStatus}
+            removingEffectId={removingEffectId}
+            restState={restState}
+            targetOptions={targetOptions}
+            usingHitDie={usingHitDie}
+            onUseHitDie={handleUseHitDie}
+          />
           {activeSession?.id && (
             <PlayerEntityList
               sessionId={activeSession.id}
@@ -536,7 +547,7 @@ export const PlayerBoardPage = () => {
                 campaignId={effectiveCampaignId}
                 inventoryItems={myInventory}
                 wallet={playerWallet}
-                strengthScore={playerSheet?.abilities.strength}
+                strengthScore={playerSheet?.abilities?.strength}
                 currentTotalWeightKg={playerStatus?.totalWeightKg}
                 currentEncumbranceTier={playerStatus?.encumbranceTier}
                 onBuy={(item, inventoryItem) => {
@@ -613,6 +624,7 @@ export const PlayerBoardPage = () => {
         currentPreparedIds={pendingSpellPreparation?.currentPreparedSpellIds ?? []}
         onSubmit={handlePrepareSpells}
         isSubmitting={preparingSpells}
+        copyMode={spellPreparationCopyMode}
       />
       <DiceVisualizer events={rollEvents} />
         </>

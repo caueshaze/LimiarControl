@@ -34,7 +34,7 @@ from app.services.out_of_combat_cast import (
 )
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
-from app.services.spell_preparation import apply_prepared_spells
+from app.services.spell_preparation import apply_prepared_spells_with_long_rest_tracking
 from ._shared import record_session_activity, require_identifier
 from .state_common import (
     ensure_session_state,
@@ -909,7 +909,7 @@ async def prepare_my_spells(
             detail=f"Prepared spell count ({leveled_count}) exceeds limit ({limit}).",
         )
 
-    state.state_json = apply_prepared_spells(state.state_json, payload.preparedSpellIds)
+    state.state_json = apply_prepared_spells_with_long_rest_tracking(state.state_json, payload.preparedSpellIds)
     state.state_json = finalize_session_state_data(state.state_json)
     flag_modified(state, "state_json")
     session.add(state)

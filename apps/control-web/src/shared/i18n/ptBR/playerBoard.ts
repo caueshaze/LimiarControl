@@ -201,6 +201,8 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.concentrationReplacedDescription": "Concentração anterior encerrada: {previous}. Nova concentração: {next}.",
   "playerBoard.prepareSpellsPrompt": "Preparar magias",
   "playerBoard.prepareSpellsDescription": "Você concluiu um descanso longo. Revise suas magias preparadas.",
+  "playerBoard.prepareSpellsDuringLongRestPrompt": "Preparar magias durante o descanso",
+  "playerBoard.prepareSpellsDuringLongRestDescription": "O descanso longo ainda está em andamento. Revise suas magias preparadas agora.",
   "playerBoard.prepareSpellsButton": "Preparar magias",
   "playerBoard.prepareSpellsSelected": "Selecionadas: {count} / {limit}",
   "playerBoard.prepareSpellsOverLimit": "Limite excedido",

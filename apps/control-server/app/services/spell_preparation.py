@@ -1,7 +1,8 @@
 """Spell preparation logic for prepared and spellbook casters.
 
-Triggered after long rest to prompt players to review their prepared spells.
-v1 is additive: existing prepared flags are preserved as the initial state.
+The long-rest flow seeds a pending preparation prompt at rest start, tracks
+whether the player completed it during that rest, and falls back to the old
+post-rest prompt when needed.
 """
 
 from __future__ import annotations
@@ -13,6 +14,9 @@ _PREPARED_CASTER_CLASSES: set[str] = {"cleric", "druid", "paladin", "wizard"}
 
 # Half-casters use half their character level for spell slot / preparation scaling.
 _HALF_CASTER_CLASSES: set[str] = {"paladin", "ranger"}
+
+_PENDING_SPELL_PREPARATION_KEY = "pending_spell_preparation"
+_LONG_REST_COMPLETION_MARKER_KEY = "spell_preparation_completed_during_long_rest"
 
 
 def _normalize_class(class_id: str | None) -> str | None:
@@ -45,7 +49,11 @@ def compute_prepared_spell_limit(
     return max(1, caster_level + ability_modifier)
 
 
-def create_pending_spell_preparation(data: dict) -> dict | None:
+def create_pending_spell_preparation(
+    data: dict,
+    *,
+    available_during_rest: bool = False,
+) -> dict | None:
     """Build a pending_spell_preparation dict if the character is eligible.
 
     Returns None for non-casters, known-spell casters, or characters without
@@ -92,6 +100,7 @@ def create_pending_spell_preparation(data: dict) -> dict | None:
         "prepared_limit": prepared_limit,
         "current_prepared_spell_ids": current_prepared,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "available_during_rest": available_during_rest,
     }
 
 
@@ -120,4 +129,47 @@ def apply_prepared_spells(data: dict, prepared_spell_ids: list[str]) -> dict:
 
     next_data["spellcasting"] = {**spellcasting, "spells": spells}
     next_data.pop("pending_spell_preparation", None)
+    return next_data
+
+
+def seed_long_rest_spell_preparation(data: dict) -> dict:
+    """Replace any stale pending spell prep with the active long-rest prompt."""
+    next_data = dict(data)
+    next_data.pop(_LONG_REST_COMPLETION_MARKER_KEY, None)
+    next_data.pop(_PENDING_SPELL_PREPARATION_KEY, None)
+
+    pending = create_pending_spell_preparation(next_data, available_during_rest=True)
+    if pending:
+        next_data[_PENDING_SPELL_PREPARATION_KEY] = pending
+    return next_data
+
+
+def apply_prepared_spells_with_long_rest_tracking(
+    data: dict,
+    prepared_spell_ids: list[str],
+) -> dict:
+    """Apply prepared spells and mark that the player finished the long-rest prompt."""
+    next_data = apply_prepared_spells(data, prepared_spell_ids)
+    pending = data.get(_PENDING_SPELL_PREPARATION_KEY)
+    if (
+        data.get("restState") == "long_rest"
+        and isinstance(pending, dict)
+        and pending.get("available_during_rest") is True
+    ):
+        next_data[_LONG_REST_COMPLETION_MARKER_KEY] = True
+    return next_data
+
+
+def settle_long_rest_spell_preparation(data: dict) -> dict:
+    """Finalize the long-rest spell preparation prompt after the rest ends."""
+    next_data = dict(data)
+    pending = next_data.get(_PENDING_SPELL_PREPARATION_KEY)
+    completed_during_rest = bool(next_data.get(_LONG_REST_COMPLETION_MARKER_KEY))
+
+    if not isinstance(pending, dict) and not completed_during_rest:
+        pending = create_pending_spell_preparation(next_data, available_during_rest=False)
+        if pending:
+            next_data[_PENDING_SPELL_PREPARATION_KEY] = pending
+
+    next_data.pop(_LONG_REST_COMPLETION_MARKER_KEY, None)
     return next_data
