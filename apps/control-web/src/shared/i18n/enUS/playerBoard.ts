@@ -202,6 +202,8 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.lifecycleLongRest": "Clears on long rest",
   "playerBoard.concentrationReplacedTitle": "Concentration replaced",
   "playerBoard.concentrationReplacedDescription": "Previous concentration ended: {previous}. New concentration: {next}.",
+  "playerBoard.prepareSpellsInitialPrompt": "Prepare initial spells",
+  "playerBoard.prepareSpellsInitialDescription": "Choose the spells your character has prepared to start the session.",
   "playerBoard.prepareSpellsPrompt": "Prepare spells",
   "playerBoard.prepareSpellsDescription": "You completed a long rest. Review your prepared spells.",
   "playerBoard.prepareSpellsDuringLongRestPrompt": "Prepare spells during long rest",

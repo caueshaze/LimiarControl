@@ -17,6 +17,7 @@ _HALF_CASTER_CLASSES: set[str] = {"paladin", "ranger"}
 
 _PENDING_SPELL_PREPARATION_KEY = "pending_spell_preparation"
 _LONG_REST_COMPLETION_MARKER_KEY = "spell_preparation_completed_during_long_rest"
+_INITIAL_COMPLETED_MARKER_KEY = "spell_preparation_initial_completed"
 
 
 def _normalize_class(class_id: str | None) -> str | None:
@@ -53,6 +54,7 @@ def create_pending_spell_preparation(
     data: dict,
     *,
     available_during_rest: bool = False,
+    source: str = "long_rest",
 ) -> dict | None:
     """Build a pending_spell_preparation dict if the character is eligible.
 
@@ -95,7 +97,7 @@ def create_pending_spell_preparation(
     ]
 
     return {
-        "source": "long_rest",
+        "source": source,
         "class_key": normalized,
         "prepared_limit": prepared_limit,
         "current_prepared_spell_ids": current_prepared,
@@ -173,3 +175,22 @@ def settle_long_rest_spell_preparation(data: dict) -> dict:
 
     next_data.pop(_LONG_REST_COMPLETION_MARKER_KEY, None)
     return next_data
+
+
+def seed_initial_spell_preparation(state_json: dict) -> None:
+    """Seed pending spell preparation on first session init for prepared casters.
+
+    No-ops if the initial prompt was already completed or if a pending already exists.
+    Mutates state_json in-place — safe only before the first DB persist.
+    """
+    if state_json.get(_INITIAL_COMPLETED_MARKER_KEY):
+        return
+    if state_json.get(_PENDING_SPELL_PREPARATION_KEY):
+        return
+    pending = create_pending_spell_preparation(
+        state_json,
+        available_during_rest=False,
+        source="initial_setup",
+    )
+    if pending:
+        state_json[_PENDING_SPELL_PREPARATION_KEY] = pending
