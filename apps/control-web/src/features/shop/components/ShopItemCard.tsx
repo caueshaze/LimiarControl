@@ -6,10 +6,17 @@ import { LB_TO_KG, computeProjectedEncumbranceTier } from "../../../features/cha
 import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { localizedItemName } from "../utils/localizedItemName";
-import { formatItemPrice } from "../utils/shopCurrency";
+import {
+  formatItemPrice,
+  formatPriceMoney,
+  getItemPriceCopperValue,
+} from "../utils/shopCurrency";
+import { hasEnough, subtractMoney } from "../../../shared/utils/money";
+import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
 
 type ShopItemCardProps = {
   item: Item;
+  wallet?: CurrencyWallet | null;
   ownedQuantity?: number;
   isBuying?: boolean;
   didJustBuy?: boolean;
@@ -27,6 +34,7 @@ const encumbranceWarningColor: Record<string, string> = {
 
 export const ShopItemCard = ({
   item,
+  wallet = null,
   ownedQuantity = 0,
   isBuying = false,
   didJustBuy = false,
@@ -49,6 +57,10 @@ export const ShopItemCard = ({
   }, [strengthScore, currentTotalWeightKg, currentEncumbranceTier, item.weight]);
 
   const propertyLabels = getItemPropertyLabels(item.properties, locale);
+  const priceCopperValue = getItemPriceCopperValue(item.price, item.priceCopperValue);
+  const canAfford = hasEnough(wallet, priceCopperValue);
+  const missingAmount = Math.max(0, priceCopperValue - (wallet?.copperValue ?? 0));
+  const balanceAfter = subtractMoney(wallet, priceCopperValue).copperValue;
   const detailBits = [
     item.damageDice ? `${t("shop.card.damage")} ${item.damageDice}` : null,
     item.rangeMeters ? `${t("shop.card.range")} ${item.rangeMeters}m` : null,
@@ -129,6 +141,20 @@ export const ShopItemCard = ({
               {expanded ? t("shop.card.hideDetails") : t("shop.card.showDetails")}
             </button>
           )}
+
+          {onBuy && (
+            <div className="mt-3 space-y-1">
+              {!canAfford ? (
+                <p className="text-xs font-medium text-rose-300">
+                  {t("shop.card.cannotAfford").replace("{amount}", formatPriceMoney(missingAmount))}
+                </p>
+              ) : (
+                <p className="text-xs text-emerald-300">
+                  {t("shop.card.balanceAfter").replace("{amount}", formatPriceMoney(balanceAfter))}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {onBuy && (
@@ -136,8 +162,12 @@ export const ShopItemCard = ({
             <button
               type="button"
               onClick={() => onBuy(item.id)}
-              disabled={isBuying}
-              className="w-full rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+              disabled={isBuying || !canAfford}
+              className={`w-full rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto ${
+                canAfford
+                  ? "bg-slate-100 text-slate-900 hover:bg-white"
+                  : "bg-slate-800 text-slate-400"
+              }`}
             >
               {isBuying ? t("shop.card.buying") : t("shop.card.buy")}
             </button>

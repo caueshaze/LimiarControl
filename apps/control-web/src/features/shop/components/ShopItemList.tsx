@@ -1,11 +1,13 @@
 import type { Item } from "../../../entities/item";
 import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
+import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
 import { ShopItemCard } from "./ShopItemCard";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type ShopItemListProps = {
   emptyMessage?: string;
   items: Item[];
+  wallet?: CurrencyWallet | null;
   ownedByItemId?: Record<string, number>;
   pendingItemId?: string | null;
   recentItemId?: string | null;
@@ -18,6 +20,7 @@ type ShopItemListProps = {
 export const ShopItemList = ({
   emptyMessage,
   items,
+  wallet = null,
   ownedByItemId = {},
   pendingItemId = null,
   recentItemId = null,
@@ -41,6 +44,7 @@ export const ShopItemList = ({
         <ShopItemCard
           key={item.id}
           item={item}
+          wallet={wallet}
           ownedQuantity={ownedByItemId[item.id] ?? 0}
           isBuying={pendingItemId === item.id}
           didJustBuy={recentItemId === item.id}

@@ -72,6 +72,7 @@ export const ShopPanel = ({
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | ItemType>("ALL");
   const [ownedOnly, setOwnedOnly] = useState(false);
+  const [sellExpanded, setSellExpanded] = useState(false);
   const recentTimerRef = useRef<number | null>(null);
   const recentSellTimerRef = useRef<number | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -185,7 +186,6 @@ export const ShopPanel = ({
     >
       <ShopPanelHeader
         closeLabel={t("shop.close") ?? "Close shop"}
-        description={t("shop.description")}
         subtitle={t("shop.subtitle")}
         title={t("shop.title")}
         onClose={onClose}
@@ -214,20 +214,86 @@ export const ShopPanel = ({
         ) : (
           <div className="space-y-4">
             <ShopPanelInventorySummary
-              inventorySummary={inventorySummary}
-              totalLabel={t("shop.panel.total")}
-              uniqueLabel={t("shop.panel.unique")}
               wallet={wallet}
               walletLabel={t("shop.panel.wallet")}
             />
 
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                  {t("shop.panel.buyTitle")}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <ShopFilterBar
+                  filteredCount={filteredItems.length}
+                  ownedCount={inventorySummary.unique}
+                  ownedOnly={ownedOnly}
+                  onClear={() => {
+                    setSearch("");
+                    setTypeFilter("ALL");
+                    setOwnedOnly(false);
+                  }}
+                  onOwnedOnlyChange={setOwnedOnly}
+                  onSearchChange={setSearch}
+                  onTypeFilterChange={setTypeFilter}
+                  search={search}
+                  totalCount={items.length}
+                  typeCounts={typeCounts}
+                  typeFilter={typeFilter}
+                />
+              </div>
+
+              <div className="mt-4 max-h-[32rem] overflow-y-auto pr-1">
+                <ShopItemList
+                  emptyMessage={hasFilteredResults ? undefined : t("shop.panel.emptyFiltered")}
+                  items={filteredItems}
+                  wallet={wallet}
+                  ownedByItemId={ownedByItemId}
+                  pendingItemId={pendingItemId}
+                  recentItemId={recentItemId}
+                  strengthScore={strengthScore}
+                  currentTotalWeightKg={currentTotalWeightKg}
+                  currentEncumbranceTier={currentEncumbranceTier}
+                  onBuy={async (id) => {
+                    const selectedItem = items.find((item) => item.id === id);
+                    if (!selectedItem) {
+                      return;
+                    }
+                    setPendingItemId(id);
+                    try {
+                      const inventoryItem = await buyItem(id);
+                      if (recentTimerRef.current) {
+                        window.clearTimeout(recentTimerRef.current);
+                      }
+                      setRecentItemId(id);
+                      recentTimerRef.current = window.setTimeout(() => {
+                        setRecentItemId(null);
+                        recentTimerRef.current = null;
+                      }, 1800);
+                      onBuy?.(selectedItem, inventoryItem);
+                    } catch (error) {
+                      const message = (error as { message?: string })?.message;
+                      onBuyError?.(message);
+                    } finally {
+                      setPendingItemId(null);
+                    }
+                  }}
+                />
+              </div>
+            </section>
+
             <ShopPanelSellSection
+              expanded={sellExpanded}
               description={t("shop.sell.description")}
               inventoryItems={inventoryItems ?? []}
               itemsById={itemsById}
               pendingInventoryId={pendingSellInventoryId}
               recentInventoryId={recentSellInventoryId}
               title={t("shop.sell.title")}
+              toggleLabel={sellExpanded ? t("shop.sell.hide") : t("shop.sell.show")}
+              onToggleExpanded={() => setSellExpanded((current) => !current)}
               onSell={async (inventoryItemId) => {
                 const inventoryEntry = (inventoryItems ?? []).find((entry) => entry.id === inventoryItemId);
                 if (!inventoryEntry) {
@@ -257,61 +323,6 @@ export const ShopPanel = ({
                 }
               }}
             />
-
-            <ShopFilterBar
-              filteredCount={filteredItems.length}
-              ownedCount={inventorySummary.unique}
-              ownedOnly={ownedOnly}
-              onClear={() => {
-                setSearch("");
-                setTypeFilter("ALL");
-                setOwnedOnly(false);
-              }}
-              onOwnedOnlyChange={setOwnedOnly}
-              onSearchChange={setSearch}
-              onTypeFilterChange={setTypeFilter}
-              search={search}
-              totalCount={items.length}
-              typeCounts={typeCounts}
-              typeFilter={typeFilter}
-            />
-
-            <div className="max-h-[32rem] overflow-y-auto pr-1">
-              <ShopItemList
-                emptyMessage={hasFilteredResults ? undefined : t("shop.panel.emptyFiltered")}
-                items={filteredItems}
-                ownedByItemId={ownedByItemId}
-                pendingItemId={pendingItemId}
-                recentItemId={recentItemId}
-                strengthScore={strengthScore}
-                currentTotalWeightKg={currentTotalWeightKg}
-                currentEncumbranceTier={currentEncumbranceTier}
-                onBuy={async (id) => {
-                  const selectedItem = items.find((item) => item.id === id);
-                  if (!selectedItem) {
-                    return;
-                  }
-                  setPendingItemId(id);
-                  try {
-                    const inventoryItem = await buyItem(id);
-                    if (recentTimerRef.current) {
-                      window.clearTimeout(recentTimerRef.current);
-                    }
-                    setRecentItemId(id);
-                    recentTimerRef.current = window.setTimeout(() => {
-                      setRecentItemId(null);
-                      recentTimerRef.current = null;
-                    }, 1800);
-                    onBuy?.(selectedItem, inventoryItem);
-                  } catch (error) {
-                    const message = (error as { message?: string })?.message;
-                    onBuyError?.(message);
-                  } finally {
-                    setPendingItemId(null);
-                  }
-                }}
-              />
-            </div>
           </div>
         )}
       </div>

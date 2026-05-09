@@ -85,6 +85,19 @@ export const formatItemPrice = (
   return formatPriceMoney(Math.max(0, Math.round(price * 100)));
 };
 
+export const getItemPriceCopperValue = (
+  price?: number | null,
+  priceCopperValue?: number | null,
+) => {
+  if (typeof priceCopperValue === "number" && Number.isFinite(priceCopperValue) && priceCopperValue >= 0) {
+    return Math.max(0, Math.trunc(priceCopperValue));
+  }
+  if (typeof price !== "number" || Number.isNaN(price) || price < 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(price * 100));
+};
+
 export const formatPriceMoney = (copperValue: number) => {
   const totalCp = Math.max(0, Math.trunc(copperValue));
   if (totalCp === 0) {
