@@ -3,6 +3,7 @@
 Covers:
 - compute_prepared_spell_limit
 - create_pending_spell_preparation
+- seed_initial_spell_preparation
 - apply_prepared_spells
 """
 
@@ -15,6 +16,7 @@ from app.services.spell_preparation import (
     apply_prepared_spells_with_long_rest_tracking,
     compute_prepared_spell_limit,
     create_pending_spell_preparation,
+    seed_initial_spell_preparation,
     seed_long_rest_spell_preparation,
     settle_long_rest_spell_preparation,
 )
@@ -351,6 +353,93 @@ class TestApplyPreparedSpells(unittest.TestCase):
         )
         self.assertEqual(result["spellcasting"]["spells"], [])
         self.assertNotIn("pending_spell_preparation", result)
+
+
+class TestSeedInitialSpellPreparation(unittest.TestCase):
+    def _base_state(self, **overrides):
+        defaults = {
+            "class": "cleric",
+            "level": 5,
+            "abilities": {"wisdom": 16},
+            "spellcasting": {
+                "ability": "wisdom",
+                "spells": [
+                    {"id": "s1", "name": "Bless", "level": 1, "prepared": True},
+                    {"id": "s2", "name": "Guidance", "level": 0, "prepared": True},
+                ],
+            },
+        }
+        defaults.update(overrides)
+        return defaults
+
+    def test_creates_pending_for_prepared_casters(self):
+        for class_id in ("cleric", "druid", "paladin", "wizard"):
+            with self.subTest(class_id=class_id):
+                state = self._base_state(**{"class": class_id})
+                seed_initial_spell_preparation(state)
+                self.assertIn("pending_spell_preparation", state)
+                self.assertEqual(state["pending_spell_preparation"]["source"], "initial_setup")
+
+    def test_does_not_create_pending_for_known_casters(self):
+        for class_id in ("sorcerer", "bard", "warlock"):
+            with self.subTest(class_id=class_id):
+                state = self._base_state(**{"class": class_id})
+                seed_initial_spell_preparation(state)
+                self.assertNotIn("pending_spell_preparation", state)
+
+    def test_does_not_create_pending_for_non_caster(self):
+        state = {"class": "fighter", "level": 5}
+        seed_initial_spell_preparation(state)
+        self.assertNotIn("pending_spell_preparation", state)
+
+    def test_source_is_initial_setup(self):
+        state = self._base_state()
+        seed_initial_spell_preparation(state)
+        self.assertEqual(state["pending_spell_preparation"]["source"], "initial_setup")
+
+    def test_available_during_rest_is_false(self):
+        state = self._base_state()
+        seed_initial_spell_preparation(state)
+        self.assertFalse(state["pending_spell_preparation"]["available_during_rest"])
+
+    def test_no_op_when_initial_completed_marker_present(self):
+        state = self._base_state(spell_preparation_initial_completed=True)
+        seed_initial_spell_preparation(state)
+        self.assertNotIn("pending_spell_preparation", state)
+
+    def test_no_op_when_pending_already_exists(self):
+        existing = {"source": "long_rest", "class_key": "cleric", "prepared_limit": 1,
+                    "current_prepared_spell_ids": [], "created_at": "", "available_during_rest": False}
+        state = self._base_state(pending_spell_preparation=existing)
+        seed_initial_spell_preparation(state)
+        self.assertEqual(state["pending_spell_preparation"]["source"], "long_rest")
+
+    def test_long_rest_still_creates_pending_after_initial_completed(self):
+        state = self._base_state(spell_preparation_initial_completed=True)
+        seeded = seed_long_rest_spell_preparation(state)
+        self.assertIn("pending_spell_preparation", seeded)
+        self.assertEqual(seeded["pending_spell_preparation"]["source"], "long_rest")
+
+    def test_apply_initial_sets_completed_marker(self):
+        state = self._base_state()
+        seed_initial_spell_preparation(state)
+        self.assertEqual(state["pending_spell_preparation"]["source"], "initial_setup")
+
+        # Simulate the endpoint: capture was_initial_setup, then apply
+        pending = (state or {}).get("pending_spell_preparation") or {}
+        was_initial_setup = pending.get("source") == "initial_setup"
+        result = apply_prepared_spells_with_long_rest_tracking(state, ["s1"])
+        if was_initial_setup:
+            result["spell_preparation_initial_completed"] = True
+
+        self.assertNotIn("pending_spell_preparation", result)
+        self.assertTrue(result["spell_preparation_initial_completed"])
+
+    def test_apply_initial_does_not_set_long_rest_marker(self):
+        state = self._base_state()
+        seed_initial_spell_preparation(state)
+        result = apply_prepared_spells_with_long_rest_tracking(state, ["s1"])
+        self.assertNotIn("spell_preparation_completed_during_long_rest", result)
 
 
 if __name__ == "__main__":

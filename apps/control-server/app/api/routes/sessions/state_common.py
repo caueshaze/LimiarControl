@@ -22,6 +22,7 @@ from app.services.combat_service.persistent_effects import derive_active_concent
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.session_state_merge import merge_session_state_data
+from app.services.spell_preparation import seed_initial_spell_preparation
 from ._shared import require_identifier
 
 REQUIRED_SHEET_KEYS = {
@@ -200,13 +201,15 @@ def seed_state_from_character_sheet(
     ).first()
     if not base_sheet:
         return None
+    state_json = finalize_session_state_data(
+        base_sheet.data if isinstance(base_sheet.data, dict) else {}
+    )
+    seed_initial_spell_preparation(state_json)
     entry = SessionState(
         id=str(uuid4()),
         session_id=session_id,
         player_user_id=player_user_id,
-        state_json=finalize_session_state_data(
-            base_sheet.data if isinstance(base_sheet.data, dict) else {}
-        ),
+        state_json=state_json,
         created_at=datetime.now(timezone.utc),
         updated_at=None,
     )

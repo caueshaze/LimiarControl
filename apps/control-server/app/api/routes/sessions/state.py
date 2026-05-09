@@ -909,7 +909,10 @@ async def prepare_my_spells(
             detail=f"Prepared spell count ({leveled_count}) exceeds limit ({limit}).",
         )
 
+    was_initial_setup = (pending or {}).get("source") == "initial_setup"
     state.state_json = apply_prepared_spells_with_long_rest_tracking(state.state_json, payload.preparedSpellIds)
+    if was_initial_setup:
+        state.state_json["spell_preparation_initial_completed"] = True
     state.state_json = finalize_session_state_data(state.state_json)
     flag_modified(state, "state_json")
     session.add(state)

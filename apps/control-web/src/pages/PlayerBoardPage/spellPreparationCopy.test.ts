@@ -58,4 +58,25 @@ describe("spellPreparationCopy", () => {
       description: "playerBoard.prepareSpellsDescription",
     });
   });
+
+  it("returns initial_setup mode when source is initial_setup regardless of restState", () => {
+    const pending = {
+      source: "initial_setup",
+      classKey: "cleric",
+      preparedLimit: 8,
+      currentPreparedSpellIds: [],
+      createdAt: "2026-01-01T00:00:00+00:00",
+      availableDuringRest: false,
+    };
+    expect(resolveSpellPreparationCopyMode(pending, "exploration")).toBe("initial_setup");
+    expect(resolveSpellPreparationCopyMode(pending, "long_rest")).toBe("initial_setup");
+    expect(resolveSpellPreparationCopyMode(pending, "short_rest")).toBe("initial_setup");
+  });
+
+  it("maps copy keys for initial_setup mode", () => {
+    expect(getSpellPreparationCopyKeys("initial_setup")).toEqual({
+      title: "playerBoard.prepareSpellsInitialPrompt",
+      description: "playerBoard.prepareSpellsInitialDescription",
+    });
+  });
 });
