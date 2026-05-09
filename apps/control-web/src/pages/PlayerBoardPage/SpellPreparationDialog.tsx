@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "../../shared/hooks/useLocale";
 import type { Spell } from "../../features/character-sheet/model/characterSheet.types";
 import { getSpellPreparationCopyKeys, type SpellPreparationCopyMode } from "./spellPreparationCopy";
@@ -26,9 +26,15 @@ export const SpellPreparationDialog = ({
 }: Props) => {
   const { t } = useLocale();
   const copyKeys = getSpellPreparationCopyKeys(copyMode);
+  const currentPreparedKey = currentPreparedIds.join("|");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(currentPreparedIds),
   );
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedIds(new Set(currentPreparedIds));
+  }, [currentPreparedIds, currentPreparedKey, open]);
 
   const grouped = useMemo(() => {
     const byLevel: Record<number, Spell[]> = {};

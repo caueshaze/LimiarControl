@@ -53,7 +53,7 @@ describe("guided preset validation", () => {
       fixedFightingStyle: { id: "archery", level: 2 },
       fixedAsiBonuses: [{ ability: "luck", bonus: 2, level: 4 }],
       featureProgression: [{ level: 1, features: [{ id: "favored_enemy_beasts" }] }],
-    } as GuidedPresetConfig;
+    } as unknown as GuidedPresetConfig;
 
     expect(() => validateGuidedPresetConfig("guardian", preset)).toThrowError(
       'Guided preset "guardian" has invalid fixedAsiBonuses[0].ability "luck".'

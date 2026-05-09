@@ -10,11 +10,13 @@ import type {
   BaseSpell as ApiBaseSpell,
   ResolutionType,
   SpellAttackType,
+  SpellDeclarativeEffect,
   SpellEffectTiming,
   SpellCantripScaling,
   SpellOriginType,
   SpellRangeKind,
   SpellSelectionType,
+  SpellVariant,
   SpellTargetAnchor,
   TargetType
 } from "../base-spell/baseSpell.types";
@@ -51,6 +53,9 @@ export type BaseSpell = {
   effectTiming?: SpellEffectTiming | null;
   areaShape?: AreaShape | null;
   healDice?: string | null;
+  effects?: SpellDeclarativeEffect[] | null;
+  onEndEffects?: SpellDeclarativeEffect[] | null;
+  variants?: SpellVariant[] | null;
   damageType: string | null;
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
@@ -60,6 +65,7 @@ export type BaseSpell = {
   requiresPointEffect?: boolean | null;
   upcast?: ApiBaseSpell["upcast"];
   cantripScaling?: SpellCantripScaling | null;
+  defaultSpellMode?: string | null;
   classes: string[];
 };
 
@@ -140,6 +146,9 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   effectTiming: api.effectTiming ?? null,
   areaShape: api.areaShape ?? null,
   healDice: api.healDice ?? null,
+  effects: api.effects ?? null,
+  onEndEffects: api.onEndEffects ?? null,
+  variants: api.variants ?? null,
   damageType: api.damageType ?? null,
   savingThrow: api.savingThrow ?? null,
   saveSuccessOutcome: api.saveSuccessOutcome ?? null,
@@ -149,6 +158,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   requiresPointEffect: api.requiresPointEffect ?? null,
   upcast: api.upcast ?? null,
   cantripScaling: api.cantripScaling ?? null,
+  defaultSpellMode: api.defaultSpellMode ?? null,
   classes: api.classesJson ?? []
 });
 

@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PlayerSpellCastDialog,
@@ -122,7 +123,7 @@ const participants = [
   },
 ];
 
-const baseProps = {
+const baseProps: Omit<ComponentProps<typeof PlayerSpellCastDialog>, "spell"> = {
   actor,
   actorParticipantId: actor.id,
   onClose: () => undefined,
@@ -133,7 +134,7 @@ const baseProps = {
   spellEffectBonus: "0",
   spellEffectDice: "1d10",
   spellMode: "spell_attack" as const,
-  spellSaveAbility: "",
+  spellSaveAbility: "" as const,
   target,
 };
 

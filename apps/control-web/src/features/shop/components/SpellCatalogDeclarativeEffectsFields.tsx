@@ -9,11 +9,14 @@ import type {
 } from "../../../entities/base-spell";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { localizeSpellAdminValue } from "../../../shared/i18n/domainLabels";
-import type { SpellCatalogEditorState } from "../utils/spellCatalogForm";
+type DeclarativeEffectsState = {
+  effects: SpellDeclarativeEffect[];
+  onEndEffects: SpellDeclarativeEffect[];
+};
 
-type Props = {
-  state: SpellCatalogEditorState;
-  setState: Dispatch<SetStateAction<SpellCatalogEditorState>>;
+type Props<TState extends DeclarativeEffectsState = DeclarativeEffectsState> = {
+  state: TState;
+  setState: Dispatch<SetStateAction<TState>>;
 };
 
 const fieldClassName =
@@ -115,6 +118,13 @@ const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativ
   }
 };
 
+const updateEffectAtIndex = (
+  effects: SpellDeclarativeEffect[],
+  index: number,
+  updater: (effect: SpellDeclarativeEffect) => SpellDeclarativeEffect,
+): SpellDeclarativeEffect[] =>
+  effects.map((entry, entryIndex) => (entryIndex === index ? updater(entry) : entry));
+
 export const SpellCatalogEffectEditor = ({
   title,
   effects,
@@ -145,15 +155,11 @@ export const SpellCatalogEffectEditor = ({
                 value={effect.type}
                 onChange={(event) =>
                   onChange(
-                    effects.map((entry, entryIndex) =>
-                      entryIndex === index
-                        ? {
-                            ...entry,
-                            type: event.target.value as SpellDeclarativeEffectType,
-                            params: retargetParams(event.target.value as SpellDeclarativeEffectType),
-                          }
-                        : entry,
-                    ),
+                    updateEffectAtIndex(effects, index, (entry) => ({
+                      ...entry,
+                      type: event.target.value as SpellDeclarativeEffectType,
+                      params: retargetParams(event.target.value as SpellDeclarativeEffectType),
+                    }) as SpellDeclarativeEffect),
                   )
                 }
                 className={fieldClassName}
@@ -306,14 +312,14 @@ export const SpellCatalogEffectEditor = ({
                 value={effect.params.condition}
                 onChange={(event) =>
                   onChange(
-                    effects.map((entry, entryIndex) =>
-                      entryIndex === index && "condition" in entry.params
-                        ? {
+                    updateEffectAtIndex(effects, index, (entry) =>
+                      "condition" in entry.params
+                        ? ({
                             ...entry,
                             params: {
                               condition: event.target.value as SpellDeclarativeConditionType,
                             },
-                          }
+                          } as SpellDeclarativeEffect)
                         : entry,
                     ),
                   )
@@ -337,15 +343,15 @@ export const SpellCatalogEffectEditor = ({
                   value={effect.params.stat}
                   onChange={(event) =>
                     onChange(
-                      effects.map((entry, entryIndex) =>
-                        entryIndex === index && "stat" in entry.params
-                          ? {
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        "stat" in entry.params
+                          ? ({
                               ...entry,
                               params: {
                                 ...entry.params,
                                 stat: event.target.value as SpellDeclarativeModifyStat,
                               },
-                            }
+                            } as SpellDeclarativeEffect)
                           : entry,
                       ),
                     )
@@ -366,15 +372,15 @@ export const SpellCatalogEffectEditor = ({
                   value={effect.params.value}
                   onChange={(event) =>
                     onChange(
-                      effects.map((entry, entryIndex) =>
-                        entryIndex === index && "stat" in entry.params
-                          ? {
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        "stat" in entry.params
+                          ? ({
                               ...entry,
                               params: {
                                 ...entry.params,
                                 value: event.target.value === "" ? 0 : Number(event.target.value) || 0,
                               },
-                            }
+                            } as SpellDeclarativeEffect)
                           : entry,
                       ),
                     )
@@ -393,12 +399,12 @@ export const SpellCatalogEffectEditor = ({
                   value={effect.params.ability}
                   onChange={(event) =>
                     onChange(
-                      effects.map((entry, entryIndex) =>
-                        entryIndex === index && "ability" in entry.params
-                          ? {
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        "ability" in entry.params
+                          ? ({
                               ...entry,
                               params: { ...entry.params, ability: event.target.value as (typeof ABILITY_OPTIONS)[number] },
-                            }
+                            } as SpellDeclarativeEffect)
                           : entry,
                       ),
                     )
@@ -419,9 +425,12 @@ export const SpellCatalogEffectEditor = ({
                   value={effect.params.against ?? "any"}
                   onChange={(event) =>
                     onChange(
-                      effects.map((entry, entryIndex) =>
-                        entryIndex === index && "ability" in entry.params
-                          ? { ...entry, params: { ...entry.params, against: event.target.value as "any" | "effect_target" | "selected_target" } }
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        "ability" in entry.params
+                          ? ({
+                              ...entry,
+                              params: { ...entry.params, against: event.target.value as "any" | "effect_target" | "selected_target" },
+                            } as SpellDeclarativeEffect)
                           : entry,
                       ),
                     )
@@ -445,16 +454,16 @@ export const SpellCatalogEffectEditor = ({
                 value={effect.params.action}
                 onChange={(event) =>
                   onChange(
-                    effects.map((entry, entryIndex) =>
-                      entryIndex === index && "action" in entry.params
-                        ? {
+                    updateEffectAtIndex(effects, index, (entry) =>
+                      "action" in entry.params
+                        ? ({
                             ...entry,
                             params: {
                               action: event.target.value as SpellDeclarativeRestrictActionKind,
-                          },
-                        }
-                      : entry,
-                  ),
+                            },
+                          } as SpellDeclarativeEffect)
+                        : entry,
+                    ),
                 )
               }
               className={fieldClassName}
@@ -489,10 +498,10 @@ export const SpellCatalogEffectEditor = ({
 );
 };
 
-export const SpellCatalogDeclarativeEffectsFields = ({
+export const SpellCatalogDeclarativeEffectsFields = <TState extends DeclarativeEffectsState>({
   state,
   setState,
-}: Props) => (
+}: Props<TState>) => (
   <div className="space-y-5">
     <SpellCatalogEffectEditor
       title="Efeitos declarativos"

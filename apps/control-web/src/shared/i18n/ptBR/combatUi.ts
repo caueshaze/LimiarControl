@@ -47,6 +47,7 @@ export const combatUiPtBRDictionary = {
   "combatUi.condition.blinded": "Cego",
   "combatUi.condition.frightened": "Amedrontado",
   "combatUi.condition.charmed": "Enfeitiçado",
+  "combatUi.condition.hostile_to_caster": "Hostil ao conjurador",
   "combatUi.turnEyebrow": "Fluxo do turno",
   "combatUi.playerTurnPanel": "Painel de turno do jogador",
   "combatUi.readyForTurn":

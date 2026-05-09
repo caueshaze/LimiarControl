@@ -9,8 +9,7 @@ import type { Item } from "../../entities/item";
 import type { ActiveConcentration } from "../../entities/character";
 import type { ActiveEffect, PendingSpellPreparation } from "../../shared/api/combatRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
-import { EMPTY_WALLET, normalizeWallet } from "../../features/shop/utils/shopCurrency";
-import { parseCharacterSheet } from "../../features/character-sheet/model/characterSheet.schema";
+import { EMPTY_WALLET } from "../../features/shop/utils/shopCurrency";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import {
   useCampaignEvents,
@@ -19,6 +18,7 @@ import {
   useSessionCommands,
 } from "../../features/sessions";
 import { useRollSession } from "../../features/dice-roller";
+import { parsePlayerBoardStateSnapshot } from "./playerBoardStateSnapshot";
 
 type Props = {
   partyId: string | undefined;
@@ -57,15 +57,14 @@ export const usePlayerBoardResources = ({
   const [activeSpellEffects, setActiveSpellEffects] = useState<ActiveEffect[] | null>(null);
   const [pendingSpellPreparation, setPendingSpellPreparation] = useState<PendingSpellPreparation | null>(null);
 
-  const applyRealtimeStateSnapshot = useCallback((rawState: unknown): boolean => {
-    try {
-      const nextSheet = parseCharacterSheet(rawState);
-      setPlayerSheet(nextSheet);
-      setPlayerWallet(normalizeWallet(nextSheet.currency));
-      return true;
-    } catch {
-      return false;
-    }
+  const applyPlayerBoardStateSnapshot = useCallback((snapshot: ReturnType<typeof parsePlayerBoardStateSnapshot>) => {
+    if (!snapshot) return false;
+    setPlayerSheet(snapshot.playerSheet);
+    setPlayerWallet(snapshot.playerWallet);
+    setActiveConcentration(snapshot.activeConcentration);
+    setActiveSpellEffects(snapshot.activeSpellEffects);
+    setPendingSpellPreparation(snapshot.pendingSpellPreparation);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -123,18 +122,17 @@ export const usePlayerBoardResources = ({
     }
     try {
       const record = await sessionStatesRepo.getMine(activeSession.id);
-      setPlayerSheet(parseCharacterSheet(record.state));
-      const nextWallet = normalizeWallet(
-        (record.state as { currency?: unknown } | null | undefined)?.currency,
-      );
-      setPlayerWallet(nextWallet);
-      setActiveConcentration(record.activeConcentration ?? null);
-      setActiveSpellEffects(
-        (record.activeSpellEffects as ActiveEffect[] | null | undefined) ?? null,
-      );
-      setPendingSpellPreparation(
-        (record.pendingSpellPreparation as PendingSpellPreparation | null | undefined) ?? null,
-      );
+      const snapshot = parsePlayerBoardStateSnapshot({
+        state: record.state,
+        activeConcentration: record.activeConcentration ?? null,
+        activeSpellEffects:
+          (record.activeSpellEffects as ActiveEffect[] | null | undefined) ?? null,
+        pendingSpellPreparation:
+          (record.pendingSpellPreparation as PendingSpellPreparation | null | undefined) ?? null,
+      });
+      if (!applyPlayerBoardStateSnapshot(snapshot)) {
+        throw new Error("Invalid player state snapshot");
+      }
     } catch {
       setPlayerWallet(EMPTY_WALLET);
       setPlayerSheet(null);
@@ -214,7 +212,7 @@ export const usePlayerBoardResources = ({
       lastEvent.type === "session_state_updated" &&
       isOwnPlayerEvent
     ) {
-      if (!applyRealtimeStateSnapshot(lastEvent.payload.state)) {
+      if (!applyPlayerBoardStateSnapshot(parsePlayerBoardStateSnapshot({ state: lastEvent.payload.state }))) {
         void refreshPlayerState();
       }
       return;
@@ -269,7 +267,7 @@ export const usePlayerBoardResources = ({
     }
   }, [
     activeSession?.id,
-    applyRealtimeStateSnapshot,
+    applyPlayerBoardStateSnapshot,
     lastEvent,
     partyId,
     refreshInventoryData,

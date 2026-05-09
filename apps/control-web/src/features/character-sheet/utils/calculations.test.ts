@@ -37,8 +37,8 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
   it("returns abilities unchanged when no race or class bonuses", () => {
     const result = computeBaseAbilitiesForPointAccounting(
       BASE_ABILITIES,
-      null,
-      null,
+      "",
+      undefined as never,
       "",
       1,
     );
@@ -48,8 +48,8 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
   it("handles raceConfig = undefined without throwing", () => {
     const result = computeBaseAbilitiesForPointAccounting(
       BASE_ABILITIES,
-      null,
-      undefined,
+      "",
+      undefined as never,
       "",
       1,
     );
@@ -65,7 +65,7 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
     const result = computeBaseAbilitiesForPointAccounting(
       abilitiesWithRace,
       "hill-dwarf",
-      null,
+      undefined as never,
       "",
       1,
     );
@@ -84,8 +84,8 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
     };
     const result = computeBaseAbilitiesForPointAccounting(
       abilitiesWithClass,
-      null,
-      null,
+      "",
+      undefined as never,
       "Guardian",
       4,
     );
@@ -98,8 +98,8 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
     const abilitiesAtLevel3: Record<AbilityName, number> = { ...BASE_ABILITIES };
     const result = computeBaseAbilitiesForPointAccounting(
       abilitiesAtLevel3,
-      null,
-      null,
+      "",
+      undefined as never,
       "Guardian",
       3,
     );
@@ -116,7 +116,7 @@ describe("computeBaseAbilitiesForPointAccounting", () => {
     const result = computeBaseAbilitiesForPointAccounting(
       abilitiesWithBoth,
       "hill-dwarf",
-      null,
+      undefined as never,
       "Guardian",
       4,
     );
@@ -134,7 +134,7 @@ describe("computeBaseAbilityScoreTotal", () => {
     const usedPoints = computeBaseAbilityScoreTotal(
       abilitiesWithRace,
       "hill-dwarf",
-      null,
+      undefined as never,
       "",
       1,
     );
@@ -155,7 +155,7 @@ describe("computeBaseAbilityScoreTotal", () => {
     const usedPoints = computeBaseAbilityScoreTotal(
       abilitiesWithRace,
       "hill-dwarf",
-      null,
+      undefined as never,
       "",
       1,
     );
@@ -170,8 +170,8 @@ describe("computeBaseAbilityScoreTotal", () => {
     };
     const usedPoints = computeBaseAbilityScoreTotal(
       abilitiesWithClass,
-      null,
-      null,
+      "",
+      undefined as never,
       "Guardian",
       4,
     );
@@ -185,8 +185,8 @@ describe("computeBaseAbilityScoreTotal", () => {
     };
     const usedPoints = computeBaseAbilityScoreTotal(
       overLimit,
-      null,
-      null,
+      "",
+      undefined as never,
       "",
       1,
     );
@@ -197,8 +197,8 @@ describe("computeBaseAbilityScoreTotal", () => {
   it("no race or class — same result as computeAbilityScoreTotal", () => {
     const usedPoints = computeBaseAbilityScoreTotal(
       BASE_ABILITIES,
-      null,
-      null,
+      "",
+      undefined as never,
       "",
       1,
     );

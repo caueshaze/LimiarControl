@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import { ActiveEffectDebugPanel } from "./ActiveEffectDebugPanel";
 
 vi.mock("../../../shared/hooks/useLocale", () => ({

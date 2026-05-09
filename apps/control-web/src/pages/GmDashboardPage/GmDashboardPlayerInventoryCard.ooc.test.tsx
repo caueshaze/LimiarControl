@@ -2,6 +2,35 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { GmDashboardPlayerInventoryCard } from "./GmDashboardPlayerInventoryCard";
 
+type CastCardCapture = {
+  onCast: (
+    spellId: string,
+    slotLevel: number | null,
+    variantKey: string | null,
+    targetPlayerUserId: string | null,
+  ) => Promise<void> | void;
+};
+
+type EffectsPanelCapture = {
+  onRemoveEffect: (effectId: string) => Promise<void> | void;
+};
+
+const requireCastCardCapture = (value: CastCardCapture | null): CastCardCapture => {
+  if (!value) {
+    throw new Error("Expected cast card props to be captured");
+  }
+  return value;
+};
+
+const requireEffectsPanelCapture = (
+  value: EffectsPanelCapture | null,
+): EffectsPanelCapture => {
+  if (!value) {
+    throw new Error("Expected active effects panel props to be captured");
+  }
+  return value;
+};
+
 const testState = vi.hoisted(() => ({
   sessionStatesRepoMock: {
     getByPlayer: vi.fn(async () => ({
@@ -33,8 +62,8 @@ const testState = vi.hoisted(() => ({
       activeSpellEffects: [],
     })),
   },
-  lastCastCardProps: null as Record<string, unknown> | null,
-  lastEffectsPanelProps: null as Record<string, unknown> | null,
+  lastCastCardProps: null as CastCardCapture | null,
+  lastEffectsPanelProps: null as EffectsPanelCapture | null,
 }));
 
 vi.mock("../../shared/hooks/useLocale", () => ({
@@ -64,14 +93,14 @@ vi.mock("./GmDashboardGrantPanels", () => ({
 }));
 
 vi.mock("../../features/character-sheet/components/CharacterActiveEffectsPanel", () => ({
-  CharacterActiveEffectsPanel: (props: Record<string, unknown>) => {
+  CharacterActiveEffectsPanel: (props: EffectsPanelCapture) => {
     testState.lastEffectsPanelProps = props;
     return null;
   },
 }));
 
 vi.mock("../PlayerBoardPage/OutOfCombatSpellCastCard", () => ({
-  OutOfCombatSpellCastCard: (props: Record<string, unknown>) => {
+  OutOfCombatSpellCastCard: (props: CastCardCapture) => {
     testState.lastCastCardProps = props;
     return null;
   },
@@ -139,13 +168,10 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
       />,
     );
 
-    expect(testState.lastCastCardProps).not.toBeNull();
-    const onCast = testState.lastCastCardProps?.onCast as
-      | ((spellId: string, slotLevel: number | null, variantKey: string | null, targetPlayerUserId: string | null) => Promise<void> | void)
-      | undefined;
+    const onCast = requireCastCardCapture(testState.lastCastCardProps).onCast;
     expect(onCast).toBeTypeOf("function");
 
-    await onCast?.("spell-1", 2, "owls_wisdom", "ally-b");
+    await onCast("spell-1", 2, "owls_wisdom", "ally-b");
 
     expect(testState.sessionStatesRepoMock.castSpellOutOfCombatForPlayer).toHaveBeenCalledWith(
       "session-1",
@@ -220,13 +246,10 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
       />,
     );
 
-    expect(testState.lastEffectsPanelProps).not.toBeNull();
-    const onRemoveEffect = testState.lastEffectsPanelProps?.onRemoveEffect as
-      | ((effectId: string) => Promise<void> | void)
-      | undefined;
+    const onRemoveEffect = requireEffectsPanelCapture(testState.lastEffectsPanelProps).onRemoveEffect;
     expect(onRemoveEffect).toBeTypeOf("function");
 
-    await onRemoveEffect?.("eff-1");
+    await onRemoveEffect("eff-1");
 
     expect(testState.sessionStatesRepoMock.removePersistedEffectForPlayer).toHaveBeenCalledWith(
       "session-1",

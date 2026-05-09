@@ -2,6 +2,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PlayerBoardStatusPanel } from "./PlayerBoardStatusPanel";
 
+type CastCardProps = {
+  casting: boolean;
+  onCast: (...args: unknown[]) => unknown;
+  spells: unknown[];
+  targetOptions?: { playerUserId: string; label: string }[];
+};
+
+const requireCastCardProps = (value: CastCardProps | null): CastCardProps => {
+  if (!value) {
+    throw new Error("Expected cast card props to be captured");
+  }
+  return value;
+};
+
 vi.mock("../../shared/hooks/useLocale", () => ({
   useLocale: () => ({
     t: (key: string) =>
@@ -48,13 +62,12 @@ vi.mock("../../shared/hooks/useLocale", () => ({
   }),
 }));
 
-let lastCastCardProps: Record<string, unknown> | null = null;
+let lastCastCardProps: CastCardProps | null = null;
 
 vi.mock("./OutOfCombatSpellCastCard", () => ({
-  OutOfCombatSpellCastCard: (props: Record<string, unknown>) => {
+  OutOfCombatSpellCastCard: (props: CastCardProps) => {
     lastCastCardProps = props;
-    const spells = props.spells as unknown[];
-    return spells.length > 0 ? <div data-testid="cast-card">cast-card</div> : null;
+    return props.spells.length > 0 ? <div data-testid="cast-card">cast-card</div> : null;
   },
 }));
 
@@ -752,7 +765,7 @@ describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
         targetOptions={targetOptions}
       />,
     );
-    expect(lastCastCardProps?.targetOptions).toEqual(targetOptions);
+    expect(requireCastCardProps(lastCastCardProps).targetOptions).toEqual(targetOptions);
   });
 
   it("passes castingSpell as casting to OutOfCombatSpellCastCard", () => {
@@ -765,7 +778,7 @@ describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
         castingSpell={true}
       />,
     );
-    expect(lastCastCardProps?.casting).toBe(true);
+    expect(requireCastCardProps(lastCastCardProps).casting).toBe(true);
   });
 
   it("passes onCastSpell as onCast to OutOfCombatSpellCastCard", () => {
@@ -778,7 +791,7 @@ describe("PlayerBoardStatusPanel – out-of-combat spell casting", () => {
         onCastSpell={handleCast}
       />,
     );
-    expect(lastCastCardProps?.onCast).toBe(handleCast);
+    expect(requireCastCardProps(lastCastCardProps).onCast).toBe(handleCast);
   });
 });
 

@@ -130,7 +130,11 @@ const FEATURE_REGISTRY: Record<string, FeatureDefinition> = {
 const isPositiveInteger = (value: unknown): value is number =>
   Number.isInteger(value) && Number(value) >= 1;
 
-const assertPresetLevel = (
+const assertPresetLevel: (
+  classId: string,
+  field: string,
+  value: unknown
+) => asserts value is number = (
   classId: string,
   field: string,
   value: unknown
@@ -142,7 +146,10 @@ const assertPresetLevel = (
   }
 };
 
-const assertFeatureRegistryId = (
+const assertFeatureRegistryId: (
+  classId: string,
+  featureId: string
+) => asserts featureId is keyof typeof FEATURE_REGISTRY = (
   classId: string,
   featureId: string
 ): asserts featureId is keyof typeof FEATURE_REGISTRY => {
@@ -176,7 +183,8 @@ export const validateGuidedPresetConfig = (
   }
 
   if (preset.fixedSubclass) {
-    assertPresetLevel(classId, "fixedSubclass.level", preset.fixedSubclass.level);
+    const fixedSubclassLevel: unknown = preset.fixedSubclass.level;
+    assertPresetLevel(classId, "fixedSubclass.level", fixedSubclassLevel);
     if (!cls.subclasses.some((subclass) => subclass.id === preset.fixedSubclass?.id)) {
       throw new Error(
         `Guided preset "${classId}" references unknown fixedSubclass "${preset.fixedSubclass.id}".`
@@ -185,10 +193,11 @@ export const validateGuidedPresetConfig = (
   }
 
   if (preset.fixedFightingStyle) {
+    const fixedFightingStyleLevel: unknown = preset.fixedFightingStyle.level;
     assertPresetLevel(
       classId,
       "fixedFightingStyle.level",
-      preset.fixedFightingStyle.level
+      fixedFightingStyleLevel
     );
     const hasStyle = FIGHTING_STYLES.some(
       (style) => style.id === preset.fixedFightingStyle?.id
@@ -207,7 +216,8 @@ export const validateGuidedPresetConfig = (
 
   if (preset.fixedAsiBonuses) {
     for (const [index, asi] of preset.fixedAsiBonuses.entries()) {
-      assertPresetLevel(classId, `fixedAsiBonuses[${index}].level`, asi.level);
+      const asiLevel: unknown = asi.level;
+      assertPresetLevel(classId, `fixedAsiBonuses[${index}].level`, asiLevel);
       if (!ABILITY_NAMES.includes(asi.ability)) {
         throw new Error(
           `Guided preset "${classId}" has invalid fixedAsiBonuses[${index}].ability "${String(asi.ability)}".`
@@ -222,9 +232,11 @@ export const validateGuidedPresetConfig = (
   }
 
   for (const [stepIndex, step] of preset.featureProgression.entries()) {
-    assertPresetLevel(classId, `featureProgression[${stepIndex}].level`, step.level);
+    const stepLevel: unknown = step.level;
+    assertPresetLevel(classId, `featureProgression[${stepIndex}].level`, stepLevel);
     for (const [featureIndex, feature] of step.features.entries()) {
-      assertFeatureRegistryId(classId, feature.id);
+      const featureId = feature.id;
+      assertFeatureRegistryId(classId, featureId);
       if (
         feature.requiresSubclass &&
         !cls.subclasses.some((subclass) => subclass.id === feature.requiresSubclass)
@@ -419,7 +431,8 @@ const buildGuidedPresetFeatures = (
     if (level < step.level) continue;
     for (const entry of step.features) {
       if (entry.requiresSubclass && entry.requiresSubclass !== effectiveSubclass) continue;
-      assertFeatureRegistryId(normalizedClassId, entry.id);
+      const entryId = entry.id;
+      assertFeatureRegistryId(normalizedClassId, entryId);
       features.push(featureAtLevel(entry.id, step.level));
     }
   }

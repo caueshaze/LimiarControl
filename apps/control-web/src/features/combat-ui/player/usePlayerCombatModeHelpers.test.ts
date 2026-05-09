@@ -132,7 +132,7 @@ describe("buildSpellOptions", () => {
       temporaryHP: 0,
       weapons: [],
       currency: { copperValue: 0 },
-    } as CharacterSheet;
+    } as unknown as CharacterSheet;
 
     expect(buildSpellOptions(playerSheet, "camp-authority")).toEqual([
       expect.objectContaining({
@@ -191,7 +191,7 @@ describe("buildSpellOptions", () => {
           },
         ],
       },
-    } as CharacterSheet;
+    } as unknown as CharacterSheet;
 
     expect(buildSpellOptions(playerSheet)).toEqual([
       expect.objectContaining({
@@ -283,7 +283,7 @@ describe("buildSpellOptions", () => {
           },
         ],
       },
-    } as CharacterSheet);
+    } as unknown as CharacterSheet);
 
     expect(options).toEqual([
       expect.objectContaining({
@@ -377,7 +377,7 @@ describe("buildSpellOptions", () => {
           },
         ],
       },
-    } as CharacterSheet;
+    } as unknown as CharacterSheet;
 
     expect(buildSpellOptions(playerSheet)).toEqual([
       expect.objectContaining({
@@ -753,7 +753,7 @@ describe("buildSpellOptions", () => {
           },
         ],
       },
-    } as CharacterSheet);
+    } as unknown as CharacterSheet);
 
     expect(options).toEqual([
       expect.objectContaining({
@@ -858,7 +858,7 @@ describe("buildSpellOptions", () => {
           },
         ],
       },
-    } as CharacterSheet);
+    } as unknown as CharacterSheet);
 
     expect(options).toEqual([
       expect.objectContaining({

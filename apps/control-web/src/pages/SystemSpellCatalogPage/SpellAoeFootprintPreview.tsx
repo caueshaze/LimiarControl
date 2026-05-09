@@ -3,6 +3,7 @@ import { useLocale } from "../../shared/hooks/useLocale";
 import {
   computeAoeFootprint,
   getRequiredDimensionField,
+  type FootprintCell,
 } from "./spellAoeFootprintCalc";
 
 type Props = {

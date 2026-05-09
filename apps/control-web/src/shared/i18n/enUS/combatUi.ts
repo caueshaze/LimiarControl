@@ -47,6 +47,7 @@ export const combatUiEnUSDictionary = {
   "combatUi.condition.blinded": "Blinded",
   "combatUi.condition.frightened": "Frightened",
   "combatUi.condition.charmed": "Charmed",
+  "combatUi.condition.hostile_to_caster": "Hostile to caster",
   "combatUi.turnEyebrow": "Turn flow",
   "combatUi.playerTurnPanel": "Player turn panel",
   "combatUi.readyForTurn":

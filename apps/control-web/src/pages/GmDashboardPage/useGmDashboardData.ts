@@ -137,8 +137,9 @@ export const useGmDashboardData = ({
       refreshSession();
     }
 
+    const eventPayload = lastEvent.payload as { partyId?: unknown };
     const eventPartyId =
-      typeof lastEvent.payload.partyId === "string" ? lastEvent.payload.partyId : null;
+      typeof eventPayload.partyId === "string" ? eventPayload.partyId : null;
     const isOtherPartyEvent =
       eventPartyId && activeSession?.partyId && eventPartyId !== activeSession.partyId;
     if (lastEvent.type === "shop_opened" && !isOtherPartyEvent) setShopUiOpen(true);
