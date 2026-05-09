@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useCampaignEvents } from "../../features/sessions";
+import { consumeCampaignEvent } from "../../features/sessions/hooks/campaignEventConsumption";
 import { useAuth } from "../../features/auth";
 import { sessionsRepo } from "../../shared/api/sessionsRepo";
 import { PlayerPartyHeader } from "./components/PlayerPartyHeader";
@@ -70,10 +71,22 @@ export const PlayerPartyPage = () => {
       if (lastEvent.payload.partyId && partyId && lastEvent.payload.partyId !== partyId) {
         return;
       }
+      const eventSessionId =
+        typeof lastEvent.payload.sessionId === "string" ? lastEvent.payload.sessionId : null;
+      if (
+        !consumeCampaignEvent({
+          scope: "player-party-session-start",
+          eventType: lastEvent.type,
+          sessionId: eventSessionId,
+          version: lastEvent.version,
+        })
+      ) {
+        return;
+      }
       setLobbyStatus(null);
       setHasJoinedLobby(false);
-      notifiedLobbySessionIdRef.current = lastEvent.payload.sessionId;
-      void syncActiveSessionFromRealtime(lastEvent.payload.sessionId);
+      notifiedLobbySessionIdRef.current = eventSessionId;
+      void syncActiveSessionFromRealtime(eventSessionId);
       if (partyId) {
         navigate(routes.board.replace(":partyId", partyId));
       }

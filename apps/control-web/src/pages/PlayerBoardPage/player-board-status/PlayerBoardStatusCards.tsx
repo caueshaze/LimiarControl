@@ -6,6 +6,7 @@ type StatCardProps = {
   accent?: string;
   helper?: string | null;
   label: string;
+  mobileLabel?: string;
   value: string;
 };
 
@@ -13,14 +14,99 @@ export const StatCard = ({
   accent = "text-white",
   helper = null,
   label,
+  mobileLabel,
   value,
 }: StatCardProps) => (
-  <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
-    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{label}</p>
-    <p className={`mt-3 text-lg font-semibold ${accent}`}>{value}</p>
-    {helper ? <p className="mt-2 text-xs text-slate-400">{helper}</p> : null}
+  <div className="min-w-0 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+    <p className="break-words text-[10px] font-bold uppercase leading-4 tracking-[0.2em] text-slate-500">
+      {mobileLabel ? (
+        <>
+          <span className="sm:hidden">{mobileLabel}</span>
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
+    </p>
+    <p className={`mt-3 break-words text-lg font-semibold ${accent}`}>{value}</p>
+    {helper ? <p className="mt-2 break-words text-xs leading-5 text-slate-400">{helper}</p> : null}
   </div>
 );
+
+type LoadSummaryCardProps = {
+  carryingCapacityKg: number;
+  carryingCapacitySources?: Array<{ label: string; multiplier: number }> | null;
+  baseCarryingCapacityKg: number;
+  encumbranceAccent: string;
+  encumbranceTierLabel: string;
+  encumbranceHelper?: string | null;
+  pushDragLiftKg: number;
+};
+
+export const LoadSummaryCard = ({
+  baseCarryingCapacityKg,
+  carryingCapacityKg,
+  carryingCapacitySources,
+  encumbranceAccent,
+  encumbranceHelper = null,
+  encumbranceTierLabel,
+  pushDragLiftKg,
+}: LoadSummaryCardProps) => {
+  const { t } = useLocale();
+  const carryingHelper = carryingCapacitySources?.length
+    ? `${t("playerBoard.carryingCapacityBase")}: ${baseCarryingCapacityKg} kg\u2003${carryingCapacitySources.map((s) => `${s.label} ×${s.multiplier}`).join(", ")}`
+    : null;
+
+  return (
+    <div className="min-w-0 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase leading-4 tracking-[0.2em] text-slate-500">
+            {t("playerBoard.encumbranceTierLabel")}
+          </p>
+          <p className={`mt-3 text-lg font-semibold ${encumbranceAccent}`}>
+            {encumbranceTierLabel}
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
+          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+            {t("playerBoard.encumbranceCurrentShortLabel")}
+          </dt>
+          <dd className={`mt-2 break-words text-base font-semibold ${encumbranceAccent}`}>
+            {encumbranceTierLabel}
+          </dd>
+          {encumbranceHelper ? (
+            <p className="mt-2 break-words text-xs leading-5 text-slate-400">{encumbranceHelper}</p>
+          ) : null}
+        </div>
+        <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
+          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+            <span className="sm:hidden">{t("playerBoard.carryingCapacityShortLabel")}</span>
+            <span className="hidden sm:inline">{t("playerBoard.carryingCapacityLabel")}</span>
+          </dt>
+          <dd className="mt-2 break-words text-base font-semibold text-white">
+            {carryingCapacityKg} kg
+          </dd>
+          {carryingHelper ? (
+            <p className="mt-2 break-words text-xs leading-5 text-slate-400">{carryingHelper}</p>
+          ) : null}
+        </div>
+        <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
+          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+            <span className="sm:hidden">{t("playerBoard.pushDragLiftShortLabel")}</span>
+            <span className="hidden sm:inline">{t("playerBoard.pushDragLiftLabel")}</span>
+          </dt>
+          <dd className="mt-2 break-words text-base font-semibold text-white">
+            {pushDragLiftKg} kg
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+};
 
 type ProgressCardProps = {
   label: string;
@@ -150,13 +236,13 @@ export const WeaponCard = ({
   const weapon = playerStatus.currentWeapon;
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
+    <div className="min-w-0 rounded-3xl border border-white/8 bg-white/4 px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
+          <p className="break-words text-[10px] font-bold uppercase leading-4 tracking-[0.2em] text-slate-500">
             {t("playerBoard.equippedWeaponLabel")}
           </p>
-          <h3 className="mt-3 text-lg font-semibold text-white">
+          <h3 className="mt-3 break-words text-lg font-semibold text-white">
             {weapon?.name ?? t("playerBoard.noCurrentWeapon")}
           </h3>
         </div>
@@ -180,14 +266,14 @@ export const WeaponCard = ({
           <p className="text-base font-semibold text-amber-200">
             {formatMod(weapon.attackBonus)} {t("playerBoard.weaponToHitSuffix")}
           </p>
-          <p className="text-sm text-slate-300">{weapon.damageLabel}</p>
+          <p className="break-words text-sm text-slate-300">{weapon.damageLabel}</p>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-slate-400">{t("playerBoard.noCurrentWeaponHint")}</p>
+        <p className="mt-4 break-words text-sm text-slate-400">{t("playerBoard.noCurrentWeaponHint")}</p>
       )}
 
       {(combatActive || pendingRoll) && (
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 break-words text-xs leading-5 text-slate-400">
           {combatActive ? t("playerBoard.combatOpenState") : t("playerBoard.rollRequest")}
         </p>
       )}

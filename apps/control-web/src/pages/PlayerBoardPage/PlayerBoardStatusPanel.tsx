@@ -10,6 +10,7 @@ import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "../../f
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
+  LoadSummaryCard,
   getHpBarToneClass,
   getHpToneClass,
   ProgressCard,
@@ -134,13 +135,14 @@ export const PlayerBoardStatusPanel = ({
 
           <DeathSaveCard combatActive={combatActive} playerStatus={playerStatus} />
 
-          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,0.68fr)_minmax(0,1.64fr)]">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label={t("playerBoard.initiativeLabel")}
               value={`${playerStatus.initiative >= 0 ? "+" : ""}${playerStatus.initiative}`}
             />
             <StatCard
               label={t("playerBoard.speedLabel")}
+              mobileLabel={t("playerBoard.speedLabel")}
               value={playerStatus.baseSpeedMeters > 0 ? `${playerStatus.effectiveSpeedMeters} m` : "-"}
               accent={
                 playerStatus.effectiveSpeedMeters < playerStatus.baseSpeedMeters
@@ -161,6 +163,7 @@ export const PlayerBoardStatusPanel = ({
             />
             <StatCard
               label={t("sheet.skills.passivePerception")}
+              mobileLabel={t("sheet.skills.passivePerception")}
               value={String(playerStatus.passivePerception)}
               helper={
                 playerStatus.passivePerceptionBonus && playerStatus.passivePerceptionBonusSources?.length
@@ -171,29 +174,25 @@ export const PlayerBoardStatusPanel = ({
                   : null
               }
             />
-            <StatCard
-              label={t("playerBoard.carryingCapacityLabel")}
-              value={`${playerStatus.carryingCapacityKg} kg`}
-              helper={
-                playerStatus.carryingCapacitySources?.length
-                  ? `${t("playerBoard.carryingCapacityBase")}: ${playerStatus.baseCarryingCapacityKg} kg\u2003${playerStatus.carryingCapacitySources.map((s) => `${s.label} ×${s.multiplier}`).join(", ")}`
-                  : null
-              }
-            />
-            <StatCard
-              label={t("playerBoard.encumbranceTierLabel")}
-              value={`${playerStatus.totalWeightKg} kg`}
-              accent={encumbranceAccentMap[playerStatus.encumbranceTier]}
-              helper={
+          </div>
+
+          <div className="mt-3">
+            <LoadSummaryCard
+              baseCarryingCapacityKg={playerStatus.baseCarryingCapacityKg}
+              carryingCapacityKg={playerStatus.carryingCapacityKg}
+              carryingCapacitySources={playerStatus.carryingCapacitySources}
+              encumbranceAccent={encumbranceAccentMap[playerStatus.encumbranceTier]}
+              encumbranceTierLabel={`${playerStatus.totalWeightKg} kg`}
+              encumbranceHelper={
                 playerStatus.encumbranceTier !== "normal"
                   ? `${playerStatus.encumbranceNormalMaxKg} kg`
                   : null
               }
+              pushDragLiftKg={playerStatus.pushDragLiftKg}
             />
-            <StatCard
-              label={t("playerBoard.pushDragLiftLabel")}
-              value={`${playerStatus.pushDragLiftKg} kg`}
-            />
+          </div>
+
+          <div className="mt-3">
             <WeaponCard
               combatActive={combatActive}
               pendingRoll={pendingRoll}

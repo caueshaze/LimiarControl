@@ -180,6 +180,11 @@ class LimiarMapCentrifugoClient:
 
     async def _async_run_forever(self) -> None:
         while not self._stop_event.is_set():
+            logger.info(
+                "LimiarMap centrifugo starting connection cycle ws_url=%s channels=%s",
+                self._ws_url,
+                self._channels,
+            )
             client = Client(
                 self._ws_url,
                 events=_LimiarMapClientEvents(self._channels),

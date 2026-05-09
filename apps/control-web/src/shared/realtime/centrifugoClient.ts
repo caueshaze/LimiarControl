@@ -56,10 +56,36 @@ let client: Centrifuge | null = null;
 let currentConnectionState: ConnectionState = "offline";
 let nextListenerId = 1;
 let connectionRequested = false;
+let reconnectStartedAt: number | null = null;
+
+const logRealtime = (
+  level: "debug" | "info" | "warn" | "error",
+  message: string,
+  details?: Record<string, unknown>,
+) => {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+  const logger = console[level];
+  if (details) {
+    logger(`[control-web][realtime] ${message}`, details);
+    return;
+  }
+  logger(`[control-web][realtime] ${message}`);
+};
+
+const getReconnectDurationMs = () =>
+  reconnectStartedAt === null ? null : Math.max(0, Date.now() - reconnectStartedAt);
 
 const notifyConnectionState = (state: ConnectionState) => {
   currentConnectionState = state;
-  if (state === "offline" || state === "connected") {
+  if (state === "reconnecting" && reconnectStartedAt === null) {
+    reconnectStartedAt = Date.now();
+  }
+  if (state === "connected") {
+    reconnectStartedAt = null;
+  }
+  if (state === "offline") {
     connectionRequested = false;
   }
   connectionStateListeners.forEach((listener) => listener(state));
@@ -100,6 +126,7 @@ export const fetchConnectionToken = async (
   _ctx?: ConnectionTokenContext,
 ): Promise<string> => {
   if (!getToken()) {
+    logRealtime("warn", "missing auth token for connection token request");
     throw new UnauthorizedError("Missing auth token");
   }
   try {
@@ -108,14 +135,20 @@ export const fetchConnectionToken = async (
   } catch (error) {
     const status = (error as { status?: number }).status;
     if (status === 401 || status === 403) {
+      logRealtime("warn", "connection token rejected", { status });
       throw new UnauthorizedError("Connection token rejected");
     }
+    logRealtime("error", "connection token request failed", {
+      status,
+      error,
+    });
     throw error;
   }
 };
 
 export const fetchSubscriptionToken = async (channel: string): Promise<string> => {
   if (!getToken()) {
+    logRealtime("warn", "missing auth token for subscription token request", { channel });
     throw new UnauthorizedError("Missing auth token");
   }
   try {
@@ -124,8 +157,14 @@ export const fetchSubscriptionToken = async (channel: string): Promise<string> =
   } catch (error) {
     const status = (error as { status?: number }).status;
     if (status === 401 || status === 403) {
+      logRealtime("warn", "subscription token rejected", { channel, status });
       throw new UnauthorizedError(`Subscription rejected for ${channel}`);
     }
+    logRealtime("error", "subscription token request failed", {
+      channel,
+      status,
+      error,
+    });
     throw error;
   }
 };
@@ -136,9 +175,31 @@ export const getClient = () => {
       debug: import.meta.env.DEV,
       getToken: fetchConnectionToken,
     });
-    client.on("connecting", () => notifyConnectionState("reconnecting"));
-    client.on("connected", () => notifyConnectionState("connected"));
-    client.on("disconnected", () => notifyConnectionState("offline"));
+    client.on("connecting", (ctx) => {
+      logRealtime("info", "connecting", {
+        code: ctx.code,
+        reason: ctx.reason,
+      });
+      notifyConnectionState("reconnecting");
+    });
+    client.on("connected", (ctx) => {
+      const reconnectDurationMs = getReconnectDurationMs();
+      logRealtime("info", "connected", {
+        client: ctx.client,
+        transport: ctx.transport,
+        reconnectDurationMs,
+      });
+      notifyConnectionState("connected");
+    });
+    client.on("disconnected", (ctx) => {
+      const reconnectDurationMs = getReconnectDurationMs();
+      logRealtime("warn", "disconnected", {
+        code: ctx.code,
+        reason: ctx.reason,
+        reconnectDurationMs,
+      });
+      notifyConnectionState("offline");
+    });
   }
   return client;
 };
@@ -147,6 +208,7 @@ const ensureClientConnected = () => {
   const realtimeClient = getClient();
   if (currentConnectionState === "offline" && !connectionRequested) {
     connectionRequested = true;
+    logRealtime("info", "connect requested", { channelCount: channelEntries.size });
     realtimeClient.connect();
   }
 };
@@ -184,24 +246,45 @@ const createSubscription = (channel: string) => {
   });
 
   subscription.on("subscribed", (ctx) => {
+    logRealtime("info", "subscribed", {
+      channel,
+      recovered: ctx.wasRecovering,
+      positioned: ctx.positioned,
+      recoverable: ctx.recoverable,
+      streamPosition: ctx.streamPosition,
+    });
     dispatchToChannel(channel, (handlers, subscribed) => {
       handlers.onSubscribed?.(subscribed);
     }, ctx);
   });
 
   subscription.on("subscribing", (ctx) => {
+    logRealtime("info", "subscribing", {
+      channel,
+      code: ctx.code,
+      reason: ctx.reason,
+    });
     dispatchToChannel(channel, (handlers, subscribing) => {
       handlers.onSubscribing?.(subscribing);
     }, ctx);
   });
 
   subscription.on("unsubscribed", (ctx) => {
+    logRealtime("warn", "unsubscribed", {
+      channel,
+      code: ctx.code,
+      reason: ctx.reason,
+    });
     dispatchToChannel(channel, (handlers, unsubscribed) => {
       handlers.onUnsubscribed?.(unsubscribed);
     }, ctx);
   });
 
   subscription.on("error", (ctx) => {
+    logRealtime("error", "subscription error", {
+      channel,
+      error: ctx.error,
+    });
     dispatchToChannel(channel, (handlers, error) => {
       handlers.onError?.(error);
     }, ctx);
@@ -318,6 +401,7 @@ export const disconnectRealtime = () => {
   });
   channelEntries.clear();
   connectionRequested = false;
+  reconnectStartedAt = null;
   client.disconnect();
   notifyConnectionState("offline");
 };

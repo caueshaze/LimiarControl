@@ -73,6 +73,7 @@ vi.mock("./OutOfCombatSpellCastCard", () => ({
 
 vi.mock("./player-board-status/PlayerBoardStatusCards", () => ({
   DeathSaveCard: () => <div>death</div>,
+  LoadSummaryCard: () => <div>load-summary</div>,
   ProgressCard: ({ label, value }: { label: string; value: string }) => <div>{label}:{value}</div>,
   RestCard: () => <div>rest</div>,
   StatCard: ({ label, value, helper }: { label: string; value: string; helper?: string | null }) => (

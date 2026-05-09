@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { routes } from "../../app/routes/routes";
 import { isRollEventKnown } from "../../features/rolls/knownRollEvents";
 import { formatRollResolvedToastDescription } from "../../features/sessions/components/sessionActivityRowUtils";
+import { consumeCampaignEvent } from "../../features/sessions/hooks/campaignEventConsumption";
 import { usePlayerBoardRollRequests } from "./usePlayerBoardRollRequests";
 import type { UsePlayerBoardRealtimeProps } from "./player-board-realtime.types";
 
@@ -138,12 +139,23 @@ export const usePlayerBoardRealtime = ({
     }
 
     if (lastEvent.type === "session_started" || lastEvent.type === "session_resumed") {
-      showToast({
-        variant: "info",
-        title: t("playerBoard.sessionStartedTitle"),
-        description: t("playerBoard.sessionStartedDescription"),
-        duration: 3000,
-      });
+      const eventSessionId =
+        typeof lastEvent.payload.sessionId === "string" ? lastEvent.payload.sessionId : null;
+      if (
+        consumeCampaignEvent({
+          scope: "player-board-session-start-toast",
+          eventType: lastEvent.type,
+          sessionId: eventSessionId,
+          version: lastEvent.version,
+        })
+      ) {
+        showToast({
+          variant: "info",
+          title: t("playerBoard.sessionStartedTitle"),
+          description: t("playerBoard.sessionStartedDescription"),
+          duration: 3000,
+        });
+      }
       refresh().catch(() => {});
     }
 
