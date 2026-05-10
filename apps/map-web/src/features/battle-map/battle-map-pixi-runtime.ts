@@ -236,7 +236,7 @@ export function buildDrawFunction(
       drawReachAndAoe(refs.reachAoeGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.tacticalPreview.reachableCells, uiState.tacticalPreview.aoeCells);
     }
     if (refs.cellFillsGfxRef.current) {
-      drawCellFills(refs.cellFillsGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.obstacles, uiState.movementPreview, uiState.targetingPreview, uiState.embeddedPreview, [...(encounter.activeAreaEffects ?? []), ...uiState.embeddedActiveAreaEffects], uiState.embeddedSelectedCell ?? null);
+      drawCellFills(refs.cellFillsGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.obstacles, uiState.movementPreview, uiState.targetingPreview, uiState.embeddedPreview, [...(encounter.activeAreaEffects ?? []), ...uiState.embeddedActiveAreaEffects], [...(encounter.spellAnchors ?? []), ...uiState.embeddedSpellAnchors], uiState.embeddedSelectedCell ?? null);
     }
     if (refs.edgeObstaclesGfxRef.current) drawEdgeObstacles(refs.edgeObstaclesGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.edgeObstacles ?? []);
     if (refs.edgeObstaclesGfxRef.current) drawCellElevationBadges(refs.edgeObstaclesGfxRef.current, calibration, gridWidth, gridHeight, screen.width, screen.height, encounter.cellElevations ?? []);

@@ -8,6 +8,7 @@ import type {
   EdgeObstacle,
   GridCalibration,
   Obstacle,
+  SpellAnchor,
   Token
 } from "@limiarmap/shared-contracts";
 import { ActionIdempotencyTracker } from "@limiarmap/tactical-engine";
@@ -20,6 +21,7 @@ export interface EncounterState {
   obstacles: Obstacle[];
   edgeObstacles: EdgeObstacle[];
   activeAreaEffects: ActiveAreaEffect[];
+  spellAnchors: SpellAnchor[];
   cellElevations: CellElevation[];
   combatState: CombatState;
   actionTracker: ActionIdempotencyTracker;
@@ -130,6 +132,7 @@ function createDemoEncounter(
     obstacles,
     edgeObstacles: [], // Phase 10: Initialize empty edge obstacles for backward compatibility
     activeAreaEffects: [],
+    spellAnchors: [],
     cellElevations: [],
     combatState,
     actionTracker: new ActionIdempotencyTracker()
@@ -257,6 +260,12 @@ export class InMemoryEncounterRepository {
   setActiveAreaEffects(sessionId: string, activeAreaEffects: ActiveAreaEffect[]): EncounterState {
     const encounter = this.requireEncounter(sessionId);
     encounter.activeAreaEffects = activeAreaEffects;
+    return this.saveEncounter(encounter);
+  }
+
+  setSpellAnchors(sessionId: string, spellAnchors: SpellAnchor[]): EncounterState {
+    const encounter = this.requireEncounter(sessionId);
+    encounter.spellAnchors = spellAnchors;
     return this.saveEncounter(encounter);
   }
 

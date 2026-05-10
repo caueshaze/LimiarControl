@@ -34,7 +34,7 @@ import type {
 } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
-import { CombatMapFrame, toCombatMapFrameAreaEffects, type SpellMapHighlight } from "../map/CombatMapFrame";
+import { CombatMapFrame, toCombatMapFrameAreaEffects, toCombatMapFrameSpellAnchors, type SpellMapHighlight } from "../map/CombatMapFrame";
 import {
   formatMovementMeters,
   getMovementPreviewReasonLabel,
@@ -368,6 +368,7 @@ export const PlayerCombatModeShell = ({
           selectionMode={mapSelectionMode}
           previewCells={[]}
           activeAreaEffects={toCombatMapFrameAreaEffects(combat.state?.active_area_effects)}
+          spellAnchors={toCombatMapFrameSpellAnchors(combat.state?.spell_anchors)}
           selectedCell={movementEnabled ? movementSelectedCell : null}
           selectedTargetRefId={movementEnabled ? null : (targetId || null)}
           spellHighlights={spellMapHighlights}

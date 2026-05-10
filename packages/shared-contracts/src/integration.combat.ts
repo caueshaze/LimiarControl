@@ -9,6 +9,7 @@ import {
   edgeObstacleSchema,
   obstacleCoverSchema,
   obstacleSchema,
+  spellAnchorSchema,
   tokenSchema,
 } from "./domain";
 
@@ -94,6 +95,10 @@ export const syncActiveAreaEffectsRequestSchema = z.object({
   activeAreaEffects: z.array(activeAreaEffectSchema),
 });
 
+export const syncSpellAnchorsRequestSchema = z.object({
+  spellAnchors: z.array(spellAnchorSchema),
+});
+
 export const integrationStateResponseSchema = z.object({
   sessionId: z.string(),
   version: z.number().int().nonnegative(),
@@ -103,6 +108,7 @@ export const integrationStateResponseSchema = z.object({
   obstacles: z.array(obstacleSchema),
   edgeObstacles: z.array(edgeObstacleSchema).default([]),
   activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
+  spellAnchors: z.array(spellAnchorSchema).default([]),
   cellElevations: z.array(cellElevationSchema).default([]),
 });
 
@@ -139,6 +145,7 @@ export type EndCombatRequest = z.infer<typeof endCombatRequestSchema>;
 export type TokenSyncEntry = z.infer<typeof tokenSyncEntrySchema>;
 export type SyncTokensRequest = z.infer<typeof syncTokensRequestSchema>;
 export type SyncActiveAreaEffectsRequest = z.infer<typeof syncActiveAreaEffectsRequestSchema>;
+export type SyncSpellAnchorsRequest = z.infer<typeof syncSpellAnchorsRequestSchema>;
 export type IntegrationStateResponse = z.infer<typeof integrationStateResponseSchema>;
 export type MovementPreviewRequest = z.infer<typeof movementPreviewRequestSchema>;
 export type MovementPreviewResponse = z.infer<typeof movementPreviewResponseSchema>;

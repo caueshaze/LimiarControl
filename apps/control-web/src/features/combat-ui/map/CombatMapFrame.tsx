@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { combatRepo, type CombatActiveAreaEffect } from "../../../shared/api/combatRepo";
+import { combatRepo, type CombatActiveAreaEffect, type CombatSpellAnchor } from "../../../shared/api/combatRepo";
 import type { SpellMapHighlight } from "./combatMapHighlight.types";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
@@ -43,6 +43,22 @@ export type CombatMapFrameActiveAreaEffect = {
   damagePerMeters?: number | null;
 };
 
+export type CombatMapFrameSpellAnchor = {
+  id: string;
+  sourceSpellKey: string;
+  sourceSpellName?: string | null;
+  ownerParticipantId: string;
+  createdByParticipantId: string;
+  position: Coordinate;
+  durationType: "rounds";
+  remainingRounds?: number | null;
+  expiresOn?: "turn_start" | "turn_end" | null;
+  expiresAtParticipantId?: string | null;
+  renderKind: string;
+  movement?: { maxMetersPerFollowUp?: number | null } | null;
+  metadata?: Record<string, unknown>;
+};
+
 export const toCombatMapFrameAreaEffects = (
   effects?: CombatActiveAreaEffect[] | null,
 ): CombatMapFrameActiveAreaEffect[] =>
@@ -74,6 +90,27 @@ export const toCombatMapFrameAreaEffects = (
     damagePerMeters: effect.damage_per_meters,
   }));
 
+export const toCombatMapFrameSpellAnchors = (
+  anchors?: CombatSpellAnchor[] | null,
+): CombatMapFrameSpellAnchor[] =>
+  (anchors ?? []).map((anchor) => ({
+    id: anchor.id,
+    sourceSpellKey: anchor.source_spell_key,
+    sourceSpellName: anchor.source_spell_name,
+    ownerParticipantId: anchor.owner_participant_id,
+    createdByParticipantId: anchor.created_by_participant_id,
+    position: anchor.position,
+    durationType: anchor.duration_type,
+    remainingRounds: anchor.remaining_rounds,
+    expiresOn: anchor.expires_on,
+    expiresAtParticipantId: anchor.expires_at_participant_id,
+    renderKind: anchor.render_kind,
+    movement: anchor.movement
+      ? { maxMetersPerFollowUp: anchor.movement.max_meters_per_follow_up }
+      : null,
+    metadata: anchor.metadata ?? {},
+  }));
+
 export type CombatMapTokenSelection = {
   tokenId: string;
   combatantId: string | null;
@@ -98,6 +135,7 @@ type Props = {
   selectionMode?: CombatMapSelectionMode;
   previewCells?: Coordinate[];
   activeAreaEffects?: CombatMapFrameActiveAreaEffect[];
+  spellAnchors?: CombatMapFrameSpellAnchor[];
   selectedCell?: Coordinate | null;
   selectedTargetRefId?: string | null;
   spellHighlights?: SpellMapHighlight[];
@@ -159,6 +197,7 @@ export const CombatMapFrame = ({
   selectionMode = "none",
   previewCells = [],
   activeAreaEffects = [],
+  spellAnchors = [],
   selectedCell = null,
   selectedTargetRefId = null,
   spellHighlights = [],
@@ -194,6 +233,7 @@ export const CombatMapFrame = ({
           selectionMode,
           previewCells,
           activeAreaEffects,
+          spellAnchors,
           selectedCell,
           selectedTargetRefId,
           combatPhase,
@@ -362,6 +402,7 @@ export const CombatMapFrame = ({
     mapReady,
     previewCells,
     activeAreaEffects,
+    spellAnchors,
     selectedCell,
     selectedTargetRefId,
     selectionMode,

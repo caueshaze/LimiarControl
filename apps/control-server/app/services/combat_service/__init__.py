@@ -14,6 +14,7 @@ from .limiar_map_projection import (
     maybe_project_combat_end_to_limiar_map,
     maybe_project_combat_start_to_limiar_map,
     maybe_sync_conditions_to_limiar_map,
+    maybe_sync_spell_anchors_to_limiar_map,
     reset_limiar_map_projection_service,
 )
 from .service import CombatService
@@ -39,6 +40,7 @@ __all__ = [
     "maybe_project_combat_end_to_limiar_map",
     "maybe_project_combat_start_to_limiar_map",
     "maybe_sync_conditions_to_limiar_map",
+    "maybe_sync_spell_anchors_to_limiar_map",
     "reset_combat_targeting_service",
     "reset_limiar_map_projection_service",
     "SpellCastIntent",

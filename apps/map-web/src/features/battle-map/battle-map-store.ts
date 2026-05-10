@@ -2,6 +2,7 @@ import type {
   Coordinate,
   ActiveAreaEffect,
   EncounterSnapshotResponse,
+  SpellAnchor,
   GridCalibration,
   ObstaclePaintMode,
   EdgeDirection
@@ -41,6 +42,7 @@ class BattleMapStore {
     embeddedSelectionMode: "none",
     embeddedPreview: [],
     embeddedActiveAreaEffects: [],
+    embeddedSpellAnchors: [],
     embeddedSpellHighlights: [],
     isGridEditMode: false,
     isObstaclePaintMode: false,
@@ -113,6 +115,7 @@ class BattleMapStore {
     selectionMode: EmbeddedSelectionMode;
     previewCells: Coordinate[];
     activeAreaEffects?: ActiveAreaEffect[];
+    spellAnchors?: SpellAnchor[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
     combatPhase?: EmbeddedCombatPhase | null;
@@ -122,6 +125,7 @@ class BattleMapStore {
       embeddedSelectionMode: ctx.selectionMode,
       embeddedPreview: ctx.previewCells,
       embeddedActiveAreaEffects: ctx.activeAreaEffects ?? [],
+      embeddedSpellAnchors: ctx.spellAnchors ?? [],
       embeddedSelectedCell: ctx.selectedCell ?? undefined,
       embeddedSelectedTargetRefId: ctx.selectedTargetRefId ?? undefined,
       embeddedCombatPhase: ctx.combatPhase ?? undefined,
@@ -132,7 +136,7 @@ class BattleMapStore {
   setEmbeddedSelectedCell(c?: Coordinate | null): void { this.set({ embeddedSelectedCell: c ?? undefined }); }
 
   clearEmbeddedInteraction(): void {
-    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedActiveAreaEffects: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined, embeddedCombatPhase: undefined, embeddedSpellHighlights: [] });
+    this.set({ embeddedSelectionMode: "none", embeddedPreview: [], embeddedActiveAreaEffects: [], embeddedSpellAnchors: [], embeddedSelectedCell: undefined, embeddedSelectedTargetRefId: undefined, embeddedCombatPhase: undefined, embeddedSpellHighlights: [] });
   }
 
   setTokenMovementRejection(rejection: TokenMovementRejectionState): void {

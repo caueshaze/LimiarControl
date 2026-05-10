@@ -12,7 +12,7 @@ import { GmPendingReactionsPanel } from "./GmPendingReactionsPanel";
 import { GmPendingSavesPanel } from "./GmPendingSavesPanel";
 import { GmQuickActionsPanel } from "./GmQuickActionsPanel";
 import { useGmCombatShell } from "./useGmCombatShell";
-import { CombatMapFrame, toCombatMapFrameAreaEffects } from "../map/CombatMapFrame";
+import { CombatMapFrame, toCombatMapFrameAreaEffects, toCombatMapFrameSpellAnchors } from "../map/CombatMapFrame";
 import { GmDistancesPanel } from "./GmDistancesPanel";
 import {
   formatMovementMeters,
@@ -198,6 +198,7 @@ export const GmCombatModeShell = ({
             selectionMode={mapSelectionMode}
             previewCells={[]}
             activeAreaEffects={toCombatMapFrameAreaEffects(shell.combat.state?.active_area_effects)}
+            spellAnchors={toCombatMapFrameSpellAnchors(shell.combat.state?.spell_anchors)}
             selectedCell={movementEnabled ? movementSelectedCell : null}
             selectedTargetRefId={
               movementEnabled ? null : shell.selectedTargetRefId || null

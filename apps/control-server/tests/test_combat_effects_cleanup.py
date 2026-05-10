@@ -117,6 +117,7 @@ class TestEndCombatClearsEffects(unittest.IsolatedAsyncioTestCase):
             ],
         )
         state.active_area_effects = []
+        state.spell_anchors = [{"id": "spell_anchor:1"}]
 
         with (
             patch("app.services.combat.CombatService.get_state", return_value=state),
@@ -127,6 +128,7 @@ class TestEndCombatClearsEffects(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.phase, CombatPhase.ended)
         self.assertEqual(result.active_area_effects, [])
+        self.assertEqual(result.spell_anchors, [])
 
         for participant in result.participants:
             self.assertEqual(

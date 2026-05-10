@@ -8,6 +8,7 @@ from .limiar_map_projection import (
     maybe_project_combat_end_to_limiar_map as _project_combat_end_to_limiar_map,
 )
 from .persistent_effects import persist_surviving_spell_effects
+from .spell_anchors import tick_spell_anchors_for_turn
 
 
 def maybe_project_combat_advance_to_limiar_map(session_id: str, state) -> None:
@@ -64,6 +65,11 @@ class CombatLifecycleTurnsMixin:
             raise CombatServiceError("No participants")
         outgoing = state.participants[state.current_turn_index]
         expired_end = await cls._expire_effects_for_participant(session_id, state, outgoing["id"], "turn_end")
+        expired_anchor_end = tick_spell_anchors_for_turn(
+            state,
+            participant_id=outgoing["id"],
+            trigger="turn_end",
+        )
         if expired_end:
             cls._execute_on_end_effects_for_removed(
                 state=state,
@@ -72,6 +78,9 @@ class CombatLifecycleTurnsMixin:
         for effect in expired_end:
             label = effect.get("condition_type") or effect.get("kind", "effect")
             await cls._emit_log(session_id, {"message": f"Effect '{label}' expired on {effect['target_display_name']} (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
+        for anchor in expired_anchor_end:
+            label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
+            await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
@@ -85,6 +94,11 @@ class CombatLifecycleTurnsMixin:
                 await cls._emit_log(session_id, {"message": f"Turn skipped for stable participant {state.participants[state.current_turn_index]['display_name']}."})
         incoming = state.participants[state.current_turn_index]
         expired_start = await cls._expire_effects_for_participant(session_id, state, incoming["id"], "turn_start")
+        expired_anchor_start = tick_spell_anchors_for_turn(
+            state,
+            participant_id=incoming["id"],
+            trigger="turn_start",
+        )
         if expired_start:
             cls._execute_on_end_effects_for_removed(
                 state=state,
@@ -93,6 +107,9 @@ class CombatLifecycleTurnsMixin:
         for effect in expired_start:
             label = effect.get("condition_type") or effect.get("kind", "effect")
             await cls._emit_log(session_id, {"message": f"Effect '{label}' expired on {effect['target_display_name']} (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
+        for anchor in expired_anchor_start:
+            label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
+            await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
         cls._reset_turn_resources(incoming)
         db.add(state)
         db.commit()
@@ -145,6 +162,7 @@ class CombatLifecycleTurnsMixin:
 
         state.phase = CombatPhase.ended
         state.active_area_effects = []
+        state.spell_anchors = []
 
         from sqlalchemy.orm.attributes import flag_modified
 

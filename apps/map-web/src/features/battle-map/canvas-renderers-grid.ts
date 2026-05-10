@@ -6,7 +6,8 @@ import type {
   EdgeDirection,
   GridCalibration,
   Obstacle,
-  EdgeObstacle
+  EdgeObstacle,
+  SpellAnchor
 } from "@limiarmap/shared-contracts";
 import { C } from "./constants";
 import { coordKey, buildObstacleCellMap, cellRect } from "./utils";
@@ -68,6 +69,7 @@ export function drawCellFills(
   targetingPreview: Coordinate[],
   embeddedPreview: Coordinate[],
   embeddedActiveAreaEffects: ActiveAreaEffect[],
+  spellAnchors: SpellAnchor[],
   embeddedSelectedCell: Coordinate | null
 ): void {
   gfx.clear();
@@ -83,6 +85,10 @@ export function drawCellFills(
       effectKind: effect.effectKind,
     }))
   );
+  const spellAnchorEntries = spellAnchors.map((anchor) => ({
+    anchor,
+    key: coordKey(anchor.position),
+  }));
 
   for (const [key, obs] of obstacleCellMap) {
     const [gxStr, gyStr] = key.split(",");
@@ -172,6 +178,28 @@ export function drawCellFills(
       width: 1.2,
       color: isHazard ? 0xfca5a5 : 0xe2e8f0,
       alpha: 0.65,
+    });
+  }
+
+  for (const entry of spellAnchorEntries) {
+    if (obstacleCellMap.has(entry.key) || movementSet.has(entry.key)) continue;
+    const { x, y, w, h } = cellRect(
+      entry.anchor.position.x,
+      entry.anchor.position.y,
+      cal,
+      gridW,
+      gridH,
+      canvasW,
+      canvasH
+    );
+    gfx.circle(x + w / 2, y + h / 2, Math.max(4, Math.min(w, h) * 0.18)).fill({
+      color: 0xf59e0b,
+      alpha: 0.92
+    });
+    gfx.circle(x + w / 2, y + h / 2, Math.max(8, Math.min(w, h) * 0.32)).stroke({
+      width: 2,
+      color: 0xfef3c7,
+      alpha: 0.8
     });
   }
 

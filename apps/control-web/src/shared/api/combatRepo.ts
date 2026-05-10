@@ -199,6 +199,7 @@ export type CombatState = {
   use_map: boolean;
   local_distances: Record<string, Record<string, number>>;
   active_area_effects?: CombatActiveAreaEffect[];
+  spell_anchors?: CombatSpellAnchor[];
   created_at: string;
   updated_at?: string | null;
 };
@@ -530,6 +531,26 @@ export type CombatActiveAreaEffect = {
   damage_per_meters?: number | null;
 };
 
+export type CombatSpellAnchorMovement = {
+  max_meters_per_follow_up?: number | null;
+};
+
+export type CombatSpellAnchor = {
+  id: string;
+  source_spell_key: string;
+  source_spell_name?: string | null;
+  owner_participant_id: string;
+  created_by_participant_id: string;
+  position: { x: number; y: number };
+  duration_type: "rounds";
+  remaining_rounds?: number | null;
+  expires_on?: "turn_start" | "turn_end" | null;
+  expires_at_participant_id?: string | null;
+  render_kind: string;
+  movement?: CombatSpellAnchorMovement | null;
+  metadata?: Record<string, unknown>;
+};
+
 export type CombatMapPreviewState = {
   session_id: string;
   version: number;
@@ -538,6 +559,7 @@ export type CombatMapPreviewState = {
   tokens: CombatMapPreviewToken[];
   obstacles: CombatMapPreviewObstacle[];
   active_area_effects?: CombatActiveAreaEffect[];
+  spell_anchors?: CombatSpellAnchor[];
 };
 
 export type CombatMapEnsureResponse = {

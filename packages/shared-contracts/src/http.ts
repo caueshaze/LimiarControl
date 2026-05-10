@@ -6,6 +6,7 @@ import {
   combatStateSchema,
   edgeObstacleSchema,
   obstacleSchema,
+  spellAnchorSchema,
   tokenSchema
 } from "./domain";
 
@@ -17,6 +18,7 @@ export const encounterSnapshotResponseSchema = z.object({
   obstacles: z.array(obstacleSchema),
   edgeObstacles: z.array(edgeObstacleSchema).default([]),
   activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
+  spellAnchors: z.array(spellAnchorSchema).default([]),
   cellElevations: z.array(cellElevationSchema).default([])
 });
 

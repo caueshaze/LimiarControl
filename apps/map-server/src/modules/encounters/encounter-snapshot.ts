@@ -15,6 +15,7 @@ export function toEncounterSnapshot(
     obstacles: encounter.obstacles,
     edgeObstacles: encounter.edgeObstacles,
     activeAreaEffects: encounter.activeAreaEffects,
+    spellAnchors: encounter.spellAnchors,
     cellElevations: encounter.cellElevations
   };
 }
@@ -36,6 +37,7 @@ export function toIntegrationSnapshot(
     obstacles: encounter.obstacles,
     edgeObstacles: encounter.edgeObstacles,
     activeAreaEffects: encounter.activeAreaEffects,
+    spellAnchors: encounter.spellAnchors,
     cellElevations: encounter.cellElevations
   };
 }

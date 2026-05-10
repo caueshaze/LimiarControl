@@ -74,6 +74,12 @@ class CombatEventsMixin:
             "round": state.round,
             "current_turn_index": state.current_turn_index,
             "participants": state.participants,
+            "use_map": state.use_map,
+            "local_distances": state.local_distances,
+            "active_area_effects": state.active_area_effects,
+            "spell_anchors": state.spell_anchors,
+            "created_at": state.created_at.isoformat() if state.created_at else None,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
         }
         event = build_event("combat_state_updated", payload)
         await centrifugo.publish(channel, event)

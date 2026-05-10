@@ -255,6 +255,26 @@ class CombatActiveAreaEffect(BaseModel):
     damage_per_meters: float | None = None
 
 
+class CombatSpellAnchorMovement(BaseModel):
+    max_meters_per_follow_up: float | None = None
+
+
+class CombatSpellAnchor(BaseModel):
+    id: str
+    source_spell_key: str
+    source_spell_name: str | None = None
+    owner_participant_id: str
+    created_by_participant_id: str
+    position: CombatGridCell
+    duration_type: Literal["rounds"]
+    remaining_rounds: int | None = None
+    expires_on: Literal["turn_start", "turn_end"] | None = None
+    expires_at_participant_id: str | None = None
+    render_kind: str = "generic"
+    movement: CombatSpellAnchorMovement | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class CombatMapPreviewState(BaseModel):
     session_id: str
     version: int
@@ -263,6 +283,7 @@ class CombatMapPreviewState(BaseModel):
     tokens: list[CombatMapPreviewToken] = Field(default_factory=list)
     obstacles: list[CombatMapPreviewObstacle] = Field(default_factory=list)
     active_area_effects: list[CombatActiveAreaEffect] = Field(default_factory=list)
+    spell_anchors: list[CombatSpellAnchor] = Field(default_factory=list)
 
 
 class CombatMapEnsureResponse(BaseModel):
