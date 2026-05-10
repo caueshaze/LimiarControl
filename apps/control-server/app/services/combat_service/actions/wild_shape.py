@@ -159,9 +159,14 @@ class WildShapeMixin:
         target_kind = "session_entity" if target_p.get("kind") == "entity" else target_p.get("kind")
         # ─────────────────────────────────────────────────────────────────────
 
-        _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        _, target_ac, *_ = cls._get_stats(
+            db,
+            target_p["ref_id"],
+            target_p["kind"],
+            session_id,
+            combat_state=state,
+        )
         target_ac = target_ac or 10
-        target_ac += cls._sum_numeric_effects(target_p, "temp_ac_bonus")
 
         # Build attack bonus: beast's fixed attack_bonus (includes STR/DEX mod + prof)
         attack_bonus = natural_attack.attack_bonus

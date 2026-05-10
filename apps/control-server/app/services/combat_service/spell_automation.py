@@ -418,7 +418,11 @@ class CombatSpellAutomationMixin:
 
         if target_participant:
             _, target_ac, *_ = cls._get_stats(
-                db, target_participant["ref_id"], target_participant["kind"], session_id
+                db,
+                target_participant["ref_id"],
+                target_participant["kind"],
+                session_id,
+                combat_state=state,
             )
             roll_result = resolve_attack_base(
                 RollActorStats(
@@ -537,7 +541,11 @@ class CombatSpellAutomationMixin:
             if not target_p:
                 raise CombatServiceError("Alvo não encontrado no combate.", 404)
             _, target_ac, *_ = cls._get_stats(
-                db, target_p["ref_id"], target_p["kind"], session_id
+                db,
+                target_p["ref_id"],
+                target_p["kind"],
+                session_id,
+                combat_state=state,
             )
             roll_result = resolve_attack_base(
                 RollActorStats(

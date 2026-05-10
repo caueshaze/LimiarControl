@@ -207,6 +207,9 @@ const summarizeEffect = (variant: SpellVariant, locale: "pt" | "en") => {
     if (effect.type === "modify_stat" && "stat" in effect.params) {
       return `modify_stat (${effect.params.stat})`;
     }
+    if (effect.type === "armor_class_formula" && "base_value" in effect.params) {
+      return `armor_class_formula (${effect.params.base_value} + ${String(effect.params.ability).slice(0, 3).toUpperCase()})`;
+    }
     if (effect.type === "restrict_action" && "action" in effect.params) {
       return `restrict_action (${effect.params.action})`;
     }

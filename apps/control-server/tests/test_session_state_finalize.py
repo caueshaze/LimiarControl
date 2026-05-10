@@ -57,6 +57,173 @@ class SessionStateFinalizeTests(unittest.TestCase):
 
         self.assertEqual(armor_class, 15)
 
+    def test_active_armor_class_formula_beats_default_unarmored(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "abilities": {
+                    "dexterity": 14,
+                },
+                "active_spell_effects": [
+                    {
+                        "id": "eff-mage-armor",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 13,
+                                    "ability": "dexterity",
+                                    "requires_unarmored": True,
+                                },
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 15)
+
+    def test_armor_class_formula_competes_as_base_not_additive_bonus(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "abilities": {
+                    "dexterity": 14,
+                },
+                "equippedArmor": {
+                    "name": "Leather",
+                    "baseAC": 11,
+                    "dexCap": None,
+                    "armorType": "light",
+                    "allowsDex": True,
+                },
+                "active_spell_effects": [
+                    {
+                        "id": "eff-mage-armor",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 13,
+                                    "ability": "dexterity",
+                                    "requires_unarmored": True,
+                                },
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 13)
+
+    def test_armor_class_formula_requires_unarmored(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "abilities": {
+                    "dexterity": 16,
+                },
+                "equippedArmor": {
+                    "name": "Scale Mail",
+                    "baseAC": 14,
+                    "dexCap": 2,
+                    "armorType": "medium",
+                    "allowsDex": True,
+                },
+                "active_spell_effects": [
+                    {
+                        "id": "eff-mage-armor",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 13,
+                                    "ability": "dexterity",
+                                    "requires_unarmored": True,
+                                },
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 16)
+
+    def test_temp_ac_bonus_applies_after_formula_selection(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "abilities": {
+                    "dexterity": 14,
+                },
+                "equippedShield": {"name": "Shield", "bonus": 2},
+                "active_spell_effects": [
+                    {
+                        "id": "eff-mage-armor",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 13,
+                                    "ability": "dexterity",
+                                    "requires_unarmored": True,
+                                },
+                            },
+                        },
+                    },
+                    {
+                        "id": "eff-ac",
+                        "kind": "temp_ac_bonus",
+                        "numeric_value": 1,
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 18)
+
+    def test_equal_formula_tie_breaking_is_stable_and_deterministic(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "abilities": {
+                    "dexterity": 14,
+                },
+                "active_spell_effects": [
+                    {
+                        "id": "eff-b",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 12,
+                                    "ability": "dexterity",
+                                },
+                            },
+                        },
+                    },
+                    {
+                        "id": "eff-a",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 12,
+                                    "ability": "dexterity",
+                                },
+                            },
+                        },
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 14)
+
     def test_finalize_prunes_expired_timed_effects_when_game_time_is_provided(self):
         state = finalize_session_state_data(
             {

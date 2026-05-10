@@ -8,6 +8,15 @@ from app.services.session_rest import ensure_rest_state
 
 
 _PLAYER_SHIELD_BONUS = 2
+_ARMOR_BASE_PRIORITY = {
+    "heavy_armor": 70,
+    "medium_armor": 60,
+    "light_armor": 50,
+    "active_formula": 40,
+    "barbarian_unarmored_defense": 30,
+    "monk_unarmored_defense": 20,
+    "default": 10,
+}
 
 
 def _as_dict(value: object) -> dict:
@@ -41,8 +50,70 @@ def _ability_modifier(score: int) -> int:
     return (score - 10) // 2
 
 
-def calculate_player_armor_class_from_state(data: dict | None) -> int:
+def _active_effects_from_state(
+    payload: dict,
+    active_effects: list[dict] | None,
+) -> list[dict]:
+    if isinstance(active_effects, list):
+        return active_effects
+    effects = payload.get("active_spell_effects")
+    return effects if isinstance(effects, list) else []
+
+
+def _normalize_armor_type(payload: dict) -> str:
+    armor = _as_dict(payload.get("equippedArmor"))
+    return _normalize_lookup(armor.get("armorType"))
+
+
+def _has_equipped_armor(payload: dict) -> bool:
+    return _normalize_armor_type(payload) in {"light", "medium", "heavy"}
+
+
+def _sum_temp_ac_bonus_effects(effects: list[dict]) -> int:
+    total = 0
+    for effect in effects:
+        if (
+            isinstance(effect, dict)
+            and effect.get("kind") == "temp_ac_bonus"
+            and isinstance(effect.get("numeric_value"), int)
+        ):
+            total += effect["numeric_value"]
+    return total
+
+
+def _iter_active_armor_class_formula_effects(effects: list[dict]):
+    for effect in effects:
+        if not isinstance(effect, dict) or effect.get("kind") != "spell_effect":
+            continue
+        metadata = _as_dict(effect.get("metadata"))
+        declarative = _as_dict(metadata.get("declarative_effect"))
+        if declarative.get("type") != "armor_class_formula":
+            continue
+        params = _as_dict(declarative.get("params"))
+        base_value = params.get("base_value")
+        ability = params.get("ability")
+        if not isinstance(base_value, int) or not isinstance(ability, str):
+            continue
+        yield {
+            "base_value": base_value,
+            "ability": ability,
+            "requires_unarmored": params.get("requires_unarmored") is True,
+        }
+
+
+def _is_armor_class_formula_applicable(payload: dict, formula: dict) -> bool:
+    if formula.get("requires_unarmored") is True and _has_equipped_armor(payload):
+        return False
+    return True
+
+
+def calculate_player_armor_class_from_state(
+    data: dict | None,
+    *,
+    active_effects: list[dict] | None = None,
+) -> int:
     payload = _as_dict(data)
+    effects = _active_effects_from_state(payload, active_effects)
     dex_mod = _ability_modifier(_get_ability_score(payload, "dexterity"))
     con_mod = _ability_modifier(_get_ability_score(payload, "constitution"))
     wis_mod = _ability_modifier(_get_ability_score(payload, "wisdom"))
@@ -55,20 +126,72 @@ def calculate_player_armor_class_from_state(data: dict | None) -> int:
     if not isinstance(allows_dex, bool):
         allows_dex = armor_type != "heavy"
 
+    candidates: list[dict] = []
+
     if armor_type == "heavy":
-        base_total = base_ac
+        candidates.append({"value": base_ac, "priority": _ARMOR_BASE_PRIORITY["heavy_armor"], "order": len(candidates)})
     elif armor_type == "medium":
         dex_contribution = dex_mod if dex_cap is None else min(dex_mod, dex_cap)
-        base_total = base_ac + (dex_contribution if allows_dex else 0)
+        candidates.append(
+            {
+                "value": base_ac + (dex_contribution if allows_dex else 0),
+                "priority": _ARMOR_BASE_PRIORITY["medium_armor"],
+                "order": len(candidates),
+            }
+        )
     elif armor_type == "light":
-        base_total = base_ac + (dex_mod if allows_dex else 0)
+        candidates.append(
+            {
+                "value": base_ac + (dex_mod if allows_dex else 0),
+                "priority": _ARMOR_BASE_PRIORITY["light_armor"],
+                "order": len(candidates),
+            }
+        )
     else:
-        base_total = 10 + dex_mod
+        candidates.append(
+            {
+                "value": 10 + dex_mod,
+                "priority": _ARMOR_BASE_PRIORITY["default"],
+                "order": len(candidates),
+            }
+        )
         player_class = _normalize_lookup(payload.get("class"))
         if player_class == "barbarian":
-            base_total = max(base_total, 10 + dex_mod + con_mod)
+            candidates.append(
+                {
+                    "value": 10 + dex_mod + con_mod,
+                    "priority": _ARMOR_BASE_PRIORITY["barbarian_unarmored_defense"],
+                    "order": len(candidates),
+                }
+            )
         if player_class == "monk" and not isinstance(payload.get("equippedShield"), dict):
-            base_total = max(base_total, 10 + dex_mod + wis_mod)
+            candidates.append(
+                {
+                    "value": 10 + dex_mod + wis_mod,
+                    "priority": _ARMOR_BASE_PRIORITY["monk_unarmored_defense"],
+                    "order": len(candidates),
+                }
+            )
+
+    for formula in _iter_active_armor_class_formula_effects(effects):
+        if not _is_armor_class_formula_applicable(payload, formula):
+            continue
+        candidates.append(
+            {
+                "value": formula["base_value"] + _ability_modifier(_get_ability_score(payload, formula["ability"])),
+                "priority": _ARMOR_BASE_PRIORITY["active_formula"],
+                "order": len(candidates),
+            }
+        )
+
+    winning_base = max(
+        candidates,
+        key=lambda candidate: (
+            candidate["value"],
+            candidate["priority"],
+            -candidate["order"],
+        ),
+    )
 
     shield = _as_dict(payload.get("equippedShield"))
     shield_bonus = _safe_int(shield.get("bonus"), 0) if shield else 0
@@ -78,8 +201,9 @@ def calculate_player_armor_class_from_state(data: dict | None) -> int:
     misc_bonus = _safe_int(payload.get("miscACBonus"), 0)
     fighting_style = _normalize_lookup(payload.get("fightingStyle"))
     defense_bonus = 1 if fighting_style == "defense" and armor_type in {"light", "medium", "heavy"} else 0
+    temp_ac_bonus = _sum_temp_ac_bonus_effects(effects)
 
-    return max(0, base_total + shield_bonus + misc_bonus + defense_bonus)
+    return max(0, winning_base["value"] + shield_bonus + misc_bonus + defense_bonus + temp_ac_bonus)
 
 
 def finalize_session_state_data(

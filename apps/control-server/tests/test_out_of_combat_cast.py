@@ -185,6 +185,24 @@ def _ac_bonus_effect(value: int = 2) -> dict:
     }
 
 
+def _armor_class_formula_effect(
+    *,
+    base_value: int = 13,
+    ability: str = "dexterity",
+    requires_unarmored: bool = True,
+) -> dict:
+    return {
+        "type": "armor_class_formula",
+        "target": "selected_target",
+        "params": {
+            "base_value": base_value,
+            "ability": ability,
+            "requires_unarmored": requires_unarmored,
+        },
+        "stacking": "replace",
+    }
+
+
 def _slots_state(level: int = 2, used: int = 0, max_slots: int = 3) -> dict:
     return {
         "spellcasting": {
@@ -477,6 +495,33 @@ class TestBuildPersistedEffects(unittest.TestCase):
         self.assertTrue(e["metadata"]["concentration"])
         self.assertIsNotNone(e["metadata"]["concentration_group"])
         self.assertEqual(e["metadata"]["declarative_effect"]["type"], "modify_stat")
+
+    def test_armor_class_formula_effect_shape(self):
+        spell = self._spell(
+            canonical_key="mage_armor",
+            level=1,
+            concentration=False,
+            effects_json=[_armor_class_formula_effect()],
+            name_pt="Armadura Arcana",
+        )
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-1",
+            variant_key=None,
+            game_time_seconds=0,
+        )
+        self.assertEqual(len(effects), 1)
+        effect = effects[0]
+        self.assertEqual(effect["kind"], "spell_effect")
+        self.assertIsNone(effect.get("numeric_value"))
+        self.assertEqual(
+            effect["metadata"]["declarative_effect"]["type"],
+            "armor_class_formula",
+        )
+        self.assertEqual(effect["metadata"]["base_value"], 13)
+        self.assertEqual(effect["metadata"]["ability"], "dexterity")
+        self.assertTrue(effect["metadata"]["requires_unarmored"])
 
     def test_variant_selects_correct_effects(self):
         spell = self._spell(
@@ -3274,6 +3319,22 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
                 "out_of_combat_duration": {"type": "timed", "seconds": 0},
                 "params": {"stat": "temp_ac_bonus", "value": 1},
             })
+
+    def test_armor_class_formula_validates_shape(self):
+        effect = SpellDeclarativeEffect.model_validate(
+            {
+                "type": "armor_class_formula",
+                "target": "selected_target",
+                "params": {
+                    "base_value": 13,
+                    "ability": "dexterity",
+                    "requires_unarmored": True,
+                },
+            }
+        )
+
+        self.assertEqual(effect.type, "armor_class_formula")
+        self.assertEqual(effect.params.base_value, 13)
 
     def test_build_persisted_effects_materializes_timed_duration(self):
         spell = _make_campaign_spell(

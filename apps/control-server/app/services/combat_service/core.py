@@ -107,8 +107,16 @@ class CombatCoreMixin:
         return value if isinstance(value, int) else default
 
     @classmethod
-    def calculate_player_armor_class_from_state(cls, data: dict | None) -> int:
-        return calculate_player_armor_class_from_state(data)
+    def calculate_player_armor_class_from_state(
+        cls,
+        data: dict | None,
+        *,
+        active_effects: list[dict] | None = None,
+    ) -> int:
+        return calculate_player_armor_class_from_state(
+            data,
+            active_effects=active_effects,
+        )
 
     @classmethod
     def _build_roll_actor_stats_for_save(

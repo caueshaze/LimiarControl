@@ -51,6 +51,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 const EFFECT_TYPE_OPTIONS: SpellDeclarativeEffectType[] = [
   "apply_condition",
   "modify_stat",
+  "armor_class_formula",
   "advantage_on_checks",
   "disadvantage_on_checks",
   "restrict_action",
@@ -110,6 +111,8 @@ const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativ
       return { condition: "charmed" };
     case "modify_stat":
       return { stat: "temp_ac_bonus", value: 1 };
+    case "armor_class_formula":
+      return { base_value: 13, ability: "dexterity", requires_unarmored: true };
     case "advantage_on_checks":
     case "disadvantage_on_checks":
       return { ability: "charisma", against: "any" };
@@ -391,7 +394,89 @@ export const SpellCatalogEffectEditor = ({
             </div>
           ) : null}
 
-          {"ability" in effect.params ? (
+          {effect.type === "armor_class_formula" && "base_value" in effect.params ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <FieldLabel label="Base" tooltip="Valor base da fórmula de CA: por exemplo, 13 em 13 + DEX." />
+                <input
+                  type="number"
+                  min={0}
+                  value={effect.params.base_value}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "armor_class_formula" && "base_value" in entry.params
+                          ? ({
+                              ...entry,
+                              params: {
+                                ...entry.params,
+                                base_value: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value) || 0),
+                              },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className={fieldClassName}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel label="Habilidade" tooltip="Modificador somado à base: normalmente Destreza para fórmulas como Armadura Arcana." />
+                <select
+                  value={effect.params.ability}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "armor_class_formula" && "ability" in entry.params
+                          ? ({
+                              ...entry,
+                              params: { ...entry.params, ability: event.target.value as (typeof ABILITY_OPTIONS)[number] },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className={fieldClassName}
+                >
+                  {ABILITY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {localizeSpellAdminValue(option, locale)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="flex items-center gap-2 rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={effect.params.requires_unarmored === true}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "armor_class_formula" && "requires_unarmored" in entry.params
+                          ? ({
+                              ...entry,
+                              params: {
+                                ...entry.params,
+                                requires_unarmored: event.target.checked,
+                              },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className="h-4 w-4 rounded border-white/10 bg-slate-900 text-violet-400"
+                />
+                <span>Requer estar sem armadura</span>
+              </label>
+            </div>
+          ) : null}
+
+          {(
+            (effect.type === "advantage_on_checks" || effect.type === "disadvantage_on_checks")
+            && "ability" in effect.params
+          ) ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <FieldLabel label="Habilidade" tooltip="Qual teste: Força, Destreza, Constituição, Inteligência, Sabedoria, Carisma" />

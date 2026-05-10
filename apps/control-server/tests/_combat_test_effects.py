@@ -262,9 +262,9 @@ class CombatEffectsTestsMixin:
             ):
                 with patch(
                     "app.services.combat.CombatService._get_stats",
-                    return_value=(SessionState(id="s1", session_id="session-123", player_user_id="player-123", state_json={}), 15, 10, 10, 2, 0),
+                    return_value=(SessionState(id="s1", session_id="session-123", player_user_id="player-123", state_json={}), 17, 10, 10, 2, 0),
                 ):
-                    # Roll 12 + 5 = 17 vs AC 15+2=17 → hit (equal to AC)
+                    # Roll 12 + 5 = 17 vs AC 17 → hit (equal to AC)
                     with patch("random.randint", return_value=12):
                         result = await CombatService.entity_action(
                             self.db, "session-123",
@@ -276,7 +276,7 @@ class CombatEffectsTestsMixin:
                             "gm-user", True,
                         )
 
-        # 12 + 5 = 17, AC is 15 + 2 = 17 → should hit
+        # 12 + 5 = 17, AC is 17 → should hit
         self.assertTrue(result["is_hit"])
         self.assertEqual(result["target_ac"], 17)
 
