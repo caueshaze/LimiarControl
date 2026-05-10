@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session as DbSession, select
 
 from app.models.campaign_member import CampaignMember
@@ -9,6 +10,11 @@ from app.models.combat import CombatPhase, CombatState
 from app.models.session import Session
 from app.models.session_state import SessionState
 from app.schemas.session import SessionCommandRequest
+from app.services.game_time import (
+    LONG_REST_GAME_TIME_SECONDS,
+    SHORT_REST_GAME_TIME_SECONDS,
+    advance_game_time_seconds,
+)
 from app.services.session_rest import (
     SessionRestError,
     end_rest as end_rest_state,
@@ -303,6 +309,26 @@ async def send_session_command_service(
         await publish_command_event(entry, event_type, event_payload, issued_at)
         return {"ok": True}
 
+    if payload.type == "advance_game_time":
+        seconds = payload_data.get("seconds")
+        if not isinstance(seconds, int) or seconds <= 0:
+            raise HTTPException(status_code=400, detail="seconds must be a positive integer")
+
+        advance_game_time_seconds(entry_id, seconds, session)
+
+        activity_payload["seconds"] = seconds
+        activity_payload["gameTimeSeconds"] = runtime.game_time_seconds
+        activity_payload["reason"] = "manual"
+        record_gm_activity(entry, member, user, "advance_game_time", activity_payload, issued_at, session)
+        session.add(runtime)
+        session.commit()
+
+        event_type = "game_time_advanced"
+        event_payload["seconds"] = seconds
+        event_payload["gameTimeSeconds"] = runtime.game_time_seconds
+        await publish_command_event(entry, event_type, event_payload, issued_at)
+        return {"ok": True}
+
     if payload.type in {"start_short_rest", "start_long_rest"}:
         if runtime.combat_active:
             raise HTTPException(status_code=400, detail="Cannot start a rest during combat")
@@ -361,6 +387,16 @@ async def send_session_command_service(
             raise HTTPException(status_code=400, detail=str(error)) from error
         session.add(state)
 
+    rest_delta = (
+        LONG_REST_GAME_TIME_SECONDS
+        if current_rest_state == "long_rest"
+        else SHORT_REST_GAME_TIME_SECONDS
+    )
+    advance_game_time_seconds(entry_id, rest_delta, session)
+    activity_payload["secondsAdvanced"] = rest_delta
+    activity_payload["gameTimeSeconds"] = runtime.game_time_seconds
+    session.add(runtime)
+
     session.commit()
     for state in states:
         session.refresh(state)
@@ -387,6 +423,8 @@ async def send_session_command_service(
     event_type = "rest_ended"
     event_payload["restType"] = ended_rest_type
     event_payload["issuedAt"] = issued_at.isoformat()
+    event_payload["secondsAdvanced"] = rest_delta
+    event_payload["gameTimeSeconds"] = runtime.game_time_seconds
     await publish_state_updates(entry, states, issued_at)
     await publish_command_event(entry, event_type, event_payload, issued_at)
     return {"ok": True}

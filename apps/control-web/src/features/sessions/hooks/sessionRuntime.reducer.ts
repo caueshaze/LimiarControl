@@ -60,6 +60,12 @@ export const reduceSessionRuntimeMessage = (
       return {
         ...current,
         restState: "exploration",
+        gameTimeSeconds: typeof payload?.gameTimeSeconds === "number" ? payload.gameTimeSeconds : current.gameTimeSeconds,
+      };
+    case "game_time_advanced":
+      return {
+        ...current,
+        gameTimeSeconds: typeof payload?.gameTimeSeconds === "number" ? payload.gameTimeSeconds : current.gameTimeSeconds,
       };
     case "gm_command": {
       const commandPayload = payload?.command && typeof payload.command === "string"

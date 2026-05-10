@@ -105,6 +105,8 @@ export type RestActivityEvent = {
   username?: string | null;
   displayName?: string | null;
   action: "short_started" | "short_ended" | "long_started" | "long_ended";
+  secondsAdvanced?: number | null;
+  gameTimeSeconds?: number | null;
   timestamp: string;
   sessionOffsetSeconds: number;
 };
@@ -379,6 +381,18 @@ export type OutOfCombatEffectRemovedActivityEvent = {
   sessionOffsetSeconds: number;
 };
 
+export type GameTimeActivityEvent = {
+  type: "game_time";
+  userId?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  seconds: number;
+  gameTimeSeconds: number;
+  reason?: string | null;
+  timestamp: string;
+  sessionOffsetSeconds: number;
+};
+
 export type ActivityEvent =
   | RollActivityEvent
   | PurchaseActivityEvent
@@ -396,7 +410,8 @@ export type ActivityEvent =
   | RollResolvedActivityEvent
   | CombatLogEntryActivityEvent
   | OutOfCombatSpellCastActivityEvent
-  | OutOfCombatEffectRemovedActivityEvent;
+  | OutOfCombatEffectRemovedActivityEvent
+  | GameTimeActivityEvent;
 
 export type SessionJoinResponse = {
   campaignId: string;

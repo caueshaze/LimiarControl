@@ -142,6 +142,8 @@ class RestActivityEvent(BaseModel):
     username: Optional[str] = None
     displayName: Optional[str] = None
     action: Literal["short_started", "short_ended", "long_started", "long_ended"]
+    secondsAdvanced: Optional[int] = None
+    gameTimeSeconds: Optional[int] = None
     timestamp: datetime
     sessionOffsetSeconds: int
 
@@ -333,6 +335,18 @@ class OutOfCombatEffectRemovedActivityEvent(BaseModel):
     sessionOffsetSeconds: int
 
 
+class GameTimeActivityEvent(BaseModel):
+    type: Literal["game_time"] = "game_time"
+    userId: Optional[str] = None
+    username: Optional[str] = None
+    displayName: Optional[str] = None
+    seconds: int
+    gameTimeSeconds: int
+    reason: Optional[str] = None
+    timestamp: datetime
+    sessionOffsetSeconds: int
+
+
 ActivityEvent = Union[
     RollActivityEvent,
     PurchaseActivityEvent,
@@ -351,6 +365,7 @@ ActivityEvent = Union[
     CombatLogEntryActivityEvent,
     OutOfCombatSpellCastActivityEvent,
     OutOfCombatEffectRemovedActivityEvent,
+    GameTimeActivityEvent,
 ]
 
 

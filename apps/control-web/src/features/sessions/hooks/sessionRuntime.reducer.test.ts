@@ -59,4 +59,53 @@ describe("sessionRuntime.reducer", () => {
     expect(ended.lastCommand).toBeNull();
     expect(ended.sessionEndedAt).toBe("2026-03-24T10:00:00.000Z");
   });
+
+  it("updates gameTimeSeconds on game_time_advanced", () => {
+    const result = reduceSessionRuntimeMessage(createInitialSessionRuntimeState(), {
+      type: "game_time_advanced",
+      payload: { seconds: 3600, gameTimeSeconds: 3600 },
+    });
+    expect(result.gameTimeSeconds).toBe(3600);
+  });
+
+  it("preserves gameTimeSeconds if payload has no gameTimeSeconds on game_time_advanced", () => {
+    const state = { ...createInitialSessionRuntimeState(), gameTimeSeconds: 500 };
+    const result = reduceSessionRuntimeMessage(state, {
+      type: "game_time_advanced",
+      payload: { seconds: 100 },
+    });
+    expect(result.gameTimeSeconds).toBe(500);
+  });
+
+  it("updates gameTimeSeconds on rest_ended", () => {
+    const state = {
+      ...createInitialSessionRuntimeState(),
+      restState: "short_rest" as const,
+      gameTimeSeconds: 0,
+    };
+    const result = reduceSessionRuntimeMessage(state, {
+      type: "rest_ended",
+      payload: { restType: "short_rest", gameTimeSeconds: 3600, secondsAdvanced: 3600 },
+    });
+    expect(result.restState).toBe("exploration");
+    expect(result.gameTimeSeconds).toBe(3600);
+  });
+
+  it("preserves gameTimeSeconds if rest_ended has no gameTimeSeconds", () => {
+    const state = {
+      ...createInitialSessionRuntimeState(),
+      restState: "short_rest" as const,
+      gameTimeSeconds: 500,
+    };
+    const result = reduceSessionRuntimeMessage(state, {
+      type: "rest_ended",
+      payload: { restType: "short_rest" },
+    });
+    expect(result.restState).toBe("exploration");
+    expect(result.gameTimeSeconds).toBe(500);
+  });
+
+  it("defaults gameTimeSeconds to 0", () => {
+    expect(createInitialSessionRuntimeState().gameTimeSeconds).toBe(0);
+  });
 });
