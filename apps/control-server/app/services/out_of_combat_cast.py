@@ -25,6 +25,7 @@ def check_out_of_combat_cast_eligibility(
     out_of_combat_target: str | None = None,
     target_user_id: str | None = None,
     caster_user_id: str | None = None,
+    target_state_json: dict | None = None,
 ) -> tuple[bool, str | None]:
     """Return (ok, rejection_reason).  ok=True means the cast may proceed."""
     if not spell.out_of_combat_castable:
@@ -57,6 +58,12 @@ def check_out_of_combat_cast_eligibility(
         and target_user_id != caster_user_id
     ):
         return False, "This spell can only target yourself"
+
+    effective_target_state = target_state_json if target_state_json is not None else state_json
+    effects = _resolve_effects(spell, variant_key)
+    rejection = _check_requires_unarmored_eligibility(effects, effective_target_state)
+    if rejection:
+        return False, rejection
 
     return True, None
 
@@ -283,3 +290,28 @@ def _resolve_kind_and_value(effect_type: str, params: dict) -> tuple[str | None,
         stat = params.get("stat", "")
         return stat, int(params.get("value", 0))
     return "spell_effect", None
+
+
+_ARMOR_TYPES = {"light", "medium", "heavy"}
+
+
+def _target_has_armor(target_state_json: dict) -> bool:
+    armor = target_state_json.get("equippedArmor") or {}
+    if not isinstance(armor, dict):
+        return False
+    armor_type = (armor.get("armorType") or "").strip().lower()
+    return armor_type in _ARMOR_TYPES
+
+
+def _check_requires_unarmored_eligibility(
+    effects: list[dict],
+    target_state_json: dict,
+) -> str | None:
+    """Return an error string if any effect requires unarmored and target has armor, else None."""
+    for effect in effects:
+        if not isinstance(effect, dict):
+            continue
+        params = effect.get("params") or {}
+        if params.get("requires_unarmored") is True and _target_has_armor(target_state_json):
+            return "Target is wearing armor and this spell requires an unarmored target"
+    return None
