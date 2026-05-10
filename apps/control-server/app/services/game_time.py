@@ -4,6 +4,7 @@ from app.models.session_runtime import SessionRuntime
 
 SHORT_REST_GAME_TIME_SECONDS = 60 * 60
 LONG_REST_GAME_TIME_SECONDS = 8 * 60 * 60
+COMBAT_ROUND_GAME_TIME_SECONDS = 6
 
 
 def _require_runtime(session_id: str, db: DbSession) -> SessionRuntime:

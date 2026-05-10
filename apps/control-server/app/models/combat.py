@@ -28,6 +28,8 @@ class CombatState(SQLModel, table=True):
     )
     round: int = Field(default=1)
     current_turn_index: int = Field(default=0)
+    active_started_at_game_time_seconds: int | None = Field(default=None, exclude=True)
+    accounted_game_time_rounds: int = Field(default=0, exclude=True)
     participants: list[dict] = Field(
         default_factory=list,
         sa_column=Column(JSONB, nullable=False, server_default="[]"),

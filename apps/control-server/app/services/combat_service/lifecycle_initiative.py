@@ -125,6 +125,8 @@ class CombatLifecycleInitiativeMixin:
             return state
         participant["initiative"] = initiative
         transition = cls._maybe_advance_from_initiative(state)
+        if transition == "active":
+            cls._mark_active_combat_time_started(db, session_id, state)
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(state, "participants")
@@ -288,6 +290,8 @@ class CombatLifecycleInitiativeMixin:
             if participant["id"] in updates:
                 participant["initiative"] = updates[participant["id"]]
         transition = cls._maybe_advance_from_initiative(state)
+        if transition == "active":
+            cls._mark_active_combat_time_started(db, session_id, state)
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(state, "participants")
@@ -321,6 +325,7 @@ class CombatLifecycleInitiativeMixin:
         state.phase = CombatPhase.active
         state.round = 1
         state.current_turn_index = 0
+        cls._mark_active_combat_time_started(db, session_id, state)
         cls._reset_turn_resources(state.participants[0])
 
         from sqlalchemy.orm.attributes import flag_modified
