@@ -36,13 +36,18 @@ import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
 import { CombatMapFrame, toCombatMapFrameAreaEffects, toCombatMapFrameSpellAnchors, type SpellMapHighlight } from "../map/CombatMapFrame";
 import {
+  buildSpiritualWeaponReachableCells,
+  buildSpiritualWeaponHighlights,
+  buildSpiritualWeaponValidTargets,
+} from "./spiritualWeapon";
+import {
   formatMovementMeters,
   getMovementPreviewReasonLabel,
   pathCostUnitsToMeters,
   resolveMovementCellSelection,
   useMovementPreview,
 } from "../map/useMovementPreview";
-import { combatRepo, type PendingSave } from "../../../shared/api/combatRepo";
+import { combatRepo, type CombatMapPreviewToken, type PendingSave } from "../../../shared/api/combatRepo";
 import { buildPendingSaveReason, resolveTargetVariantLabel } from "../spellVariantUi";
 
 type Props = {
@@ -199,6 +204,11 @@ export const PlayerCombatModeShell = ({
   const [movementSelectedCell, setMovementSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [movementSubmitting, setMovementSubmitting] = useState(false);
   const [movementRejectionReason, setMovementRejectionReason] = useState<string | null>(null);
+  const [swMode, setSwMode] = useState(false);
+  const [swDestination, setSwDestination] = useState<{ x: number; y: number } | null>(null);
+  const [swTargetId, setSwTargetId] = useState("");
+  const [swSubmitting, setSwSubmitting] = useState(false);
+  const [swMapTokens, setSwMapTokens] = useState<CombatMapPreviewToken[]>([]);
   const [activePendingSave, setActivePendingSave] = useState<(
     PendingSave & { participantId: string; participantRefId: string; participantName: string }
   ) | null>(null);
@@ -255,11 +265,77 @@ export const PlayerCombatModeShell = ({
     }
   }, [myParticipant]);
 
+  useEffect(() => {
+    if (!swMode || !myParticipant?.id) {
+      setSwMapTokens([]);
+      return;
+    }
+    void combatRepo.getMapState(sessionId, myParticipant.id).then((mapState) => {
+      setSwMapTokens(mapState.tokens);
+    }).catch(() => setSwMapTokens([]));
+  }, [swMode, myParticipant?.id, sessionId]);
+
+  useEffect(() => {
+    if (!spiritualWeaponFollowUpAction) {
+      setSwMode(false);
+      setSwDestination(null);
+      setSwTargetId("");
+    }
+  }, [spiritualWeaponFollowUpAction]);
+
+  const swFinalPosition = swDestination ?? spiritualWeaponFollowUpAction?.position ?? null;
+
+  const swReachableCells = useMemo(() => {
+    if (!swMode || !spiritualWeaponFollowUpAction) return [];
+    return buildSpiritualWeaponReachableCells(
+      spiritualWeaponFollowUpAction.position,
+      spiritualWeaponFollowUpAction.maxMovementMeters,
+    );
+  }, [swMode, spiritualWeaponFollowUpAction]);
+
+  const swValidTargets = useMemo(
+    () =>
+      swFinalPosition
+        ? buildSpiritualWeaponValidTargets({
+            participants: combat.state?.participants ?? [],
+            finalAnchorPosition: swFinalPosition,
+            actorParticipantId: myParticipant?.id,
+            mapTokens: swMapTokens,
+          })
+        : [],
+    [swFinalPosition, combat.state?.participants, myParticipant?.id, swMapTokens],
+  );
+
+  const swHighlights = useMemo(() => {
+    if (!swMode || !spiritualWeaponFollowUpAction) return [];
+    return buildSpiritualWeaponHighlights(
+      spiritualWeaponFollowUpAction.position,
+      swDestination,
+      swValidTargets,
+    );
+  }, [swMode, spiritualWeaponFollowUpAction, swDestination, swValidTargets]);
+
+  useEffect(() => {
+    if (!swTargetId) return;
+    if (!swValidTargets.some((t) => t.id === swTargetId)) {
+      setSwTargetId("");
+    }
+  }, [swDestination, swValidTargets, swTargetId]);
+
   const clearMovementMode = () => {
     setMovementMode(false);
     setMovementSelectedCell(null);
     setMovementRejectionReason(null);
   };
+
+  const handleEnterSwMode = useCallback(() => {
+    setMovementMode(false);
+    setMovementSelectedCell(null);
+    setMovementRejectionReason(null);
+    setSwMode(true);
+    setSwDestination(null);
+    setSwTargetId("");
+  }, []);
 
   const submitMovement = (cell: { x: number; y: number }) => {
     if (!myParticipant?.id || movementSubmitting) return;
@@ -298,7 +374,9 @@ export const PlayerCombatModeShell = ({
     (activeActionPanel === "spell" && Boolean(selectedSpell) && selectedSpellNeedsTarget);
 
   const mapSelectionMode =
-    movementEnabled
+    swMode
+      ? "select-cell"
+      : movementEnabled
       ? "select-cell"
       : canMoveNow || isTargetingAction
       ? "select-token"
@@ -330,7 +408,11 @@ export const PlayerCombatModeShell = ({
       : null;
   const movementHintMessage = movementRejectionReason ?? movementPreview.error;
   const mapHint =
-    movementEnabled && movementHintMessage
+    swMode && swDestination
+      ? `Destino: (${swDestination.x}, ${swDestination.y}). Escolha um alvo e confirme.`
+      : swMode
+      ? "Clique em uma célula alcançável para mover a arma, ou confirme sem mover."
+      : movementEnabled && movementHintMessage
       ? movementHintMessage
       : movementEnabled && movementPreview.loading && movementSelectedCell
       ? t("combatUi.movementChecking")
@@ -368,14 +450,25 @@ export const PlayerCombatModeShell = ({
           combatPhase={combat.state?.phase ?? null}
           actor={userId ? { actorId: userId, actorType: "player" } : null}
           selectionMode={mapSelectionMode}
-          previewCells={[]}
+          previewCells={swMode ? swReachableCells : []}
           activeAreaEffects={toCombatMapFrameAreaEffects(combat.state?.active_area_effects)}
           spellAnchors={toCombatMapFrameSpellAnchors(combat.state?.spell_anchors)}
-          selectedCell={movementEnabled ? movementSelectedCell : null}
-          selectedTargetRefId={movementEnabled ? null : (targetId || null)}
-          spellHighlights={spellMapHighlights}
+          selectedCell={swMode ? swDestination : movementEnabled ? movementSelectedCell : null}
+          selectedTargetRefId={swMode ? null : movementEnabled ? null : (targetId || null)}
+          spellHighlights={swMode ? swHighlights : spellMapHighlights}
           frameClassName="h-[420px] w-full border-0 bg-slate-950 md:h-[560px] xl:h-[720px]"
           onCellSelected={(selection) => {
+            if (swMode && spiritualWeaponFollowUpAction) {
+              const isReachable = swReachableCells.some(
+                (c) => c.x === selection.cell.x && c.y === selection.cell.y,
+              );
+              if (!isReachable) return;
+              const isOrigin =
+                selection.cell.x === spiritualWeaponFollowUpAction.position.x &&
+                selection.cell.y === spiritualWeaponFollowUpAction.position.y;
+              setSwDestination(isOrigin ? null : selection.cell);
+              return;
+            }
             if (!movementEnabled) {
               return;
             }
@@ -416,6 +509,61 @@ export const PlayerCombatModeShell = ({
           }}
         />
 
+        {swMode && spiritualWeaponFollowUpAction && (
+          <div className="rounded-3xl border border-violet-400/30 bg-void-950 p-4 space-y-3">
+            <p className="text-sm font-semibold text-white">{t("combatUi.spiritualWeaponAction")}</p>
+            <p className="text-xs text-slate-400">
+              {swDestination
+                ? `Destino: (${swDestination.x}, ${swDestination.y})`
+                : "Clique no mapa para selecionar o destino da arma."}
+            </p>
+            <select
+              value={swTargetId}
+              onChange={(e) => setSwTargetId(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-violet-400 focus:outline-none"
+            >
+              <option value="">{t("combatUi.spiritualWeaponNoTarget")}</option>
+              {swValidTargets.map((p) => (
+                <option key={p.id} value={p.id}>{p.display_name}</option>
+              ))}
+            </select>
+            {swValidTargets.length === 0 && swFinalPosition && swMapTokens.length > 0 && (
+              <p className="text-xs text-slate-500">Nenhum alvo válido adjacente à posição final da arma.</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setSwMode(false); setSwDestination(null); setSwTargetId(""); }}
+                className="flex-1 rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={(!swDestination && !swTargetId) || swSubmitting || !combat.isMyTurn}
+                onClick={() => {
+                  const participant = swValidTargets.find((p) => p.id === swTargetId);
+                  setSwSubmitting(true);
+                  void handleSpiritualWeaponFollowUp(
+                    spiritualWeaponFollowUpAction.anchorId,
+                    swDestination,
+                    participant?.ref_id ?? null,
+                    participant?.kind ?? null,
+                  ).finally(() => {
+                    setSwSubmitting(false);
+                    setSwMode(false);
+                    setSwDestination(null);
+                    setSwTargetId("");
+                  });
+                }}
+                className="flex-1 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {swSubmitting ? "Executando..." : t("combatUi.spiritualWeaponConfirm")}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
           <div className="space-y-6">
           <PlayerTurnPanel
@@ -432,6 +580,7 @@ export const PlayerCombatModeShell = ({
             handleDeathSave={handleDeathSave}
             handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
             handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
+            onEnterSpiritualWeaponMode={handleEnterSwMode}
             handleEndTurn={handleEndTurn}
             handleRequestReaction={handleRequestReaction}
             handleStandardAction={handleStandardAction}

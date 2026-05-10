@@ -53,7 +53,7 @@ describe("PlayerActionPanels", () => {
         handleAttack={async () => undefined}
         handleCast={async () => undefined}
         handleDragonbornBreathWeapon={async () => undefined}
-        handleSpiritualWeaponFollowUp={async () => undefined}
+        onEnterSpiritualWeaponMode={() => undefined}
         handleStandardAction={async () => undefined}
         handleUseObject={async () => undefined}
         isSavingLoadout={false}
@@ -142,7 +142,7 @@ describe("PlayerActionPanels", () => {
         handleAttack={async () => undefined}
         handleCast={async () => undefined}
         handleDragonbornBreathWeapon={async () => undefined}
-        handleSpiritualWeaponFollowUp={async () => undefined}
+        onEnterSpiritualWeaponMode={() => undefined}
         handleStandardAction={async () => undefined}
         handleUseObject={async () => undefined}
         isSavingLoadout

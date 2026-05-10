@@ -41,6 +41,7 @@ type Props = {
     targetRefId: string | null,
     targetKind: string | null,
   ) => Promise<void>;
+  onEnterSpiritualWeaponMode: () => void;
   handleEndTurn: () => Promise<void>;
   handleRequestReaction: () => Promise<void>;
   handleStandardAction: (
@@ -114,6 +115,7 @@ export const PlayerTurnPanel = ({
   handleDeathSave,
   handleDragonbornBreathWeapon,
   handleSpiritualWeaponFollowUp,
+  onEnterSpiritualWeaponMode,
   handleEndTurn,
   handleRequestReaction,
   handleStandardAction,
@@ -343,7 +345,7 @@ export const PlayerTurnPanel = ({
               handleAttack={handleAttack}
               handleCast={handleCast}
               handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
-              handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
+              onEnterSpiritualWeaponMode={onEnterSpiritualWeaponMode}
               handleStandardAction={handleStandardAction}
               handleUseObject={handleUseObject}
               myParticipantId={myParticipant?.id}
