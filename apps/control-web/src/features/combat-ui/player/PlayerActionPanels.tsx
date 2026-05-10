@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { localizeDamageType } from "../../../shared/i18n/domainLabels";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
-import type { StandardActionType, TurnResources } from "../../../shared/api/combatRepo";
+import type { CombatParticipant, StandardActionType, TurnResources } from "../../../shared/api/combatRepo";
 import { getAbilityLabel } from "../../character-sheet/utils/abilityLabels";
 import { isCombatSpellActionCostAvailable } from "../spellAutomation";
 import { requiresAreaTargetingSelection, spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
@@ -17,6 +18,8 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
+import { SpiritualWeaponFollowUpDialog } from "./SpiritualWeaponFollowUpDialog";
+import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 
 type Props = {
   activeActionPanel: "attack" | "spell" | "standard" | "object";
@@ -26,9 +29,16 @@ type Props = {
   consumableItemId: string;
   consumableOptions: ConsumableOption[];
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
+  spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
   handleAttack: () => Promise<void>;
   handleCast: () => Promise<void>;
   handleDragonbornBreathWeapon: () => Promise<void>;
+  handleSpiritualWeaponFollowUp: (
+    anchorId: string,
+    destination: { x: number; y: number } | null,
+    targetRefId: string | null,
+    targetKind: string | null,
+  ) => Promise<void>;
   handleStandardAction: (action: StandardActionType, targetId?: string) => Promise<void>;
   handleUseObject: () => Promise<void>;
   myParticipantId?: string | null;
@@ -57,7 +67,9 @@ type Props = {
   useObjectTargetParticipantId: string;
   weaponOptions: WeaponOption[];
   isSavingLoadout?: boolean;
+  isMyTurn?: boolean;
   loadoutStatus?: string | null;
+  participants?: CombatParticipant[];
   onWeaponChange?: (inventoryItemId: string | null) => void;
 };
 
@@ -69,9 +81,11 @@ export const PlayerActionPanels = ({
   consumableItemId,
   consumableOptions,
   dragonbornBreathWeaponAction,
+  spiritualWeaponFollowUpAction,
   handleAttack,
   handleCast,
   handleDragonbornBreathWeapon,
+  handleSpiritualWeaponFollowUp,
   handleStandardAction,
   handleUseObject,
   myParticipantId,
@@ -100,9 +114,13 @@ export const PlayerActionPanels = ({
   useObjectTargetParticipantId,
   weaponOptions,
   isSavingLoadout = false,
+  isMyTurn = false,
   loadoutStatus = null,
+  participants = [],
   onWeaponChange,
 }: Props) => {
+  const [showSpiritualWeaponDialog, setShowSpiritualWeaponDialog] = useState(false);
+  const [spiritualWeaponSubmitting, setSpiritualWeaponSubmitting] = useState(false);
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
   const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
@@ -140,6 +158,7 @@ export const PlayerActionPanels = ({
   );
 
   return (
+    <>
     <div className="space-y-4">
       <div className="overflow-x-auto">
         <div className="inline-flex min-w-full gap-2 rounded-3xl border border-white/8 bg-white/4 p-2">
@@ -313,6 +332,36 @@ export const PlayerActionPanels = ({
       {activeActionPanel === "standard" ? (
         <article className="min-w-0 rounded-3xl border border-white/8 bg-white/4 p-5">
           <h3 className="text-lg font-semibold text-white">{t("combatUi.standardActions")}</h3>
+          {spiritualWeaponFollowUpAction ? (
+            <div className="mt-4 rounded-3xl border border-violet-500/20 bg-violet-500/8 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    {t("combatUi.spiritualWeaponAction")}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-violet-100/80">
+                    {t("combatUi.bonusAction")}
+                  </p>
+                  {spiritualWeaponFollowUpAction.remainingRounds != null && (
+                    <p className="mt-2 text-xs text-slate-300">
+                      {t("combatUi.spiritualWeaponRoundsLeft").replace(
+                        "{rounds}",
+                        String(spiritualWeaponFollowUpAction.remainingRounds),
+                      )}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={!canAct || !isMyTurn || (turnResources?.bonus_action_used ?? false)}
+                  onClick={() => setShowSpiritualWeaponDialog(true)}
+                  className="rounded-full bg-violet-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t("combatUi.spiritualWeaponAction")}
+                </button>
+              </div>
+            </div>
+          ) : null}
           {dragonbornBreathWeaponAction ? (
             <div className="mt-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/8 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -400,5 +449,31 @@ export const PlayerActionPanels = ({
         />
       ) : null}
     </div>
+    {spiritualWeaponFollowUpAction && (
+      <SpiritualWeaponFollowUpDialog
+        open={showSpiritualWeaponDialog}
+        onClose={() => setShowSpiritualWeaponDialog(false)}
+        action={spiritualWeaponFollowUpAction}
+        participants={participants}
+        myParticipantId={myParticipantId}
+        isMyTurn={isMyTurn}
+        bonusActionUsed={turnResources?.bonus_action_used ?? false}
+        onSubmit={async (destination, targetRefId, targetKind) => {
+          setSpiritualWeaponSubmitting(true);
+          try {
+            await handleSpiritualWeaponFollowUp(
+              spiritualWeaponFollowUpAction.anchorId,
+              destination,
+              targetRefId,
+              targetKind,
+            );
+          } finally {
+            setSpiritualWeaponSubmitting(false);
+          }
+        }}
+        isSubmitting={spiritualWeaponSubmitting}
+      />
+    )}
+    </>
   );
 };

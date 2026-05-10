@@ -255,6 +255,7 @@ export const PlayerSpellCastDialog = ({
     SpellInstanceSpatialValidation[]
   >([]);
   const [targetingMode, setTargetingMode] = useState(createInitialTargetingMode(spell.areaShape, spell.selectionType));
+  const [pointSpellInitialTargetId, setPointSpellInitialTargetId] = useState<string | null>(null);
   const handledSaveResolutionKeyRef = useRef<string | null>(null);
   const multiPreviewRequestGateRef = useRef(createPreviewRequestGate());
   const areaPreviewRequestGateRef = useRef(createPreviewRequestGate());
@@ -639,7 +640,9 @@ export const PlayerSpellCastDialog = ({
                   selectedSlotLevel,
                   originCell,
                   anchorCell,
-                  targetRefId: anchorTargetRefId,
+                  targetRefId: spell.areaShape
+                    ? anchorTargetRefId
+                    : pointSpellInitialTargetId,
                   spellEffectDice,
                   spellEffectBonus: parsedBonus,
                   spellDamageType,
@@ -831,9 +834,38 @@ export const PlayerSpellCastDialog = ({
             spellHighlights={highlights}
             onCellSelected={(cell) => {
               setAnchorCell(cell);
+              setPointSpellInitialTargetId(null);
               setTargetingMode("confirming");
             }}
           />
+        ) : null}
+
+        {isAreaSpell && !spell.areaShape && targetingMode === "confirming" && anchorCell && !result ? (
+          <div className="mt-4 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/8 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-200">
+              Posição da arma: ({anchorCell.x}, {anchorCell.y})
+            </p>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-slate-300">Alvo inicial (opcional)</label>
+              <select
+                value={pointSpellInitialTargetId ?? ""}
+                onChange={(e) => setPointSpellInitialTargetId(e.target.value || null)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-fuchsia-400 focus:outline-none"
+              >
+                <option value="">Sem alvo inicial</option>
+                {participants
+                  .filter((p) => p.id !== actor.id && p.status !== "dead" && p.status !== "defeated")
+                  .map((p) => (
+                    <option key={p.id} value={p.ref_id ?? ""}>
+                      {p.display_name}
+                    </option>
+                  ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                O alvo deve estar adjacente à posição da arma. A validação final é feita pelo servidor.
+              </p>
+            </div>
+          </div>
         ) : null}
 
         {result && result.pending_save_id ? (
@@ -879,6 +911,7 @@ export const PlayerSpellCastDialog = ({
             onCancel={onClose}
             onClearArea={() => {
               clearAreaSelection();
+              setPointSpellInitialTargetId(null);
               setTargetingMode("area_target_select");
               setError(null);
             }}

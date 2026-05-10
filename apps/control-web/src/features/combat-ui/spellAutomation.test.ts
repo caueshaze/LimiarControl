@@ -18,6 +18,13 @@ describe("combat spell automation metadata", () => {
       requiresMap: false,
       handlerKey: "_cast_hunters_mark_automation"
     });
+    expect(getCombatSpellAutomation("spiritual_weapon")).toEqual({
+      automationMode: "special_handler",
+      defaultSpellMode: "spell_attack",
+      requiresEffectInputs: false,
+      requiresMap: true,
+      handlerKey: "_cast_spiritual_weapon_automation",
+    });
     expect(getCombatSpellAutomation("goodberry")).toEqual({
       automationMode: "special_handler",
       defaultSpellMode: "utility",

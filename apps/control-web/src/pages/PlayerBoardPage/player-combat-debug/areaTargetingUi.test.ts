@@ -230,10 +230,14 @@ describe("semantic targeting mode routing", () => {
     expect(createInitialTargetingMode("sphere", "none")).toBe("single_target_select");
   });
 
-  it("requires map area targeting only for point/direction area spells", () => {
+  it("requires map area targeting for point spells (with or without areaShape) and direction area spells", () => {
     expect(requiresAreaTargetingSelection("point", "sphere")).toBe(true);
     expect(requiresAreaTargetingSelection("direction", "cone")).toBe(true);
-    expect(requiresAreaTargetingSelection("point", null)).toBe(false);
+    // point spells without areaShape (e.g. Spiritual Weapon) also use map selection
+    expect(requiresAreaTargetingSelection("point", null)).toBe(true);
+    expect(requiresAreaTargetingSelection("point", undefined)).toBe(true);
+    // direction without areaShape does not trigger area targeting
+    expect(requiresAreaTargetingSelection("direction", null)).toBe(false);
     expect(requiresAreaTargetingSelection("creature", "sphere")).toBe(false);
   });
 

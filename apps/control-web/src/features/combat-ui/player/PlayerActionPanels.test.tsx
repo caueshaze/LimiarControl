@@ -49,9 +49,11 @@ describe("PlayerActionPanels", () => {
         consumableItemId=""
         consumableOptions={[]}
         dragonbornBreathWeaponAction={null}
+        spiritualWeaponFollowUpAction={null}
         handleAttack={async () => undefined}
         handleCast={async () => undefined}
         handleDragonbornBreathWeapon={async () => undefined}
+        handleSpiritualWeaponFollowUp={async () => undefined}
         handleStandardAction={async () => undefined}
         handleUseObject={async () => undefined}
         isSavingLoadout={false}
@@ -136,9 +138,11 @@ describe("PlayerActionPanels", () => {
         consumableItemId=""
         consumableOptions={[]}
         dragonbornBreathWeaponAction={null}
+        spiritualWeaponFollowUpAction={null}
         handleAttack={async () => undefined}
         handleCast={async () => undefined}
         handleDragonbornBreathWeapon={async () => undefined}
+        handleSpiritualWeaponFollowUp={async () => undefined}
         handleStandardAction={async () => undefined}
         handleUseObject={async () => undefined}
         isSavingLoadout

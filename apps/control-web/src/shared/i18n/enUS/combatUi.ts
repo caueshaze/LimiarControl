@@ -239,6 +239,16 @@ export const combatUiEnUSDictionary = {
   "combatUi.distancesPreset.far": "Far",
   "combatUi.distancesPreset.veryFar": "Very Far",
   "combatUi.distancesPreset.custom": "Custom",
-  "combatUi.combatActionFailed": "Combat action failed"
-  ,"combatUi.endTurnLabel": "End Turn"
+  "combatUi.combatActionFailed": "Combat action failed",
+  "combatUi.endTurnLabel": "End Turn",
+  "combatUi.spiritualWeaponAction": "Move / attack with Spiritual Weapon",
+  "combatUi.spiritualWeaponDestinationLabel": "Weapon destination",
+  "combatUi.spiritualWeaponDestinationX": "X",
+  "combatUi.spiritualWeaponDestinationY": "Y",
+  "combatUi.spiritualWeaponKeepPosition": "Keep current position",
+  "combatUi.spiritualWeaponOptionalTarget": "Target (optional)",
+  "combatUi.spiritualWeaponNoTarget": "No target",
+  "combatUi.spiritualWeaponRoundsLeft": "{rounds} rounds remaining",
+  "combatUi.spiritualWeaponCurrentPosition": "Current position",
+  "combatUi.spiritualWeaponConfirm": "Confirm action"
 } as const;

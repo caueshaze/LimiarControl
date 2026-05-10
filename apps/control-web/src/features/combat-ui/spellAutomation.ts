@@ -95,6 +95,14 @@ export const getCombatSpellAutomation = (
         requiresMap: false,
         handlerKey: "_cast_goodberry_automation"
       };
+    case "spiritual_weapon":
+      return {
+        automationMode: "special_handler",
+        defaultSpellMode: "spell_attack",
+        requiresEffectInputs: false,
+        requiresMap: true,
+        handlerKey: "_cast_spiritual_weapon_automation",
+      };
     default:
       return null;
   }

@@ -241,6 +241,16 @@ export const combatUiPtBRDictionary = {
   "combatUi.distancesPreset.far": "Longe",
   "combatUi.distancesPreset.veryFar": "Muito Longe",
   "combatUi.distancesPreset.custom": "Personalizado",
-  "combatUi.combatActionFailed": "Falha na ação de combate"
-  ,"combatUi.endTurnLabel": "Encerrar turno"
+  "combatUi.combatActionFailed": "Falha na ação de combate",
+  "combatUi.endTurnLabel": "Encerrar turno",
+  "combatUi.spiritualWeaponAction": "Mover / atacar com Arma Espiritual",
+  "combatUi.spiritualWeaponDestinationLabel": "Destino da arma",
+  "combatUi.spiritualWeaponDestinationX": "X",
+  "combatUi.spiritualWeaponDestinationY": "Y",
+  "combatUi.spiritualWeaponKeepPosition": "Manter posição atual",
+  "combatUi.spiritualWeaponOptionalTarget": "Alvo (opcional)",
+  "combatUi.spiritualWeaponNoTarget": "Sem alvo",
+  "combatUi.spiritualWeaponRoundsLeft": "{rounds} rodadas restantes",
+  "combatUi.spiritualWeaponCurrentPosition": "Posição atual",
+  "combatUi.spiritualWeaponConfirm": "Confirmar ação"
 } as const;
