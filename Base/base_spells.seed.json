@@ -284,6 +284,7 @@
       "ritual": false,
       "resolutionType": "control",
       "savingThrow": "WIS",
+      "maxTargets": 1,
       "upcast": {
         "mode": "additional_targets",
         "perLevel": 1
