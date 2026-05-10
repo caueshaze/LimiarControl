@@ -71,6 +71,7 @@ def build_persisted_effects(
     caster_user_id: str,
     target_user_id: str,
     variant_key: str | None,
+    game_time_seconds: int,
 ) -> list[dict]:
     """Build the list of persisted effect dicts for an out-of-combat cast.
 
@@ -122,16 +123,31 @@ def build_persisted_effects(
         if effect_type in {"advantage_on_checks", "disadvantage_on_checks"}:
             metadata["against"] = params.get("against") or "any"
 
+        ooc_duration = raw_effect.get("out_of_combat_duration")
+        is_timed = (
+            isinstance(ooc_duration, dict)
+            and ooc_duration.get("type") == "timed"
+            and isinstance(ooc_duration.get("seconds"), int)
+            and ooc_duration.get("seconds") > 0
+        )
+        duration_type = "timed" if is_timed else "until_long_rest"
+        created_at_game_time_seconds = game_time_seconds if is_timed else None
+        expires_at_game_time_seconds = (
+            game_time_seconds + ooc_duration["seconds"] if is_timed else None
+        )
+
         results.append({
             "id": str(uuid4()),
             "source_participant_id": None,
             "kind": kind,
             "condition_type": None,
             "numeric_value": numeric_value,
-            "duration_type": "until_long_rest",
+            "duration_type": duration_type,
             "remaining_rounds": None,
             "expires_on": None,
             "expires_at_participant_id": None,
+            "created_at_game_time_seconds": created_at_game_time_seconds,
+            "expires_at_game_time_seconds": expires_at_game_time_seconds,
             "created_at": created_at,
             "metadata": metadata,
             "display_label": spell_name if not variant_label else f"{spell_name} — {variant_label}",
@@ -147,6 +163,9 @@ def build_concentration_marker(
     target_user_id: str,
     concentration_group: str,
     variant_key: str | None,
+    duration_type: str = "until_long_rest",
+    created_at_game_time_seconds: int | None = None,
+    expires_at_game_time_seconds: int | None = None,
 ) -> dict:
     """Lightweight concentration marker placed on the CASTER state when targeting an ally.
 
@@ -165,10 +184,12 @@ def build_concentration_marker(
         "kind": "spell_effect",
         "condition_type": None,
         "numeric_value": None,
-        "duration_type": "until_long_rest",
+        "duration_type": duration_type,
         "remaining_rounds": None,
         "expires_on": None,
         "expires_at_participant_id": None,
+        "created_at_game_time_seconds": created_at_game_time_seconds,
+        "expires_at_game_time_seconds": expires_at_game_time_seconds,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "metadata": {
             "concentration": True,

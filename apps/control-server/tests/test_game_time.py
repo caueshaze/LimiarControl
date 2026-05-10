@@ -169,13 +169,14 @@ class AdvanceGameTimeCommandTests(unittest.TestCase):
         user.id = "gm-1"
         return user
 
+    @patch("app.api.routes.sessions.commands_service.publish_state_updates", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.advance_game_time_seconds")
     @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")
     @patch("app.api.routes.sessions.commands_service.get_or_create_session_runtime")
     @patch("app.api.routes.sessions.commands_service.require_active_gm_session")
     def test_valid_seconds_advances_game_time(
-        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish,
+        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish, mock_publish_state,
     ):
         from app.api.routes.sessions.commands_service import send_session_command_service
 
@@ -287,13 +288,14 @@ class AdvanceGameTimeCommandTests(unittest.TestCase):
             )
         self.assertEqual(ctx.exception.status_code, 400)
 
+    @patch("app.api.routes.sessions.commands_service.publish_state_updates", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.advance_game_time_seconds")
     @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")
     @patch("app.api.routes.sessions.commands_service.get_or_create_session_runtime")
     @patch("app.api.routes.sessions.commands_service.require_active_gm_session")
     def test_records_activity_with_reason_and_game_time(
-        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish,
+        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish, mock_publish_state,
     ):
         from app.api.routes.sessions.commands_service import send_session_command_service
         import asyncio
@@ -316,6 +318,50 @@ class AdvanceGameTimeCommandTests(unittest.TestCase):
         self.assertEqual(cmd.payload_json["seconds"], 3600)
         self.assertEqual(cmd.payload_json["gameTimeSeconds"], 3600)
         self.assertEqual(cmd.payload_json["reason"], "manual")
+
+    @patch("app.api.routes.sessions.commands_service.publish_state_updates", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.advance_game_time_seconds")
+    @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")
+    @patch("app.api.routes.sessions.commands_service.get_or_create_session_runtime")
+    @patch("app.api.routes.sessions.commands_service.require_active_gm_session")
+    def test_manual_advancement_prunes_expired_timed_effects(
+        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish, mock_publish_state,
+    ):
+        from app.api.routes.sessions.commands_service import send_session_command_service
+
+        runtime = self._make_runtime(game_time=3500)
+        state = MagicMock()
+        state.session_id = "s1"
+        state.player_user_id = "player-1"
+        state.state_json = {
+            "active_spell_effects": [
+                {
+                    "id": "eff-expired",
+                    "kind": "spell_effect",
+                    "duration_type": "timed",
+                    "expires_at_game_time_seconds": 3600,
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                }
+            ]
+        }
+        mock_require.return_value = (self._make_entry(), self._make_member())
+        mock_runtime.return_value = runtime
+        mock_advance.side_effect = lambda sid, delta, db: setattr(runtime, "game_time_seconds", runtime.game_time_seconds + delta)
+
+        db = MagicMock()
+        db.exec.return_value.all.return_value = [state]
+
+        _run_async(
+            send_session_command_service("s1", self._make_payload(seconds=200), self._make_user(), db)
+        )
+
+        self.assertNotIn("active_spell_effects", state.state_json)
+        mock_publish_state.assert_awaited_once()
+        published_entry, published_states, issued_at = mock_publish_state.await_args.args
+        self.assertEqual(published_entry.id, "s1")
+        self.assertEqual(len(published_states), 1)
+        self.assertIs(published_states[0], state)
 
     @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")
@@ -515,6 +561,55 @@ class RestGameTimeAdvanceTests(unittest.TestCase):
         end_rest_cmd = next(e for e in cmd_events if e.command_type == "end_rest")
         self.assertEqual(end_rest_cmd.payload_json["secondsAdvanced"], SHORT_REST_GAME_TIME_SECONDS)
         self.assertEqual(end_rest_cmd.payload_json["gameTimeSeconds"], 500 + SHORT_REST_GAME_TIME_SECONDS)
+
+    @patch("app.api.routes.sessions.commands_service.publish_state_updates", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.advance_game_time_seconds")
+    @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="short_rest")
+    @patch("app.api.routes.sessions.commands_service.get_or_create_session_runtime")
+    @patch("app.api.routes.sessions.commands_service.require_active_gm_session")
+    def test_rest_end_prunes_expired_timed_effects_after_advancing_time(
+        self, mock_require, mock_runtime, mock_rest_state, mock_advance, mock_publish_cmd, mock_publish_state,
+    ):
+        from app.api.routes.sessions.commands_service import send_session_command_service
+
+        runtime = self._make_runtime(game_time=0)
+        entry = self._make_entry()
+        member = self._make_member()
+        user = self._make_user()
+        state = self._make_state(rest_state="short_rest")
+        state.state_json["active_spell_effects"] = [
+            {
+                "id": "eff-expired",
+                "kind": "spell_effect",
+                "duration_type": "timed",
+                "expires_at_game_time_seconds": SHORT_REST_GAME_TIME_SECONDS,
+                "created_at": "2026-01-01T00:00:00+00:00",
+            }
+        ]
+
+        mock_require.return_value = (entry, member)
+        mock_runtime.return_value = runtime
+
+        def advance_side_effect(session_id, delta, db):
+            runtime.game_time_seconds += delta
+
+        mock_advance.side_effect = advance_side_effect
+
+        db = MagicMock()
+        db.exec.return_value.all.return_value = [state]
+        db.exec.return_value.first.return_value = None
+
+        _run_async(
+            send_session_command_service("s1", self._make_end_rest_payload(), user, db)
+        )
+
+        self.assertNotIn("active_spell_effects", state.state_json)
+        mock_publish_state.assert_awaited_once()
+        published_entry, published_states, issued_at = mock_publish_state.await_args.args
+        self.assertEqual(published_entry.id, "s1")
+        self.assertEqual(len(published_states), 1)
+        self.assertIs(published_states[0], state)
 
 
 class GameTimeActivityMappingTests(unittest.TestCase):

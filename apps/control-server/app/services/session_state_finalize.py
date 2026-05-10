@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unicodedata
 
+from app.services.persistent_effect_expiry import prune_expired_persisted_effects_from_state
 from app.services.dragonborn_breath_weapon import apply_dragonborn_breath_weapon_canonical_state
 from app.services.session_rest import ensure_rest_state
 
@@ -81,8 +82,14 @@ def calculate_player_armor_class_from_state(data: dict | None) -> int:
     return max(0, base_total + shield_bonus + misc_bonus + defense_bonus)
 
 
-def finalize_session_state_data(data: dict | None) -> dict:
+def finalize_session_state_data(
+    data: dict | None,
+    *,
+    game_time_seconds: int | None = None,
+) -> dict:
     next_data = ensure_rest_state(data)
+    if isinstance(game_time_seconds, int):
+        next_data = prune_expired_persisted_effects_from_state(next_data, game_time_seconds)
     next_data = apply_dragonborn_breath_weapon_canonical_state(next_data)
 
     # Wild Shape: use beast form AC instead of equipment-derived AC

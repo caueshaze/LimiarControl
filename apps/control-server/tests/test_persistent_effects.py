@@ -115,6 +115,27 @@ def _until_removed_effect(effect_id: str = "eff-perm") -> dict:
     }
 
 
+def _timed_effect(
+    effect_id: str = "eff-timed",
+    *,
+    expires_at_game_time_seconds: int = 3600,
+    created_at_game_time_seconds: int | None = 0,
+) -> dict:
+    effect = {
+        "id": effect_id,
+        "kind": "spell_effect",
+        "source_participant_id": "caster-1",
+        "duration_type": "timed",
+        "expires_at_game_time_seconds": expires_at_game_time_seconds,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "display_label": "Mage Armor",
+        "metadata": {"source_spell_name": "Mage Armor"},
+    }
+    if created_at_game_time_seconds is not None:
+        effect["created_at_game_time_seconds"] = created_at_game_time_seconds
+    return effect
+
+
 def _make_state_with_participants(effects: list[dict] | None = None) -> CombatState:
     return CombatState(
         id="combat-1",
@@ -259,6 +280,20 @@ class TestPersistSurvivingSpellEffects(unittest.TestCase):
         self.assertEqual(persisted[0]["id"], "eff-perm")
         self.assertEqual(persisted[0]["duration_type"], "until_removed")
 
+    @patch("app.services.combat_service.persistent_effects.get_game_time_seconds", return_value=100)
+    def test_persists_timed_effect(self, mock_game_time):
+        effect = _timed_effect("eff-timed", expires_at_game_time_seconds=500)
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        persist_surviving_spell_effects(db, state)
+
+        persisted = session_state.state_json["active_spell_effects"]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["duration_type"], "timed")
+
     def test_skips_entity_participants(self):
         state = _make_state_with_participants()
         state.participants[1]["active_effects"] = [_manual_spell_effect("eff-1")]
@@ -319,6 +354,32 @@ class TestRestorePersistedEffects(unittest.TestCase):
         restore_persisted_effects(db, "session-1", participant)
 
         self.assertEqual(participant["active_effects"], [])
+
+    @patch("app.services.combat_service.persistent_effects.get_game_time_seconds", return_value=100)
+    def test_restores_unexpired_timed_effects(self, mock_game_time):
+        effect = _timed_effect("eff-timed", expires_at_game_time_seconds=300)
+        participant = {"kind": "player", "ref_id": "player-1", "active_effects": []}
+        db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [effect]})
+        db.exec.return_value.first.return_value = session_state
+
+        restore_persisted_effects(db, "session-1", participant)
+
+        self.assertEqual(len(participant["active_effects"]), 1)
+        self.assertEqual(participant["active_effects"][0]["id"], "eff-timed")
+
+    @patch("app.services.combat_service.persistent_effects.get_game_time_seconds", return_value=3600)
+    def test_expired_timed_effect_is_not_restored_and_is_removed_from_state(self, mock_game_time):
+        effect = _timed_effect("eff-timed", expires_at_game_time_seconds=3600)
+        participant = {"kind": "player", "ref_id": "player-1", "active_effects": []}
+        db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [effect]})
+        db.exec.return_value.first.return_value = session_state
+
+        restore_persisted_effects(db, "session-1", participant)
+
+        self.assertEqual(participant["active_effects"], [])
+        self.assertNotIn("active_spell_effects", session_state.state_json)
 
 
 class TestSyncEffectRemovalToStateJson(unittest.TestCase):

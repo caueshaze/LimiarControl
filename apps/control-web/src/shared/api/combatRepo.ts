@@ -44,7 +44,8 @@ export type ActiveEffectDurationType =
   | "until_turn_end"
   | "until_long_rest"
   | "until_short_rest"
-  | "until_removed";
+  | "until_removed"
+  | "timed";
 
 export type ActiveEffect = {
   id: string;
@@ -56,6 +57,8 @@ export type ActiveEffect = {
   remaining_rounds?: number | null;
   expires_on?: "turn_start" | "turn_end" | null;
   expires_at_participant_id?: string | null;
+  created_at_game_time_seconds?: number | null;
+  expires_at_game_time_seconds?: number | null;
   created_at: string;
   metadata?: Record<string, unknown> | null;
   display_label?: string | null;

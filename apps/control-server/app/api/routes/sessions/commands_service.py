@@ -315,6 +315,20 @@ async def send_session_command_service(
             raise HTTPException(status_code=400, detail="seconds must be a positive integer")
 
         advance_game_time_seconds(entry_id, seconds, session)
+        states = list(
+            session.exec(select(SessionState).where(SessionState.session_id == entry_id)).all()
+        )
+        modified_states: list[SessionState] = []
+        for state in states:
+            next_state_json = finalize_session_state_data(
+                state.state_json,
+                game_time_seconds=runtime.game_time_seconds,
+            )
+            if next_state_json != state.state_json:
+                state.state_json = next_state_json
+                flag_modified(state, "state_json")
+                session.add(state)
+                modified_states.append(state)
 
         activity_payload["seconds"] = seconds
         activity_payload["gameTimeSeconds"] = runtime.game_time_seconds
@@ -322,10 +336,14 @@ async def send_session_command_service(
         record_gm_activity(entry, member, user, "advance_game_time", activity_payload, issued_at, session)
         session.add(runtime)
         session.commit()
+        for state in modified_states:
+            session.refresh(state)
 
         event_type = "game_time_advanced"
         event_payload["seconds"] = seconds
         event_payload["gameTimeSeconds"] = runtime.game_time_seconds
+        if modified_states:
+            await publish_state_updates(entry, modified_states, issued_at)
         await publish_command_event(entry, event_type, event_payload, issued_at)
         return {"ok": True}
 
@@ -393,6 +411,13 @@ async def send_session_command_service(
         else SHORT_REST_GAME_TIME_SECONDS
     )
     advance_game_time_seconds(entry_id, rest_delta, session)
+    for state in states:
+        state.state_json = finalize_session_state_data(
+            state.state_json,
+            game_time_seconds=runtime.game_time_seconds,
+        )
+        flag_modified(state, "state_json")
+        session.add(state)
     activity_payload["secondsAdvanced"] = rest_delta
     activity_payload["gameTimeSeconds"] = runtime.game_time_seconds
     session.add(runtime)

@@ -13,6 +13,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
+from pydantic import ValidationError
+
 from app.api.routes.sessions.state import (
     _prune_out_of_combat_session_activity,
     cast_spell_out_of_combat_for_player,
@@ -24,6 +26,7 @@ from app.api.serializers.base_spell import (
     to_base_spell_read,
     to_base_spell_seed_entry,
 )
+from app.schemas.base_spell_effects import SpellDeclarativeEffect
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
@@ -234,7 +237,7 @@ def _make_multiplayer_cast_setup(
         @patch("app.api.routes.sessions.state.require_session_view_access")
         @patch("app.api.routes.sessions.state.ensure_session_state")
         @patch("app.api.routes.sessions.state.finalize_session_state_data",
-               side_effect=lambda d: d)
+               side_effect=lambda d, **kwargs: d)
         @patch("app.api.routes.sessions.state.publish_state_update")
         @patch("app.api.routes.sessions.state.to_state_read")
         async def test_…(
@@ -253,7 +256,7 @@ def _make_multiplayer_cast_setup(
        ``old_group`` exists and ``clear_concentration_group_across_session``
        runs), the caller should also patch
        ``app.services.combat_service.persistent_effects.finalize_session_state_data``
-       with ``side_effect=lambda d: d``.
+       with ``side_effect=lambda d, **kwargs: d``.
 
     Returns (db, caster_state, target_state, third_state) where
     ``third_state`` is ``None`` when ``third_user_id`` is not given.
@@ -444,7 +447,7 @@ class TestBuildPersistedEffects(unittest.TestCase):
             effects_json=[_advantage_effect("wisdom")],
             concentration=False,
         )
-        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None)
+        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None, game_time_seconds=0)
         self.assertEqual(len(effects), 1)
         e = effects[0]
         self.assertEqual(e["kind"], "spell_effect")
@@ -466,7 +469,7 @@ class TestBuildPersistedEffects(unittest.TestCase):
             effects_json=[_ac_bonus_effect(2)],
             name_pt="Escudo da Fé",
         )
-        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None)
+        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None, game_time_seconds=0)
         self.assertEqual(len(effects), 1)
         e = effects[0]
         self.assertEqual(e["kind"], "temp_ac_bonus")
@@ -484,7 +487,7 @@ class TestBuildPersistedEffects(unittest.TestCase):
                  "effects": [_advantage_effect("strength")]},
             ],
         )
-        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="owls_wisdom")
+        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="owls_wisdom", game_time_seconds=0)
         self.assertEqual(len(effects), 1)
         self.assertEqual(effects[0]["metadata"]["declarative_effect"]["params"]["ability"], "wisdom")
         self.assertEqual(effects[0]["metadata"]["selected_variant_key"], "owls_wisdom")
@@ -498,7 +501,7 @@ class TestBuildPersistedEffects(unittest.TestCase):
             ],
             concentration=True,
         )
-        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None)
+        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None, game_time_seconds=0)
         # Only advantage_on_checks survives; grant_temp_hp is skipped
         self.assertEqual(len(effects), 1)
         self.assertEqual(effects[0]["metadata"]["declarative_effect"]["type"], "advantage_on_checks")
@@ -508,7 +511,7 @@ class TestBuildPersistedEffects(unittest.TestCase):
             effects_json=[_advantage_effect("wisdom"), _ac_bonus_effect(1)],
             concentration=True,
         )
-        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None)
+        effects = build_persisted_effects(spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=None, game_time_seconds=0)
         self.assertEqual(len(effects), 2)
         groups = {e["metadata"]["concentration_group"] for e in effects}
         self.assertEqual(len(groups), 1, "All effects must share the same concentration_group")
@@ -560,7 +563,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_successful_concentration_cast_replaces_existing(
@@ -623,7 +626,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_slot_decremented_on_successful_cast(
@@ -673,7 +676,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_unprepared_spell_rejected(
@@ -723,7 +726,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_non_eligible_spell_rejected(
@@ -779,7 +782,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_variant_key_stored_in_effect_metadata(
@@ -831,7 +834,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_prepared_leveled_spell_accepted(
@@ -887,7 +890,7 @@ class TestCastSpellOutOfCombat(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_non_concentration_effects_survive_concentration_replacement(
@@ -1617,7 +1620,7 @@ class TestEnhanceAbilityVariants(unittest.TestCase):
         for key, label_pt, _, ability in self._VARIANTS:
             with self.subTest(variant=key):
                 effects = build_persisted_effects(
-                    spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=key
+                    spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=key, game_time_seconds=0
                 )
                 self.assertEqual(len(effects), 1)
                 meta = effects[0]["metadata"]
@@ -1632,7 +1635,7 @@ class TestEnhanceAbilityVariants(unittest.TestCase):
     def test_cats_grace_grants_dexterity_advantage(self):
         spell = self._make_enhance_ability_spell()
         effects = build_persisted_effects(
-            spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="cats_grace"
+            spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="cats_grace", game_time_seconds=0
         )
         meta = effects[0]["metadata"]
         self.assertEqual(meta["declarative_effect"]["type"], "advantage_on_checks")
@@ -1641,7 +1644,7 @@ class TestEnhanceAbilityVariants(unittest.TestCase):
     def test_owls_wisdom_grants_wisdom_advantage(self):
         spell = self._make_enhance_ability_spell()
         effects = build_persisted_effects(
-            spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="owls_wisdom"
+            spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key="owls_wisdom", game_time_seconds=0
         )
         meta = effects[0]["metadata"]
         self.assertEqual(meta["declarative_effect"]["type"], "advantage_on_checks")
@@ -1652,7 +1655,7 @@ class TestEnhanceAbilityVariants(unittest.TestCase):
         for key, _, _, _ in self._VARIANTS:
             with self.subTest(variant=key):
                 effects = build_persisted_effects(
-                    spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=key
+                    spell=spell, caster_user_id="user-1", target_user_id="user-1", variant_key=key, game_time_seconds=0
                 )
                 meta = effects[0]["metadata"]
                 self.assertTrue(meta["concentration"])
@@ -1708,7 +1711,7 @@ class TestShieldOfFaithRegression(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_cast_creates_temp_ac_bonus_effect(
@@ -1730,7 +1733,7 @@ class TestShieldOfFaithRegression(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_slot_is_spent_after_cast(
@@ -1750,7 +1753,7 @@ class TestShieldOfFaithRegression(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_concentration_metadata_present(
@@ -1819,7 +1822,7 @@ class TestSelfTargetConcentrationRegression(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_self_target_concentration_does_not_create_marker(
@@ -1953,10 +1956,10 @@ class TestAllyConcentrationReplacement(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.services.combat_service.persistent_effects.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.services.combat_service.persistent_effects.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     async def test_ally_concentration_replacement_cleans_old_target_effect(
         self,
         mock_pe_finalize,
@@ -2122,7 +2125,7 @@ class TestAllyConcentrationReplacement(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
@@ -2211,7 +2214,7 @@ class TestAllyConcentrationReplacement(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session")
@@ -2376,7 +2379,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2407,7 +2410,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2440,7 +2443,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2468,7 +2471,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2497,7 +2500,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_invalid_target_not_in_session_rejected(
@@ -2550,7 +2553,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_ally_only_spell_without_target_returns_400(
@@ -2601,7 +2604,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2631,7 +2634,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2685,7 +2688,7 @@ class TestAllyTargeting(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -2740,7 +2743,7 @@ class TestOutOfCombatActivityLogging(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_successful_cast_records_out_of_combat_spell_cast_activity(
@@ -2892,7 +2895,7 @@ class TestGmOutOfCombatCastingEndpoints(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.require_session_gm")
     @patch("app.api.routes.sessions.state._require_session_participant")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_gm_can_cast_ooc_spell_as_player_self_target(
@@ -2942,7 +2945,7 @@ class TestGmOutOfCombatCastingEndpoints(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.require_session_gm")
     @patch("app.api.routes.sessions.state._require_session_participant")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     @patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[])
@@ -3116,7 +3119,7 @@ class TestGmOutOfCombatCastingEndpoints(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.require_session_gm")
     @patch("app.api.routes.sessions.state._require_session_participant")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d: d)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_gm_cast_activity_log_records_actor_caster_target_and_cast_by_gm(
@@ -3239,6 +3242,7 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
             caster_user_id="user-1",
             target_user_id="user-1",
             variant_key=None,
+            game_time_seconds=0,
         )
         self.assertEqual(len(effects), 1)
         effect = effects[0]
@@ -3256,7 +3260,70 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
             caster_user_id="user-1",
             target_user_id="user-1",
             variant_key=None,
+            game_time_seconds=0,
         )
         metadata = effects[0]["metadata"]
         self.assertEqual(metadata["source_spell_key"], "longstrider")
         self.assertEqual(metadata["source_spell_name"], "Passada Larga")
+
+    def test_timed_out_of_combat_duration_validates_positive_seconds(self):
+        with self.assertRaises(ValidationError):
+            SpellDeclarativeEffect.model_validate({
+                "type": "modify_stat",
+                "target": "caster",
+                "out_of_combat_duration": {"type": "timed", "seconds": 0},
+                "params": {"stat": "temp_ac_bonus", "value": 1},
+            })
+
+    def test_build_persisted_effects_materializes_timed_duration(self):
+        spell = _make_campaign_spell(
+            canonical_key="mage_armor",
+            level=1,
+            concentration=False,
+            name_pt="Armadura Arcana",
+            name_en="Mage Armor",
+            effects_json=[
+                {
+                    "type": "modify_stat",
+                    "target": "selected_target",
+                    "duration": {"type": "manual"},
+                    "out_of_combat_duration": {"type": "timed", "seconds": 28800},
+                    "params": {"stat": "temp_ac_bonus", "value": 3},
+                }
+            ],
+        )
+
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-2",
+            variant_key=None,
+            game_time_seconds=7200,
+        )
+
+        self.assertEqual(len(effects), 1)
+        effect = effects[0]
+        self.assertEqual(effect["duration_type"], "timed")
+        self.assertEqual(effect["created_at_game_time_seconds"], 7200)
+        self.assertEqual(effect["expires_at_game_time_seconds"], 36000)
+
+    def test_build_concentration_marker_accepts_timed_duration_fields(self):
+        spell = _make_campaign_spell(
+            canonical_key="enhance_ability",
+            concentration=True,
+        )
+
+        marker = build_concentration_marker(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-2",
+            concentration_group="grp-1",
+            variant_key=None,
+            duration_type="timed",
+            created_at_game_time_seconds=100,
+            expires_at_game_time_seconds=3700,
+        )
+
+        self.assertEqual(marker["duration_type"], "timed")
+        self.assertEqual(marker["created_at_game_time_seconds"], 100)
+        self.assertEqual(marker["expires_at_game_time_seconds"], 3700)

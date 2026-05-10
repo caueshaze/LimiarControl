@@ -16,7 +16,9 @@ from sqlalchemy import select as sa_select
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.session_state import SessionState
+from app.services.game_time import get_game_time_seconds
 from app.services.session_state_finalize import finalize_session_state_data
+from app.services.persistent_effect_expiry import prune_expired_persisted_effects_from_state
 
 if TYPE_CHECKING:
     from app.models.combat import CombatState
@@ -28,6 +30,7 @@ _PERSISTABLE_DURATION_TYPES = {
     "until_long_rest",
     "until_short_rest",
     "until_removed",
+    "timed",
 }
 
 
@@ -37,6 +40,7 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
     Called during end_combat() AFTER concentration has been cleared but BEFORE
     remaining participant effects are wiped.
     """
+    current_game_time_seconds: int | None = None
     for participant in state.participants:
         if participant.get("kind") != "player":
             continue
@@ -51,6 +55,8 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
         surviving = enforce_single_persisted_concentration_group(surviving)
         if not surviving:
             continue
+        if current_game_time_seconds is None:
+            current_game_time_seconds = get_game_time_seconds(state.session_id, db)
         ref_id = participant.get("ref_id")
         if not ref_id:
             continue
@@ -64,7 +70,10 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
             continue
         data = dict(session_state.state_json or {})
         data["active_spell_effects"] = surviving
-        session_state.state_json = finalize_session_state_data(data)
+        session_state.state_json = finalize_session_state_data(
+            data,
+            game_time_seconds=current_game_time_seconds,
+        )
         flag_modified(session_state, "state_json")
         db.add(session_state)
 
@@ -94,19 +103,40 @@ def restore_persisted_effects(
     persisted = (session_state.state_json or {}).get("active_spell_effects")
     if not isinstance(persisted, list) or not persisted:
         return
+    current_game_time_seconds = get_game_time_seconds(session_id, db)
+    pruned_state = prune_expired_persisted_effects_from_state(
+        session_state.state_json,
+        current_game_time_seconds,
+    )
+    if pruned_state != (session_state.state_json or {}):
+        session_state.state_json = finalize_session_state_data(
+            pruned_state,
+            game_time_seconds=current_game_time_seconds,
+        )
+        flag_modified(session_state, "state_json")
+        db.add(session_state)
+    persisted = (session_state.state_json or {}).get("active_spell_effects")
+    if not isinstance(persisted, list) or not persisted:
+        return
     original_persisted = list(persisted)
     persisted = enforce_single_persisted_concentration_group(persisted)
     if not persisted:
         data = dict(session_state.state_json)
         data.pop("active_spell_effects", None)
-        session_state.state_json = finalize_session_state_data(data)
+        session_state.state_json = finalize_session_state_data(
+            data,
+            game_time_seconds=current_game_time_seconds,
+        )
         flag_modified(session_state, "state_json")
         db.add(session_state)
         return
     if persisted != original_persisted:
         data = dict(session_state.state_json)
         data["active_spell_effects"] = persisted
-        session_state.state_json = finalize_session_state_data(data)
+        session_state.state_json = finalize_session_state_data(
+            data,
+            game_time_seconds=current_game_time_seconds,
+        )
         flag_modified(session_state, "state_json")
         db.add(session_state)
     existing = participant.get("active_effects")
@@ -153,7 +183,10 @@ def sync_effect_removal_to_state_json(
         data["active_spell_effects"] = filtered
     else:
         data.pop("active_spell_effects", None)
-    session_state.state_json = finalize_session_state_data(data)
+    session_state.state_json = finalize_session_state_data(
+        data,
+        game_time_seconds=get_game_time_seconds(session_id, db),
+    )
     flag_modified(session_state, "state_json")
     db.add(session_state)
 
@@ -350,6 +383,7 @@ def clear_concentration_group_across_session(
     ).all()
 
     modified: list[SessionState] = []
+    current_game_time_seconds = get_game_time_seconds(session_id, db)
     for state in states:
         if exclude_user_id and state.player_user_id == exclude_user_id:
             continue
@@ -358,7 +392,10 @@ def clear_concentration_group_across_session(
             original, concentration_group=concentration_group
         )
         if updated is not original:
-            state.state_json = finalize_session_state_data(updated)
+            state.state_json = finalize_session_state_data(
+                updated,
+                game_time_seconds=current_game_time_seconds,
+            )
             flag_modified(state, "state_json")
             db.add(state)
             modified.append(state)
