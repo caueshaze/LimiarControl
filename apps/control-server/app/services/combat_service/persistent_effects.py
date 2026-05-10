@@ -34,29 +34,29 @@ _PERSISTABLE_DURATION_TYPES = {
 }
 
 
-def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
-    """Transfer manual-duration spell effects (including concentration) to state_json.
+def _persistable_effects_for_participant(participant: dict) -> list[dict]:
+    effects = participant.get("active_effects")
+    if not isinstance(effects, list):
+        return []
+    surviving = [
+        effect
+        for effect in effects
+        if effect.get("kind") in _PERSISTABLE_KINDS
+        and effect.get("duration_type") in _PERSISTABLE_DURATION_TYPES
+    ]
+    return enforce_single_persisted_concentration_group(surviving)
 
-    Called during end_combat() AFTER concentration has been cleared but BEFORE
-    remaining participant effects are wiped.
-    """
-    current_game_time_seconds: int | None = None
+
+def sync_persisted_effects_from_combat_participants(
+    db: DbSession,
+    state: CombatState,
+    *,
+    game_time_seconds: int,
+) -> list[SessionState]:
+    modified: list[SessionState] = []
     for participant in state.participants:
         if participant.get("kind") != "player":
             continue
-        effects = participant.get("active_effects")
-        if not isinstance(effects, list):
-            continue
-        surviving = [
-            e for e in effects
-            if e.get("kind") in _PERSISTABLE_KINDS
-            and e.get("duration_type") in _PERSISTABLE_DURATION_TYPES
-        ]
-        surviving = enforce_single_persisted_concentration_group(surviving)
-        if not surviving:
-            continue
-        if current_game_time_seconds is None:
-            current_game_time_seconds = get_game_time_seconds(state.session_id, db)
         ref_id = participant.get("ref_id")
         if not ref_id:
             continue
@@ -68,14 +68,36 @@ def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
         ).first()
         if not session_state:
             continue
-        data = dict(session_state.state_json or {})
-        data["active_spell_effects"] = surviving
-        session_state.state_json = finalize_session_state_data(
-            data,
-            game_time_seconds=current_game_time_seconds,
+        next_data = dict(session_state.state_json or {})
+        surviving = _persistable_effects_for_participant(participant)
+        if surviving:
+            next_data["active_spell_effects"] = surviving
+        else:
+            next_data.pop("active_spell_effects", None)
+        finalized = finalize_session_state_data(
+            next_data,
+            game_time_seconds=game_time_seconds,
         )
+        if finalized == (session_state.state_json or {}):
+            continue
+        session_state.state_json = finalized
         flag_modified(session_state, "state_json")
         db.add(session_state)
+        modified.append(session_state)
+    return modified
+
+
+def persist_surviving_spell_effects(db: DbSession, state: CombatState) -> None:
+    """Transfer manual-duration spell effects (including concentration) to state_json.
+
+    Called during end_combat() AFTER concentration has been cleared but BEFORE
+    remaining participant effects are wiped.
+    """
+    sync_persisted_effects_from_combat_participants(
+        db,
+        state,
+        game_time_seconds=get_game_time_seconds(state.session_id, db),
+    )
 
 
 def restore_persisted_effects(

@@ -14,6 +14,7 @@ from app.services.game_time import (
     LONG_REST_GAME_TIME_SECONDS,
     SHORT_REST_GAME_TIME_SECONDS,
     advance_game_time_seconds,
+    get_game_time_seconds,
 )
 from app.services.session_rest import (
     SessionRestError,
@@ -310,6 +311,8 @@ async def send_session_command_service(
         return {"ok": True}
 
     if payload.type == "advance_game_time":
+        from app.services.combat import CombatService
+
         seconds = payload_data.get("seconds")
         if not isinstance(seconds, int) or seconds <= 0:
             raise HTTPException(status_code=400, detail="seconds must be a positive integer")
@@ -330,12 +333,35 @@ async def send_session_command_service(
                 session.add(state)
                 modified_states.append(state)
 
+        combat_state = None
+        combat_changed = False
+        if runtime.combat_active:
+            combat_state = session.exec(
+                select(CombatState).where(
+                    CombatState.session_id == entry_id,
+                    CombatState.phase == CombatPhase.active,
+                )
+            ).first()
+            if combat_state is not None:
+                prune_result = CombatService._prune_expired_timed_combat_effects(
+                    session,
+                    entry_id,
+                    combat_state,
+                    game_time_seconds=get_game_time_seconds(entry_id, session),
+                )
+                combat_changed = bool(prune_result["changed"])
+                modified_states.extend(prune_result["modified_states"])
+                if combat_changed:
+                    session.add(combat_state)
+
         activity_payload["seconds"] = seconds
         activity_payload["gameTimeSeconds"] = runtime.game_time_seconds
         activity_payload["reason"] = "manual"
         record_gm_activity(entry, member, user, "advance_game_time", activity_payload, issued_at, session)
         session.add(runtime)
         session.commit()
+        if combat_changed and combat_state is not None:
+            session.refresh(combat_state)
         for state in modified_states:
             session.refresh(state)
 
@@ -343,7 +369,18 @@ async def send_session_command_service(
         event_payload["seconds"] = seconds
         event_payload["gameTimeSeconds"] = runtime.game_time_seconds
         if modified_states:
+            deduped_states: list[SessionState] = []
+            seen_state_models: set[int] = set()
+            for state in modified_states:
+                marker = id(state)
+                if marker in seen_state_models:
+                    continue
+                seen_state_models.add(marker)
+                deduped_states.append(state)
+            modified_states = deduped_states
             await publish_state_updates(entry, modified_states, issued_at)
+        if combat_changed and combat_state is not None:
+            await CombatService._emit_state(entry_id, combat_state)
         await publish_command_event(entry, event_type, event_payload, issued_at)
         return {"ok": True}
 

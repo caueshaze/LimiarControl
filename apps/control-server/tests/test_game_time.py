@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
 from app.models.campaign_member import RoleMode
+from app.models.combat import CombatPhase, CombatState
 from app.models.session import SessionStatus
 from app.models.session_runtime import SessionRuntime
 from app.schemas.session import (
@@ -147,6 +148,7 @@ class AdvanceGameTimeCommandTests(unittest.TestCase):
     def _make_runtime(self, game_time=0):
         runtime = SessionRuntime(session_id="s1")
         runtime.game_time_seconds = game_time
+        runtime.combat_active = False
         return runtime
 
     def _make_entry(self):
@@ -362,6 +364,83 @@ class AdvanceGameTimeCommandTests(unittest.TestCase):
         self.assertEqual(published_entry.id, "s1")
         self.assertEqual(len(published_states), 1)
         self.assertIs(published_states[0], state)
+
+    @patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock)
+    @patch("app.services.combat.CombatService._prune_expired_timed_combat_effects")
+    @patch("app.api.routes.sessions.commands_service.publish_state_updates", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
+    @patch("app.api.routes.sessions.commands_service.advance_game_time_seconds")
+    @patch("app.api.routes.sessions.commands_service.get_game_time_seconds")
+    @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")
+    @patch("app.api.routes.sessions.commands_service.get_or_create_session_runtime")
+    @patch("app.api.routes.sessions.commands_service.require_active_gm_session")
+    def test_manual_advancement_during_active_combat_publishes_updated_combat_state(
+        self,
+        mock_require,
+        mock_runtime,
+        mock_rest_state,
+        mock_get_game_time_seconds,
+        mock_advance,
+        mock_publish_cmd,
+        mock_publish_state,
+        mock_prune,
+        mock_emit_combat_state,
+    ):
+        from app.api.routes.sessions.commands_service import send_session_command_service
+
+        runtime = self._make_runtime(game_time=100)
+        runtime.combat_active = True
+        session_state = MagicMock()
+        session_state.session_id = "s1"
+        session_state.player_user_id = "player-1"
+        session_state.state_json = {}
+        combat_state = CombatState(
+            id="combat-1",
+            session_id="s1",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "p1",
+                    "ref_id": "player-1",
+                    "kind": "player",
+                    "display_name": "Hero",
+                    "status": "active",
+                    "team": "players",
+                    "active_effects": [],
+                }
+            ],
+        )
+        mock_require.return_value = (self._make_entry(), self._make_member())
+        mock_runtime.return_value = runtime
+        mock_get_game_time_seconds.return_value = 106
+        mock_advance.side_effect = lambda sid, delta, db: setattr(runtime, "game_time_seconds", runtime.game_time_seconds + delta)
+        mock_prune.return_value = {
+            "changed": True,
+            "removed_effects": [{"id": "eff-expired"}],
+            "removed_area_effects": [],
+            "modified_states": [session_state],
+        }
+
+        states_result = MagicMock()
+        states_result.all.return_value = [session_state]
+        combat_result = MagicMock()
+        combat_result.first.return_value = combat_state
+        db = MagicMock()
+        db.exec.side_effect = [states_result, combat_result]
+
+        _run_async(
+            send_session_command_service("s1", self._make_payload(seconds=6), self._make_user(), db)
+        )
+
+        mock_prune.assert_called_once()
+        mock_emit_combat_state.assert_awaited_once_with("s1", combat_state)
+        mock_publish_state.assert_awaited_once()
+        published_entry, published_states, issued_at = mock_publish_state.await_args.args
+        self.assertEqual(published_entry.id, "s1")
+        self.assertEqual(published_states, [session_state])
+        mock_publish_cmd.assert_awaited_once()
 
     @patch("app.api.routes.sessions.commands_service.publish_command_event", new_callable=AsyncMock)
     @patch("app.api.routes.sessions.commands_service.get_session_rest_state", return_value="exploration")

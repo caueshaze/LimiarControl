@@ -4,6 +4,7 @@ from app.models.combat import CombatPhase
 from app.services.game_time import (
     COMBAT_ROUND_GAME_TIME_SECONDS,
     advance_game_time_seconds,
+    get_game_time_seconds,
 )
 
 from .exceptions import CombatServiceError
@@ -100,6 +101,12 @@ class CombatLifecycleTurnsMixin:
                         db,
                     )
                     state.accounted_game_time_rounds += missing_rounds
+                    cls._prune_expired_timed_combat_effects(
+                        db,
+                        session_id,
+                        state,
+                        game_time_seconds=get_game_time_seconds(session_id, db),
+                    )
                 await cls._emit_log(session_id, {"message": f"Round {state.round} started!"})
             status = state.participants[state.current_turn_index].get("status", "active")
             if status not in ("dead", "defeated", "stable"):
@@ -155,6 +162,12 @@ class CombatLifecycleTurnsMixin:
                     db,
                 )
                 state.accounted_game_time_rounds += missing_rounds
+                cls._prune_expired_timed_combat_effects(
+                    db,
+                    session_id,
+                    state,
+                    game_time_seconds=get_game_time_seconds(session_id, db),
+                )
 
         concentration_source_ids: set[str] = set()
         for participant in state.participants:

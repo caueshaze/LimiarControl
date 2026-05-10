@@ -1,7 +1,19 @@
 from __future__ import annotations
 
 
-def prune_expired_persisted_effects(
+def should_prune_timed_effect(
+    effect: dict,
+    game_time_seconds: int,
+) -> bool:
+    if effect.get("duration_type") != "timed":
+        return False
+    expires_at = effect.get("expires_at_game_time_seconds")
+    if not isinstance(expires_at, int):
+        return True
+    return expires_at <= game_time_seconds
+
+
+def prune_expired_timed_effects(
     effects: list[dict],
     game_time_seconds: int,
 ) -> list[dict]:
@@ -10,16 +22,17 @@ def prune_expired_persisted_effects(
         if not isinstance(effect, dict):
             remaining.append(effect)
             continue
-        if effect.get("duration_type") != "timed":
-            remaining.append(effect)
-            continue
-        expires_at = effect.get("expires_at_game_time_seconds")
-        if not isinstance(expires_at, int):
-            continue
-        if expires_at <= game_time_seconds:
+        if should_prune_timed_effect(effect, game_time_seconds):
             continue
         remaining.append(effect)
     return remaining
+
+
+def prune_expired_persisted_effects(
+    effects: list[dict],
+    game_time_seconds: int,
+) -> list[dict]:
+    return prune_expired_timed_effects(effects, game_time_seconds)
 
 
 def prune_expired_persisted_effects_from_state(
@@ -31,7 +44,7 @@ def prune_expired_persisted_effects_from_state(
     if not isinstance(effects, list):
         return data
 
-    remaining = prune_expired_persisted_effects(effects, game_time_seconds)
+    remaining = prune_expired_timed_effects(effects, game_time_seconds)
     if remaining:
         data["active_spell_effects"] = remaining
     else:
