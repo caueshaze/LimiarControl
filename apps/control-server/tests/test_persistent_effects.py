@@ -21,6 +21,7 @@ from app.services.combat_service.persistent_effects import (
     persist_surviving_spell_effects,
     remove_persisted_effect,
     restore_persisted_effects,
+    sync_persisted_effects_from_combat_participants,
     sync_effect_removal_to_state_json,
 )
 
@@ -298,18 +299,22 @@ class TestPersistSurvivingSpellEffects(unittest.TestCase):
         state = _make_state_with_participants()
         state.participants[1]["active_effects"] = [_manual_spell_effect("eff-1")]
         db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
 
         persist_surviving_spell_effects(db, state)
 
-        db.exec.assert_not_called()
+        self.assertNotIn("active_spell_effects", session_state.state_json)
 
     def test_no_persist_when_no_surviving(self):
         state = _make_state_with_participants([_rounds_spell_effect()])
         db = MagicMock()
+        session_state = _make_session_state({"active_spell_effects": [_manual_spell_effect("eff-stale")]})
+        db.exec.return_value.first.return_value = session_state
 
         persist_surviving_spell_effects(db, state)
 
-        db.exec.assert_not_called()
+        self.assertNotIn("active_spell_effects", session_state.state_json)
 
 
 class TestRestorePersistedEffects(unittest.TestCase):
@@ -426,6 +431,44 @@ class TestSyncEffectRemovalToStateJson(unittest.TestCase):
         sync_effect_removal_to_state_json(db, "session-1", participant, "eff-1")
 
         db.exec.assert_not_called()
+
+
+class TestSyncPersistedEffectsFromCombatParticipants(unittest.TestCase):
+    def test_syncs_remaining_persistable_effects_back_to_state_json(self):
+        effect = _timed_effect("eff-timed", expires_at_game_time_seconds=400)
+        state = _make_state_with_participants([effect])
+        db = MagicMock()
+        session_state = _make_session_state({})
+        db.exec.return_value.first.return_value = session_state
+
+        modified = sync_persisted_effects_from_combat_participants(
+            db,
+            state,
+            game_time_seconds=100,
+        )
+
+        self.assertEqual(modified, [session_state])
+        self.assertEqual(
+            session_state.state_json["active_spell_effects"][0]["id"],
+            "eff-timed",
+        )
+
+    def test_sync_removes_stale_state_when_player_has_no_persistable_effects(self):
+        state = _make_state_with_participants([_rounds_spell_effect("eff-rounds")])
+        db = MagicMock()
+        session_state = _make_session_state(
+            {"active_spell_effects": [_manual_spell_effect("eff-stale")]}
+        )
+        db.exec.return_value.first.return_value = session_state
+
+        modified = sync_persisted_effects_from_combat_participants(
+            db,
+            state,
+            game_time_seconds=100,
+        )
+
+        self.assertEqual(modified, [session_state])
+        self.assertNotIn("active_spell_effects", session_state.state_json)
 
 
 class TestPersistSurvivingConcentrationEffects(unittest.TestCase):

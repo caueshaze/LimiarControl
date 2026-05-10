@@ -702,6 +702,52 @@ class CombatFlowTestsMixin:
         self.assertEqual(state.accounted_game_time_rounds, 3)
         mock_advance.assert_not_called()
 
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_round_wrap_prunes_timed_effects_before_incoming_turn_start(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.round = 1
+        self.state.current_turn_index = 1
+        self.state.active_started_at_game_time_seconds = 0
+        self.state.accounted_game_time_rounds = 0
+        self.state.participants[0]["active_effects"] = [
+            {
+                "id": "eff-timed",
+                "kind": "spell_effect",
+                "duration_type": "timed",
+                "created_at_game_time_seconds": 0,
+                "expires_at_game_time_seconds": 6,
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "metadata": {"source_spell_name": "Mage Armor"},
+            }
+        ]
+        self.state.participants[1]["active_effects"] = []
+
+        async def expire_side_effect(session_id, state, participant_id, trigger):
+            if trigger == "turn_start":
+                self.assertEqual(state.participants[0].get("active_effects"), [])
+            return []
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat.CombatService._expire_effects_for_participant", side_effect=expire_side_effect),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+            patch("app.services.combat_service.lifecycle_turns.get_game_time_seconds", return_value=6),
+            patch("app.services.combat_service.persistent_effects.sync_persisted_effects_from_combat_participants", return_value=[]),
+        ):
+            state = await CombatService.next_turn(
+                self.db, "session-123", actor_user_id="user-xyz", is_gm=True
+            )
+
+        self.assertEqual(state.current_turn_index, 0)
+        self.assertEqual(state.round, 2)
+        self.assertEqual(state.participants[0].get("active_effects"), [])
+        mock_advance.assert_called_once_with("session-123", 6, self.db)
+
     @patch("app.services.combat_service.lifecycle_turns.persist_surviving_spell_effects")
     @patch("app.services.combat.CombatService._emit_state", new_callable=unittest.mock.AsyncMock)
     @patch("app.services.combat.CombatService._emit_log", new_callable=unittest.mock.AsyncMock)
