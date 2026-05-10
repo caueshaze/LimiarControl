@@ -35,6 +35,7 @@ import type {
 import { usePlayerCombatMode } from "./usePlayerCombatMode";
 import { PlayerTurnPanel } from "./PlayerTurnPanel";
 import { CombatMapFrame, toCombatMapFrameAreaEffects, toCombatMapFrameSpellAnchors, type SpellMapHighlight } from "../map/CombatMapFrame";
+import { SpiritualWeaponFollowUpPanel } from "./SpiritualWeaponFollowUpPanel";
 import {
   buildSpiritualWeaponReachableCells,
   buildSpiritualWeaponHighlights,
@@ -510,58 +511,34 @@ export const PlayerCombatModeShell = ({
         />
 
         {swMode && spiritualWeaponFollowUpAction && (
-          <div className="rounded-3xl border border-violet-400/30 bg-void-950 p-4 space-y-3">
-            <p className="text-sm font-semibold text-white">{t("combatUi.spiritualWeaponAction")}</p>
-            <p className="text-xs text-slate-400">
-              {swDestination
-                ? `Destino: (${swDestination.x}, ${swDestination.y})`
-                : "Clique no mapa para selecionar o destino da arma."}
-            </p>
-            <select
-              value={swTargetId}
-              onChange={(e) => setSwTargetId(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-violet-400 focus:outline-none"
-            >
-              <option value="">{t("combatUi.spiritualWeaponNoTarget")}</option>
-              {swValidTargets.map((p) => (
-                <option key={p.id} value={p.id}>{p.display_name}</option>
-              ))}
-            </select>
-            {swValidTargets.length === 0 && swFinalPosition && swMapTokens.length > 0 && (
-              <p className="text-xs text-slate-500">Nenhum alvo válido adjacente à posição final da arma.</p>
-            )}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setSwMode(false); setSwDestination(null); setSwTargetId(""); }}
-                className="flex-1 rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={(!swDestination && !swTargetId) || swSubmitting || !combat.isMyTurn}
-                onClick={() => {
-                  const participant = swValidTargets.find((p) => p.id === swTargetId);
-                  setSwSubmitting(true);
-                  void handleSpiritualWeaponFollowUp(
-                    spiritualWeaponFollowUpAction.anchorId,
-                    swDestination,
-                    participant?.ref_id ?? null,
-                    participant?.kind ?? null,
-                  ).finally(() => {
-                    setSwSubmitting(false);
-                    setSwMode(false);
-                    setSwDestination(null);
-                    setSwTargetId("");
-                  });
-                }}
-                className="flex-1 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {swSubmitting ? "Executando..." : t("combatUi.spiritualWeaponConfirm")}
-              </button>
-            </div>
-          </div>
+          <SpiritualWeaponFollowUpPanel
+            action={spiritualWeaponFollowUpAction}
+            destination={swDestination}
+            targetId={swTargetId}
+            validTargets={swValidTargets}
+            finalPosition={swFinalPosition}
+            submitting={swSubmitting}
+            isMyTurn={combat.isMyTurn}
+            mapTokensLoaded={swMapTokens.length > 0}
+            onTargetChange={setSwTargetId}
+            onCancel={() => { setSwMode(false); setSwDestination(null); setSwTargetId(""); }}
+            onConfirm={() => {
+              const participant = swValidTargets.find((p) => p.id === swTargetId);
+              setSwSubmitting(true);
+              void handleSpiritualWeaponFollowUp(
+                spiritualWeaponFollowUpAction.anchorId,
+                swDestination,
+                participant?.ref_id ?? null,
+                participant?.kind ?? null,
+              ).finally(() => {
+                setSwSubmitting(false);
+                setSwMode(false);
+                setSwDestination(null);
+                setSwTargetId("");
+              });
+            }}
+            t={t}
+          />
         )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">

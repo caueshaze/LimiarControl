@@ -241,3 +241,137 @@ describe("buildSpiritualWeaponFollowUpAction", () => {
     expect(action?.anchorId).toBe("anchor-1");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Embedded map / bridge tests (issue #261)
+//
+// Verify the exact data the shell computes and passes to CombatMapFrame:
+//   previewCells  → buildSpiritualWeaponReachableCells(anchor.position, maxMovementMeters)
+//   spellHighlights → buildSpiritualWeaponHighlights(anchorPosition, destination, validTargets)
+// ---------------------------------------------------------------------------
+
+describe("test_spiritual_weapon_follow_up_passes_anchor_highlights_to_map", () => {
+  it("spellHighlights sempre inclui a âncora como area-cell partial", () => {
+    const anchorPosition = { x: 5, y: 5 };
+    const highlights = buildSpiritualWeaponHighlights(anchorPosition, null, []);
+    const anchorHighlight = highlights.find(
+      (h) =>
+        h.kind === "area-cell" &&
+        h.status === "partial" &&
+        h.cell.x === anchorPosition.x &&
+        h.cell.y === anchorPosition.y,
+    );
+    expect(anchorHighlight).toBeDefined();
+  });
+
+  it("highlight da âncora usa a posição exata do anchor do spell", () => {
+    const anchorPosition = { x: 2, y: 9 };
+    const highlights = buildSpiritualWeaponHighlights(anchorPosition, null, []);
+    expect(highlights).toContainEqual({
+      kind: "area-cell",
+      status: "partial",
+      cell: { x: 2, y: 9 },
+    });
+  });
+
+  it("affected-token highlights são emitidos para cada alvo válido", () => {
+    const targets = [
+      makeParticipant({ id: "p1", ref_id: "ref-enemy-1" }),
+      makeParticipant({ id: "p2", ref_id: "ref-enemy-2" }),
+    ];
+    const highlights = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, null, targets);
+    expect(highlights).toContainEqual({
+      kind: "affected-token",
+      status: "valid",
+      targetRefId: "ref-enemy-1",
+    });
+    expect(highlights).toContainEqual({
+      kind: "affected-token",
+      status: "valid",
+      targetRefId: "ref-enemy-2",
+    });
+  });
+});
+
+describe("test_spiritual_weapon_follow_up_passes_reachable_cells_to_map", () => {
+  it("previewCells derivam da posição da âncora com distância máxima da magia", () => {
+    const anchorPosition = { x: 0, y: 0 };
+    const maxMovementMeters = 6; // 4 células Chebyshev
+    const cells = buildSpiritualWeaponReachableCells(anchorPosition, maxMovementMeters);
+    // Todas as células dentro de 4 Chebyshev devem estar presentes
+    expect(cells).toContainEqual({ x: 4, y: 0 });
+    expect(cells).toContainEqual({ x: -4, y: 4 });
+    expect(cells).toContainEqual({ x: 0, y: 0 }); // origem (sem movimento)
+    // Células fora do alcance excluídas
+    expect(cells).not.toContainEqual({ x: 5, y: 0 });
+  });
+
+  it("previewCells são offset pela posição da âncora, não pela origem do mapa", () => {
+    const anchorPosition = { x: 10, y: 8 };
+    const cells = buildSpiritualWeaponReachableCells(anchorPosition, 6);
+    // Contém âncora + vizinhos próximos
+    expect(cells).toContainEqual({ x: 10, y: 8 });
+    expect(cells).toContainEqual({ x: 11, y: 8 });
+    // Não contém a origem global (0, 0) quando âncora está longe
+    expect(cells).not.toContainEqual({ x: 0, y: 0 });
+  });
+
+  it("célula da própria âncora está em previewCells (atacar sem mover)", () => {
+    const anchorPosition = { x: 7, y: 3 };
+    const cells = buildSpiritualWeaponReachableCells(anchorPosition, 6);
+    expect(cells).toContainEqual(anchorPosition);
+  });
+});
+
+describe("test_spiritual_weapon_follow_up_updates_highlights_when_destination_changes", () => {
+  it("sem destino: apenas âncora highlight, sem valid area-cell adicional", () => {
+    const highlights = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, null, []);
+    const areaCells = highlights.filter((h) => h.kind === "area-cell");
+    expect(areaCells).toHaveLength(1);
+    expect(areaCells[0]).toMatchObject({ status: "partial" });
+  });
+
+  it("com destino diferente da âncora: adiciona valid area-cell para o destino", () => {
+    const highlights = buildSpiritualWeaponHighlights(
+      { x: 5, y: 5 },
+      { x: 8, y: 5 },
+      [],
+    );
+    expect(highlights).toContainEqual({
+      kind: "area-cell",
+      status: "valid",
+      cell: { x: 8, y: 5 },
+    });
+    // Âncora continua presente como partial
+    expect(highlights).toContainEqual({
+      kind: "area-cell",
+      status: "partial",
+      cell: { x: 5, y: 5 },
+    });
+  });
+
+  it("mudança de destino reflete no highlight: coordenadas corretas para cada destino", () => {
+    const destA = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, { x: 6, y: 5 }, []);
+    const destB = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, { x: 7, y: 7 }, []);
+
+    const validA = destA.find((h) => h.kind === "area-cell" && h.status === "valid");
+    const validB = destB.find((h) => h.kind === "area-cell" && h.status === "valid");
+
+    expect(validA?.cell).toEqual({ x: 6, y: 5 });
+    expect(validB?.cell).toEqual({ x: 7, y: 7 });
+    expect(validA?.cell).not.toEqual(validB?.cell);
+  });
+
+  it("limpar o destino remove o valid area-cell dos highlights", () => {
+    const withDest = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, { x: 7, y: 5 }, []);
+    const withoutDest = buildSpiritualWeaponHighlights({ x: 5, y: 5 }, null, []);
+
+    const validWithDest = withDest.filter((h) => h.kind === "area-cell" && h.status === "valid");
+    const validWithoutDest = withoutDest.filter(
+      (h) => h.kind === "area-cell" && h.status === "valid",
+    );
+
+    expect(validWithDest).toHaveLength(1);
+    expect(validWithoutDest).toHaveLength(0);
+  });
+});
