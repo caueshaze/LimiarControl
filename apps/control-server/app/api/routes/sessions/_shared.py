@@ -253,6 +253,7 @@ def serialize_session_runtime(
             require_identifier(entry.id, "Session is missing an id"),
             session,
         ),
+        gameTimeSeconds=runtime.game_time_seconds if runtime else 0,
     )
 
 

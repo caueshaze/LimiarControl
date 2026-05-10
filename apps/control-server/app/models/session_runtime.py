@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -26,6 +26,10 @@ class SessionRuntime(SQLModel, table=True):
     combat_active: bool = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
+    game_time_seconds: int = Field(
+        default=0,
+        sa_column=Column(BigInteger, nullable=False, server_default="0"),
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())

@@ -377,6 +377,7 @@ class SessionRuntimeRead(BaseModel):
     shopOpen: bool
     combatActive: bool
     restState: RestState = "exploration"
+    gameTimeSeconds: int = 0
 
 
 class ActiveSessionRead(BaseModel):
