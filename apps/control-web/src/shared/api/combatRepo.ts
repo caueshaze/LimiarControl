@@ -551,6 +551,14 @@ export type CombatSpellAnchor = {
   metadata?: Record<string, unknown>;
 };
 
+export type SpiritualWeaponActionRequest = {
+  actor_participant_id: string;
+  anchor_id: string;
+  destination?: { x: number; y: number } | null;
+  target_ref_id?: string | null;
+  target_kind?: string | null;
+};
+
 export type CombatMapPreviewState = {
   session_id: string;
   version: number;
@@ -940,6 +948,11 @@ export const combatRepo = {
   standardAction: (sessionId: string, payload: CombatStandardActionRequest) =>
     http.post<CombatStandardActionResult>(
       `/sessions/${sessionId}/combat/action/standard`,
+      payload
+    ),
+  spiritualWeaponAction: (sessionId: string, payload: SpiritualWeaponActionRequest) =>
+    http.post<Record<string, unknown>>(
+      `/sessions/${sessionId}/combat/spiritual-weapon-action`,
       payload
     ),
   consumeReaction: (sessionId: string, payload: CombatConsumeReactionRequest) =>

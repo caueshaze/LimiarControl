@@ -26,7 +26,7 @@ export const requiresAreaTargetingSelection = (
   selectionType?: string | null,
   areaShape?: string | null,
 ): boolean =>
-  (selectionType === "point" || selectionType === "direction") && isAreaShape(areaShape);
+  selectionType === "point" || (selectionType === "direction" && isAreaShape(areaShape));
 
 export const spellRequiresExternalTarget = (
   selectionType?: string | null,

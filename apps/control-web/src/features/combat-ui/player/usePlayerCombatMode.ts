@@ -18,6 +18,7 @@ import {
   withActionState,
 } from "./usePlayerCombatModeHelpers";
 import { buildDragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
+import { buildSpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 import { useConsumables } from "./useConsumables";
 import { spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
 import type {
@@ -170,6 +171,11 @@ export const usePlayerCombatMode = ({
     [playerSheet],
   );
 
+  const spiritualWeaponFollowUpAction = useMemo(
+    () => buildSpiritualWeaponFollowUpAction(combat.state?.spell_anchors, combat.myParticipant?.id),
+    [combat.state?.spell_anchors, combat.myParticipant?.id],
+  );
+
   const actorParticipant = combat.myParticipant ?? combat.currentParticipant ?? null;
   const actorParticipantId = actorParticipant?.id ?? null;
 
@@ -289,6 +295,25 @@ export const usePlayerCombatMode = ({
     });
   };
 
+  const handleSpiritualWeaponFollowUp = async (
+    anchorId: string,
+    destination: { x: number; y: number } | null,
+    targetRefId: string | null,
+    targetKind: string | null,
+  ) => {
+    if (!actorParticipantId) return;
+    await withActionState(async () => {
+      await combatRepo.spiritualWeaponAction(sessionId, {
+        actor_participant_id: actorParticipantId,
+        anchor_id: anchorId,
+        destination,
+        target_ref_id: targetRefId,
+        target_kind: targetKind,
+      });
+      await combat.refreshState();
+    });
+  };
+
   const handleDeathSave = async () => {
     if (!actorParticipantId) return;
     await withActionState(async () => {
@@ -332,8 +357,10 @@ export const usePlayerCombatMode = ({
     combat,
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
+    spiritualWeaponFollowUpAction,
     handleAttack,
     handleDragonbornBreathWeapon,
+    handleSpiritualWeaponFollowUp,
     handleRequestReaction,
     handleDeathSave,
     handleEndTurn,

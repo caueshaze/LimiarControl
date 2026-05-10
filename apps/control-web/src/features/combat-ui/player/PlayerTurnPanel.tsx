@@ -4,6 +4,7 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 import { useTargetingPreview } from "../hooks/useTargetingPreview";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import type { PendingRoll } from "../../../pages/PlayerBoardPage/playerBoard.types";
+import type { CombatParticipant } from "../../../shared/api/combatRepo";
 import type {
   AttackResult,
   CombatMyParticipant,
@@ -17,6 +18,7 @@ import type {
   UseObjectTargetOption,
   WeaponOption,
 } from "./playerCombatShell.types";
+import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import { PlayerActionPanels } from "./PlayerActionPanels";
 
@@ -27,10 +29,18 @@ type Props = {
   consumableOptions: ConsumableOption[];
   deathSaveFeedback: { message?: string | null } | null;
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
+  spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
+  participants?: CombatParticipant[];
   handleAttack: () => Promise<void>;
   handleCast: () => Promise<void>;
   handleDeathSave: () => Promise<void>;
   handleDragonbornBreathWeapon: () => Promise<void>;
+  handleSpiritualWeaponFollowUp: (
+    anchorId: string,
+    destination: { x: number; y: number } | null,
+    targetRefId: string | null,
+    targetKind: string | null,
+  ) => Promise<void>;
   handleEndTurn: () => Promise<void>;
   handleRequestReaction: () => Promise<void>;
   handleStandardAction: (
@@ -97,10 +107,13 @@ export const PlayerTurnPanel = ({
   consumableOptions,
   deathSaveFeedback,
   dragonbornBreathWeaponAction,
+  spiritualWeaponFollowUpAction,
+  participants = [],
   handleAttack,
   handleCast,
   handleDeathSave,
   handleDragonbornBreathWeapon,
+  handleSpiritualWeaponFollowUp,
   handleEndTurn,
   handleRequestReaction,
   handleStandardAction,
@@ -324,9 +337,13 @@ export const PlayerTurnPanel = ({
               consumableItemId={consumableItemId}
               consumableOptions={consumableOptions}
               dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
+              spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
+              participants={participants}
+              isMyTurn={combat.isMyTurn}
               handleAttack={handleAttack}
               handleCast={handleCast}
               handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
+              handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
               handleStandardAction={handleStandardAction}
               handleUseObject={handleUseObject}
               myParticipantId={myParticipant?.id}

@@ -113,10 +113,12 @@ export const PlayerCombatModeShell = ({
     consumableOptions,
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
+    spiritualWeaponFollowUpAction,
     handleAttack,
     handleRequestReaction,
     handleDeathSave,
     handleDragonbornBreathWeapon,
+    handleSpiritualWeaponFollowUp,
     handleEndTurn,
     handleStandardAction,
     handleUseObject,
@@ -423,10 +425,13 @@ export const PlayerCombatModeShell = ({
             consumableOptions={consumableOptions}
             deathSaveFeedback={deathSaveFeedback}
             dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
+            spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
+            participants={combat.state?.participants}
             handleAttack={handleAttack}
             handleCast={handleCast}
             handleDeathSave={handleDeathSave}
             handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
+            handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
             handleEndTurn={handleEndTurn}
             handleRequestReaction={handleRequestReaction}
             handleStandardAction={handleStandardAction}
