@@ -156,6 +156,24 @@ export const activeAreaEffectSchema = z.object({
     damageType: z.string().nullable().optional(),
     damagePerMeters: z.number().positive().nullable().optional()
 });
+export const spellAnchorMovementSchema = z.object({
+    maxMetersPerFollowUp: z.number().positive().nullable().optional()
+});
+export const spellAnchorSchema = z.object({
+    id: z.string(),
+    sourceSpellKey: z.string(),
+    sourceSpellName: z.string().nullable().optional(),
+    ownerParticipantId: z.string(),
+    createdByParticipantId: z.string(),
+    position: coordinateSchema,
+    durationType: z.literal("rounds"),
+    remainingRounds: z.number().int().positive().nullable().optional(),
+    expiresOn: z.enum(["turn_start", "turn_end"]).nullable().optional(),
+    expiresAtParticipantId: z.string().nullable().optional(),
+    renderKind: z.string().default("generic"),
+    movement: spellAnchorMovementSchema.nullable().optional(),
+    metadata: z.record(z.unknown()).default({})
+});
 export const realtimeActionEventSchema = z.object({
     eventId: z.string(),
     eventType: z.string(),

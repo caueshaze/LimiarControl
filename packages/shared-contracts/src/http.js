@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { activeAreaEffectSchema, battleMapSchema, combatStateSchema, edgeObstacleSchema, obstacleSchema, tokenSchema } from "./domain";
+import { activeAreaEffectSchema, battleMapSchema, combatStateSchema, edgeObstacleSchema, obstacleSchema, spellAnchorSchema, tokenSchema } from "./domain";
 export const encounterSnapshotResponseSchema = z.object({
     sessionId: z.string(),
     battleMap: battleMapSchema,
@@ -7,7 +7,8 @@ export const encounterSnapshotResponseSchema = z.object({
     tokens: z.array(tokenSchema),
     obstacles: z.array(obstacleSchema),
     edgeObstacles: z.array(edgeObstacleSchema).default([]),
-    activeAreaEffects: z.array(activeAreaEffectSchema).default([])
+    activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
+    spellAnchors: z.array(spellAnchorSchema).default([])
 });
 export const resyncRequestSchema = z.object({
     lastKnownVersion: z.number().int().nonnegative(),

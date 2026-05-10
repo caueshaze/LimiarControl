@@ -8,6 +8,7 @@ import {
     edgeObstacleSchema,
     obstacleCoverSchema,
     obstacleSchema,
+    spellAnchorSchema,
     tokenSchema
 } from "./domain";
 export const initiativeEntrySchema = z.object({
@@ -76,6 +77,9 @@ export const syncTokensRequestSchema = z.object({
 export const syncActiveAreaEffectsRequestSchema = z.object({
     activeAreaEffects: z.array(activeAreaEffectSchema)
 });
+export const syncSpellAnchorsRequestSchema = z.object({
+    spellAnchors: z.array(spellAnchorSchema)
+});
 export const singleTargetRequestSchema = z.object({
     actionId: z.string(),
     combatantId: z.string(),
@@ -104,7 +108,8 @@ export const integrationStateResponseSchema = z.object({
     tokens: z.array(tokenSchema),
     obstacles: z.array(obstacleSchema),
     edgeObstacles: z.array(edgeObstacleSchema).default([]),
-    activeAreaEffects: z.array(activeAreaEffectSchema).default([])
+    activeAreaEffects: z.array(activeAreaEffectSchema).default([]),
+    spellAnchors: z.array(spellAnchorSchema).default([])
 });
 export const singleTargetResponseSchema = z.object({
     isValid: z.boolean(),
