@@ -31,7 +31,13 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
         targeting_result,
     ) -> SpellResolutionResult:
         result = SpellResolutionResult()
-        _, base_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        _, base_ac, *_ = cls._get_stats(
+            db,
+            target_p["ref_id"],
+            target_p["kind"],
+            session_id,
+            combat_state=state,
+        )
         result.cover = targeting_result.spatial_metadata.cover
         result.cover_modifier = resolve_cover_modifier(result.cover)
         result.base_ac = base_ac if base_ac is not None else 10

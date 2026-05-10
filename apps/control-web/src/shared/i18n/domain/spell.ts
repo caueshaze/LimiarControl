@@ -135,6 +135,7 @@ const SPELL_ADMIN_VALUE_LABELS: Record<string, LabelEntry> = {
   selected_target: label("Only against spell's selected target", "Apenas contra o alvo selecionado da magia"),
   apply_condition: label("Apply condition", "Aplicar condição"),
   modify_stat: label("Modify stat", "Modificar atributo"),
+  armor_class_formula: label("Armor class formula", "Fórmula de classe de armadura"),
   advantage_on_checks: label("Advantage on checks", "Vantagem em testes"),
   disadvantage_on_checks: label("Disadvantage on checks", "Desvantagem em testes"),
   restrict_action: label("Restrict action", "Restringir ação"),

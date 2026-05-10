@@ -1147,7 +1147,7 @@ class CombatFlowTestsMixin:
                 ),
             ):
 
-                def get_stats_side_effect(_db, ref_id, kind, _session_id=""):
+                def get_stats_side_effect(_db, ref_id, kind, _session_id="", **_kwargs):
                     if ref_id == "player-123" and kind == "player":
                         return (attacker_state, 12, 10, 10, 2, 3)
                     return (MagicMock(), 14, 10, 10, 2, 0)
@@ -1852,7 +1852,7 @@ class CombatFlowTestsMixin:
                 ),
             ):
 
-                def get_stats_side_effect(_db, ref_id, kind, _session_id=""):
+                def get_stats_side_effect(_db, ref_id, kind, _session_id="", **_kwargs):
                     if ref_id == "player-123" and kind == "player":
                         return (attacker_state, 12, 10, 10, 2, 3)
                     if ref_id == "player-ally" and kind == "player":
@@ -2293,7 +2293,7 @@ class CombatFlowTestsMixin:
                 ),
             ):
 
-                def get_stats_side_effect(_db, ref_id, kind, _session_id=""):
+                def get_stats_side_effect(_db, ref_id, kind, _session_id="", **_kwargs):
                     if ref_id == "player-123" and kind == "player":
                         return (attacker_state, 12, 10, 10, 2, 3)
                     if ref_id == "enemy-123" and kind == "session_entity":

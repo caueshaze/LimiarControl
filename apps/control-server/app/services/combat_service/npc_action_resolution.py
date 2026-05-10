@@ -109,8 +109,14 @@ class CombatNpcActionResolutionMixin:
 
         if action_kind in ("weapon_attack", "spell_attack"):
             cls._clear_participant_pending_attack(attacker)
-            _, target_ac, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
-            target_ac = (target_ac or 10) + cls._sum_numeric_effects(target_p, "temp_ac_bonus")
+            _, target_ac, *_ = cls._get_stats(
+                db,
+                target_p["ref_id"],
+                target_p["kind"],
+                session_id,
+                combat_state=state,
+            )
+            target_ac = target_ac or 10
             if context["cover"]:
                 target_ac += resolve_cover_modifier(context["cover"])
             attack_bonus = cls._safe_int(

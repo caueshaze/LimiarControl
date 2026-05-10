@@ -15,7 +15,15 @@ from .exceptions import CombatServiceError
 class CombatStatLookupMixin:
 
     @classmethod
-    def _get_stats(cls, db: Session, ref_id: str, kind: str, session_id: str = ""):
+    def _get_stats(
+        cls,
+        db: Session,
+        ref_id: str,
+        kind: str,
+        session_id: str = "",
+        *,
+        combat_state=None,
+    ):
         if kind == "player":
             target = (
                 db.exec(
@@ -36,7 +44,22 @@ class CombatStatLookupMixin:
             spellcasting = cls._as_dict(data.get("spellcasting"))
             str_val = abilities.get("strength", 10)
             dex_val = abilities.get("dexterity", 10)
-            ac = cls.calculate_player_armor_class_from_state(data)
+            combat_effects = None
+            if combat_state is not None:
+                participant = next(
+                    (
+                        entry
+                        for entry in combat_state.participants
+                        if entry.get("kind") == "player" and entry.get("ref_id") == ref_id
+                    ),
+                    None,
+                )
+                effects = participant.get("active_effects") if isinstance(participant, dict) else None
+                combat_effects = effects if isinstance(effects, list) else None
+            ac = cls.calculate_player_armor_class_from_state(
+                data,
+                active_effects=combat_effects,
+            )
 
             wild_shape = cls._as_dict(data.get("wildShape"))
             if wild_shape.get("active"):

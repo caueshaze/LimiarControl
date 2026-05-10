@@ -94,6 +94,79 @@ class CombatEntityStatsTestsMixin:
 
         self.assertEqual(ac, 20)
 
+    def test_get_stats_uses_combat_participant_formula_effects_for_player_ac(self):
+        session_state = MagicMock()
+        session_state.state_json = {
+            "abilities": {
+                "strength": 10,
+                "dexterity": 14,
+                "constitution": 10,
+                "intelligence": 10,
+                "wisdom": 10,
+                "charisma": 10,
+            },
+            "equippedArmor": {
+                "name": "None",
+                "baseAC": 0,
+                "dexCap": None,
+                "armorType": "none",
+            },
+            "equippedShield": {"name": "Shield", "bonus": 2},
+            "miscACBonus": 0,
+            "level": 1,
+            "spellcasting": None,
+        }
+        result = MagicMock()
+        result.first.return_value = session_state
+        self.db.exec.return_value = result
+        combat_state = CombatState(
+            id="combat-1",
+            session_id="session-123",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "p1",
+                    "ref_id": "player-123",
+                    "kind": "player",
+                    "display_name": "Hero",
+                    "status": "active",
+                    "active_effects": [
+                        {
+                            "id": "eff-formula",
+                            "kind": "spell_effect",
+                            "metadata": {
+                                "declarative_effect": {
+                                    "type": "armor_class_formula",
+                                    "params": {
+                                        "base_value": 13,
+                                        "ability": "dexterity",
+                                        "requires_unarmored": True,
+                                    },
+                                },
+                            },
+                        },
+                        {
+                            "id": "eff-ac",
+                            "kind": "temp_ac_bonus",
+                            "numeric_value": 1,
+                        },
+                    ],
+                }
+            ],
+        )
+
+        _, ac, *_ = CombatService._get_stats(
+            self.db,
+            "player-123",
+            "player",
+            "session-123",
+            combat_state=combat_state,
+        )
+
+        self.assertEqual(ac, 18)
+
     def test_build_player_attack_context_uses_current_weapon_proficiency_and_magic_bonus(self):
         session_entry_result = MagicMock()
         session_entry_result.first.return_value = MagicMock(

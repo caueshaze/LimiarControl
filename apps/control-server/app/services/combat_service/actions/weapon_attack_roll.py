@@ -61,8 +61,14 @@ class WeaponAttackRollMixin:
         cls._assert_hostile_action_allowed(attacker, target, action_label="an attack")
         was_overridden = cls._consume_turn_resource(attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit)
         cls._clear_participant_pending_attack(attacker)
-        _, target_ac, *_ = cls._get_stats(db, target["ref_id"], target["kind"], session_id)
-        target_ac = (target_ac or 10) + cls._sum_numeric_effects(target, "temp_ac_bonus")
+        _, target_ac, *_ = cls._get_stats(
+            db,
+            target["ref_id"],
+            target["kind"],
+            session_id,
+            combat_state=state,
+        )
+        target_ac = target_ac or 10
         cover = targeting_result.spatial_metadata.cover
         target_ac += resolve_cover_modifier(cover)
         attack_context["attack_bonus"] += cls._sum_numeric_effects(attacker, "attack_bonus")

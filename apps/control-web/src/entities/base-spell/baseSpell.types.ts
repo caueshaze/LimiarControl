@@ -227,6 +227,7 @@ export type SaveSuccessOutcome =
 export const SpellDeclarativeEffectType = {
   APPLY_CONDITION: "apply_condition",
   MODIFY_STAT: "modify_stat",
+  ARMOR_CLASS_FORMULA: "armor_class_formula",
   ADVANTAGE_ON_CHECKS: "advantage_on_checks",
   DISADVANTAGE_ON_CHECKS: "disadvantage_on_checks",
   RESTRICT_ACTION: "restrict_action",
@@ -327,6 +328,18 @@ export type SpellDeclarativeEffect =
       duration?: SpellDeclarativeDuration | null;
       out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { stat: SpellDeclarativeModifyStat; value: number };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "armor_class_formula";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
+      params: {
+        base_value: number;
+        ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
+        requires_unarmored?: boolean | null;
+      };
       stacking?: "stack" | "replace" | null;
     }
   | {

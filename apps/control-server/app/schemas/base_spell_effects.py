@@ -10,6 +10,7 @@ from app.schemas.campaign_entity_shared import AbilityName
 SpellDeclarativeEffectType = Literal[
     "apply_condition",
     "modify_stat",
+    "armor_class_formula",
     "advantage_on_checks",
     "disadvantage_on_checks",
     "restrict_action",
@@ -124,6 +125,12 @@ class ModifyMovementSpeedParams(BaseModel):
     bonus_meters: float
 
 
+class ArmorClassFormulaParams(BaseModel):
+    base_value: int = Field(ge=0)
+    ability: AbilityName
+    requires_unarmored: bool | None = None
+
+
 class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
@@ -132,6 +139,7 @@ class SpellDeclarativeEffect(BaseModel):
     params: (
         ApplyConditionParams
         | ModifyStatParams
+        | ArmorClassFormulaParams
         | CheckModifierParams
         | RestrictActionParams
         | GrantTempHpParams
@@ -148,6 +156,8 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("apply_condition effects require ApplyConditionParams")
         if self.type == "modify_stat" and not isinstance(self.params, ModifyStatParams):
             raise ValueError("modify_stat effects require ModifyStatParams")
+        if self.type == "armor_class_formula" and not isinstance(self.params, ArmorClassFormulaParams):
+            raise ValueError("armor_class_formula effects require ArmorClassFormulaParams")
         if self.type in {"advantage_on_checks", "disadvantage_on_checks"} and not isinstance(
             self.params, CheckModifierParams
         ):

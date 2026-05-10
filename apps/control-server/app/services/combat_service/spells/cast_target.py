@@ -678,7 +678,13 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         damage_type = spell_context.get("damage_type")
         attack_bonus = cls._safe_int(spell_context.get("attack_bonus"), 0)
 
-        _, target_ac_raw, *_ = cls._get_stats(db, target_p["ref_id"], target_p["kind"], session_id)
+        _, target_ac_raw, *_ = cls._get_stats(
+            db,
+            target_p["ref_id"],
+            target_p["kind"],
+            session_id,
+            combat_state=state,
+        )
         cover = targeting_result.spatial_metadata.cover if targeting_result else None
         cover_modifier = resolve_cover_modifier(cover)
         base_ac = target_ac_raw if target_ac_raw is not None else 10
