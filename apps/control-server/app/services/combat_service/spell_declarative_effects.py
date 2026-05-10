@@ -5,7 +5,10 @@ from typing import Literal
 from uuid import uuid4
 
 from app.models.combat import CombatPhase
+from app.models.session_state import SessionState
 from app.schemas.base_spell import SpellDeclarativeEffect
+from app.services.game_time import get_game_time_seconds
+from app.services.out_of_combat_cast import _target_has_armor, _check_requires_unarmored_eligibility
 
 logger = logging.getLogger(__name__)
 from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, SkillName
@@ -138,6 +141,43 @@ class CombatSpellDeclarativeEffectsMixin:
         return list(grouped.values())
 
     @classmethod
+    def _check_declarative_requires_unarmored_for_target(
+        cls,
+        db,
+        session_id: str,
+        *,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> None:
+        """Raise CombatServiceError if any declarative effect requires unarmored and target has armor."""
+        effects = spell_context.get("effects") or []
+        if not isinstance(effects, list):
+            return
+        requires_unarmored = any(
+            isinstance(e, dict) and (e.get("params") or {}).get("requires_unarmored") is True
+            for e in effects
+        )
+        if not requires_unarmored:
+            return
+        if not isinstance(target_participant, dict) or target_participant.get("kind") != "player":
+            return
+        ref_id = target_participant.get("ref_id")
+        if not ref_id:
+            return
+        from sqlmodel import select as sa_select
+        session_state = db.exec(
+            sa_select(SessionState).where(
+                SessionState.session_id == session_id,
+                SessionState.player_user_id == ref_id,
+            )
+        ).first()
+        target_state_json = dict(session_state.state_json or {}) if session_state else {}
+        if _target_has_armor(target_state_json):
+            raise CombatServiceError(
+                "Target is wearing armor and this spell requires an unarmored target", 400
+            )
+
+    @classmethod
     def _normalize_declarative_effects(cls, raw_effects: object) -> list[SpellDeclarativeEffect]:
         if not isinstance(raw_effects, list):
             return []
@@ -194,6 +234,7 @@ class CombatSpellDeclarativeEffectsMixin:
         effect: SpellDeclarativeEffect,
         attacker: dict,
         target_participant: dict | None,
+        game_time_seconds: int | None = None,
     ) -> dict:
         duration = effect.duration
         if duration is None:
@@ -201,6 +242,17 @@ class CombatSpellDeclarativeEffectsMixin:
                 "duration_type": "manual",
                 "remaining_rounds": None,
                 "expires_at_participant_id": None,
+                "created_at_game_time_seconds": None,
+                "expires_at_game_time_seconds": None,
+            }
+        if duration.type == "timed":
+            gt = game_time_seconds if isinstance(game_time_seconds, int) else 0
+            return {
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": gt,
+                "expires_at_game_time_seconds": gt + (duration.seconds or 0),
             }
         anchor = duration.anchor or "target"
         expires_at = (
@@ -212,6 +264,8 @@ class CombatSpellDeclarativeEffectsMixin:
             "duration_type": duration.type,
             "remaining_rounds": duration.rounds,
             "expires_at_participant_id": expires_at,
+            "created_at_game_time_seconds": None,
+            "expires_at_game_time_seconds": None,
         }
 
     @classmethod
@@ -240,6 +294,7 @@ class CombatSpellDeclarativeEffectsMixin:
         effect: SpellDeclarativeEffect,
         effect_group_id: str,
         on_end_effects: list[SpellDeclarativeEffect],
+        game_time_seconds: int | None = None,
     ) -> list[dict]:
         metadata = {
             "declarative_effect_group_id": effect_group_id,
@@ -289,6 +344,7 @@ class CombatSpellDeclarativeEffectsMixin:
             effect=effect,
             attacker=attacker,
             target_participant=resolved_target,
+            game_time_seconds=game_time_seconds,
         )
 
         created: list[dict] = []
@@ -352,6 +408,7 @@ class CombatSpellDeclarativeEffectsMixin:
         target_participant: dict | None,
         spell_context: dict,
         effect_group_id: str | None = None,
+        game_time_seconds: int | None = None,
     ) -> dict:
         effects = cls._spell_context_declarative_effects(spell_context)
         on_end_effects = cls._spell_context_on_end_effects(spell_context)
@@ -370,6 +427,7 @@ class CombatSpellDeclarativeEffectsMixin:
                     effect=effect,
                     effect_group_id=effect_group_id,
                     on_end_effects=on_end_effects,
+                    game_time_seconds=game_time_seconds,
                 )
             )
         return {"applied_effects": applied, "effect_group_id": effect_group_id}
@@ -492,6 +550,7 @@ class CombatSpellDeclarativeEffectsMixin:
             target_participant=target_participant,
             spell_context=spell_context,
             effect_group_id=effect_group_id,
+            game_time_seconds=get_game_time_seconds(session_id, db),
         )
         applied_effects = application["applied_effects"]
         cls._apply_temp_hp_from_granted_effects(db, state, applied_effects)

@@ -1901,6 +1901,74 @@
         "dice": "1d8",
         "levelStep": 2
       }
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "mage_armor",
+      "nameEn": "Mage Armor",
+      "namePt": "Armadura Arcana",
+      "descriptionEn": "You touch a willing creature who isn't wearing armor, and a protective magical force surrounds it until the spell ends. The target's base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
+      "descriptionPt": "Você toca uma criatura disposta que não está usando armadura, e uma força mágica protetora a envolve até o final da magia. A CA base do alvo se torna 13 + seu modificador de Destreza. A magia termina se o alvo usar armadura ou se você dispensar a magia como uma ação.",
+      "level": 1,
+      "school": "abjuration",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1,
+      "rangeText": "Touch",
+      "duration": "8 hours",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a piece of cured leather",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "armor_class_formula",
+          "target": "selected_target",
+          "duration": {
+            "type": "timed",
+            "seconds": 28800
+          },
+          "out_of_combat_duration": {
+            "type": "timed",
+            "seconds": 28800
+          },
+          "params": {
+            "base_value": 13,
+            "ability": "dexterity",
+            "requires_unarmored": true
+          },
+          "termination_conditions": [
+            {
+              "type": "target_dons_armor"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

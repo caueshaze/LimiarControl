@@ -48,6 +48,8 @@ class CombatConcentrationMixin:
         duration_type: str = "manual",
         remaining_rounds: int | None = None,
         expires_at_participant_id: str | None = None,
+        created_at_game_time_seconds: int | None = None,
+        expires_at_game_time_seconds: int | None = None,
         metadata: dict | None = None,
         display_label: str | None = None,
     ) -> dict:
@@ -69,6 +71,8 @@ class CombatConcentrationMixin:
             "remaining_rounds": remaining_rounds,
             "expires_on": expires_on,
             "expires_at_participant_id": expires_at_participant_id,
+            "created_at_game_time_seconds": created_at_game_time_seconds,
+            "expires_at_game_time_seconds": expires_at_game_time_seconds,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or None,
             "display_label": display_label,

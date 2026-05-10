@@ -1364,6 +1364,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             spell_canonical_key=spell_context["spell_canonical_key"],
             target_participant=target_p,
         )
+        cls._check_declarative_requires_unarmored_for_target(
+            db,
+            session_id,
+            spell_context=spell_context,
+            target_participant=target_p,
+        )
 
         slot_spent = False
         if spell_context.get("source_kind") == "magic_item":

@@ -33,6 +33,7 @@ from app.services.out_of_combat_cast import (
     consume_spell_slot,
     has_castable_effects,
 )
+from app.services.declarative_effect_lifecycle import remove_armor_don_effects_from_combat_participant
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.spell_preparation import apply_prepared_spells_with_long_rest_tracking
@@ -270,6 +271,10 @@ async def _cast_spell_out_of_combat_for_player(
     if is_ally_target and campaign_spell.out_of_combat_target not in ("ally", "self_or_ally"):
         raise HTTPException(status_code=400, detail="Spell cannot target allies out of combat")
 
+    target_state_json_for_check = (
+        target_state.state_json if target_state and isinstance(target_state.state_json, dict)
+        else state_json
+    )
     ok, rejection = check_out_of_combat_cast_eligibility(
         spell=campaign_spell,
         state_json=state_json,
@@ -278,6 +283,7 @@ async def _cast_spell_out_of_combat_for_player(
         out_of_combat_target=campaign_spell.out_of_combat_target,
         target_user_id=target_user_id,
         caster_user_id=caster_user_id,
+        target_state_json=target_state_json_for_check,
     )
     if not ok:
         raise HTTPException(status_code=400, detail=rejection)
@@ -614,6 +620,13 @@ async def update_my_session_loadout(
     })
     state.state_json = next_state
     session.add(state)
+
+    combat_state_for_loadout = CombatService.get_state(session, session_id)
+    if combat_state_for_loadout is not None:
+        if remove_armor_don_effects_from_combat_participant(combat_state_for_loadout, user.id):
+            flag_modified(combat_state_for_loadout, "participants")
+            session.add(combat_state_for_loadout)
+
     session.commit()
     session.refresh(state)
 
@@ -663,7 +676,8 @@ async def update_player_session_state(
         tier_changed = CombatService.recompute_participant_encumbrance_tier(
             session, session_id, combat_state, player_user_id,
         )
-        if tier_changed:
+        armor_don_removed = remove_armor_don_effects_from_combat_participant(combat_state, player_user_id)
+        if tier_changed or armor_don_removed:
             flag_modified(combat_state, "participants")
             session.add(combat_state)
     session.add(state)

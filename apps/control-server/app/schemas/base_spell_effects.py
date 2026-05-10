@@ -27,6 +27,7 @@ SpellDeclarativeDurationType = Literal[
     "rounds",
     "until_turn_start",
     "until_turn_end",
+    "timed",
 ]
 SpellDeclarativeDurationAnchor = Literal["target", "caster"]
 SpellDeclarativeConditionType = Literal[
@@ -64,6 +65,7 @@ SpellDeclarativeAgainst = Literal["selected_target", "effect_target", "any"]
 class SpellDeclarativeDuration(BaseModel):
     type: SpellDeclarativeDurationType
     rounds: int | None = Field(default=None, ge=1)
+    seconds: int | None = Field(default=None, ge=1)
     anchor: SpellDeclarativeDurationAnchor | None = None
 
     @model_validator(mode="after")
@@ -74,7 +76,13 @@ class SpellDeclarativeDuration(BaseModel):
         else:
             self.rounds = None
 
-        if self.type == "manual":
+        if self.type == "timed":
+            if self.seconds is None:
+                raise ValueError("seconds is required when duration.type is 'timed'")
+        else:
+            self.seconds = None
+
+        if self.type in {"manual", "timed"}:
             self.anchor = None
         elif self.anchor is None:
             self.anchor = "target"
@@ -131,11 +139,19 @@ class ArmorClassFormulaParams(BaseModel):
     requires_unarmored: bool | None = None
 
 
+SpellDeclarativeTerminationConditionType = Literal["target_dons_armor"]
+
+
+class TerminationCondition(BaseModel):
+    type: SpellDeclarativeTerminationConditionType
+
+
 class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
     duration: SpellDeclarativeDuration | None = None
     out_of_combat_duration: SpellOutOfCombatTimedDuration | None = None
+    termination_conditions: list[TerminationCondition] | None = None
     params: (
         ApplyConditionParams
         | ModifyStatParams
