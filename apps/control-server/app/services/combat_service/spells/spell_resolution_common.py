@@ -288,6 +288,7 @@ class SpellResolutionCommonMixin:
         is_critical: bool = False,
         concentration_roll_source: str = "system",
         concentration_manual_roll: int | None = None,
+        attacker_participant_id: str | None = None,
     ) -> tuple[int | None, str, int | None, dict | None]:
         if amount <= 0:
             return None, "", None, None
@@ -302,6 +303,7 @@ class SpellResolutionCommonMixin:
             damage_type=damage_type,
             is_crit=is_critical,
             state=state,
+            attacker_participant_id=attacker_participant_id,
             **cls._build_concentration_roll_kwargs(concentration_roll_source, concentration_manual_roll),
         )
 

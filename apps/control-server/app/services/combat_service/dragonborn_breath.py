@@ -114,6 +114,7 @@ class CombatDragonbornBreathMixin:
                 False,
                 state,
                 damage_type=action_state.get("damageType"),
+                attacker_participant_id=actor.get("id"),
             )
             if previous_hp is not None and new_hp is not None:
                 applied_damage = max(0, previous_hp - new_hp)

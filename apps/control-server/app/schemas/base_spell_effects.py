@@ -139,7 +139,10 @@ class ArmorClassFormulaParams(BaseModel):
     requires_unarmored: bool | None = None
 
 
-SpellDeclarativeTerminationConditionType = Literal["target_dons_armor"]
+SpellDeclarativeTerminationConditionType = Literal[
+    "target_dons_armor",
+    "target_takes_damage_from_caster_or_allies",
+]
 
 
 class TerminationCondition(BaseModel):

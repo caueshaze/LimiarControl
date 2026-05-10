@@ -151,6 +151,7 @@ class CombatSaveResolveMixin:
                     db, state, target_p["ref_id"], target_p["kind"], effect_kind, amount,
                     damage_type=damage_type,
                     concentration_roll_source=concentration_roll_source,
+                    attacker_participant_id=attacker_participant_id,
                 )
 
         db.add(state)

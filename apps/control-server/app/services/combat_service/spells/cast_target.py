@@ -646,6 +646,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 damage_type=damage_type,
                 concentration_roll_source=req.concentration_roll_source,
                 concentration_manual_roll=req.concentration_manual_roll,
+                attacker_participant_id=attacker.get("id"),
             )
 
         return {
@@ -734,6 +735,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                     is_critical=is_critical,
                     concentration_roll_source=req.concentration_roll_source,
                     concentration_manual_roll=req.concentration_manual_roll,
+                    attacker_participant_id=attacker.get("id"),
                 )
                 if effect_kind == "healing":
                     healing = amount

@@ -75,6 +75,7 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
                 damage_type=spell_context.get("damage_type"),
                 concentration_roll_source=req.concentration_roll_source,
                 concentration_manual_roll=req.concentration_manual_roll,
+                attacker_participant_id=attacker.get("id"),
             )
             if effect_kind == "healing":
                 result.healing = amount
@@ -120,6 +121,7 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
                 damage_type=spell_context.get("damage_type"),
                 concentration_roll_source=req.concentration_roll_source,
                 concentration_manual_roll=req.concentration_manual_roll,
+                attacker_participant_id=attacker.get("id"),
             )
             if effect_kind == "healing":
                 result.healing = amount

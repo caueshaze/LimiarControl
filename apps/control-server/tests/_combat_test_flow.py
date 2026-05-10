@@ -1006,6 +1006,7 @@ class CombatFlowTestsMixin:
             damage_type="slashing",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
@@ -1436,6 +1437,7 @@ class CombatFlowTestsMixin:
             damage_type="cold",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
         final_log = mock_emit_log.await_args_list[-1].args[1]["message"]
         self.assertIn("Dano rolado 9", final_log)
@@ -1583,6 +1585,7 @@ class CombatFlowTestsMixin:
             damage_type="fire",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
         mock_emit_state.assert_awaited()
 
@@ -2245,6 +2248,7 @@ class CombatFlowTestsMixin:
             damage_type="force",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
 
     @patch("app.services.combat.CombatService._emit_player_state_update")
@@ -2359,6 +2363,7 @@ class CombatFlowTestsMixin:
             damage_type="fire",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
 
     @patch("app.services.combat.CombatService._emit_player_state_update")
@@ -2695,6 +2700,7 @@ class CombatFlowTestsMixin:
             damage_type="piercing",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="p1",
         )
 
     async def test_attack_is_blocked_when_attacker_is_charmed_by_target(self):
@@ -2895,6 +2901,10 @@ class CombatFlowTestsMixin:
                 "app.services.combat.CombatService._build_roll_actor_stats_for_save",
                 return_value=target_stats,
             ),
+            patch(
+                "app.services.combat_service.spell_automation.get_game_time_seconds",
+                return_value=1000,
+            ),
         ):
             self.db.exec.side_effect = [
                 session_entity_result,
@@ -2937,6 +2947,10 @@ class CombatFlowTestsMixin:
 
         self.assertFalse(failed_result["is_saved"])
         self.assertEqual(failed_effects[0]["condition_type"], "charmed")
+        self.assertEqual(failed_effects[0]["duration_type"], "timed")
+        self.assertEqual(failed_effects[0]["created_at_game_time_seconds"], 1000)
+        self.assertEqual(failed_effects[0]["expires_at_game_time_seconds"], 1000 + 86400)
+        self.assertIsNone(failed_effects[0]["expires_at_participant_id"])
         self.assertEqual(self.state.participants[1]["active_effects"], [])
         self.assertTrue(saved_result["is_saved"])
 

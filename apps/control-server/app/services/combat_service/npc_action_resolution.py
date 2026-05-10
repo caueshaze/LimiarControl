@@ -287,6 +287,7 @@ class CombatNpcActionResolutionMixin:
                         damage_type=damage_type,
                         is_crit=False,
                         state=state,
+                        attacker_participant_id=attacker.get("id"),
                     )
             context.update(
                 {

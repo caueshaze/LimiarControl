@@ -90,6 +90,7 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
                 is_critical=result.is_critical,
                 concentration_roll_source=req.concentration_roll_source,
                 concentration_manual_roll=req.concentration_manual_roll,
+                attacker_participant_id=attacker.get("id"),
             )
             if effect_kind == "healing":
                 result.healing = amount
