@@ -289,6 +289,7 @@ class CombatStructuredActionTestsMixin:
             damage_type="piercing",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="e1",
         )
 
     @patch("app.services.combat.CombatService._emit_player_state_update")
@@ -527,6 +528,7 @@ class CombatStructuredActionTestsMixin:
             damage_type="cold",
             is_crit=False,
             state=self.state,
+            attacker_participant_id="e1",
         )
         final_log = mock_emit_log.await_args_list[-1].args[1]["message"]
         self.assertIn("half damage: 5", final_log)

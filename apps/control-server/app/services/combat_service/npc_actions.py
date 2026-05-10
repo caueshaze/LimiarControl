@@ -138,6 +138,7 @@ class CombatNpcActionMixin(
                 damage_type=pending_attack.get("damage_type"),
                 is_crit=bool(pending_attack.get("is_critical")),
                 state=state,
+                attacker_participant_id=attacker.get("id"),
                 **cls._build_concentration_roll_kwargs(
                     req.concentration_roll_source,
                     req.concentration_manual_roll,

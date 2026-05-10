@@ -15,6 +15,7 @@ from app.services.goodberry_inventory import (
     build_goodberry_expiration,
     grant_catalog_item_to_player_inventory,
 )
+from app.services.game_time import get_game_time_seconds
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 
 from .exceptions import CombatServiceError
@@ -275,6 +276,7 @@ class CombatSpellAutomationMixin:
         roll_total = roll_result.total
         is_saved = bool(roll_result.success)
 
+        game_time = get_game_time_seconds(session_id, db)
         if not is_saved:
             cls._append_effect_to_participant(
                 target_participant,
@@ -282,11 +284,16 @@ class CombatSpellAutomationMixin:
                     kind="condition",
                     condition_type="charmed",
                     source_participant_id=attacker["id"],
-                    duration_type="manual",
-                    expires_at_participant_id=target_participant["id"],
+                    duration_type="timed",
+                    created_at_game_time_seconds=game_time,
+                    expires_at_game_time_seconds=game_time + 86400,
                     metadata={
                         "source_spell_key": "animal_friendship",
+                        "caster_participant_id": attacker["id"],
                         "charmer_participant_id": attacker["id"],
+                        "termination_conditions": [
+                            {"type": "target_takes_damage_from_caster_or_allies"},
+                        ],
                     },
                 ),
             )
@@ -449,6 +456,7 @@ class CombatSpellAutomationMixin:
                     damage,
                     damage_type="force",
                     is_critical=roll_result.selected_roll == 20,
+                    attacker_participant_id=attacker.get("id"),
                 )
 
         target_name = target_participant["display_name"] if target_participant else None
@@ -573,6 +581,7 @@ class CombatSpellAutomationMixin:
                     damage,
                     damage_type="force",
                     is_critical=roll_result.selected_roll == 20,
+                    attacker_participant_id=attacker.get("id"),
                 )
 
         flag_modified(state, "participants")

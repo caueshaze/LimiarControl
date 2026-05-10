@@ -7,6 +7,7 @@ from app.models.campaign_entity import CampaignEntity
 from app.models.combat import CombatState
 from app.services.draconic_ancestry import resolve_draconic_lineage_state
 from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
+from app.services.declarative_effect_lifecycle import remove_damage_terminated_effects_from_participant
 from app.services.session_state_finalize import finalize_session_state_data
 
 
@@ -47,6 +48,7 @@ class CombatDamageCoreMixin:
         damage_type: str | None = None,
         concentration_roll_source: str = "system",
         concentration_manual_roll: int | None = None,
+        attacker_participant_id: str | None = None,
     ) -> tuple[int, str, int | None, dict | None]:
         target_model, *_ = cls._get_stats(db, target_ref_id, kind, state.session_id if state else "")
         message = ""
@@ -95,6 +97,8 @@ class CombatDamageCoreMixin:
                 if state:
                     flag_modified(state, "participants")
                     db.add(state)
+                if attacker_participant_id and amount > 0 and target_participant is not None:
+                    remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
                 if resistance_msg:
                     message = f"{message} {resistance_msg}".strip()
                 return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), message, None, concentration_check
@@ -131,6 +135,8 @@ class CombatDamageCoreMixin:
             if state:
                 flag_modified(state, "participants")
                 db.add(state)
+            if attacker_participant_id and amount > 0 and target_participant is not None:
+                remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
             return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), message, current, concentration_check
         npc = db.exec(select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)).first()
         base_hp = npc.max_hp if npc else 0
@@ -154,6 +160,8 @@ class CombatDamageCoreMixin:
         if state:
             flag_modified(state, "participants")
             db.add(state)
+        if attacker_participant_id and amount > 0 and target_participant is not None:
+            remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
         return target_model.current_hp, message, current, concentration_check
 
     @classmethod
