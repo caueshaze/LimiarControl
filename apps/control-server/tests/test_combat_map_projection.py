@@ -95,6 +95,13 @@ class FakeLimiarMapClient:
             raise AssertionError("state_response is required")
         return self.state_response
 
+    def sync_spell_anchors(
+        self,
+        session_id: str,
+        payload: dict,
+    ) -> None:
+        self.calls.append(("sync_spell_anchors", session_id, payload))
+
     def start_combat(
         self,
         session_id: str,
@@ -232,7 +239,7 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
 
         self.assertEqual(
             [call[0] for call in client.calls],
-            ["get_state", "sync_tokens", "start_combat"],
+            ["get_state", "sync_tokens", "start_combat", "sync_spell_anchors"],
         )
         sync_payload = client.calls[1][2]
         self.assertEqual(
@@ -436,7 +443,7 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
         service.project_combat_start(db, "session-123", build_active_state())
 
         self.assertEqual(
-            [call[0] for call in client.calls], ["get_state", "start_combat"]
+            [call[0] for call in client.calls], ["get_state", "start_combat", "sync_spell_anchors"]
         )
 
     def test_projection_can_bind_single_player_token_without_explicit_mapping(
@@ -685,7 +692,7 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
 
         self.assertEqual(
             [call[0] for call in client.calls],
-            ["get_state", "sync_tokens", "start_combat"],
+            ["get_state", "sync_tokens", "start_combat", "sync_spell_anchors"],
         )
 
     def test_start_failure_keeps_combat_local(self) -> None:
@@ -806,7 +813,7 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
         self.assertEqual(result.reason, "combat_already_active")
         self.assertEqual(
             [call[0] for call in client.calls],
-            ["get_state", "sync_tokens", "start_combat"],
+            ["get_state", "sync_tokens", "start_combat", "sync_spell_anchors"],
         )
 
     def test_projection_conflict_catches_up_existing_map_turn(self) -> None:
@@ -876,10 +883,10 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
         self.assertEqual(result.reason, "turn_synced")
         self.assertEqual(
             [call[0] for call in client.calls],
-            ["get_state", "sync_tokens", "start_combat", "advance_combat"],
+            ["get_state", "sync_tokens", "start_combat", "advance_combat", "sync_spell_anchors"],
         )
         self.assertEqual(
-            client.calls[-1],
+            client.calls[-2],
             (
                 "advance_combat",
                 "session-123",
@@ -952,10 +959,10 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
         self.assertEqual(result.reason, "turn_synced")
         self.assertEqual(
             [call[0] for call in client.calls],
-            ["get_state", "sync_tokens", "start_combat", "advance_combat"],
+            ["get_state", "sync_tokens", "start_combat", "advance_combat", "sync_spell_anchors"],
         )
         self.assertEqual(
-            client.calls[-1],
+            client.calls[-2],
             (
                 "advance_combat",
                 "session-123",
@@ -995,6 +1002,7 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
                     },
                 ),
                 ("get_state", "session-123", None),
+                ("sync_spell_anchors", "session-123", {"spellAnchors": []}),
             ],
         )
 

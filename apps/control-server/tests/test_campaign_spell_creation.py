@@ -139,6 +139,7 @@ class CampaignSpellCreateRouteTests(unittest.TestCase):
             source_ref=None,
             is_srd=False,
             out_of_combat_castable=False,
+            out_of_combat_target="none",
             is_enabled=True,
         )
 

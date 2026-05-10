@@ -1855,6 +1855,52 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "spiritual_weapon",
+      "nameEn": "Spiritual Weapon",
+      "namePt": "Arma Espiritual",
+      "descriptionEn": "You create a floating, spectral weapon within range that lasts for the duration or until you cast this spell again. When you cast the spell, you can make a melee spell attack against a creature within 5 feet of the weapon. On a hit, the target takes force damage equal to 1d8 + your spellcasting ability modifier. As a bonus action on your turn, you can move the weapon up to 20 feet and repeat the attack against a creature within 5 feet of it.",
+      "descriptionPt": "Você cria uma arma espectral flutuante dentro do alcance, que dura pela duração ou até você conjurar esta magia novamente. Ao conjurar, você pode fazer um ataque mágico corpo a corpo contra uma criatura a até 1,5m da arma. No acerto, o alvo sofre dano de força igual a 1d8 + seu modificador de conjuração. Como ação bônus no seu turno, você pode mover a arma até 6m e repetir o ataque.",
+      "level": 2,
+      "school": "evocation",
+      "classesJson": [
+        "Cleric"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "1 minute",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "attack",
+      "damageDice": "1d8",
+      "damageType": "Force",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "targetType": "point",
+      "selectionType": "point",
+      "originType": "caster",
+      "targetAnchor": "selected_point",
+      "attackType": "melee_spell",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d8",
+        "levelStep": 2
+      }
     }
   ]
 }

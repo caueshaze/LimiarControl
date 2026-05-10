@@ -77,6 +77,8 @@ def _make_campaign_spell(**overrides) -> CampaignSpell:
     spell.source_ref = None
     spell.is_srd = False
     spell.is_enabled = True
+    spell.out_of_combat_castable = False
+    spell.out_of_combat_target = "none"
     for key, value in overrides.items():
         setattr(spell, key, value)
     return spell

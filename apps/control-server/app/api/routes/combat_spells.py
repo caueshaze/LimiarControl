@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.api.deps import get_current_user, get_session
@@ -17,6 +18,15 @@ from app.schemas.combat import (
     CombatSpellResult,
 )
 from app.services.combat import CombatService
+
+
+class SpiritualWeaponActionRequest(BaseModel):
+    actor_participant_id: str
+    anchor_id: str
+    destination: dict | None = None
+    target_ref_id: str | None = None
+    target_kind: str | None = None
+    manual_roll: int | None = None
 
 router = APIRouter()
 
@@ -157,3 +167,19 @@ async def action_cast_spell_effect(
     )
     await _publish_roll_result(db, session_id, user, concentration_roll)
     return result
+
+
+@router.post("/sessions/{session_id}/combat/spiritual-weapon-action")
+async def spiritual_weapon_action(
+    session_id: str,
+    req: SpiritualWeaponActionRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return await CombatService.use_spiritual_weapon_action(
+        db,
+        session_id,
+        req,
+        user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+    )

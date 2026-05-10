@@ -50,6 +50,9 @@ class CombatSpellDiceMathMixin:
         base_instances = raw_upcast.get("baseEffectInstances")
         if isinstance(base_instances, int) and base_instances >= 1:
             normalized["baseEffectInstances"] = base_instances
+        level_step = raw_upcast.get("levelStep")
+        if isinstance(level_step, int) and level_step >= 2:
+            normalized["levelStep"] = level_step
         return normalized
 
     @classmethod
@@ -208,7 +211,13 @@ class CombatSpellDiceMathMixin:
             }
 
         per_level = upcast.get("perLevel")
-        repeats = extra_levels * (
+        level_step = upcast.get("levelStep")
+        effective_extra_levels = (
+            extra_levels // level_step
+            if isinstance(level_step, int) and level_step >= 2
+            else extra_levels
+        )
+        repeats = effective_extra_levels * (
             per_level if isinstance(per_level, int) and per_level > 0 else 1
         )
         dice = upcast.get("dice") if isinstance(upcast.get("dice"), str) else None

@@ -48,6 +48,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "guidance": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
     "longstrider": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
     "goodberry": SpellTargetingSemantics("none", "caster", "caster", "none", "self", "immediate"),
+    "spiritual_weapon": SpellTargetingSemantics("point", "caster", "selected_point", "melee_spell", "distance", "persistent"),
     "speak_with_animals": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "pass_without_trace": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "disguise_self": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
