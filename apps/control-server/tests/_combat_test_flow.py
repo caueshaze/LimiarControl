@@ -196,8 +196,9 @@ class CombatFlowTestsMixin:
     @patch("app.services.combat.CombatService._emit_log")
     async def test_set_initiative(self, mock_emit_log, mock_emit_state):
         self.state.use_map = False
-        with patch(
-            "app.services.combat.CombatService.get_state", return_value=self.state
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle.get_game_time_seconds", return_value=120),
         ):
             req = CombatSetInitiativeRequest(
                 initiatives=[
@@ -211,6 +212,8 @@ class CombatFlowTestsMixin:
             self.assertEqual(state.phase, CombatPhase.active)
             self.assertEqual(state.participants[0]["id"], "e1")
             self.assertEqual(state.participants[1]["id"], "p1")
+            self.assertEqual(state.active_started_at_game_time_seconds, 120)
+            self.assertEqual(state.accounted_game_time_rounds, 0)
 
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
@@ -583,6 +586,8 @@ class CombatFlowTestsMixin:
     ):
         self.state.phase = CombatPhase.placement
         self.state.use_map = True
+        self.state.active_started_at_game_time_seconds = None
+        self.state.accounted_game_time_rounds = 9
         self.state.participants[0]["initiative"] = 20
         self.state.participants[0]["turn_resources"] = {
             "action_used": True,
@@ -590,7 +595,10 @@ class CombatFlowTestsMixin:
             "reaction_used": True,
         }
 
-        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle.get_game_time_seconds", return_value=240),
+        ):
             updated = await CombatService.confirm_placement(
                 self.db,
                 "session-123",
@@ -601,7 +609,184 @@ class CombatFlowTestsMixin:
         self.assertFalse(updated.participants[0]["turn_resources"]["action_used"])
         self.assertFalse(updated.participants[0]["turn_resources"]["bonus_action_used"])
         self.assertFalse(updated.participants[0]["turn_resources"]["reaction_used"])
+        self.assertEqual(updated.active_started_at_game_time_seconds, 240)
+        self.assertEqual(updated.accounted_game_time_rounds, 0)
         mock_project_start.assert_called_once()
+
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_next_turn_wrap_advances_authoritative_game_time(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        self.state.active_started_at_game_time_seconds = 100
+        self.state.accounted_game_time_rounds = 0
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            state = await CombatService.next_turn(
+                self.db, "session-123", actor_user_id="user-xyz", is_gm=True
+            )
+            self.assertEqual(state.current_turn_index, 1)
+            mock_advance.assert_not_called()
+
+            state = await CombatService.next_turn(
+                self.db, "session-123", actor_user_id="user-xyz", is_gm=True
+            )
+
+        self.assertEqual(state.current_turn_index, 0)
+        self.assertEqual(state.round, 2)
+        self.assertEqual(state.accounted_game_time_rounds, 1)
+        mock_advance.assert_called_once_with("session-123", 6, self.db)
+
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_next_turn_second_wrap_advances_second_round_chunk(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 0
+        self.state.active_started_at_game_time_seconds = 100
+        self.state.accounted_game_time_rounds = 0
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            for _ in range(4):
+                state = await CombatService.next_turn(
+                    self.db, "session-123", actor_user_id="user-xyz", is_gm=True
+                )
+
+        self.assertEqual(state.round, 3)
+        self.assertEqual(state.accounted_game_time_rounds, 2)
+        self.assertEqual(
+            mock_advance.call_args_list,
+            [
+                unittest.mock.call("session-123", 6, self.db),
+                unittest.mock.call("session-123", 6, self.db),
+            ],
+        )
+
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_next_turn_lazily_initializes_legacy_active_clock_state(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.round = 4
+        self.state.current_turn_index = 0
+        self.state.active_started_at_game_time_seconds = None
+        self.state.accounted_game_time_rounds = 0
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle.get_game_time_seconds", return_value=700),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            state = await CombatService.next_turn(
+                self.db, "session-123", actor_user_id="user-xyz", is_gm=True
+            )
+
+        self.assertEqual(state.current_turn_index, 1)
+        self.assertEqual(state.active_started_at_game_time_seconds, 700)
+        self.assertEqual(state.accounted_game_time_rounds, 3)
+        mock_advance.assert_not_called()
+
+    @patch("app.services.combat_service.lifecycle_turns.persist_surviving_spell_effects")
+    @patch("app.services.combat.CombatService._emit_state", new_callable=unittest.mock.AsyncMock)
+    @patch("app.services.combat.CombatService._emit_log", new_callable=unittest.mock.AsyncMock)
+    async def test_end_combat_round_one_charges_partial_round_once(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_persist,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.round = 1
+        self.state.active_started_at_game_time_seconds = 500
+        self.state.accounted_game_time_rounds = 0
+        for participant in self.state.participants:
+            participant["active_effects"] = []
+            participant["turn_resources"] = dict(CombatService._DEFAULT_TURN_RESOURCES)
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            result = await CombatService.end_combat(self.db, "session-123", is_gm=True)
+            second_result = await CombatService.end_combat(self.db, "session-123", is_gm=True)
+
+        self.assertEqual(result.phase, CombatPhase.ended)
+        self.assertEqual(second_result.phase, CombatPhase.ended)
+        self.assertEqual(self.state.accounted_game_time_rounds, 1)
+        mock_advance.assert_called_once_with("session-123", 6, self.db)
+        mock_persist.assert_called()
+
+    @patch("app.services.combat_service.lifecycle_turns.persist_surviving_spell_effects")
+    @patch("app.services.combat.CombatService._emit_state", new_callable=unittest.mock.AsyncMock)
+    @patch("app.services.combat.CombatService._emit_log", new_callable=unittest.mock.AsyncMock)
+    async def test_end_combat_without_active_phase_does_not_advance_game_time(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_persist,
+    ):
+        self.state.phase = CombatPhase.initiative
+        self.state.active_started_at_game_time_seconds = None
+        self.state.accounted_game_time_rounds = 0
+        for participant in self.state.participants:
+            participant["active_effects"] = []
+            participant["turn_resources"] = dict(CombatService._DEFAULT_TURN_RESOURCES)
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            result = await CombatService.end_combat(self.db, "session-123", is_gm=True)
+
+        self.assertEqual(result.phase, CombatPhase.ended)
+        mock_advance.assert_not_called()
+        mock_persist.assert_called_once()
+
+    @patch("app.services.combat_service.lifecycle_turns.persist_surviving_spell_effects")
+    @patch("app.services.combat.CombatService._emit_state", new_callable=unittest.mock.AsyncMock)
+    @patch("app.services.combat.CombatService._emit_log", new_callable=unittest.mock.AsyncMock)
+    async def test_end_combat_lazily_initializes_legacy_active_clock_state(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_persist,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.round = 4
+        self.state.active_started_at_game_time_seconds = None
+        self.state.accounted_game_time_rounds = 0
+        for participant in self.state.participants:
+            participant["active_effects"] = []
+            participant["turn_resources"] = dict(CombatService._DEFAULT_TURN_RESOURCES)
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=self.state),
+            patch("app.services.combat_service.lifecycle.get_game_time_seconds", return_value=700),
+            patch("app.services.combat_service.lifecycle_turns.advance_game_time_seconds") as mock_advance,
+        ):
+            result = await CombatService.end_combat(self.db, "session-123", is_gm=True)
+
+        self.assertEqual(result.phase, CombatPhase.ended)
+        self.assertEqual(self.state.active_started_at_game_time_seconds, 700)
+        self.assertEqual(self.state.accounted_game_time_rounds, 4)
+        mock_advance.assert_called_once_with("session-123", 6, self.db)
+        mock_persist.assert_called_once()
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
     @patch("app.services.combat.CombatService._emit_state")

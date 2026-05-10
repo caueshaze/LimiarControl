@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from app.models.combat import CombatPhase
+from app.services.game_time import (
+    COMBAT_ROUND_GAME_TIME_SECONDS,
+    advance_game_time_seconds,
+)
 
 from .exceptions import CombatServiceError
 from .limiar_map_projection import (
@@ -52,6 +56,7 @@ class CombatLifecycleTurnsMixin:
     ):
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        cls._ensure_active_combat_time_accounting_started(db, session_id, state)
         attacker = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)
         if not is_gm and not skip_turn_end_validation:
             if attacker.get("status") == "downed":
@@ -86,6 +91,15 @@ class CombatLifecycleTurnsMixin:
             if state.current_turn_index >= len(state.participants):
                 state.current_turn_index = 0
                 state.round += 1
+                completed_round_count = max(0, state.round - 1)
+                if state.accounted_game_time_rounds < completed_round_count:
+                    missing_rounds = completed_round_count - state.accounted_game_time_rounds
+                    advance_game_time_seconds(
+                        session_id,
+                        missing_rounds * COMBAT_ROUND_GAME_TIME_SECONDS,
+                        db,
+                    )
+                    state.accounted_game_time_rounds += missing_rounds
                 await cls._emit_log(session_id, {"message": f"Round {state.round} started!"})
             status = state.participants[state.current_turn_index].get("status", "active")
             if status not in ("dead", "defeated", "stable"):
@@ -130,6 +144,17 @@ class CombatLifecycleTurnsMixin:
         state = cls.get_state(db, session_id)
         if not state:
             raise CombatServiceError("Combat not found", 404)
+        if state.phase in (CombatPhase.active, "active"):
+            cls._ensure_active_combat_time_accounting_started(db, session_id, state)
+            started_rounds = max(1, state.round)
+            missing_rounds = started_rounds - state.accounted_game_time_rounds
+            if missing_rounds > 0:
+                advance_game_time_seconds(
+                    session_id,
+                    missing_rounds * COMBAT_ROUND_GAME_TIME_SECONDS,
+                    db,
+                )
+                state.accounted_game_time_rounds += missing_rounds
 
         concentration_source_ids: set[str] = set()
         for participant in state.participants:
