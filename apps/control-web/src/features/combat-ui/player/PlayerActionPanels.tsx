@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { localizeDamageType } from "../../../shared/i18n/domainLabels";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
@@ -18,7 +17,6 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
-import { SpiritualWeaponFollowUpDialog } from "./SpiritualWeaponFollowUpDialog";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 
 type Props = {
@@ -33,12 +31,7 @@ type Props = {
   handleAttack: () => Promise<void>;
   handleCast: () => Promise<void>;
   handleDragonbornBreathWeapon: () => Promise<void>;
-  handleSpiritualWeaponFollowUp: (
-    anchorId: string,
-    destination: { x: number; y: number } | null,
-    targetRefId: string | null,
-    targetKind: string | null,
-  ) => Promise<void>;
+  onEnterSpiritualWeaponMode: () => void;
   handleStandardAction: (action: StandardActionType, targetId?: string) => Promise<void>;
   handleUseObject: () => Promise<void>;
   myParticipantId?: string | null;
@@ -85,7 +78,7 @@ export const PlayerActionPanels = ({
   handleAttack,
   handleCast,
   handleDragonbornBreathWeapon,
-  handleSpiritualWeaponFollowUp,
+  onEnterSpiritualWeaponMode,
   handleStandardAction,
   handleUseObject,
   myParticipantId,
@@ -119,8 +112,6 @@ export const PlayerActionPanels = ({
   participants = [],
   onWeaponChange,
 }: Props) => {
-  const [showSpiritualWeaponDialog, setShowSpiritualWeaponDialog] = useState(false);
-  const [spiritualWeaponSubmitting, setSpiritualWeaponSubmitting] = useState(false);
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
   const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
@@ -354,7 +345,7 @@ export const PlayerActionPanels = ({
                 <button
                   type="button"
                   disabled={!canAct || !isMyTurn || (turnResources?.bonus_action_used ?? false)}
-                  onClick={() => setShowSpiritualWeaponDialog(true)}
+                  onClick={onEnterSpiritualWeaponMode}
                   className="rounded-full bg-violet-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("combatUi.spiritualWeaponAction")}
@@ -449,31 +440,6 @@ export const PlayerActionPanels = ({
         />
       ) : null}
     </div>
-    {spiritualWeaponFollowUpAction && (
-      <SpiritualWeaponFollowUpDialog
-        open={showSpiritualWeaponDialog}
-        onClose={() => setShowSpiritualWeaponDialog(false)}
-        action={spiritualWeaponFollowUpAction}
-        participants={participants}
-        myParticipantId={myParticipantId}
-        isMyTurn={isMyTurn}
-        bonusActionUsed={turnResources?.bonus_action_used ?? false}
-        onSubmit={async (destination, targetRefId, targetKind) => {
-          setSpiritualWeaponSubmitting(true);
-          try {
-            await handleSpiritualWeaponFollowUp(
-              spiritualWeaponFollowUpAction.anchorId,
-              destination,
-              targetRefId,
-              targetKind,
-            );
-          } finally {
-            setSpiritualWeaponSubmitting(false);
-          }
-        }}
-        isSubmitting={spiritualWeaponSubmitting}
-      />
-    )}
     </>
   );
 };
