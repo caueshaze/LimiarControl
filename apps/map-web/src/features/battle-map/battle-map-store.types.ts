@@ -1,6 +1,7 @@
 import type {
   Coordinate,
   ActiveAreaEffect,
+  SpellAnchor,
   GridCalibration,
   ObstaclePaintMode,
   EdgeDirection
@@ -57,6 +58,7 @@ export interface BattleMapUIState {
   embeddedSelectionMode: EmbeddedSelectionMode;
   embeddedPreview: Coordinate[];
   embeddedActiveAreaEffects: ActiveAreaEffect[];
+  embeddedSpellAnchors: SpellAnchor[];
   embeddedSelectedCell?: Coordinate;
   embeddedSelectedTargetRefId?: string;
   embeddedCombatPhase?: EmbeddedCombatPhase;

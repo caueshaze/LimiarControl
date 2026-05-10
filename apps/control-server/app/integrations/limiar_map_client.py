@@ -60,6 +60,16 @@ class LimiarMapClient:
         )
         return parse_state_response(data)
 
+    def sync_spell_anchors(
+        self, session_id: str, payload: dict[str, Any]
+    ) -> LimiarMapStateResponse:
+        data = self._request_json(
+            "PUT",
+            f"/integration/sessions/{session_id}/spell-anchors",
+            json_payload=payload,
+        )
+        return parse_state_response(data)
+
     def start_combat(
         self, session_id: str, payload: dict[str, Any]
     ) -> LimiarMapStateResponse:

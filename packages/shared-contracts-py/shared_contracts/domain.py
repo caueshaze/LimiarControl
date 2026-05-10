@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal, Optional
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 MAX_GRID_DIMENSION = 150
 
@@ -109,6 +109,26 @@ class CombatState(BaseModel):
     initiative_order: list[str]
     advanced_by: Literal["LimiarControl"]
     version: int
+
+
+class SpellAnchorMovement(BaseModel):
+    max_meters_per_follow_up: float | None = None
+
+
+class SpellAnchor(BaseModel):
+    id: str
+    source_spell_key: str
+    source_spell_name: str | None = None
+    owner_participant_id: str
+    created_by_participant_id: str
+    position: Coordinate
+    duration_type: Literal["rounds"]
+    remaining_rounds: int | None = None
+    expires_on: Literal["turn_start", "turn_end"] | None = None
+    expires_at_participant_id: str | None = None
+    render_kind: str = "generic"
+    movement: SpellAnchorMovement | None = None
+    metadata: dict[str, object] = Field(default_factory=dict)
 
 
 class MovementAction(BaseModel):

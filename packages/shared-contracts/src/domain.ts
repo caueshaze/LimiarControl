@@ -242,6 +242,26 @@ export const activeAreaEffectSchema = z.object({
   damagePerMeters: z.number().positive().nullable().optional()
 });
 
+export const spellAnchorMovementSchema = z.object({
+  maxMetersPerFollowUp: z.number().positive().nullable().optional()
+});
+
+export const spellAnchorSchema = z.object({
+  id: z.string(),
+  sourceSpellKey: z.string(),
+  sourceSpellName: z.string().nullable().optional(),
+  ownerParticipantId: z.string(),
+  createdByParticipantId: z.string(),
+  position: coordinateSchema,
+  durationType: z.literal("rounds"),
+  remainingRounds: z.number().int().positive().nullable().optional(),
+  expiresOn: z.enum(["turn_start", "turn_end"]).nullable().optional(),
+  expiresAtParticipantId: z.string().nullable().optional(),
+  renderKind: z.string().default("generic"),
+  movement: spellAnchorMovementSchema.nullable().optional(),
+  metadata: z.record(z.unknown()).default({})
+});
+
 export const realtimeActionEventSchema = z.object({
   eventId: z.string(),
   eventType: z.string(),
@@ -274,5 +294,7 @@ export type CombatState = z.infer<typeof combatStateSchema>;
 export type MovementAction = z.infer<typeof movementActionSchema>;
 export type TargetingTemplate = z.infer<typeof targetingTemplateSchema>;
 export type ActiveAreaEffect = z.infer<typeof activeAreaEffectSchema>;
+export type SpellAnchorMovement = z.infer<typeof spellAnchorMovementSchema>;
+export type SpellAnchor = z.infer<typeof spellAnchorSchema>;
 export type RealtimeActionEvent = z.infer<typeof realtimeActionEventSchema>;
 export type CellElevation = z.infer<typeof cellElevationSchema>;

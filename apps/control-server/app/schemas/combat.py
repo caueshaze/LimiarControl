@@ -39,6 +39,7 @@ from .combat_lifecycle import (
 )
 from .combat_spells import (
     CombatActiveAreaEffect,
+    CombatSpellAnchor,
     CombatAreaPreviewRequest,
     CombatAreaPreviewResponse,
     CombatAreaTargetOutcome,
@@ -110,6 +111,7 @@ __all__ = [
     "CombatSetInitiativeParticipant",
     "CombatSetInitiativeRequest",
     "CombatSpellResult",
+    "CombatSpellAnchor",
     "CombatStandardActionRequest",
     "CombatStandardActionResult",
     "CombatStartRequest",

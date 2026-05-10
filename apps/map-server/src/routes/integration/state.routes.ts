@@ -15,6 +15,7 @@ import {
   endCombatRequestSchema,
   setInitiativeRequestSchema,
   syncActiveAreaEffectsRequestSchema,
+  syncSpellAnchorsRequestSchema,
   singleTargetRequestSchema,
   startCombatRequestSchema,
   syncTokensRequestSchema
@@ -329,7 +330,8 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
       return reply.status(200).send(toIntegrationSnapshot(encounter));
     }
 
-    const nextEncounter = repository.setActiveAreaEffects(sessionId, []);
+    let nextEncounter = repository.setActiveAreaEffects(sessionId, []);
+    nextEncounter = repository.setSpellAnchors(sessionId, []);
     return reply.status(200).send(toIntegrationSnapshot(nextEncounter));
   });
 
@@ -349,6 +351,26 @@ export function registerStateRoutes(app: FastifyInstance, repository: InMemoryEn
     request.log.info(
       { sessionId, activeAreaEffects: parse.data.activeAreaEffects.length },
       `${LOG_PREFIX} PUT area-effects`
+    );
+    return reply.status(200).send(toIntegrationSnapshot(updated));
+  });
+
+  app.put("/integration/sessions/:sessionId/spell-anchors", async (request, reply) => {
+    const { sessionId } = request.params as { sessionId: string };
+    const encounter = repository.getEncounter(sessionId);
+    if (!encounter) {
+      return err(reply, 404, "session_not_found", "Session not found");
+    }
+
+    const parse = syncSpellAnchorsRequestSchema.safeParse(request.body);
+    if (!parse.success) {
+      return reply.status(400).send({ message: "Invalid request body", errors: parse.error.errors });
+    }
+
+    const updated = repository.setSpellAnchors(sessionId, parse.data.spellAnchors);
+    request.log.info(
+      { sessionId, spellAnchors: parse.data.spellAnchors.length },
+      `${LOG_PREFIX} PUT spell-anchors`
     );
     return reply.status(200).send(toIntegrationSnapshot(updated));
   });

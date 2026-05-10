@@ -42,6 +42,7 @@ class LimiarMapStateResponse:
     grid_height: int | None = None
     obstacles: tuple[LimiarMapObstacleState, ...] = ()
     active_area_effects: tuple[dict[str, Any], ...] = ()
+    spell_anchors: tuple[dict[str, Any], ...] = ()
     active_combatant_id: str | None = None
     round_number: int | None = None
     turn_index: int | None = None

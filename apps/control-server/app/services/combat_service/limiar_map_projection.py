@@ -25,6 +25,7 @@ from .limiar_map_projection_payloads import (
 )
 from .limiar_map_projection_sync import _sync_existing_map_turn
 from .persistent_area_effects import active_area_effects_for_map
+from .spell_anchors import spell_anchors_for_map
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +95,13 @@ class LimiarMapCombatProjectionService:
             "LimiarMap combat/start started for session_id=%s action_id=%s combatants=%s",
             session_id, action_id, len(combatants_payload),
         )
-        return self._issue_combat_start(
+        result = self._issue_combat_start(
             session_id, action_id, state, combatants_payload,
             battle_map_payload, latest_map_state,
         )
+        if result.map_available:
+            self.sync_spell_anchors_to_map(session_id, state)
+        return result
 
     def _issue_combat_start(
         self,
@@ -273,6 +277,21 @@ class LimiarMapCombatProjectionService:
                 exc,
             )
 
+    def sync_spell_anchors_to_map(self, session_id: str, state: CombatState) -> None:
+        anchors = spell_anchors_for_map(state)
+        try:
+            self._limiar_map_client.sync_spell_anchors(
+                session_id,
+                {"spellAnchors": anchors},
+            )
+        except LimiarMapClientError as exc:
+            logger.warning(
+                "[spell-anchors] sync failed session=%s anchors=%d: %s",
+                session_id,
+                len(anchors),
+                exc,
+            )
+
     def project_combat_advance(self, session_id: str, state: CombatState) -> None:
         if state.phase not in (CombatPhase.active, "active"):
             return
@@ -294,6 +313,7 @@ class LimiarMapCombatProjectionService:
             session_id, action_id, state.round, state.current_turn_index,
         )
         self.sync_conditions_to_map(session_id, state)
+        self.sync_spell_anchors_to_map(session_id, state)
 
     def project_combat_end(self, session_id: str, state: CombatState) -> None:
         if state.phase not in (CombatPhase.ended, "ended"):
@@ -383,3 +403,9 @@ def maybe_sync_active_area_effects_to_limiar_map(session_id: str, state: CombatS
     if not settings.limiar_map_enabled or not state.use_map:
         return
     get_limiar_map_projection_service().sync_active_area_effects_to_map(session_id, state)
+
+
+def maybe_sync_spell_anchors_to_limiar_map(session_id: str, state: CombatState) -> None:
+    if not settings.limiar_map_enabled or not state.use_map:
+        return
+    get_limiar_map_projection_service().sync_spell_anchors_to_map(session_id, state)

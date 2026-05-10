@@ -236,6 +236,7 @@ def parse_state_response(payload: dict[str, Any]) -> LimiarMapStateResponse:
     battle_map_payload = payload.get("battleMap")
     obstacles_payload = payload.get("obstacles")
     active_area_effects_payload = payload.get("activeAreaEffects")
+    spell_anchors_payload = payload.get("spellAnchors")
 
     if not isinstance(session_id, str) or not session_id.strip():
         raise LimiarMapClientError(
@@ -265,6 +266,11 @@ def parse_state_response(payload: dict[str, Any]) -> LimiarMapStateResponse:
     if active_area_effects_payload is not None and not isinstance(active_area_effects_payload, list):
         raise LimiarMapClientError(
             "LimiarMap state response has invalid activeAreaEffects",
+            kind="payload",
+        )
+    if spell_anchors_payload is not None and not isinstance(spell_anchors_payload, list):
+        raise LimiarMapClientError(
+            "LimiarMap state response has invalid spellAnchors",
             kind="payload",
         )
 
@@ -311,6 +317,15 @@ def parse_state_response(payload: dict[str, Any]) -> LimiarMapStateResponse:
             )
         active_area_effects.append(effect_payload)
 
+    spell_anchors: list[dict[str, Any]] = []
+    for anchor_payload in spell_anchors_payload or []:
+        if not isinstance(anchor_payload, dict):
+            raise LimiarMapClientError(
+                "LimiarMap spell anchor entry is invalid",
+                kind="payload",
+            )
+        spell_anchors.append(anchor_payload)
+
     return LimiarMapStateResponse(
         session_id=session_id,
         version=version,
@@ -319,6 +334,7 @@ def parse_state_response(payload: dict[str, Any]) -> LimiarMapStateResponse:
         grid_height=grid_height,
         obstacles=tuple(obstacles),
         active_area_effects=tuple(active_area_effects),
+        spell_anchors=tuple(spell_anchors),
         active_combatant_id=active_combatant_id,
         round_number=round_number,
         turn_index=turn_index,

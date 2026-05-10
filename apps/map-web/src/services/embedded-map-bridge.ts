@@ -1,4 +1,4 @@
-import type { ActiveAreaEffect, Coordinate, Token } from "@limiarmap/shared-contracts";
+import type { ActiveAreaEffect, Coordinate, SpellAnchor, Token } from "@limiarmap/shared-contracts";
 import { reconnectAs } from "./centrifugo-client";
 import {
   battleMapStore,
@@ -20,6 +20,7 @@ type EmbeddedMapContextMessage = {
     selectionMode?: EmbeddedSelectionMode;
     previewCells?: Coordinate[];
     activeAreaEffects?: ActiveAreaEffect[];
+    spellAnchors?: SpellAnchor[];
     selectedCell?: Coordinate | null;
     selectedTargetRefId?: string | null;
     combatPhase?: EmbeddedCombatPhase | null;
@@ -90,6 +91,7 @@ export const isEmbeddedMapContextMessage = (
     selectionMode?: unknown;
     previewCells?: unknown;
     activeAreaEffects?: unknown;
+    spellAnchors?: unknown;
     selectedCell?: unknown;
     selectedTargetRefId?: unknown;
     combatPhase?: unknown;
@@ -129,6 +131,24 @@ export const isEmbeddedMapContextMessage = (
           candidate.affectedCells.every(isCoordinate)
         );
       }));
+  const spellAnchorsValid =
+    payload.spellAnchors == null ||
+    (Array.isArray(payload.spellAnchors) &&
+      payload.spellAnchors.every((anchor) => {
+        if (!anchor || typeof anchor !== "object") return false;
+        const candidate = anchor as {
+          id?: unknown;
+          sourceSpellKey?: unknown;
+          position?: unknown;
+          renderKind?: unknown;
+        };
+        return (
+          typeof candidate.id === "string" &&
+          typeof candidate.sourceSpellKey === "string" &&
+          isCoordinate(candidate.position) &&
+          typeof candidate.renderKind === "string"
+        );
+      }));
   const selectedCellValid =
     payload.selectedCell == null || isCoordinate(payload.selectedCell);
   const selectedTargetValid =
@@ -148,6 +168,7 @@ export const isEmbeddedMapContextMessage = (
     selectionModeValid &&
     previewCellsValid &&
     activeAreaEffectsValid &&
+    spellAnchorsValid &&
     selectedCellValid &&
     selectedTargetValid &&
     combatPhaseValid &&
@@ -164,6 +185,7 @@ export function applyEmbeddedMapContext(message: EmbeddedMapContextMessage["payl
     selectionMode: message.selectionMode ?? "none",
     previewCells: message.previewCells ?? [],
     activeAreaEffects: message.activeAreaEffects ?? [],
+    spellAnchors: message.spellAnchors ?? [],
     selectedCell: message.selectedCell ?? null,
     selectedTargetRefId: message.selectedTargetRefId ?? null,
     combatPhase: message.combatPhase ?? null,

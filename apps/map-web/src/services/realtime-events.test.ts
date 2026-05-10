@@ -34,6 +34,7 @@ function buildSnapshot(): EncounterSnapshotResponse {
     },
     obstacles: [],
     edgeObstacles: [],
+    spellAnchors: [],
     tokens: [
       {
         id: "tok_player",

@@ -92,4 +92,40 @@ describe("active area effects integration", () => {
 
     await app.close();
   });
+
+  it("stores spell anchors in encounter state and returns them in state", async () => {
+    const { app, repository } = createApp();
+    registerIntegrationRoutes(app, repository);
+    repository.ensureEncounter("session-123");
+    repository.setSpellAnchors("session-123", [
+      {
+        id: "spell_anchor:1",
+        sourceSpellKey: "spiritual_weapon",
+        sourceSpellName: "Arma Espiritual",
+        ownerParticipantId: "p1",
+        createdByParticipantId: "p1",
+        position: { x: 12, y: 10 },
+        durationType: "rounds",
+        remainingRounds: 10,
+        expiresOn: "turn_start",
+        expiresAtParticipantId: "p1",
+        renderKind: "generic",
+        metadata: {},
+      },
+    ]);
+
+    const stateResponse = await app.inject({
+      method: "GET",
+      url: "/integration/sessions/session-123/state",
+    });
+    expect(stateResponse.statusCode).toBe(200);
+    expect(stateResponse.json().spellAnchors).toHaveLength(1);
+    expect(stateResponse.json().spellAnchors[0]).toMatchObject({
+      sourceSpellKey: "spiritual_weapon",
+      renderKind: "generic",
+      position: { x: 12, y: 10 },
+    });
+
+    await app.close();
+  });
 });
