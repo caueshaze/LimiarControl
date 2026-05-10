@@ -153,6 +153,7 @@ ActiveEffectDurationType = Literal[
     "until_long_rest",
     "until_short_rest",
     "until_removed",
+    "timed",
 ]
 
 
@@ -166,6 +167,8 @@ class ActiveEffect(BaseModel):
     remaining_rounds: Optional[int] = None
     expires_on: Optional[Literal["turn_start", "turn_end"]] = None
     expires_at_participant_id: Optional[str] = None
+    created_at_game_time_seconds: Optional[int] = None
+    expires_at_game_time_seconds: Optional[int] = None
     created_at: str
     metadata: dict | None = None
     display_label: str | None = None

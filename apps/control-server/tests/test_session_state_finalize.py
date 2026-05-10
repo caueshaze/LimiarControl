@@ -57,6 +57,95 @@ class SessionStateFinalizeTests(unittest.TestCase):
 
         self.assertEqual(armor_class, 15)
 
+    def test_finalize_prunes_expired_timed_effects_when_game_time_is_provided(self):
+        state = finalize_session_state_data(
+            {
+                "active_spell_effects": [
+                    {
+                        "id": "eff-expired",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 3600,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                    {
+                        "id": "eff-valid",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 7200,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                ],
+            },
+            game_time_seconds=3600,
+        )
+
+        self.assertEqual(len(state["active_spell_effects"]), 1)
+        self.assertEqual(state["active_spell_effects"][0]["id"], "eff-valid")
+
+    def test_finalize_preserves_timed_effects_without_game_time(self):
+        state = finalize_session_state_data(
+            {
+                "active_spell_effects": [
+                    {
+                        "id": "eff-expired",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 3600,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(len(state["active_spell_effects"]), 1)
+        self.assertEqual(state["active_spell_effects"][0]["id"], "eff-expired")
+
+    def test_finalize_prunes_timed_effect_with_invalid_expiration(self):
+        state = finalize_session_state_data(
+            {
+                "active_spell_effects": [
+                    {
+                        "id": "eff-invalid",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "created_at_game_time_seconds": 100,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                    {
+                        "id": "eff-valid",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 7200,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                ],
+            },
+            game_time_seconds=3600,
+        )
+
+        self.assertEqual(len(state["active_spell_effects"]), 1)
+        self.assertEqual(state["active_spell_effects"][0]["id"], "eff-valid")
+
+    def test_finalize_keeps_timed_effect_without_created_at_game_time(self):
+        state = finalize_session_state_data(
+            {
+                "active_spell_effects": [
+                    {
+                        "id": "eff-valid",
+                        "kind": "spell_effect",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 7200,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ],
+            },
+            game_time_seconds=3600,
+        )
+
+        self.assertEqual(len(state["active_spell_effects"]), 1)
+        self.assertEqual(state["active_spell_effects"][0]["id"], "eff-valid")
+
 
 if __name__ == "__main__":
     unittest.main()

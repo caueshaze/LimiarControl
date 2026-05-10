@@ -19,7 +19,8 @@ def get_game_time_seconds(session_id: str, db: DbSession) -> int:
     runtime = db.exec(
         select(SessionRuntime).where(SessionRuntime.session_id == session_id)
     ).first()
-    return runtime.game_time_seconds if runtime else 0
+    value = getattr(runtime, "game_time_seconds", None) if runtime else None
+    return value if isinstance(value, int) else 0
 
 
 def set_game_time_seconds(session_id: str, value: int, db: DbSession) -> None:

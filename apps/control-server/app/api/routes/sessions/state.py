@@ -25,6 +25,7 @@ from app.services.combat_service.persistent_effects import (
     clear_persisted_concentration_effects,
     remove_persisted_effect,
 )
+from app.services.game_time import get_game_time_seconds
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
     build_persisted_effects,
@@ -328,12 +329,15 @@ async def _cast_spell_out_of_combat_for_player(
                 session, session_id, old_group, exclude_user_id=caster_user_id
             )
 
+    current_game_time_seconds = get_game_time_seconds(session_id, session)
+
     # --- Build target effects ---
     new_target_effects = build_persisted_effects(
         spell=campaign_spell,
         caster_user_id=caster_user_id,
         target_user_id=target_user_id,
         variant_key=req.variantKey,
+        game_time_seconds=current_game_time_seconds,
     )
     if not new_target_effects:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
@@ -347,12 +351,37 @@ async def _cast_spell_out_of_combat_for_player(
     if is_ally_target:
         # Concentration marker on the caster (no gameplay bonus)
         if campaign_spell.concentration and group_id:
+            timed_marker_effect = next(
+                (
+                    effect for effect in new_target_effects
+                    if effect.get("duration_type") == "timed"
+                ),
+                None,
+            )
             marker = build_concentration_marker(
                 spell=campaign_spell,
                 caster_user_id=caster_user_id,
                 target_user_id=target_user_id,
                 concentration_group=group_id,
                 variant_key=req.variantKey,
+                duration_type=(
+                    timed_marker_effect.get("duration_type")
+                    if isinstance(timed_marker_effect, dict)
+                    and isinstance(timed_marker_effect.get("duration_type"), str)
+                    else "until_long_rest"
+                ),
+                created_at_game_time_seconds=(
+                    timed_marker_effect.get("created_at_game_time_seconds")
+                    if isinstance(timed_marker_effect, dict)
+                    and isinstance(timed_marker_effect.get("created_at_game_time_seconds"), int)
+                    else None
+                ),
+                expires_at_game_time_seconds=(
+                    timed_marker_effect.get("expires_at_game_time_seconds")
+                    if isinstance(timed_marker_effect, dict)
+                    and isinstance(timed_marker_effect.get("expires_at_game_time_seconds"), int)
+                    else None
+                ),
             )
             caster_effects = list(updated_caster_json.get("active_spell_effects") or [])
             caster_effects.append(marker)
@@ -366,7 +395,10 @@ async def _cast_spell_out_of_combat_for_player(
         target_effects = list(target_json.get("active_spell_effects") or [])
         target_effects.extend(new_target_effects)
         target_json["active_spell_effects"] = target_effects
-        target_state.state_json = finalize_session_state_data(target_json)  # type: ignore[union-attr]
+        target_state.state_json = finalize_session_state_data(  # type: ignore[union-attr]
+            target_json,
+            game_time_seconds=current_game_time_seconds,
+        )
         flag_modified(target_state, "state_json")
         session.add(target_state)
     else:
@@ -377,7 +409,10 @@ async def _cast_spell_out_of_combat_for_player(
         marker_effect_id = None
 
     # --- Persist caster state ---
-    caster_state.state_json = finalize_session_state_data(updated_caster_json)
+    caster_state.state_json = finalize_session_state_data(
+        updated_caster_json,
+        game_time_seconds=current_game_time_seconds,
+    )
     flag_modified(caster_state, "state_json")
     session.add(caster_state)
 
@@ -613,7 +648,10 @@ async def update_player_session_state(
 
     previous_state = state.state_json if isinstance(state.state_json, dict) else {}
     actor_member = require_campaign_member(entry, user, session)
-    next_state = finalize_session_state_data(payload.state)
+    next_state = finalize_session_state_data(
+        payload.state,
+        game_time_seconds=get_game_time_seconds(session_id, session),
+    )
     state.state_json = next_state
     combat_state = CombatService.sync_participant_status_for_session(
         session,

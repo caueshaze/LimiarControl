@@ -267,6 +267,11 @@ export type SpellDeclarativeDuration = {
   anchor?: SpellDeclarativeDurationAnchor | null;
 };
 
+export type SpellOutOfCombatTimedDuration = {
+  type: "timed";
+  seconds: number;
+};
+
 export const SpellDeclarativeConditionType = {
   BLINDED: "blinded",
   CHARMED: "charmed",
@@ -312,6 +317,7 @@ export type SpellDeclarativeEffect =
       type: "apply_condition";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { condition: SpellDeclarativeConditionType };
       stacking?: "stack" | "replace" | null;
     }
@@ -319,6 +325,7 @@ export type SpellDeclarativeEffect =
       type: "modify_stat";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { stat: SpellDeclarativeModifyStat; value: number };
       stacking?: "stack" | "replace" | null;
     }
@@ -326,6 +333,7 @@ export type SpellDeclarativeEffect =
       type: "advantage_on_checks" | "disadvantage_on_checks";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma"; against?: "any" | "effect_target" | "selected_target" };
       stacking?: "stack" | "replace" | null;
     }
@@ -333,6 +341,7 @@ export type SpellDeclarativeEffect =
       type: "restrict_action";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { action: SpellDeclarativeRestrictActionKind };
       stacking?: "stack" | "replace" | null;
     };

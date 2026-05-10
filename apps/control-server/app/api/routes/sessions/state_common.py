@@ -17,6 +17,7 @@ from app.models.session import Session, SessionStatus
 from app.models.session_state import SessionState
 from app.schemas.session_state import PendingSpellPreparationRead, SessionStateRead
 from app.services.centrifugo import centrifugo
+from app.services.game_time import get_game_time_seconds
 from app.services.realtime import build_event, campaign_channel, event_version
 from app.services.combat_service.persistent_effects import derive_active_concentration
 from app.services.session_rest import ensure_rest_state
@@ -202,7 +203,8 @@ def seed_state_from_character_sheet(
     if not base_sheet:
         return None
     state_json = finalize_session_state_data(
-        base_sheet.data if isinstance(base_sheet.data, dict) else {}
+        base_sheet.data if isinstance(base_sheet.data, dict) else {},
+        game_time_seconds=get_game_time_seconds(session_id, db),
     )
     seed_initial_spell_preparation(state_json)
     entry = SessionState(
@@ -249,7 +251,10 @@ def ensure_session_state(
         state.state_json if isinstance(state.state_json, dict) else None,
         base_sheet_data,
     )
-    merged_state = finalize_session_state_data(merged_state)
+    merged_state = finalize_session_state_data(
+        merged_state,
+        game_time_seconds=get_game_time_seconds(session_id, db),
+    )
     if merged_state != state.state_json:
         state.state_json = merged_state
         db.add(state)

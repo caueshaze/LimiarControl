@@ -80,6 +80,11 @@ class SpellDeclarativeDuration(BaseModel):
         return self
 
 
+class SpellOutOfCombatTimedDuration(BaseModel):
+    type: Literal["timed"] = "timed"
+    seconds: int = Field(ge=1)
+
+
 class ApplyConditionParams(BaseModel):
     condition: SpellDeclarativeConditionType
 
@@ -123,6 +128,7 @@ class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
     duration: SpellDeclarativeDuration | None = None
+    out_of_combat_duration: SpellOutOfCombatTimedDuration | None = None
     params: (
         ApplyConditionParams
         | ModifyStatParams

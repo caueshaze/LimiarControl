@@ -177,6 +177,18 @@ describe("getActiveEffectLifecycleBadges", () => {
     expect(badges.map((b) => b.key)).toEqual(["until-removed"]);
   });
 
+  it("returns empty array for timed duration without dedicated UI badge", () => {
+    const effect = {
+      id: "eff-1",
+      kind: "spell_effect",
+      duration_type: "timed",
+      expires_at_game_time_seconds: 7200,
+      metadata: {},
+    };
+    const badges = getActiveEffectLifecycleBadges(effect);
+    expect(badges).toHaveLength(0);
+  });
+
   it("returns manual + long-rest badges for legacy manual duration", () => {
     const effect = {
       id: "eff-1",

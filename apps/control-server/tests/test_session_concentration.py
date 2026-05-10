@@ -1265,7 +1265,7 @@ class TestGmRemovePersistedEffect(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.require_session_gm")
     @patch("app.api.routes.sessions.state._require_session_participant")
     @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda x: x)
+    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda x, **kwargs: x)
     @patch("app.api.routes.sessions.state.publish_state_update")
     @patch("app.api.routes.sessions.state.to_state_read")
     async def test_gm_remove_preserves_unrelated_effects(
