@@ -192,7 +192,9 @@ export const useGmDashboardActions = ({
                     ? "Long rest started for the whole table."
                     : type === "end_rest"
                       ? "The active rest was ended for the whole table."
-                      : "Roll request accepted by the server.";
+                      : type === "advance_game_time"
+                        ? "Game time advanced."
+                        : "Roll request accepted by the server.";
       if (commandFeedbackTimeoutRef.current) window.clearTimeout(commandFeedbackTimeoutRef.current);
       setCommandFeedback({ tone: "success", type, message });
       commandFeedbackTimeoutRef.current = window.setTimeout(() => {

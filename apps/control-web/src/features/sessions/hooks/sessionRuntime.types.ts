@@ -7,7 +7,8 @@ export type SessionCommand = {
     | "request_roll"
     | "start_short_rest"
     | "start_long_rest"
-    | "end_rest";
+    | "end_rest"
+    | "advance_game_time";
   data?: Record<string, unknown>;
   issuedBy?: string;
   issuedAt?: string;
@@ -22,6 +23,7 @@ export type SessionRuntimeState = {
   shopOpen: boolean;
   combatActive: boolean;
   restState: SessionRestState;
+  gameTimeSeconds: number;
 };
 
 export const createInitialSessionRuntimeState = (): SessionRuntimeState => ({
@@ -31,4 +33,5 @@ export const createInitialSessionRuntimeState = (): SessionRuntimeState => ({
   shopOpen: false,
   combatActive: false,
   restState: "exploration",
+  gameTimeSeconds: 0,
 });

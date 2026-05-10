@@ -28,6 +28,7 @@ VALID_COMMANDS = {
     "start_short_rest",
     "start_long_rest",
     "end_rest",
+    "advance_game_time",
 }
 
 

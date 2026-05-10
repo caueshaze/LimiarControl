@@ -18,6 +18,7 @@ from app.schemas.session import (
     CombatLogEntryActivityEvent,
     ConsumableActivityEvent,
     EntityActivityEvent,
+    GameTimeActivityEvent,
     HitDiceActivityEvent,
     LevelUpActivityEvent,
     OutOfCombatEffectRemovedActivityEvent,
@@ -202,6 +203,20 @@ def get_session_activity(
                 username=command_user.username if command_user else None,
                 displayName=actor_name,
                 action=action,
+                secondsAdvanced=payload.get("secondsAdvanced") if isinstance(payload.get("secondsAdvanced"), int) else None,
+                gameTimeSeconds=payload.get("gameTimeSeconds") if isinstance(payload.get("gameTimeSeconds"), int) else None,
+                timestamp=command.created_at,
+                sessionOffsetSeconds=offset(command.created_at),
+            ))
+            continue
+        if command.command_type == "advance_game_time":
+            events.append(GameTimeActivityEvent(
+                userId=command.user_id,
+                username=command_user.username if command_user else None,
+                displayName=actor_name,
+                seconds=int(payload.get("seconds", 0) or 0),
+                gameTimeSeconds=int(payload.get("gameTimeSeconds", 0) or 0),
+                reason=payload.get("reason") if isinstance(payload.get("reason"), str) else None,
                 timestamp=command.created_at,
                 sessionOffsetSeconds=offset(command.created_at),
             ))
