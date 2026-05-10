@@ -59,6 +59,7 @@ class TargetVariantAssignment(BaseModel):
 class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str | None = None
+    target_ref_ids: list[str] | None = None
     origin_cell: "CombatGridCell | None" = None
     anchor_cell: "CombatGridCell | None" = None
     inventory_item_id: str | None = None

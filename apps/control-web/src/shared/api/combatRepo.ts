@@ -288,6 +288,7 @@ export type CombatAttackResult = {
 export type CombatCastSpellRequest = {
   actor_participant_id?: string | null;
   target_ref_id?: string | null;
+  target_ref_ids?: string[] | null;
   effect_instance_targets?: Array<{
     instance_index: number;
     target_ref_id: string;

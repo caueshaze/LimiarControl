@@ -36,6 +36,7 @@ import {
   VariantTargetAssignmentSelector,
   type TargetVariantAssignmentInput,
 } from "./VariantTargetAssignmentSelector";
+import { PlainMultiTargetSelector } from "./PlainMultiTargetSelector";
 import { SpellCastDialogActions } from "./SpellCastDialogActions";
 import { parseBonus } from "./spellCastHelpers";
 import { SpellCastDialogHeader } from "./SpellCastDialogHeader";
@@ -95,6 +96,8 @@ type BuildNonAreaSpellCastPayloadParams = {
   effectInstanceTargets: EffectInstanceTargetInput[];
   isMultiInstanceSpell: boolean;
   isVariantMultiTargetSpell?: boolean;
+  isPlainMultiTargetAutomationSpell?: boolean;
+  plainTargetRefIds?: string[];
   manualRoll?: number | null;
   parsedBonus: number;
   rollSource?: "manual" | "system";
@@ -116,6 +119,8 @@ export const buildNonAreaSpellCastPayload = ({
   effectInstanceTargets,
   isMultiInstanceSpell,
   isVariantMultiTargetSpell = false,
+  isPlainMultiTargetAutomationSpell = false,
+  plainTargetRefIds = [],
   manualRoll = null,
   parsedBonus,
   rollSource = "system",
@@ -130,11 +135,12 @@ export const buildNonAreaSpellCastPayload = ({
   targetRefId = null,
 }: BuildNonAreaSpellCastPayloadParams): CombatCastSpellRequest => ({
   actor_participant_id: actorParticipantId,
-  target_ref_id: isVariantMultiTargetSpell
+  target_ref_id: isVariantMultiTargetSpell || isPlainMultiTargetAutomationSpell
     ? null
     : isMultiInstanceSpell
       ? effectInstanceTargets[0]?.target_ref_id ?? targetRefId ?? null
       : targetRefId,
+  target_ref_ids: isPlainMultiTargetAutomationSpell && plainTargetRefIds.length > 0 ? plainTargetRefIds : null,
   effect_instance_targets: isMultiInstanceSpell ? effectInstanceTargets : null,
   variant_key: isVariantMultiTargetSpell ? null : selectedVariantKey,
   target_variant_assignments: isVariantMultiTargetSpell ? targetVariantAssignments : null,
@@ -249,6 +255,9 @@ export const PlayerSpellCastDialog = ({
   const [selectedVariantKey, setSelectedVariantKey] = useState<string>("");
   const [targetVariantAssignments, setTargetVariantAssignments] = useState<TargetVariantAssignmentInput[]>([]);
   const [effectInstanceTargets, setEffectInstanceTargets] = useState<EffectInstanceTargetInput[]>([]);
+  const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>(
+    target ? [target.ref_id] : [],
+  );
   const [result, setResult] = useState<CombatSpellResult | null>(null);
   const [spellMapState, setSpellMapState] = useState<Awaited<ReturnType<typeof combatRepo.getMapState>> | null>(null);
   const [multiInstanceSpatialValidations, setMultiInstanceSpatialValidations] = useState<
@@ -326,6 +335,7 @@ export const PlayerSpellCastDialog = ({
   const maxTargets = Math.max(1, resolvedSpellContextState.context?.max_targets ?? 1);
   const isVariantSpell = spellVariants.length > 0;
   const isVariantMultiTargetSpell = isVariantSpell && !isAreaSpell && !isMultiInstanceSpell && maxTargets > 1;
+  const isPlainMultiTargetAutomationSpell = !isAreaSpell && !isMultiInstanceSpell && !isVariantSpell && maxTargets > 1;
   const hasCompleteVariantAssignments = hasCompleteTargetVariantAssignments(targetVariantAssignments, maxTargets);
   const selectableParticipants = participants.filter((participant) => participant.id !== actor.id);
   const normalizedEffectInstanceTargets = normalizeEffectInstanceTargets(
@@ -621,6 +631,10 @@ export const PlayerSpellCastDialog = ({
       setError("Escolha ao menos dois alvos e uma variante para cada um.");
       return;
     }
+    if (isPlainMultiTargetAutomationSpell && selectedTargetIds.length === 0) {
+      setError("Selecione ao menos um alvo.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -661,6 +675,8 @@ export const PlayerSpellCastDialog = ({
               effectInstanceTargets: normalizedEffectInstanceTargets,
               isMultiInstanceSpell,
               isVariantMultiTargetSpell,
+              isPlainMultiTargetAutomationSpell,
+              plainTargetRefIds: selectedTargetIds,
               manualRoll: payload?.manual_roll ?? null,
               parsedBonus,
               rollSource: payload?.roll_source ?? "system",
@@ -798,6 +814,19 @@ export const PlayerSpellCastDialog = ({
           />
         ) : null}
 
+        {!result && isPlainMultiTargetAutomationSpell ? (
+          <PlainMultiTargetSelector
+            disabled={loading}
+            maxTargets={maxTargets}
+            participants={selectableParticipants}
+            value={selectedTargetIds}
+            onChange={(nextValue) => {
+              setSelectedTargetIds(nextValue);
+              setError(null);
+            }}
+          />
+        ) : null}
+
         {!result && isMultiInstanceSpell ? (
           <InstanceTargetSelector
             disabled={loading}
@@ -930,7 +959,8 @@ export const PlayerSpellCastDialog = ({
               !spellContextReady ||
               (isMultiInstanceSpell && !effectInstanceTargetsComplete) ||
               (isVariantSpell && !isVariantMultiTargetSpell && !selectedVariantKey) ||
-              (isVariantMultiTargetSpell && !hasCompleteVariantAssignments)
+              (isVariantMultiTargetSpell && !hasCompleteVariantAssignments) ||
+              (isPlainMultiTargetAutomationSpell && selectedTargetIds.length === 0)
             }
             validationMessage={
               !spellContextReady
