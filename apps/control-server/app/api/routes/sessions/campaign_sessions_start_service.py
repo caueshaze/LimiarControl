@@ -114,6 +114,7 @@ def reset_runtime(runtime: SessionRuntime) -> None:
     runtime.lobby_ready = []
     runtime.shop_open = False
     runtime.combat_active = False
+    runtime.game_time_seconds = 0
 
 
 def create_lobby_session(
