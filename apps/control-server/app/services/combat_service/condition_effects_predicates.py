@@ -176,12 +176,18 @@ def is_lightly_obscured(participant: dict) -> bool:
     return has_condition(participant, "lightly_obscured")
 
 
-def compute_encumbrance_tier_from_lb(strength_score: float, weight_lb: float) -> str:
-    if weight_lb > strength_score * 15:
+def compute_encumbrance_tier_from_lb(
+    strength_score: float,
+    weight_lb: float,
+    *,
+    capacity_multiplier: float = 1.0,
+) -> str:
+    effective = strength_score * capacity_multiplier
+    if weight_lb > effective * 15:
         return "overloaded"
-    if weight_lb > strength_score * 10:
+    if weight_lb > effective * 10:
         return "heavily_encumbered"
-    if weight_lb > strength_score * 5:
+    if weight_lb > effective * 5:
         return "encumbered"
     return "normal"
 
@@ -205,7 +211,8 @@ def _get_encumbrance_tier_for_participant(participant: dict) -> str:
     weight_kg = participant.get("total_weight_kg")
     if isinstance(strength, (int, float)) and isinstance(weight_kg, (int, float)) and strength > 0:
         weight_lb = weight_kg / _LB_TO_KG
-        return compute_encumbrance_tier_from_lb(strength, weight_lb)
+        multiplier = get_carrying_capacity_multiplier(participant)
+        return compute_encumbrance_tier_from_lb(strength, weight_lb, capacity_multiplier=multiplier)
 
     return "normal"
 

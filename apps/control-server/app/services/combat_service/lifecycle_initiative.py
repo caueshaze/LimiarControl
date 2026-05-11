@@ -8,7 +8,7 @@ from app.models.session import Session as CampaignSession
 from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, decode_obstacles
 from app.schemas.combat import CombatMapSelection
 
-from .condition_effects_predicates import compute_encumbrance_tier_from_lb
+from .condition_effects_predicates import compute_encumbrance_tier_from_lb, get_carrying_capacity_multiplier
 from .exceptions import CombatServiceError
 from .limiar_map_projection import (
     maybe_project_combat_start_to_limiar_map as _project_combat_start_to_limiar_map,
@@ -64,7 +64,7 @@ def get_player_total_inventory_weight_lb(db, session_id: str, player_user_id: st
     return float(result or 0.0)
 
 
-def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str) -> str:
+def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, active_effects: list | None = None) -> str:
     from app.models.session_state import SessionState
 
     entry = db.exec(
@@ -78,7 +78,12 @@ def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str) -> st
     sj = entry.state_json or {}
     strength = float((sj.get("abilities") or {}).get("strength") or 10)
     total_lb = get_player_total_inventory_weight_lb(db, session_id, player_user_id)
-    return compute_encumbrance_tier_from_lb(strength, total_lb)
+    capacity_multiplier = (
+        get_carrying_capacity_multiplier({"active_effects": active_effects})
+        if active_effects
+        else 1.0
+    )
+    return compute_encumbrance_tier_from_lb(strength, total_lb, capacity_multiplier=capacity_multiplier)
 
 
 class CombatLifecycleInitiativeMixin:
@@ -163,6 +168,9 @@ class CombatLifecycleInitiativeMixin:
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(db, session_id, p.ref_id)
                 from .persistent_effects import restore_persisted_effects
                 restore_persisted_effects(db, session_id, entry)
+                entry["encumbrance_tier"] = _encumbrance_tier_for_player(
+                    db, session_id, p.ref_id, active_effects=entry.get("active_effects"),
+                )
             built_participants.append(entry)
 
         new_state = CombatState(
@@ -204,7 +212,8 @@ class CombatLifecycleInitiativeMixin:
         participant = cls._get_participant_by_ref(state, player_user_id)
         if not participant:
             return False
-        new_tier = _encumbrance_tier_for_player(db, session_id, player_user_id)
+        active_effects = participant.get("active_effects")
+        new_tier = _encumbrance_tier_for_player(db, session_id, player_user_id, active_effects=active_effects)
         old_tier = participant.get("encumbrance_tier", "normal")
         if new_tier == old_tier:
             return False
