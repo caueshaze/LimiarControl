@@ -262,6 +262,35 @@ export type CombatAttackRequest = {
   override_resource_limit?: boolean;
 };
 
+export type WeaponDamageOperation = "add" | "subtract";
+export type WeaponDamageComponentKind =
+  | "base_weapon"
+  | "ability_modifier"
+  | "flat_modifier"
+  | "extra_damage"
+  | "weapon_damage_modifier";
+
+export type WeaponDamageComponent = {
+  id: string;
+  kind: WeaponDamageComponentKind;
+  source_key: string | null;
+  source_label: string;
+  dice: string | null;
+  rolls: number[];
+  operation: WeaponDamageOperation;
+  signed_total: number;
+  damage_type: string | null;
+  doubled_on_critical: boolean;
+  minimum_total_damage: number | null;
+};
+
+export type WeaponDamageBreakdown = {
+  total_before_minimum: number;
+  minimum_applied: number | null;
+  total: number;
+  components: WeaponDamageComponent[];
+};
+
 export type CombatAttackResult = {
   roll: number;
   is_hit: boolean;
@@ -283,6 +312,9 @@ export type CombatAttackResult = {
   base_damage?: number | null;
   damage_roll_source?: RollSource | null;
   concentration_check?: CombatConcentrationCheckResult | null;
+  damage_breakdown?: WeaponDamageBreakdown | null;
+  extra_damage_rolls?: number[];
+  extra_damage_label?: string | null;
 };
 
 export type CombatCastSpellRequest = {
@@ -713,6 +745,9 @@ export type CombatEntityActionResult = {
   base_damage?: number | null;
   damage_roll_source?: RollSource | null;
   concentration_check?: CombatConcentrationCheckResult | null;
+  damage_breakdown?: WeaponDamageBreakdown | null;
+  extra_damage_rolls?: number[];
+  extra_damage_label?: string | null;
 };
 
 export type CombatConcentrationCheckResult = {

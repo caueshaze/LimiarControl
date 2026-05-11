@@ -74,7 +74,7 @@ export const GmActionResultPanel = ({
           </p>
         ) : null}
         {result.is_hit && !pendingDamage ? (
-          <p className="mt-1 text-xs text-slate-400">{formatDamageBreakdown(result)}</p>
+          <p className="mt-1 text-xs text-slate-400" style={{ whiteSpace: "pre-line" }}>{formatDamageBreakdown(result)}</p>
         ) : null}
         {result.is_hit && !pendingDamage ? (
           <p className="mt-1 text-xs text-slate-400">Perfil de dano: {damageProfile}</p>

@@ -54,6 +54,9 @@ class CombatEntityActionResult(BaseModel):
     base_damage: int | None = None
     damage_roll_source: RollSource | None = None
     concentration_check: "CombatConcentrationCheckResult | None" = None
+    damage_breakdown: "WeaponDamageBreakdown | None" = None
+    extra_damage_rolls: list[int] = Field(default_factory=list)
+    extra_damage_label: str | None = None
 
 
 class CombatConcentrationCheckResult(BaseModel):
