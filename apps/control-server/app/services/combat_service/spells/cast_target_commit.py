@@ -23,6 +23,9 @@ class CastTargetCommitMixin:
         action_cost = resolution["action_cost"]
         target_p = resolution["target_p"]
         automation_result = resolution["automation_result"]
+        on_hit_applied_declarative_effects_by_target = resolution.get(
+            "on_hit_applied_declarative_effects_by_target"
+        )
 
         # Spell casts mutate nested participant JSON (turn resources, pending saves,
         # declarative active effects). Mark it dirty so the combat state persists.
@@ -88,4 +91,5 @@ class CastTargetCommitMixin:
             summary_text=summary_text,
             inventory_refresh_required=inventory_refresh_required,
             was_overridden=was_overridden,
+            on_hit_applied_declarative_effects_by_target=on_hit_applied_declarative_effects_by_target,
         )

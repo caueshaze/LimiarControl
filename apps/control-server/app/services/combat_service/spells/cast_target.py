@@ -1429,7 +1429,9 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             spell_context=spell_context,
             target_participant=target_p,
         )
-        if automation_result is None:
+        # Spell attacks with declarative effects must go through the attack-roll
+        # path first; applying effects before the roll would bypass hit/miss.
+        if automation_result is None and spell_mode != "spell_attack":
             automation_result = await cls._cast_spell_via_declarative_effects(
                 db,
                 session_id,
@@ -1442,6 +1444,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 spell_context=spell_context,
                 target_participant=target_p,
             )
+        on_hit_applied_declarative_effects_by_target: list | None = None
         if automation_result is not None:
             spell_mode = automation_result["action_kind"]
             effect_kind = automation_result["effect_kind"]
@@ -1480,6 +1483,21 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 effect_roll_required=effect_roll_required,
                 targeting_result=targeting_result,
             )
+            # Apply declarative on-hit effects (e.g. Ray of Frost movement penalty).
+            # Only applies when the attack lands and there is no pending dice roll.
+            if result.is_hit and not result.pending_spell_id:
+                if cls._spell_context_has_declarative_effects(spell_context):
+                    application = cls._apply_declarative_spell_effects(
+                        state=state,
+                        attacker=attacker,
+                        target_participant=target_p,
+                        spell_context=spell_context,
+                    )
+                    applied_effects = application["applied_effects"]
+                    cls._apply_temp_hp_from_granted_effects(db, state, applied_effects)
+                    on_hit_applied_declarative_effects_by_target = (
+                        cls._build_applied_declarative_effects_by_target(applied_effects)
+                    )
         elif spell_mode == "saving_throw":
             result = cls._resolve_saving_throw_spell(
                 db,
@@ -1526,6 +1544,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "action_cost": action_cost,
             "target_p": target_p,
             "automation_result": automation_result,
+            "on_hit_applied_declarative_effects_by_target": on_hit_applied_declarative_effects_by_target,
         }
 
     @classmethod
