@@ -269,6 +269,64 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "healing_word",
+      "nameEn": "Healing Word",
+      "namePt": "Palavra Curativa",
+      "descriptionEn": "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier.",
+      "descriptionPt": "Uma criatura à sua escolha que você possa ver dentro do alcance recupera pontos de vida iguais a 1d4 + seu modificador de habilidade de conjuração.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "heal",
+      "healDice": "1d4",
+      "upcast": {
+        "mode": "extra_heal_dice",
+        "dice": "1d4",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "heal",
+          "target": "selected_target",
+          "params": {
+            "dice": "1d4",
+            "ability_modifier": "spellcasting"
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "animal_friendship",
       "nameEn": "Animal Friendship",
       "namePt": "Amizade Animal",
