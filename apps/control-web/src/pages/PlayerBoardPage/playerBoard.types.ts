@@ -33,7 +33,7 @@ export type PlayerBoardStatusSummary = {
   ac: number;
   baseCarryingCapacityKg: number;
   carryingCapacityKg: number;
-  carryingCapacitySources?: Array<{ label: string; multiplier: number }> | null;
+  carryingCapacitySources?: Array<{ label: string; multiplier: number; groupKey?: string }> | null;
   currentHp: number;
   currentWeapon: PlayerBoardWeaponSummary | null;
   deathSaveFailures: number;

@@ -6,12 +6,13 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
-import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, computeMovementSpeedBonus, computeMovementSpeedBonusSources, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
+import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, computeMovementSpeedBonus, computeMovementSpeedBonusSources, computeEffectiveSize, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
 import type { LocaleKey } from "../../shared/i18n";
 import type { PlayerBoardStatusSummary } from "./playerBoard.types";
 import { buildPlayerBoardWeaponSummary } from "./playerBoardWeaponSummary";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 
 type ActiveSessionLike = {
   status: "ACTIVE" | "LOBBY" | "CLOSED";
@@ -24,6 +25,7 @@ type Props = {
   inventory: InventoryItem[] | null;
   itemsById: Record<string, Item>;
   playerSheet: CharacterSheet | null;
+  participant?: { base_size?: string; effective_size?: string } | null;
   selectedCampaignName?: string | null;
   t: (key: LocaleKey) => string;
 };
@@ -35,19 +37,28 @@ export const usePlayerBoardSummary = ({
   inventory,
   itemsById,
   playerSheet,
+  participant,
   selectedCampaignName,
   t,
 }: Props) => {
   const { locale } = useLocale();
+
+  const effectiveSize = useMemo<CreatureSize | undefined>(() => {
+    if (participant?.effective_size) return participant.effective_size as CreatureSize;
+    if (!playerSheet || !activeEffects?.length) return undefined;
+    const baseSize = (playerSheet.size as CreatureSize) || "Medium";
+    return computeEffectiveSize(baseSize, activeEffects);
+  }, [participant?.effective_size, playerSheet, activeEffects]);
+
   const { ac, hpPercent, initiative, passivePerception, passivePerceptionBonus,
-          passivePerceptionBonusSources, spellAttack, spellSaveDC } =
-    useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET, activeEffects);
+           passivePerceptionBonusSources, spellAttack, spellSaveDC } =
+     useCharacterSheetDerived(playerSheet ?? INITIAL_SHEET, activeEffects);
   const {
     baseCarryingCapacityKg,
     carryingCapacityKg,
     pushDragLiftKg,
     sources: carryingCapacitySources,
-  } = useCarryingCapacity(playerSheet?.abilities.strength ?? INITIAL_SHEET.abilities.strength, activeEffects);
+  } = useCarryingCapacity(playerSheet?.abilities.strength ?? INITIAL_SHEET.abilities.strength, activeEffects, effectiveSize);
   const xpState = getCharacterProgressState(
     playerSheet?.level ?? INITIAL_SHEET.level,
     playerSheet?.experiencePoints ?? INITIAL_SHEET.experiencePoints,
@@ -100,9 +111,9 @@ export const usePlayerBoardSummary = ({
   const encumbrance = useMemo(
     () =>
       playerSheet
-        ? computeEncumbranceTier({ strengthScore: playerSheet.abilities.strength, totalWeightKg })
+        ? computeEncumbranceTier({ strengthScore: playerSheet.abilities.strength, totalWeightKg, effectiveSize })
         : null,
-    [playerSheet, totalWeightKg],
+    [playerSheet, totalWeightKg, effectiveSize],
   );
 
   const baseSpeedMeters = playerSheet?.speedMeters ?? 0;

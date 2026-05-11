@@ -5,6 +5,7 @@ import {
   computeCarryingCapacity,
   computeCarryingCapacityMultiplier,
   computeCarryingCapacityMultiplierSources,
+  computeEffectiveSize,
   computeEncumbranceTier,
   computeMovementSpeedBonus,
   computeMovementSpeedBonusSources,
@@ -16,6 +17,7 @@ import {
   LB_TO_KG,
 } from "./calculations";
 import type { ActiveEffect } from "../../../shared/api/combatRepo";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 import {
   computeBaseAbilitiesForPointAccounting,
   computeBaseAbilityScoreTotal,
@@ -1072,5 +1074,241 @@ describe("computeMovementSpeedBonusSources", () => {
       }),
     ];
     expect(computeMovementSpeedBonus(effects)).toBe(5);
+  });
+});
+
+const makeSizeModifierEffect = (
+  numeric_value: number,
+  overrides: Partial<ActiveEffect> = {},
+): ActiveEffect => ({
+  id: `effect-size-${numeric_value}`,
+  kind: "size_modifier",
+  duration_type: "manual",
+  created_at: "2026-05-01T00:00:00Z",
+  display_label: "Enlarge",
+  numeric_value,
+  ...overrides,
+});
+
+describe("computeEffectiveSize", () => {
+  it("no effects → base size unchanged", () => {
+    expect(computeEffectiveSize("Medium" as CreatureSize, [])).toBe("Medium");
+  });
+
+  it("+1 step from Medium → Large", () => {
+    const effects = [makeSizeModifierEffect(1)];
+    expect(computeEffectiveSize("Medium" as CreatureSize, effects)).toBe("Large");
+  });
+
+  it("-1 step from Medium → Small", () => {
+    const effects = [makeSizeModifierEffect(-1)];
+    expect(computeEffectiveSize("Medium" as CreatureSize, effects)).toBe("Small");
+  });
+
+  it("+2 steps from Medium → Huge", () => {
+    const effects = [makeSizeModifierEffect(1), makeSizeModifierEffect(1, { id: "eff-size-2" })];
+    expect(computeEffectiveSize("Medium" as CreatureSize, effects)).toBe("Huge");
+  });
+
+  it("clamps at Tiny (cannot go below Tiny)", () => {
+    const effects = [makeSizeModifierEffect(-10)];
+    expect(computeEffectiveSize("Small" as CreatureSize, effects)).toBe("Tiny");
+  });
+
+  it("clamps at Gargantuan (cannot go above Gargantuan)", () => {
+    const effects = [makeSizeModifierEffect(10)];
+    expect(computeEffectiveSize("Large" as CreatureSize, effects)).toBe("Gargantuan");
+  });
+
+  it("ignores non-size_modifier effects", () => {
+    const effects: ActiveEffect[] = [
+      {
+        id: "not-size",
+        kind: "spell_effect",
+        duration_type: "manual",
+        created_at: "2026-05-01T00:00:00Z",
+      },
+    ];
+    expect(computeEffectiveSize("Medium" as CreatureSize, effects)).toBe("Medium");
+  });
+});
+
+describe("computeCarryingCapacity — size multiplier", () => {
+  it("Tiny ×0.5", () => {
+    const result = computeCarryingCapacity(10, [], "Tiny" as CreatureSize);
+    const expected = Math.round(10 * 15 * LB_TO_KG * 0.5);
+    expect(result.carryingCapacityKg).toBe(expected);
+    expect(result.multiplier).toBe(0.5);
+  });
+
+  it("Small ×1 (same as Medium)", () => {
+    const result = computeCarryingCapacity(10, [], "Small" as CreatureSize);
+    const baseResult = computeCarryingCapacity(10, []);
+    expect(result.carryingCapacityKg).toBe(baseResult.carryingCapacityKg);
+    expect(result.multiplier).toBe(1);
+  });
+
+  it("Medium default (no effectiveSize) → multiplier 1", () => {
+    const result = computeCarryingCapacity(10, []);
+    expect(result.multiplier).toBe(1);
+    expect(result.sources).toEqual([]);
+  });
+
+  it("Large ×2", () => {
+    const result = computeCarryingCapacity(10, [], "Large" as CreatureSize);
+    const expected = Math.round(10 * 15 * LB_TO_KG * 2);
+    expect(result.carryingCapacityKg).toBe(expected);
+    expect(result.multiplier).toBe(2);
+  });
+
+  it("Huge ×4", () => {
+    const result = computeCarryingCapacity(10, [], "Huge" as CreatureSize);
+    expect(result.multiplier).toBe(4);
+  });
+
+  it("Gargantuan ×8", () => {
+    const result = computeCarryingCapacity(10, [], "Gargantuan" as CreatureSize);
+    expect(result.multiplier).toBe(8);
+  });
+
+  it("Large ×2 + Bull's Strength ×2 = ×4 total", () => {
+    const effects = [makeCarryingCapacityEffect(2)];
+    const result = computeCarryingCapacity(10, effects, "Large" as CreatureSize);
+    const expected = Math.round(10 * 15 * LB_TO_KG * 4);
+    expect(result.carryingCapacityKg).toBe(expected);
+    expect(result.multiplier).toBe(4);
+  });
+
+  it("Tiny ×0.5 + Bull's Strength ×2 = ×1 total", () => {
+    const effects = [makeCarryingCapacityEffect(2)];
+    const result = computeCarryingCapacity(10, effects, "Tiny" as CreatureSize);
+    expect(result.multiplier).toBe(1);
+  });
+
+  it("size source appears in sources when size multiplier ≠ 1", () => {
+    const result = computeCarryingCapacity(10, [], "Large" as CreatureSize);
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0].label).toBe("Large");
+    expect(result.sources[0].multiplier).toBe(2);
+    expect(result.sources[0].groupKey).toBe("__size_multiplier");
+  });
+
+  it("no size source when effectiveSize is Medium (×1)", () => {
+    const result = computeCarryingCapacity(10, [], "Medium" as CreatureSize);
+    expect(result.sources).toHaveLength(0);
+  });
+
+  it("size source + effect source both present", () => {
+    const effects = [makeCarryingCapacityEffect(2)];
+    const result = computeCarryingCapacity(10, effects, "Large" as CreatureSize);
+    expect(result.sources).toHaveLength(2);
+    expect(result.sources[0].groupKey).toBe("__size_multiplier");
+    expect(result.sources[0].multiplier).toBe(2);
+    expect(result.sources[1].multiplier).toBe(2);
+  });
+
+  it("pushDragLiftKg respects size multiplier", () => {
+    const result = computeCarryingCapacity(10, [], "large" as CreatureSize);
+    expect(result.pushDragLiftKg).toBe(result.carryingCapacityKg * 2);
+  });
+});
+
+describe("computeEncumbranceTier — size multiplier", () => {
+  it("STR 10, no effectiveSize → thresholds at ×1 (baseline)", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 20 });
+    expect(result.normalMaxKg).toBe(Math.round(50 * LB_TO_KG));
+    expect(result.encumberedMaxKg).toBe(Math.round(100 * LB_TO_KG));
+    expect(result.heavilyEncumberedMaxKg).toBe(Math.round(150 * LB_TO_KG));
+  });
+
+  it("Large doubles thresholds", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 20, effectiveSize: "Large" as CreatureSize });
+    expect(result.normalMaxKg).toBe(Math.round(100 * LB_TO_KG));
+    expect(result.encumberedMaxKg).toBe(Math.round(200 * LB_TO_KG));
+    expect(result.heavilyEncumberedMaxKg).toBe(Math.round(300 * LB_TO_KG));
+  });
+
+  it("Tiny halves thresholds", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 5, effectiveSize: "Tiny" as CreatureSize });
+    expect(result.normalMaxKg).toBe(Math.round(25 * LB_TO_KG));
+    expect(result.encumberedMaxKg).toBe(Math.round(50 * LB_TO_KG));
+    expect(result.heavilyEncumberedMaxKg).toBe(Math.round(75 * LB_TO_KG));
+  });
+
+  it("Huge quadruples thresholds", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 50, effectiveSize: "Huge" as CreatureSize });
+    expect(result.normalMaxKg).toBe(Math.round(200 * LB_TO_KG));
+  });
+
+  it("Gargantuan ×8 thresholds", () => {
+    const result = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 100, effectiveSize: "Gargantuan" as CreatureSize });
+    expect(result.normalMaxKg).toBe(Math.round(400 * LB_TO_KG));
+  });
+
+  it("STR 10, 25 kg → encumbered normally, normal under Large", () => {
+    const normal = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 25 });
+    expect(normal.tier).toBe("encumbered");
+    const large = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 25, effectiveSize: "Large" as CreatureSize });
+    expect(large.tier).toBe("normal");
+  });
+
+  it("STR 10, 50 kg → heavily_encumbered normally, encumbered under Large", () => {
+    const normal = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 50 });
+    expect(normal.tier).toBe("heavily_encumbered");
+    const large = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 50, effectiveSize: "Large" as CreatureSize });
+    expect(large.tier).toBe("encumbered");
+  });
+
+  it("Medium effectiveSize = same as no effectiveSize", () => {
+    const noSize = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 25 });
+    const medium = computeEncumbranceTier({ strengthScore: 10, totalWeightKg: 25, effectiveSize: "Medium" as CreatureSize });
+    expect(medium.tier).toBe(noSize.tier);
+    expect(medium.normalMaxKg).toBe(noSize.normalMaxKg);
+    expect(medium.encumberedMaxKg).toBe(noSize.encumberedMaxKg);
+    expect(medium.heavilyEncumberedMaxKg).toBe(noSize.heavilyEncumberedMaxKg);
+  });
+});
+
+describe("computeProjectedEncumbranceTier — effectiveSize", () => {
+  it("respects effectiveSize in projected tier", () => {
+    const normal = computeProjectedEncumbranceTier({
+      strengthScore: 10,
+      currentWeightKg: 0,
+      addedWeightLb: 120,
+    });
+    expect(normal.tier).toBe("heavily_encumbered");
+    const large = computeProjectedEncumbranceTier({
+      strengthScore: 10,
+      currentWeightKg: 0,
+      addedWeightLb: 120,
+      effectiveSize: "Large" as CreatureSize,
+    });
+    expect(large.tier).toBe("encumbered");
+  });
+
+  it("Tiny escalates tier for same weight", () => {
+    const normal = computeProjectedEncumbranceTier({
+      strengthScore: 10,
+      currentWeightKg: 0,
+      addedWeightLb: 30,
+    });
+    expect(normal.tier).toBe("normal");
+    const tiny = computeProjectedEncumbranceTier({
+      strengthScore: 10,
+      currentWeightKg: 0,
+      addedWeightLb: 30,
+      effectiveSize: "Tiny" as CreatureSize,
+    });
+    expect(tiny.tier).toBe("encumbered");
+  });
+
+  it("no effectiveSize preserves existing behavior", () => {
+    const result = computeProjectedEncumbranceTier({
+      strengthScore: 10,
+      currentWeightKg: 10,
+      addedWeightLb: 0,
+    });
+    expect(result.tier).toBe("normal");
+    expect(result.normalMaxKg).toBe(Math.round(50 * LB_TO_KG));
   });
 });

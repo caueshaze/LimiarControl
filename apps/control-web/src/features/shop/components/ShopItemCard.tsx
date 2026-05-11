@@ -4,6 +4,7 @@ import { getItemPropertyLabels } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { LB_TO_KG, computeProjectedEncumbranceTier } from "../../../features/character-sheet/utils/calculations";
 import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { localizedItemName } from "../utils/localizedItemName";
 import {
@@ -24,6 +25,7 @@ type ShopItemCardProps = {
   strengthScore?: number;
   currentTotalWeightKg?: number;
   currentEncumbranceTier?: EncumbranceTier;
+  effectiveSize?: CreatureSize;
 };
 
 const encumbranceWarningColor: Record<string, string> = {
@@ -42,6 +44,7 @@ export const ShopItemCard = ({
   strengthScore,
   currentTotalWeightKg,
   currentEncumbranceTier,
+  effectiveSize,
 }: ShopItemCardProps) => {
   const { t, locale } = useLocale();
   const [expanded, setExpanded] = useState(false);
@@ -52,9 +55,10 @@ export const ShopItemCard = ({
       strengthScore,
       currentWeightKg: currentTotalWeightKg,
       addedWeightLb: item.weight ?? 0,
+      effectiveSize,
     });
     return result.tier !== currentEncumbranceTier ? result.tier : null;
-  }, [strengthScore, currentTotalWeightKg, currentEncumbranceTier, item.weight]);
+  }, [strengthScore, currentTotalWeightKg, currentEncumbranceTier, item.weight, effectiveSize]);
 
   const propertyLabels = getItemPropertyLabels(item.properties, locale);
   const priceCopperValue = getItemPriceCopperValue(item.price, item.priceCopperValue);

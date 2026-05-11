@@ -9,6 +9,7 @@ import type {
   InventorySellResult,
 } from "../../../shared/api/inventoryRepo";
 import type { EncumbranceTier } from "../../../features/character-sheet/utils/calculations";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 import { ShopItemList } from "./ShopItemList";
 import { ShopFilterBar } from "./ShopFilterBar";
 import { useShop } from "../hooks/useShop";
@@ -42,6 +43,7 @@ type ShopPanelProps = {
   strengthScore?: number;
   currentTotalWeightKg?: number;
   currentEncumbranceTier?: EncumbranceTier;
+  effectiveSize?: CreatureSize;
 };
 
 export const ShopPanel = ({
@@ -58,6 +60,7 @@ export const ShopPanel = ({
   strengthScore,
   currentTotalWeightKg,
   currentEncumbranceTier,
+  effectiveSize,
 }: ShopPanelProps) => {
   const { t, locale } = useLocale();
   const { items, itemsLoading, itemsError, buyItem, sellItem, loadItems } = useShop({
@@ -256,6 +259,7 @@ export const ShopPanel = ({
                   strengthScore={strengthScore}
                   currentTotalWeightKg={currentTotalWeightKg}
                   currentEncumbranceTier={currentEncumbranceTier}
+                  effectiveSize={effectiveSize}
                   onBuy={async (id) => {
                     const selectedItem = items.find((item) => item.id === id);
                     if (!selectedItem) {

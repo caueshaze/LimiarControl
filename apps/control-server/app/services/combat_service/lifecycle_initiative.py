@@ -8,7 +8,7 @@ from app.models.session import Session as CampaignSession
 from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, decode_obstacles
 from app.schemas.combat import CombatMapSelection
 
-from .condition_effects_predicates import compute_encumbrance_tier_from_lb, get_carrying_capacity_multiplier
+from .condition_effects_predicates import compute_encumbrance_tier_from_lb, get_carrying_capacity_multiplier, get_effective_capacity_multiplier
 from .exceptions import CombatServiceError
 from .limiar_map_projection import (
     maybe_project_combat_start_to_limiar_map as _project_combat_start_to_limiar_map,
@@ -64,7 +64,7 @@ def get_player_total_inventory_weight_lb(db, session_id: str, player_user_id: st
     return float(result or 0.0)
 
 
-def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, active_effects: list | None = None) -> str:
+def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, active_effects: list | None = None, effective_size: str | None = None) -> str:
     from app.models.session_state import SessionState
 
     entry = db.exec(
@@ -79,8 +79,11 @@ def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, ac
     strength = float((sj.get("abilities") or {}).get("strength") or 10)
     total_lb = get_player_total_inventory_weight_lb(db, session_id, player_user_id)
     capacity_multiplier = (
-        get_carrying_capacity_multiplier({"active_effects": active_effects})
-        if active_effects
+        get_effective_capacity_multiplier({
+            "active_effects": active_effects,
+            "effective_size": effective_size,
+        })
+        if active_effects or effective_size
         else 1.0
     )
     return compute_encumbrance_tier_from_lb(strength, total_lb, capacity_multiplier=capacity_multiplier)
@@ -168,8 +171,23 @@ class CombatLifecycleInitiativeMixin:
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(db, session_id, p.ref_id)
                 from .persistent_effects import restore_persisted_effects
                 restore_persisted_effects(db, session_id, entry)
+                from .token_resolution import build_effective_size_payload
+                from .participant_attributes import resolve_player_size
+                from app.models.session_state import SessionState
+                sj = db.exec(
+                    select(SessionState).where(
+                        SessionState.session_id == session_id,
+                        SessionState.player_user_id == p.ref_id,
+                    )
+                ).first()
+                player_base_size = resolve_player_size(sj.state_json) if sj and sj.state_json else None
+                size_payload = build_effective_size_payload(entry, base_size=player_base_size)
+                entry["effective_size"] = size_payload["effective_size"]
+                entry["base_size"] = size_payload["base_size"]
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(
-                    db, session_id, p.ref_id, active_effects=entry.get("active_effects"),
+                    db, session_id, p.ref_id,
+                    active_effects=entry.get("active_effects"),
+                    effective_size=size_payload["effective_size"],
                 )
             built_participants.append(entry)
 
@@ -213,7 +231,8 @@ class CombatLifecycleInitiativeMixin:
         if not participant:
             return False
         active_effects = participant.get("active_effects")
-        new_tier = _encumbrance_tier_for_player(db, session_id, player_user_id, active_effects=active_effects)
+        effective_size = participant.get("effective_size") or participant.get("base_size")
+        new_tier = _encumbrance_tier_for_player(db, session_id, player_user_id, active_effects=active_effects, effective_size=effective_size)
         old_tier = participant.get("encumbrance_tier", "normal")
         if new_tier == old_tier:
             return False
