@@ -22,6 +22,7 @@ from .spells.spell_response import SpellResponseMixin
 from .standard_actions import CombatStandardActionMixin
 from .stat_lookup import CombatStatLookupMixin
 from .status import CombatStatusMixin
+from .target_creature_type import CombatTargetCreatureTypeMixin
 from .weapon_resolution import CombatWeaponResolutionMixin
 
 
@@ -29,6 +30,7 @@ class CombatService(
     CombatEntityStatsMixin,
     CombatEventsMixin,
     CombatStatLookupMixin,
+    CombatTargetCreatureTypeMixin,
     CombatSpellLookupMixin,
     CombatCoreMixin,
     CombatMovementMixin,

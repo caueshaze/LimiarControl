@@ -319,6 +319,64 @@ class HoldPersonCastFlowTests(unittest.IsolatedAsyncioTestCase):
         success_logs = [c for c in emit_log.await_args_list if "conjurou Hold Person" in ((c.args[4] or {}).get("message", "") if len(c.args) > 4 else "")]
         self.assertEqual(success_logs, [])
 
+    async def test_hold_person_single_target_non_humanoid_known_fails_without_consuming_slot(self):
+        state = CombatState(
+            id="c1", session_id="s1", phase=CombatPhase.active, round=1, current_turn_index=0,
+            participants=[
+                {"id": "p1", "ref_id": "caster", "kind": "player", "display_name": "Lia", "status": "active", "team": "players", "actor_user_id": "u1", "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False}, "active_effects": []},
+                {"id": "e1", "ref_id": "enemy-a", "kind": "session_entity", "display_name": "Bandido A", "status": "active", "team": "enemies", "active_effects": []},
+            ],
+        )
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"spellcasting": {"slots": {"2": {"used": 0, "max": 2}}, "spells": [{"canonicalKey": "hold_person", "name": "Hold Person", "prepared": True, "level": 2}]}}
+        req = CombatCastSpellRequest(actor_participant_id="p1", spell_canonical_key="hold_person", target_ref_id="enemy-a")
+        spell_context = {"spell_name": "Hold Person", "spell_canonical_key": "hold_person", "spell_mode": "saving_throw", "selection_type": "creature", "slot_level": 2, "action_cost": "action", "source_kind": "spell", "effect_kind": "damage", "effect_dice": None, "effect_bonus": 0, "save_ability": "wisdom", "save_dc": 14, "save_success_outcome": "none", "target_type": "ranged", "range_kind": "distance", "attack_type": "none", "requires_target_sight": True, "requires_target_effect": True, "effects": [{"type": "apply_condition", "target": "selected_target", "params": {"condition": "paralyzed"}, "repeat_save": {"timing": "target_turn_end", "ability": "wisdom", "ends_on_success": True}}], "concentration": True}
+        targeting_result = MagicMock(is_valid=True, validated_primary_target_ref_id="enemy-a", spatial_metadata=MagicMock(cover=None))
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 10, 10, 10, 2, 3)),
+            patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=spell_context),
+            patch("app.services.combat.CombatService.resolve_effective_creature_type", return_value="dragon"),
+            patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=MagicMock(validate=MagicMock(return_value=targeting_result))),
+            patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock) as emit_log,
+        ):
+            with self.assertRaises(Exception):
+                await CombatService.cast_spell(MagicMock(), "s1", req, "u1", False)
+        self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["2"]["used"], 0)
+        self.assertEqual(state.participants[1].get("active_effects") or [], [])
+        success_logs = [c for c in emit_log.await_args_list if "conjurou Hold Person" in ((c.args[4] or {}).get("message", "") if len(c.args) > 4 else "")]
+        self.assertEqual(success_logs, [])
+
+    async def test_hold_person_multi_target_known_non_humanoid_fails_atomically(self):
+        state = CombatState(
+            id="c1", session_id="s1", phase=CombatPhase.active, round=1, current_turn_index=0,
+            participants=[
+                {"id": "p1", "ref_id": "caster", "kind": "player", "display_name": "Lia", "status": "active", "team": "players", "actor_user_id": "u1", "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False}, "active_effects": []},
+                {"id": "e1", "ref_id": "enemy-a", "kind": "session_entity", "display_name": "Bandido A", "status": "active", "team": "enemies", "active_effects": []},
+                {"id": "e2", "ref_id": "enemy-b", "kind": "session_entity", "display_name": "Bandido B", "status": "active", "team": "enemies", "active_effects": []},
+            ],
+        )
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"spellcasting": {"slots": {"3": {"used": 0, "max": 2}}, "spells": [{"canonicalKey": "hold_person", "name": "Hold Person", "prepared": True, "level": 2}]}}
+        req = CombatCastSpellRequest(actor_participant_id="p1", spell_canonical_key="hold_person", target_ref_ids=["enemy-a", "enemy-b"], slot_level=3)
+        spell_context = {"spell_name": "Hold Person", "spell_canonical_key": "hold_person", "spell_mode": "saving_throw", "selection_type": "creature", "slot_level": 3, "action_cost": "action", "source_kind": "spell", "effect_kind": "damage", "effect_dice": None, "effect_bonus": 0, "save_ability": "wisdom", "save_dc": 14, "save_success_outcome": "none", "target_type": "ranged", "range_kind": "distance", "attack_type": "none", "requires_target_sight": True, "requires_target_effect": True, "effects": [{"type": "apply_condition", "target": "selected_target", "params": {"condition": "paralyzed"}, "repeat_save": {"timing": "target_turn_end", "ability": "wisdom", "ends_on_success": True}}], "concentration": True, "max_targets": 2}
+        targeting_result = MagicMock(is_valid=True, validated_primary_target_ref_id="enemy-a", spatial_metadata=MagicMock(cover=None))
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 10, 10, 10, 2, 3)),
+            patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=spell_context),
+            patch("app.services.combat.CombatService.resolve_effective_creature_type", return_value="undead"),
+            patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=MagicMock(validate=MagicMock(return_value=targeting_result))),
+            patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock) as emit_log,
+        ):
+            with self.assertRaises(Exception):
+                await CombatService.cast_spell(MagicMock(), "s1", req, "u1", False)
+        self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["3"]["used"], 0)
+        self.assertEqual(state.participants[1].get("active_effects") or [], [])
+        self.assertEqual(state.participants[2].get("active_effects") or [], [])
+        success_logs = [c for c in emit_log.await_args_list if "conjurou Hold Person" in ((c.args[4] or {}).get("message", "") if len(c.args) > 4 else "")]
+        self.assertEqual(success_logs, [])
+
 
 if __name__ == "__main__":
     unittest.main()

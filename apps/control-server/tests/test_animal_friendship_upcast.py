@@ -292,12 +292,12 @@ class TestValidatePlainMultiTargetRefs(unittest.TestCase):
         )
         self.assertIsNone(result)
 
-    def test_returns_none_when_target_ref_ids_empty(self):
+    def test_rejects_when_target_ref_ids_empty(self):
         state = self._state([_make_player()])
-        result = CombatService._validate_plain_multi_target_refs(
-            req=self._req(target_ref_ids=[]), spell_context=self._spell_context(), state=state
-        )
-        self.assertIsNone(result)
+        with self.assertRaises(CombatServiceError):
+            CombatService._validate_plain_multi_target_refs(
+                req=self._req(target_ref_ids=[]), spell_context=self._spell_context(), state=state
+            )
 
     def test_resolves_valid_refs(self):
         beast1 = _make_participant("e1", "wolf-1")
