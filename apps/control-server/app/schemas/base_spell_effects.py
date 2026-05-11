@@ -24,6 +24,7 @@ SpellDeclarativeEffectType = Literal[
     "modify_movement_speed",
     "fall_damage_immunity_threshold",
     "create_consumable",
+    "heal",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -164,6 +165,15 @@ class CreateConsumableParams(BaseModel):
     expires_in_seconds: int | None = Field(default=None, ge=1)
 
 
+class HealParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dice: str
+    # Required (no default) so {"dice": "..."} alone matches GrantTempHpParams, not HealParams.
+    # Pass None explicitly for heals without an ability modifier.
+    ability_modifier: Literal["spellcasting"] | None
+
+
 class ArmorClassFormulaParams(BaseModel):
     base_value: int = Field(ge=0)
     ability: AbilityName
@@ -201,6 +211,7 @@ class SpellDeclarativeEffect(BaseModel):
         | ModifyMovementSpeedParams
         | FallDamageImmunityThresholdParams
         | CreateConsumableParams
+        | HealParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -238,4 +249,6 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("modify_movement_speed effects require ModifyMovementSpeedParams")
         if self.type == "create_consumable" and not isinstance(self.params, CreateConsumableParams):
             raise ValueError("create_consumable effects require CreateConsumableParams")
+        if self.type == "heal" and not isinstance(self.params, HealParams):
+            raise ValueError("heal effects require HealParams")
         return self

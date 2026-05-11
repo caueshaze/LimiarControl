@@ -30,14 +30,20 @@ from app.services.combat_service.persistent_effects import (
 )
 from app.services.game_time import get_game_time_seconds
 from app.services.goodberry_inventory import grant_catalog_item_to_player_inventory
+from app.services.healing_consumables_types import _extract_hp_snapshot, _safe_int
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     collect_create_consumable_effects,
+    collect_heal_effects,
     consume_spell_slot,
     has_castable_effects,
+    roll_spell_heal_effects,
 )
+from app.services.wild_shape_catalog import get_form
+from app.services.wild_shape_service import apply_healing_to_form
+from app.services.wild_shape_service import is_active as is_wild_shape_active
 from app.services.declarative_effect_lifecycle import remove_armor_don_effects_from_combat_participant
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
@@ -62,6 +68,18 @@ OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES = (
     "out_of_combat_effect_removed",
 )
 OUT_OF_COMBAT_ACTIVITY_CAP = 50
+
+
+def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
+    """Apply immediate healing to a state dict in place. Handles wild shape."""
+    if is_wild_shape_active(data):
+        form_key = (data.get("wildShape") or {}).get("formKey")
+        form = get_form(form_key) if isinstance(form_key, str) else None
+        if form is not None:
+            return apply_healing_to_form(data, amount, form)
+    current, max_hp = _extract_hp_snapshot(data)
+    new_hp = min(max_hp, current + max(0, amount))
+    return {**data, "currentHP": new_hp}
 
 
 def _find_effect_by_id(state_json: dict | None, effect_id: str) -> dict | None:
@@ -385,7 +403,15 @@ async def _cast_spell_out_of_combat_for_player(
             )
             consumables_granted_count += quantity
 
-    if not new_target_effects and not consumables_granted_count:
+    # --- Precompute immediate healing (heal effects) ---
+    heal_effects = collect_heal_effects(campaign_spell, req.variantKey)
+    heal_rolled = (
+        roll_spell_heal_effects(heal_effects, campaign_spell, req.slotLevel, state_json)
+        if heal_effects
+        else []
+    )
+
+    if not new_target_effects and not consumables_granted_count and not heal_rolled:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
 
     group_id: str | None = (
@@ -441,6 +467,12 @@ async def _cast_spell_out_of_combat_for_player(
         target_effects = list(target_json.get("active_spell_effects") or [])
         target_effects.extend(new_target_effects)
         target_json["active_spell_effects"] = target_effects
+        # Immediate healing on ally target
+        for hr in heal_rolled:
+            if hr.get("target") == "caster":
+                updated_caster_json = _apply_heal_to_state_dict(updated_caster_json, hr["amount"])
+            else:
+                target_json = _apply_heal_to_state_dict(target_json, hr["amount"])
         target_state.state_json = finalize_session_state_data(  # type: ignore[union-attr]
             target_json,
             game_time_seconds=current_game_time_seconds,
@@ -453,6 +485,9 @@ async def _cast_spell_out_of_combat_for_player(
         existing_effects.extend(new_target_effects)
         updated_caster_json["active_spell_effects"] = existing_effects
         marker_effect_id = None
+        # Immediate healing on self (target == caster)
+        for hr in heal_rolled:
+            updated_caster_json = _apply_heal_to_state_dict(updated_caster_json, hr["amount"])
 
     # --- Persist caster state ---
     caster_state.state_json = finalize_session_state_data(
@@ -515,6 +550,13 @@ async def _cast_spell_out_of_combat_for_player(
         if consumables_granted_count:
             activity_payload["consumables_granted_count"] = consumables_granted_count
             activity_payload["inventory_refresh_required"] = True
+        if heal_rolled:
+            total_healed = sum(hr["amount"] for hr in heal_rolled)
+            activity_payload["healing_applied"] = total_healed
+            activity_payload["healing_rolls"] = [
+                {"dice": hr["effective_dice"], "rolls": hr["rolls"], "modifier": hr["modifier"], "total": hr["amount"]}
+                for hr in heal_rolled
+            ]
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",
