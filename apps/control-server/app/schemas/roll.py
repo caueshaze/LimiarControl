@@ -11,6 +11,33 @@ AdvantageMode = Literal["normal", "advantage", "disadvantage"]
 ActorKind = Literal["player", "session_entity"]
 RollType = Literal["ability", "save", "skill", "initiative", "attack"]
 RollSource = Literal["system", "manual"]
+WeaponDamageOperation = Literal["add", "subtract"]
+WeaponDamageComponentKind = Literal[
+    "base_weapon",
+    "ability_modifier",
+    "flat_modifier",
+    "extra_damage",
+    "weapon_damage_modifier"
+]
+
+class WeaponDamageComponent(BaseModel):
+    id: str
+    kind: WeaponDamageComponentKind
+    source_key: str | None = None
+    source_label: str
+    dice: str | None = None
+    rolls: list[int]
+    operation: WeaponDamageOperation
+    signed_total: int
+    damage_type: str | None = None
+    doubled_on_critical: bool = False
+    minimum_total_damage: int | None = None
+
+class WeaponDamageBreakdown(BaseModel):
+    total_before_minimum: int
+    minimum_applied: int | None = None
+    total: int
+    components: list[WeaponDamageComponent]
 
 
 # ---------------------------------------------------------------------------

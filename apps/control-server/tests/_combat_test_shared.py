@@ -53,11 +53,11 @@ class TestResolutionTypeMapping(unittest.TestCase):
 
 class TestCombatDiceParser(unittest.TestCase):
     def test_parse_dice(self):
-        self.assertEqual(_parse_dice("1d8"), (1, 8, 0))
-        self.assertEqual(_parse_dice("2d6+3"), (2, 6, 3))
-        self.assertEqual(_parse_dice("1d10 - 1"), (1, 10, -1))
-        self.assertEqual(_parse_dice(""), (0, 0, 0))
-        self.assertEqual(_parse_dice("invalid"), (0, 0, 0))
+        self.assertEqual(_parse_dice("1d8"), (1, 1, 8, 0))
+        self.assertEqual(_parse_dice("2d6+3"), (1, 2, 6, 3))
+        self.assertEqual(_parse_dice("1d10 - 1"), (1, 1, 10, -1))
+        self.assertEqual(_parse_dice(""), (1, 0, 0, 0))
+        self.assertEqual(_parse_dice("invalid"), (1, 0, 0, 0))
 
     @patch("random.randint", return_value=5)
     def test_roll_dice_expression(self, mock_randint):

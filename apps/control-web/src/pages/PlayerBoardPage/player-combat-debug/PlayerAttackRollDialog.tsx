@@ -34,6 +34,25 @@ const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
 const formatSigned = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
 
 const formatDamageBreakdown = (result: CombatAttackResult) => {
+  // Structured breakdown (canonical source)
+  if (result.damage_breakdown) {
+    const bd = result.damage_breakdown;
+    const lines = bd.components.map((c) => {
+      const sign = c.signed_total >= 0 ? "+" : "-";
+      const abs = Math.abs(c.signed_total);
+      const diceHint = c.dice ? ` (${c.dice})` : "";
+      if (c.kind === "base_weapon") {
+        return `${c.source_label}${diceHint}: ${c.signed_total}`;
+      }
+      return `${c.source_label}${diceHint}: ${sign}${abs}`;
+    });
+    if (bd.minimum_applied != null) {
+      lines.push(`Dano mínimo aplicado: ${bd.minimum_applied}`);
+    }
+    lines.push(`Total: ${bd.total}`);
+    return lines.join("\n");
+  }
+  // Legacy fallback
   const rolls = result.damage_rolls ?? [];
   const damageDiceLabel =
     formatDamageDiceExpression(result.damage_dice, Boolean(result.is_critical)) ??
@@ -204,7 +223,7 @@ export const PlayerAttackRollDialog = ({
                   : `${result.weapon_name} nao acertou ${result.target_display_name}.`}
               </p>
               {result.is_hit && !pendingDamage ? (
-                <p className="mt-2 text-xs text-slate-300">{formatDamageBreakdown(result)}</p>
+                <p className="mt-2 text-xs text-slate-300" style={{ whiteSpace: "pre-line" }}>{formatDamageBreakdown(result)}</p>
               ) : null}
               {result.is_hit && !pendingDamage && result.concentration_check?.summary_text ? (
                 <p className="mt-2 text-xs text-amber-100">
