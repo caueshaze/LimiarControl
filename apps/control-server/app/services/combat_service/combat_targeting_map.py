@@ -85,6 +85,7 @@ class LimiarMapTargetingService(CombatTargetingService):
                 range_long_meters=intent.range_long_meters,
                 weapon_range_type=intent.weapon_range_type,
                 has_reach=intent.has_reach,
+                effective_size=getattr(intent, "actor_effective_size", None),
             )
             if weapon_profile.failure_reason is not None:
                 diag.set_check(CHECK_IN_RANGE, False)

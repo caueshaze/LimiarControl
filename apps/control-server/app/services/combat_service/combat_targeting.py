@@ -106,6 +106,7 @@ def _build_map_spatial_metadata(
         range_long_meters=intent.range_long_meters,
         weapon_range_type=intent.weapon_range_type,
         has_reach=intent.has_reach,
+        effective_size=getattr(intent, "actor_effective_size", None),
     )
     if weapon_profile.normal_range is None:
         return spatial_metadata
@@ -209,6 +210,7 @@ def _derive_range_cells(intent: ActionIntent) -> int | None:
         range_long_meters=intent.range_long_meters,
         weapon_range_type=intent.weapon_range_type,
         has_reach=intent.has_reach,
+        effective_size=getattr(intent, "actor_effective_size", None),
     )
     if profile.max_range is not None:
         return meters_to_cells(profile.max_range)

@@ -456,3 +456,206 @@ class TestLocalSymmetricDistanceLookup(unittest.TestCase):
         intent = _weapon_intent(weapon_range_type="melee")
         result = svc.validate(intent, state)
         self.assertTrue(result.is_valid)
+
+
+# ── Size-based melee reach integration tests (#297) ────────────────────────
+
+
+class TestSizeMeleeReachIntegration(unittest.TestCase):
+    """Integration: actor_effective_size flows through the targeting pipeline.
+
+    These tests prove that the size-based reach bonus is not just computed
+    by the helper but is actually used by the targeting service to accept
+    or reject attacks.
+    """
+
+    def test_medium_melee_out_of_range_at_2_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 3.0}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+            actor_effective_size="medium",
+        )
+        result = svc.validate(intent, state)
+        self.assertFalse(result.is_valid)
+        self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
+
+    def test_large_melee_in_range_at_2_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 3.0}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+            actor_effective_size="large",
+        )
+        result = svc.validate(intent, state)
+        self.assertTrue(result.is_valid)
+        self.assertTrue(result.diagnostics.checks.get(CHECK_IN_RANGE))
+
+    def test_large_melee_out_of_range_at_3_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 4.5}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+            actor_effective_size="large",
+        )
+        result = svc.validate(intent, state)
+        self.assertFalse(result.is_valid)
+        self.assertIn(TARGET_OUT_OF_REACH, result.diagnostics.failure_reasons)
+
+    def test_huge_melee_in_range_at_3_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 4.5}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+            actor_effective_size="huge",
+        )
+        result = svc.validate(intent, state)
+        self.assertTrue(result.is_valid)
+
+    def test_gargantuan_melee_in_range_at_4_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 6.0}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+            actor_effective_size="gargantuan",
+        )
+        result = svc.validate(intent, state)
+        self.assertTrue(result.is_valid)
+
+    def test_large_plus_reach_weapon_in_range_at_3_cells(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 4.5}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=True,
+            actor_effective_size="large",
+        )
+        result = svc.validate(intent, state)
+        self.assertTrue(result.is_valid)
+
+    def test_tiny_and_small_melee_still_only_1_cell(self):
+        for size in ("tiny", "small"):
+            state = _make_state(
+                _make_participant("player-1", "player"),
+                _make_participant("enemy-1", "session_entity"),
+                local_distances={"player-1": {"enemy-1": 3.0}},
+            )
+            intent = WeaponAttackIntent(
+                session_id="sess",
+                action_id="act",
+                actor_ref_id="player-1",
+                actor_kind="player",
+                requested_target_ref_id="enemy-1",
+                weapon_range_type="melee",
+                has_reach=False,
+                actor_effective_size=size,
+            )
+            result = svc.validate(intent, state)
+            self.assertFalse(result.is_valid, f"{size} should not have extended reach")
+
+    def test_no_effective_size_defaults_to_medium(self):
+        state = _make_state(
+            _make_participant("player-1", "player"),
+            _make_participant("enemy-1", "session_entity"),
+            local_distances={"player-1": {"enemy-1": 3.0}},
+        )
+        intent = WeaponAttackIntent(
+            session_id="sess",
+            action_id="act",
+            actor_ref_id="player-1",
+            actor_kind="player",
+            requested_target_ref_id="enemy-1",
+            weapon_range_type="melee",
+            has_reach=False,
+        )
+        result = svc.validate(intent, state)
+        self.assertFalse(result.is_valid)
+
+    def test_derive_max_range_meters_large_melee_reach(self):
+        r, fail = derive_max_range_meters(
+            weapon_range_type="melee",
+            has_reach=False,
+            effective_size="large",
+        )
+        self.assertAlmostEqual(r, 3.0)
+        self.assertIsNone(fail)
+
+    def test_derive_max_range_meters_huge_melee_reach(self):
+        r, fail = derive_max_range_meters(
+            weapon_range_type="melee",
+            has_reach=False,
+            effective_size="huge",
+        )
+        self.assertAlmostEqual(r, 4.5)
+        self.assertIsNone(fail)
+
+    def test_derive_max_range_meters_large_plus_reach_weapon(self):
+        r, fail = derive_max_range_meters(
+            weapon_range_type="melee",
+            has_reach=True,
+            effective_size="large",
+        )
+        self.assertAlmostEqual(r, 4.5)
+        self.assertIsNone(fail)
+
+    def test_derive_max_range_meters_ranged_unaffected_by_size(self):
+        r, fail = derive_max_range_meters(
+            range_meters=18,
+            weapon_range_type="ranged",
+            effective_size="large",
+        )
+        self.assertEqual(r, 18.0)
+        self.assertIsNone(fail)

@@ -83,7 +83,9 @@ def resolve_spell_attack_kind(spell_or_action: dict | None = None) -> str:  # no
     return "ranged"
 
 
-def get_effective_reach(base_reach_cells: int) -> int:
+def get_effective_reach(base_reach_cells: int, *, effective_size: str | None = None) -> int:
     from .reach import get_effective_reach as _reach
+    from .entity_size import normalize_size_category
 
-    return _reach(base_reach_cells)
+    size_cat = normalize_size_category(effective_size) if effective_size is not None else None
+    return _reach(base_reach_cells, effective_size=size_cat)

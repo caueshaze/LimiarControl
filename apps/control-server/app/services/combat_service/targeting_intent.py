@@ -42,6 +42,7 @@ class WeaponAttackIntent:
     range_long_meters: int | float | None = None
     weapon_range_type: str | None = None
     has_reach: bool = False
+    actor_effective_size: str | None = None
     # Final target-facing requirements resolved before validation.
     requires_sight: bool | None = None
     requires_effect: bool | None = None

@@ -135,6 +135,7 @@ class WildShapeMixin:
             is_wild_shape=True,
             weapon_range_type=BaseItemWeaponRangeType.MELEE.value,
             has_reach=natural_attack.has_reach,
+            actor_effective_size=attacker.get("effective_size") or attacker.get("base_size"),
             requires_sight=weapon_targeting.requires_target_sight,
             requires_effect=weapon_targeting.requires_target_effect,
         )

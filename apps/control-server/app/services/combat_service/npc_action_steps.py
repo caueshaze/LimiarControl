@@ -126,6 +126,7 @@ class CombatNpcActionStepsMixin:
                 range_long_meters=cls._safe_int(resolved_action.get("rangeLongMeters"), None),
                 weapon_range_type=resolved_action.get("rangeType"),
                 has_reach=bool(resolved_action.get("hasReach")),
+                actor_effective_size=attacker.get("effective_size") or attacker.get("base_size"),
                 requires_sight=weapon_targeting.requires_target_sight,
                 requires_effect=weapon_targeting.requires_target_effect,
             )

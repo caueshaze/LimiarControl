@@ -16,6 +16,14 @@ uses the minimum Chebyshev distance between any pair of cells — one
 from the attacker's footprint, one from the target's footprint.
 
 For 1×1 entities the two functions are equivalent.
+
+Phase #297 — size-based melee reach
+--------------------------------------
+Creatures larger than Medium gain a melee reach bonus based on their
+effective size: Large +1 cell, Huge +2 cells, Gargantuan +3 cells.
+This composes with the weapon *reach* property and any condition-based
+modifiers.  ``resolve_melee_reach_cells`` now accepts ``effective_size``
+to add the size bonus.
 """
 
 from __future__ import annotations
@@ -23,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from .entity_size import SizeCategory, normalize_size_category, size_melee_reach_bonus_cells
 from .unit_conversion import METERS_PER_CELL
 
 DEFAULT_MELEE_REACH_CELLS: int = 1
@@ -51,32 +60,47 @@ class WeaponAttackRangeClassification:
     is_in_long_range: bool
 
 
-def get_effective_reach(base_reach_cells: int) -> int:
+def get_effective_reach(base_reach_cells: int, *, effective_size: SizeCategory | None = None) -> int:
     """Return effective reach in grid cells.
 
-    Currently a passthrough — creature-size and condition modifiers will be
-    resolved here once the combat model carries that data.
+    Applies creature-size modifiers on top of the weapon/form's native
+    reach.  When *effective_size* is provided, a size-based bonus is
+    added (Large +1, Huge +2, Gargantuan +3 cells).
 
     Args:
         base_reach_cells: The weapon/form's native reach in cells.
+        effective_size:   The attacker's effective size category.  When
+                          *None* no size bonus is applied (backward
+                          compatible).
 
     Returns:
         Effective reach, clamped to a minimum of 1 cell.
     """
-    return max(1, base_reach_cells)
+    size_bonus = size_melee_reach_bonus_cells(effective_size) if effective_size is not None else 0
+    return max(1, base_reach_cells + size_bonus)
 
 
-def resolve_melee_reach_cells(*, has_reach: bool = False) -> int:
+def resolve_melee_reach_cells(*, has_reach: bool = False, effective_size: str | None = None) -> int:
     """Resolve melee reach in grid cells for a weapon or natural attack.
 
+    Combines:
+      1. Base melee reach (1 cell) or extended reach (2 cells for
+         weapons with the *reach* property).
+      2. Size-based bonus derived from *effective_size* (Large +1,
+         Huge +2, Gargantuan +3 cells).
+
     Args:
-        has_reach: True when the weapon carries the *reach* property.
+        has_reach:      True when the weapon carries the *reach* property.
+        effective_size: The attacker's effective size as a raw string.
+                        Normalised via ``normalize_size_category``;
+                        defaults to *Medium* when *None*.
 
     Returns:
         Effective reach in cells.
     """
     base = EXTENDED_REACH_CELLS if has_reach else DEFAULT_MELEE_REACH_CELLS
-    return get_effective_reach(base)
+    size_cat = normalize_size_category(effective_size) if effective_size is not None else None
+    return get_effective_reach(base, effective_size=size_cat)
 
 
 def normalize_weapon_long_range(
@@ -111,22 +135,23 @@ def resolve_weapon_attack_range_profile(
     range_long_meters: int | float | None = None,
     weapon_range_type: str | None = None,
     has_reach: bool = False,
+    effective_size: str | None = None,
 ) -> WeaponAttackRangeProfile:
     """Resolve the authoritative weapon range profile for a targeting intent."""
-    normal_range, long_range = normalize_weapon_long_range(
+    normalized_range, long_range = normalize_weapon_long_range(
         range_meters=range_meters,
         range_long_meters=range_long_meters,
     )
-    if normal_range is not None:
+    if normalized_range is not None:
         return WeaponAttackRangeProfile(
-            normal_range=normal_range,
+            normal_range=normalized_range,
             long_range=long_range,
-            max_range=long_range if long_range is not None else normal_range,
+            max_range=long_range if long_range is not None else normalized_range,
         )
 
     rng_type = (weapon_range_type or "").strip().lower()
     if rng_type == "melee":
-        melee_reach = resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL
+        melee_reach = resolve_melee_reach_cells(has_reach=has_reach, effective_size=effective_size) * METERS_PER_CELL
         return WeaponAttackRangeProfile(
             normal_range=melee_reach,
             long_range=None,
@@ -194,6 +219,7 @@ def resolve_weapon_attack_kind(
     range_meters: int | float | None = None,
     range_long_meters: int | float | None = None,
     has_reach: bool = False,
+    effective_size: str | None = None,
     distance_meters: int | float | None = None,
 ) -> Literal["melee", "ranged"]:
     """Resolve the effective attack kind for a weapon strike.
@@ -214,8 +240,9 @@ def resolve_weapon_attack_kind(
             range_long_meters=range_long_meters,
             weapon_range_type=weapon_range_type,
             has_reach=has_reach,
+            effective_size=effective_size,
         )
-        melee_reach = resolve_melee_reach_cells(has_reach=has_reach) * METERS_PER_CELL
+        melee_reach = resolve_melee_reach_cells(has_reach=has_reach, effective_size=effective_size) * METERS_PER_CELL
         if profile.normal_range is not None and float(distance_meters) > melee_reach:
             return "ranged"
 
@@ -292,6 +319,7 @@ def derive_max_range_meters(
     range_long_meters: int | float | None = None,
     weapon_range_type: str | None = None,
     has_reach: bool = False,
+    effective_size: str | None = None,
     target_type: str | None = None,
     range_kind: str | None = None,
 ) -> tuple[float | None, str | None]:
@@ -337,6 +365,7 @@ def derive_max_range_meters(
         range_long_meters=range_long_meters,
         weapon_range_type=weapon_range_type,
         has_reach=has_reach,
+        effective_size=effective_size,
     )
     if profile.failure_reason is not None:
         return (None, profile.failure_reason)
