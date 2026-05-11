@@ -17,6 +17,7 @@ export type TargetingPreviewState = {
   distanceMeters: number | null;
   normalRangeMeters: number | null;
   maxRangeMeters: number | null;
+  effectiveReachMeters: number | null;
   rangeStatus: RangeStatus;
   hasDisadvantage: boolean;
   failureReasons: string[];
@@ -59,6 +60,7 @@ const INITIAL: TargetingPreviewState = {
   distanceMeters: null,
   normalRangeMeters: null,
   maxRangeMeters: null,
+  effectiveReachMeters: null,
   rangeStatus: "unknown",
   hasDisadvantage: false,
   failureReasons: [],
@@ -122,6 +124,10 @@ export function useTargetingPreview(opts: UseTargetingPreviewOptions): Targeting
             typeof meta["max_range_meters"] === "number"
               ? (meta["max_range_meters"] as number)
               : resolvedLongRangeMeters ?? resolvedNormalRangeMeters ?? null;
+          const effectiveReachMeters =
+            typeof res.effectiveReachCells === "number"
+              ? res.effectiveReachCells * METERS_PER_CELL
+              : null;
           const { status, hasDisadvantage } = classifyRange(
             distanceMeters,
             resolvedNormalRangeMeters,
@@ -137,6 +143,7 @@ export function useTargetingPreview(opts: UseTargetingPreviewOptions): Targeting
             distanceMeters,
             normalRangeMeters: resolvedNormalRangeMeters ?? null,
             maxRangeMeters: resolvedMaxRangeMeters,
+            effectiveReachMeters,
             rangeStatus: finalStatus,
             hasDisadvantage: finalStatus === "long" ? true : hasDisadvantage,
             failureReasons: diag?.failureReasons ?? [],

@@ -1,5 +1,6 @@
 import { RollResultCard } from "../../features/rolls/components/RollResultCard";
 import { PlayerAttackRollDialog } from "./player-combat-debug/PlayerAttackRollDialog";
+import { parseCreatureSize } from "../../features/combat-ui/utils/parseCreatureSize";
 import { PlayerCombatParticipants } from "./player-combat-debug/PlayerCombatParticipants";
 import { PlayerDeathSaveFeedbackCard } from "./player-combat-debug/PlayerDeathSaveFeedbackCard";
 import { PlayerSpellCastDialog } from "./player-combat-debug/PlayerSpellCastDialog";
@@ -182,6 +183,7 @@ export const PlayerCombatDebugPanel = ({
         <PlayerAttackRollDialog
           actorParticipantId={currentParticipant.id}
           actorRefId={currentParticipant.ref_id}
+          actorEffectiveSize={parseCreatureSize(currentParticipant.effective_size)}
           sessionId={sessionId}
           target={selectedTarget}
           weapon={playerStatus?.currentWeapon ?? null}

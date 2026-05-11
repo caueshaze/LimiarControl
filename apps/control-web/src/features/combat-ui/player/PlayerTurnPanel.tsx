@@ -21,6 +21,8 @@ import type {
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import { PlayerActionPanels } from "./PlayerActionPanels";
+import { parseCreatureSize } from "../utils/parseCreatureSize";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 
 type Props = {
   activeActionPanel: "attack" | "spell" | "standard" | "object";
@@ -172,6 +174,8 @@ export const PlayerTurnPanel = ({
     combat.isMyTurn,
     t
   );
+  const effectiveSize: CreatureSize | undefined = parseCreatureSize(myParticipant?.effective_size);
+
   const attackRangePreview = useTargetingPreview({
     sessionId,
     actorRefId: myParticipant?.ref_id,
@@ -359,24 +363,25 @@ export const PlayerTurnPanel = ({
               setActiveActionPanel={setActiveActionPanel}
               setConsumableItemId={setConsumableItemId}
               setSelectedSpellId={setSelectedSpellId}
-            setUseObjectManualRolls={setUseObjectManualRolls}
-            setUseObjectNote={setUseObjectNote}
-            setUseObjectRollMode={setUseObjectRollMode}
-            setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
-            selectedWeaponId={selectedWeaponId}
-            spellOptions={spellOptions}
-            targetId={targetId}
-            useObjectActionDisabled={useObjectActionDisabled}
-            useObjectManualRolls={useObjectManualRolls}
-            useObjectNote={useObjectNote}
-            useObjectRollMode={useObjectRollMode}
-            useObjectTargetOptions={useObjectTargetOptions}
-            useObjectTargetParticipantId={useObjectTargetParticipantId}
-            weaponOptions={weaponOptions}
-            isSavingLoadout={isSavingLoadout}
-            loadoutStatus={loadoutStatus}
-            onWeaponChange={onWeaponChange}
-          />
+              setUseObjectManualRolls={setUseObjectManualRolls}
+              setUseObjectNote={setUseObjectNote}
+              setUseObjectRollMode={setUseObjectRollMode}
+              setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
+              selectedWeaponId={selectedWeaponId}
+              spellOptions={spellOptions}
+              targetId={targetId}
+              useObjectActionDisabled={useObjectActionDisabled}
+              useObjectManualRolls={useObjectManualRolls}
+              useObjectNote={useObjectNote}
+              useObjectRollMode={useObjectRollMode}
+              useObjectTargetOptions={useObjectTargetOptions}
+              useObjectTargetParticipantId={useObjectTargetParticipantId}
+              weaponOptions={weaponOptions}
+              isSavingLoadout={isSavingLoadout}
+              loadoutStatus={loadoutStatus}
+              onWeaponChange={onWeaponChange}
+              effectiveSize={effectiveSize}
+            />
 
             <div className="flex justify-end">
               <button

@@ -1,8 +1,11 @@
 import { useLocale } from "../../../shared/hooks/useLocale";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 import type { RangeStatus, TargetingPreviewState } from "../hooks/useTargetingPreview";
+import { formatSizeMeleeReachBonusSource, formatMetersCompact } from "../utils/formatSizeMeleeReachBonus";
 
 type Props = {
   preview: TargetingPreviewState;
+  effectiveSize?: CreatureSize;
 };
 
 const STATUS_STYLES: Record<RangeStatus, string> = {
@@ -28,12 +31,7 @@ const statusLabel = (
   }
 };
 
-const formatDistance = (meters: number): string => {
-  const rounded = Math.round(meters * 10) / 10;
-  return rounded % 1 === 0 ? `${rounded.toFixed(0)}m` : `${rounded.toFixed(1).replace(".", ",")}m`;
-};
-
-export const RangeStatusBadge = ({ preview }: Props) => {
+export const RangeStatusBadge = ({ preview, effectiveSize }: Props) => {
   const { t } = useLocale();
   const {
     loading,
@@ -41,8 +39,13 @@ export const RangeStatusBadge = ({ preview }: Props) => {
     distanceMeters,
     normalRangeMeters,
     maxRangeMeters,
+    effectiveReachMeters,
     hasDisadvantage,
   } = preview;
+
+  const sizeBonusSource = effectiveSize
+    ? formatSizeMeleeReachBonusSource(effectiveSize, t)
+    : null;
 
   if (loading) {
     return (
@@ -53,13 +56,14 @@ export const RangeStatusBadge = ({ preview }: Props) => {
   }
 
   const label = statusLabel(t, rangeStatus);
-  const distanceLabel = distanceMeters != null ? formatDistance(distanceMeters) : null;
-  const normalRangeLabel = normalRangeMeters != null ? formatDistance(normalRangeMeters) : null;
+  const distanceLabel = distanceMeters != null ? formatMetersCompact(distanceMeters) : null;
+  const normalRangeLabel = normalRangeMeters != null ? formatMetersCompact(normalRangeMeters) : null;
   const maxRangeLabel =
     maxRangeMeters != null && maxRangeMeters !== normalRangeMeters
-      ? formatDistance(maxRangeMeters)
+      ? formatMetersCompact(maxRangeMeters)
       : null;
-  const neededLabel = maxRangeMeters != null ? formatDistance(maxRangeMeters) : null;
+  const effectiveReachLabel = effectiveReachMeters != null ? formatMetersCompact(effectiveReachMeters) : null;
+  const neededLabel = effectiveReachLabel ?? (maxRangeMeters != null ? formatMetersCompact(maxRangeMeters) : null);
 
   return (
     <div
@@ -75,7 +79,12 @@ export const RangeStatusBadge = ({ preview }: Props) => {
           {neededLabel ? ` · precisa <= ${neededLabel}` : ""}
         </p>
       ) : null}
-      {normalRangeLabel ? (
+      {sizeBonusSource && effectiveReachLabel ? (
+        <p className="mt-1 text-[11px] font-normal opacity-90">
+          {t("combatUi.meleeReachEffective")}: {effectiveReachLabel}
+          {normalRangeLabel ? ` (${t("combatUi.meleeReachBase")}: ${normalRangeLabel} · ${sizeBonusSource.label})` : ` (${sizeBonusSource.label})`}
+        </p>
+      ) : normalRangeLabel ? (
         <p className="mt-1 text-[11px] font-normal opacity-80">
           Alcance normal: {normalRangeLabel}
           {maxRangeLabel ? ` · longo: ${maxRangeLabel}` : ""}
