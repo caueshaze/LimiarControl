@@ -5,11 +5,9 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.models.campaign_entity import CampaignEntity
 from app.models.combat import CombatState
-from app.models.session_entity import SessionEntity
 from app.schemas.roll import RollActorStats
 from app.services.goodberry_inventory import (
     build_goodberry_expiration,
@@ -103,19 +101,11 @@ class CombatSpellAutomationMixin:
     ) -> None:
         if cls._normalize_spell_automation_key(spell_canonical_key) != "animal_friendship":
             return
-        if target_participant.get("kind") != "session_entity":
-            raise CombatServiceError("Animal Friendship can only target beasts.", 400)
-        session_entity = db.exec(
-            select(SessionEntity).where(SessionEntity.id == target_participant["ref_id"])
-        ).first()
-        if not session_entity:
-            raise CombatServiceError("Target entity not found.", 404)
-        creature = db.exec(
-            select(CampaignEntity).where(
-                CampaignEntity.id == session_entity.campaign_entity_id
-            )
-        ).first()
-        creature_type = cls._normalize_lookup(getattr(creature, "creature_type", None))
+        creature_type = cls.resolve_effective_creature_type(
+            db,
+            session_id,
+            target_participant,
+        )
         if creature_type != "beast":
             raise CombatServiceError("Animal Friendship can only target beasts.", 400)
 

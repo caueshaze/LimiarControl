@@ -49,6 +49,26 @@ def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     @classmethod
+    def _validate_spell_target_creature_type_restriction(
+        cls,
+        db,
+        session_id: str,
+        *,
+        spell_canonical_key: str,
+        target_participant: dict,
+    ) -> None:
+        spell_key = cls._normalize_lookup(spell_canonical_key).replace(" ", "_")
+        if spell_key != "hold_person":
+            return
+        creature_type = cls.resolve_effective_creature_type(
+            db,
+            session_id,
+            target_participant,
+        )
+        if creature_type is not None and creature_type != "humanoid":
+            raise CombatServiceError("Hold Person can only target humanoids.", 400)
+
+    @classmethod
     def _upsert_shield_temp_ac_effect(cls, participant: dict, *, source_participant_id: str | None) -> None:
         effects = cls._get_participant_effects(participant)
         kept = []
@@ -1166,6 +1186,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 spell_canonical_key=spell_context["spell_canonical_key"],
                 target_participant=assignment["participant"],
             )
+            cls._validate_spell_target_creature_type_restriction(
+                db,
+                session_id,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                target_participant=assignment["participant"],
+            )
 
         for assignment in validated_assignments:
             participant = assignment["participant"]
@@ -1513,6 +1539,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 action_label="a hostile spell",
             )
         cls._validate_spell_automation_target(
+            db,
+            session_id,
+            spell_canonical_key=spell_context["spell_canonical_key"],
+            target_participant=target_p,
+        )
+        cls._validate_spell_target_creature_type_restriction(
             db,
             session_id,
             spell_canonical_key=spell_context["spell_canonical_key"],
@@ -2086,19 +2118,6 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         """
         from sqlalchemy.orm.attributes import flag_modified
 
-        slot_spent = False
-        action_cost = spell_context.get("action_cost") or "action"
-        was_overridden = cls._consume_turn_resource(
-            attacker,
-            action_cost,
-            is_gm=is_gm,
-            override_resource_limit=req.override_resource_limit,
-        )
-        if isinstance(spell_context.get("slot_level"), int):
-            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
-            db.add(attacker_model)
-            slot_spent = True
-
         spell_mode = spell_context["spell_mode"]
         is_hostile_spell = spell_mode in ("spell_attack", "saving_throw", "direct_damage")
         player_state_ids_to_emit: set[str] = set()
@@ -2121,6 +2140,25 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 spell_canonical_key=spell_context["spell_canonical_key"],
                 target_participant=participant,
             )
+            cls._validate_spell_target_creature_type_restriction(
+                db,
+                session_id,
+                spell_canonical_key=spell_context["spell_canonical_key"],
+                target_participant=participant,
+            )
+
+        slot_spent = False
+        action_cost = spell_context.get("action_cost") or "action"
+        was_overridden = cls._consume_turn_resource(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+        if isinstance(spell_context.get("slot_level"), int):
+            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
+            db.add(attacker_model)
+            slot_spent = True
 
         # Per-target automation resolution
         for participant in targets:
