@@ -339,6 +339,8 @@ class CombatSpellDeclarativeEffectsMixin:
             "concentration": bool(spell_context.get("concentration")),
             "concentration_group": effect_group_id if spell_context.get("concentration") else None,
         }
+        if effect.repeat_save is not None:
+            metadata["repeat_save"] = effect.repeat_save.model_dump(mode="json")
         resolved_target = cls._resolve_declarative_effect_target(
             state=state,
             attacker=attacker,

@@ -28,6 +28,7 @@ SpellDeclarativeEffectType = Literal[
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
+SpellDeclarativeRepeatSaveTiming = Literal["target_turn_end"]
 SpellDeclarativeDurationType = Literal[
     "manual",
     "rounds",
@@ -190,12 +191,19 @@ class TerminationCondition(BaseModel):
     type: SpellDeclarativeTerminationConditionType
 
 
+class SpellDeclarativeRepeatSave(BaseModel):
+    timing: SpellDeclarativeRepeatSaveTiming
+    ability: AbilityName
+    ends_on_success: bool = True
+
+
 class SpellDeclarativeEffect(BaseModel):
     type: SpellDeclarativeEffectType
     target: SpellDeclarativeEffectTarget
     duration: SpellDeclarativeDuration | None = None
     out_of_combat_duration: SpellOutOfCombatTimedDuration | None = None
     termination_conditions: list[TerminationCondition] | None = None
+    repeat_save: SpellDeclarativeRepeatSave | None = None
     params: (
         ApplyConditionParams
         | ModifyStatParams
