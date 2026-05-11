@@ -131,6 +131,71 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "ray_of_frost",
+      "nameEn": "Ray of Frost",
+      "namePt": "Raio de Gelo",
+      "descriptionEn": "A frigid beam of blue-white light streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, it takes 1d8 cold damage, and its speed is reduced by 10 feet until the start of your next turn.",
+      "descriptionPt": "Um feixe frígido de luz azul-branca avança em direção a uma criatura dentro do alcance. Faça um ataque de magia à distância contra o alvo. Em um acerto, ele sofre 1d8 de dano de frio e sua velocidade é reduzida em 3m até o início do seu próximo turno.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "1d8",
+      "damageType": "Cold",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {"characterLevel": 1, "damage": {"dice": "1d8"}},
+          {"characterLevel": 5, "damage": {"dice": "2d8"}},
+          {"characterLevel": 11, "damage": {"dice": "3d8"}},
+          {"characterLevel": 17, "damage": {"dice": "4d8"}}
+        ]
+      },
+      "effects": [
+        {
+          "type": "modify_movement_speed",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_start",
+            "anchor": "caster"
+          },
+          "params": {
+            "bonus_meters": -3
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "light",
       "nameEn": "Light",
       "namePt": "Luz",

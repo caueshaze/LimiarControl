@@ -184,6 +184,7 @@ class SpellResponseMixin:
         summary_text: str | None,
         inventory_refresh_required: bool,
         was_overridden: bool,
+        on_hit_applied_declarative_effects_by_target: list | None = None,
     ) -> dict:
         damage_type = (
             automation_result.get("damage_type")
@@ -299,6 +300,6 @@ class SpellResponseMixin:
             "applied_declarative_effects_by_target": (
                 automation_result.get("applied_declarative_effects_by_target")
                 if automation_result is not None
-                else None
+                else on_hit_applied_declarative_effects_by_target
             ),
         }
