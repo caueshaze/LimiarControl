@@ -1,12 +1,16 @@
 import type { ActiveConcentration, OutOfCombatCastableSpell } from "../../entities/character";
-import type { ActiveEffect } from "../../shared/api/combatRepo";
+import type { ActiveEffect, CombatParticipant } from "../../shared/api/combatRepo";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import { OutOfCombatSpellCastCard } from "./OutOfCombatSpellCastCard";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SpellSlotSummary } from "../../shared/ui/SpellSlotSummary";
 import { formatPassiveBonusBreakdown } from "../../features/character-sheet/utils/passiveSkillBonusDisplay";
 import { formatActiveConcentrationLabel } from "./concentrationLabel";
-import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "../../features/active-effects";
+import {
+  formatEffectiveCreatureSize,
+  getActiveEffectLifecycleBadges,
+  groupActiveEffectsForDisplay,
+} from "../../features/active-effects";
 import type { PendingRoll, PlayerBoardStatusSummary } from "./playerBoard.types";
 import {
   DeathSaveCard,
@@ -39,6 +43,7 @@ type Props = {
   pendingRoll: PendingRoll | null;
   playerSheet?: CharacterSheet | null;
   playerStatus: PlayerBoardStatusSummary | null;
+  participant?: Pick<CombatParticipant, "base_size" | "effective_size"> | null;
   removingEffectId?: string | null;
   restState: "exploration" | "short_rest" | "long_rest";
   targetOptions?: Array<{ playerUserId: string; label: string }>;
@@ -59,6 +64,7 @@ export const PlayerBoardStatusPanel = ({
   pendingRoll,
   playerSheet,
   playerStatus,
+  participant = null,
   removingEffectId,
   restState,
   targetOptions,
@@ -66,6 +72,8 @@ export const PlayerBoardStatusPanel = ({
   onUseHitDie,
 }: Props) => {
   const { t } = useLocale();
+  const activeEffectGroups = groupActiveEffectsForDisplay(activeSpellEffects ?? []);
+  const effectiveSizeLabel = participant ? formatEffectiveCreatureSize(participant, "pt") : null;
 
   return (
     <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
@@ -174,6 +182,14 @@ export const PlayerBoardStatusPanel = ({
                   : null
               }
             />
+            {effectiveSizeLabel ? (
+              <StatCard
+                label={t("playerBoard.creatureSizeLabel")}
+                mobileLabel={t("playerBoard.creatureSizeLabel")}
+                value={effectiveSizeLabel.replace(/^Tamanho atual: /, "")}
+                accent="text-fuchsia-200"
+              />
+            ) : null}
           </div>
 
           <div className="mt-3">
@@ -241,14 +257,21 @@ export const PlayerBoardStatusPanel = ({
                 {t("playerBoard.activeEffectsLabel")}
               </p>
               <ul className="mt-3 space-y-2">
-                {activeSpellEffects.map((effect) => {
-                  const label = formatActiveEffectLabel(effect) ?? t("playerBoard.activeEffectFallback");
-                  const lifecycleBadges = getActiveEffectLifecycleBadges(effect);
-                  const isRemoving = removingEffectId === effect.id;
+                {activeEffectGroups.map((group, groupIndex) => {
+                  const primaryEffect = group.effects[0] as ActiveEffect | undefined;
+                  const lifecycleBadges = primaryEffect ? getActiveEffectLifecycleBadges(primaryEffect) : [];
+                  const title = group.title ?? t("playerBoard.activeEffectFallback");
                   return (
-                    <li key={effect.id} className="flex items-center justify-between gap-3">
+                    <li key={group.groupKey ?? primaryEffect?.id ?? groupIndex} className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">{label}</p>
+                        <p className="truncate text-sm font-medium text-white">{title}</p>
+                        {group.summaryLines.length > 0 ? (
+                          <div className="mt-1 space-y-0.5 text-xs text-slate-300">
+                            {group.summaryLines.map((line, index) => (
+                              <p key={`${line}:${index}`}>{line}</p>
+                            ))}
+                          </div>
+                        ) : null}
                         {lifecycleBadges.length > 0 ? (
                           <p className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
                             {lifecycleBadges.map((badge, index) => (
@@ -266,14 +289,22 @@ export const PlayerBoardStatusPanel = ({
                           </p>
                         ) : null}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveEffect(effect.id)}
-                        disabled={isRemoving}
-                        className="shrink-0 rounded-full bg-white/8 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300 transition hover:bg-red-500/20 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isRemoving ? t("playerBoard.removingEffect") : t("playerBoard.removeEffect")}
-                      </button>
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        {(group.effects as ActiveEffect[]).map((effect) => {
+                          const isRemoving = removingEffectId === effect.id;
+                          return (
+                            <button
+                              key={effect.id}
+                              type="button"
+                              onClick={() => onRemoveEffect(effect.id)}
+                              disabled={isRemoving}
+                              className="rounded-full bg-white/8 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300 transition hover:bg-red-500/20 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isRemoving ? t("playerBoard.removingEffect") : t("playerBoard.removeEffect")}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </li>
                   );
                 })}

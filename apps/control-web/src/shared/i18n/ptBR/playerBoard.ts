@@ -48,6 +48,7 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.hpTrackLabel": "Pontos de vida",
   "playerBoard.xpTrackLabel": "Progresso de XP",
   "playerBoard.initiativeLabel": "Iniciativa",
+  "playerBoard.creatureSizeLabel": "Tamanho",
   "playerBoard.rollBaseLabel": "Base de rolagem",
   "playerBoard.rollBaseFallback": "AC pronta para combate",
   "playerBoard.waitingSheetState": "Aguardando a ficha em tempo real para montar o painel de combate.",

@@ -1,9 +1,67 @@
-import type { LocaleKey } from "../../shared/i18n";
+import { formatDeclarativeEffectSummaryLine } from "../combat-ui/spellVariantUi";
+import type { Locale, LocaleKey } from "../../shared/i18n";
 
 export type ActiveEffectLifecycleBadge = {
   key: string;
   i18nKey: LocaleKey;
   params?: Record<string, string | number>;
+};
+
+export type ActiveEffectDisplayGroup = {
+  effects: Record<string, unknown>[];
+  groupKey: string | null;
+  title: string | null;
+  summaryLines: string[];
+};
+
+const CREATURE_SIZE_LABELS: Record<Locale, Record<string, string>> = {
+  en: {
+    tiny: "Tiny",
+    small: "Small",
+    medium: "Medium",
+    large: "Large",
+    huge: "Huge",
+    gargantuan: "Gargantuan",
+  },
+  pt: {
+    tiny: "Minúsculo",
+    small: "Pequeno",
+    medium: "Médio",
+    large: "Grande",
+    huge: "Enorme",
+    gargantuan: "Colossal",
+  },
+};
+
+const normalizeSize = (size: unknown) =>
+  typeof size === "string" && size.trim() ? size.trim().toLowerCase() : null;
+
+export const formatCreatureSize = (size: unknown, locale: Locale = "pt") => {
+  const normalized = normalizeSize(size);
+  if (!normalized) {
+    return null;
+  }
+  return CREATURE_SIZE_LABELS[locale][normalized] ?? normalized;
+};
+
+export const formatEffectiveCreatureSize = (
+  participant: {
+    base_size?: string | null;
+    effective_size?: string | null;
+  },
+  locale: Locale = "pt",
+) => {
+  const baseSize = normalizeSize(participant.base_size) ?? "medium";
+  const effectiveSize = normalizeSize(participant.effective_size);
+  if (!effectiveSize || effectiveSize === baseSize) {
+    return null;
+  }
+  const effectiveLabel = formatCreatureSize(effectiveSize, locale);
+  const baseLabel = formatCreatureSize(baseSize, locale);
+  if (!effectiveLabel || !baseLabel) {
+    return null;
+  }
+  return `Tamanho atual: ${effectiveLabel} (base ${baseLabel})`;
 };
 
 export const formatActiveEffectLabel = (
@@ -21,6 +79,95 @@ export const formatActiveEffectLabel = (
   if (spellName) return spellName;
   if (spellKey) return spellKey;
   return null;
+};
+
+const getGroupKey = (effect: Record<string, unknown>) => {
+  const metadata = ((effect.metadata ?? {}) as Record<string, unknown>) || {};
+  const declarativeGroup = metadata.declarative_effect_group_id;
+  if (typeof declarativeGroup === "string" && declarativeGroup.trim()) {
+    return `declarative:${declarativeGroup.trim()}`;
+  }
+  const concentrationGroup = metadata.concentration_group;
+  if (typeof concentrationGroup === "string" && concentrationGroup.trim()) {
+    return `concentration:${concentrationGroup.trim()}`;
+  }
+  return null;
+};
+
+export const buildActiveEffectGroupTitle = (
+  group: Pick<ActiveEffectDisplayGroup, "effects">,
+) => {
+  const first = group.effects[0];
+  if (!first) {
+    return null;
+  }
+  const metadata = ((first.metadata ?? {}) as Record<string, unknown>) || {};
+  const spellName = typeof metadata.source_spell_name === "string" ? metadata.source_spell_name.trim() : "";
+  const variantLabel = typeof metadata.selected_variant_label === "string" ? metadata.selected_variant_label.trim() : "";
+  if (spellName && variantLabel) {
+    return `${spellName} \u2014 ${variantLabel}`;
+  }
+  if (spellName) {
+    return spellName;
+  }
+  if (variantLabel) {
+    return variantLabel;
+  }
+  return formatActiveEffectLabel(first);
+};
+
+const buildSummaryLines = (effects: Record<string, unknown>[]) =>
+  effects
+    .map((effect) => {
+      const metadata = ((effect.metadata ?? {}) as Record<string, unknown>) || {};
+      const declarative = metadata.declarative_effect;
+      if (!declarative || typeof declarative !== "object") {
+        return null;
+      }
+      return formatDeclarativeEffectSummaryLine(
+        declarative as { type?: unknown; params?: Record<string, unknown> | null },
+        metadata,
+      );
+    })
+    .filter((line): line is string => Boolean(line));
+
+export const groupActiveEffectsForDisplay = (
+  effects: Record<string, unknown>[] | null | undefined,
+): ActiveEffectDisplayGroup[] => {
+  if (!effects?.length) {
+    return [];
+  }
+  const grouped = new Map<string, Record<string, unknown>[]>();
+  const output: ActiveEffectDisplayGroup[] = [];
+
+  effects.forEach((effect) => {
+    const groupKey = getGroupKey(effect);
+    if (!groupKey) {
+      output.push({
+        effects: [effect],
+        groupKey: null,
+        title: formatActiveEffectLabel(effect),
+        summaryLines: buildSummaryLines([effect]),
+      });
+      return;
+    }
+    grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), effect]);
+  });
+
+  grouped.forEach((groupEffects, groupKey) => {
+    const group = {
+      effects: groupEffects,
+      groupKey,
+      title: null,
+      summaryLines: buildSummaryLines(groupEffects),
+    };
+    output.push({
+      ...group,
+      title: buildActiveEffectGroupTitle(group),
+    });
+  });
+
+  return output;
 };
 
 export const getActiveEffectLifecycleBadges = (

@@ -2,6 +2,7 @@ import { formatEffectContextDebug } from "../spellVariantUi";
 import { getCombatEffectLabel } from "../combatUi.helpers";
 import type { ActiveEffect } from "../../../shared/api/combatRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { groupActiveEffectsForDisplay } from "../../active-effects";
 
 type Props = {
   effects: ActiveEffect[];
@@ -13,10 +14,12 @@ export const ActiveEffectDebugPanel = ({
   targetDisplayName = null,
 }: Props) => {
   const { t } = useLocale();
-  const debugEntries = effects
-    .map((effect) => ({
-      effect,
-      lines: formatEffectContextDebug(effect, { targetDisplayName }),
+  const debugEntries = groupActiveEffectsForDisplay(effects)
+    .map((group) => ({
+      group,
+      lines: group.summaryLines.length
+        ? group.summaryLines
+        : group.effects.flatMap((effect) => formatEffectContextDebug(effect as ActiveEffect, { targetDisplayName })),
     }))
     .filter((entry) => entry.lines.length > 0);
 
@@ -26,21 +29,24 @@ export const ActiveEffectDebugPanel = ({
 
   return (
     <div className="mt-3 space-y-2">
-      {debugEntries.map(({ effect, lines }) => (
+      {debugEntries.map(({ group, lines }, index) => {
+        const firstEffect = group.effects[0] as ActiveEffect;
+        return (
         <details
-          key={effect.id}
+          key={group.groupKey ?? firstEffect.id ?? index}
           className="rounded-2xl border border-sky-500/20 bg-sky-500/8 px-3 py-2"
         >
           <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.16em] text-sky-100">
-            {getCombatEffectLabel(t, effect)}
+            {group.title ?? getCombatEffectLabel(t, firstEffect)}
           </summary>
           <div className="mt-2 space-y-1 text-xs text-slate-200">
             {lines.map((line, index) => (
-              <p key={`${effect.id}:${index}`}>{line}</p>
+              <p key={`${group.groupKey ?? firstEffect.id}:${index}`}>{line}</p>
             ))}
           </div>
         </details>
-      ))}
+        );
+      })}
     </div>
   );
 };

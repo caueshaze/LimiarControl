@@ -468,6 +468,7 @@ export const PlayerBoardPage = () => {
             onClearConcentration={handleClearConcentration}
             onRemoveEffect={handleRemoveEffect}
             pendingRoll={pendingRoll}
+            participant={combatBarState.myParticipant ?? null}
             playerSheet={playerSheet}
             playerStatus={playerStatus}
             removingEffectId={removingEffectId}

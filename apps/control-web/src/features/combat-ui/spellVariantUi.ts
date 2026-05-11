@@ -1,4 +1,4 @@
-import type { SpellVariantManualNote } from "../../entities/base-spell";
+import type { SpellDeclarativeEffect, SpellVariant, SpellVariantManualNote } from "../../entities/base-spell";
 import type {
   ActiveEffect,
   AppliedDeclarativeEffectsByTargetEntry,
@@ -196,6 +196,21 @@ const humanizeAgainst = (value: unknown) => {
   return null;
 };
 
+const ABILITY_LABELS_PT: Record<string, string> = {
+  strength: "Força",
+  dexterity: "Destreza",
+  constitution: "Constituição",
+  intelligence: "Inteligência",
+  wisdom: "Sabedoria",
+  charisma: "Carisma",
+};
+
+const formatAbilityList = (abilities: unknown[]) =>
+  abilities
+    .filter((ability): ability is string => typeof ability === "string")
+    .map((ability) => ABILITY_LABELS_PT[ability] ?? ability)
+    .join(", ");
+
 export const formatDeclarativeEffectSummaryLine = (
   declarative: DeclarativeEffectSummaryLike | null | undefined,
   metadata?: Record<string, unknown> | null,
@@ -208,23 +223,29 @@ export const formatDeclarativeEffectSummaryLine = (
     (declarative.type === "advantage_on_checks" || declarative.type === "disadvantage_on_checks")
     && typeof p.ability === "string"
   ) {
-    return `${declarative.type === "advantage_on_checks" ? "Advantage" : "Disadvantage"}: ${p.ability} checks`;
+    return `${declarative.type === "advantage_on_checks" ? "Vantagem" : "Desvantagem"} em testes de ${ABILITY_LABELS_PT[p.ability] ?? p.ability}`;
   }
   if (declarative.type === "modify_stat" && typeof p.stat === "string") {
     return `Effect: ${p.stat}`;
   }
   if (declarative.type === "modify_weapon_damage" && typeof p.dice === "string") {
     const operation = p.operation === "subtract" ? "-" : "+";
-    return `Weapon damage: ${operation}${p.dice}`;
+    return `Dano de arma ${operation}${p.dice}`;
   }
   if (
     (declarative.type === "advantage_on_saves" || declarative.type === "disadvantage_on_saves")
     && Array.isArray(p.abilities)
   ) {
-    return `${declarative.type === "advantage_on_saves" ? "Advantage" : "Disadvantage"}: ${p.abilities.join(", ")} saves`;
+    return `${declarative.type === "advantage_on_saves" ? "Vantagem" : "Desvantagem"} em salvaguardas de ${formatAbilityList(p.abilities)}`;
   }
   if (declarative.type === "size_modifier" && typeof p.value === "number") {
-    return `Size: ${p.value > 0 ? "+" : ""}${p.value}`;
+    if (p.value > 0) {
+      return "Tamanho aumentado";
+    }
+    if (p.value < 0) {
+      return "Tamanho reduzido";
+    }
+    return "Tamanho inalterado";
   }
   if (declarative.type === "apply_condition" && typeof p.condition === "string") {
     return `Condition: ${p.condition}`;
@@ -263,6 +284,16 @@ export const formatDeclarativeEffectSummaryLine = (
     return `Imunidade a queda: até ${p.max_distance_meters}m`;
   }
   return null;
+};
+
+export const formatSpellVariantSummaryLines = (
+  variant: Pick<SpellVariant, "effects" | "manualNotes"> | null | undefined,
+) => {
+  const effectLines = (variant?.effects ?? [])
+    .map((effect: SpellDeclarativeEffect) => formatDeclarativeEffectSummaryLine(effect))
+    .filter((line): line is string => Boolean(line));
+  const manualLines = (variant?.manualNotes ?? []).map((note) => `${note.label} - ${note.description}`);
+  return [...effectLines, ...manualLines];
 };
 
 export const filterManualNotesByAppliedEffects = (

@@ -11,6 +11,7 @@ import type {
 } from "../../../shared/api/combatRepo";
 import { combatRepo } from "../../../shared/api/combatRepo";
 import { toPlayerFriendlyError } from "../../../features/combat-ui/combatErrors";
+import { formatSpellVariantSummaryLines } from "../../../features/combat-ui/spellVariantUi";
 import { useTargetingPreview } from "../../../features/combat-ui/hooks/useTargetingPreview";
 import {
   getDamageRollCount,
@@ -700,7 +701,7 @@ export const PlayerSpellCastDialog = ({
         await onResolved?.(resolved);
       }
     } catch (err: any) {
-      setError(toPlayerFriendlyError(err?.data?.detail || err?.message || "Falha ao conjurar magia"));
+      setError(toPlayerFriendlyError(err?.data?.detail ?? err?.data ?? err?.message ?? "Falha ao conjurar magia"));
       setTargetingMode(isAreaSpell ? "area_target_select" : "single_target_select");
       setAttackMode("choose");
     } finally {
@@ -790,12 +791,22 @@ export const PlayerSpellCastDialog = ({
             {selectedVariantKey
               ? spellVariants
                   .filter((variant) => variant.key === selectedVariantKey)
-                  .flatMap((variant) => variant.manualNotes ?? [])
-                  .map((note) => (
-                    <p key={note.key} className="text-xs text-amber-100">
-                      Automação parcial: {note.label} - {note.description}
-                    </p>
-                  ))
+                  .map((variant) => {
+                    const summaryLines = formatSpellVariantSummaryLines(variant);
+                    const label = variant.labelPt ?? variant.labelEn ?? variant.key;
+                    return (
+                      <div key={variant.key} className="rounded-2xl border border-fuchsia-500/15 bg-fuchsia-500/8 px-3 py-2">
+                        <p className="text-sm font-semibold text-fuchsia-100">{label}</p>
+                        {summaryLines.length ? (
+                          <ul className="mt-2 space-y-1 text-xs text-slate-300">
+                            {summaryLines.map((line, index) => (
+                              <li key={`${variant.key}:${index}`}>{line}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    );
+                  })
               : null}
           </div>
         ) : null}

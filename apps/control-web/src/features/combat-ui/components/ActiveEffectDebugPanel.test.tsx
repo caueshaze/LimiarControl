@@ -37,10 +37,8 @@ describe("ActiveEffectDebugPanel", () => {
       />,
     );
 
-    expect(markup).toContain("Source: Friends");
-    expect(markup).toContain("Selected target: Guard Captain");
-    expect(markup).toContain("Against: selected target");
-    expect(markup).toContain("Advantage: charisma checks");
+    expect(markup).toContain("Friends");
+    expect(markup).toContain("Vantagem em testes de Carisma");
   });
 
   it("exibe PV temporários concedidos com valor final e aviso de não expiração", () => {
