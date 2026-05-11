@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.campaign_entity_shared import AbilityName
 
@@ -16,6 +16,7 @@ SpellDeclarativeEffectType = Literal[
     "disadvantage_on_checks",
     "advantage_on_saves",
     "disadvantage_on_saves",
+    "size_modifier",
     "restrict_action",
     "grant_temp_hp",
     "passive_skill_bonus",
@@ -107,9 +108,15 @@ class ModifyStatParams(BaseModel):
 
 
 class ModifyWeaponDamageParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     dice: str
     operation: Literal["add", "subtract"] = "add"
     minimum_total_damage: int | None = None
+
+
+class SizeModifierParams(BaseModel):
+    value: Literal[-1, 1]
 
 
 class CheckModifierParams(BaseModel):
@@ -126,6 +133,8 @@ class RestrictActionParams(BaseModel):
 
 
 class GrantTempHpParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     dice: str
 
 
@@ -171,12 +180,13 @@ class SpellDeclarativeEffect(BaseModel):
     params: (
         ApplyConditionParams
         | ModifyStatParams
+        | GrantTempHpParams
         | ModifyWeaponDamageParams
+        | SizeModifierParams
         | ArmorClassFormulaParams
         | CheckModifierParams
         | SaveModifierParams
         | RestrictActionParams
-        | GrantTempHpParams
         | PassiveSkillBonusParams
         | CarryingCapacityMultiplierParams
         | ModifyMovementSpeedParams
@@ -192,6 +202,8 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("modify_stat effects require ModifyStatParams")
         if self.type == "modify_weapon_damage" and not isinstance(self.params, ModifyWeaponDamageParams):
             raise ValueError("modify_weapon_damage effects require ModifyWeaponDamageParams")
+        if self.type == "size_modifier" and not isinstance(self.params, SizeModifierParams):
+            raise ValueError("size_modifier effects require SizeModifierParams")
         if self.type == "armor_class_formula" and not isinstance(self.params, ArmorClassFormulaParams):
             raise ValueError("armor_class_formula effects require ArmorClassFormulaParams")
         if self.type in {"advantage_on_checks", "disadvantage_on_checks"} and not isinstance(

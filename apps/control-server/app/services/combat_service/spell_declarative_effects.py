@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from typing import Literal
 from uuid import uuid4
 
@@ -285,6 +286,22 @@ class CombatSpellDeclarativeEffectsMixin:
         cls._set_participant_effects(participant, keep)
 
     @classmethod
+    def _replace_enlarge_reduce_size_modifier(cls, participant: dict) -> None:
+        keep: list[dict] = []
+        for existing in cls._get_participant_effects(participant):
+            metadata = cls._get_effect_metadata(existing)
+            declarative = metadata.get("declarative_effect")
+            if (
+                existing.get("kind") == "size_modifier"
+                and metadata.get("source_spell_key") == "enlarge_reduce"
+                and isinstance(declarative, dict)
+                and declarative.get("type") == "size_modifier"
+            ):
+                continue
+            keep.append(existing)
+        cls._set_participant_effects(participant, keep)
+
+    @classmethod
     def _apply_single_declarative_effect(
         cls,
         *,
@@ -338,7 +355,9 @@ class CombatSpellDeclarativeEffectsMixin:
         params = effect.params.model_dump(mode="json", exclude_none=True)
         if effect.type in {"advantage_on_checks", "disadvantage_on_checks"}:
             metadata["against"] = params.get("against") or "any"
-        if effect.stacking == "replace":
+        if effect.type == "size_modifier" and metadata.get("source_spell_key") == "enlarge_reduce":
+            cls._replace_enlarge_reduce_size_modifier(resolved_target)
+        if effect.stacking == "replace" and effect.type != "size_modifier":
             cls._replace_matching_effects(resolved_target, effect.type, params)
 
         duration_kwargs = cls._declarative_duration_kwargs(
@@ -388,6 +407,17 @@ class CombatSpellDeclarativeEffectsMixin:
             )
             cls._append_effect_to_participant(resolved_target, active_effect)
             created.append(active_effect)
+        elif effect.type == "size_modifier":
+            active_effect = cls._build_active_effect(
+                kind="size_modifier",
+                source_participant_id=attacker.get("id"),
+                numeric_value=params["value"],
+                metadata=metadata,
+                display_label=spell_context.get("spell_name"),
+                **duration_kwargs,
+            )
+            cls._append_effect_to_participant(resolved_target, active_effect)
+            created.append(active_effect)
         else:
             active_effect = cls._build_active_effect(
                 kind="spell_effect",
@@ -416,21 +446,34 @@ class CombatSpellDeclarativeEffectsMixin:
         if not effects:
             return {"applied_effects": [], "effect_group_id": None}
 
+        participant_snapshot = deepcopy(state.participants)
         effect_group_id = effect_group_id or str(uuid4())
         applied: list[dict] = []
-        for effect in effects:
-            applied.extend(
-                cls._apply_single_declarative_effect(
-                    state=state,
-                    attacker=attacker,
-                    target_participant=target_participant,
-                    spell_context=spell_context,
-                    effect=effect,
-                    effect_group_id=effect_group_id,
-                    on_end_effects=on_end_effects,
-                    game_time_seconds=game_time_seconds,
+        try:
+            for effect in effects:
+                applied.extend(
+                    cls._apply_single_declarative_effect(
+                        state=state,
+                        attacker=attacker,
+                        target_participant=target_participant,
+                        spell_context=spell_context,
+                        effect=effect,
+                        effect_group_id=effect_group_id,
+                        on_end_effects=on_end_effects,
+                        game_time_seconds=game_time_seconds,
+                    )
                 )
-            )
+            if any(effect.get("kind") == "size_modifier" for effect in applied):
+                from .limiar_map_projection import maybe_sync_conditions_to_limiar_map
+
+                maybe_sync_conditions_to_limiar_map(
+                    state.session_id,
+                    state,
+                    raise_on_error=True,
+                )
+        except Exception:
+            state.participants = participant_snapshot
+            raise
         return {"applied_effects": applied, "effect_group_id": effect_group_id}
 
     @classmethod

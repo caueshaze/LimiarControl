@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
 from app.schemas.base_spell import BaseSpellCreate
 from app.schemas.roll import RollActorStats
+from app.services.base_spell_seeds import DEFAULT_BASE_SPELLS_SEED_PATH
 from app.services.combat import CombatService
+from app.services.combat_service.exceptions import CombatServiceError
 from app.services.combat_service.condition_effects_predicates import (
     _declarative_effect_group_key,
     explain_check_modifier_sources,
@@ -98,6 +101,71 @@ class TestSpellDeclarativeEffectSchemas(unittest.TestCase):
         self.assertEqual(spell.variants[0].key, "bears_endurance")
         self.assertEqual(spell.variants[0].effects[1].type, "grant_temp_hp")
         self.assertEqual(spell.variants[0].effects[1].params.dice, "2d6")
+
+    def test_accepts_size_modifier_declarative_effect(self):
+        spell = BaseSpellCreate(
+            canonicalKey="enlarge_reduce",
+            nameEn="Enlarge/Reduce",
+            descriptionEn="Test spell.",
+            level=2,
+            school="transmutation",
+            resolutionType="buff",
+            effects=[
+                {
+                    "type": "size_modifier",
+                    "target": "selected_target",
+                    "duration": {"type": "timed", "seconds": 60},
+                    "params": {"value": 1},
+                }
+            ],
+        )
+        self.assertEqual(spell.effects[0].type, "size_modifier")
+        self.assertEqual(spell.effects[0].params.value, 1)
+
+    def test_rejects_invalid_size_modifier_value(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="enlarge_reduce",
+                nameEn="Enlarge/Reduce",
+                descriptionEn="Test spell.",
+                level=2,
+                school="transmutation",
+                resolutionType="buff",
+                effects=[
+                    {
+                        "type": "size_modifier",
+                        "target": "selected_target",
+                        "params": {"value": 2},
+                    }
+                ],
+            )
+
+    def test_enlarge_reduce_seed_declares_variants(self):
+        payload = json.loads(DEFAULT_BASE_SPELLS_SEED_PATH.read_text(encoding="utf-8"))
+        raw_spell = next(entry for entry in payload["spells"] if entry["canonicalKey"] == "enlarge_reduce")
+        spell = BaseSpellCreate.model_validate(raw_spell)
+
+        self.assertEqual(spell.duration, "Concentration, up to 1 minute")
+        self.assertTrue(spell.concentration)
+        self.assertEqual(spell.resolutionType, "buff")
+        variants = {variant.key: variant for variant in spell.variants or []}
+        self.assertEqual(set(variants), {"enlarge", "reduce"})
+
+        enlarge_types = [effect.type for effect in variants["enlarge"].effects or []]
+        reduce_types = [effect.type for effect in variants["reduce"].effects or []]
+        self.assertEqual(
+            enlarge_types,
+            ["size_modifier", "advantage_on_checks", "advantage_on_saves", "modify_weapon_damage"],
+        )
+        self.assertEqual(
+            reduce_types,
+            ["size_modifier", "disadvantage_on_checks", "disadvantage_on_saves", "modify_weapon_damage"],
+        )
+        self.assertEqual(variants["enlarge"].effects[0].params.value, 1)
+        self.assertEqual(variants["reduce"].effects[0].params.value, -1)
+        self.assertEqual(variants["reduce"].effects[3].params.operation, "subtract")
+        self.assertEqual(variants["reduce"].effects[3].params.minimum_total_damage, 1)
+        self.assertTrue(all(effect.duration.type == "timed" and effect.duration.seconds == 60 for effect in variants["enlarge"].effects or []))
 
     def test_accepts_enhance_ability_all_variants_declarative(self):
         spell = BaseSpellCreate(
@@ -1483,6 +1551,129 @@ class TestPassiveSkillBonusDedup(unittest.TestCase):
         ]
         participant = self._make_participant(effects)
         self.assertEqual(get_passive_skill_bonus(participant, "perception"), 8)
+
+
+class TestSizeModifierDeclarativeApplication(unittest.TestCase):
+    def _state(self, target_effects=None):
+        return CombatState(
+            session_id="session-size",
+            phase=CombatPhase.active,
+            participants=[
+                {
+                    "id": "caster",
+                    "ref_id": "caster-ref",
+                    "kind": "player",
+                    "display_name": "Caster",
+                    "status": "active",
+                    "active_effects": [],
+                },
+                {
+                    "id": "target",
+                    "ref_id": "target-ref",
+                    "kind": "player",
+                    "display_name": "Target",
+                    "status": "active",
+                    "active_effects": target_effects or [],
+                },
+            ],
+            use_map=True,
+        )
+
+    def _context(self, value=1):
+        return {
+            "spell_canonical_key": "enlarge_reduce",
+            "spell_name": "Aumentar/Reduzir",
+            "spell_mode": "utility",
+            "selected_variant_key": "enlarge" if value > 0 else "reduce",
+            "selected_variant_label": "Aumentar" if value > 0 else "Reduzir",
+            "concentration": True,
+            "effects": [
+                {
+                    "type": "size_modifier",
+                    "target": "selected_target",
+                    "duration": {"type": "timed", "seconds": 60},
+                    "params": {"value": value},
+                },
+                {
+                    "type": "advantage_on_checks",
+                    "target": "selected_target",
+                    "duration": {"type": "timed", "seconds": 60},
+                    "params": {"ability": "strength", "against": "any"},
+                    "stacking": "replace",
+                },
+            ],
+        }
+
+    def _size_effect(self, *, effect_id, source_spell_key, value):
+        return {
+            "id": effect_id,
+            "kind": "size_modifier",
+            "numeric_value": value,
+            "metadata": {
+                "source_spell_key": source_spell_key,
+                "declarative_effect": {
+                    "type": "size_modifier",
+                    "params": {"value": value},
+                },
+            },
+        }
+
+    @patch("app.services.combat_service.limiar_map_projection.maybe_sync_conditions_to_limiar_map")
+    def test_size_modifier_replaces_only_enlarge_reduce_family(self, sync_mock):
+        old_family = self._size_effect(effect_id="old-family", source_spell_key="enlarge_reduce", value=-1)
+        other_source = self._size_effect(effect_id="other-source", source_spell_key="future_size_spell", value=1)
+        state = self._state(target_effects=[old_family, other_source])
+
+        result = CombatService._apply_declarative_spell_effects(
+            state=state,
+            attacker=state.participants[0],
+            target_participant=state.participants[1],
+            spell_context=self._context(value=1),
+            game_time_seconds=10,
+        )
+
+        target_effects = state.participants[1]["active_effects"]
+        effect_ids = {effect["id"] for effect in target_effects}
+        self.assertNotIn("old-family", effect_ids)
+        self.assertIn("other-source", effect_ids)
+        self.assertEqual(len(result["applied_effects"]), 2)
+        new_size_effects = [
+            effect for effect in target_effects
+            if effect.get("kind") == "size_modifier"
+            and (effect.get("metadata") or {}).get("source_spell_key") == "enlarge_reduce"
+        ]
+        self.assertEqual(len(new_size_effects), 1)
+        self.assertEqual(new_size_effects[0]["numeric_value"], 1)
+        sync_mock.assert_called_once()
+
+    @patch("app.services.combat_service.limiar_map_projection.maybe_sync_conditions_to_limiar_map")
+    def test_size_modifier_spatial_failure_restores_previous_effects(self, sync_mock):
+        old_family = self._size_effect(effect_id="old-family", source_spell_key="enlarge_reduce", value=-1)
+        unrelated = {
+            "id": "bless",
+            "kind": "spell_effect",
+            "metadata": {
+                "source_spell_key": "bless",
+                "declarative_effect": {
+                    "type": "modify_stat",
+                    "params": {"stat": "attack_bonus", "value": 1},
+                },
+            },
+        }
+        state = self._state(target_effects=[old_family, unrelated])
+        before = [dict(effect) for effect in state.participants[1]["active_effects"]]
+        sync_mock.side_effect = CombatServiceError("invalid_effective_footprint", 409)
+
+        with self.assertRaises(CombatServiceError):
+            CombatService._apply_declarative_spell_effects(
+                state=state,
+                attacker=state.participants[0],
+                target_participant=state.participants[1],
+                spell_context=self._context(value=1),
+                game_time_seconds=10,
+            )
+
+        self.assertEqual(state.participants[1]["active_effects"], before)
 
 
 class TestSaveDeclarativeEffectSchema(unittest.TestCase):

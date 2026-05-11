@@ -227,9 +227,13 @@ export type SaveSuccessOutcome =
 export const SpellDeclarativeEffectType = {
   APPLY_CONDITION: "apply_condition",
   MODIFY_STAT: "modify_stat",
+  MODIFY_WEAPON_DAMAGE: "modify_weapon_damage",
   ARMOR_CLASS_FORMULA: "armor_class_formula",
   ADVANTAGE_ON_CHECKS: "advantage_on_checks",
   DISADVANTAGE_ON_CHECKS: "disadvantage_on_checks",
+  ADVANTAGE_ON_SAVES: "advantage_on_saves",
+  DISADVANTAGE_ON_SAVES: "disadvantage_on_saves",
+  SIZE_MODIFIER: "size_modifier",
   RESTRICT_ACTION: "restrict_action",
 } as const;
 
@@ -249,6 +253,7 @@ export const SpellDeclarativeDurationType = {
   ROUNDS: "rounds",
   UNTIL_TURN_START: "until_turn_start",
   UNTIL_TURN_END: "until_turn_end",
+  TIMED: "timed",
 } as const;
 
 export type SpellDeclarativeDurationType =
@@ -265,6 +270,7 @@ export type SpellDeclarativeDurationAnchor =
 export type SpellDeclarativeDuration = {
   type: SpellDeclarativeDurationType;
   rounds?: number | null;
+  seconds?: number | null;
   anchor?: SpellDeclarativeDurationAnchor | null;
 };
 
@@ -331,6 +337,14 @@ export type SpellDeclarativeEffect =
       stacking?: "stack" | "replace" | null;
     }
   | {
+      type: "modify_weapon_damage";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
+      params: { dice: string; operation?: "add" | "subtract"; minimum_total_damage?: number | null };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
       type: "armor_class_formula";
       target: SpellDeclarativeEffectTarget;
       duration?: SpellDeclarativeDuration | null;
@@ -348,6 +362,22 @@ export type SpellDeclarativeEffect =
       duration?: SpellDeclarativeDuration | null;
       out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
       params: { ability: "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma"; against?: "any" | "effect_target" | "selected_target" };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "advantage_on_saves" | "disadvantage_on_saves";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
+      params: { abilities: Array<"strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma"> };
+      stacking?: "stack" | "replace" | null;
+    }
+  | {
+      type: "size_modifier";
+      target: SpellDeclarativeEffectTarget;
+      duration?: SpellDeclarativeDuration | null;
+      out_of_combat_duration?: SpellOutOfCombatTimedDuration | null;
+      params: { value: -1 | 1 };
       stacking?: "stack" | "replace" | null;
     }
   | {

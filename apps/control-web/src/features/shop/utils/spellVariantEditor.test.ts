@@ -136,6 +136,66 @@ describe("spellVariantEditor", () => {
     ).toBe("advantage_on_checks (CON) + manual (2d6 HP)");
   });
 
+  it("round-trips Enlarge/Reduce declarative effects without dropping fields", () => {
+    const normalized = normalizeSpellVariantsForPayload([
+      {
+        key: "reduce",
+        labelPt: "Reduzir",
+        labelEn: "Reduce",
+        descriptionPt: "Reduz tamanho e dano.",
+        descriptionEn: "Reduces size and damage.",
+        effects: [
+          {
+            type: "size_modifier",
+            target: "selected_target",
+            duration: { type: "timed", seconds: 60 },
+            params: { value: -1 },
+          },
+          {
+            type: "disadvantage_on_saves",
+            target: "selected_target",
+            duration: { type: "timed", seconds: 60 },
+            params: { abilities: ["strength"] },
+            stacking: "replace",
+          },
+          {
+            type: "modify_weapon_damage",
+            target: "selected_target",
+            duration: { type: "timed", seconds: 60 },
+            params: { dice: "1d4", operation: "subtract", minimum_total_damage: 1 },
+            stacking: "replace",
+          },
+        ],
+        onEndEffects: [],
+        manualNotes: [],
+      },
+    ]);
+
+    expect(normalized.errors).toEqual([]);
+    expect(normalized.variants?.[0]?.effects).toEqual([
+      {
+        type: "size_modifier",
+        target: "selected_target",
+        duration: { type: "timed", seconds: 60 },
+        params: { value: -1 },
+      },
+      {
+        type: "disadvantage_on_saves",
+        target: "selected_target",
+        duration: { type: "timed", seconds: 60 },
+        params: { abilities: ["strength"] },
+        stacking: "replace",
+      },
+      {
+        type: "modify_weapon_damage",
+        target: "selected_target",
+        duration: { type: "timed", seconds: 60 },
+        params: { dice: "1d4", operation: "subtract", minimum_total_damage: 1 },
+        stacking: "replace",
+      },
+    ]);
+  });
+
   it("requires a label in the current locale and warns about the secondary locale", () => {
     const ptValidation = validateSpellVariants([
       {

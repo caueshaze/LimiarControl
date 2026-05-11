@@ -207,8 +207,20 @@ const summarizeEffect = (variant: SpellVariant, locale: "pt" | "en") => {
     if (effect.type === "modify_stat" && "stat" in effect.params) {
       return `modify_stat (${effect.params.stat})`;
     }
+    if (effect.type === "modify_weapon_damage" && "dice" in effect.params) {
+      return `modify_weapon_damage (${effect.params.operation ?? "add"} ${effect.params.dice})`;
+    }
     if (effect.type === "armor_class_formula" && "base_value" in effect.params) {
       return `armor_class_formula (${effect.params.base_value} + ${String(effect.params.ability).slice(0, 3).toUpperCase()})`;
+    }
+    if (
+      (effect.type === "advantage_on_saves" || effect.type === "disadvantage_on_saves") &&
+      "abilities" in effect.params
+    ) {
+      return `${effect.type} (${effect.params.abilities.map((ability) => String(ability).slice(0, 3).toUpperCase()).join(", ")})`;
+    }
+    if (effect.type === "size_modifier" && "value" in effect.params) {
+      return `size_modifier (${effect.params.value > 0 ? "+" : ""}${effect.params.value})`;
     }
     if (effect.type === "restrict_action" && "action" in effect.params) {
       return `restrict_action (${effect.params.action})`;
