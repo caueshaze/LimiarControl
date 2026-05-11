@@ -117,7 +117,17 @@
       "targetAnchor": "selected_target",
       "attackType": "ranged_spell",
       "rangeKind": "distance",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {"characterLevel": 1, "damage": {"dice": "1d10"}},
+          {"characterLevel": 5, "damage": {"dice": "2d10"}},
+          {"characterLevel": 11, "damage": {"dice": "3d10"}},
+          {"characterLevel": 17, "damage": {"dice": "4d10"}}
+        ]
+      }
     },
     {
       "system": "DND5E",
