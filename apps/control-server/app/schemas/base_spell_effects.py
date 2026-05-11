@@ -14,6 +14,8 @@ SpellDeclarativeEffectType = Literal[
     "armor_class_formula",
     "advantage_on_checks",
     "disadvantage_on_checks",
+    "advantage_on_saves",
+    "disadvantage_on_saves",
     "restrict_action",
     "grant_temp_hp",
     "passive_skill_bonus",
@@ -115,6 +117,10 @@ class CheckModifierParams(BaseModel):
     against: SpellDeclarativeAgainst | None = None
 
 
+class SaveModifierParams(BaseModel):
+    abilities: list[AbilityName]
+
+
 class RestrictActionParams(BaseModel):
     action: SpellDeclarativeRestrictActionKind
 
@@ -168,6 +174,7 @@ class SpellDeclarativeEffect(BaseModel):
         | ModifyWeaponDamageParams
         | ArmorClassFormulaParams
         | CheckModifierParams
+        | SaveModifierParams
         | RestrictActionParams
         | GrantTempHpParams
         | PassiveSkillBonusParams
@@ -191,6 +198,10 @@ class SpellDeclarativeEffect(BaseModel):
             self.params, CheckModifierParams
         ):
             raise ValueError(f"{self.type} effects require CheckModifierParams")
+        if self.type in {"advantage_on_saves", "disadvantage_on_saves"} and not isinstance(
+            self.params, SaveModifierParams
+        ):
+            raise ValueError(f"{self.type} effects require SaveModifierParams")
         if self.type == "restrict_action" and not isinstance(self.params, RestrictActionParams):
             raise ValueError("restrict_action effects require RestrictActionParams")
         if self.type == "grant_temp_hp" and not isinstance(self.params, GrantTempHpParams):

@@ -660,6 +660,175 @@ class TestModifySavingThrow(unittest.TestCase):
         ctx_upper = modify_saving_throw(_participant(["paralyzed"]), "STRENGTH")
         self.assertEqual(ctx_lower.auto_fail, ctx_upper.auto_fail)
 
+    # ── declared save effects ────────────────────────────────────────────────
+    def _mod_with_effects(self, extra_effects=None, ability="strength", manual_mode="normal"):
+        return modify_saving_throw(_participant(extra_effects=extra_effects), ability, manual_mode=manual_mode)
+
+    def test_declared_advantage_on_save_matching_ability(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "advantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                        "source_spell_name": "Aumentar",
+                    },
+                }
+            ],
+            ability="strength",
+        )
+        self.assertEqual(ctx.result, "advantage")
+        self.assertEqual(ctx.advantage_sources, ["Aumentar"])
+        self.assertEqual(len(ctx.advantage_source_details), 1)
+        self.assertEqual(ctx.advantage_source_details[0]["modifier_type"], "advantage")
+
+    def test_declared_disadvantage_on_save_matching_ability(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "disadvantage_on_saves",
+                            "params": {"abilities": ["dexterity"]},
+                        },
+                        "source_spell_name": "Reduzir",
+                    },
+                }
+            ],
+            ability="dexterity",
+        )
+        self.assertEqual(ctx.result, "disadvantage")
+        self.assertIn("Reduzir", ctx.disadvantage_sources)
+        self.assertEqual(len(ctx.disadvantage_source_details), 1)
+        self.assertEqual(ctx.disadvantage_source_details[0]["modifier_type"], "disadvantage")
+
+    def test_declared_save_modifier_ignores_unrelated_ability(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "advantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                    },
+                }
+            ],
+            ability="dexterity",
+        )
+        self.assertEqual(ctx.result, "normal")
+        self.assertEqual(ctx.advantage_sources, [])
+
+    def test_declared_advantage_and_disadvantage_cancel(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "advantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                        "source_spell_name": "Aumentar",
+                    },
+                },
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "disadvantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                        "source_spell_name": "Reduzir",
+                    },
+                },
+            ],
+            ability="strength",
+        )
+        self.assertEqual(ctx.result, "normal")
+
+    def test_manual_advantage_plus_declared_disadvantage_is_normal(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "disadvantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                    },
+                }
+            ],
+            ability="strength",
+            manual_mode="advantage",
+        )
+        self.assertEqual(ctx.result, "normal")
+
+    def test_manual_disadvantage_plus_declared_advantage_is_normal(self):
+        ctx = self._mod_with_effects(
+            extra_effects=[
+                {
+                    "kind": "spell_effect",
+                    "metadata": {
+                        "declarative_effect": {
+                            "type": "advantage_on_saves",
+                            "params": {"abilities": ["strength"]},
+                        },
+                    },
+                }
+            ],
+            ability="strength",
+            manual_mode="disadvantage",
+        )
+        self.assertEqual(ctx.result, "normal")
+
+    def test_restrained_plus_declared_advantage_cancels(self):
+        ctx = modify_saving_throw(
+            _participant(
+                conditions=["restrained"],
+                extra_effects=[
+                    {
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "advantage_on_saves",
+                                "params": {"abilities": ["dexterity"]},
+                            },
+                        },
+                    }
+                ],
+            ),
+            "dexterity",
+        )
+        self.assertEqual(ctx.result, "normal")
+
+    def test_paralyzed_still_auto_fails_despite_declared_advantage(self):
+        ctx = modify_saving_throw(
+            _participant(
+                conditions=["paralyzed"],
+                extra_effects=[
+                    {
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "advantage_on_saves",
+                                "params": {"abilities": ["strength"]},
+                            },
+                        },
+                    }
+                ],
+            ),
+            "strength",
+        )
+        self.assertTrue(ctx.auto_fail)
+        self.assertEqual(ctx.result, "normal")
+
 
 # ─── resolve_spell_attack_kind ───────────────────────────────────────────────
 

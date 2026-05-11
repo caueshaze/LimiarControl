@@ -385,6 +385,73 @@ def explain_check_modifier_sources(
     return explanations
 
 
+def _get_save_declarative_context(
+    participant: dict,
+    ability: AbilityName,
+) -> tuple[str, list[str], list[str], list[dict]]:
+    """Extract declared save-modifier effects for the given ability.
+
+    Returns (automatic_mode, advantage_source_strs, disadvantage_source_strs, source_details).
+    """
+    automatic_mode = "normal"
+    adv_strs: list[str] = []
+    dis_strs: list[str] = []
+    details: list[dict] = []
+    seen_keys: set[str] = set()
+
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+
+        effect_type = declarative.get("type")
+        if effect_type not in {"advantage_on_saves", "disadvantage_on_saves"}:
+            continue
+
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        abilities = params.get("abilities")
+        if not isinstance(abilities, list) or ability not in abilities:
+            continue
+
+        dedup_key = f"{_declarative_effect_group_key(metadata, effect, effect_type, ability)}|{effect_type}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+
+        source_label = metadata.get("source_spell_name") or effect.get("display_label") or "Spell effect"
+        if effect_type == "advantage_on_saves":
+            automatic_mode = combine_advantage_modes(automatic_mode, "advantage")
+            adv_strs.append(source_label)
+            details.append({
+                "source_label": source_label,
+                "modifier_type": "advantage",
+                "roll_type": "save",
+                "ability": ability,
+                "applied": True,
+                "skip_reason": None,
+            })
+        elif effect_type == "disadvantage_on_saves":
+            automatic_mode = combine_advantage_modes(automatic_mode, "disadvantage")
+            dis_strs.append(source_label)
+            details.append({
+                "source_label": source_label,
+                "modifier_type": "disadvantage",
+                "roll_type": "save",
+                "ability": ability,
+                "applied": True,
+                "skip_reason": None,
+            })
+
+    return automatic_mode, adv_strs, dis_strs, details
+
+
 def _declarative_effect_group_key(
     metadata: dict, effect: dict, effect_type: str, params_key: str
 ) -> str:

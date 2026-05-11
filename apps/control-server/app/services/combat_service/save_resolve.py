@@ -51,6 +51,10 @@ class CombatSaveResolveMixin:
             manual_roll=req.manual_roll,
             manual_rolls=req.manual_rolls,
         )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+        ]
         roll_result.is_gm_roll = True
         is_saved = False if save_mod.auto_fail else bool(roll_result.success)
 

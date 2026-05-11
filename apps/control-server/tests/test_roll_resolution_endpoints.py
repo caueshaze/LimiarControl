@@ -597,5 +597,173 @@ class TestSessionActivityRollResolvedEvent(unittest.TestCase):
         self.assertTrue(event.check_modifier_sources[0]["applied"])
 
 
+
+
+class TestSaveRollEndToEnd(unittest.IsolatedAsyncioTestCase):
+    @patch("app.services.roll_resolution.roll_d20_pair", return_value=(15, 8))
+    async def test_save_roll_applies_declared_advantage(self, _mock_d20):
+        from app.api.routes.sessions.rolls_resolution import roll_save
+        from app.schemas.roll import RollActorStats, SaveRollRequest
+
+        user = MagicMock()
+        user.id = "user-1"
+
+        session_entry = MagicMock()
+        session_entry.id = "session-1"
+        session_entry.campaign_id = "campaign-1"
+        session_entry.party_id = "party-1"
+        session_entry.status = "ACTIVE"
+
+        member = _make_member(RoleMode.PLAYER, user_id="user-1")
+
+        db = MagicMock()
+
+        body = SaveRollRequest(
+            actor_kind="player",
+            actor_ref_id="user-1",
+            ability="strength",
+            advantage_mode="normal",
+            dc=15,
+        )
+
+        with (
+            patch(
+                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                return_value=(session_entry, member),
+            ),
+            patch(
+                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+            ) as mock_build,
+            patch(
+                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                new_callable=AsyncMock,
+            ) as mock_publish,
+            patch(
+                "app.services.combat_service.service.CombatService.get_state",
+            ) as mock_get_state,
+        ):
+            mock_build.return_value = RollActorStats(
+                display_name="Hero",
+                abilities={"strength": 16},
+                actor_kind="player",
+                actor_ref_id="user-1",
+            )
+            mock_get_state.return_value = MagicMock(
+                phase="active",
+                participants=[
+                    {
+                        "id": "participant-1",
+                        "ref_id": "user-1",
+                        "kind": "player",
+                        "active_effects": [
+                            {
+                                "kind": "spell_effect",
+                                "metadata": {
+                                    "source_spell_name": "Aumentar",
+                                    "declarative_effect": {
+                                        "type": "advantage_on_saves",
+                                        "params": {"abilities": ["strength"]},
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                ],
+            )
+
+            result = await roll_save(
+                session_id="session-1", body=body, user=user, db=db
+            )
+
+            self.assertEqual(result.roll_type, "save")
+            self.assertEqual(result.advantage_mode, "advantage")
+            self.assertEqual(result.total, 18)  # 15 + 3 (STR mod)
+            self.assertIsNotNone(result.check_modifier_sources)
+            self.assertEqual(len(result.check_modifier_sources), 1)
+            self.assertEqual(
+                result.check_modifier_sources[0]["source_label"], "Aumentar"
+            )
+            self.assertTrue(result.check_modifier_sources[0]["applied"])
+            mock_publish.assert_called_once()
+
+    @patch("app.services.roll_resolution.roll_d20_pair", return_value=(15, 8))
+    async def test_save_roll_manual_disadvantage_cancels_declared_advantage(self, _mock_d20):
+        from app.api.routes.sessions.rolls_resolution import roll_save
+        from app.schemas.roll import RollActorStats, SaveRollRequest
+
+        user = MagicMock()
+        user.id = "user-1"
+
+        session_entry = MagicMock()
+        session_entry.id = "session-1"
+        session_entry.campaign_id = "campaign-1"
+        session_entry.party_id = "party-1"
+        session_entry.status = "ACTIVE"
+
+        member = _make_member(RoleMode.PLAYER, user_id="user-1")
+
+        db = MagicMock()
+
+        body = SaveRollRequest(
+            actor_kind="player",
+            actor_ref_id="user-1",
+            ability="strength",
+            advantage_mode="disadvantage",
+            dc=15,
+        )
+
+        with (
+            patch(
+                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                return_value=(session_entry, member),
+            ),
+            patch(
+                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+            ) as mock_build,
+            patch(
+                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                new_callable=AsyncMock,
+            ) as mock_publish,
+            patch(
+                "app.services.combat_service.service.CombatService.get_state",
+            ) as mock_get_state,
+        ):
+            mock_build.return_value = RollActorStats(
+                display_name="Hero",
+                abilities={"strength": 16},
+                actor_kind="player",
+                actor_ref_id="user-1",
+            )
+            mock_get_state.return_value = MagicMock(
+                phase="active",
+                participants=[
+                    {
+                        "id": "participant-1",
+                        "ref_id": "user-1",
+                        "kind": "player",
+                        "active_effects": [
+                            {
+                                "kind": "spell_effect",
+                                "metadata": {
+                                    "source_spell_name": "Aumentar",
+                                    "declarative_effect": {
+                                        "type": "advantage_on_saves",
+                                        "params": {"abilities": ["strength"]},
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                ],
+            )
+
+            result = await roll_save(
+                session_id="session-1", body=body, user=user, db=db
+            )
+
+            self.assertEqual(result.advantage_mode, "normal")
+            mock_publish.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
