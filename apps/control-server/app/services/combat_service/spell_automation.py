@@ -23,6 +23,7 @@ from .spell_anchors import (
     get_spell_anchors_for_owner,
     move_spell_anchor,
     remove_spell_anchor,
+    validate_spell_anchor_placement,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,12 @@ class CombatSpellAutomationMixin:
             default_mode="spell_attack",
             requires_effect_payload=True,
             handler_name="_cast_spiritual_weapon_automation",
+        ),
+        "mage_hand": SpellAutomationSpec(
+            canonical_key="mage_hand",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_mage_hand_automation",
         ),
     }
 
@@ -476,6 +483,78 @@ class CombatSpellAutomationMixin:
             },
         )
 
+    @classmethod
+    async def _cast_mage_hand_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        for old_anchor in get_spell_anchors_for_owner(state, attacker["id"]):
+            if old_anchor.get("source_spell_key") == "mage_hand":
+                remove_spell_anchor(state, old_anchor["id"])
+
+        anchor_cell = getattr(req, "anchor_cell", None)
+        if not anchor_cell:
+            raise CombatServiceError("Posição da Mãos Mágicas é obrigatória.", 400)
+
+        anchor_position = {"x": anchor_cell.x, "y": anchor_cell.y}
+        caster_position = attacker.get("position")
+        if not isinstance(caster_position, dict):
+            raise CombatServiceError("Conjurador sem posição válida no mapa.", 400)
+
+        battle_map = None
+        if state.use_map and state.map_selection:
+            battle_map = state.map_selection
+        if not isinstance(battle_map, dict):
+            raise CombatServiceError("Mapa de combate é obrigatório para Mãos Mágicas.", 400)
+
+        validate_spell_anchor_placement(
+            caster_position={"x": int(caster_position.get("x", 0)), "y": int(caster_position.get("y", 0))},
+            target_position=anchor_position,
+            range_meters=9.0,
+            requires_point_sight=False,
+            requires_point_effect=False,
+            battle_map=battle_map,
+        )
+
+        create_spell_anchor(
+            state,
+            anchor={
+                "source_spell_key": "mage_hand",
+                "source_spell_name": spell_context["spell_name"],
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "position": anchor_position,
+                "duration_type": "rounds",
+                "remaining_rounds": 10,
+                "expires_on": "turn_start",
+                "expires_at_participant_id": attacker["id"],
+                "render_kind": "mage_hand",
+                "movement": {"max_meters_per_follow_up": 9.0},
+                "metadata": {},
+            },
+        )
+        flag_modified(state, "spell_anchors")
+
+        spell_name = spell_context["spell_name"]
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=f"{spell_name} criada em ({anchor_position['x']}, {anchor_position['y']}).",
+            log_message=f"{attacker['display_name']} conjurou {spell_name}.",
+        )
+
 
     @classmethod
     async def use_spiritual_weapon_action(
@@ -598,6 +677,58 @@ class CombatSpellAutomationMixin:
             "targetDisplayName": target_name,
             "logMessage": log_message,
         }
+
+    @classmethod
+    async def use_mage_hand_action(
+        cls,
+        db: Session,
+        session_id: str,
+        req,
+        actor_user_id: str,
+        is_gm: bool = False,
+    ) -> dict:
+        if not req.destination:
+            raise CombatServiceError("Informe um destino para Mãos Mágicas.", 400)
+
+        state = cls.get_state(db, session_id)
+        cls._require_active(state)
+
+        attacker = cls._find_participant_by_id(state, req.actor_participant_id)
+        if not attacker:
+            raise CombatServiceError("Participante não encontrado.", 404)
+        if not is_gm and attacker.get("actor_user_id") != actor_user_id:
+            raise CombatServiceError("Você só pode controlar seu próprio personagem.", 403)
+        cls._require_actor_status(attacker, ("active",), "Apenas participantes ativos podem usar Mãos Mágicas.")
+
+        anchor = get_spell_anchor_by_id(state, req.anchor_id)
+        if not anchor:
+            raise CombatServiceError("Mãos Mágicas não encontrada.", 404)
+        if anchor.get("source_spell_key") != "mage_hand":
+            raise CombatServiceError("O efeito informado não é uma Mãos Mágicas.", 400)
+        if anchor.get("owner_participant_id") != attacker["id"]:
+            raise CombatServiceError("Esta Mãos Mágicas pertence a outro conjurador.", 403)
+
+        battle_map = state.map_selection if state.use_map and state.map_selection else None
+        move_spell_anchor(
+            state,
+            anchor_id=req.anchor_id,
+            destination={"x": req.destination["x"], "y": req.destination["y"]},
+            max_movement_meters=9.0,
+            battle_map=battle_map,
+        )
+        anchor = get_spell_anchor_by_id(state, req.anchor_id) or anchor
+        flag_modified(state, "spell_anchors")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        await cls._emit_state(session_id, state)
+        log_message = (
+            f"{attacker['display_name']} moveu Mãos Mágicas para "
+            f"({anchor['position']['x']}, {anchor['position']['y']})."
+        )
+        await cls._emit_log(session_id, {"message": log_message, "source": "mage_hand_action"})
+        return {"position": anchor["position"], "logMessage": log_message}
 
     @classmethod
     def _find_participant_by_ref_id(

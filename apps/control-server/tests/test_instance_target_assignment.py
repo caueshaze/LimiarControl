@@ -311,7 +311,8 @@ class InstanceAttackResolutionTests(unittest.TestCase):
         self.assertIn(outcome["is_hit"], (True, False))
 
     @patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 20, MagicMock(), MagicMock(), MagicMock(), MagicMock()))
-    def test_resolves_attack_miss_zero_damage(self, mock_stats):
+    @patch("random.randint", return_value=1)
+    def test_resolves_attack_miss_zero_damage(self, mock_rand, mock_stats):
         state = _build_state()
         db = MagicMock()
         target = state.participants[1]
@@ -326,10 +327,13 @@ class InstanceAttackResolutionTests(unittest.TestCase):
             concentration_manual_roll=None,
         )
 
-        outcome = CombatService._resolve_instance_attack(
-            db, "session-1", state, attacker, target, spell_context, req, is_gm=False,
-        )
+        with patch.object(CombatService, "_apply_spell_effect") as mock_apply:
+            outcome = CombatService._resolve_instance_attack(
+                db, "session-1", state, attacker, target, spell_context, req, is_gm=False,
+            )
+        self.assertFalse(outcome["is_hit"])
         self.assertEqual(outcome["damage"], 0)
+        mock_apply.assert_not_called()
 
     @patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 12, MagicMock(), MagicMock(), MagicMock(), MagicMock()))
     @patch("random.randint", return_value=15)

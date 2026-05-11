@@ -28,6 +28,12 @@ class SpiritualWeaponActionRequest(BaseModel):
     target_kind: str | None = None
     manual_roll: int | None = None
 
+
+class MageHandActionRequest(BaseModel):
+    actor_participant_id: str
+    anchor_id: str
+    destination: dict
+
 router = APIRouter()
 
 
@@ -177,6 +183,22 @@ async def spiritual_weapon_action(
     user: User = Depends(get_current_user),
 ):
     return await CombatService.use_spiritual_weapon_action(
+        db,
+        session_id,
+        req,
+        user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+    )
+
+
+@router.post("/sessions/{session_id}/combat/mage-hand-action")
+async def mage_hand_action(
+    session_id: str,
+    req: MageHandActionRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    return await CombatService.use_mage_hand_action(
         db,
         session_id,
         req,
