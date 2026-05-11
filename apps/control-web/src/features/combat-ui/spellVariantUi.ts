@@ -213,6 +213,19 @@ export const formatDeclarativeEffectSummaryLine = (
   if (declarative.type === "modify_stat" && typeof p.stat === "string") {
     return `Effect: ${p.stat}`;
   }
+  if (declarative.type === "modify_weapon_damage" && typeof p.dice === "string") {
+    const operation = p.operation === "subtract" ? "-" : "+";
+    return `Weapon damage: ${operation}${p.dice}`;
+  }
+  if (
+    (declarative.type === "advantage_on_saves" || declarative.type === "disadvantage_on_saves")
+    && Array.isArray(p.abilities)
+  ) {
+    return `${declarative.type === "advantage_on_saves" ? "Advantage" : "Disadvantage"}: ${p.abilities.join(", ")} saves`;
+  }
+  if (declarative.type === "size_modifier" && typeof p.value === "number") {
+    return `Size: ${p.value > 0 ? "+" : ""}${p.value}`;
+  }
   if (declarative.type === "apply_condition" && typeof p.condition === "string") {
     return `Condition: ${p.condition}`;
   }

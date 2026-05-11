@@ -1569,6 +1569,175 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "enlarge_reduce",
+      "nameEn": "Enlarge/Reduce",
+      "namePt": "Aumentar/Reduzir",
+      "descriptionEn": "You cause a creature or object you can see within range to grow larger or smaller for the duration.",
+      "descriptionPt": "Você faz uma criatura ou objeto que possa ver dentro do alcance aumentar ou reduzir pela duração.",
+      "level": 2,
+      "school": "transmutation",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a pinch of powdered iron",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "variants": [
+        {
+          "key": "enlarge",
+          "labelPt": "Aumentar",
+          "labelEn": "Enlarge",
+          "descriptionPt": "O alvo aumenta uma categoria de tamanho, recebe vantagem em testes e salvaguardas de Força, e seus ataques de arma causam +1d4 de dano.",
+          "descriptionEn": "The target increases by one size category, gains advantage on Strength checks and saves, and its weapon attacks deal +1d4 damage.",
+          "effects": [
+            {
+              "type": "size_modifier",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "value": 1
+              }
+            },
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "ability": "strength",
+                "against": "any"
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "advantage_on_saves",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "abilities": [
+                  "strength"
+                ]
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "modify_weapon_damage",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "dice": "1d4",
+                "operation": "add"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
+        },
+        {
+          "key": "reduce",
+          "labelPt": "Reduzir",
+          "labelEn": "Reduce",
+          "descriptionPt": "O alvo reduz uma categoria de tamanho, recebe desvantagem em testes e salvaguardas de Força, e seus ataques de arma causam -1d4 de dano.",
+          "descriptionEn": "The target decreases by one size category, has disadvantage on Strength checks and saves, and its weapon attacks deal -1d4 damage.",
+          "effects": [
+            {
+              "type": "size_modifier",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "value": -1
+              }
+            },
+            {
+              "type": "disadvantage_on_checks",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "ability": "strength",
+                "against": "any"
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "disadvantage_on_saves",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "abilities": [
+                  "strength"
+                ]
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "modify_weapon_damage",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "dice": "1d4",
+                "operation": "subtract",
+                "minimum_total_damage": 1
+              },
+              "stacking": "replace"
+            }
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
+        }
+      ],
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "enhance_ability",
       "nameEn": "Enhance Ability",
       "namePt": "Melhorar Habilidade",

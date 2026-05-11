@@ -51,13 +51,17 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 const EFFECT_TYPE_OPTIONS: SpellDeclarativeEffectType[] = [
   "apply_condition",
   "modify_stat",
+  "modify_weapon_damage",
   "armor_class_formula",
   "advantage_on_checks",
   "disadvantage_on_checks",
+  "advantage_on_saves",
+  "disadvantage_on_saves",
+  "size_modifier",
   "restrict_action",
 ];
 const TARGET_OPTIONS: SpellDeclarativeEffectTarget[] = ["selected_target", "caster"];
-const DURATION_OPTIONS = ["manual", "rounds", "until_turn_start", "until_turn_end"] as const;
+const DURATION_OPTIONS = ["manual", "rounds", "until_turn_start", "until_turn_end", "timed"] as const;
 const ANCHOR_OPTIONS = ["target", "caster"] as const;
 const CONDITION_OPTIONS: SpellDeclarativeConditionType[] = [
   "blinded",
@@ -111,11 +115,18 @@ const retargetParams = (effectType: SpellDeclarativeEffectType): SpellDeclarativ
       return { condition: "charmed" };
     case "modify_stat":
       return { stat: "temp_ac_bonus", value: 1 };
+    case "modify_weapon_damage":
+      return { dice: "1d4", operation: "add", minimum_total_damage: null };
     case "armor_class_formula":
       return { base_value: 13, ability: "dexterity", requires_unarmored: true };
     case "advantage_on_checks":
     case "disadvantage_on_checks":
       return { ability: "charisma", against: "any" };
+    case "advantage_on_saves":
+    case "disadvantage_on_saves":
+      return { abilities: ["strength"] };
+    case "size_modifier":
+      return { value: 1 };
     case "restrict_action":
       return { action: "actions" };
   }
@@ -211,7 +222,8 @@ export const SpellCatalogEffectEditor = ({
                             duration: {
                             type: event.target.value as (typeof DURATION_OPTIONS)[number],
                             rounds: event.target.value === "rounds" ? 1 : null,
-                            anchor: event.target.value === "manual" ? null : "target",
+                            seconds: event.target.value === "timed" ? 60 : null,
+                            anchor: event.target.value === "manual" || event.target.value === "timed" ? null : "target",
                           },
                         }
                       : entry,
@@ -308,6 +320,36 @@ export const SpellCatalogEffectEditor = ({
             </div>
           ) : null}
 
+          {effect.duration?.type === "timed" ? (
+            <div className="space-y-1.5">
+              <FieldLabel label="Segundos" tooltip="Quantos segundos de tempo de jogo o efeito dura." />
+              <input
+                type="number"
+                min={1}
+                value={effect.duration.seconds ?? 60}
+                onChange={(event) =>
+                  onChange(
+                    effects.map((entry, entryIndex) =>
+                      entryIndex === index
+                        ? {
+                            ...entry,
+                            duration: {
+                              ...(entry.duration ?? { type: "timed" }),
+                              type: "timed",
+                              seconds: event.target.value === "" ? 60 : Math.max(1, Number(event.target.value) || 60),
+                              anchor: null,
+                            },
+                          }
+                        : entry,
+                    ),
+                  )
+                }
+                className={fieldClassName}
+                placeholder="60"
+              />
+            </div>
+          ) : null}
+
           {"condition" in effect.params ? (
             <div className="space-y-1.5">
               <FieldLabel label="Condição" tooltip="Que condição aplicar: cego, envenenado, paralizado, etc." />
@@ -335,6 +377,77 @@ export const SpellCatalogEffectEditor = ({
                   </option>
                 ))}
               </select>
+            </div>
+          ) : null}
+
+          {effect.type === "modify_weapon_damage" && "dice" in effect.params ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <FieldLabel label="Dado" tooltip="Dado somado ou subtraído do dano de arma, por exemplo 1d4." />
+                <input
+                  value={effect.params.dice}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "modify_weapon_damage" && "dice" in entry.params
+                          ? ({
+                              ...entry,
+                              params: { ...entry.params, dice: event.target.value },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className={fieldClassName}
+                  placeholder="1d4"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel label="Operação" tooltip="Somar ou subtrair o dado do dano de arma." />
+                <select
+                  value={effect.params.operation ?? "add"}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "modify_weapon_damage"
+                          ? ({
+                              ...entry,
+                              params: { ...entry.params, operation: event.target.value as "add" | "subtract" },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className={fieldClassName}
+                >
+                  <option value="add">{localizeSpellAdminValue("add", locale)}</option>
+                  <option value="subtract">{localizeSpellAdminValue("subtract", locale)}</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel label="Dano mínimo" tooltip="Dano total mínimo depois da modificação; vazio para nenhum mínimo específico." />
+                <input
+                  type="number"
+                  min={0}
+                  value={effect.params.minimum_total_damage ?? ""}
+                  onChange={(event) =>
+                    onChange(
+                      updateEffectAtIndex(effects, index, (entry) =>
+                        entry.type === "modify_weapon_damage"
+                          ? ({
+                              ...entry,
+                              params: {
+                                ...entry.params,
+                                minimum_total_damage: event.target.value === "" ? null : Math.max(0, Number(event.target.value) || 0),
+                              },
+                            } as SpellDeclarativeEffect)
+                          : entry,
+                      ),
+                    )
+                  }
+                  className={fieldClassName}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -391,6 +504,71 @@ export const SpellCatalogEffectEditor = ({
                   className={fieldClassName}
                 />
               </div>
+            </div>
+          ) : null}
+
+          {(
+            (effect.type === "advantage_on_saves" || effect.type === "disadvantage_on_saves")
+            && "abilities" in effect.params
+          ) ? (
+            <div className="space-y-1.5">
+              <FieldLabel label="Salvaguardas" tooltip="Habilidades cujas salvaguardas recebem vantagem ou desvantagem." />
+              <div className="grid gap-2 sm:grid-cols-3">
+                {ABILITY_OPTIONS.map((ability) => (
+                  <label key={ability} className="flex items-center gap-2 rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={effect.params.abilities.includes(ability)}
+                      onChange={(event) =>
+                        onChange(
+                          updateEffectAtIndex(effects, index, (entry) => {
+                            if (
+                              (entry.type !== "advantage_on_saves" && entry.type !== "disadvantage_on_saves")
+                              || !("abilities" in entry.params)
+                            ) {
+                              return entry;
+                            }
+                            const nextAbilities = event.target.checked
+                              ? [...entry.params.abilities, ability]
+                              : entry.params.abilities.filter((entryAbility) => entryAbility !== ability);
+                            return {
+                              ...entry,
+                              params: { ...entry.params, abilities: nextAbilities.length > 0 ? nextAbilities : [ability] },
+                            } as SpellDeclarativeEffect;
+                          }),
+                        )
+                      }
+                      className="h-4 w-4 rounded border-white/10 bg-slate-900 text-violet-400"
+                    />
+                    <span>{localizeSpellAdminValue(ability, locale)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {effect.type === "size_modifier" && "value" in effect.params ? (
+            <div className="space-y-1.5">
+              <FieldLabel label="Tamanho" tooltip="Ajuste temporário de categoria de tamanho: +1 aumenta, -1 reduz." />
+              <select
+                value={effect.params.value}
+                onChange={(event) =>
+                  onChange(
+                    updateEffectAtIndex(effects, index, (entry) =>
+                      entry.type === "size_modifier" && "value" in entry.params
+                        ? ({
+                            ...entry,
+                            params: { value: Number(event.target.value) === -1 ? -1 : 1 },
+                          } as SpellDeclarativeEffect)
+                        : entry,
+                    ),
+                  )
+                }
+                className={fieldClassName}
+              >
+                <option value={1}>+1</option>
+                <option value={-1}>-1</option>
+              </select>
             </div>
           ) : null}
 
