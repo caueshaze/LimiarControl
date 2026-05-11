@@ -326,6 +326,21 @@ export const SessionActivityOutOfCombatSpellCastRow = ({ event, actor }: Props) 
             .
           </p>
         )}
+        {event.healingApplied != null && event.healingApplied > 0 && (
+          <p className="mt-0.5 text-xs text-emerald-400">
+            <span className="font-semibold">+{event.healingApplied}</span>
+            {" "}
+            {t("sessionActivity.healedHp")}
+            {event.healingRolls && event.healingRolls.length > 0 && (
+              <span className="ml-1 text-slate-400">
+                ({event.healingRolls[0].dice}
+                {event.healingRolls[0].modifier !== 0
+                  ? ` + ${event.healingRolls[0].modifier}`
+                  : ""})
+              </span>
+            )}
+          </p>
+        )}
       </div>
       <span className="shrink-0 text-xs font-mono text-slate-500">
         {formatSessionActivityOffset(event.sessionOffsetSeconds)}

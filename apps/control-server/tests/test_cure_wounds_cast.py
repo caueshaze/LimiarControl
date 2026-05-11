@@ -362,3 +362,76 @@ class ApplyHealToStateDictTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# build_healing_preview tests
+# ---------------------------------------------------------------------------
+
+class BuildHealingPreviewTests(unittest.TestCase):
+    from unittest.mock import MagicMock
+
+    def _spell(self, *, dice="1d8", upcast_json=None):
+        from unittest.mock import MagicMock
+        spell = MagicMock()
+        spell.level = 1
+        spell.effects_json = [{"type": "heal", "target": "selected_target",
+                                "params": {"dice": dice, "ability_modifier": "spellcasting"}}]
+        spell.variants_json = []
+        spell.upcast_json = upcast_json if upcast_json is not None else {
+            "mode": "extra_heal_dice", "dice": dice, "perLevel": 1
+        }
+        return spell
+
+    def test_returns_none_for_non_heal_spell(self):
+        from unittest.mock import MagicMock
+        from app.services.out_of_combat_cast import build_healing_preview
+        spell = MagicMock()
+        spell.effects_json = []
+        spell.variants_json = []
+        self.assertIsNone(build_healing_preview(spell, {}))
+
+    def test_cure_wounds_base_formula(self):
+        from app.services.out_of_combat_cast import build_healing_preview
+        spell = self._spell(dice="1d8")
+        state = {"spellcasting": {"ability": "wisdom"}, "abilities": {"wisdom": 16}}
+        result = build_healing_preview(spell, state)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["base_formula"], "1d8 + 3")
+        self.assertEqual(result["base_count"], 1)
+        self.assertEqual(result["die_sides"], 8)
+        self.assertEqual(result["modifier"], 3)
+        self.assertEqual(result["upcast_per_level"], 1)
+
+    def test_healing_word_base_formula(self):
+        from app.services.out_of_combat_cast import build_healing_preview
+        spell = self._spell(dice="1d4")
+        state = {"spellcasting": {"ability": "wisdom"}, "abilities": {"wisdom": 16}}
+        result = build_healing_preview(spell, state)
+        self.assertEqual(result["base_formula"], "1d4 + 3")
+        self.assertEqual(result["die_sides"], 4)
+
+    def test_zero_modifier_omits_sign(self):
+        from app.services.out_of_combat_cast import build_healing_preview
+        spell = self._spell(dice="1d8")
+        state = {"spellcasting": {"ability": "wisdom"}, "abilities": {"wisdom": 10}}
+        result = build_healing_preview(spell, state)
+        self.assertEqual(result["base_formula"], "1d8")
+        self.assertEqual(result["modifier"], 0)
+
+    def test_negative_modifier(self):
+        from app.services.out_of_combat_cast import build_healing_preview
+        spell = self._spell(dice="1d8")
+        state = {"spellcasting": {"ability": "wisdom"}, "abilities": {"wisdom": 8}}
+        result = build_healing_preview(spell, state)
+        self.assertEqual(result["base_formula"], "1d8 - 1")
+        self.assertEqual(result["modifier"], -1)
+
+    def test_goodberry_returns_none(self):
+        from unittest.mock import MagicMock
+        from app.services.out_of_combat_cast import build_healing_preview
+        goodberry = MagicMock()
+        goodberry.effects_json = [{"type": "create_consumable", "target": "caster",
+                                    "params": {"canonical_key": "goodberry", "quantity": 10, "expires_in_seconds": 86400}}]
+        goodberry.variants_json = []
+        self.assertIsNone(build_healing_preview(goodberry, {}))

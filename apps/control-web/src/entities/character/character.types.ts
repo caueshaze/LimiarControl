@@ -61,6 +61,15 @@ export type OutOfCombatSpellVariant = {
   effects?: unknown[] | null;
 };
 
+export type SpellHealingPreview = {
+  baseFormula: string;
+  baseDice: string;
+  baseCount: number;
+  dieSides: number;
+  modifier: number;
+  upcastPerLevel: number;
+};
+
 export type OutOfCombatCastableSpell = {
   id: string | null;
   canonicalKey: string;
@@ -72,4 +81,5 @@ export type OutOfCombatCastableSpell = {
   variants: OutOfCombatSpellVariant[];
   effects: unknown[];
   outOfCombatTarget?: "self" | "ally" | "self_or_ally";
+  healingPreview?: SpellHealingPreview | null;
 };

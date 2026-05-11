@@ -356,6 +356,13 @@ export type OutOfCombatSpellCastActivityEvent = {
   previousSpellName?: string | null;
   previousVariantLabel?: string | null;
   castByGm?: boolean;
+  healingApplied?: number | null;
+  healingRolls?: Array<{
+    dice: string;
+    rolls: number[];
+    modifier: number;
+    total: number;
+  }> | null;
   timestamp: string;
   sessionOffsetSeconds: number;
 };
