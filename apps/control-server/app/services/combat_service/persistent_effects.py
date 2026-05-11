@@ -34,6 +34,15 @@ _PERSISTABLE_DURATION_TYPES = {
 }
 
 
+def is_mechanical_effect(effect: dict) -> bool:
+    metadata = effect.get("metadata")
+    if not isinstance(metadata, dict):
+        return True
+    if metadata.get("mechanical") is False:
+        return False
+    return True
+
+
 def _persistable_effects_for_participant(participant: dict) -> list[dict]:
     effects = participant.get("active_effects")
     if not isinstance(effects, list):
@@ -259,6 +268,8 @@ def derive_active_concentration(state_json: dict | None) -> dict | None:
     first_group: str | None = None
     first_metadata: dict | None = None
     for effect in persisted:
+        if not is_mechanical_effect(effect):
+            continue
         metadata = effect.get("metadata")
         if not isinstance(metadata, dict):
             continue
