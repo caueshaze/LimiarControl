@@ -6,6 +6,8 @@ from app.services.game_time import (
     advance_game_time_seconds,
     get_game_time_seconds,
 )
+from app.services.combat_service.condition_effects_saves import modify_saving_throw
+from app.services.roll_resolution import resolve_saving_throw
 
 from .exceptions import CombatServiceError
 from .limiar_map_projection import (
@@ -45,6 +47,82 @@ def maybe_project_combat_end_to_limiar_map(session_id: str, state) -> None:
 
 
 class CombatLifecycleTurnsMixin:
+    @classmethod
+    async def _resolve_turn_end_repeat_saves(
+        cls,
+        db,
+        session_id: str,
+        state,
+        participant: dict,
+    ) -> None:
+        effects = cls._get_participant_effects(participant)
+        for effect in list(effects):
+            effect_id = effect.get("id")
+            metadata = cls._get_effect_metadata(effect)
+            repeat_save = metadata.get("repeat_save")
+            if not isinstance(effect_id, str) or not isinstance(repeat_save, dict):
+                continue
+            if repeat_save.get("timing") != "target_turn_end":
+                continue
+            ability = str(repeat_save.get("ability") or "").strip().lower()
+            dc = cls._safe_int(repeat_save.get("dc"), 0)
+            if ability not in cls._ENTITY_ABILITY_ALIASES or dc <= 0:
+                continue
+
+            save_mod = modify_saving_throw(participant, ability)
+            roll_result = resolve_saving_throw(
+                cls._build_roll_actor_stats_for_save(
+                    db,
+                    session_id,
+                    participant["ref_id"],
+                    participant["kind"],
+                    participant["display_name"],
+                ),
+                ability=ability,
+                advantage_mode=save_mod.result,
+                dc=dc,
+                roll_source="system",
+            )
+            is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+            if is_saved and repeat_save.get("ends_on_success", True):
+                participant["active_effects"] = [
+                    e for e in cls._get_participant_effects(participant) if e.get("id") != effect_id
+                ]
+                concentration_group = metadata.get("concentration_group")
+                if isinstance(concentration_group, str):
+                    still_has_group = any(
+                        isinstance(cls._get_effect_metadata(e).get("concentration_group"), str)
+                        and cls._get_effect_metadata(e).get("concentration_group") == concentration_group
+                        for p in state.participants
+                        for e in cls._get_participant_effects(p)
+                    )
+                    if not still_has_group and isinstance(metadata.get("source_participant_id"), str):
+                        cls._clear_concentration_for_source(
+                            state,
+                            source_participant_id=metadata.get("source_participant_id"),
+                        )
+                await cls._emit_log(
+                    session_id,
+                    {
+                        "message": (
+                            f"{participant['display_name']} passou na salvaguarda de {ability} "
+                            f"e deixou de estar paralisado."
+                        ),
+                        "source": "repeat_save_resolve",
+                    },
+                )
+            else:
+                await cls._emit_log(
+                    session_id,
+                    {
+                        "message": (
+                            f"{participant['display_name']} falhou na salvaguarda de {ability} "
+                            f"e continua paralisado."
+                        ),
+                        "source": "repeat_save_resolve",
+                    },
+                )
+
     @classmethod
     async def next_turn(
         cls,
@@ -87,6 +165,7 @@ class CombatLifecycleTurnsMixin:
         for anchor in expired_anchor_end:
             label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
+        await cls._resolve_turn_end_repeat_saves(db, session_id, state, outgoing)
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):

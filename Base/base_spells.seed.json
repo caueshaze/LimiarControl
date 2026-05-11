@@ -855,6 +855,20 @@
         "mode": "additional_targets",
         "perLevel": 1
       },
+      "effects": [
+        {
+          "type": "apply_condition",
+          "target": "selected_target",
+          "params": {
+            "condition": "paralyzed"
+          },
+          "repeat_save": {
+            "timing": "target_turn_end",
+            "ability": "wisdom",
+            "ends_on_success": true
+          }
+        }
+      ],
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,

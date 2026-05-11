@@ -1583,7 +1583,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         )
         # Spell attacks with declarative effects must go through the attack-roll
         # path first; applying effects before the roll would bypass hit/miss.
-        if automation_result is None and spell_mode != "spell_attack":
+        if automation_result is None and spell_mode not in ("spell_attack", "saving_throw"):
             automation_result = await cls._cast_spell_via_declarative_effects(
                 db,
                 session_id,
@@ -1667,6 +1667,31 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 save_success_outcome=save_success_outcome,
                 targeting_result=targeting_result,
             )
+            if (
+                automation_result is None
+                and result.is_saved is False
+                and not result.pending_spell_id
+                and not result.pending_save_id
+                and cls._spell_context_has_declarative_effects(spell_context)
+            ):
+                application = cls._apply_declarative_spell_effects(
+                    state=state,
+                    attacker=attacker,
+                    target_participant=target_p,
+                    spell_context=spell_context,
+                )
+                for active_effect in application.get("applied_effects") or []:
+                    metadata = cls._get_effect_metadata(active_effect)
+                    repeat_save = metadata.get("repeat_save")
+                    if isinstance(repeat_save, dict) and repeat_save.get("timing") == "target_turn_end":
+                        repeat_save["dc"] = result.effective_dc
+                        repeat_save["ability"] = str(spell_context.get("save_ability") or "wisdom")
+                        repeat_save["source_participant_id"] = attacker.get("id")
+                on_hit_applied_declarative_effects_by_target = (
+                    cls._build_applied_declarative_effects_by_target(
+                        application.get("applied_effects")
+                    )
+                )
         else:
             result = cls._resolve_direct_effect_spell(
                 db,
