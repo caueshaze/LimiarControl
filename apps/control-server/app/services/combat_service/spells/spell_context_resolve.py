@@ -177,7 +177,7 @@ class SpellContextResolveMixin:
             or catalog_spell_mode
             or legacy_mode
         )
-        if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal", "utility"):
+        if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"):
             raise CombatServiceError("Spell cast mode is required for this spell.", 400)
         if spell_mode == "direct_damage" and catalog_save_ability:
             raise CombatServiceError(
@@ -232,7 +232,7 @@ class SpellContextResolveMixin:
         legacy_expression = resolved_mode["legacy_expression"]
         catalog_save_ability = resolved_mode["catalog_save_ability"]
 
-        effect_kind = None if spell_mode == "utility" else ("healing" if spell_mode == "heal" else "damage")
+        effect_kind = None if spell_mode in ("utility", "teleport") else ("healing" if spell_mode == "heal" else "damage")
         effect_dice = None
         effect_bonus = 0
         damage_type = None
@@ -246,7 +246,7 @@ class SpellContextResolveMixin:
             if not isinstance(effect_dice, str) or not effect_dice.strip():
                 effect_dice = req.heal_dice or (legacy_expression if req.is_heal else None)
             effect_bonus = req.heal_bonus if isinstance(req.heal_bonus, int) else 0
-        elif spell_mode != "utility":
+        elif spell_mode not in ("utility", "teleport"):
             effect_dice = catalog_spell.damage_dice
             if not isinstance(effect_dice, str) or not effect_dice.strip():
                 effect_dice = req.damage_dice or (legacy_expression if not req.is_heal else None)
@@ -262,7 +262,7 @@ class SpellContextResolveMixin:
             _, count, sides, _ = _parse_dice(effect_dice)
             if count <= 0 or sides <= 0:
                 raise CombatServiceError("Spell effect dice must use a valid dice expression.", 400)
-        elif spell_mode != "utility" and requires_effect_payload and effect_bonus <= 0:
+        elif spell_mode not in ("utility", "teleport") and requires_effect_payload and effect_bonus <= 0:
             raise CombatServiceError("Spell effect is missing structured dice or a fixed bonus.", 400)
 
         if spell_mode == "spell_attack":

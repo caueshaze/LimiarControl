@@ -18,6 +18,7 @@ from app.services.magic_item_effects import (
     consume_inventory_item_charge,
     get_inventory_item_charges_current,
 )
+from app.integrations import LimiarMapClientError
 
 from ..combat_targeting import get_combat_targeting_service
 from ..cover_modifiers import resolve_cover_modifier
@@ -47,6 +48,96 @@ def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
 
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
+    @classmethod
+    async def _resolve_teleport_spell(
+        cls, db, session_id, req, state, attacker, attacker_model, spell_context, actor_user_id, is_gm
+    ):
+        if req.anchor_cell is None:
+            raise CombatServiceError("Teleport spells require a destination point.", 400)
+        if not state.use_map:
+            raise CombatServiceError("Teleport spells require a tactical map.", 400)
+
+        destination_cell = {"x": req.anchor_cell.x, "y": req.anchor_cell.y}
+        client = cls._build_limiar_map_client()
+        try:
+            movement = client.move_combatant(
+                session_id=session_id,
+                action_id=f"teleport:{uuid4()}",
+                combatant_id=attacker["ref_id"],
+                destination_cell=destination_cell,
+            )
+        except LimiarMapClientError as exc:
+            raise CombatServiceError(f"Teleport is unavailable: {exc}", 503) from exc
+
+        if not movement.is_valid:
+            raise CombatServiceError(movement.reason or "Invalid teleport destination.", 400)
+
+        slot_spent = False
+        action_cost = spell_context.get("action_cost") or "bonus_action"
+        was_overridden = cls._consume_turn_resource(
+            attacker, action_cost, is_gm=is_gm, override_resource_limit=req.override_resource_limit
+        )
+        if isinstance(spell_context.get("slot_level"), int):
+            cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
+            db.add(attacker_model)
+            slot_spent = True
+
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        if slot_spent:
+            target_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
+            await cls._emit_player_state_update(db, session_id, attacker["ref_id"], target_state)
+        await cls._emit_state(session_id, state)
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_context['spell_name']} e se teleportou para "
+            f"({destination_cell['x']}, {destination_cell['y']})."
+        )
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for '{action_cost}' ignored] {log_message}"
+        await cls._emit_and_persist_log(
+            db, session_id, actor_user_id, attacker.get("display_name"),
+            {"message": log_message, "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn"},
+        )
+        return {
+            "spell_name": spell_context["spell_name"],
+            "spell_canonical_key": spell_context["spell_canonical_key"],
+            "action_kind": "teleport",
+            "effect_kind": None,
+            "damage": 0,
+            "healing": 0,
+            "damage_type": None,
+            "is_critical": False,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": attacker.get("display_name"),
+            "target_kind": attacker.get("kind"),
+            "save_ability": None,
+            "save_dc": None,
+            "save_success_outcome": None,
+            "effect_dice": None,
+            "effect_bonus": 0,
+            "pending_spell_id": None,
+            "pending_save_id": None,
+            "effect_roll_required": False,
+            "base_effect": None,
+            "action_cost": action_cost,
+            "summary_text": None,
+            "inventory_refresh_required": False,
+            "concentration_check": None,
+            "concentration_checks": [],
+            "area_shape": None,
+            "affected_target_ref_ids": [attacker["ref_id"]],
+            "affected_cells": [destination_cell],
+            "area_target_outcomes": [],
+            "target_count": 1,
+            "destination_cell": destination_cell,
+        }
     @classmethod
     def _map_spell_rejection_reason(cls, reason: str | None) -> str:
         if reason == TARGET_OUT_OF_REACH:
@@ -2176,6 +2267,11 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 state=state,
                 spell_context=spell_context,
                 area_spec=area_spell_spec,
+            )
+
+        if spell_context.get("spell_mode") == "teleport":
+            return await cls._resolve_teleport_spell(
+                db, session_id, req, state, attacker, attacker_model, spell_context, actor_user_id, is_gm
             )
 
         if spell_context.get("selection_type") in ("none", "self"):

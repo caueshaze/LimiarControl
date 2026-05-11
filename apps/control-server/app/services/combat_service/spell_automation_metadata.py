@@ -63,6 +63,7 @@ _RESOLUTION_TYPE_TO_SPELL_MODE: dict[str, str] = {
     "buff": "utility",
     "control": "saving_throw",
     "debuff": "saving_throw",
+    "teleport": "teleport",
 }
 
 _AREA_SHAPES = frozenset({"cone", "cube", "sphere", "line", "cylinder"})
