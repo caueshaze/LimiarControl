@@ -528,6 +528,7 @@ class AoEPreviewCastAgreementTests(TestCombatServiceBase):
             anchor=CombatGridCell(x=10, y=8),
             attacker_state=_make_attacker_state("burning_hands", "Burning Hands", 1),
             mock_resolve_saving_throw=mock_resolve_saving_throw,
+            excluded_target_ids=["ally-outside-cone-123"],
         )
 
     @patch("app.services.combat.CombatService._emit_player_state_update", new_callable=AsyncMock)
@@ -580,6 +581,7 @@ class AoEPreviewCastAgreementTests(TestCombatServiceBase):
         anchor,
         mock_resolve_saving_throw,
         attacker_state=None,
+        excluded_target_ids=None,
     ):
         if attacker_state is None:
             attacker_state = _make_attacker_state()
@@ -645,6 +647,15 @@ class AoEPreviewCastAgreementTests(TestCombatServiceBase):
             sorted(preview_result["affected_target_ref_ids"]),
             sorted(cast_result["affected_target_ref_ids"]),
         )
+        for excluded_target_id in excluded_target_ids or []:
+            self.assertNotIn(
+                excluded_target_id,
+                preview_result["affected_target_ref_ids"],
+            )
+            self.assertNotIn(
+                excluded_target_id,
+                cast_result["affected_target_ref_ids"],
+            )
         preview_cells_set = {(c["x"], c["y"]) for c in preview_result["affected_cells"]}
         pending = self.state.participants[0].get("pending_attack", {})
         cast_cells_raw = pending.get("affected_cells") or cast_result.get("affected_cells") or []

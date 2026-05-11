@@ -533,6 +533,89 @@ class CombatStructuredActionTestsMixin:
         final_log = mock_emit_log.await_args_list[-1].args[1]["message"]
         self.assertIn("half damage: 5", final_log)
         self.assertIn("rolled 10", final_log)
+
+    @patch("app.services.combat.CombatService._emit_player_state_update")
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_structured_saving_throw_half_damage_rounds_down_on_odd_total(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+        mock_emit_player_state_update,
+    ):
+        self.state.phase = CombatPhase.active
+        self.state.current_turn_index = 1
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state):
+            with patch(
+                "app.services.combat.CombatService._get_combat_action_for_entity",
+                return_value=(
+                    SessionEntity(id="enemy-123", session_id="session-123", campaign_entity_id="ce-1", current_hp=7),
+                    MagicMock(),
+                    CombatAction(
+                        id="frost_burst",
+                        name="Frost Burst",
+                        kind="saving_throw",
+                        spellCanonicalKey="frost_burst",
+                        saveAbility="dexterity",
+                        saveDc=13,
+                        damageDice="2d6",
+                        damageBonus=0,
+                        damageType="cold",
+                    ),
+                ),
+            ):
+                with patch(
+                    "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+                    return_value=MagicMock(
+                        damage_type="cold",
+                        saving_throw="dexterity",
+                        save_success_outcome="half_damage",
+                    ),
+                ):
+                    with patch(
+                        "app.services.combat.CombatService._build_roll_actor_stats_for_save",
+                        return_value=RollActorStats(
+                            display_name="Hero",
+                            abilities={"dexterity": 10},
+                            actor_kind="player",
+                            actor_ref_id="player-123",
+                        ),
+                    ):
+                        with patch("random.randint", return_value=18):
+                            with patch(
+                                "app.services.combat.CombatService._resolve_damage_roll",
+                                return_value=([3, 4], 7),
+                            ):
+                                with patch(
+                                    "app.services.combat.CombatService._apply_damage_to_target",
+                                    return_value=(7, "", 7, None),
+                                ) as mock_apply_damage:
+                                    result = await CombatService.entity_action(
+                                        self.db,
+                                        "session-123",
+                                        CombatEntityActionRequest(
+                                            actor_participant_id="e1",
+                                            target_ref_id="player-123",
+                                            combat_action_id="frost_burst",
+                                        ),
+                                        "gm-user",
+                                        True,
+                                    )
+
+        self.assertTrue(result["is_saved"])
+        self.assertEqual(result["base_damage"], 7)
+        self.assertEqual(result["damage"], 3)
+        mock_apply_damage.assert_called_once_with(
+            self.db,
+            "player-123",
+            "player",
+            3,
+            damage_type="cold",
+            is_crit=False,
+            state=self.state,
+            attacker_participant_id="e1",
+        )
         mock_emit_state.assert_awaited()
 
     @patch("app.services.combat.CombatService._emit_entity_hp_update")
