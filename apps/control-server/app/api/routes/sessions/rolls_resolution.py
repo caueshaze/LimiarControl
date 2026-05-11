@@ -280,10 +280,27 @@ async def roll_save(
     is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
 
+    effective_advantage_mode = CombatService._resolve_save_advantage_mode_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        ability=body.ability,
+        manual_mode=body.advantage_mode,
+    )
+
     result = resolve_saving_throw(
-        stats, body.ability, body.advantage_mode, body.bonus_override, body.dc,
+        stats, body.ability, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
     )
+    modifier_sources = CombatService._explain_save_modifier_sources_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        ability=body.ability,
+    )
+    _attach_check_modifier_sources(result, modifier_sources)
     result.is_gm_roll = is_gm
     result.roll_source = body.roll_source
 

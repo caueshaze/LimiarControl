@@ -1483,3 +1483,83 @@ class TestPassiveSkillBonusDedup(unittest.TestCase):
         ]
         participant = self._make_participant(effects)
         self.assertEqual(get_passive_skill_bonus(participant, "perception"), 8)
+
+
+class TestSaveDeclarativeEffectSchema(unittest.TestCase):
+    def test_advantage_on_saves_accepts_valid_params(self):
+        spell = BaseSpellCreate(
+            canonicalKey="enlarge_reduce",
+            nameEn="Enlarge/Reduce",
+            descriptionEn="Test spell.",
+            level=2,
+            school="transmutation",
+            resolutionType="buff",
+            effects=[
+                {
+                    "type": "advantage_on_saves",
+                    "target": "selected_target",
+                    "duration": {"type": "rounds", "rounds": 10, "anchor": "target"},
+                    "params": {"abilities": ["strength"]},
+                    "stacking": "replace",
+                }
+            ],
+        )
+        self.assertEqual(spell.effects[0].type, "advantage_on_saves")
+        self.assertEqual(spell.effects[0].params.abilities, ["strength"])
+
+    def test_disadvantage_on_saves_accepts_valid_params(self):
+        spell = BaseSpellCreate(
+            canonicalKey="enlarge_reduce",
+            nameEn="Enlarge/Reduce",
+            descriptionEn="Test spell.",
+            level=2,
+            school="transmutation",
+            resolutionType="buff",
+            effects=[
+                {
+                    "type": "disadvantage_on_saves",
+                    "target": "selected_target",
+                    "duration": {"type": "rounds", "rounds": 10, "anchor": "target"},
+                    "params": {"abilities": ["strength"]},
+                    "stacking": "replace",
+                }
+            ],
+        )
+        self.assertEqual(spell.effects[0].type, "disadvantage_on_saves")
+        self.assertEqual(spell.effects[0].params.abilities, ["strength"])
+
+    def test_save_modifier_rejects_missing_abilities(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="enlarge_reduce",
+                nameEn="Enlarge/Reduce",
+                descriptionEn="Test spell.",
+                level=2,
+                school="transmutation",
+                resolutionType="buff",
+                effects=[
+                    {
+                        "type": "advantage_on_saves",
+                        "target": "selected_target",
+                        "params": {},
+                    }
+                ],
+            )
+
+    def test_save_modifier_rejects_invalid_ability(self):
+        with self.assertRaises(ValueError):
+            BaseSpellCreate(
+                canonicalKey="enlarge_reduce",
+                nameEn="Enlarge/Reduce",
+                descriptionEn="Test spell.",
+                level=2,
+                school="transmutation",
+                resolutionType="buff",
+                effects=[
+                    {
+                        "type": "advantage_on_saves",
+                        "target": "selected_target",
+                        "params": {"abilities": ["luck"]},
+                    }
+                ],
+            )

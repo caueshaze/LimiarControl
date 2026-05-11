@@ -17,6 +17,7 @@ from .condition_effects_predicates import (
     resolve_actor_participant,
     resolve_check_advantage_mode,
 )
+from .condition_effects_saves import modify_saving_throw
 from .exceptions import CombatServiceError, _roll_dice_expression
 
 
@@ -680,3 +681,64 @@ class CombatSpellDeclarativeEffectsMixin:
             skill=skill,
             target_participant_id=target_participant_id,
         )
+
+    @classmethod
+    def _resolve_save_advantage_mode_for_actor(
+        cls,
+        db,
+        session_id: str,
+        *,
+        actor_kind: str,
+        actor_ref_id: str,
+        ability: AbilityName,
+        manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
+    ) -> str:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            logger.info("[_resolve_save_advantage_mode_for_actor] no combat state session_id=%s", session_id)
+            return "normal"
+        if state.phase == CombatPhase.ended:
+            logger.info("[_resolve_save_advantage_mode_for_actor] combat ended session_id=%s", session_id)
+            return "normal"
+        participant = resolve_actor_participant(state, actor_ref_id)
+        if not isinstance(participant, dict):
+            logger.info("[_resolve_save_advantage_mode_for_actor] no participant session_id=%s actor_ref_id=%s", session_id, actor_ref_id)
+            return "normal"
+        if participant.get("kind") != actor_kind:
+            logger.info(
+                "[_resolve_save_advantage_mode_for_actor] kind mismatch session_id=%s actor_ref_id=%s expected=%s got=%s",
+                session_id, actor_ref_id, actor_kind, participant.get("kind"),
+            )
+            return "normal"
+        ctx = modify_saving_throw(participant, ability, manual_mode=manual_mode)
+        return ctx.result
+
+    @classmethod
+    def _explain_save_modifier_sources_for_actor(
+        cls,
+        db,
+        session_id: str,
+        *,
+        actor_kind: str,
+        actor_ref_id: str,
+        ability: AbilityName,
+    ) -> list[dict]:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            logger.info("[_explain_save_modifier_sources_for_actor] no combat state session_id=%s", session_id)
+            return []
+        if state.phase == CombatPhase.ended:
+            logger.info("[_explain_save_modifier_sources_for_actor] combat ended session_id=%s", session_id)
+            return []
+        participant = resolve_actor_participant(state, actor_ref_id)
+        if not isinstance(participant, dict):
+            logger.info("[_explain_save_modifier_sources_for_actor] no participant session_id=%s actor_ref_id=%s", session_id, actor_ref_id)
+            return []
+        if participant.get("kind") != actor_kind:
+            logger.info(
+                "[_explain_save_modifier_sources_for_actor] kind mismatch session_id=%s actor_ref_id=%s expected=%s got=%s",
+                session_id, actor_ref_id, actor_kind, participant.get("kind"),
+            )
+            return []
+        ctx = modify_saving_throw(participant, ability, manual_mode="normal")
+        return [*ctx.advantage_source_details, *ctx.disadvantage_source_details]

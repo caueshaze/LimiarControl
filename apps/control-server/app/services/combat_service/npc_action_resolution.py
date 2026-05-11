@@ -251,6 +251,10 @@ class CombatNpcActionResolutionMixin:
                 roll_source=req.roll_source,
                 manual_roll=req.manual_roll,
             )
+            roll_result.check_modifier_sources = [
+                *save_mod.advantage_source_details,
+                *save_mod.disadvantage_source_details,
+            ]
             roll_result.is_gm_roll = is_gm
             is_saved = False if save_mod.auto_fail else bool(roll_result.success)
             damage_rolls: list[int] = []
