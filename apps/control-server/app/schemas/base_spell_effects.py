@@ -23,6 +23,7 @@ SpellDeclarativeEffectType = Literal[
     "carrying_capacity_multiplier",
     "modify_movement_speed",
     "fall_damage_immunity_threshold",
+    "create_consumable",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -155,6 +156,14 @@ class ModifyMovementSpeedParams(BaseModel):
     bonus_meters: float
 
 
+class CreateConsumableParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    canonical_key: str
+    quantity: int = Field(ge=1)
+    expires_in_seconds: int | None = Field(default=None, ge=1)
+
+
 class ArmorClassFormulaParams(BaseModel):
     base_value: int = Field(ge=0)
     ability: AbilityName
@@ -191,6 +200,7 @@ class SpellDeclarativeEffect(BaseModel):
         | CarryingCapacityMultiplierParams
         | ModifyMovementSpeedParams
         | FallDamageImmunityThresholdParams
+        | CreateConsumableParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -226,4 +236,6 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("fall_damage_immunity_threshold effects require FallDamageImmunityThresholdParams")
         if self.type == "modify_movement_speed" and not isinstance(self.params, ModifyMovementSpeedParams):
             raise ValueError("modify_movement_speed effects require ModifyMovementSpeedParams")
+        if self.type == "create_consumable" and not isinstance(self.params, CreateConsumableParams):
+            raise ValueError("create_consumable effects require CreateConsumableParams")
         return self
