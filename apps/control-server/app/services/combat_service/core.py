@@ -273,9 +273,9 @@ class CombatCoreMixin:
         if damage_dice == "unarmed":
             return [], 2 if critical else 1
 
-        count, sides, expression_modifier = _parse_dice(damage_dice)
+        multiplier, count, sides, expression_modifier = _parse_dice(damage_dice)
         if count <= 0 or sides <= 0:
-            return [], max(0, expression_modifier)
+            return [], expression_modifier * multiplier
 
         effective_count = count * (2 if critical else 1)
         if roll_source == "manual":
@@ -293,7 +293,7 @@ class CombatCoreMixin:
         else:
             rolls = [random.randint(1, sides) for _ in range(effective_count)]
 
-        return rolls, sum(rolls) + expression_modifier
+        return rolls, (sum(rolls) * multiplier) + expression_modifier
 
     @classmethod
     def get_state(cls, db: Session, session_id: str) -> CombatState | None:

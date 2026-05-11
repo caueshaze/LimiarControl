@@ -10,6 +10,7 @@ from app.schemas.campaign_entity_shared import AbilityName
 SpellDeclarativeEffectType = Literal[
     "apply_condition",
     "modify_stat",
+    "modify_weapon_damage",
     "armor_class_formula",
     "advantage_on_checks",
     "disadvantage_on_checks",
@@ -103,6 +104,12 @@ class ModifyStatParams(BaseModel):
     value: int
 
 
+class ModifyWeaponDamageParams(BaseModel):
+    dice: str
+    operation: Literal["add", "subtract"] = "add"
+    minimum_total_damage: int | None = None
+
+
 class CheckModifierParams(BaseModel):
     ability: AbilityName
     against: SpellDeclarativeAgainst | None = None
@@ -158,6 +165,7 @@ class SpellDeclarativeEffect(BaseModel):
     params: (
         ApplyConditionParams
         | ModifyStatParams
+        | ModifyWeaponDamageParams
         | ArmorClassFormulaParams
         | CheckModifierParams
         | RestrictActionParams
@@ -175,6 +183,8 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("apply_condition effects require ApplyConditionParams")
         if self.type == "modify_stat" and not isinstance(self.params, ModifyStatParams):
             raise ValueError("modify_stat effects require ModifyStatParams")
+        if self.type == "modify_weapon_damage" and not isinstance(self.params, ModifyWeaponDamageParams):
+            raise ValueError("modify_weapon_damage effects require ModifyWeaponDamageParams")
         if self.type == "armor_class_formula" and not isinstance(self.params, ArmorClassFormulaParams):
             raise ValueError("armor_class_formula effects require ArmorClassFormulaParams")
         if self.type in {"advantage_on_checks", "disadvantage_on_checks"} and not isinstance(

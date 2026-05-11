@@ -23,7 +23,7 @@ class WeaponAttackDamageMixin:
         )
         damage_bonus = cls._safe_int(pending_attack.get("damage_bonus"), 0)
         effect_damage_bonus = cls._sum_numeric_effects(attacker, "damage_bonus")
-        damage = max(1, base_damage + damage_bonus + effect_damage_bonus)
+
         target_ref_id = pending_attack.get("target_ref_id")
         target_kind = pending_attack.get("target_kind")
         target_display_name = pending_attack.get("target_display_name") or "Target"
@@ -33,9 +33,42 @@ class WeaponAttackDamageMixin:
         attacker_model, *_ = cls._get_stats(db, attacker["ref_id"], attacker["kind"], session_id)
         attacker_data = cls._as_dict(attacker_model.state_json)
         target_current_hp, target_max_hp = cls._get_target_hp_snapshot(db, session_id, target_ref_id, target_kind)
+        
         extra_damage = 0
         extra_damage_rolls: list[int] = []
         extra_damage_label = ""
+        
+        min_damage = 1
+
+        for effect in cls._get_participant_effects(attacker):
+            if effect.get("kind") == "modify_weapon_damage":
+                params = effect.get("metadata", {}).get("declarative_effect", {}).get("params", {})
+                dice = params.get("dice")
+                operation = params.get("operation") or "add"
+                min_total = params.get("minimum_total_damage")
+                
+                if isinstance(min_total, int):
+                    min_damage = max(min_damage, min_total)
+
+                if dice:
+                    rolls, total = cls._resolve_damage_roll(dice, critical=bool(pending_attack.get("is_critical")), roll_source=req.roll_source)
+                    effective_total = abs(total) if operation == "subtract" else total
+                    
+                    if operation == "subtract":
+                        effect_damage_bonus -= effective_total
+                        if effective_total != 0:
+                            effect_label = cls._effect_label(effect)
+                            extra_damage_label += f" {effect_label}: -{effective_total}."
+                    else:
+                        effect_damage_bonus += effective_total
+                        if effective_total != 0:
+                            effect_label = cls._effect_label(effect)
+                            extra_damage_label += f" {effect_label}: +{effective_total}."
+                    
+                    extra_damage_rolls.extend(rolls)
+
+        damage = max(min_damage, base_damage + damage_bonus + effect_damage_bonus)
+
         turn_resources = cls._get_turn_resources(attacker)
         is_weapon_attack = pending_attack.get("is_weapon_attack") is True
         hunters_mark_effect = cls._get_hunters_mark_effect_for_target(attacker, target_participant_id=target_participant.get("id", "") if target_participant else "") if is_weapon_attack else None
