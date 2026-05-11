@@ -1,4 +1,5 @@
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { formatEffectiveCreatureSize, groupActiveEffectsForDisplay } from "../../active-effects";
 import { getCombatEffectLabel, getCombatStatusLabel, getTurnResourceLabel } from "../combatUi.helpers";
 import type { CombatParticipantView } from "../types";
 import { ActiveEffectDebugPanel } from "./ActiveEffectDebugPanel";
@@ -29,15 +30,18 @@ export const CombatParticipantRoster = ({
       </div>
 
       <div className="mt-4 space-y-2">
-        {participants.map((participant, index) => (
-          <article
-            key={participant.id}
-            className={`rounded-3xl border px-4 py-3 transition-colors ${
-              participant.isCurrentTurn
-                ? "border-amber-400/35 bg-amber-500/12"
-                : "border-white/6 bg-white/4"
-            }`}
-          >
+        {participants.map((participant, index) => {
+          const effectiveSizeLabel = formatEffectiveCreatureSize(participant, "pt");
+          const activeEffectGroups = groupActiveEffectsForDisplay(participant.activeEffects);
+          return (
+            <article
+              key={participant.id}
+              className={`rounded-3xl border px-4 py-3 transition-colors ${
+                participant.isCurrentTurn
+                  ? "border-amber-400/35 bg-amber-500/12"
+                  : "border-white/6 bg-white/4"
+              }`}
+            >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -62,6 +66,7 @@ export const CombatParticipantRoster = ({
                       {t("combatUi.hp")}: {participant.maxHp != null ? `${participant.currentHp}/${participant.maxHp}` : participant.currentHp}
                     </span>
                   ) : null}
+                  {effectiveSizeLabel ? <span>{effectiveSizeLabel}</span> : null}
                 </div>
               </div>
 
@@ -77,23 +82,26 @@ export const CombatParticipantRoster = ({
             {participant.activeEffects.length > 0 ? (
               <>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {participant.activeEffects.map((effect) => (
+                  {activeEffectGroups.map((group, groupIndex) => (
                     <span
-                      key={effect.id}
+                      key={group.groupKey ?? String(groupIndex)}
                       className="inline-flex items-center gap-1 rounded-full border border-fuchsia-500/25 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100"
                     >
-                      {getCombatEffectLabel(t, effect)}
+                      {group.title ?? getCombatEffectLabel(t, group.effects[0] as any)}
                       {onRemoveEffect ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void onRemoveEffect(participant.id, effect.id);
-                          }}
-                          className="text-fuchsia-200 transition-colors hover:text-white"
-                          aria-label={t("combatUi.removeEffect")}
-                        >
-                          x
-                        </button>
+                        (group.effects as typeof participant.activeEffects).map((effect) => (
+                          <button
+                            key={effect.id}
+                            type="button"
+                            onClick={() => {
+                              void onRemoveEffect(participant.id, effect.id);
+                            }}
+                            className="text-fuchsia-200 transition-colors hover:text-white"
+                            aria-label={t("combatUi.removeEffect")}
+                          >
+                            x
+                          </button>
+                        ))
                       ) : null}
                     </span>
                   ))}
@@ -104,8 +112,9 @@ export const CombatParticipantRoster = ({
                 />
               </>
             ) : null}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

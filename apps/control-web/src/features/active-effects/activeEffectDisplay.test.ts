@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatActiveEffectLabel, getActiveEffectLifecycleBadges } from "./activeEffectDisplay";
+import {
+  buildActiveEffectGroupTitle,
+  formatActiveEffectLabel,
+  formatCreatureSize,
+  formatEffectiveCreatureSize,
+  getActiveEffectLifecycleBadges,
+  groupActiveEffectsForDisplay,
+} from "./activeEffectDisplay";
 
 describe("formatActiveEffectLabel", () => {
   it("returns spellName + variantLabel when both exist", () => {
@@ -198,5 +205,62 @@ describe("getActiveEffectLifecycleBadges", () => {
     };
     const badges = getActiveEffectLifecycleBadges(effect);
     expect(badges.map((b) => b.key)).toEqual(["manual", "long-rest"]);
+  });
+});
+
+describe("groupActiveEffectsForDisplay", () => {
+  const makeEffect = (id: string, groupId: string, type: string, params: Record<string, unknown>) => ({
+    id,
+    kind: type === "size_modifier" ? "size_modifier" : "spell_effect",
+    duration_type: "timed",
+    created_at: "2026-05-01T00:00:00Z",
+    metadata: {
+      source_spell_name: "Aumentar/Reduzir",
+      selected_variant_label: "Aumentar",
+      declarative_effect_group_id: groupId,
+      declarative_effect: { type, params },
+    },
+  });
+
+  it("groups declarative effects by group id and summarizes children", () => {
+    const groups = groupActiveEffectsForDisplay([
+      makeEffect("size", "group-a", "size_modifier", { value: 1 }),
+      makeEffect("save", "group-a", "advantage_on_saves", { abilities: ["strength"] }),
+      makeEffect("damage", "group-a", "modify_weapon_damage", { dice: "1d4", operation: "add" }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].title).toBe("Aumentar/Reduzir — Aumentar");
+    expect(groups[0].summaryLines).toEqual([
+      "Tamanho aumentado",
+      "Vantagem em salvaguardas de Força",
+      "Dano de arma +1d4",
+    ]);
+  });
+
+  it("does not merge distinct groups from the same spell and variant", () => {
+    const groups = groupActiveEffectsForDisplay([
+      makeEffect("size-a", "group-a", "size_modifier", { value: 1 }),
+      makeEffect("size-b", "group-b", "size_modifier", { value: 1 }),
+    ]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups.map((group) => group.groupKey)).toEqual(["declarative:group-a", "declarative:group-b"]);
+  });
+
+  it("builds group title with graceful fallbacks", () => {
+    expect(buildActiveEffectGroupTitle({ effects: [{ metadata: { source_spell_name: "Bless" } }] })).toBe("Bless");
+    expect(buildActiveEffectGroupTitle({ effects: [{ metadata: { selected_variant_label: "Aumentar" } }] })).toBe("Aumentar");
+    expect(buildActiveEffectGroupTitle({ effects: [{ display_label: "Legacy" }] })).toBe("Legacy");
+  });
+});
+
+describe("formatCreatureSize", () => {
+  it("localizes creature sizes and hides unchanged effective size", () => {
+    expect(formatCreatureSize("large", "pt")).toBe("Grande");
+    expect(formatEffectiveCreatureSize({ base_size: "medium", effective_size: "large" }, "pt")).toBe(
+      "Tamanho atual: Grande (base Médio)",
+    );
+    expect(formatEffectiveCreatureSize({ base_size: "medium", effective_size: "medium" }, "pt")).toBeNull();
   });
 });

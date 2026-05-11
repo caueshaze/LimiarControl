@@ -48,6 +48,7 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.hpTrackLabel": "Hit points",
   "playerBoard.xpTrackLabel": "XP progress",
   "playerBoard.initiativeLabel": "Initiative",
+  "playerBoard.creatureSizeLabel": "Size",
   "playerBoard.rollBaseLabel": "Roll base",
   "playerBoard.rollBaseFallback": "AC ready for combat",
   "playerBoard.waitingSheetState": "Waiting for the live sheet to build the combat panel.",

@@ -364,6 +364,37 @@ describe("PlayerBoardStatusPanel", () => {
     expect(markup).toContain("Encerrando...");
   });
 
+  it("mostra tamanho efetivo traduzido quando difere do tamanho base", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerBoardStatusPanel
+        combatActive={false}
+        participant={{ base_size: "medium", effective_size: "large" } as any}
+        pendingRoll={null}
+        playerStatus={{
+          level: 3,
+          currentHp: 20,
+          maxHp: 20,
+          hpPercent: 100,
+          tempHp: 0,
+          xpPercent: 10,
+          nextLevelThreshold: 900,
+          experiencePoints: 100,
+          ac: 12,
+          initiative: 1,
+          passivePerception: 13,
+        } as any}
+        restState="exploration"
+        usingHitDie={false}
+        onUseHitDie={() => undefined}
+        onClearConcentration={() => undefined}
+        onRemoveEffect={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Tamanho");
+    expect(markup).toContain("Grande (base Médio)");
+  });
+
   it("não renderiza card de concentração quando activeConcentration é nulo", () => {
     const markup = renderToStaticMarkup(
       <PlayerBoardStatusPanel

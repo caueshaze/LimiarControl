@@ -125,7 +125,34 @@ describe("spellVariantUi", () => {
     expect(lines).toContain("Selected target: Guard Captain");
     expect(lines).toContain("Against: selected target");
     expect(lines).toContain("Concentration: group-1");
-    expect(lines).toContain("Advantage: charisma checks");
+    expect(lines).toContain("Vantagem em testes de Carisma");
+  });
+
+  it("formata Aumentar/Reduzir em PT-BR a partir dos efeitos declarativos", () => {
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "size_modifier",
+        params: { value: 1 },
+      }),
+    ).toBe("Tamanho aumentado");
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "size_modifier",
+        params: { value: -1 },
+      }),
+    ).toBe("Tamanho reduzido");
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "advantage_on_saves",
+        params: { abilities: ["strength"] },
+      }),
+    ).toBe("Vantagem em salvaguardas de Força");
+    expect(
+      formatDeclarativeEffectSummaryLine({
+        type: "modify_weapon_damage",
+        params: { dice: "1d4", operation: "subtract" },
+      }),
+    ).toBe("Dano de arma -1d4");
   });
 
   it("formata efeitos declarativos aplicados por alvo e remove notas duplicadas", () => {

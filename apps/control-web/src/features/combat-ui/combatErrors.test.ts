@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMissingDistanceError, toPlayerFriendlyError } from "./combatErrors";
+import { isInvalidEffectiveFootprintError, isMissingDistanceError, toPlayerFriendlyError } from "./combatErrors";
 
 describe("isMissingDistanceError", () => {
   it("detects the exact backend phrase", () => {
@@ -38,5 +38,24 @@ describe("toPlayerFriendlyError", () => {
 
   it("passes through empty string unchanged", () => {
     expect(toPlayerFriendlyError("")).toBe("");
+  });
+
+  it("returns a human-readable message for invalid footprint errors", () => {
+    expect(toPlayerFriendlyError({ code: "invalid_effective_footprint" })).toBe(
+      "Não há espaço suficiente para Aumentar este alvo.",
+    );
+    expect(toPlayerFriendlyError("invalid_effective_footprint:target-1")).toBe(
+      "Não há espaço suficiente para Aumentar este alvo.",
+    );
+  });
+
+  it("extracts structured non-spatial error messages", () => {
+    expect(toPlayerFriendlyError({ detail: "Resource limit exceeded" })).toBe("Resource limit exceeded");
+  });
+});
+
+describe("isInvalidEffectiveFootprintError", () => {
+  it("prefers structured codes and supports nested detail", () => {
+    expect(isInvalidEffectiveFootprintError({ detail: { code: "invalid_effective_footprint" } })).toBe(true);
   });
 });
