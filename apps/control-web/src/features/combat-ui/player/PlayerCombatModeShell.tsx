@@ -17,6 +17,7 @@ import { ActiveEffectDebugPanel } from "../components/ActiveEffectDebugPanel";
 import { buildCombatParticipantViews, getCombatEffectLabel, getCombatStatusLabel } from "../combatUi.helpers";
 
 import { PlayerAttackRollDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerAttackRollDialog";
+import { parseCreatureSize } from "../utils/parseCreatureSize";
 import { PlayerSpellCastDialog } from "../../../pages/PlayerBoardPage/player-combat-debug/PlayerSpellCastDialog";
 import { PlayerBoardRollDialog } from "../../../pages/PlayerBoardPage/PlayerBoardRollDialog";
 import {
@@ -709,6 +710,7 @@ export const PlayerCombatModeShell = ({
         <PlayerAttackRollDialog
           actorParticipantId={combat.currentParticipant.id}
           actorRefId={combat.currentParticipant.ref_id}
+          actorEffectiveSize={parseCreatureSize(combat.currentParticipant.effective_size)}
           onClose={closeAttackDialog}
           onResolved={(result) => {
             setLastAttackResult(result);

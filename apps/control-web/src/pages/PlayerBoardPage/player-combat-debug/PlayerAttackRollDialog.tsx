@@ -18,6 +18,7 @@ import {
   getDamageRollSides,
 } from "../../../shared/utils/diceExpression";
 import type { PlayerBoardWeaponSummary } from "../playerBoard.types";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 
 type Props = {
   actorParticipantId: string;
@@ -27,6 +28,7 @@ type Props = {
   sessionId: string;
   target: CombatParticipant;
   weapon: PlayerBoardWeaponSummary | null;
+  actorEffectiveSize?: CreatureSize;
 };
 
 const D20_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -72,6 +74,7 @@ export const PlayerAttackRollDialog = ({
   sessionId,
   target,
   weapon,
+  actorEffectiveSize,
 }: Props) => {
   const { t } = useLocale();
   const preview = useTargetingPreview({
@@ -192,7 +195,7 @@ export const PlayerAttackRollDialog = ({
 
         {!result ? (
           <div className="mt-4">
-            <RangeStatusBadge preview={preview} />
+            <RangeStatusBadge preview={preview} effectiveSize={actorEffectiveSize} />
             {outOfRange ? (
               <p className="mt-2 text-xs font-semibold text-rose-200">
                 Alvo fora do alcance da arma atual.

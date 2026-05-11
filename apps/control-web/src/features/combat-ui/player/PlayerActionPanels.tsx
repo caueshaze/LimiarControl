@@ -18,6 +18,8 @@ import type {
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
+import { formatSizeMeleeReachBonusSource, formatMetersCompact } from "../utils/formatSizeMeleeReachBonus";
 
 type Props = {
   activeActionPanel: "attack" | "spell" | "standard" | "object";
@@ -64,6 +66,7 @@ type Props = {
   loadoutStatus?: string | null;
   participants?: CombatParticipant[];
   onWeaponChange?: (inventoryItemId: string | null) => void;
+  effectiveSize?: CreatureSize;
 };
 
 export const PlayerActionPanels = ({
@@ -111,6 +114,7 @@ export const PlayerActionPanels = ({
   loadoutStatus = null,
   participants = [],
   onWeaponChange,
+  effectiveSize,
 }: Props) => {
   const { locale, t } = useLocale();
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
@@ -214,6 +218,24 @@ export const PlayerActionPanels = ({
               {loadoutStatus ? (
                 <p className="mt-2 text-xs font-medium text-amber-200">{loadoutStatus}</p>
               ) : null}
+              {effectiveSize && !playerStatus?.currentWeapon?.isRanged ? (
+                (() => {
+                  const sizeBonus = formatSizeMeleeReachBonusSource(effectiveSize, t);
+                  if (!sizeBonus) return null;
+                  const baseReach = playerStatus?.currentWeapon?.rangeMeters ?? 1.5;
+                  const totalReach = baseReach + sizeBonus.bonusMeters;
+                  return (
+                    <div className="mt-3 space-y-1">
+                      <p className="text-xs text-amber-200">
+                        {t("combatUi.meleeReachEffective")}: {formatMetersCompact(totalReach)}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {sizeBonus.label}
+                      </p>
+                    </div>
+                  );
+                })()
+              ) : null}
             </div>
             <button
               type="button"
@@ -228,7 +250,7 @@ export const PlayerActionPanels = ({
           </div>
           {targetId ? (
             <div className="mt-4">
-              <RangeStatusBadge preview={attackRangePreview} />
+              <RangeStatusBadge preview={attackRangePreview} effectiveSize={effectiveSize} />
             </div>
           ) : null}
         </article>
