@@ -146,6 +146,55 @@ export const obstacleSchema = obstacleSemanticsInputSchema
     ...normalizeObstacleSemantics(value)
   }));
 
+// ── Creature Size (declared early so tokenSchema can reference it) ────────────
+
+export const creatureSizeSchema = z.enum(["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]);
+
+export type CreatureSize = "Tiny" | "Small" | "Medium" | "Large" | "Huge" | "Gargantuan";
+
+export const CREATURE_SIZE_ORDER: CreatureSize[] = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"];
+
+export const SIZE_MODIFIER_EFFECT_TYPE = "size_modifier" as const;
+export type SizeModifierEffectType = typeof SIZE_MODIFIER_EFFECT_TYPE;
+
+export const sizeStepDeltaSchema = z.union([z.literal(-1), z.literal(1)]);
+export type SizeStepDelta = z.infer<typeof sizeStepDeltaSchema>;
+
+export const DEFAULT_CREATURE_SIZE: CreatureSize = "Medium";
+
+export const sizeTierToFootprint = {
+  Tiny: { width: 1, height: 1 },
+  Small: { width: 1, height: 1 },
+  Medium: { width: 1, height: 1 },
+  Large: { width: 2, height: 2 },
+  Huge: { width: 3, height: 3 },
+  Gargantuan: { width: 4, height: 4 }
+} as const satisfies Record<CreatureSize, { width: number; height: number }>;
+
+export const footprintSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive()
+});
+
+export type Footprint = z.infer<typeof footprintSchema>;
+
+export function getBaseSize(token: { base_size?: CreatureSize }): CreatureSize {
+  return token.base_size ?? DEFAULT_CREATURE_SIZE;
+}
+
+export function getEffectiveSize(baseSize: CreatureSize, stepDeltas: number[]): CreatureSize {
+  const baseIdx = CREATURE_SIZE_ORDER.indexOf(baseSize);
+  const sum = stepDeltas.reduce((acc, delta) => acc + delta, 0);
+  const rawIdx = baseIdx + sum;
+  if (rawIdx < 0) return "Tiny";
+  if (rawIdx >= CREATURE_SIZE_ORDER.length) return "Gargantuan";
+  return CREATURE_SIZE_ORDER[rawIdx]!;
+}
+
+export function getEffectiveFootprint(size: CreatureSize): { width: number; height: number } {
+  return sizeTierToFootprint[size];
+}
+
 export const tokenSchema = z.object({
   id: z.string(),
   battleMapId: z.string(),
@@ -174,7 +223,16 @@ export const tokenSchema = z.object({
    * These are canonical machine-readable codes — the UI presentation layer
    * (condition-indicators.ts) maps them to labels, colours, and priority order.
    */
-  conditions: z.array(z.string()).default([])
+  conditions: z.array(z.string()).default([]),
+  /**
+   * Base creature size, used to derive the effective footprint.
+   * When absent, defaults to Medium (1x1).
+   * The effective size may differ from base_size when active size modifiers
+   * (e.g. Enlarge/Reduce) are applied — see effective_size on sync payloads.
+   */
+  base_size: creatureSizeSchema.optional(),
+  effective_size: creatureSizeSchema.optional(),
+  effective_footprint: footprintSchema.optional()
 });
 
 export const combatStateSchema = z.object({

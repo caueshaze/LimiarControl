@@ -13,6 +13,7 @@ import type {
 import { C } from "./constants";
 import type { GridEditInteractionMode } from "./types";
 import { getTokenBadgeLabel, cellRect } from "./utils";
+import { getTokenFootprint } from "@limiarmap/tactical-engine";
 import { getConditionIndicators } from "../conditions/condition-indicators";
 
 export function drawTokenLayer(
@@ -30,6 +31,7 @@ export function drawTokenLayer(
   container.removeChildren();
 
   for (const token of tokens) {
+    const footprint = getTokenFootprint(token);
     const { x, y, w, h } = cellRect(
       token.position.x,
       token.position.y,
@@ -39,9 +41,11 @@ export function drawTokenLayer(
       canvasW,
       canvasH
     );
-    const cx = x + w / 2;
-    const cy = y + h / 2;
-    const radius = Math.min(w, h) * 0.36;
+    const tokenW = w * footprint.width;
+    const tokenH = h * footprint.height;
+    const cx = x + tokenW / 2;
+    const cy = y + tokenH / 2;
+    const radius = Math.min(tokenW, tokenH) * 0.36;
 
     const isSelected =
       token.id === selectedTokenId ||

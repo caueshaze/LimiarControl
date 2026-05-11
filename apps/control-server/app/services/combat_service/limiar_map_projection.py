@@ -16,6 +16,7 @@ from .token_resolution import (
     build_sync_entries,
     ResolvedTokenSpawnEntry,
     ResolvedTokenSyncEntry,
+    build_effective_size_payload,
     _extract_participant_conditions,
 )
 from .limiar_map_projection_payloads import (
@@ -213,6 +214,12 @@ class LimiarMapCombatProjectionService:
                 payload["controllerType"] = e.controller_type
             if e.size_category is not None:
                 payload["sizeCategory"] = e.size_category
+            if e.base_size is not None:
+                payload["base_size"] = e.base_size
+            if e.effective_size is not None:
+                payload["effective_size"] = e.effective_size
+            if e.effective_footprint is not None:
+                payload["effective_footprint"] = e.effective_footprint
             payload["conditions"] = list(e.conditions)
             return payload
 
@@ -237,10 +244,12 @@ class LimiarMapCombatProjectionService:
             )
         return latest_map_state
 
-    def sync_conditions_to_map(self, session_id: str, state: CombatState) -> None:
+    def sync_conditions_to_map(self, session_id: str, state: CombatState, *, raise_on_error: bool = False) -> None:
         try:
             map_state = self._limiar_map_client.get_state(session_id)
         except LimiarMapClientError as exc:
+            if raise_on_error:
+                raise
             logger.warning("[conditions] sync skipped session=%s — could not fetch map state: %s", session_id, exc)
             return
         token_by_combatant_id = {
@@ -254,12 +263,20 @@ class LimiarMapCombatProjectionService:
             tid = token_by_combatant_id.get(cid)
             if tid is None:
                 continue
-            payload_tokens.append({"tokenId": tid, "conditions": _extract_participant_conditions(p)})
+            token = next((t for t in map_state.tokens if t.token_id == tid), None)
+            size_payload = build_effective_size_payload(p, token.base_size if token else None)
+            payload_tokens.append({
+                "tokenId": tid,
+                "conditions": _extract_participant_conditions(p),
+                **size_payload,
+            })
         if not payload_tokens:
             return
         try:
             self._limiar_map_client.sync_tokens(session_id, {"tokens": payload_tokens})
         except LimiarMapClientError as exc:
+            if raise_on_error:
+                raise
             logger.warning("[conditions] sync failed session=%s participants=%d: %s", session_id, len(payload_tokens), exc)
 
     def sync_active_area_effects_to_map(self, session_id: str, state: CombatState) -> None:
@@ -393,10 +410,10 @@ def maybe_project_combat_end_to_limiar_map(session_id: str, state: CombatState) 
     get_limiar_map_projection_service().project_combat_end(session_id, state)
 
 
-def maybe_sync_conditions_to_limiar_map(session_id: str, state: CombatState) -> None:
+def maybe_sync_conditions_to_limiar_map(session_id: str, state: CombatState, *, raise_on_error: bool = False) -> None:
     if not settings.limiar_map_enabled or not state.use_map:
         return
-    get_limiar_map_projection_service().sync_conditions_to_map(session_id, state)
+    get_limiar_map_projection_service().sync_conditions_to_map(session_id, state, raise_on_error=raise_on_error)
 
 
 def maybe_sync_active_area_effects_to_limiar_map(session_id: str, state: CombatState) -> None:

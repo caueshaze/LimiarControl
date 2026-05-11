@@ -11,7 +11,7 @@ import type { CombatAction } from "../../../entities/campaign-entity/campaignEnt
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { isMissingDistanceError } from "../combatErrors";
 
-const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus"]);
+const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus", "size_modifier"]);
 
 type UseCombatHandlersOptions = {
   sessionId: string;

@@ -7,6 +7,12 @@ import type {
   Obstacle,
   Token
 } from "@limiarmap/shared-contracts";
+import {
+  getBaseSize,
+  sizeTierToFootprint,
+  type CreatureSize,
+  type Footprint
+} from "@limiarmap/shared-contracts";
 import { coordinateKey } from "./coordinates";
 
 export interface GridState {
@@ -171,4 +177,54 @@ export function getCellElevation(
   cell: Coordinate
 ): number {
   return elevationIndex.get(coordinateKey(cell)) ?? 0;
+}
+
+// ── Footprint helpers ──────────────────────────────────────────────────────────
+
+export function getTokenFootprint(token: { base_size?: CreatureSize; effective_footprint?: Footprint }): Footprint {
+  if (token.effective_footprint) return token.effective_footprint;
+  const baseSize = getBaseSize(token);
+  return sizeTierToFootprint[baseSize];
+}
+
+export function getOccupiedCells(
+  position: Coordinate,
+  footprint: { width: number; height: number }
+): Coordinate[] {
+  const cells: Coordinate[] = [];
+  for (let dy = 0; dy < footprint.height; dy++) {
+    for (let dx = 0; dx < footprint.width; dx++) {
+      cells.push({ x: position.x + dx, y: position.y + dy });
+    }
+  }
+  return cells;
+}
+
+export function findTokensOccupyingCell(
+  gridState: GridState,
+  cell: Coordinate,
+  excludeTokenId?: string
+): Token[] {
+  return gridState.tokens.filter((token) => {
+    if (excludeTokenId && token.id === excludeTokenId) return false;
+    const fp = getTokenFootprint(token);
+    const occupied = getOccupiedCells(token.position, fp);
+    return occupied.some((c) => c.x === cell.x && c.y === cell.y);
+  });
+}
+
+export function canGrowTo(
+  anchor: Coordinate,
+  footprint: { width: number; height: number },
+  gridState: GridState,
+  excludeTokenId?: string
+): boolean {
+  const cells = getOccupiedCells(anchor, footprint);
+  for (const cell of cells) {
+    if (!isInsideMap(gridState, cell)) return false;
+    if (isBlockedCell(gridState, cell)) return false;
+    const others = findTokensOccupyingCell(gridState, cell, excludeTokenId);
+    if (others.length > 0) return false;
+  }
+  return true;
 }

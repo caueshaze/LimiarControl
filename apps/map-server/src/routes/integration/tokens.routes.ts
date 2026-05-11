@@ -100,6 +100,13 @@ export function registerTokensRoutes(app: FastifyInstance, repository: InMemoryE
         { sessionId, reason: result.reason, tokenId: result.tokenId },
         `${LOG_PREFIX} PUT tokens rejected`
       );
+      if (result.reason === "invalid_effective_footprint") {
+        return reply.status(409).send({
+          message: "Effective footprint does not fit in the current map position",
+          reason: result.reason,
+          tokenId: result.tokenId
+        });
+      }
       return reply.status(404).send({
         message: `Token not found: ${result.tokenId}`,
         reason: result.reason,

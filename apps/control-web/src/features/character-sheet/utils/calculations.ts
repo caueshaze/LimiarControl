@@ -6,6 +6,12 @@ import type {
   Weapon,
 } from "../model/characterSheet.types";
 import type { ActiveEffect } from "../../../shared/api/combatRepo";
+import {
+  getEffectiveSize,
+  getEffectiveFootprint,
+  DEFAULT_CREATURE_SIZE,
+  type CreatureSize,
+} from "@limiarmap/shared-contracts";
 import { SKILL_ABILITY_MAP, STANDARD_ARRAY } from "../constants";
 import { getFightingStyleAttackBonus } from "../data/classFeatures";
 
@@ -416,3 +422,29 @@ export const computeCarryingCapacity = (
     sources: computeCarryingCapacityMultiplierSources(activeEffects),
   };
 };
+
+// ── Size Modifier ─────────────────────────────────────────────────────────────
+
+const SIZE_MODIFIER_KIND = "size_modifier";
+
+export function computeEffectiveSize(
+  baseSize: CreatureSize,
+  activeEffects: ActiveEffect[]
+): CreatureSize {
+  const stepDeltas: number[] = [];
+  for (let i = 0; i < activeEffects.length; i++) {
+    const effect = activeEffects[i];
+    if (effect.kind !== SIZE_MODIFIER_KIND) continue;
+    if (effect.numeric_value == null) continue;
+    stepDeltas.push(effect.numeric_value);
+  }
+  return getEffectiveSize(baseSize, stepDeltas);
+}
+
+export function computeEffectiveFootprint(
+  baseSize: CreatureSize,
+  activeEffects: ActiveEffect[]
+): { width: number; height: number } {
+  const effectiveSize = computeEffectiveSize(baseSize, activeEffects);
+  return getEffectiveFootprint(effectiveSize);
+}

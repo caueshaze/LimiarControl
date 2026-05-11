@@ -144,6 +144,16 @@ export const elevationUpdatedEventSchema = realtimeActionEventSchema.extend({
   })
 });
 
+export const tokenFootprintUpdatedEventSchema = realtimeActionEventSchema.extend({
+  payload: z.object({
+    tokenId: z.string(),
+    effective_footprint: z.object({
+      width: z.number().int().positive(),
+      height: z.number().int().positive()
+    })
+  })
+});
+
 export const actionRejectedEventSchema = realtimeActionEventSchema.extend({
   payload: z.object({
     reason: z.string(),
@@ -159,25 +169,15 @@ export const actionRejectedEventSchema = realtimeActionEventSchema.extend({
 export type MovementRequest = z.infer<typeof movementRequestSchema>;
 export type CombatAdvanceRequest = z.infer<typeof combatAdvanceRequestSchema>;
 export type TargetingSubmitRequest = z.infer<typeof targetingSubmitSchema>;
-export type GridCalibrationRequest = z.infer<
-  typeof gridCalibrationRequestSchema
->;
+export type GridCalibrationRequest = z.infer<typeof gridCalibrationRequestSchema>;
 export type ObstaclePaintRequest = z.infer<typeof obstaclePaintRequestSchema>;
-export type EdgeObstaclePaintRequest = z.infer<
-  typeof edgeObstaclePaintRequestSchema
->;
+export type EdgeObstaclePaintRequest = z.infer<typeof edgeObstaclePaintRequestSchema>;
 export type MovementAppliedEvent = z.infer<typeof movementAppliedEventSchema>;
 export type CombatAdvancedEvent = z.infer<typeof combatAdvancedEventSchema>;
-export type TargetingResolvedEvent = z.infer<
-  typeof targetingResolvedEventSchema
->;
-export type GridCalibrationUpdatedEvent = z.infer<
-  typeof gridCalibrationUpdatedEventSchema
->;
+export type TargetingResolvedEvent = z.infer<typeof targetingResolvedEventSchema>;
+export type GridCalibrationUpdatedEvent = z.infer<typeof gridCalibrationUpdatedEventSchema>;
 export type ObstaclesUpdatedEvent = z.infer<typeof obstaclesUpdatedEventSchema>;
-export type EdgeObstaclesUpdatedEvent = z.infer<
-  typeof edgeObstaclesUpdatedEventSchema
->;
+export type EdgeObstaclesUpdatedEvent = z.infer<typeof edgeObstaclesUpdatedEventSchema>;
 export type ElevationPaintRequest = z.infer<typeof elevationPaintRequestSchema>;
 export type ElevationUpdatedEvent = z.infer<typeof elevationUpdatedEventSchema>;
 export type ActionRejectedEvent = z.infer<typeof actionRejectedEventSchema>;

@@ -16,6 +16,9 @@ class LimiarMapTokenState:
     label: str | None = None
     position_x: int | None = None
     position_y: int | None = None
+    base_size: str | None = None
+    effective_size: str | None = None
+    effective_footprint: dict[str, int] | None = None
 
 
 @dataclass(frozen=True)

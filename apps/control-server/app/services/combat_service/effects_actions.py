@@ -48,8 +48,10 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
             raise CombatServiceError("Target participant not found in combat", 404)
         if req.kind == "condition" and not req.condition_type:
             raise CombatServiceError("condition_type is required when kind is 'condition'")
-        if req.kind in ("temp_ac_bonus", "attack_bonus", "damage_bonus") and req.numeric_value is None:
+        if req.kind in ("temp_ac_bonus", "attack_bonus", "damage_bonus", "size_modifier") and req.numeric_value is None:
             raise CombatServiceError(f"numeric_value is required for kind '{req.kind}'")
+        if req.kind == "size_modifier" and req.numeric_value not in (-1, 1):
+            raise CombatServiceError("size_modifier numeric_value must be -1 or 1")
         if req.duration_type == "rounds" and not req.remaining_rounds:
             raise CombatServiceError("remaining_rounds is required for duration_type 'rounds'")
         expires_on = "turn_start" if req.duration_type in ("until_turn_start", "rounds") else ("turn_end" if req.duration_type == "until_turn_end" else None)
@@ -70,6 +72,14 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
         effects = cls._get_participant_effects(target)
         effects.append(effect)
         cls._set_participant_effects(target, effects)
+        if req.kind == "size_modifier":
+            from .limiar_map_projection import maybe_sync_conditions_to_limiar_map
+            try:
+                maybe_sync_conditions_to_limiar_map(session_id, state, raise_on_error=True)
+            except Exception as exc:
+                effects.pop()
+                cls._set_participant_effects(target, effects)
+                raise CombatServiceError(f"Could not apply size modifier: {exc}", 409) from exc
         flag_modified(state, "participants")
         db.add(state)
         db.commit()
@@ -105,6 +115,9 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
             state=state,
             removed_effects=removed_effects,
         )
+        if removed.get("kind") == "size_modifier" or any(e.get("kind") == "size_modifier" for e in removed_effects):
+            from .limiar_map_projection import maybe_sync_conditions_to_limiar_map
+            maybe_sync_conditions_to_limiar_map(session_id, state)
         flag_modified(state, "participants")
         db.add(state)
         db.commit()

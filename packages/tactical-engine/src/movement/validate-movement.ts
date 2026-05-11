@@ -9,6 +9,9 @@ import {
   isBlockedCell,
   isEdgeBlocked,
   isInsideMap,
+  getTokenFootprint,
+  findTokensOccupyingCell,
+  getOccupiedCells,
   type GridState
 } from "../grid/grid-state";
 import {
@@ -202,9 +205,13 @@ function getStepRejectionReason(
     return "diagonal_clipped";
   }
 
-  const occupant = findOccupyingToken(gridState, current);
-  if (occupant && occupant.id !== token.id) {
-    return "occupied_cell";
+  const fp = getTokenFootprint(token);
+  const occupiedCells = getOccupiedCells(current, fp);
+  for (const cell of occupiedCells) {
+    if (!isInsideMap(gridState, cell)) return "outside_map";
+    if (isBlockedCell(gridState, cell)) return "blocked_path";
+    const others = findTokensOccupyingCell(gridState, cell, token.id);
+    if (others.length > 0) return "occupied_cell";
   }
 
   return undefined;
@@ -315,14 +322,19 @@ export function findMovementPath(
     };
   }
 
-  const destinationOccupant = findOccupyingToken(gridState, destination);
-  if (destinationOccupant && destinationOccupant.id !== token.id) {
-    return {
-      accepted: false,
-      path: [],
-      pathCostUnits: 0,
-      rejectionReason: "occupied_cell"
-    };
+  const fp = getTokenFootprint(token);
+  const destOccupied = getOccupiedCells(destination, fp);
+  for (const cell of destOccupied) {
+    if (!isInsideMap(gridState, cell)) {
+      return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "outside_map" };
+    }
+    if (isBlockedCell(gridState, cell)) {
+      return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "blocked_path" };
+    }
+    const others = findTokensOccupyingCell(gridState, cell, token.id);
+    if (others.length > 0) {
+      return { accepted: false, path: [], pathCostUnits: 0, rejectionReason: "occupied_cell" };
+    }
   }
 
   type SearchNode = {

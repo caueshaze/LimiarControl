@@ -208,22 +208,47 @@ export class InitiativeService {
     }
 
     if (toSpawn.length > 0) {
-      this.repository.spawnTokens(sessionId, toSpawn.map((e) => ({
-        combatantId: e.combatantId,
-        label: e.label,
-        kind: e.kind,
-        controllerId: e.controllerId,
-        controllerType: e.controllerType,
-        movementSpeedCells: e.movementSpeedCells,
-        conditions: e.conditions,
-      })));
+      try {
+        this.repository.spawnTokens(sessionId, toSpawn.map((e) => ({
+          combatantId: e.combatantId,
+          label: e.label,
+          kind: e.kind,
+          controllerId: e.controllerId,
+          controllerType: e.controllerType,
+          movementSpeedCells: e.movementSpeedCells,
+          conditions: e.conditions,
+          base_size: e.base_size,
+          effective_size: e.effective_size,
+          effective_footprint: e.effective_footprint,
+        })));
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("invalid_effective_footprint:")) {
+          return {
+            accepted: false,
+            reason: "invalid_effective_footprint",
+            tokenId: error.message.slice("invalid_effective_footprint:".length)
+          } as const;
+        }
+        throw error;
+      }
       console.info(
         `${LOG_PREFIX} syncTokens spawned session=${sessionId} count=${toSpawn.length}`
       );
     }
 
     if (toUpdate.length > 0) {
-      this.repository.syncTokens(sessionId, toUpdate as Array<{ tokenId: string } & Omit<TokenSyncEntry, "tokenId">>);
+      try {
+        this.repository.syncTokens(sessionId, toUpdate as Array<{ tokenId: string } & Omit<TokenSyncEntry, "tokenId">>);
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("invalid_effective_footprint:")) {
+          return {
+            accepted: false,
+            reason: "invalid_effective_footprint",
+            tokenId: error.message.slice("invalid_effective_footprint:".length)
+          } as const;
+        }
+        throw error;
+      }
     }
 
     const updated = this.repository.requireEncounter(sessionId);

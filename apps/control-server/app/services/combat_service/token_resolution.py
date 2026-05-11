@@ -32,6 +32,9 @@ class ResolvedTokenSyncEntry:
     controller_id: str | None = None
     controller_type: str | None = None
     size_category: str | None = None
+    base_size: str | None = None
+    effective_size: str | None = None
+    effective_footprint: dict[str, int] | None = None
     conditions: tuple[str, ...] = ()
 
 
@@ -44,7 +47,29 @@ class ResolvedTokenSpawnEntry:
     controller_id: str | None = None
     controller_type: str | None = None
     size_category: str | None = None
+    base_size: str | None = None
+    effective_size: str | None = None
+    effective_footprint: dict[str, int] | None = None
     conditions: tuple[str, ...] = ()
+
+
+_SIZE_ORDER = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
+_SIZE_TO_FOOTPRINT = {
+    "Tiny": {"width": 1, "height": 1},
+    "Small": {"width": 1, "height": 1},
+    "Medium": {"width": 1, "height": 1},
+    "Large": {"width": 2, "height": 2},
+    "Huge": {"width": 3, "height": 3},
+    "Gargantuan": {"width": 4, "height": 4},
+}
+_SIZE_CATEGORY_TO_CONTRACT = {
+    SizeCategory.TINY: "Tiny",
+    SizeCategory.SMALL: "Small",
+    SizeCategory.MEDIUM: "Medium",
+    SizeCategory.LARGE: "Large",
+    SizeCategory.HUGE: "Huge",
+    SizeCategory.GARGANTUAN: "Gargantuan",
+}
 
 
 def _resolve_participant_label(participant: dict) -> str | None:
@@ -137,6 +162,36 @@ def _extract_participant_conditions(participant: dict) -> list[str]:
             if code not in conditions:
                 conditions.append(code)
     return conditions
+
+
+def _extract_size_step_deltas(participant: dict) -> list[int]:
+    deltas: list[int] = []
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "size_modifier":
+            continue
+        value = effect.get("numeric_value")
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int | float):
+            deltas.append(int(value))
+    return deltas
+
+
+def _resolve_effective_size(base_size: str, participant: dict) -> str:
+    base_index = _SIZE_ORDER.index(base_size)
+    raw_index = base_index + sum(_extract_size_step_deltas(participant))
+    clamped_index = max(0, min(len(_SIZE_ORDER) - 1, raw_index))
+    return _SIZE_ORDER[clamped_index]
+
+
+def build_effective_size_payload(participant: dict, base_size: str | None = None) -> dict:
+    resolved_base_size = base_size if base_size in _SIZE_ORDER else "Medium"
+    effective_size = _resolve_effective_size(resolved_base_size, participant)
+    return {
+        "base_size": resolved_base_size,
+        "effective_size": effective_size,
+        "effective_footprint": _SIZE_TO_FOOTPRINT[effective_size],
+    }
 
 
 def _resolve_token_id(
@@ -289,6 +344,10 @@ def resolve_sync_entry(
     size_category = (
         size_category_enum.value if size_category_enum != SizeCategory.MEDIUM else None
     )
+    size_payload = build_effective_size_payload(
+        participant,
+        _SIZE_CATEGORY_TO_CONTRACT[size_category_enum],
+    )
     conditions = _extract_participant_conditions(participant)
 
     if token_id is not None:
@@ -300,6 +359,9 @@ def resolve_sync_entry(
             controller_id=controller_id,
             controller_type=controller_type,
             size_category=size_category,
+            base_size=size_payload["base_size"],
+            effective_size=size_payload["effective_size"],
+            effective_footprint=size_payload["effective_footprint"],
             conditions=tuple(conditions),
         ), None
 
@@ -311,6 +373,9 @@ def resolve_sync_entry(
         controller_id=controller_id,
         controller_type=controller_type,
         size_category=size_category,
+        base_size=size_payload["base_size"],
+        effective_size=size_payload["effective_size"],
+        effective_footprint=size_payload["effective_footprint"],
         conditions=tuple(conditions),
     )
 
