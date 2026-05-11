@@ -154,6 +154,7 @@ export const PlayerBoardPage = () => {
     inventory: myInventory,
     itemsById: catalogItems,
     playerSheet,
+    participant: combatBarState.myParticipant,
     selectedCampaignName: selectedCampaign?.name,
     t,
   });
@@ -551,6 +552,7 @@ export const PlayerBoardPage = () => {
                 strengthScore={playerSheet?.abilities?.strength}
                 currentTotalWeightKg={playerStatus?.totalWeightKg}
                 currentEncumbranceTier={playerStatus?.encumbranceTier}
+                effectiveSize={combatBarState.myParticipant?.effective_size as import("@limiarmap/shared-contracts").CreatureSize | undefined}
                 onBuy={(item, inventoryItem) => {
                   upsertInventoryEntry(inventoryItem);
                   void refreshInventoryData();

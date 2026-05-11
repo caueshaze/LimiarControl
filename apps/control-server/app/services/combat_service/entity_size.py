@@ -62,6 +62,19 @@ _FOOTPRINT: dict[SizeCategory, int] = {
 
 _DEFAULT_SIZE = SizeCategory.MEDIUM
 
+_CARRYING_CAPACITY_MULTIPLIER: dict[SizeCategory, float] = {
+    SizeCategory.TINY: 0.5,
+    SizeCategory.SMALL: 1.0,
+    SizeCategory.MEDIUM: 1.0,
+    SizeCategory.LARGE: 2.0,
+    SizeCategory.HUGE: 4.0,
+    SizeCategory.GARGANTUAN: 8.0,
+}
+
+
+def size_carrying_capacity_multiplier(size: SizeCategory) -> float:
+    return _CARRYING_CAPACITY_MULTIPLIER[size]
+
 
 def size_footprint_cells(size_category: SizeCategory) -> int:
     """Return the side length (in cells) of the entity's square footprint.

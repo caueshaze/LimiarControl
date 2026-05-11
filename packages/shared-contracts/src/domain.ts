@@ -162,6 +162,19 @@ export type SizeStepDelta = z.infer<typeof sizeStepDeltaSchema>;
 
 export const DEFAULT_CREATURE_SIZE: CreatureSize = "Medium";
 
+export const sizeCarryingCapacityMultiplier: Record<CreatureSize, number> = {
+  Tiny: 0.5,
+  Small: 1,
+  Medium: 1,
+  Large: 2,
+  Huge: 4,
+  Gargantuan: 8,
+} as const satisfies Record<CreatureSize, number>;
+
+export function getSizeCarryingCapacityMultiplier(size: CreatureSize): number {
+  return sizeCarryingCapacityMultiplier[size];
+}
+
 export const sizeTierToFootprint = {
   Tiny: { width: 1, height: 1 },
   Small: { width: 1, height: 1 },

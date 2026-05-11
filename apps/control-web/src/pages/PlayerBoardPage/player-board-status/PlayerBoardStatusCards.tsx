@@ -35,7 +35,7 @@ export const StatCard = ({
 
 type LoadSummaryCardProps = {
   carryingCapacityKg: number;
-  carryingCapacitySources?: Array<{ label: string; multiplier: number }> | null;
+  carryingCapacitySources?: Array<{ label: string; multiplier: number; groupKey?: string }> | null;
   baseCarryingCapacityKg: number;
   encumbranceAccent: string;
   encumbranceTierLabel: string;
@@ -54,7 +54,7 @@ export const LoadSummaryCard = ({
 }: LoadSummaryCardProps) => {
   const { t } = useLocale();
   const carryingHelper = carryingCapacitySources?.length
-    ? `${t("playerBoard.carryingCapacityBase")}: ${baseCarryingCapacityKg} kg\u2003${carryingCapacitySources.map((s) => `${s.label} ×${s.multiplier}`).join(", ")}`
+    ? `${t("playerBoard.carryingCapacityBase")}: ${baseCarryingCapacityKg} kg\u2003${carryingCapacitySources.map((s) => `${s.groupKey === "__size_multiplier" ? t(`playerBoard.creatureSize.${s.label}`) : s.label} ×${s.multiplier}`).join(", ")}`
     : null;
 
   return (

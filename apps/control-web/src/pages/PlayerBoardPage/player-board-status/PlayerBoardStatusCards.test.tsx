@@ -21,6 +21,12 @@ vi.mock("../../../shared/hooks/useLocale", () => ({
         "playerBoard.carryingCapacityBase": "Base",
         "playerBoard.pushDragLiftShortLabel": "Empurrar",
         "playerBoard.pushDragLiftLabel": "Empurrar/Puxar/Levantar",
+        "playerBoard.creatureSize.Tiny": "Diminuto",
+        "playerBoard.creatureSize.Small": "Pequeno",
+        "playerBoard.creatureSize.Medium": "Médio",
+        "playerBoard.creatureSize.Large": "Grande",
+        "playerBoard.creatureSize.Huge": "Enorme",
+        "playerBoard.creatureSize.Gargantuan": "Colossal",
       }[key] ?? key),
   }),
 }));
@@ -78,5 +84,22 @@ describe("PlayerBoardStatusCards", () => {
     expect(markup).toContain("Carga máx.");
     expect(markup).toContain("Empurrar/Puxar/Levantar");
     expect(markup).toContain("231 kg");
+  });
+
+  it("localiza fonte de tamanho usando i18n", () => {
+    const markup = renderToStaticMarkup(
+      <LoadSummaryCard
+        baseCarryingCapacityKg={68}
+        carryingCapacityKg={136}
+        carryingCapacitySources={[{ label: "Large", multiplier: 2, groupKey: "__size_multiplier" }]}
+        encumbranceAccent="text-slate-300"
+        encumbranceTierLabel="Normal"
+        encumbranceHelper={null}
+        pushDragLiftKg={272}
+      />,
+    );
+
+    expect(markup).toContain("Grande ×2");
+    expect(markup).not.toContain("Large ×2");
   });
 });

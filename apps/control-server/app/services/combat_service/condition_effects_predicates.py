@@ -4,6 +4,7 @@ import logging
 from typing import Literal
 
 from app.schemas.campaign_entity_shared import AbilityName
+from .entity_size import SizeCategory, normalize_size_category, size_carrying_capacity_multiplier
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ def _get_encumbrance_tier_for_participant(participant: dict) -> str:
     weight_kg = participant.get("total_weight_kg")
     if isinstance(strength, (int, float)) and isinstance(weight_kg, (int, float)) and strength > 0:
         weight_lb = weight_kg / _LB_TO_KG
-        multiplier = get_carrying_capacity_multiplier(participant)
+        multiplier = get_effective_capacity_multiplier(participant)
         return compute_encumbrance_tier_from_lb(strength, weight_lb, capacity_multiplier=multiplier)
 
     return "normal"
@@ -554,6 +555,14 @@ def get_carrying_capacity_multiplier(participant: dict) -> float:
     if not groups:
         return 1.0
     return max(groups.values())
+
+
+def get_effective_capacity_multiplier(participant: dict) -> float:
+    effect_mult = get_carrying_capacity_multiplier(participant)
+    raw_size = participant.get("effective_size") or participant.get("base_size")
+    size_cat = normalize_size_category(raw_size)
+    size_mult = size_carrying_capacity_multiplier(size_cat)
+    return effect_mult * size_mult
 
 
 def get_movement_speed_bonus_meters(participant: dict) -> tuple[float, list[dict]]:

@@ -10,6 +10,7 @@ import {
   getEffectiveSize,
   getEffectiveFootprint,
   DEFAULT_CREATURE_SIZE,
+  getSizeCarryingCapacityMultiplier,
   type CreatureSize,
 } from "@limiarmap/shared-contracts";
 import { SKILL_ABILITY_MAP, STANDARD_ARRAY } from "../constants";
@@ -236,18 +237,21 @@ export type EncumbranceResult = {
 export const computeEncumbranceTier = ({
   strengthScore,
   totalWeightKg,
+  effectiveSize,
 }: {
   strengthScore: number;
   totalWeightKg: number;
+  effectiveSize?: CreatureSize;
 }): EncumbranceResult => {
   const safeStr = Number.isFinite(strengthScore) && strengthScore > 0 ? strengthScore : 0;
   const safeWeight = Number.isFinite(totalWeightKg) ? Math.max(0, totalWeightKg) : 0;
 
+  const sizeMult = effectiveSize ? getSizeCarryingCapacityMultiplier(effectiveSize) : 1;
   const totalWeightLb = safeWeight / LB_TO_KG;
 
-  const normalMaxLb = safeStr * 5;
-  const encumberedMaxLb = safeStr * 10;
-  const heavilyMaxLb = safeStr * 15;
+  const normalMaxLb = safeStr * 5 * sizeMult;
+  const encumberedMaxLb = safeStr * 10 * sizeMult;
+  const heavilyMaxLb = safeStr * 15 * sizeMult;
 
   let tier: EncumbranceTier = "normal";
   if (totalWeightLb > heavilyMaxLb) {
@@ -288,16 +292,19 @@ export const computeProjectedEncumbranceTier = ({
   strengthScore,
   currentWeightKg,
   addedWeightLb,
+  effectiveSize,
 }: {
   strengthScore: number;
   currentWeightKg: number;
   addedWeightLb: number;
+  effectiveSize?: CreatureSize;
 }): EncumbranceResult => {
   const safeAdded = Number.isFinite(addedWeightLb) ? addedWeightLb : 0;
   const addedKg = safeAdded * LB_TO_KG;
   return computeEncumbranceTier({
     strengthScore,
     totalWeightKg: currentWeightKg + addedKg,
+    effectiveSize,
   });
 };
 
@@ -406,20 +413,29 @@ export const computeCarryingCapacityMultiplier = (activeEffects: ActiveEffect[])
 export const computeCarryingCapacity = (
   strengthScore: number,
   activeEffects: ActiveEffect[],
+  effectiveSize?: CreatureSize,
 ) => {
-  const multiplier = computeCarryingCapacityMultiplier(activeEffects);
+  const effectMultiplier = computeCarryingCapacityMultiplier(activeEffects);
+  const sizeMultiplier = effectiveSize ? getSizeCarryingCapacityMultiplier(effectiveSize) : 1;
+  const totalMultiplier = effectMultiplier * sizeMultiplier;
   const baseKg = strengthScore * 15 * LB_TO_KG;
-  const effectiveKg = baseKg * multiplier;
+  const effectiveKg = baseKg * totalMultiplier;
   const carryingCapacityKg = Math.round(effectiveKg);
   const pushDragLiftKg = Math.round(effectiveKg * 2);
   const baseCarryingCapacityKg = Math.round(baseKg);
+
+  const effectSources = computeCarryingCapacityMultiplierSources(activeEffects);
+  const sizeSource = sizeMultiplier !== 1 && effectiveSize
+    ? { label: effectiveSize, multiplier: sizeMultiplier, groupKey: "__size_multiplier" }
+    : null;
+  const sources = sizeSource ? [sizeSource, ...effectSources] : effectSources;
 
   return {
     baseCarryingCapacityKg,
     carryingCapacityKg,
     pushDragLiftKg,
-    multiplier,
-    sources: computeCarryingCapacityMultiplierSources(activeEffects),
+    multiplier: totalMultiplier,
+    sources,
   };
 };
 

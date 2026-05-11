@@ -3,6 +3,7 @@ import type { EncumbranceTier } from "../../../features/character-sheet/utils/ca
 import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
 import { ShopItemCard } from "./ShopItemCard";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import type { CreatureSize } from "@limiarmap/shared-contracts";
 
 type ShopItemListProps = {
   emptyMessage?: string;
@@ -15,6 +16,7 @@ type ShopItemListProps = {
   strengthScore?: number;
   currentTotalWeightKg?: number;
   currentEncumbranceTier?: EncumbranceTier;
+  effectiveSize?: CreatureSize;
 };
 
 export const ShopItemList = ({
@@ -28,6 +30,7 @@ export const ShopItemList = ({
   strengthScore,
   currentTotalWeightKg,
   currentEncumbranceTier,
+  effectiveSize,
 }: ShopItemListProps) => {
   const { t } = useLocale();
   if (items.length === 0) {
@@ -52,6 +55,7 @@ export const ShopItemList = ({
           strengthScore={strengthScore}
           currentTotalWeightKg={currentTotalWeightKg}
           currentEncumbranceTier={currentEncumbranceTier}
+          effectiveSize={effectiveSize}
         />
       ))}
     </div>
