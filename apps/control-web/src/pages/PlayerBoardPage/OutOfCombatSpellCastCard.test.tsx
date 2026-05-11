@@ -33,6 +33,7 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "playerBoard.targetSelf": "Você mesmo",
         "playerBoard.castSpellLoading": "Conjurando...",
         "playerBoard.castSpellConfirm": "Conjurar",
+        "playerBoard.healingPreview": "Cura prevista",
       }[key] ?? key),
   }),
 }));
@@ -350,6 +351,106 @@ describe("OutOfCombatSpellCastCard", () => {
 
       expect(onCast).toHaveBeenCalledTimes(1);
       expect(onCast).toHaveBeenCalledWith("spell-1", 1, null, "ally-1");
+    });
+  });
+
+  describe("healing preview", () => {
+    const basePreview = {
+      baseFormula: "1d8 + 3",
+      baseDice: "1d8",
+      baseCount: 1,
+      dieSides: 8,
+      modifier: 3,
+      upcastPerLevel: 1,
+    };
+
+    it("shows healing preview when healingPreview is provided and spell is expanded", () => {
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: basePreview })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).toContain("Cura prevista");
+      expect(markup).toContain("1d8 + 3");
+    });
+
+    it("does not show healing preview section when healingPreview is null", () => {
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: null })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).not.toContain("Cura prevista");
+    });
+
+    it("does not show healing preview section when healingPreview is absent", () => {
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell()]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).not.toContain("Cura prevista");
+    });
+
+    it("shows upcast formula when slot level 2 is selected", () => {
+      // expandedId="spell-1", variants={}, levels={"spell-1": 2}, targets={}
+      mockState.overrides = ["spell-1", {}, { "spell-1": 2 }, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: basePreview })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).toContain("2d8 + 3");
+    });
+
+    it("shows upcast formula when slot level 3 is selected", () => {
+      mockState.overrides = ["spell-1", {}, { "spell-1": 3 }, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: basePreview })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).toContain("3d8 + 3");
+    });
+
+    it("shows base formula for 1d4 spell (Healing Word style)", () => {
+      const hwPreview = { baseFormula: "1d4 + 4", baseDice: "1d4", baseCount: 1, dieSides: 4, modifier: 4, upcastPerLevel: 1 };
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: hwPreview })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).toContain("1d4 + 4");
+    });
+
+    it("shows dice without modifier when modifier is zero", () => {
+      const zeroModPreview = { baseFormula: "1d8", baseDice: "1d8", baseCount: 1, dieSides: 8, modifier: 0, upcastPerLevel: 1 };
+      mockState.overrides = ["spell-1", {}, {}, {}];
+      const markup = renderToStaticMarkup(
+        <OutOfCombatSpellCastCard
+          spells={[makeSpell({ healingPreview: zeroModPreview })]}
+          casting={false}
+          onCast={() => undefined}
+        />,
+      );
+      expect(markup).toContain("1d8");
+      expect(markup).not.toContain("+ 0");
     });
   });
 });

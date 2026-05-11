@@ -284,6 +284,62 @@ def has_castable_effects(spell) -> bool:
 _SKIP_EFFECT_TYPES = {"grant_temp_hp", "create_consumable", "heal"}
 
 
+def build_healing_preview(
+    spell,
+    caster_state_json: dict,
+) -> dict | None:
+    """Return a structured healing preview for spells with heal effects, or None.
+
+    The dict contains enough data for the frontend to compute the upcast formula
+    without re-implementing the upcast algorithm.
+    """
+    heal_effects = collect_heal_effects(spell, None)
+    if not heal_effects:
+        return None
+
+    params = (heal_effects[0].get("params") or {})
+    base_dice: str = params.get("dice") or ""
+    modifier = (
+        resolve_spellcasting_modifier(caster_state_json)
+        if params.get("ability_modifier") == "spellcasting"
+        else 0
+    )
+
+    base_count = 1
+    die_sides = 8
+    if "d" in base_dice:
+        parts = base_dice.split("d", 1)
+        try:
+            base_count = int(parts[0])
+            die_sides = int(parts[1])
+        except (ValueError, IndexError):
+            pass
+
+    upcast = getattr(spell, "upcast_json", None) or {}
+    upcast_per_level = 0
+    if upcast.get("mode") == "extra_heal_dice":
+        raw_per = upcast.get("perLevel")
+        if isinstance(raw_per, (int, float)):
+            upcast_per_level = int(raw_per)
+
+    def _formula(count: int) -> str:
+        dice_str = f"{count}d{die_sides}"
+        if modifier > 0:
+            return f"{dice_str} + {modifier}"
+        if modifier < 0:
+            return f"{dice_str} - {abs(modifier)}"
+        return dice_str
+
+    return {
+        "base_formula": _formula(base_count),
+        "base_dice": base_dice,
+        "base_count": base_count,
+        "die_sides": die_sides,
+        "modifier": modifier,
+        "upcast_per_level": upcast_per_level,
+    }
+
+
 def collect_create_consumable_effects(
     spell,
     variant_key: str | None,

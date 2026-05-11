@@ -234,4 +234,5 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.castSpellLoading": "Casting...",
   "playerBoard.selectTarget": "Target",
   "playerBoard.targetSelf": "Self",
+  "playerBoard.healingPreview": "Healing preview",
 } as const;

@@ -1,6 +1,15 @@
 import { useState } from "react";
-import type { OutOfCombatCastableSpell } from "../../entities/character";
+import type { OutOfCombatCastableSpell, SpellHealingPreview } from "../../entities/character";
 import { useLocale } from "../../shared/hooks/useLocale";
+
+function buildHealFormula(preview: SpellHealingPreview, spellLevel: number, slotLevel: number): string {
+  const extra = (slotLevel - spellLevel) * preview.upcastPerLevel;
+  const count = preview.baseCount + extra;
+  const diceStr = `${count}d${preview.dieSides}`;
+  if (preview.modifier > 0) return `${diceStr} + ${preview.modifier}`;
+  if (preview.modifier < 0) return `${diceStr} - ${Math.abs(preview.modifier)}`;
+  return diceStr;
+}
 
 type TargetOption = { playerUserId: string; label: string };
 
@@ -150,6 +159,21 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast, targetOption
                           </option>
                         ))}
                       </select>
+                    </div>
+                  )}
+
+                  {spell.healingPreview && (
+                    <div className="rounded-lg bg-slate-700/50 px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        {t("playerBoard.healingPreview")}
+                      </p>
+                      <p className="mt-0.5 text-sm font-medium text-emerald-300">
+                        {buildHealFormula(
+                          spell.healingPreview,
+                          spell.level,
+                          selectedLevels[id] ?? spell.level,
+                        )}
+                      </p>
                     </div>
                   )}
 

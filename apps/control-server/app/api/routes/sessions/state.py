@@ -33,6 +33,7 @@ from app.services.goodberry_inventory import grant_catalog_item_to_player_invent
 from app.services.healing_consumables_types import _extract_hp_snapshot, _safe_int
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
+    build_healing_preview,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     collect_create_consumable_effects,
@@ -205,6 +206,10 @@ def _list_out_of_combat_castable_spells_for_player(
         campaign_spell = next((c for c in campaign_spells if c.canonical_key == spell_key), None)
         if not campaign_spell:
             continue
+        healing_preview = build_healing_preview(
+            campaign_spell,
+            state.state_json if isinstance(state.state_json, dict) else {},
+        )
         result.append({
             "id": player_spell.get("id"),
             "canonicalKey": campaign_spell.canonical_key,
@@ -216,6 +221,7 @@ def _list_out_of_combat_castable_spells_for_player(
             "variants": campaign_spell.variants_json or [],
             "effects": campaign_spell.effects_json or [],
             "outOfCombatTarget": campaign_spell.out_of_combat_target,
+            "healingPreview": healing_preview,
         })
     return result
 

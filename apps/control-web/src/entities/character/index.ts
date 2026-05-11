@@ -6,4 +6,5 @@ export type {
   OutOfCombatSpellVariant,
   PartyCharacterSheetDraftRecord,
   SessionStateRecord,
+  SpellHealingPreview,
 } from "./character.types";

@@ -234,4 +234,5 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.castSpellLoading": "Lançando...",
   "playerBoard.selectTarget": "Alvo",
   "playerBoard.targetSelf": "Você mesmo",
+  "playerBoard.healingPreview": "Cura prevista",
 } as const;
