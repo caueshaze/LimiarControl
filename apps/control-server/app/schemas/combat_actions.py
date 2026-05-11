@@ -128,6 +128,7 @@ ActiveEffectKind = Literal[
     "dodging",
     "hidden",
     "spell_effect",
+    "size_modifier",
 ]
 
 ActiveEffectConditionType = Literal[

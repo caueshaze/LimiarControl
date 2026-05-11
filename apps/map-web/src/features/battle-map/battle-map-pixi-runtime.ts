@@ -12,7 +12,7 @@ import { HttpClient } from "../../services/http-client";
 import { postEmbeddedCellHovered, postEmbeddedCellSelected, postEmbeddedTokenSelected } from "../../services/embedded-map-bridge";
 import { buildFailureExplanation } from "../targeting/diagnostics-to-explanation";
 import { drawCellFills, drawEdgeObstacles, drawCellElevationBadges, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
-import { canControlToken, canInteractWithToken, computePath, getSelectionBlockedMessage, pixelToGrid } from "./utils";
+import { canControlToken, canInteractWithToken, computePath, findTokenAtCell, getSelectionBlockedMessage, pixelToGrid } from "./utils";
 
 type Snapshot = {
   selectedTokenId: string | null;
@@ -115,7 +115,7 @@ export function bindPixiStageEvents(
       }
       return;
     }
-    const tokenAtCell = encounter.tokens.find((token: any) => token.position.x === coord.x && token.position.y === coord.y);
+    const tokenAtCell = findTokenAtCell(encounter.tokens, coord);
     if (uiState.embeddedCombatPhase === "placement") {
       if (tokenAtCell) {
         if (!canControlToken(currentActor, tokenAtCell)) {
@@ -177,12 +177,12 @@ export function bindPixiStageEvents(
     if (uiState.embeddedSelectionMode === "select-cell") {
       if (!coord) postEmbeddedCellHovered(encounter.sessionId, null, null);
       else {
-        const hoveredToken = encounter.tokens.find((token: any) => token.position.x === coord.x && token.position.y === coord.y);
+        const hoveredToken = findTokenAtCell(encounter.tokens, coord);
         postEmbeddedCellHovered(encounter.sessionId, coord, hoveredToken ?? null);
       }
     }
     if (!uiState.tacticalPreview.active || !coord) return;
-    const tokenAtCell = encounter.tokens.find((token: any) => token.position.x === coord.x && token.position.y === coord.y);
+    const tokenAtCell = findTokenAtCell(encounter.tokens, coord);
     battleMapStore.setTacticalPreviewTarget(coord, tokenAtCell?.combatantId ?? null);
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     if (tokenAtCell && uiState.tacticalPreview.actionType !== "move" && uiState.tacticalPreview.sourceTokenId) {

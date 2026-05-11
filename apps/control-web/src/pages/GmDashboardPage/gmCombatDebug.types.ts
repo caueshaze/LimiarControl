@@ -13,6 +13,7 @@ export const EFFECT_KINDS: { value: ActiveEffectKind; label: LocaleKey }[] = [
   { value: "damage_bonus", label: "combatUi.effect.damage_bonus" },
   { value: "advantage_on_attacks", label: "combatUi.effect.advantage_on_attacks" },
   { value: "disadvantage_on_attacks", label: "combatUi.effect.disadvantage_on_attacks" },
+  { value: "size_modifier", label: "combatUi.effect.size_modifier" },
 ];
 
 export const CONDITION_TYPES: { value: ActiveEffectConditionType; label: LocaleKey }[] = [
@@ -30,7 +31,7 @@ export const DURATION_TYPES: { value: ActiveEffectDurationType; label: LocaleKey
   { value: "until_turn_end", label: "combatUi.duration.until_turn_end" },
 ];
 
-export const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus"]);
+export const NUMERIC_KINDS = new Set<ActiveEffectKind>(["temp_ac_bonus", "attack_bonus", "damage_bonus", "size_modifier"]);
 
 export const STANDARD_ACTIONS: { value: StandardActionType; label: LocaleKey }[] = [
   { value: "dodge", label: "combatUi.dodge" },

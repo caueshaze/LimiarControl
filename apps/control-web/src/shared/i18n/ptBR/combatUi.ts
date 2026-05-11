@@ -41,6 +41,7 @@ export const combatUiPtBRDictionary = {
   "combatUi.effect.dodging": "Esquivando",
   "combatUi.effect.hidden": "Escondido",
   "combatUi.effect.spell_effect": "Efeito de magia",
+  "combatUi.effect.size_modifier": "Modificador de tamanho",
   "combatUi.condition.prone": "Caído no chão",
   "combatUi.condition.poisoned": "Envenenado",
   "combatUi.condition.restrained": "Contido",

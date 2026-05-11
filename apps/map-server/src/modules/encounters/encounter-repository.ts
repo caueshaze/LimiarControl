@@ -11,7 +11,7 @@ import type {
   SpellAnchor,
   Token
 } from "@limiarmap/shared-contracts";
-import { ActionIdempotencyTracker } from "@limiarmap/tactical-engine";
+import { ActionIdempotencyTracker, canGrowTo, getTokenFootprint } from "@limiarmap/tactical-engine";
 
 export interface EncounterState {
   sessionId: string;
@@ -295,6 +295,9 @@ export class InMemoryEncounterRepository {
       controllerType?: Token["controllerType"];
       movementSpeedCells?: number;
       conditions?: string[];
+      base_size?: Token["base_size"];
+      effective_size?: Token["effective_size"];
+      effective_footprint?: Token["effective_footprint"];
     }>
   ): EncounterState {
     const encounter = this.requireEncounter(sessionId);
@@ -307,22 +310,35 @@ export class InMemoryEncounterRepository {
       );
     }
 
-    const occupiedPositions = new Set(encounter.tokens.map((t) => `${t.position.x},${t.position.y}`));
-
     entries.forEach((entry) => {
       let x = 0;
       let y = 0;
+      let foundPosition = false;
+      const footprint = entry.effective_footprint ?? { width: 1, height: 1 };
       searchGrid: for (let row = 0; row < encounter.battleMap.gridHeight; row++) {
         for (let col = 0; col < encounter.battleMap.gridWidth; col++) {
-          if (!occupiedPositions.has(`${col},${row}`)) {
+          if (canGrowTo(
+            { x: col, y: row },
+            footprint,
+            {
+              map: encounter.battleMap,
+              obstacles: encounter.obstacles,
+              edgeObstacles: encounter.edgeObstacles,
+              tokens: encounter.tokens,
+              activeAreaEffects: encounter.activeAreaEffects,
+              cellElevations: encounter.cellElevations
+            }
+          )) {
             x = col;
             y = row;
+            foundPosition = true;
             break searchGrid;
           }
         }
       }
-      occupiedPositions.add(`${x},${y}`);
-
+      if (!foundPosition) {
+        throw new Error("invalid_effective_footprint:spawn");
+      }
       const movementSpeedCells = entry.movementSpeedCells ?? 6;
       const newToken: Token = {
         id: randomUUID(),
@@ -336,6 +352,9 @@ export class InMemoryEncounterRepository {
         movementBudget: movementSpeedCells * 5,
         conditions: entry.conditions ?? [],
         combatantId: entry.combatantId,
+        base_size: entry.base_size,
+        effective_size: entry.effective_size,
+        effective_footprint: entry.effective_footprint,
       };
       encounter.tokens.push(newToken);
     });
@@ -358,9 +377,47 @@ export class InMemoryEncounterRepository {
       controllerId?: string;
       controllerType?: Token["controllerType"];
       conditions?: string[];
+      base_size?: Token["base_size"];
+      effective_size?: Token["effective_size"];
+      effective_footprint?: Token["effective_footprint"];
     }>
   ): EncounterState {
     const encounter = this.requireEncounter(sessionId);
+    const proposedTokens = encounter.tokens.map((token) => {
+      const update = updates.find((u) => u.tokenId === token.id);
+      if (!update) return token;
+      return {
+        ...token,
+        ...(update.base_size !== undefined ? { base_size: update.base_size } : {}),
+        ...(update.effective_size !== undefined ? { effective_size: update.effective_size } : {}),
+        ...(update.effective_footprint !== undefined ? { effective_footprint: update.effective_footprint } : {})
+      };
+    });
+    for (const proposed of proposedTokens) {
+      const current = encounter.tokens.find((token) => token.id === proposed.id);
+      if (!current) continue;
+      const currentFootprint = getTokenFootprint(current);
+      const proposedFootprint = getTokenFootprint(proposed);
+      const isGrowing =
+        proposedFootprint.width > currentFootprint.width ||
+        proposedFootprint.height > currentFootprint.height;
+      if (!isGrowing) continue;
+      if (!canGrowTo(
+        proposed.position,
+        proposedFootprint,
+        {
+          map: encounter.battleMap,
+          obstacles: encounter.obstacles,
+          edgeObstacles: encounter.edgeObstacles,
+          tokens: proposedTokens,
+          activeAreaEffects: encounter.activeAreaEffects,
+          cellElevations: encounter.cellElevations
+        },
+        proposed.id
+      )) {
+        throw new Error(`invalid_effective_footprint:${proposed.id}`);
+      }
+    }
     encounter.tokens = encounter.tokens.map((token) => {
       const update = updates.find((u) => u.tokenId === token.id);
       if (!update) return token;
@@ -376,6 +433,9 @@ export class InMemoryEncounterRepository {
       }
       // conditions: always replace when provided ([] explicitly clears all)
       if (update.conditions !== undefined) patched.conditions = update.conditions;
+      if (update.base_size !== undefined) patched.base_size = update.base_size;
+      if (update.effective_size !== undefined) patched.effective_size = update.effective_size;
+      if (update.effective_footprint !== undefined) patched.effective_footprint = update.effective_footprint;
       return patched;
     });
     return this.saveEncounter(encounter);

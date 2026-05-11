@@ -17,3 +17,12 @@ export * from "./targeting/resolve-cube";
 export * from "./targeting/line-trace";
 export * from "./targeting/aoe-filter";
 export * from "./validation/line-of-sight";
+export {
+  getEffectiveSize,
+  getEffectiveFootprint,
+  getBaseSize,
+  sizeTierToFootprint,
+  DEFAULT_CREATURE_SIZE,
+  creatureSizeSchema,
+  SIZE_MODIFIER_EFFECT_TYPE,
+} from "@limiarmap/shared-contracts";

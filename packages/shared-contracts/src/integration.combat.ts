@@ -11,6 +11,8 @@ import {
   obstacleSchema,
   spellAnchorSchema,
   tokenSchema,
+  creatureSizeSchema,
+  footprintSchema,
 } from "./domain";
 
 export const initiativeEntrySchema = z.object({
@@ -85,6 +87,9 @@ export const tokenSyncEntrySchema = z.object({
   controllerType: controllerTypeSchema.optional(),
   conditions: z.array(z.string()).optional(),
   sizeCategory: z.string().optional(),
+  base_size: creatureSizeSchema.optional(),
+  effective_size: creatureSizeSchema.optional(),
+  effective_footprint: footprintSchema.optional(),
 });
 
 export const syncTokensRequestSchema = z.object({
@@ -99,12 +104,16 @@ export const syncSpellAnchorsRequestSchema = z.object({
   spellAnchors: z.array(spellAnchorSchema),
 });
 
+export const tokenWithFootprintSchema = tokenSchema.extend({
+  effective_footprint: footprintSchema.optional(),
+});
+
 export const integrationStateResponseSchema = z.object({
   sessionId: z.string(),
   version: z.number().int().nonnegative(),
   battleMap: battleMapSchema,
   combatState: combatStateSchema,
-  tokens: z.array(tokenSchema),
+  tokens: z.array(tokenWithFootprintSchema),
   obstacles: z.array(obstacleSchema),
   edgeObstacles: z.array(edgeObstacleSchema).default([]),
   activeAreaEffects: z.array(activeAreaEffectSchema).default([]),

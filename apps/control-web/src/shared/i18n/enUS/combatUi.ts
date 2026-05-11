@@ -41,6 +41,7 @@ export const combatUiEnUSDictionary = {
   "combatUi.effect.dodging": "Dodging",
   "combatUi.effect.hidden": "Hidden",
   "combatUi.effect.spell_effect": "Spell effect",
+  "combatUi.effect.size_modifier": "Size modifier",
   "combatUi.condition.prone": "Prone",
   "combatUi.condition.poisoned": "Poisoned",
   "combatUi.condition.restrained": "Restrained",

@@ -21,6 +21,9 @@ def _parse_token_entry(token_payload: dict[str, Any]) -> LimiarMapTokenState:
     combatant_id = token_payload.get("combatantId")
     position_payload = token_payload.get("position")
     label = token_payload.get("label")
+    base_size = token_payload.get("base_size")
+    effective_size = token_payload.get("effective_size")
+    effective_footprint = token_payload.get("effective_footprint")
 
     if not isinstance(token_id, str) or not token_id.strip():
         raise LimiarMapClientError(
@@ -62,6 +65,31 @@ def _parse_token_entry(token_payload: dict[str, Any]) -> LimiarMapTokenState:
             "LimiarMap token entry has an invalid label",
             kind="payload",
         )
+    if base_size is not None and not isinstance(base_size, str):
+        raise LimiarMapClientError(
+            "LimiarMap token entry has an invalid base_size",
+            kind="payload",
+        )
+    if effective_size is not None and not isinstance(effective_size, str):
+        raise LimiarMapClientError(
+            "LimiarMap token entry has an invalid effective_size",
+            kind="payload",
+        )
+    parsed_effective_footprint: dict[str, int] | None = None
+    if effective_footprint is not None:
+        if not isinstance(effective_footprint, dict):
+            raise LimiarMapClientError(
+                "LimiarMap token entry has an invalid effective_footprint",
+                kind="payload",
+            )
+        width = effective_footprint.get("width")
+        height = effective_footprint.get("height")
+        if not isinstance(width, int) or not isinstance(height, int):
+            raise LimiarMapClientError(
+                "LimiarMap token entry has an invalid effective_footprint",
+                kind="payload",
+            )
+        parsed_effective_footprint = {"width": width, "height": height}
     position_x: int | None = None
     position_y: int | None = None
     if position_payload is not None:
@@ -91,6 +119,9 @@ def _parse_token_entry(token_payload: dict[str, Any]) -> LimiarMapTokenState:
         label=label,
         position_x=position_x,
         position_y=position_y,
+        base_size=base_size,
+        effective_size=effective_size,
+        effective_footprint=parsed_effective_footprint,
     )
 
 

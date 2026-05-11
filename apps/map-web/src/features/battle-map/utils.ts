@@ -24,6 +24,7 @@ import {
   Texture,
 } from "pixi.js";
 import type { CombatState, Coordinate, GridCalibration, Obstacle, Token } from "@limiarmap/shared-contracts";
+import { getOccupiedCells, getTokenFootprint } from "@limiarmap/tactical-engine";
 import { canTokenAct } from "@limiarmap/tactical-engine";
 import { useEncounterSnapshot } from "../../services/session-store";
 import { useCurrentActor } from "../../services/centrifugo-client";
@@ -88,6 +89,16 @@ export function cellRect(
   const x = (cal.x + (gx / gridW) * cal.width) * canvasW;
   const y = (cal.y + (gy / gridH) * cal.height) * canvasH;
   return { x, y, w, h };
+}
+
+export function tokenOccupiesCell(token: Token, cell: Coordinate): boolean {
+  return getOccupiedCells(token.position, getTokenFootprint(token)).some(
+    (occupied) => occupied.x === cell.x && occupied.y === cell.y
+  );
+}
+
+export function findTokenAtCell(tokens: Token[], cell: Coordinate): Token | undefined {
+  return tokens.find((token) => tokenOccupiesCell(token, cell));
 }
 
 export function buildObstacleCellMap(obstacles: Obstacle[]): Map<string, ObstacleCellState> {

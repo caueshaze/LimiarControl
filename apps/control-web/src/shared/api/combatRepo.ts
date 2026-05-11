@@ -26,7 +26,8 @@ export type ActiveEffectKind =
   | "disadvantage_on_attacks"
   | "dodging"
   | "hidden"
-  | "spell_effect";
+  | "spell_effect"
+  | "size_modifier";
 
 export type ActiveEffectConditionType =
   | "prone"
@@ -190,6 +191,21 @@ export type CombatParticipant = {
   reaction_request?: ReactionRequestState;
   pending_save?: PendingSave;
   last_save_resolution?: SaveResolution;
+  /**
+   * Base creature size persisted on the token/participant.
+   * Undefined means Medium (1x1) — the system default.
+   */
+  base_size?: string;
+  /**
+   * Resolved effective size after applying active size modifiers.
+   * Sent by Control server; map/tactical-engine must not recalculate.
+   */
+  effective_size?: string;
+  /**
+   * Grid footprint derived from effective_size.
+   * e.g. Large → { width: 2, height: 2 }
+   */
+  effective_footprint?: { width: number; height: number };
 };
 
 export type CombatState = {
