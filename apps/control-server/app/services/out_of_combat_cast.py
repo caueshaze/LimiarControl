@@ -8,7 +8,9 @@ correctly.
 
 from __future__ import annotations
 
+import random
 from datetime import datetime, timezone
+from math import floor
 from uuid import uuid4
 
 
@@ -279,7 +281,7 @@ def has_castable_effects(spell) -> bool:
     return any(v.get("effects") for v in variants)
 
 
-_SKIP_EFFECT_TYPES = {"grant_temp_hp", "create_consumable"}
+_SKIP_EFFECT_TYPES = {"grant_temp_hp", "create_consumable", "heal"}
 
 
 def collect_create_consumable_effects(
@@ -291,6 +293,96 @@ def collect_create_consumable_effects(
         e for e in _resolve_effects(spell, variant_key)
         if isinstance(e, dict) and e.get("type") == "create_consumable"
     ]
+
+
+def collect_heal_effects(
+    spell,
+    variant_key: str | None,
+) -> list[dict]:
+    """Return only heal effect dicts from the spell's effective effects list."""
+    return [
+        e for e in _resolve_effects(spell, variant_key)
+        if isinstance(e, dict) and e.get("type") == "heal"
+    ]
+
+
+def compute_heal_dice_with_upcast(
+    base_dice: str,
+    spell,
+    slot_level: int | None,
+) -> str:
+    """Scale base heal dice by upcast level using the spell's upcast_json config."""
+    effective_slot = slot_level if isinstance(slot_level, int) else getattr(spell, "level", 1)
+    spell_level = getattr(spell, "level", 1) or 1
+    upcast = getattr(spell, "upcast_json", None) or {}
+    mode = upcast.get("mode", "")
+    per_level = int(upcast.get("perLevel", 0)) if isinstance(upcast.get("perLevel"), (int, float)) else 0
+
+    if mode == "extra_heal_dice" and per_level > 0 and effective_slot > spell_level:
+        extra_levels = effective_slot - spell_level
+        extra_dice = extra_levels * per_level
+        if "d" in base_dice:
+            count_str, sides_str = base_dice.split("d", 1)
+            try:
+                total = int(count_str) + extra_dice
+                return f"{total}d{sides_str}"
+            except ValueError:
+                pass
+    return base_dice
+
+
+def resolve_spellcasting_modifier(state_json: dict) -> int:
+    """Return the caster's spellcasting ability modifier from state_json."""
+    spellcasting = (state_json or {}).get("spellcasting") or {}
+    precomputed = spellcasting.get("modifier")
+    if isinstance(precomputed, int):
+        return precomputed
+    ability = spellcasting.get("ability")
+    if isinstance(ability, str):
+        abilities = (state_json or {}).get("abilities") or {}
+        score = abilities.get(ability, 10)
+        if isinstance(score, (int, float)):
+            return floor((int(score) - 10) / 2)
+    return 0
+
+
+def roll_spell_heal_effects(
+    heal_effects: list[dict],
+    spell,
+    slot_level: int | None,
+    caster_state_json: dict,
+) -> list[dict]:
+    """Roll healing for each heal effect.
+
+    Returns a list of dicts with keys: amount, target, effective_dice, rolls, modifier.
+    """
+    from app.services.healing_consumables_types import _parse_heal_dice
+
+    results = []
+    for he in heal_effects:
+        params = he.get("params") or {}
+        base_dice = params.get("dice") or ""
+        effective_dice = compute_heal_dice_with_upcast(base_dice, spell, slot_level)
+        spell_mod = (
+            resolve_spellcasting_modifier(caster_state_json)
+            if params.get("ability_modifier") == "spellcasting"
+            else 0
+        )
+        count, sides, expr_mod = _parse_heal_dice(effective_dice)
+        rolls = (
+            [random.randint(1, sides) for _ in range(count)]
+            if count > 0 and sides > 0
+            else []
+        )
+        healing_amount = max(0, sum(rolls) + expr_mod + spell_mod)
+        results.append({
+            "amount": healing_amount,
+            "target": he.get("target", "selected_target"),
+            "effective_dice": effective_dice,
+            "rolls": rolls,
+            "modifier": spell_mod,
+        })
+    return results
 
 
 def _resolve_kind_and_value(effect_type: str, params: dict) -> tuple[str | None, int | None]:

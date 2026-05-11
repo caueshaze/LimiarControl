@@ -253,7 +253,19 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "heal",
+          "target": "selected_target",
+          "params": {
+            "dice": "1d8",
+            "ability_modifier": "spellcasting"
+          }
+        }
+      ]
     },
     {
       "system": "DND5E",
