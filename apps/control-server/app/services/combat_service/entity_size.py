@@ -71,9 +71,27 @@ _CARRYING_CAPACITY_MULTIPLIER: dict[SizeCategory, float] = {
     SizeCategory.GARGANTUAN: 8.0,
 }
 
+_MELEE_REACH_BONUS_CELLS: dict[SizeCategory, int] = {
+    SizeCategory.TINY: 0,
+    SizeCategory.SMALL: 0,
+    SizeCategory.MEDIUM: 0,
+    SizeCategory.LARGE: 1,
+    SizeCategory.HUGE: 2,
+    SizeCategory.GARGANTUAN: 3,
+}
+
 
 def size_carrying_capacity_multiplier(size: SizeCategory) -> float:
     return _CARRYING_CAPACITY_MULTIPLIER[size]
+
+
+def size_melee_reach_bonus_cells(size: SizeCategory) -> int:
+    """Return the melee reach bonus in grid cells for a given creature size.
+
+    Tiny/Small/Medium get 0 bonus (standard 1-cell reach).
+    Large gets +1 cell, Huge gets +2 cells, Gargantuan gets +3 cells.
+    """
+    return _MELEE_REACH_BONUS_CELLS[size]
 
 
 def size_footprint_cells(size_category: SizeCategory) -> int:

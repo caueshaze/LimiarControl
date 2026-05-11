@@ -175,6 +175,19 @@ export function getSizeCarryingCapacityMultiplier(size: CreatureSize): number {
   return sizeCarryingCapacityMultiplier[size];
 }
 
+export const sizeMeleeReachBonusCells: Record<CreatureSize, number> = {
+  Tiny: 0,
+  Small: 0,
+  Medium: 0,
+  Large: 1,
+  Huge: 2,
+  Gargantuan: 3,
+} as const satisfies Record<CreatureSize, number>;
+
+export function getSizeMeleeReachBonusCells(size: CreatureSize): number {
+  return sizeMeleeReachBonusCells[size];
+}
+
 export const sizeTierToFootprint = {
   Tiny: { width: 1, height: 1 },
   Small: { width: 1, height: 1 },

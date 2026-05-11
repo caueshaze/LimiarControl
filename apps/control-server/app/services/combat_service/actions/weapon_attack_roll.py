@@ -46,6 +46,7 @@ class WeaponAttackRollMixin:
             range_long_meters=attack_context.get("range_long_meters"),
             weapon_range_type=attack_context.get("weapon_range_type"),
             has_reach=bool(attack_context.get("has_reach")),
+            actor_effective_size=attacker.get("effective_size"),
             requires_sight=resolve_weapon_targeting_requirements().requires_target_sight,
             requires_effect=resolve_weapon_targeting_requirements().requires_target_effect,
         )
@@ -77,6 +78,7 @@ class WeaponAttackRollMixin:
             range_meters=attack_context.get("range_meters"),
             range_long_meters=attack_context.get("range_long_meters"),
             has_reach=bool(attack_context.get("has_reach")),
+            effective_size=attacker.get("effective_size"),
             distance_meters=targeting_result.spatial_metadata.distance_meters,
         )
         adv_ctx = resolve_attack_advantage(attacker, target, attack_kind)

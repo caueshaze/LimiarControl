@@ -188,6 +188,7 @@ class LocalCombatTargetingService(CombatTargetingService):
                 range_long_meters=getattr(intent, "range_long_meters", None),
                 weapon_range_type=getattr(intent, "weapon_range_type", None),
                 has_reach=getattr(intent, "has_reach", False),
+                effective_size=getattr(intent, "actor_effective_size", None),
             )
             max_range = weapon_profile.max_range
             range_failure = weapon_profile.failure_reason

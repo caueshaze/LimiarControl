@@ -360,5 +360,166 @@ class TestIsWithinMeleeReachMulti(unittest.TestCase):
         self.assertFalse(is_within_melee_reach_multi([_pos(0, 0)], [_pos(3, 0)], 2))
 
 
+# ─── size-based melee reach (#297) ───────────────────────────────────────────
+
+class TestSizeMeleeReachBonus(unittest.TestCase):
+    def test_tiny_no_bonus(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="tiny"), 1)
+
+    def test_small_no_bonus(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="small"), 1)
+
+    def test_medium_no_bonus(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="medium"), 1)
+
+    def test_large_plus_one(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="large"), 2)
+
+    def test_huge_plus_two(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="huge"), 3)
+
+    def test_gargantuan_plus_three(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="gargantuan"), 4)
+
+    def test_none_defaults_to_medium(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size=None), 1)
+
+    def test_invalid_defaults_to_medium(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="colossal"), 1)
+
+    def test_large_plus_reach_weapon(self):
+        self.assertEqual(resolve_melee_reach_cells(has_reach=True, effective_size="large"), 3)
+
+    def test_huge_plus_reach_weapon(self):
+        self.assertEqual(resolve_melee_reach_cells(has_reach=True, effective_size="huge"), 4)
+
+    def test_gargantuan_plus_reach_weapon(self):
+        self.assertEqual(resolve_melee_reach_cells(has_reach=True, effective_size="gargantuan"), 5)
+
+    def test_tiny_plus_reach_weapon(self):
+        self.assertEqual(resolve_melee_reach_cells(has_reach=True, effective_size="tiny"), 2)
+
+    def test_case_insensitive(self):
+        self.assertEqual(resolve_melee_reach_cells(effective_size="Large"), 2)
+        self.assertEqual(resolve_melee_reach_cells(effective_size="LARGE"), 2)
+
+
+class TestGetEffectiveReachWithSize(unittest.TestCase):
+    def test_base_1_medium_no_bonus(self):
+        self.assertEqual(get_effective_reach(1, effective_size=None), 1)
+
+    def test_base_1_large_plus_one(self):
+        from app.services.combat_service.entity_size import SizeCategory
+        self.assertEqual(get_effective_reach(1, effective_size=SizeCategory.LARGE), 2)
+
+    def test_base_2_large_plus_one(self):
+        from app.services.combat_service.entity_size import SizeCategory
+        self.assertEqual(get_effective_reach(2, effective_size=SizeCategory.LARGE), 3)
+
+    def test_base_1_huge_plus_two(self):
+        from app.services.combat_service.entity_size import SizeCategory
+        self.assertEqual(get_effective_reach(1, effective_size=SizeCategory.HUGE), 3)
+
+    def test_base_1_tiny_no_bonus(self):
+        from app.services.combat_service.entity_size import SizeCategory
+        self.assertEqual(get_effective_reach(1, effective_size=SizeCategory.TINY), 1)
+
+
+class TestSizeReachWithDistance(unittest.TestCase):
+    """Integration: size-adjusted reach used with is_within_melee_reach."""
+
+    def test_large_reach_two_cells_away(self):
+        reach = resolve_melee_reach_cells(effective_size="large")
+        self.assertTrue(is_within_melee_reach(_pos(0, 0), _pos(2, 0), reach))
+
+    def test_large_reach_three_cells_away(self):
+        reach = resolve_melee_reach_cells(effective_size="large")
+        self.assertFalse(is_within_melee_reach(_pos(0, 0), _pos(3, 0), reach))
+
+    def test_huge_reach_three_cells_away(self):
+        reach = resolve_melee_reach_cells(effective_size="huge")
+        self.assertTrue(is_within_melee_reach(_pos(0, 0), _pos(3, 0), reach))
+
+    def test_gargantuan_reach_four_cells_away(self):
+        reach = resolve_melee_reach_cells(effective_size="gargantuan")
+        self.assertTrue(is_within_melee_reach(_pos(0, 0), _pos(4, 0), reach))
+
+    def test_gargantuan_reach_five_cells_away(self):
+        reach = resolve_melee_reach_cells(effective_size="gargantuan")
+        self.assertFalse(is_within_melee_reach(_pos(0, 0), _pos(5, 0), reach))
+
+    def test_large_plus_reach_weapon_three_cells(self):
+        reach = resolve_melee_reach_cells(has_reach=True, effective_size="large")
+        self.assertTrue(is_within_melee_reach(_pos(0, 0), _pos(3, 0), reach))
+
+    def test_medium_default_one_cell(self):
+        reach = resolve_melee_reach_cells(effective_size="medium")
+        self.assertTrue(is_within_melee_reach(_pos(0, 0), _pos(1, 0), reach))
+        self.assertFalse(is_within_melee_reach(_pos(0, 0), _pos(2, 0), reach))
+
+
+class TestSizeReachWithMultiCell(unittest.TestCase):
+    """Integration: size-adjusted reach with multi-cell footprints."""
+
+    def test_large_attacker_with_size_reach(self):
+        large_cells = [_pos(0, 0), _pos(1, 0), _pos(0, 1), _pos(1, 1)]
+        target_at_3 = [_pos(4, 0)]
+        reach = resolve_melee_reach_cells(effective_size="large")
+        min_dist = min(max(abs(a["x"] - b["x"]), abs(a["y"] - b["y"])) for a in large_cells for b in target_at_3)
+        self.assertEqual(min_dist, 3)
+        self.assertFalse(is_within_melee_reach_multi(large_cells, target_at_3, reach))
+
+    def test_large_attacker_adjacent_target(self):
+        large_cells = [_pos(0, 0), _pos(1, 0), _pos(0, 1), _pos(1, 1)]
+        target_adjacent = [_pos(2, 0)]
+        reach = resolve_melee_reach_cells(effective_size="large")
+        self.assertTrue(is_within_melee_reach_multi(large_cells, target_adjacent, reach))
+
+
+class TestResolveWeaponAttackKindWithSize(unittest.TestCase):
+    def test_large_melee_within_extended_reach(self):
+        result = resolve_weapon_attack_kind(
+            weapon_range_type="melee",
+            distance_meters=3.0,
+            effective_size="large",
+        )
+        self.assertEqual(result, "melee")
+
+    def test_large_melee_beyond_reach_becomes_ranged(self):
+        result = resolve_weapon_attack_kind(
+            weapon_range_type="melee",
+            distance_meters=4.5,
+            effective_size="large",
+        )
+        self.assertEqual(result, "ranged")
+
+    def test_large_melee_at_max_reach_is_melee(self):
+        result = resolve_weapon_attack_kind(
+            weapon_range_type="melee",
+            distance_meters=3.0,
+            effective_size="large",
+        )
+        self.assertEqual(result, "melee")
+
+    def test_medium_melee_beyond_normal_reach(self):
+        result = resolve_weapon_attack_kind(
+            weapon_range_type="melee",
+            range_meters=6,
+            range_long_meters=18,
+            distance_meters=3.0,
+        )
+        self.assertEqual(result, "ranged")
+
+    def test_large_melee_stays_melee_at_3m(self):
+        result = resolve_weapon_attack_kind(
+            weapon_range_type="melee",
+            range_meters=6,
+            range_long_meters=18,
+            distance_meters=3.0,
+            effective_size="large",
+        )
+        self.assertEqual(result, "melee")
+
+
 if __name__ == "__main__":
     unittest.main()
