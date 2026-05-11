@@ -69,6 +69,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_mage_hand_automation",
         ),
+        "minor_illusion": SpellAutomationSpec(
+            canonical_key="minor_illusion",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_minor_illusion_automation",
+        ),
     }
 
     @classmethod
@@ -553,6 +559,103 @@ class CombatSpellAutomationMixin:
             target_kind=attacker["kind"],
             summary_text=f"{spell_name} criada em ({anchor_position['x']}, {anchor_position['y']}).",
             log_message=f"{attacker['display_name']} conjurou {spell_name}.",
+        )
+
+    @classmethod
+    async def _cast_minor_illusion_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        for old_anchor in get_spell_anchors_for_owner(state, attacker["id"]):
+            if old_anchor.get("source_spell_key") == "minor_illusion":
+                remove_spell_anchor(state, old_anchor["id"])
+
+        anchor_cell = getattr(req, "anchor_cell", None)
+        if not anchor_cell:
+            raise CombatServiceError("Posição da Ilusão Menor é obrigatória.", 400)
+        raw_variant = getattr(req, "variant_key", None)
+        if not isinstance(raw_variant, str):
+            raise CombatServiceError("Ilusão Menor exige variante 'sound' ou 'image'.", 400)
+        variant = raw_variant.strip()
+        if variant not in {"sound", "image"}:
+            raise CombatServiceError("Ilusão Menor aceita apenas variantes 'sound' ou 'image'.", 400)
+
+        raw_description = getattr(req, "description", None)
+        if not isinstance(raw_description, str):
+            raise CombatServiceError("Ilusão Menor exige descrição textual.", 400)
+        description = raw_description.strip()
+        if not description:
+            raise CombatServiceError("Ilusão Menor exige descrição textual não vazia.", 400)
+        if len(description) > 300:
+            raise CombatServiceError("Descrição da Ilusão Menor deve ter no máximo 300 caracteres.", 400)
+
+        anchor_position = {"x": anchor_cell.x, "y": anchor_cell.y}
+        caster_position = attacker.get("position")
+        if not isinstance(caster_position, dict):
+            raise CombatServiceError("Conjurador sem posição válida no mapa.", 400)
+        battle_map = state.map_selection if state.use_map and state.map_selection else None
+        if not isinstance(battle_map, dict):
+            raise CombatServiceError("Mapa de combate é obrigatório para Ilusão Menor.", 400)
+
+        validate_spell_anchor_placement(
+            caster_position={"x": int(caster_position.get("x", 0)), "y": int(caster_position.get("y", 0))},
+            target_position=anchor_position,
+            range_meters=9.0,
+            requires_point_sight=False,
+            requires_point_effect=False,
+            battle_map=battle_map,
+        )
+
+        create_spell_anchor(
+            state,
+            anchor={
+                "source_spell_key": "minor_illusion",
+                "source_spell_name": spell_context["spell_name"],
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "position": anchor_position,
+                "duration_type": "rounds",
+                "remaining_rounds": 10,
+                "expires_on": "turn_start",
+                "expires_at_participant_id": attacker["id"],
+                "render_kind": "minor_illusion",
+                "metadata": {
+                    "illusion_kind": variant,
+                    "description": description,
+                    "blocks_movement": False,
+                    "blocks_los": False,
+                    "blocks_loe": False,
+                },
+            },
+        )
+        flag_modified(state, "spell_anchors")
+
+        short = description if len(description) <= 80 else f"{description[:77]}..."
+        spell_name = spell_context["spell_name"]
+        kind_pt = "som" if variant == "sound" else "imagem"
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=(
+                f"{spell_name} ({kind_pt}) criada em ({anchor_position['x']}, {anchor_position['y']}): "
+                f"\"{short}\""
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} ({kind_pt}): \"{short}\"."
+            ),
+            extra={"selected_variant_key": variant},
         )
 
 

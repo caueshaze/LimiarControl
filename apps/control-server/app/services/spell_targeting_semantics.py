@@ -53,7 +53,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "speak_with_animals": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "pass_without_trace": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "disguise_self": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
-    "minor_illusion": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
+    "minor_illusion": SpellTargetingSemantics("point", "caster", "selected_point", "none", "distance", "persistent"),
     "floating_disk": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
 }
 
