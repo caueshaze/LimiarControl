@@ -49,6 +49,38 @@ def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     @classmethod
+    def _upsert_shield_temp_ac_effect(cls, participant: dict, *, source_participant_id: str | None) -> None:
+        effects = cls._get_participant_effects(participant)
+        kept = []
+        for effect in effects:
+            metadata = cls._as_dict(effect.get("metadata"))
+            if effect.get("kind") == "temp_ac_bonus" and metadata.get("source_spell_key") == "shield":
+                continue
+            kept.append(effect)
+        cls._set_participant_effects(participant, kept)
+        cls._append_effect_to_participant(
+            participant,
+            cls._build_active_effect(
+                kind="temp_ac_bonus",
+                source_participant_id=source_participant_id,
+                numeric_value=5,
+                duration_type="until_turn_start",
+                expires_at_participant_id=participant.get("id"),
+                metadata={"source_spell_key": "shield"},
+                display_label="Shield",
+            ),
+        )
+
+    @classmethod
+    def _is_shielded_for_magic_missile(cls, participant: dict | None) -> bool:
+        if not isinstance(participant, dict):
+            return False
+        for effect in cls._get_participant_effects(participant):
+            metadata = cls._as_dict(effect.get("metadata"))
+            if effect.get("kind") == "temp_ac_bonus" and metadata.get("source_spell_key") == "shield":
+                return True
+        return False
+    @classmethod
     async def _resolve_teleport_spell(
         cls, db, session_id, req, state, attacker, attacker_model, spell_context, actor_user_id, is_gm
     ):
@@ -936,6 +968,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                 outcome = cls._resolve_instance_direct(
                     db, state, attacker, target_p, spell_context, req,
                 )
+                is_magic_missile = cls._normalize_lookup(spell_context.get("spell_canonical_key")) == "magic missile"
+                if is_magic_missile and cls._is_shielded_for_magic_missile(target_p):
+                    outcome["damage"] = 0
+                    outcome["new_hp"] = None
 
             outcome["instance_index"] = vt["instance_index"]
             outcomes.append(outcome)
@@ -1669,6 +1705,27 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         spell_context, actor_user_id, is_gm,
     ):
         slot_spent = False
+        is_shield = cls._normalize_lookup(spell_context.get("spell_canonical_key")) == "shield"
+        shield_pending_attacker = None
+        shield_pending_payload = None
+        if is_shield:
+            for participant in state.participants:
+                pending = participant.get("pending_attack")
+                if not isinstance(pending, dict):
+                    continue
+                if pending.get("target_ref_id") != attacker.get("ref_id"):
+                    continue
+                if pending.get("type") != "player_attack":
+                    continue
+                attack_roll = cls._safe_int(pending.get("roll"), 0)
+                target_ac = cls._safe_int(pending.get("target_ac"), 10)
+                if attack_roll < target_ac:
+                    continue
+                shield_pending_attacker = participant
+                shield_pending_payload = pending
+                break
+            if shield_pending_payload is None:
+                raise CombatServiceError("Shield requires an incoming hit trigger.", 400)
         if spell_context.get("source_kind") == "magic_item":
             inventory_item = spell_context.get("inventory_item")
             source_item = spell_context.get("source_item")
@@ -1700,6 +1757,23 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
             db.add(attacker_model)
             slot_spent = True
+        if is_shield:
+            cls._upsert_shield_temp_ac_effect(
+                attacker,
+                source_participant_id=attacker.get("id"),
+            )
+            pending_roll = cls._safe_int(shield_pending_payload.get("roll"), 0)
+            _, recalculated_ac, *_ = cls._get_stats(
+                db,
+                attacker["ref_id"],
+                attacker["kind"],
+                session_id,
+                combat_state=state,
+            )
+            recalculated_ac = recalculated_ac or 10
+            if pending_roll < recalculated_ac:
+                cls._clear_participant_pending_attack(shield_pending_attacker)
+                flag_modified(state, "participants")
 
         automation_result = await cls._cast_spell_via_automation(
             db,
