@@ -500,6 +500,11 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     def _validate_instance_targets(cls, *, req, spell_context, state):
         raw = getattr(req, "effect_instance_targets", None)
         if not raw:
+            if cls._normalize_lookup(spell_context.get("spell_canonical_key")) == "magic missile":
+                raise CombatServiceError(
+                    "Magic Missile requires effect_instance_targets for every missile instance.",
+                    400,
+                )
             return None
 
         instance_count = spell_context.get("effect_instance_count", 1)
@@ -893,6 +898,25 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         total_damage = sum(o["damage"] for o in outcomes)
         total_healing = sum(o["healing"] for o in outcomes)
         first_outcome = outcomes[0] if outcomes else None
+        per_target_totals: dict[str, dict[str, object]] = {}
+        for outcome in outcomes:
+            target_ref_id = str(outcome.get("target_ref_id") or "")
+            if not target_ref_id:
+                continue
+            bucket = per_target_totals.setdefault(
+                target_ref_id,
+                {
+                    "target_ref_id": target_ref_id,
+                    "target_display_name": outcome.get("target_display_name") or target_ref_id,
+                    "target_kind": outcome.get("target_kind") or "session_entity",
+                    "instance_count": 0,
+                    "damage": 0,
+                    "healing": 0,
+                },
+            )
+            bucket["instance_count"] = cls._safe_int(bucket.get("instance_count"), 0) + 1
+            bucket["damage"] = cls._safe_int(bucket.get("damage"), 0) + cls._safe_int(outcome.get("damage"), 0)
+            bucket["healing"] = cls._safe_int(bucket.get("healing"), 0) + cls._safe_int(outcome.get("healing"), 0)
 
         return {
             "spell_name": spell_context["spell_name"],
@@ -939,6 +963,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "effect_instance_dice": spell_context.get("effect_instance_dice"),
             "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
             "effect_instance_outcomes": outcomes,
+            "effect_instance_target_totals": list(per_target_totals.values()),
         }
 
     @classmethod

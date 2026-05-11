@@ -91,19 +91,31 @@ def _spell_context(count=5, dice="1d4+1", spell_mode="direct_damage"):
 
 
 class ValidateInstanceTargetsTests(unittest.TestCase):
-    def test_returns_none_when_no_targets(self):
+    def test_rejects_magic_missile_when_no_targets(self):
         state = _build_state()
         req = SimpleNamespace(effect_instance_targets=None)
-        result = CombatService._validate_instance_targets(
-            req=req, spell_context=_spell_context(), state=state,
-        )
-        self.assertIsNone(result)
+        with self.assertRaises(CombatServiceError) as cm:
+            CombatService._validate_instance_targets(
+                req=req, spell_context=_spell_context(), state=state,
+            )
+        self.assertIn("requires effect_instance_targets", str(cm.exception))
 
-    def test_returns_none_when_empty_list(self):
+    def test_rejects_magic_missile_when_empty_list(self):
         state = _build_state()
         req = SimpleNamespace(effect_instance_targets=[])
+        with self.assertRaises(CombatServiceError) as cm:
+            CombatService._validate_instance_targets(
+                req=req, spell_context=_spell_context(), state=state,
+            )
+        self.assertIn("requires effect_instance_targets", str(cm.exception))
+
+    def test_returns_none_when_no_targets_for_non_magic_missile(self):
+        state = _build_state()
+        req = SimpleNamespace(effect_instance_targets=None)
+        ctx = _spell_context()
+        ctx["spell_canonical_key"] = "eldritch_blast"
         result = CombatService._validate_instance_targets(
-            req=req, spell_context=_spell_context(), state=state,
+            req=req, spell_context=ctx, state=state,
         )
         self.assertIsNone(result)
 
@@ -455,6 +467,69 @@ class MultiInstanceLogMessageTests(unittest.TestCase):
         )
         self.assertIn("errou", msg)
         self.assertNotIn("AC efetiva", msg)
+
+
+class ResolveMultiInstanceCastTests(unittest.IsolatedAsyncioTestCase):
+    async def test_response_includes_per_target_totals_and_preserves_instance_order(self):
+        state = _build_state()
+        db = MagicMock()
+        attacker = state.participants[0]
+        attacker_model = MagicMock()
+        attacker_model.state_json = {"spellcasting": {"slots": {"1": {"used": 0, "max": 2}}}}
+        spell_context = {
+            **_spell_context(count=3),
+            "slot_level": 1,
+            "action_cost": "action",
+            "source_kind": "spell",
+            "spell_level": 1,
+            "base_effect_instance_count": 3,
+            "upcast_added_instances": 0,
+        }
+        req = SimpleNamespace(
+            concentration_roll_source="system",
+            concentration_manual_roll=None,
+            override_resource_limit=False,
+        )
+        validated_targets = [
+            {"instance_index": 1, "target_ref_id": "entity:goblin-a", "participant": state.participants[1]},
+            {"instance_index": 2, "target_ref_id": "entity:goblin-b", "participant": state.participants[2]},
+            {"instance_index": 3, "target_ref_id": "entity:goblin-a", "participant": state.participants[1]},
+        ]
+
+        with (
+            patch.object(CombatService, "_consume_turn_resource", return_value=False),
+            patch.object(CombatService, "_consume_player_spell_slot"),
+            patch.object(CombatService, "_resolve_instance_direct", side_effect=[
+                {"target_ref_id": "entity:goblin-a", "target_display_name": "Goblin A", "target_kind": "session_entity", "damage": 3, "healing": 0, "is_hit": None, "is_saved": None, "is_critical": False, "roll": None, "roll_result": None, "new_hp": None, "previous_hp": None},
+                {"target_ref_id": "entity:goblin-b", "target_display_name": "Goblin B", "target_kind": "session_entity", "damage": 5, "healing": 0, "is_hit": None, "is_saved": None, "is_critical": False, "roll": None, "roll_result": None, "new_hp": None, "previous_hp": None},
+                {"target_ref_id": "entity:goblin-a", "target_display_name": "Goblin A", "target_kind": "session_entity", "damage": 2, "healing": 0, "is_hit": None, "is_saved": None, "is_critical": False, "roll": None, "roll_result": None, "new_hp": None, "previous_hp": None},
+            ]),
+            patch.object(CombatService, "_emit_state"),
+            patch.object(CombatService, "_emit_player_state_update"),
+            patch.object(CombatService, "_emit_entity_hp_update"),
+            patch.object(CombatService, "_emit_and_persist_log"),
+        ):
+            result = await CombatService._resolve_multi_instance_cast(
+                db,
+                "session-1",
+                req,
+                state,
+                attacker,
+                attacker_model,
+                spell_context,
+                "user-1",
+                False,
+                validated_targets,
+            )
+
+        self.assertEqual(result["effect_instance_count"], 3)
+        self.assertEqual([o["instance_index"] for o in result["effect_instance_outcomes"]], [1, 2, 3])
+        self.assertEqual(result["damage"], 10)
+        per_target = {e["target_ref_id"]: e for e in result["effect_instance_target_totals"]}
+        self.assertEqual(per_target["entity:goblin-a"]["instance_count"], 2)
+        self.assertEqual(per_target["entity:goblin-a"]["damage"], 5)
+        self.assertEqual(per_target["entity:goblin-b"]["instance_count"], 1)
+        self.assertEqual(per_target["entity:goblin-b"]["damage"], 5)
 
 
 class EffectInstanceTargetSchemaTests(unittest.TestCase):

@@ -13,9 +13,12 @@ Covers:
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
+from app.models.session_state import SessionState
+from app.schemas.combat_spells import CombatCastSpellRequest, EffectInstanceTarget
 from app.services.combat import CombatService, CombatServiceError
 from app.services.combat_service.targeting_diagnostics import (
     NO_LINE_OF_EFFECT,
@@ -392,3 +395,81 @@ class ResolveInstanceAttackCoverTests(unittest.TestCase):
                     self._make_req(), False,
                 )
                 self.assertEqual(mock_resolve.call_args.kwargs["target_ac"], 14)
+
+
+class MultiInstanceSpatialFailureCastFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_spatial_target_does_not_consume_slot_or_apply_damage(self):
+        state = _build_state(use_map=True)
+        attacker_state = SessionState(
+            id="state-player-1",
+            session_id="session-1",
+            player_user_id="user-1",
+            state_json={
+                "spellcasting": {
+                    "spells": [{"name": "Magic Missile", "canonicalKey": "magic_missile", "level": 1, "prepared": True}],
+                    "slots": {"1": {"used": 0, "max": 2}},
+                }
+            },
+        )
+        spell_context = {
+            "spell_name": "Magic Missile",
+            "spell_canonical_key": "magic_missile",
+            "spell_mode": "direct_damage",
+            "effect_kind": "damage",
+            "damage_type": "Force",
+            "effect_instance_count": 3,
+            "effect_instance_dice": "1d4+1",
+            "base_effect_instance_count": 3,
+            "upcast_added_instances": 0,
+            "slot_level": 1,
+            "source_kind": "spell",
+            "action_cost": "action",
+            "target_type": "ranged",
+            "selection_type": "creature",
+            "attack_type": "none",
+            "range_kind": "distance",
+            "area_shape": None,
+            "range_meters": 36,
+            "requires_target_sight": True,
+            "requires_target_effect": True,
+            "save_ability": None,
+            "save_dc": None,
+            "save_success_outcome": None,
+        }
+        req = CombatCastSpellRequest(
+            actor_participant_id="p1",
+            spell_canonical_key="magic_missile",
+            effect_instance_targets=[
+                EffectInstanceTarget(instance_index=1, target_ref_id="entity:goblin-a"),
+                EffectInstanceTarget(instance_index=2, target_ref_id="entity:goblin-a"),
+                EffectInstanceTarget(instance_index=3, target_ref_id="entity:goblin-b"),
+            ],
+        )
+        mock_targeting_service = MagicMock(
+            validate=MagicMock(return_value=_invalid_result(TARGET_OUT_OF_REACH))
+        )
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 12, 10, 10, 2, 3)),
+            patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=spell_context),
+            patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=mock_targeting_service),
+            patch.object(CombatService, "_resolve_multi_instance_cast", new_callable=MagicMock) as mock_resolve_multi,
+            patch.object(CombatService, "_apply_spell_effect", new_callable=MagicMock) as mock_apply_spell_effect,
+            patch.object(CombatService, "_emit_and_persist_log", new_callable=MagicMock) as mock_emit_success_log,
+        ):
+            with self.assertRaises(CombatServiceError):
+                await CombatService.cast_spell(
+                    MagicMock(),
+                    "session-1",
+                    req,
+                    actor_user_id="user-1",
+                    is_gm=False,
+                )
+
+        self.assertEqual(attacker_state.state_json["spellcasting"]["slots"]["1"]["used"], 0)
+        self.assertNotIn("pending_attack", state.participants[0])
+        self.assertNotIn("pending_save", state.participants[0])
+        mock_resolve_multi.assert_not_called()
+        mock_apply_spell_effect.assert_not_called()
+        mock_emit_success_log.assert_not_called()
