@@ -18,12 +18,14 @@ from app.services.combat_service.persistent_effects import (
     clear_persisted_concentration_effects,
     derive_active_concentration,
     enforce_single_persisted_concentration_group,
+    is_mechanical_effect,
     persist_surviving_spell_effects,
     remove_persisted_effect,
     restore_persisted_effects,
     sync_persisted_effects_from_combat_participants,
     sync_effect_removal_to_state_json,
 )
+from app.services.persistent_effect_expiry import prune_expired_persisted_effects
 
 
 def _manual_spell_effect(effect_id: str = "eff-1", concentration: bool = False) -> dict:
@@ -1181,6 +1183,35 @@ class TestLongstriderLifecycle(unittest.TestCase):
         updated = remove_persisted_effect(state_json, "eff-ls")
 
         self.assertNotIn("active_spell_effects", updated)
+
+
+class TestNarrativeEffectsGuardrail(unittest.TestCase):
+    def test_non_mechanical_effect_is_ignored_in_concentration_derivation(self):
+        narrative = _manual_spell_effect("eff-narrative", concentration=True)
+        narrative["metadata"]["mechanical"] = False
+        mechanical = _manual_spell_effect("eff-mech", concentration=True)
+        mechanical["metadata"]["concentration_group"] = "group-mech"
+        state_json = {"active_spell_effects": [narrative, mechanical]}
+
+        result = derive_active_concentration(state_json)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["concentrationGroup"], "group-mech")
+        self.assertIn("eff-mech", result["effectIds"])
+        self.assertNotIn("eff-narrative", result["effectIds"])
+        self.assertFalse(is_mechanical_effect(narrative))
+        self.assertTrue(is_mechanical_effect(mechanical))
+
+    def test_prune_expired_removes_only_expired_narrative(self):
+        narrative_expired = _timed_effect("eff-narrative", expires_at_game_time_seconds=100)
+        narrative_expired["metadata"]["mechanical"] = False
+        mechanical_live = _timed_effect("eff-mech", expires_at_game_time_seconds=400)
+        effects = [narrative_expired, mechanical_live]
+
+        remaining = prune_expired_persisted_effects(effects, game_time_seconds=200)
+
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0]["id"], "eff-mech")
 
 
 if __name__ == "__main__":

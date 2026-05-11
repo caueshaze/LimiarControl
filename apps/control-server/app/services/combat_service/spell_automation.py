@@ -15,6 +15,7 @@ from app.services.goodberry_inventory import (
 )
 from app.services.game_time import get_game_time_seconds
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
+from app.services.session_state_finalize import finalize_session_state_data
 
 from .exceptions import CombatServiceError
 from .spell_anchors import (
@@ -74,6 +75,12 @@ class CombatSpellAutomationMixin:
             default_mode="utility",
             requires_effect_payload=False,
             handler_name="_cast_minor_illusion_automation",
+        ),
+        "prestidigitation": SpellAutomationSpec(
+            canonical_key="prestidigitation",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_prestidigitation_automation",
         ),
     }
 
@@ -656,6 +663,82 @@ class CombatSpellAutomationMixin:
                 f"{attacker['display_name']} conjurou {spell_name} ({kind_pt}): \"{short}\"."
             ),
             extra={"selected_variant_key": variant},
+        )
+
+    @classmethod
+    async def _cast_prestidigitation_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        raw_description = getattr(req, "description", None)
+        if not isinstance(raw_description, str):
+            raise CombatServiceError("Prestidigitação exige descrição textual.", 400)
+        description = raw_description.strip()
+        if not description:
+            raise CombatServiceError("Prestidigitação exige descrição textual não vazia.", 400)
+        if len(description) > 300:
+            raise CombatServiceError("Descrição de Prestidigitação deve ter no máximo 300 caracteres.", 400)
+
+        game_time = get_game_time_seconds(session_id, db)
+        effect_id = f"narrative_effect:{uuid4()}"
+        effect = {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "duration_type": "timed",
+            "expires_at_participant_id": None,
+            "expires_at_game_time_seconds": game_time + 3600,
+            "metadata": {
+                "source_spell_key": "prestidigitation",
+                "source_spell_name": spell_context["spell_name"],
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "description": description,
+                "mechanical": False,
+                "narrative": True,
+                "visible_to_all": True,
+                "freeform": True,
+                "spell_level": 0,
+                "selected_variant_key": getattr(req, "variant_key", None),
+            },
+            "display_label": spell_context["spell_name"],
+        }
+
+        attacker_data = cls._as_dict(attacker_model.state_json)
+        effects = attacker_data.get("active_spell_effects")
+        if not isinstance(effects, list):
+            effects = []
+        effects.append(effect)
+        attacker_data["active_spell_effects"] = effects
+        attacker_model.state_json = finalize_session_state_data(
+            attacker_data,
+            game_time_seconds=game_time,
+        )
+        flag_modified(attacker_model, "state_json")
+        db.add(attacker_model)
+
+        short = description if len(description) <= 120 else f"{description[:117]}..."
+        spell_name = spell_context["spell_name"]
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=f"{spell_name}: \"{short}\"",
+            log_message=f"{attacker['display_name']} conjurou {spell_name}: \"{short}\".",
+            extra={
+                "created_effect_id": effect_id,
+                "__player_state_ids_to_emit": {attacker["ref_id"]},
+            },
         )
 
 
