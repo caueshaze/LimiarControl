@@ -855,6 +855,7 @@
         "mode": "additional_targets",
         "perLevel": 1
       },
+      "maxTargets": 1,
       "effects": [
         {
           "type": "apply_condition",
