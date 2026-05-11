@@ -364,7 +364,7 @@
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
-      "duration": "Instantaneous",
+      "duration": "24 hours",
       "componentsJson": [
         "V",
         "S",
@@ -387,7 +387,20 @@
       "targetAnchor": "caster",
       "attackType": "none",
       "rangeKind": "self",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self",
+      "effects": [
+        {
+          "type": "create_consumable",
+          "target": "caster",
+          "params": {
+            "canonical_key": "goodberry",
+            "quantity": 10,
+            "expires_in_seconds": 86400
+          }
+        }
+      ]
     },
     {
       "system": "DND5E",

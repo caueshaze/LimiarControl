@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import delete
 from sqlalchemy.orm.attributes import flag_modified
@@ -5,6 +7,7 @@ from sqlmodel import Session as DbSession, select
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
+from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
 from app.models.campaign_spell import CampaignSpell
 from app.models.item import ItemType
@@ -26,10 +29,12 @@ from app.services.combat_service.persistent_effects import (
     remove_persisted_effect,
 )
 from app.services.game_time import get_game_time_seconds
+from app.services.goodberry_inventory import grant_catalog_item_to_player_inventory
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
+    collect_create_consumable_effects,
     consume_spell_slot,
     has_castable_effects,
 )
@@ -345,7 +350,42 @@ async def _cast_spell_out_of_combat_for_player(
         variant_key=req.variantKey,
         game_time_seconds=current_game_time_seconds,
     )
-    if not new_target_effects:
+
+    # --- Grant consumable items (create_consumable effects) ---
+    consumable_effects = collect_create_consumable_effects(campaign_spell, req.variantKey)
+    consumables_granted_count = 0
+    if consumable_effects:
+        campaign = session.exec(select(Campaign).where(Campaign.id == entry.campaign_id)).first()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        spell_name_for_notes = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
+        for ce in consumable_effects:
+            params = ce.get("params") or {}
+            canonical_key = params.get("canonical_key")
+            raw_qty = params.get("quantity", 1)
+            quantity = raw_qty if isinstance(raw_qty, int) else 1
+            expires_in_seconds = params.get("expires_in_seconds")
+            if not canonical_key:
+                continue
+            expires_at = (
+                datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+                if isinstance(expires_in_seconds, int) and expires_in_seconds > 0
+                else None
+            )
+            grant_catalog_item_to_player_inventory(
+                session,
+                session_entry=entry,
+                player_user_id=caster_user_id,
+                system=campaign.system,
+                canonical_key=canonical_key,
+                quantity=quantity,
+                notes=f"Criado por {spell_name_for_notes}",
+                expires_at=expires_at,
+                source_spell_canonical_key=campaign_spell.canonical_key,
+            )
+            consumables_granted_count += quantity
+
+    if not new_target_effects and not consumables_granted_count:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
 
     group_id: str | None = (
@@ -472,6 +512,9 @@ async def _cast_spell_out_of_combat_for_player(
         }
         if req.slotLevel is not None:
             activity_payload["slot_level"] = req.slotLevel
+        if consumables_granted_count:
+            activity_payload["consumables_granted_count"] = consumables_granted_count
+            activity_payload["inventory_refresh_required"] = True
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",

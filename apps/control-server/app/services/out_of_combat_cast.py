@@ -279,7 +279,18 @@ def has_castable_effects(spell) -> bool:
     return any(v.get("effects") for v in variants)
 
 
-_SKIP_EFFECT_TYPES = {"grant_temp_hp"}
+_SKIP_EFFECT_TYPES = {"grant_temp_hp", "create_consumable"}
+
+
+def collect_create_consumable_effects(
+    spell,
+    variant_key: str | None,
+) -> list[dict]:
+    """Return only create_consumable effect dicts from the spell's effective effects list."""
+    return [
+        e for e in _resolve_effects(spell, variant_key)
+        if isinstance(e, dict) and e.get("type") == "create_consumable"
+    ]
 
 
 def _resolve_kind_and_value(effect_type: str, params: dict) -> tuple[str | None, int | None]:
