@@ -72,7 +72,7 @@ class CombatCastSpellRequest(BaseModel):
     variant_key: str | None = None
     target_variant_assignments: list[TargetVariantAssignment] | None = None
     spell_mode: (
-        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"]
         | None
     ) = None
     slot_level: Optional[int] = None
@@ -108,7 +108,7 @@ class CombatResolveSpellContextRequest(BaseModel):
     variant_key: str | None = None
     target_variant_assignments: list[TargetVariantAssignment] | None = None
     spell_mode: (
-        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility"]
+        Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"]
         | None
     ) = None
     slot_level: Optional[int] = None
@@ -141,7 +141,7 @@ class CombatResolvedSpellContext(BaseModel):
     area_size_meters: float | None = None
     range_meters: float | None = None
     resolution_type: Literal[
-        "spell_attack", "saving_throw", "direct_damage", "heal", "utility"
+        "spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"
     ]
     requires_attack_roll: bool = False
     requires_saving_throw: bool = False
