@@ -137,8 +137,8 @@ class CombatSpellDiceMathMixin:
         ):
             return base_expression
 
-        base_count, base_sides, base_mod = _parse_dice(base_expression or "")
-        extra_count, extra_sides, extra_mod = _parse_dice(extra_expression)
+        _, base_count, base_sides, base_mod = _parse_dice(base_expression or "")
+        _, extra_count, extra_sides, extra_mod = _parse_dice(extra_expression)
         if extra_count <= 0 and extra_mod == 0:
             return base_expression
 
@@ -332,7 +332,7 @@ class CombatSpellDiceMathMixin:
                     selected_dice = dice.strip()
 
         if scaling_effect_type == "effect_instances" and selected_instances is not None and instance_dice:
-            count, sides, mod = _parse_dice(instance_dice)
+            _, count, sides, mod = _parse_dice(instance_dice)
             total_count = count * selected_instances
             total_mod = mod * selected_instances
             return {

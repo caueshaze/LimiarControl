@@ -259,7 +259,7 @@ class SpellContextResolveMixin:
         if isinstance(effect_dice, str):
             effect_dice = effect_dice.strip() or None
         if effect_dice:
-            count, sides, _ = _parse_dice(effect_dice)
+            _, count, sides, _ = _parse_dice(effect_dice)
             if count <= 0 or sides <= 0:
                 raise CombatServiceError("Spell effect dice must use a valid dice expression.", 400)
         elif spell_mode != "utility" and requires_effect_payload and effect_bonus <= 0:
@@ -335,8 +335,8 @@ class SpellContextResolveMixin:
             if base_effect_instance_count is None and base_effect_instance_dice and effect_dice:
                 # Fallback: derive base count from aggregate/instance dice ratio.
                 # TODO: prefer explicit baseEffectInstances in seed over this derivation.
-                inst_c, inst_s, inst_mod = _parse_dice(base_effect_instance_dice)
-                base_c, base_s, base_mod = _parse_dice(effect_dice)
+                _, inst_c, inst_s, inst_mod = _parse_dice(base_effect_instance_dice)
+                _, base_c, base_s, base_mod = _parse_dice(effect_dice)
                 if (
                     inst_c > 0 and inst_s == base_s and base_c > 0
                     and base_c % inst_c == 0
