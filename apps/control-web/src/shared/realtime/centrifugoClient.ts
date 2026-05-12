@@ -57,6 +57,9 @@ let currentConnectionState: ConnectionState = "offline";
 let nextListenerId = 1;
 let connectionRequested = false;
 let reconnectStartedAt: number | null = null;
+let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+const DISCONNECT_GRACE_MS = 500;
 
 const logRealtime = (
   level: "debug" | "info" | "warn" | "error",
@@ -89,6 +92,30 @@ const notifyConnectionState = (state: ConnectionState) => {
     connectionRequested = false;
   }
   connectionStateListeners.forEach((listener) => listener(state));
+};
+
+const clearPendingDisconnect = () => {
+  if (disconnectTimer === null) {
+    return;
+  }
+  clearTimeout(disconnectTimer);
+  disconnectTimer = null;
+};
+
+const scheduleDisconnectIfIdle = () => {
+  clearPendingDisconnect();
+  disconnectTimer = setTimeout(() => {
+    disconnectTimer = null;
+    if (channelEntries.size > 0) {
+      return;
+    }
+    connectionRequested = false;
+    const realtimeClient = getClient();
+    if (currentConnectionState !== "offline") {
+      realtimeClient.disconnect();
+    }
+    notifyConnectionState("offline");
+  }, DISCONNECT_GRACE_MS);
 };
 
 const getDisplayName = (info: ClientInfo) => {
@@ -205,6 +232,7 @@ export const getClient = () => {
 };
 
 const ensureClientConnected = () => {
+  clearPendingDisconnect();
   const realtimeClient = getClient();
   if (currentConnectionState === "offline" && !connectionRequested) {
     connectionRequested = true;
@@ -310,9 +338,7 @@ const releaseChannelListener = (channel: string, listenerId: number) => {
   channelEntries.delete(channel);
 
   if (channelEntries.size === 0) {
-    connectionRequested = false;
-    getClient().disconnect();
-    notifyConnectionState("offline");
+    scheduleDisconnectIfIdle();
   }
 };
 
@@ -389,6 +415,7 @@ export const getHistory = async (channel: string, limit = 20) => {
 };
 
 export const disconnectRealtime = () => {
+  clearPendingDisconnect();
   if (!client) {
     notifyConnectionState("offline");
     return;
