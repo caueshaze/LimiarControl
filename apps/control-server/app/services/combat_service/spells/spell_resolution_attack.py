@@ -58,6 +58,8 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
         )
         result.roll_result.is_gm_roll = is_gm
         result.roll_result.roll_source = req.roll_source
+        if result.adv_ctx.consumed_effect_ids_on_roll:
+            cls._consume_effect_ids(target_p, result.adv_ctx.consumed_effect_ids_on_roll)
         result.roll_total = result.roll_result.total
         result.is_critical = result.roll_result.selected_roll == 20
         result.is_hit = bool(result.roll_result.success)

@@ -2530,6 +2530,71 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "guiding_bolt",
+      "nameEn": "Guiding Bolt",
+      "namePt": "Raio Guiador",
+      "descriptionEn": "A flash of light streaks toward a creature of your choice within range. Make a ranged spell attack against the target. On a hit, the target takes 4d6 radiant damage, and the next attack roll made against this target before the end of your next turn has advantage.",
+      "descriptionPt": "Um clarão de luz dispara em direção a uma criatura à sua escolha dentro do alcance. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d6 de dano radiante, e a próxima jogada de ataque feita contra ele antes do fim do seu próximo turno tem vantagem.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Cleric"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "1 round",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "4d6",
+      "damageType": "Radiant",
+      "effects": [
+        {
+          "type": "attack_advantage_against_target",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_end",
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "advantage",
+            "roll_types": [
+              "attack"
+            ],
+            "applies_to_attackers": "any",
+            "consume_on_apply": true
+          },
+          "stacking": "replace"
+        }
+      ],
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d6",
+        "levelStep": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "spiritual_weapon",
       "nameEn": "Spiritual Weapon",
       "namePt": "Arma Espiritual",

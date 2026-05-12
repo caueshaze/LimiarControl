@@ -431,6 +431,8 @@ class CombatSpellDeclarativeEffectsMixin:
         metadata["effect_target_participant_id"] = resolved_target.get("id")
         metadata["effect_target_ref_id"] = resolved_target.get("ref_id")
         metadata["effect_target_display_name"] = resolved_target.get("display_name")
+        if effect.type == "attack_advantage_against_target":
+            metadata["marked_target_participant_id"] = resolved_target.get("id")
 
         params = effect.params.model_dump(mode="json", exclude_none=True)
         if effect.type in {"advantage_on_checks", "disadvantage_on_checks"}:

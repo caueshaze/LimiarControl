@@ -87,6 +87,8 @@ class WeaponAttackRollMixin:
         has_dis = req.has_disadvantage or cls._has_effect_kind(attacker, "disadvantage_on_attacks") or cls._has_effect_kind(target, "dodging") or bool(adv_ctx.disadvantage_sources) or bool(targeting_result.spatial_metadata.is_in_long_range) or not vis_ctx.is_directly_visible
         if not req.has_advantage and cls._has_effect_kind(attacker, "advantage_on_attacks"):
             cls._consume_first_effect(attacker, "advantage_on_attacks")
+        if adv_ctx.consumed_effect_ids_on_roll:
+            cls._consume_effect_ids(target, adv_ctx.consumed_effect_ids_on_roll)
         adv_mode = "advantage" if (has_adv and not has_dis) else ("disadvantage" if (has_dis and not has_adv) else "normal")
         roll_result = weapon_attacks_module.resolve_attack_base(
             RollActorStats(display_name=attacker["display_name"], abilities={}, actor_kind="player", actor_ref_id=attacker["ref_id"]),

@@ -43,6 +43,28 @@ class CombatEffectsCoreMixin:
         return None
 
     @classmethod
+    def _consume_effect_ids(cls, participant: dict, effect_ids: list[str]) -> list[dict]:
+        if not effect_ids:
+            return []
+        wanted = {eid for eid in effect_ids if isinstance(eid, str) and eid}
+        if not wanted:
+            return []
+        effects = cls._get_participant_effects(participant)
+        if not effects:
+            return []
+        removed: list[dict] = []
+        kept: list[dict] = []
+        for effect in effects:
+            effect_id = effect.get("id")
+            if isinstance(effect_id, str) and effect_id in wanted:
+                removed.append(effect)
+            else:
+                kept.append(effect)
+        if removed:
+            cls._set_participant_effects(participant, kept)
+        return removed
+
+    @classmethod
     def _get_turn_resources(cls, participant: dict) -> dict:
         resources = participant.get("turn_resources")
         return resources if isinstance(resources, dict) else dict(cls._DEFAULT_TURN_RESOURCES)
