@@ -58,7 +58,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         target_participant: dict,
     ) -> None:
         spell_key = cls._normalize_lookup(spell_canonical_key).replace(" ", "_")
-        if spell_key != "hold_person":
+        if spell_key not in {"hold_person", "charm_person"}:
             return
         creature_type = cls.resolve_effective_creature_type(
             db,
@@ -66,7 +66,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             target_participant,
         )
         if creature_type is not None and creature_type != "humanoid":
-            raise CombatServiceError("Hold Person can only target humanoids.", 400)
+            spell_name = "Hold Person" if spell_key == "hold_person" else "Charm Person"
+            raise CombatServiceError(f"{spell_name} can only target humanoids.", 400)
 
     @classmethod
     def _upsert_shield_temp_ac_effect(cls, participant: dict, *, source_participant_id: str | None) -> None:
