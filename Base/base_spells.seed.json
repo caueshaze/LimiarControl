@@ -305,6 +305,36 @@
       "saveSuccessOutcome": "none",
       "damageDice": "1d8",
       "damageType": "Radiant",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
+            }
+          }
+        ]
+      },
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
