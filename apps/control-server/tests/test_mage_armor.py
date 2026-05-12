@@ -17,6 +17,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import json
+import os
+
 from pydantic import ValidationError
 
 from app.schemas.base_spell_effects import (
@@ -368,6 +371,19 @@ class TestOOCMageArmorEffectShape(unittest.TestCase):
         self.assertEqual(declarative["termination_conditions"], [{"type": "target_dons_armor"}])
 
 
+class TestMageArmorWillingTargetContract(unittest.TestCase):
+    def test_seed_description_explicitly_marks_willing_target(self):
+        # Current domain does not model explicit target consent flags.
+        # Guardrail: keep willing-target semantics explicit in spell catalog text.
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")
+        with open(os.path.abspath(path), encoding="utf-8") as f:
+            data = json.load(f)
+        spells = {s["canonicalKey"]: s for s in data.get("spells", [])}
+        mage_armor = spells["mage_armor"]
+        self.assertIn("willing creature", (mage_armor.get("descriptionEn") or "").lower())
+        self.assertIn("criatura disposta", (mage_armor.get("descriptionPt") or "").lower())
+
+
 # ---------------------------------------------------------------------------
 # AC calculation: requires_unarmored applicability (no removal)
 # ---------------------------------------------------------------------------
@@ -412,6 +428,17 @@ class TestACApplicabilityVsTermination(unittest.TestCase):
         state = _player_state(dexterity=14, active_spell_effects=effects)
         ac = calculate_player_armor_class_from_state(state)
         # 13 + 2 (DEX) + 2 (temp bonus) = 17
+        self.assertEqual(ac, 17)
+
+    def test_shield_bonus_applies_on_top_of_mage_armor_formula(self):
+        state = _player_state(
+            dexterity=14,
+            equipped_armor=None,
+            active_spell_effects=[_make_active_spell_effect()],
+        )
+        state["equippedShield"] = {"bonus": 2}
+        ac = calculate_player_armor_class_from_state(state)
+        # 13 + DEX(2) + shield(2) = 17
         self.assertEqual(ac, 17)
 
 
@@ -505,6 +532,8 @@ class TestFinalizeArmorDonTermination(unittest.TestCase):
         )
         result = finalize_session_state_data(state)
         self.assertNotIn("active_spell_effects", result)
+        self.assertNotIn("concentration_group", result)
+        self.assertNotIn("active_effect_groups", result)
 
     def test_finalize_keeps_effects_when_unarmored(self):
         effect = _make_active_spell_effect()
