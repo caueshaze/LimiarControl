@@ -9,9 +9,9 @@ const BRAND_MARK_SOURCES = [
 ] as const;
 
 const sizeClasses = {
-  sm: "h-9 w-9 rounded-xl",
-  md: "h-11 w-11 rounded-2xl",
-  lg: "h-14 w-14 rounded-[20px]",
+  sm: "h-14 w-14",
+  md: "h-18 w-18",
+  lg: "h-22 w-22",
 } as const;
 
 type BrandMarkProps = {
@@ -35,14 +35,14 @@ export const BrandMark = ({
 
   return (
     <span
-      className={`relative inline-flex items-center justify-center border border-limiar-300/20 bg-limiar-400/10 shadow-[0_0_24px_rgba(167,139,250,0.18)] ${sizeClasses[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center ${sizeClasses[size]} ${className}`}
     >
       {showImage ? (
         <img
           src={src}
           alt={resolvedAlt}
           onError={() => setSourceIndex((current) => current + 1)}
-          className={`h-full w-full object-contain p-1.5 ${imageClassName}`}
+          className={`h-full w-full object-contain ${imageClassName}`}
         />
       ) : (
         <span className="font-display text-lg font-bold text-limiar-100">LC</span>

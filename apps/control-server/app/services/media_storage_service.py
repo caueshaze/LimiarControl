@@ -24,6 +24,8 @@ from app.services.media_types import (
     build_campaign_map_asset_ref,
     build_entity_asset_ref,
     build_entity_temp_asset_ref,
+    build_user_avatar_asset_ref,
+    build_user_token_asset_ref,
     ensure_bucket_exists,
     is_managed_url,
     parse_managed_url,
@@ -90,6 +92,38 @@ def upload_entity_image(file_bytes: bytes, content_type: str, campaign_id: str) 
     fitted.save(buffer, format="WEBP", quality=90)
     object_ref = build_entity_temp_asset_ref(campaign_id)
     return _put_object(object_ref, buffer.getvalue(), "image/webp")
+
+
+def _upload_square_user_image(
+    file_bytes: bytes,
+    content_type: str,
+    object_ref: ManagedAssetRef,
+    size: int = 256,
+) -> str:
+    image, _actual_content_type = _load_and_validate_image(file_bytes, content_type)
+    normalized = ImageOps.exif_transpose(image)
+    if normalized.mode not in {"RGB", "RGBA"}:
+        normalized = normalized.convert("RGBA")
+    fitted = ImageOps.fit(normalized, (size, size), method=Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    fitted.save(buffer, format="WEBP", quality=90)
+    return _put_object(object_ref, buffer.getvalue(), "image/webp")
+
+
+def upload_user_avatar(file_bytes: bytes, content_type: str, user_id: str) -> str:
+    return _upload_square_user_image(
+        file_bytes,
+        content_type,
+        build_user_avatar_asset_ref(user_id),
+    )
+
+
+def upload_user_token(file_bytes: bytes, content_type: str, user_id: str) -> str:
+    return _upload_square_user_image(
+        file_bytes,
+        content_type,
+        build_user_token_asset_ref(user_id),
+    )
 
 
 def stat_object(object_ref: ManagedAssetRef):

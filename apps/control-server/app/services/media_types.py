@@ -30,6 +30,7 @@ _IMAGE_FORMAT_CONTENT_TYPES = {
 _ASSET_ID_PATTERN = r"(?P<asset_id>[a-f0-9]{32})"
 _CAMPAIGN_ID_PATTERN = r"(?P<campaign_id>[^/]+)"
 _ENTITY_ID_PATTERN = r"(?P<entity_id>[^/]+)"
+_USER_ID_PATTERN = r"(?P<user_id>[^/]+)"
 _MAP_URL_RE = re.compile(
     rf"^{re.escape(MANAGED_ASSET_BASE_PATH)}/campaigns/{_CAMPAIGN_ID_PATTERN}/maps/{_ASSET_ID_PATTERN}$"
 )
@@ -39,14 +40,21 @@ _ENTITY_TEMP_URL_RE = re.compile(
 _ENTITY_FINAL_URL_RE = re.compile(
     rf"^{re.escape(MANAGED_ASSET_BASE_PATH)}/campaigns/{_CAMPAIGN_ID_PATTERN}/entities/{_ENTITY_ID_PATTERN}/{_ASSET_ID_PATTERN}$"
 )
+_USER_AVATAR_URL_RE = re.compile(
+    rf"^{re.escape(MANAGED_ASSET_BASE_PATH)}/users/{_USER_ID_PATTERN}/avatar/{_ASSET_ID_PATTERN}$"
+)
+_USER_TOKEN_URL_RE = re.compile(
+    rf"^{re.escape(MANAGED_ASSET_BASE_PATH)}/users/{_USER_ID_PATTERN}/token/{_ASSET_ID_PATTERN}$"
+)
 
 
 @dataclass(frozen=True)
 class ManagedAssetRef:
-    kind: Literal["campaign_map", "entity_temp", "entity_final"]
-    campaign_id: str
-    asset_id: str
+    kind: Literal["campaign_map", "entity_temp", "entity_final", "user_avatar", "user_token"]
+    campaign_id: str | None = None
+    asset_id: str = ""
     entity_id: str | None = None
+    user_id: str | None = None
 
     @property
     def object_key(self) -> str:
@@ -54,6 +62,14 @@ class ManagedAssetRef:
             return f"campaigns/{self.campaign_id}/maps/{self.asset_id}"
         if self.kind == "entity_temp":
             return f"campaigns/{self.campaign_id}/entities/tmp/{self.asset_id}"
+        if self.kind == "user_avatar":
+            if not self.user_id:
+                raise ValueError("User asset is missing a user id")
+            return f"users/{self.user_id}/avatar/{self.asset_id}"
+        if self.kind == "user_token":
+            if not self.user_id:
+                raise ValueError("User asset is missing a user id")
+            return f"users/{self.user_id}/token/{self.asset_id}"
         if not self.entity_id:
             raise ValueError("Entity asset is missing an entity id")
         return f"campaigns/{self.campaign_id}/entities/{self.entity_id}/{self.asset_id}"
@@ -68,6 +84,14 @@ class ManagedAssetRef:
             return (
                 f"{MANAGED_ASSET_BASE_PATH}/campaigns/{self.campaign_id}/entities/tmp/{self.asset_id}"
             )
+        if self.kind == "user_avatar":
+            if not self.user_id:
+                raise ValueError("User asset is missing a user id")
+            return f"{MANAGED_ASSET_BASE_PATH}/users/{self.user_id}/avatar/{self.asset_id}"
+        if self.kind == "user_token":
+            if not self.user_id:
+                raise ValueError("User asset is missing a user id")
+            return f"{MANAGED_ASSET_BASE_PATH}/users/{self.user_id}/token/{self.asset_id}"
         if not self.entity_id:
             raise ValueError("Entity asset is missing an entity id")
         return (
@@ -153,6 +177,28 @@ def build_entity_asset_ref(
     )
 
 
+def build_user_avatar_asset_ref(
+    user_id: str,
+    asset_id: str | None = None,
+) -> ManagedAssetRef:
+    return ManagedAssetRef(
+        kind="user_avatar",
+        user_id=user_id,
+        asset_id=asset_id or uuid4().hex,
+    )
+
+
+def build_user_token_asset_ref(
+    user_id: str,
+    asset_id: str | None = None,
+) -> ManagedAssetRef:
+    return ManagedAssetRef(
+        kind="user_token",
+        user_id=user_id,
+        asset_id=asset_id or uuid4().hex,
+    )
+
+
 def parse_managed_url(url: str) -> ManagedAssetRef:
     if not isinstance(url, str):
         raise ValueError("Managed asset URL must be a string")
@@ -181,6 +227,22 @@ def parse_managed_url(url: str) -> ManagedAssetRef:
             kind="entity_final",
             campaign_id=match.group("campaign_id"),
             entity_id=match.group("entity_id"),
+            asset_id=match.group("asset_id"),
+        )
+
+    match = _USER_AVATAR_URL_RE.fullmatch(url)
+    if match:
+        return ManagedAssetRef(
+            kind="user_avatar",
+            user_id=match.group("user_id"),
+            asset_id=match.group("asset_id"),
+        )
+
+    match = _USER_TOKEN_URL_RE.fullmatch(url)
+    if match:
+        return ManagedAssetRef(
+            kind="user_token",
+            user_id=match.group("user_id"),
             asset_id=match.group("asset_id"),
         )
 

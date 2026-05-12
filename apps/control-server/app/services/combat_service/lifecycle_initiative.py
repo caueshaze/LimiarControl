@@ -168,6 +168,14 @@ class CombatLifecycleInitiativeMixin:
                 "status": "active" if p.kind == "player" else ("active" if not getattr(p, "is_defeated", False) else "defeated"),
             }
             if p.kind == "player":
+                # Inject the user's chosen token visuals (set during onboarding).
+                from app.models.user import User as _User
+                _player_user = db.exec(select(_User).where(_User.id == p.ref_id)).first()
+                if _player_user is not None:
+                    if entry.get("token_color") is None and _player_user.token_color:
+                        entry["token_color"] = _player_user.token_color
+                    if entry.get("token_image_url") is None and _player_user.token_image_url:
+                        entry["token_image_url"] = _player_user.token_image_url
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(db, session_id, p.ref_id)
                 from .persistent_effects import restore_persisted_effects
                 restore_persisted_effects(db, session_id, entry)

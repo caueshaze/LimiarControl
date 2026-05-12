@@ -2,12 +2,16 @@ import { getToken } from "../auth/tokenStore";
 import { buildApiUrl, getApiBaseUrl } from "./apiBaseUrl";
 
 export type UploadImageResult = { url: string };
-export type UploadImageKind = "campaign_map" | "campaign_entity";
+export type UploadImageKind =
+  | "campaign_map"
+  | "campaign_entity"
+  | "user_avatar"
+  | "user_token";
 
 type UploadImageParams = {
   file: File;
   kind: UploadImageKind;
-  campaignId: string;
+  campaignId?: string | null;
   entityId?: string | null;
 };
 
@@ -32,7 +36,9 @@ export const uploadRepo = {
     const body = new FormData();
     body.append("file", file);
     body.append("kind", kind);
-    body.append("campaignId", campaignId);
+    if (campaignId) {
+      body.append("campaignId", campaignId);
+    }
     if (entityId) {
       body.append("entityId", entityId);
     }

@@ -11,6 +11,10 @@ type AuthUser = {
   displayName?: string | null;
   role: RoleMode;
   isSystemAdmin: boolean;
+  avatarUrl?: string | null;
+  tokenColor?: string | null;
+  tokenImageUrl?: string | null;
+  onboardedAt?: string | null;
 };
 
 type AuthContextValue = {
@@ -25,6 +29,7 @@ type AuthContextValue = {
   ) => Promise<AuthUser | null>;
   login: (username: string, pin: string) => Promise<AuthUser | null>;
   logout: () => void;
+  refreshUser: () => Promise<AuthUser | null>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,9 +121,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const profile = await authRepo.me();
+      setUser(profile);
+      return profile;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ user, token, loading, login, register, logout }),
-    [user, token, loading, login, register, logout]
+    () => ({ user, token, loading, login, register, logout, refreshUser }),
+    [user, token, loading, login, register, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

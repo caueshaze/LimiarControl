@@ -4,6 +4,7 @@ import { routes } from "../../app/routes/routes";
 import { useLocale } from "../hooks/useLocale";
 import type { RoleMode } from "../types/role";
 import { BrandMark } from "./BrandMark";
+import { ManagedImage } from "./ManagedImage";
 
 type AppLayoutProps = {
   title: string;
@@ -12,6 +13,7 @@ type AppLayoutProps = {
     username: string;
     role: RoleMode;
     isSystemAdmin: boolean;
+    avatarUrl?: string | null;
   } | null;
   onLogout?: () => void;
 };
@@ -66,8 +68,12 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                     : "border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/8"
                 }`}
               >
-                <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-limiar-500/18 text-xs font-bold text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                  {initials}
+                <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-limiar-500/18 text-xs font-bold text-limiar-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  {user.avatarUrl ? (
+                    <ManagedImage src={user.avatarUrl} alt={user.username} className="h-full w-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                   <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-void-950 bg-emerald-400" />
                 </div>
                 <div className="hidden min-w-0 text-left sm:block">

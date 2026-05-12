@@ -90,6 +90,8 @@ export const tokenSyncEntrySchema = z.object({
   base_size: creatureSizeSchema.optional(),
   effective_size: creatureSizeSchema.optional(),
   effective_footprint: footprintSchema.optional(),
+  color: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const syncTokensRequestSchema = z.object({

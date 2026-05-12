@@ -22,6 +22,8 @@ class CombatParticipant(BaseModel):
     team: Literal["players", "enemies", "allies", "neutral"] = "neutral"
     visible: bool = True
     actor_user_id: Optional[str] = None
+    token_color: Optional[str] = None
+    token_image_url: Optional[str] = None
     active_effects: list[dict] = Field(default_factory=list)
     turn_resources: dict = Field(
         default_factory=lambda: {

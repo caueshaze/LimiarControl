@@ -298,6 +298,8 @@ export class InMemoryEncounterRepository {
       base_size?: Token["base_size"];
       effective_size?: Token["effective_size"];
       effective_footprint?: Token["effective_footprint"];
+      color?: string;
+      imageUrl?: string;
     }>
   ): EncounterState {
     const encounter = this.requireEncounter(sessionId);
@@ -355,6 +357,8 @@ export class InMemoryEncounterRepository {
         base_size: entry.base_size,
         effective_size: entry.effective_size,
         effective_footprint: entry.effective_footprint,
+        color: entry.color,
+        imageUrl: entry.imageUrl,
       };
       encounter.tokens.push(newToken);
     });

@@ -221,6 +221,10 @@ class LimiarMapCombatProjectionService:
             if e.effective_footprint is not None:
                 payload["effective_footprint"] = e.effective_footprint
             payload["conditions"] = list(e.conditions)
+            if getattr(e, "color", None) is not None:
+                payload["color"] = e.color
+            if getattr(e, "image_url", None) is not None:
+                payload["imageUrl"] = e.image_url
             return payload
 
         tokens_payload = (

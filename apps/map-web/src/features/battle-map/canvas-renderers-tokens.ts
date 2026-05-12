@@ -54,12 +54,15 @@ export function drawTokenLayer(
     const isActive =
       token.combatantId != null && token.combatantId === activeCombatantId;
 
-    const bg =
+    const defaultBg =
       token.controllerType === "player"
         ? C.tokenPlayer
         : token.controllerType === "gm"
           ? C.tokenGm
           : C.tokenNeutral;
+    const bg = token.color
+      ? parseInt(token.color.replace("#", "").slice(0, 6), 16)
+      : defaultBg;
     const borderColor = isActive
       ? C.tokenBorderActive
       : isSelected

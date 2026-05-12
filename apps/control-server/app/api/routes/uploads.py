@@ -9,12 +9,15 @@ from app.services.media_storage_service import (
     MAX_FILE_SIZE_BYTES,
     upload_entity_image,
     upload_map_image,
+    upload_user_avatar,
+    upload_user_token,
 )
 
 router = APIRouter()
 
 CHUNK_SIZE = 64 * 1024  # 64 KB
-UPLOAD_KINDS = {"campaign_map", "campaign_entity"}
+UPLOAD_KINDS = {"campaign_map", "campaign_entity", "user_avatar", "user_token"}
+USER_UPLOAD_KINDS = {"user_avatar", "user_token"}
 
 
 async def _read_limited(file: UploadFile, max_bytes: int) -> bytes:
@@ -39,36 +42,54 @@ async def _read_limited(file: UploadFile, max_bytes: int) -> bytes:
 async def upload_image(
     file: UploadFile = File(...),
     kind: str = Form(...),
-    campaignId: str = Form(...),
+    campaignId: str | None = Form(default=None),
     entityId: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> dict:
     if kind not in UPLOAD_KINDS:
         raise HTTPException(status_code=400, detail="Invalid upload kind.")
-    require_gm(campaignId, current_user, session)
-    if kind != "campaign_entity" and entityId is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="entityId is only allowed for campaign_entity uploads.",
-        )
-    if entityId is not None:
-        entry = session.exec(
-            select(CampaignEntity).where(
-                CampaignEntity.id == entityId,
-                CampaignEntity.campaign_id == campaignId,
+
+    is_user_upload = kind in USER_UPLOAD_KINDS
+
+    if is_user_upload:
+        if entityId is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="entityId is not allowed for user uploads.",
             )
-        ).first()
-        if not entry:
-            raise HTTPException(status_code=404, detail="Entity not found")
+    else:
+        if not campaignId:
+            raise HTTPException(status_code=400, detail="campaignId is required.")
+        require_gm(campaignId, current_user, session)
+        if kind != "campaign_entity" and entityId is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="entityId is only allowed for campaign_entity uploads.",
+            )
+        if entityId is not None:
+            entry = session.exec(
+                select(CampaignEntity).where(
+                    CampaignEntity.id == entityId,
+                    CampaignEntity.campaign_id == campaignId,
+                )
+            ).first()
+            if not entry:
+                raise HTTPException(status_code=404, detail="Entity not found")
 
     contents = await _read_limited(file, MAX_FILE_SIZE_BYTES)
 
     try:
         if kind == "campaign_map":
             url = upload_map_image(contents, file.content_type or "", campaignId)
-        else:
+        elif kind == "campaign_entity":
             url = upload_entity_image(contents, file.content_type or "", campaignId)
+        elif kind == "user_avatar":
+            url = upload_user_avatar(contents, file.content_type or "", current_user.id)
+        elif kind == "user_token":
+            url = upload_user_token(contents, file.content_type or "", current_user.id)
+        else:  # unreachable due to validation above
+            raise HTTPException(status_code=400, detail="Invalid upload kind.")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:

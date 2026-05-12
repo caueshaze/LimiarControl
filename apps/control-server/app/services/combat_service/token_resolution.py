@@ -36,6 +36,8 @@ class ResolvedTokenSyncEntry:
     effective_size: str | None = None
     effective_footprint: dict[str, int] | None = None
     conditions: tuple[str, ...] = ()
+    color: str | None = None
+    image_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,8 @@ class ResolvedTokenSpawnEntry:
     effective_size: str | None = None
     effective_footprint: dict[str, int] | None = None
     conditions: tuple[str, ...] = ()
+    color: str | None = None
+    image_url: str | None = None
 
 
 _SIZE_ORDER = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
@@ -350,6 +354,13 @@ def resolve_sync_entry(
     )
     conditions = _extract_participant_conditions(participant)
 
+    raw_color = participant.get("token_color")
+    color = raw_color if isinstance(raw_color, str) and raw_color.strip() else None
+    raw_image_url = participant.get("token_image_url")
+    image_url = (
+        raw_image_url if isinstance(raw_image_url, str) and raw_image_url.strip() else None
+    )
+
     if token_id is not None:
         return ResolvedTokenSyncEntry(
             token_id=token_id,
@@ -363,6 +374,8 @@ def resolve_sync_entry(
             effective_size=size_payload["effective_size"],
             effective_footprint=size_payload["effective_footprint"],
             conditions=tuple(conditions),
+            color=color,
+            image_url=image_url,
         ), None
 
     return None, ResolvedTokenSpawnEntry(
@@ -377,6 +390,8 @@ def resolve_sync_entry(
         effective_size=size_payload["effective_size"],
         effective_footprint=size_payload["effective_footprint"],
         conditions=tuple(conditions),
+        color=color,
+        image_url=image_url,
     )
 
 

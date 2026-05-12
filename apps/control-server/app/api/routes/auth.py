@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,7 +11,13 @@ from app.core.auth import build_access_token, hash_pin, verify_pin
 from app.db.session import get_session
 from app.models.campaign import RoleMode
 from app.models.user import User
-from app.schemas.auth import AuthResponse, LoginRequest, MeResponse, RegisterRequest
+from app.schemas.auth import (
+    AuthResponse,
+    LoginRequest,
+    MeResponse,
+    RegisterRequest,
+    UpdateProfileRequest,
+)
 
 router = APIRouter()
 
@@ -77,12 +84,52 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
     return AuthResponse(token=token)
 
 
-@router.get("/auth/me", response_model=MeResponse)
-def me(user: User = Depends(get_current_user)):
+def _me_response(user: User) -> MeResponse:
     return MeResponse(
         userId=user.id,
         username=user.username,
         displayName=user.display_name,
         role=user.role,
         isSystemAdmin=user.is_system_admin,
+        avatarUrl=user.avatar_url,
+        tokenColor=user.token_color,
+        tokenImageUrl=user.token_image_url,
+        onboardedAt=user.onboarded_at,
     )
+
+
+@router.get("/auth/me", response_model=MeResponse)
+def me(user: User = Depends(get_current_user)):
+    return _me_response(user)
+
+
+@router.patch("/auth/me/profile", response_model=MeResponse)
+def update_profile(
+    payload: UpdateProfileRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    changed = False
+    if payload.displayName is not None:
+        trimmed = payload.displayName.strip()
+        user.display_name = trimmed or None
+        changed = True
+    if payload.avatarUrl is not None:
+        user.avatar_url = payload.avatarUrl or None
+        changed = True
+    if payload.tokenColor is not None:
+        user.token_color = payload.tokenColor or None
+        changed = True
+    if payload.tokenImageUrl is not None:
+        user.token_image_url = payload.tokenImageUrl or None
+        changed = True
+    if payload.markOnboarded and user.onboarded_at is None:
+        user.onboarded_at = datetime.now(timezone.utc)
+        changed = True
+
+    if changed:
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+    return _me_response(user)

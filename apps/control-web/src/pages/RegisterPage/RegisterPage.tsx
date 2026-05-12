@@ -16,7 +16,6 @@ import { Toast } from "../../shared/ui/Toast";
 type RegisterFormInputs = {
   username: string;
   pin: string;
-  displayName: string;
   role: "GM" | "PLAYER";
 };
 
@@ -26,11 +25,6 @@ const UserIcon = () => (
   </svg>
 );
 
-const SparkIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" />
-  </svg>
-);
 
 const LockIcon = () => (
   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
@@ -53,9 +47,8 @@ export const RegisterPage = () => {
   const copy =
     locale === "pt"
       ? {
-          subtitle: "Crie sua conta, escolha seu perfil e entre na campanha com tudo pronto para jogar.",
+          subtitle: "Crie sua conta, escolha seu papel e entre na campanha.",
           usernamePlaceholder: "Escolha seu usuario",
-          displayNamePlaceholder: "Como voce quer aparecer para o grupo?",
           pinPlaceholder: "Crie um PIN seguro",
           requiredField: "Campo obrigatorio",
           pinTooShort: "PIN deve ter pelo menos 4 caracteres",
@@ -63,9 +56,8 @@ export const RegisterPage = () => {
           resetHint: "Ferramenta de desenvolvimento para limpar dados locais rapidamente.",
         }
       : {
-          subtitle: "Create your account, choose your role, and enter the campaign ready to play.",
+          subtitle: "Create your account, choose your role, and enter the campaign.",
           usernamePlaceholder: "Choose your username",
-          displayNamePlaceholder: "How should the party see you?",
           pinPlaceholder: "Create a secure PIN",
           requiredField: "This field is required",
           pinTooShort: "PIN must be at least 4 characters",
@@ -89,11 +81,11 @@ export const RegisterPage = () => {
     const profile = await registerUser(
       data.username,
       data.pin,
-      data.displayName || undefined,
+      undefined,
       data.role
     );
     if (profile) {
-      navigate(routes.home);
+      navigate(routes.welcome);
       return;
     }
     setRegisterError(t("auth.registerError"));
@@ -123,14 +115,6 @@ export const RegisterPage = () => {
         error={errors.username ? copy.requiredField : null}
         autoComplete="username"
         {...register("username", { required: true })}
-      />
-
-      <AuthField
-        label={t("auth.displayName")}
-        placeholder={copy.displayNamePlaceholder}
-        icon={<SparkIcon />}
-        autoComplete="nickname"
-        {...register("displayName")}
       />
 
       <div className="space-y-2">

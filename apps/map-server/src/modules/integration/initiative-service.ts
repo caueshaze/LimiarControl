@@ -220,6 +220,8 @@ export class InitiativeService {
           base_size: e.base_size,
           effective_size: e.effective_size,
           effective_footprint: e.effective_footprint,
+          color: e.color,
+          imageUrl: e.imageUrl,
         })));
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("invalid_effective_footprint:")) {

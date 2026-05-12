@@ -258,7 +258,16 @@ export const tokenSchema = z.object({
    */
   base_size: creatureSizeSchema.optional(),
   effective_size: creatureSizeSchema.optional(),
-  effective_footprint: footprintSchema.optional()
+  effective_footprint: footprintSchema.optional(),
+  /**
+   * Optional per-token cosmetic overrides set by the controlling user
+   * (chosen during onboarding). When present they take precedence over
+   * the default color/treatment derived from controllerType.
+   * - color: hex string like "#RRGGBB" or "#RRGGBBAA"
+   * - imageUrl: managed asset URL (renderer support pending)
+   */
+  color: z.string().optional(),
+  imageUrl: z.string().optional()
 });
 
 export const combatStateSchema = z.object({

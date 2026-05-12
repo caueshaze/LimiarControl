@@ -5,6 +5,7 @@ export const routes = {
   workspaceHome: "/workspace",
   login: "/login",
   register: "/register",
+  welcome: "/welcome",
   join: "/join", // Legacy URL
 
   // GM Routes

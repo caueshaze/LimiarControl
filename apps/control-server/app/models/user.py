@@ -23,6 +23,12 @@ class User(SQLModel, table=True):
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
+    avatar_url: str | None = Field(default=None, sa_column=Column(String, nullable=True))
+    token_color: str | None = Field(default=None, sa_column=Column(String(9), nullable=True))
+    token_image_url: str | None = Field(default=None, sa_column=Column(String, nullable=True))
+    onboarded_at: datetime | None = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

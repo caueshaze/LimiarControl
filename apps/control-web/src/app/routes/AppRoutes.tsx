@@ -12,6 +12,7 @@ import { JoinPage } from "../../pages/JoinPage";
 import { LandingPage } from "../../pages/LandingPage";
 import { LoginPage } from "../../pages/LoginPage";
 import { RegisterPage } from "../../pages/RegisterPage";
+import { WelcomePage } from "../../pages/WelcomePage";
 
 const CampaignHomePage = lazy(async () => {
   const module = await import("../../pages/CampaignHomePage");
@@ -142,6 +143,14 @@ export const AppRoutes = () => {
       <Route path={routes.root} element={<LandingPage />} />
       <Route path={routes.login} element={<LoginPage />} />
       <Route path={routes.register} element={<RegisterPage />} />
+      <Route
+        path={routes.welcome}
+        element={
+          <RequireAuth>
+            <WelcomePage />
+          </RequireAuth>
+        }
+      />
       <Route element={<AppLayout title={APP_NAME} user={user ?? undefined} onLogout={logout} />}>
         <Route
           path={routes.home}
