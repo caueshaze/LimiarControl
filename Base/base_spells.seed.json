@@ -1588,7 +1588,7 @@
       ],
       "castingTime": "1 action",
       "castingTimeType": "action",
-      "rangeMeters": 0,
+      "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "Concentration, up to 1 minute",
       "componentsJson": [
@@ -1611,7 +1611,28 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "persistent"
+      "effectTiming": "persistent",
+      "effects": [
+        {
+          "type": "roll_dice_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "bonus",
+            "roll_types": [
+              "ability",
+              "skill"
+            ],
+            "dice": "1d4",
+            "consume_on_apply": true
+          },
+          "stacking": "replace"
+        }
+      ]
     },
     {
       "system": "DND5E",

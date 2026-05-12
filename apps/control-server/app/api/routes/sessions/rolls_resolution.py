@@ -177,8 +177,11 @@ def _attach_check_modifier_sources(
     result: RollResult,
     sources: list[dict],
 ) -> RollResult:
+    existing = list(result.check_modifier_sources or [])
     if sources:
-        result.check_modifier_sources = sources
+        existing.extend(sources)
+    if existing:
+        result.check_modifier_sources = existing
     return result
 
 
@@ -250,6 +253,14 @@ async def roll_ability(
     result = resolve_ability_check(
         stats, body.ability, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
+    )
+    CombatService._apply_roll_dice_modifiers_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        roll_result=result,
+        roll_type="ability",
     )
     modifier_sources = CombatService._explain_check_modifier_sources_for_actor(
         db,
@@ -336,6 +347,14 @@ async def roll_skill(
     result = resolve_skill_check(
         stats, body.skill, effective_advantage_mode, body.bonus_override, body.dc,
         body.roll_source, body.manual_roll, body.manual_rolls,
+    )
+    CombatService._apply_roll_dice_modifiers_for_actor(
+        db,
+        session_id,
+        actor_kind=body.actor_kind,
+        actor_ref_id=body.actor_ref_id,
+        roll_result=result,
+        roll_type="skill",
     )
     modifier_sources = CombatService._explain_check_modifier_sources_for_actor(
         db,

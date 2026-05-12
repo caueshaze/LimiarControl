@@ -5,7 +5,8 @@ from copy import deepcopy
 from typing import Literal
 from uuid import uuid4
 
-from app.models.combat import CombatPhase
+from sqlalchemy.orm.attributes import flag_modified
+from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.schemas.base_spell import SpellDeclarativeEffect
 from app.services.game_time import get_game_time_seconds
@@ -30,11 +31,12 @@ class CombatSpellDeclarativeEffectsMixin:
         *,
         participant: dict,
         roll_result,
-        roll_type: Literal["attack", "save"],
-    ) -> None:
+        roll_type: Literal["attack", "save", "ability", "skill"],
+        state: CombatState | None = None,
+    ) -> list[str]:
         sources = get_roll_bonus_dice_sources(participant, roll_type=roll_type)
         if not sources:
-            return
+            return []
         extra_total = sum(int(s.get("signed_total") or 0) for s in sources)
         roll_result.total = int(roll_result.total) + extra_total
         merged = list(roll_result.check_modifier_sources or [])
@@ -49,6 +51,55 @@ class CombatSpellDeclarativeEffectsMixin:
                 roll_result.success = roll_result.total >= roll_result.target_ac
         elif roll_type == "save" and roll_result.dc is not None:
             roll_result.success = roll_result.total >= roll_result.dc
+        elif roll_type in {"ability", "skill"} and roll_result.dc is not None:
+            roll_result.success = roll_result.total >= roll_result.dc
+
+        consumed_effect_ids: list[str] = []
+        for source in sources:
+            if source.get("consume_on_apply") is not True:
+                continue
+            effect_id = source.get("effect_id")
+            if isinstance(effect_id, str) and effect_id and effect_id not in consumed_effect_ids:
+                consumed_effect_ids.append(effect_id)
+        if not consumed_effect_ids:
+            return []
+
+        effects = cls._get_participant_effects(participant)
+        if effects:
+            kept = [e for e in effects if e.get("id") not in set(consumed_effect_ids)]
+            cls._set_participant_effects(participant, kept)
+            if state is not None:
+                flag_modified(state, "participants")
+        return consumed_effect_ids
+
+    @classmethod
+    def _apply_roll_dice_modifiers_for_actor(
+        cls,
+        db,
+        session_id: str,
+        *,
+        actor_kind: str,
+        actor_ref_id: str,
+        roll_result,
+        roll_type: Literal["attack", "save", "ability", "skill"],
+    ) -> list[str]:
+        state = cls.get_state(db, session_id)
+        if state is None or state.phase == CombatPhase.ended:
+            return []
+        participant = resolve_actor_participant(state, actor_ref_id)
+        if not isinstance(participant, dict) or participant.get("kind") != actor_kind:
+            return []
+        consumed_effect_ids = cls._apply_roll_bonus_dice_to_roll_result(
+            participant=participant,
+            roll_result=roll_result,
+            roll_type=roll_type,
+            state=state,
+        )
+        if consumed_effect_ids:
+            db.add(state)
+            db.commit()
+            db.refresh(state)
+        return consumed_effect_ids
 
     @classmethod
     def _build_temp_hp_observability_from_metadata(

@@ -517,21 +517,30 @@ def _normalize_roll_dice_modifier_declarative(declarative: dict) -> dict | None:
         mode = params.get("mode")
         roll_types = params.get("roll_types")
         dice = params.get("dice")
+        consume_on_apply = params.get("consume_on_apply") is True
     else:
         return None
+    if raw_type == "roll_bonus_dice":
+        consume_on_apply = False
     if mode not in {"bonus", "penalty"}:
         return None
     if not isinstance(roll_types, list) or not all(isinstance(rt, str) for rt in roll_types):
         return None
     if not isinstance(dice, str) or not dice.strip():
         return None
-    return {"type": "roll_dice_modifier", "mode": mode, "roll_types": roll_types, "dice": dice.strip()}
+    return {
+        "type": "roll_dice_modifier",
+        "mode": mode,
+        "roll_types": roll_types,
+        "dice": dice.strip(),
+        "consume_on_apply": consume_on_apply,
+    }
 
 
 def get_roll_bonus_dice_sources(
     participant: dict,
     *,
-    roll_type: Literal["attack", "save"],
+    roll_type: Literal["attack", "save", "ability", "skill"],
 ) -> list[dict]:
     sources: list[dict] = []
     seen_keys: set[str] = set()
@@ -550,6 +559,7 @@ def get_roll_bonus_dice_sources(
         roll_types = normalized.get("roll_types")
         dice = normalized.get("dice")
         mode = normalized.get("mode")
+        consume_on_apply = normalized.get("consume_on_apply") is True
         if not isinstance(roll_types, list) or roll_type not in roll_types:
             continue
         if not isinstance(dice, str) or not dice.strip():
@@ -572,6 +582,9 @@ def get_roll_bonus_dice_sources(
                 "rolls": rolls,
                 "signed_total": signed_total,
                 "display_label": f"{source_label}: {sign_label}{dice.strip()}",
+                "effect_id": effect.get("id") if isinstance(effect.get("id"), str) else None,
+                "concentration_group": metadata.get("concentration_group") if isinstance(metadata.get("concentration_group"), str) else None,
+                "consume_on_apply": consume_on_apply,
                 "applied": True,
                 "skip_reason": None,
             }
