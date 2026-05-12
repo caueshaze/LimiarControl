@@ -13,9 +13,16 @@ from app.services.goodberry_inventory import (
     build_goodberry_expiration,
     grant_catalog_item_to_player_inventory,
 )
+from app.services.item_condition_tags import (
+    normalize_item_condition_tags,
+    remove_item_condition_tag,
+)
 from app.services.game_time import get_game_time_seconds
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 from app.services.session_state_finalize import finalize_session_state_data
+from app.models.campaign_member import CampaignMember
+from app.models.inventory import InventoryItem
+from app.models.session import Session as CampaignSession
 
 from .exceptions import CombatServiceError
 from .spell_anchors import (
@@ -26,8 +33,36 @@ from .spell_anchors import (
     remove_spell_anchor,
     validate_spell_anchor_placement,
 )
+from sqlmodel import select
 
 logger = logging.getLogger(__name__)
+
+def _to_inventory_read_dict(entry: InventoryItem) -> dict:
+    try:
+        condition_tags = normalize_item_condition_tags(entry.condition_tags)
+    except ValueError:
+        condition_tags = []
+    condition_tag_labels = [
+        {"tag": tag, "label": "Quebrado" if tag == "broken" else tag}
+        for tag in condition_tags
+    ]
+    return {
+        "id": entry.id,
+        "campaignId": entry.campaign_id,
+        "partyId": entry.party_id,
+        "memberId": entry.member_id,
+        "itemId": entry.item_id,
+        "quantity": entry.quantity,
+        "chargesCurrent": entry.charges_current,
+        "isEquipped": entry.is_equipped,
+        "notes": entry.notes,
+        "conditionTags": condition_tags,
+        "conditionTagLabels": condition_tag_labels,
+        "sourceSpellCanonicalKey": entry.source_spell_canonical_key,
+        "expiresAt": entry.expires_at,
+        "createdAt": entry.created_at,
+        "updatedAt": entry.updated_at,
+    }
 
 
 @dataclass(frozen=True)
@@ -81,6 +116,12 @@ class CombatSpellAutomationMixin:
             default_mode="utility",
             requires_effect_payload=False,
             handler_name="_cast_prestidigitation_automation",
+        ),
+        "mending": SpellAutomationSpec(
+            canonical_key="mending",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_mending_automation",
         ),
     }
 
@@ -738,6 +779,89 @@ class CombatSpellAutomationMixin:
             extra={
                 "created_effect_id": effect_id,
                 "__player_state_ids_to_emit": {attacker["ref_id"]},
+            },
+        )
+
+    @classmethod
+    async def _cast_mending_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        inventory_item_id = None
+        raw_inventory_item_id = getattr(req, "inventory_item_id", None)
+        if isinstance(raw_inventory_item_id, str) and raw_inventory_item_id.strip():
+            inventory_item_id = raw_inventory_item_id.strip()
+        elif isinstance(spell_context.get("inventory_item_id"), str) and spell_context.get("inventory_item_id").strip():
+            inventory_item_id = spell_context.get("inventory_item_id").strip()
+        if not inventory_item_id:
+            raise CombatServiceError("Mending exige inventory_item_id.", 400)
+
+        session_entry = db.exec(select(CampaignSession).where(CampaignSession.id == session_id)).first()
+        if not session_entry:
+            raise CombatServiceError("Session not found.", 404)
+
+        item_entry = db.exec(select(InventoryItem).where(InventoryItem.id == inventory_item_id)).first()
+        if not item_entry:
+            raise CombatServiceError("Inventory item not found.", 404)
+
+        if item_entry.campaign_id != session_entry.campaign_id:
+            raise CombatServiceError("Inventory item not found.", 404)
+        if session_entry.party_id is not None and item_entry.party_id not in (None, session_entry.party_id):
+            raise CombatServiceError("Inventory item is not available in this session party.", 404)
+
+        if not is_gm:
+            member = db.exec(
+                select(CampaignMember).where(
+                    CampaignMember.campaign_id == session_entry.campaign_id,
+                    CampaignMember.user_id == actor_user_id,
+                )
+            ).first()
+            member_id = getattr(member, "id", None)
+            if not member_id or item_entry.member_id != member_id:
+                raise CombatServiceError("You do not have permission to modify this inventory item.", 403)
+
+        current_tags = normalize_item_condition_tags(item_entry.condition_tags)
+        next_tags, changed = remove_item_condition_tag(current_tags, "broken")
+        item_entry.condition_tags = normalize_item_condition_tags(next_tags)
+        db.add(item_entry)
+
+        removed_tags = ["broken"] if changed else []
+        spell_name = spell_context["spell_name"]
+        inventory_read = _to_inventory_read_dict(item_entry)
+        summary = (
+            f"{spell_name}: item reparado."
+            if changed
+            else f"{spell_name}: nada para reparar."
+        )
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_name} e removeu 'broken' do item {item_entry.id}."
+            if changed
+            else f"{attacker['display_name']} conjurou {spell_name}, mas o item {item_entry.id} não estava quebrado."
+        )
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=summary,
+            log_message=log_message,
+            extra={
+                "changed": changed,
+                "removed_tags": removed_tags,
+                "removedTags": removed_tags,
+                "inventory_item": inventory_read,
+                "inventoryItem": inventory_read,
+                "inventory_refresh_required": True,
             },
         )
 
