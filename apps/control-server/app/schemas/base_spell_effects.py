@@ -26,6 +26,7 @@ SpellDeclarativeEffectType = Literal[
     "create_consumable",
     "heal",
     "roll_bonus_dice",
+    "roll_dice_modifier",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -181,6 +182,13 @@ class RollBonusDiceParams(BaseModel):
     dice: str
 
 
+class RollDiceModifierParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["bonus", "penalty"]
+    roll_types: list[Literal["attack", "save", "ability", "skill"]]
+    dice: str
+
+
 class ArmorClassFormulaParams(BaseModel):
     base_value: int = Field(ge=0)
     ability: AbilityName
@@ -227,6 +235,7 @@ class SpellDeclarativeEffect(BaseModel):
         | CreateConsumableParams
         | HealParams
         | RollBonusDiceParams
+        | RollDiceModifierParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -268,4 +277,6 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("heal effects require HealParams")
         if self.type == "roll_bonus_dice" and not isinstance(self.params, RollBonusDiceParams):
             raise ValueError("roll_bonus_dice effects require RollBonusDiceParams")
+        if self.type == "roll_dice_modifier" and not isinstance(self.params, RollDiceModifierParams):
+            raise ValueError("roll_dice_modifier effects require RollDiceModifierParams")
         return self

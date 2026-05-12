@@ -122,10 +122,30 @@
         "scalingMode": "character_level",
         "scalingEffectType": "damage_dice",
         "thresholds": [
-          {"characterLevel": 1, "damage": {"dice": "1d10"}},
-          {"characterLevel": 5, "damage": {"dice": "2d10"}},
-          {"characterLevel": 11, "damage": {"dice": "3d10"}},
-          {"characterLevel": 17, "damage": {"dice": "4d10"}}
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d10"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d10"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d10"
+            }
+          }
         ]
       }
     },
@@ -174,10 +194,30 @@
         "scalingMode": "character_level",
         "scalingEffectType": "damage_dice",
         "thresholds": [
-          {"characterLevel": 1, "damage": {"dice": "1d8"}},
-          {"characterLevel": 5, "damage": {"dice": "2d8"}},
-          {"characterLevel": 11, "damage": {"dice": "3d8"}},
-          {"characterLevel": 17, "damage": {"dice": "4d8"}}
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
+            }
+          }
         ]
       },
       "effects": [
@@ -710,7 +750,7 @@
       },
       "effects": [
         {
-          "type": "roll_bonus_dice",
+          "type": "roll_dice_modifier",
           "target": "selected_target",
           "duration": {
             "type": "rounds",
@@ -722,7 +762,8 @@
               "attack",
               "save"
             ],
-            "dice": "1d4"
+            "dice": "1d4",
+            "mode": "bonus"
           },
           "stacking": "replace"
         }
@@ -2590,6 +2631,75 @@
           ]
         }
       ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "bane",
+      "nameEn": "Bane",
+      "namePt": "Perdição",
+      "descriptionEn": "Up to three creatures of your choice that you can see within range must make Charisma saving throws. Whenever a target that fails this saving throw makes an attack roll or a saving throw before the spell ends, the target must roll a d4 and subtract the number rolled from the attack roll or saving throw.",
+      "descriptionPt": "Até três criaturas à sua escolha que você possa ver no alcance devem realizar uma salvaguarda de Carisma. Sempre que um alvo que falhar nessa salvaguarda fizer uma jogada de ataque ou uma salvaguarda antes do fim da magia, ele deve rolar 1d4 e subtrair o resultado da jogada.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Cleric"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a drop of blood",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "control",
+      "maxTargets": 3,
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "savingThrow": "cha",
+      "saveEffect": "negates",
+      "effects": [
+        {
+          "type": "roll_dice_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "penalty",
+            "roll_types": [
+              "attack",
+              "save"
+            ],
+            "dice": "1d4"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
     }
   ]
 }

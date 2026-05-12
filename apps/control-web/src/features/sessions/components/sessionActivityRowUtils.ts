@@ -108,11 +108,15 @@ export function formatResolvedRollBreakdown(
 }
 
 export function formatCheckModifierSource(entry: NonNullable<RollResolvedActivityEvent["check_modifier_sources"]>[number]): string {
-  if (entry.modifier_type === "roll_bonus_dice") {
+  if (entry.modifier_type === "roll_bonus_dice" || entry.modifier_type === "roll_dice_modifier") {
+    if (typeof entry.display_label === "string" && entry.display_label.trim().length > 0) {
+      return entry.display_label;
+    }
     const source = entry.source_label || "efeito ativo";
     const dice = entry.dice || "";
+    const mode = entry.mode === "penalty" ? "-" : "+";
     if (entry.applied) {
-      return `${source}: +${dice}`;
+      return `${source}: ${mode}${dice}`;
     }
     return `Não aplicado: ${source}`;
   }

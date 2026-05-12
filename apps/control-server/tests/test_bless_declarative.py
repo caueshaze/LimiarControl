@@ -22,8 +22,8 @@ def _bless_effect(effect_id: str = "eff-bless") -> dict:
             "source_spell_key": "bless",
             "source_spell_name": "Bênção",
             "declarative_effect": {
-                "type": "roll_bonus_dice",
-                "params": {"roll_types": ["attack", "save"], "dice": "1d4"},
+                "type": "roll_dice_modifier",
+                "params": {"mode": "bonus", "roll_types": ["attack", "save"], "dice": "1d4"},
             },
         },
     }
@@ -42,7 +42,20 @@ class BlessSeedTests(unittest.TestCase):
         self.assertEqual(s["maxTargets"], 3)
         self.assertEqual(s["upcast"]["mode"], "additional_targets")
         self.assertEqual(s["upcast"]["perLevel"], 1)
-        self.assertTrue(any(e.get("type") == "roll_bonus_dice" for e in s.get("effects", [])))
+        self.assertTrue(any(e.get("type") == "roll_dice_modifier" for e in s.get("effects", [])))
+
+    def test_seed_has_bane_with_save_and_upcast(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")
+        with open(os.path.abspath(path), encoding="utf-8") as f:
+            data = json.load(f)
+        spells = {s["canonicalKey"]: s for s in data.get("spells", [])}
+        self.assertIn("bane", spells)
+        s = spells["bane"]
+        self.assertEqual(s["maxTargets"], 3)
+        self.assertEqual(s["upcast"]["mode"], "additional_targets")
+        self.assertEqual(s["upcast"]["perLevel"], 1)
+        self.assertEqual(s["savingThrow"], "cha")
+        self.assertEqual(s["saveEffect"], "negates")
 
 
 class BlessUpcastContextTests(unittest.TestCase):
@@ -112,7 +125,7 @@ class BlessUpcastContextTests(unittest.TestCase):
                 "requires_target_effect": True,
                 "requires_point_sight": False,
                 "requires_point_effect": False,
-                "effects_json": [{"type": "roll_bonus_dice", "target": "selected_target", "params": {"roll_types": ["attack", "save"], "dice": "1d4"}}],
+                "effects_json": [{"type": "roll_dice_modifier", "target": "selected_target", "params": {"mode": "bonus", "roll_types": ["attack", "save"], "dice": "1d4"}}],
             },
         )()
 
@@ -179,7 +192,45 @@ class BlessRollBonusTests(unittest.TestCase):
         )
         self.assertEqual(result.total, 17)
         self.assertTrue(result.success)
-        self.assertEqual(result.check_modifier_sources[0]["modifier_type"], "roll_bonus_dice")
+        self.assertEqual(result.check_modifier_sources[0]["modifier_type"], "roll_dice_modifier")
+
+    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    def test_apply_roll_penalty_updates_save_result(self, _mock_roll):
+        participant = {"active_effects": [{
+            "id": "eff-bane",
+            "kind": "spell_effect",
+            "metadata": {
+                "declarative_effect_group_id": "grp-bane",
+                "source_spell_key": "bane",
+                "source_spell_name": "Perdição",
+                "declarative_effect": {
+                    "type": "roll_dice_modifier",
+                    "params": {"mode": "penalty", "roll_types": ["attack", "save"], "dice": "1d4"},
+                },
+            },
+        }]}
+        result = RollResult(
+            event_id="e3",
+            roll_type="save",
+            actor_kind="player",
+            actor_ref_id="p1",
+            actor_display_name="Lia",
+            rolls=[12, 12],
+            selected_roll=12,
+            advantage_mode="normal",
+            modifier_used=2,
+            override_used=False,
+            formula="1d20 + 2",
+            total=14,
+            ability="wisdom",
+            dc=13,
+            success=True,
+            roll_source="system",
+            timestamp="2026-01-01T00:00:00Z",
+        )
+        CombatService._apply_roll_bonus_dice_to_roll_result(participant=participant, roll_result=result, roll_type="save")
+        self.assertEqual(result.total, 10)
+        self.assertFalse(result.success)
 
     @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
     def test_apply_roll_bonus_updates_save_result(self, _mock_roll):
@@ -210,4 +261,3 @@ class BlessRollBonusTests(unittest.TestCase):
         )
         self.assertEqual(result.total, 14)
         self.assertTrue(result.success)
-

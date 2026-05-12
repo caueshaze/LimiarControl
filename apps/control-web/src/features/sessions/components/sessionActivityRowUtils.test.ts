@@ -109,4 +109,21 @@ describe("sessionActivityRowUtils", () => {
       }),
     ).toBe("Bênção: +1d4");
   });
+
+  it("formats Bane roll penalty source", () => {
+    expect(
+      formatCheckModifierSource({
+        source_label: "Perdição",
+        modifier_type: "roll_dice_modifier",
+        mode: "penalty",
+        roll_type: "save",
+        dice: "1d4",
+        rolls: [3],
+        signed_total: -3,
+        display_label: "Perdição: -1d4",
+        applied: true,
+        skip_reason: null,
+      }),
+    ).toBe("Perdição: -1d4");
+  });
 });
