@@ -1584,6 +1584,7 @@
       "resolutionType": "control",
       "savingThrow": "WIS",
       "saveSuccessOutcome": "none",
+      "maxTargets": 1,
       "upcast": {
         "mode": "additional_targets",
         "perLevel": 1

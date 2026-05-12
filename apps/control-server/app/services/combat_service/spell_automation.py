@@ -81,6 +81,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_animal_friendship_automation",
         ),
+        "charm_person": SpellAutomationSpec(
+            canonical_key="charm_person",
+            default_mode="saving_throw",
+            requires_effect_payload=False,
+            handler_name="_cast_charm_person_automation",
+        ),
         "hunters_mark": SpellAutomationSpec(
             canonical_key="hunters_mark",
             default_mode="utility",
@@ -175,6 +181,16 @@ class CombatSpellAutomationMixin:
         )
         if creature_type != "beast":
             raise CombatServiceError("Animal Friendship can only target beasts.", 400)
+
+    @classmethod
+    def _is_hostile_team_context(cls, attacker: dict, target_participant: dict) -> bool:
+        attacker_team = str(attacker.get("team") or "").strip().lower()
+        target_team = str(target_participant.get("team") or "").strip().lower()
+        if attacker_team in {"players", "allies"}:
+            return target_team == "enemies"
+        if attacker_team == "enemies":
+            return target_team in {"players", "allies"}
+        return False
 
     @staticmethod
     def _base_spell_result(
@@ -348,6 +364,90 @@ class CombatSpellAutomationMixin:
                         "source_spell_key": "animal_friendship",
                         "caster_participant_id": attacker["id"],
                         "charmer_participant_id": attacker["id"],
+                        "termination_conditions": [
+                            {"type": "target_takes_damage_from_caster_or_allies"},
+                        ],
+                    },
+                ),
+            )
+            flag_modified(state, "participants")
+
+        spell_name = spell_context["spell_name"]
+        if is_saved:
+            summary_text = f"{target_participant['display_name']} passou na salvaguarda contra {spell_name}."
+        else:
+            summary_text = f"{target_participant['display_name']} falhou na salvaguarda e ficou enfeitiçado."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_participant["kind"],
+            action_kind="saving_throw",
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} lançou {spell_name} em {target_participant['display_name']}: "
+                f"{'o alvo passou na salvaguarda' if is_saved else 'o alvo falhou e ficou enfeitiçado'}."
+            ),
+            extra={
+                "is_saved": is_saved,
+                "roll": roll_total,
+                "roll_result": roll_result,
+                "save_ability": spell_context.get("save_ability"),
+                "save_dc": spell_context.get("save_dc"),
+                "save_success_outcome": spell_context.get("save_success_outcome"),
+            },
+        )
+
+    @classmethod
+    async def _cast_charm_person_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict,
+    ) -> dict:
+        is_hostile = cls._is_hostile_team_context(attacker, target_participant)
+        advantage_mode = "advantage" if is_hostile else "normal"
+        roll_result = resolve_saving_throw(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                target_participant["ref_id"],
+                target_participant["kind"],
+                target_participant["display_name"],
+            ),
+            ability=spell_context["save_ability"],
+            dc=cls._safe_int(spell_context.get("save_dc"), 0),
+            advantage_mode=advantage_mode,
+        )
+        roll_result.is_gm_roll = is_gm
+        roll_total = roll_result.total
+        is_saved = bool(roll_result.success)
+
+        game_time = get_game_time_seconds(session_id, db)
+        if not is_saved:
+            cls._append_effect_to_participant(
+                target_participant,
+                cls._build_active_effect(
+                    kind="condition",
+                    condition_type="charmed",
+                    source_participant_id=attacker["id"],
+                    duration_type="timed",
+                    created_at_game_time_seconds=game_time,
+                    expires_at_game_time_seconds=game_time + 3600,
+                    metadata={
+                        "source_spell_key": "charm_person",
+                        "caster_participant_id": attacker["id"],
+                        "charmer_participant_id": attacker["id"],
+                        "target_knows_charmed_by_caster": True,
                         "termination_conditions": [
                             {"type": "target_takes_damage_from_caster_or_allies"},
                         ],
