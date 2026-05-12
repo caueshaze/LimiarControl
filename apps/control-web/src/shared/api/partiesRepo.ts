@@ -71,7 +71,7 @@ export const partiesRepo = {
     const sessions = await http.get<PartyActiveSession[]>(`/parties/${partyId}/sessions`);
     return sessions.find((session) => session.isActive) ?? null;
   },
-  createPartySession: (partyId: string, payload: { title: string }) =>
+  createPartySession: (partyId: string, payload: { title: string; initialGameTimeSeconds: number }) =>
     http.post<PartyActiveSession>(`/parties/${partyId}/sessions`, payload),
   closePartySession: (partyId: string, sessionId: string) =>
     http.post<PartyActiveSession>(`/parties/${partyId}/sessions/${sessionId}/close`, {}),

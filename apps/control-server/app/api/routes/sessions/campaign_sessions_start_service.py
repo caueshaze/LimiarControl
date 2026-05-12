@@ -109,12 +109,12 @@ def clone_session_states(
         )
 
 
-def reset_runtime(runtime: SessionRuntime) -> None:
+def reset_runtime(runtime: SessionRuntime, *, game_time_seconds: int = 0) -> None:
     runtime.lobby_expected = []
     runtime.lobby_ready = []
     runtime.shop_open = False
     runtime.combat_active = False
-    runtime.game_time_seconds = 0
+    runtime.game_time_seconds = game_time_seconds
 
 
 def create_lobby_session(
@@ -247,13 +247,14 @@ async def start_session_service(
         require_identifier(entry.id, "Session is missing an id"),
         session,
     )
+    runtime.game_time_seconds = payload.initialGameTimeSeconds
     expected = build_expected_players(party_player_members, session)
 
     if not expected:
         now = utcnow()
         entry.status = SessionStatus.ACTIVE
         entry.started_at = now
-        reset_runtime(runtime)
+        reset_runtime(runtime, game_time_seconds=payload.initialGameTimeSeconds)
         session.add(entry)
         session.add(runtime)
         session.commit()
@@ -273,6 +274,7 @@ async def start_session_service(
         runtime.lobby_ready = []
         runtime.shop_open = False
         runtime.combat_active = False
+        runtime.game_time_seconds = payload.initialGameTimeSeconds
         session.add(runtime)
         session.commit()
         await publish_session_lobby(

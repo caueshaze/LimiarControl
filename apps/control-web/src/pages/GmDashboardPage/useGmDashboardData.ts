@@ -32,7 +32,7 @@ export const useGmDashboardData = ({
 }: Props) => {
   const { activeSession, loading, activate, endSession, refresh: refreshSession } = useActiveSession(effectiveCampaignId);
   const { selectedSessionId, setSelectedSessionId } = useSession();
-  const { shopOpen: shopActive, combatActive, restState } = useSessionCommands();
+  const { shopOpen: shopActive, combatActive, restState, gameTimeSeconds } = useSessionCommands();
   const { events: rollEvents } = useRollSession();
   const { lastEvent, onlineUsers } = useCampaignEvents(effectiveCampaignId);
   const [overviewName, setOverviewName] = useState<string | null>(null);
@@ -364,5 +364,6 @@ export const useGmDashboardData = ({
     sortedCatalogItems,
     walletByUserId,
     inventoryByMemberId,
+    gameTimeSeconds,
   };
 };

@@ -4,7 +4,7 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 type StartSessionModalProps = {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (title: string) => void;
+    onConfirm: (title: string, initialGameTimeSeconds: number) => void;
     loading?: boolean;
 };
 
@@ -16,12 +16,28 @@ export const StartSessionModal = ({
 }: StartSessionModalProps) => {
     const { t } = useLocale();
     const [title, setTitle] = useState("");
+    const [startTime, setStartTime] = useState("");
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onConfirm(title);
+        if (!startTime) return;
+        const [hoursRaw, minutesRaw] = startTime.split(":");
+        const hours = Number(hoursRaw);
+        const minutes = Number(minutesRaw);
+        if (
+            Number.isNaN(hours) ||
+            Number.isNaN(minutes) ||
+            hours < 0 ||
+            hours > 23 ||
+            minutes < 0 ||
+            minutes > 59
+        ) {
+            return;
+        }
+        const initialGameTimeSeconds = (hours * 60 + minutes) * 60;
+        onConfirm(title, initialGameTimeSeconds);
     };
 
     return (
@@ -47,6 +63,19 @@ export const StartSessionModal = ({
                         />
                     </div>
 
+                    <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            {t("campaignHome.sessionStartTime")}
+                        </label>
+                        <input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
+                            required
+                        />
+                    </div>
+
                     <div className="mt-6 flex gap-3">
                         <button
                             type="button"
@@ -58,7 +87,7 @@ export const StartSessionModal = ({
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || !title.trim()}
+                            disabled={loading || !title.trim() || !startTime}
                             className="flex-1 rounded-full bg-limiar-500 px-4 py-2 text-sm font-semibold text-white hover:bg-limiar-400 disabled:opacity-50"
                         >
                             {loading ? t("campaignHome.starting") : t("campaignHome.startSession")}

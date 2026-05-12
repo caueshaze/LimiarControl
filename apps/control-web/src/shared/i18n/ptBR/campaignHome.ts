@@ -22,6 +22,7 @@ export const campaignHomePtBRDictionary = {
   "campaignHome.startSession": "Iniciar sessão",
   "campaignHome.starting": "Iniciando...",
   "campaignHome.startSessionHelper": "Digite um título para iniciar uma nova sessão.",
+  "campaignHome.sessionStartTime": "Horário inicial do jogo",
   "campaignHome.sessionNamePlaceholder": "ex.: A Floresta Sombria",
   "campaignHome.loadingPartyDetails": "Carregando detalhes do grupo...",
   "campaignHome.partyNotFound": "Grupo não encontrado.",

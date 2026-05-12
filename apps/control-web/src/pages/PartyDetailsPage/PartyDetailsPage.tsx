@@ -248,12 +248,15 @@ export const PartyDetailsPage = () => {
         }
     };
 
-    const handleStartSession = async (title: string) => {
+    const handleStartSession = async (title: string, initialGameTimeSeconds: number) => {
         if (!partyId || !party || starting) return;
         setStarting(true);
         setMissingSheetsPlayers([]);
         try {
-            const createdSession = await partiesRepo.createPartySession(partyId, { title });
+            const createdSession = await partiesRepo.createPartySession(partyId, {
+                title,
+                initialGameTimeSeconds,
+            });
             setShowStartModal(false);
             setActiveSession(createdSession);
             setSessions((current) => [createdSession, ...current.filter((session) => session.id !== createdSession.id)]);

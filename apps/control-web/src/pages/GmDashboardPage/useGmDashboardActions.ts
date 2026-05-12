@@ -11,7 +11,7 @@ import type { CommandFeedback } from "./gmDashboard.types";
 import { useGmDashboardRewardActions } from "./useGmDashboardRewardActions";
 
 type Props = {
-  activate: (name: string) => Promise<ActiveSession | null>;
+  activate: (name: string, initialGameTimeSeconds: number) => Promise<ActiveSession | null>;
   activeSession: ActiveSession | null;
   endSession: () => Promise<boolean | null>;
   memberIdByUserId: Record<string, string>;
@@ -109,12 +109,12 @@ export const useGmDashboardActions = ({
 
   const handleActivateClick = () => setShowStartModal(true);
 
-  const handleConfirmStart = async (name: string) => {
+  const handleConfirmStart = async (name: string, initialGameTimeSeconds: number) => {
     if (creating) return;
     setCreating(true);
     setMissingSheetsPlayers([]);
     try {
-      const session = await activate(name);
+      const session = await activate(name, initialGameTimeSeconds);
       if (session?.id) setSelectedSessionId(session.id);
       setShowStartModal(false);
     } catch (error: unknown) {

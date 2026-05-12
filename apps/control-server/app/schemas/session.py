@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.campaign import RoleMode
 from app.models.session import SessionStatus
@@ -27,10 +27,12 @@ class SessionRead(BaseModel):
 
 class SessionActivateRequest(BaseModel):
     title: str
+    initialGameTimeSeconds: int = Field(default=0, ge=0, le=86399)
 
 
 class SessionCreateByParty(BaseModel):
     title: str
+    initialGameTimeSeconds: int = Field(default=0, ge=0, le=86399)
 
 
 class SessionCommandRequest(BaseModel):

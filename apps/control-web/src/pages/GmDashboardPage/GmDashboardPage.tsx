@@ -52,6 +52,7 @@ export const GmDashboardPage = () => {
         loading,
         lobbyStatus,
         memberIdByUserId,
+        gameTimeSeconds,
         onlineUsers,
         overviewName,
         overviewMaps,
@@ -274,6 +275,7 @@ export const GmDashboardPage = () => {
                 onlineUsers={onlineUsers}
                 partyPlayers={partyPlayers}
                 restState={restUiState}
+                gameTimeSeconds={gameTimeSeconds}
                 rollAbility={rollAbility}
                 rollAdvantage={rollAdvantage}
                 rollDc={rollDc}
