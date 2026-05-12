@@ -181,4 +181,8 @@ export const campaignHomeEnUSDictionary = {
   "campaignHome.module.inventory": "Inventory",
   "campaignHome.module.npcs": "NPCs",
   "campaignHome.module.placeholder": "module placeholder",
+
+  "campaignHome.heroCampaign": "Campaign",
+  "campaignHome.heroSystem": "System",
+  "campaignHome.heroGm": "Game Master",
 } as const;

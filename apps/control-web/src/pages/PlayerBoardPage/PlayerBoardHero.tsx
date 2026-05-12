@@ -13,6 +13,7 @@ type PlayerBoardHeroProps = {
   sessionStatusTone: SessionStatusTone;
   shopOpen: boolean;
   combatActive: boolean;
+  gameTimeSeconds?: number | null;
   inventoryTotal: number;
   onBack: () => void;
   primaryActionLabel?: string | null;
@@ -41,6 +42,7 @@ export const PlayerBoardHero = ({
   sessionStatusTone,
   shopOpen,
   combatActive,
+  gameTimeSeconds = null,
   inventoryTotal,
   onBack,
   primaryActionLabel = null,
@@ -52,6 +54,14 @@ export const PlayerBoardHero = ({
 
   const title = sessionTitle || campaignTitle;
   const showCampaignLabel = Boolean(sessionTitle && sessionTitle !== campaignTitle);
+
+  const gameDay = Math.floor((gameTimeSeconds ?? 0) / 86400) + 1;
+  const daySeconds = (gameTimeSeconds ?? 0) % 86400;
+  const gameClockLabel = [
+    Math.floor(daySeconds / 3600),
+    Math.floor((daySeconds % 3600) / 60),
+    daySeconds % 60,
+  ].map((n) => String(n).padStart(2, "0")).join(":");
 
   const stats = [
     {
@@ -70,6 +80,17 @@ export const PlayerBoardHero = ({
       label: t("playerBoard.inventoryStateLabel"),
       value: inventoryTotal.toString(),
     },
+    ...(gameTimeSeconds != null ? [{
+      label: t("gm.dashboard.gameClock"),
+      value: (
+        <span className="leading-tight">
+          <span className="block text-[10px] font-medium text-slate-400">
+            {t("gm.dashboard.gameClockDay").replace("{day}", String(gameDay))}
+          </span>
+          <span className="font-mono">{gameClockLabel}</span>
+        </span>
+      ),
+    }] : []),
   ];
 
   return (

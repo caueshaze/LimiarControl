@@ -47,10 +47,10 @@ export const CampaignQuickLinkCard = ({
   return (
     <Link
       to={to}
-      className={`group relative overflow-hidden rounded-[28px] border ${accentStyles.border} bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_50px_rgba(2,6,23,0.22)] transition hover:-translate-y-px`}
+      className={`group relative overflow-hidden rounded-[28px] border ${accentStyles.border} bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_18px_50px_rgba(2,6,23,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(2,6,23,0.32)]`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[42px_42px]" />
-      <div className={`pointer-events-none absolute -right-8 top-0 h-32 w-32 rounded-full blur-[90px] ${accentStyles.glow}`} />
+      <div className={`pointer-events-none absolute -right-8 top-0 h-32 w-32 rounded-full blur-[90px] transition-opacity duration-300 opacity-60 group-hover:opacity-100 ${accentStyles.glow}`} />
 
       <div className="relative flex h-full flex-col justify-between gap-8">
         <div>

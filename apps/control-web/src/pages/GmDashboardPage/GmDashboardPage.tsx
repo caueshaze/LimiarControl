@@ -238,13 +238,15 @@ export const GmDashboardPage = () => {
                 />
             ) : (
                 <>
-            <GmDashboardHeader
+            <div className="animate-[landing-rise_0.5s_ease-out]" style={{ animationFillMode: "both" }}>
+              <GmDashboardHeader
                 backHref={dashboardBackHref}
                 backLabel={t("gm.dashboard.backToParty")}
                 overviewName={overviewName}
                 overviewSystem={overviewSystem}
                 selectedCampaignName={selectedCampaign?.name}
-            />
+              />
+            </div>
 
             {effectiveCombatUiActive && activeSession?.status === "ACTIVE" ? (
                 <CombatModeBar
@@ -262,6 +264,7 @@ export const GmDashboardPage = () => {
                 onClose={() => setMissingSheetsPlayers([])}
             />
 
+            <div className="animate-[landing-rise_0.5s_ease-out]" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
                 <GmDashboardSessionPanel
                   activeSession={activeSession}
                   campaignMaps={overviewMaps}
@@ -301,18 +304,22 @@ export const GmDashboardPage = () => {
                 setRollSkill={setRollSkill}
                 setRollTargetUserId={setRollTargetUserId}
                 setRollType={setRollType}
-            />
+                />
+            </div>
 
             {activeSession?.status === "ACTIVE" && effectiveCampaignId && (
+            <div className="animate-[landing-rise_0.5s_ease-out]" style={{ animationDelay: "140ms", animationFillMode: "both" }}>
                 <SessionEntityPanel
                     sessionId={activeSession.id}
                     campaignId={effectiveCampaignId}
                     combatActive={effectiveCombatUiActive}
                     lastEvent={lastEvent}
                 />
+            </div>
             )}
 
             {activeSession?.status === "ACTIVE" && (
+            <div className="animate-[landing-rise_0.5s_ease-out]" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
                 <GmDashboardPartyInventories
                     activeSessionId={activeSession.id}
                     activeSessionPartyId={activeSession.partyId ?? null}
@@ -350,6 +357,7 @@ export const GmDashboardPage = () => {
                     setItemDraftByUserId={setItemDraftByUserId}
                     setXpDraftByUserId={setXpDraftByUserId}
                 />
+            </div>
             )}
 
             {activeSession?.status === "ACTIVE" && activeSession?.id ? (

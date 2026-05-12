@@ -121,6 +121,8 @@ async def buy_session_shop_item_service(
     entry, runtime = require_active_shop_session(session_id, session)
     ensure_shop_open(entry, runtime)
     member = require_campaign_member(entry, user, session)
+    if member.role_mode == RoleMode.GM:
+        raise HTTPException(status_code=403, detail="GMs cannot buy items in the shop")
     item = session.exec(select(Item).where(Item.id == payload.itemId)).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -228,6 +230,8 @@ async def sell_session_shop_item_service(
     entry, runtime = require_active_shop_session(session_id, session)
     ensure_shop_open(entry, runtime)
     member = require_campaign_member(entry, user, session)
+    if member.role_mode == RoleMode.GM:
+        raise HTTPException(status_code=403, detail="GMs cannot sell items in the shop")
     if payload.quantity < 1:
         raise HTTPException(status_code=400, detail="Invalid quantity")
 

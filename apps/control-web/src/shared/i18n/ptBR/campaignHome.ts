@@ -181,4 +181,8 @@ export const campaignHomePtBRDictionary = {
   "campaignHome.module.inventory": "Inventario",
   "campaignHome.module.npcs": "NPCs",
   "campaignHome.module.placeholder": "placeholder do modulo",
+
+  "campaignHome.heroCampaign": "Campanha",
+  "campaignHome.heroSystem": "Sistema",
+  "campaignHome.heroGm": "Mestre",
 } as const;

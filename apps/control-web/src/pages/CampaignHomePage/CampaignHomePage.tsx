@@ -10,7 +10,7 @@ import { useLocale } from "../../shared/hooks/useLocale";
 import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { CampaignQuickLinkCard } from "./CampaignQuickLinkCard";
-import { BackButton } from "../../shared/ui";
+import { CampaignHero } from "./CampaignHero";
 
 export const CampaignHomePage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -26,7 +26,6 @@ export const CampaignHomePage = () => {
   const { user } = useAuth();
   const role = user?.role ?? "PLAYER";
   const [gmName, setGmName] = useState<string | null>(null);
-  const [overviewName, setOverviewName] = useState<string | null>(null);
   const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [deletingCampaign, setDeletingCampaign] = useState(false);
@@ -45,7 +44,6 @@ export const CampaignHomePage = () => {
   useEffect(() => {
     if (!effectiveCampaignId) {
       setGmName(null);
-      setOverviewName(null);
       setOverviewSystem(null);
       setOverviewError(null);
       return;
@@ -55,24 +53,18 @@ export const CampaignHomePage = () => {
       .overview(effectiveCampaignId)
       .then((data) => {
         setGmName(data.gmName ?? null);
-        setOverviewName(data.name);
         setOverviewSystem(data.systemType);
         setOverviewError(null);
       })
       .catch((error: { message?: string }) => {
         setGmName(null);
-        setOverviewName(null);
         setOverviewSystem(null);
         setOverviewError(error?.message ?? "Failed to load campaign");
       });
   }, [effectiveCampaignId]);
 
-  const campaignName = selectedCampaign?.name ?? overviewName ?? null;
-  const campaignSystemLabel = selectedCampaign
-    ? getCampaignSystemLabel(selectedCampaign.systemType)
-    : overviewSystem
-      ? getCampaignSystemLabel(overviewSystem)
-      : null;
+  const campaignName = selectedCampaign?.name ?? null;
+  const campaignSystem = selectedCampaign?.systemType ?? overviewSystem ?? null;
 
   const handleDeleteCampaign = async () => {
     if (!effectiveCampaignId || deletingCampaign) {
@@ -105,121 +97,90 @@ export const CampaignHomePage = () => {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-slate-800 bg-linear-to-br from-void-950 via-slate-950/80 to-limiar-900/20 p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-limiar-300">
-          {t("campaignHome.title")}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-white">
-              {t("campaignHome.subtitle")}
-            </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {campaignName ? (
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white">
-                  {campaignName}
-                </span>
-              ) : (
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white">
-                  {t("campaignHome.none")}
-                </span>
-              )}
-              {campaignSystemLabel && (
-                <span className="rounded-full border border-sky-300/15 bg-sky-400/10 px-4 py-2 text-xs font-semibold text-sky-100">
-                  {campaignSystemLabel}
-                </span>
-              )}
-              {gmName && (
-                <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-slate-300">
-                  {t("campaignHome.gmLabel")} {gmName}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <BackButton
-              fallbackTo={routes.gmHome}
-              label={<><span aria-hidden>←</span>{t("campaignHome.back")}</>}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/3 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/16 hover:text-white"
-            />
-          </div>
+      <CampaignHero
+        campaignName={campaignName}
+        campaignSystem={campaignSystem}
+        gmName={gmName}
+        backFallbackTo={routes.home}
+      />
+
+      {overviewError && (
+        <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {overviewError}
         </div>
-        <p className="mt-4 text-sm text-slate-300">
-          {t("campaignHome.description")}
-        </p>
-        {overviewError && (
-          <p className="mt-2 text-xs text-rose-300">{overviewError}</p>
-        )}
-      </header>
+      )}
 
       {isGm && (
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-          <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-                {t("campaignHome.configTitle")}
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">
-                {t("campaignHome.quickActionsTitle")}
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                {t("campaignHome.configDescription")}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            {effectiveCampaignId && (
-              <CampaignQuickLinkCard
-                to={routes.campaignMaps.replace(":campaignId", effectiveCampaignId)}
-                title={t("campaignHome.actionMaps")}
-                description={t("campaignHome.actionMapsDescription")}
-                accent="amber"
-              />
-            )}
-            <CampaignQuickLinkCard
-              to={routes.catalogItems}
-              title={t("campaignHome.actionItems")}
-              description={t("campaignHome.actionItemsDescription")}
-              accent="sky"
-            />
-            <CampaignQuickLinkCard
-              to={routes.catalogSpells}
-              title={t("campaignHome.actionSpells")}
-              description={t("campaignHome.actionSpellsDescription")}
-              accent="violet"
-            />
-            <CampaignQuickLinkCard
-              to={routes.bestiary}
-              title={t("campaignHome.actionNpcs")}
-              description={t("campaignHome.actionNpcsDescription")}
-              accent="emerald"
-            />
-          </div>
-
-          {effectiveCampaignId && (
-            <div className="mt-6 rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-300">
-                    Danger Zone
-                  </p>
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                    Delete the campaign and all of its parties, sessions, inventories, sheets, and current snapshot data.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDeleteCampaign}
-                  disabled={deletingCampaign}
-                  className="rounded-full border border-red-500/30 bg-red-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {deletingCampaign ? "Deleting..." : "Delete Campaign"}
-                </button>
+        <section className="rounded-[34px] border border-limiar-300/10 bg-[linear-gradient(180deg,rgba(26,12,55,0.4),rgba(2,6,23,0.92))] p-1 shadow-[0_24px_70px_rgba(2,6,23,0.32)]">
+          <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+            <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                  {t("campaignHome.configTitle")}
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold text-white">
+                  {t("campaignHome.quickActionsTitle")}
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                  {t("campaignHome.configDescription")}
+                </p>
               </div>
             </div>
-          )}
-        </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+              {effectiveCampaignId && (
+                <CampaignQuickLinkCard
+                  to={routes.campaignMaps.replace(":campaignId", effectiveCampaignId)}
+                  title={t("campaignHome.actionMaps")}
+                  description={t("campaignHome.actionMapsDescription")}
+                  accent="amber"
+                />
+              )}
+              <CampaignQuickLinkCard
+                to={routes.catalogItems}
+                title={t("campaignHome.actionItems")}
+                description={t("campaignHome.actionItemsDescription")}
+                accent="sky"
+              />
+              <CampaignQuickLinkCard
+                to={routes.catalogSpells}
+                title={t("campaignHome.actionSpells")}
+                description={t("campaignHome.actionSpellsDescription")}
+                accent="violet"
+              />
+              <CampaignQuickLinkCard
+                to={routes.bestiary}
+                title={t("campaignHome.actionNpcs")}
+                description={t("campaignHome.actionNpcsDescription")}
+                accent="emerald"
+              />
+            </div>
+
+            {effectiveCampaignId && (
+              <div className="mt-6 relative overflow-hidden rounded-[28px] border border-red-500/15 bg-red-500/5 p-5">
+                <div className="pointer-events-none absolute -right-16 top-0 h-40 w-40 rounded-full bg-red-500/10 blur-[80px]" />
+                <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-red-300">
+                      Danger Zone
+                    </p>
+                    <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                      Delete the campaign and all of its parties, sessions, inventories, sheets, and current snapshot data.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCampaign}
+                    disabled={deletingCampaign}
+                    className="rounded-full border border-red-500/30 bg-red-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-red-200 transition hover:border-red-400/40 hover:bg-red-500/18 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingCampaign ? "Deleting..." : "Delete Campaign"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </section>
       )}
     </section>
   );

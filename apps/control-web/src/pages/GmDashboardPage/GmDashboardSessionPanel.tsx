@@ -118,269 +118,257 @@ export const GmDashboardSessionPanel = ({
   const customHoursIsValid = Number.isFinite(customHoursNumber) && customHoursNumber > 0;
   const isAdvanceFeedback = commandFeedback?.type === "advance_game_time";
 
-  return (
-    <div className="grid gap-6">
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">{t("gm.dashboard.sessionStatus")}</h2>
-          {activeSession && (
+  /* ──── No session / loading ──────────────────────────────────────── */
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center rounded-[28px] border border-white/8 bg-white/[0.03] py-16">
+        <span className="text-slate-400">{t("gm.dashboard.loadingSession")}</span>
+      </div>
+    );
+  }
+
+  if (!activeSession) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-[28px] border border-white/8 bg-white/[0.03] py-16">
+        <p className="text-slate-400">{t("gm.dashboard.noActiveSession")}</p>
+        <button
+          onClick={onActivateClick}
+          disabled={creating}
+          className="rounded-full bg-limiar-500 px-8 py-3 text-sm font-bold uppercase tracking-widest text-white shadow-[0_0_24px_rgba(139,92,246,0.4)] transition-all hover:bg-limiar-400 hover:shadow-[0_0_36px_rgba(139,92,246,0.6)] active:scale-95 disabled:opacity-50 disabled:shadow-none"
+        >
+          {t("gm.dashboard.startSession")}
+        </button>
+      </div>
+    );
+  }
+
+  /* ──── Lobby state ───────────────────────────────────────────────── */
+  if (activeSession.status === "LOBBY") {
+    return (
+      <div className="overflow-hidden rounded-[28px] border border-white/8 bg-white/[0.03] backdrop-blur-xl">
+        <div className="border-b border-white/6 px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
-                onClick={onEndSession}
-                className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/20"
-              >
-                {activeSession.status === "LOBBY"
-                  ? t("gm.dashboard.cancelLobby")
-                  : t("gm.dashboard.endSession")}
-              </button>
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                  activeSession.status === "LOBBY"
-                    ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                }`}
-              >
-                {activeSession.status === "LOBBY"
-                  ? t("gm.dashboard.statusLobby")
-                  : t("gm.dashboard.statusLive")}
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                {t("gm.dashboard.lobbyLabel")}
               </span>
             </div>
-          )}
+            <button
+              onClick={onEndSession}
+              className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 transition-all hover:bg-red-500/20 active:scale-95"
+            >
+              {t("gm.dashboard.cancelLobby")}
+            </button>
+          </div>
+          <h3 className="mt-3 font-display text-2xl font-bold text-white">{activeSession.title}</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            #{activeSession.number} · {t("gm.dashboard.waitingForPlayers")}
+          </p>
+        </div>
+        <div className="space-y-4 p-6">
+          <div className="flex justify-end">
+            <button
+              onClick={onForceStart}
+              disabled={forceStarting}
+              className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-limiar-400 transition-all hover:bg-limiar-500/20 active:scale-95 disabled:opacity-50"
+            >
+              {forceStarting ? t("gm.dashboard.forceStarting") : t("gm.dashboard.forceStart")}
+            </button>
+          </div>
+          <GmDashboardLobbyStatus lobbyStatus={lobbyStatus} onlineUsers={onlineUsers} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── Active session ────────────────────────────────────────────── */
+  return (
+    <div className="space-y-4">
+      {/* Row 1: Session hero ↔ Clock + Shop */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+
+        {/* Session live hero */}
+        <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-[28px] border border-white/8 bg-white/[0.03] px-8 py-10 backdrop-blur-xl">
+          {/* Radial glow behind timer */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_55%,rgba(139,92,246,0.12),transparent)]"
+          />
+          {/* End session button top-right */}
+          <button
+            onClick={onEndSession}
+            className="absolute top-4 right-4 rounded-full border border-red-500/30 bg-red-500/8 px-3 py-1 text-[11px] font-semibold text-red-400 transition-all hover:bg-red-500/18 active:scale-95"
+          >
+            {t("gm.dashboard.endSession")}
+          </button>
+          <div className="relative z-10 text-center">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+              {t("gm.dashboard.sessionStatus")}
+            </p>
+            <h3 className="font-display text-3xl font-bold text-white">
+              {activeSession.title || t("gm.dashboard.untitledSession")}
+            </h3>
+            <div className="mt-4 font-mono text-[4.5rem] font-semibold leading-none tracking-[0.06em] text-limiar-300 drop-shadow-[0_0_32px_rgba(167,139,250,0.65)]">
+              <SessionTimer startedAt={activeSession.startedAt ?? activeSession.createdAt} />
+            </div>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <span className="text-xs text-slate-600">#{activeSession.number}</span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                {t("gm.dashboard.statusActive")}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800/50 bg-slate-950/50">
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <span className="text-slate-400">{t("gm.dashboard.loadingSession")}</span>
-            </div>
-          ) : activeSession?.status === "LOBBY" ? (
-            <div className="space-y-6 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
-                      {t("gm.dashboard.lobbyLabel")}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">{activeSession.title}</h3>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    #{activeSession.number} · {t("gm.dashboard.waitingForPlayers")}
-                  </p>
-                </div>
-                <button
-                  onClick={onForceStart}
-                  disabled={forceStarting}
-                  className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-limiar-400 hover:bg-limiar-500/20 disabled:opacity-50 transition-all"
-                >
-                  {forceStarting ? t("gm.dashboard.forceStarting") : t("gm.dashboard.forceStart")}
-                </button>
-              </div>
+        {/* Clock + Shop stacked */}
+        <div className="flex flex-col gap-4">
 
-              <GmDashboardLobbyStatus
-                lobbyStatus={lobbyStatus}
-                onlineUsers={onlineUsers}
+          {/* Clock card */}
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-400">
+                {t("gm.dashboard.gameClock")}
+              </label>
+              <span className="rounded-full border border-limiar-500/25 bg-limiar-500/8 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-limiar-400">
+                {t("gm.dashboard.gameClockLive")}
+              </span>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/6 bg-black/25 px-4 py-3">
+              <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {t("gm.dashboard.gameClockDay").replace("{day}", String(gameDay))}
+              </p>
+              <p className="font-mono text-xl font-semibold tracking-[0.18em] text-limiar-200">{gameClockLabel}</p>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {([["1h", 3600], ["2h", 7200], ["8h", 28800]] as const).map(([label, secs]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onCommand("advance_game_time", { seconds: secs })}
+                  disabled={commandSending}
+                  className="rounded-xl border border-white/10 bg-white/5 py-1.5 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 active:scale-95 disabled:opacity-50"
+                >
+                  +{label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={customHours}
+                onChange={(e) => setCustomHours(e.target.value)}
+                className="w-16 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-100 focus:border-limiar-500 focus:outline-none"
+                aria-label={t("gm.dashboard.gameClockCustomHours")}
               />
-            </div>
-          ) : activeSession ? (
-            <div className="flex flex-col items-center justify-center space-y-4 py-10">
-              <h3 className="text-2xl font-bold text-white">
-                {activeSession.title || t("gm.dashboard.untitledSession")}
-              </h3>
-              <div className="text-4xl font-mono text-limiar-400">
-                <SessionTimer startedAt={activeSession.startedAt ?? activeSession.createdAt} />
-              </div>
-              <div className="flex gap-2 text-sm text-slate-500">
-                <span>#{activeSession.number}</span>
-                <span className="text-emerald-400">● {t("gm.dashboard.statusActive")}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-4 py-10">
-              <p className="mb-2 text-slate-400">{t("gm.dashboard.noActiveSession")}</p>
+              <span className="text-[11px] text-slate-500">{t("gm.dashboard.gameClockHoursSuffix")}</span>
               <button
-                onClick={onActivateClick}
-                disabled={creating}
-                className="rounded-full bg-limiar-500 px-8 py-3 text-sm font-bold uppercase tracking-widest text-white shadow-lg shadow-limiar-500/20 hover:bg-limiar-400 disabled:opacity-50 transition-all active:scale-95"
+                type="button"
+                onClick={() => onCommand("advance_game_time", { seconds: Math.round(customHoursNumber * 3600) })}
+                disabled={commandSending || !customHoursIsValid}
+                className="ml-auto rounded-xl bg-limiar-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-[0_0_12px_rgba(124,58,237,0.4)] transition-all hover:bg-limiar-500 hover:shadow-[0_0_20px_rgba(124,58,237,0.55)] active:scale-95 disabled:opacity-50 disabled:shadow-none"
               >
-                {t("gm.dashboard.startSession")}
+                {t("gm.dashboard.gameClockAdvance")}
               </button>
             </div>
-          )}
-        </div>
+            {isAdvanceFeedback && commandFeedback ? (
+              <p className={`mt-2 text-[11px] ${commandFeedback.tone === "success" ? "text-emerald-400" : "text-rose-400"}`}>
+                {commandFeedback.message}
+              </p>
+            ) : null}
+          </div>
 
-        {activeSession?.status === "ACTIVE" && (
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
-                    {t("gm.dashboard.gameClock")}
-                  </label>
-                  <p className="mt-1 text-xs text-slate-400">{t("gm.dashboard.gameClockDescription")}</p>
-                </div>
-                <span className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-limiar-300">
-                  {t("gm.dashboard.gameClockLive")}
-                </span>
-              </div>
-              <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  {t("gm.dashboard.gameClockDay").replace("{day}", String(gameDay))}
-                </p>
-                <p className="font-mono text-2xl font-semibold tracking-[0.18em] text-limiar-200">{gameClockLabel}</p>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onCommand("advance_game_time", { seconds: 3600 })}
-                  disabled={commandSending}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
-                >
-                  +1h
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onCommand("advance_game_time", { seconds: 7200 })}
-                  disabled={commandSending}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
-                >
-                  +2h
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onCommand("advance_game_time", { seconds: 28800 })}
-                  disabled={commandSending}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
-                >
-                  +8h
-                </button>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={customHours}
-                  onChange={(event) => setCustomHours(event.target.value)}
-                  className="w-24 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
-                  aria-label={t("gm.dashboard.gameClockCustomHours")}
-                />
-                <span className="text-xs text-slate-400">{t("gm.dashboard.gameClockHoursSuffix")}</span>
-                <button
-                  type="button"
-                  onClick={() => onCommand("advance_game_time", { seconds: Math.round(customHoursNumber * 3600) })}
-                  disabled={commandSending || !customHoursIsValid}
-                  className="ml-auto rounded-xl bg-limiar-500 px-3 py-2 text-xs font-semibold text-white hover:bg-limiar-400 disabled:opacity-50"
-                >
-                  {t("gm.dashboard.gameClockAdvance")}
-                </button>
-              </div>
-              {isAdvanceFeedback && commandFeedback ? (
-                <div
-                  className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
-                    commandFeedback.tone === "success"
-                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                      : "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                  }`}
-                >
-                  {commandFeedback.message}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Shop control card */}
-            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
-                    {t("gm.dashboard.shopControl")}
-                  </label>
-                  <p className="mt-1 text-xs text-slate-400">{t("gm.dashboard.shopControlDescription")}</p>
-                </div>
-                <span
-                  className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                    shopUiOpen
-                      ? "border-emerald-500/40 text-emerald-300"
-                      : "border-slate-700 text-slate-400"
-                  }`}
-                >
-                  {shopUiOpen ? t("gm.dashboard.shopLive") : t("gm.dashboard.shopClosed")}
-                </span>
-              </div>
-              <button
-                onClick={() => onCommand(shopUiOpen ? "close_shop" : "open_shop")}
-                disabled={commandSending}
-                className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
+          {/* Shop card */}
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-400">
+                {t("gm.dashboard.shopControl")}
+              </label>
+              <span
+                className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] ${
                   shopUiOpen
-                    ? "bg-rose-900/40 text-rose-200 hover:bg-rose-900/60"
-                    : "bg-limiar-500/80 text-white hover:bg-limiar-500"
+                    ? "border-emerald-500/30 text-emerald-400"
+                    : "border-white/10 text-slate-500"
                 }`}
               >
-                {shopUiOpen ? t("gm.dashboard.closeShop") : t("gm.dashboard.openShop")}
-              </button>
-              {commandFeedback &&
-                (commandFeedback.type === "open_shop" || commandFeedback.type === "close_shop") && (
-                  <div
-                    className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
-                      commandFeedback.tone === "success"
-                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                        : "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                    }`}
-                  >
-                    {commandFeedback.message}
-                  </div>
-                )}
+                {shopUiOpen && <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />}
+                {shopUiOpen ? t("gm.dashboard.shopLive") : t("gm.dashboard.shopClosed")}
+              </span>
             </div>
-
-            <GmDashboardRollRequestCard
-              combatUiActive={combatUiActive}
-              commandFeedback={commandFeedback}
-              commandSending={commandSending}
-              partyPlayers={partyPlayers}
-              rollAbility={rollAbility}
-              rollAdvantage={rollAdvantage}
-              rollDc={rollDc}
-              rollExpression={rollExpression}
-              rollOptions={rollOptions}
-              rollReason={rollReason}
-              rollSkill={rollSkill}
-              rollTargetUserId={rollTargetUserId}
-              rollType={rollType}
-              onCommand={onCommand}
-              setRollAbility={setRollAbility}
-              setRollAdvantage={setRollAdvantage}
-              setRollDc={setRollDc}
-              setRollExpression={setRollExpression}
-              setRollReason={setRollReason}
-              setRollSkill={setRollSkill}
-              setRollTargetUserId={setRollTargetUserId}
-              setRollType={setRollType}
-            />
-
-              <GmDashboardCombatControlCard
-                activeSessionId={activeSession.id}
-                campaignMaps={campaignMaps}
-                combatUiActive={combatUiActive}
-              commandFeedback={commandFeedback}
-              commandSending={commandSending}
-              partyPlayers={partyPlayers}
-              rollType={rollType}
-              onCommand={onCommand}
-              onRequestInitiativeRoll={onRequestInitiativeRoll}
-              onClearGmInitiativeQueue={onClearGmInitiativeQueue}
-              onSetGmInitiativeQueue={onSetGmInitiativeQueue}
-              setRollType={setRollType}
-            />
-
-            <GmDashboardRestControlCard
-              combatUiActive={combatUiActive}
-              commandFeedback={commandFeedback}
-              commandSending={commandSending}
-              restState={restState}
-              onCommand={onCommand}
-            />
+            <p className="mt-1 text-[11px] text-slate-500">{t("gm.dashboard.shopControlDescription")}</p>
+            <button
+              onClick={() => onCommand(shopUiOpen ? "close_shop" : "open_shop")}
+              disabled={commandSending}
+              className={`mt-3 w-full rounded-2xl px-4 py-2.5 text-xs font-bold uppercase tracking-[0.22em] transition-all active:scale-95 ${
+                shopUiOpen
+                  ? "border border-white/8 bg-white/5 text-slate-200 hover:bg-white/10"
+                  : "bg-limiar-600 text-white shadow-[0_0_16px_rgba(124,58,237,0.4)] hover:bg-limiar-500 hover:shadow-[0_0_24px_rgba(124,58,237,0.55)]"
+              } disabled:opacity-50 disabled:shadow-none`}
+            >
+              {shopUiOpen ? t("gm.dashboard.closeShop") : t("gm.dashboard.openShop")}
+            </button>
+            {commandFeedback && (commandFeedback.type === "open_shop" || commandFeedback.type === "close_shop") ? (
+              <p className={`mt-2 text-[11px] ${commandFeedback.tone === "success" ? "text-emerald-400" : "text-rose-400"}`}>
+                {commandFeedback.message}
+              </p>
+            ) : null}
           </div>
-        )}
+
+        </div>
+      </div>
+
+      {/* Row 2: Roll Request + Combat + Rest */}
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+        <GmDashboardRollRequestCard
+          combatUiActive={combatUiActive}
+          commandFeedback={commandFeedback}
+          commandSending={commandSending}
+          partyPlayers={partyPlayers}
+          rollAbility={rollAbility}
+          rollAdvantage={rollAdvantage}
+          rollDc={rollDc}
+          rollExpression={rollExpression}
+          rollOptions={rollOptions}
+          rollReason={rollReason}
+          rollSkill={rollSkill}
+          rollTargetUserId={rollTargetUserId}
+          rollType={rollType}
+          onCommand={onCommand}
+          setRollAbility={setRollAbility}
+          setRollAdvantage={setRollAdvantage}
+          setRollDc={setRollDc}
+          setRollExpression={setRollExpression}
+          setRollReason={setRollReason}
+          setRollSkill={setRollSkill}
+          setRollTargetUserId={setRollTargetUserId}
+          setRollType={setRollType}
+        />
+
+        <GmDashboardCombatControlCard
+          activeSessionId={activeSession.id}
+          campaignMaps={campaignMaps}
+          combatUiActive={combatUiActive}
+          commandFeedback={commandFeedback}
+          commandSending={commandSending}
+          partyPlayers={partyPlayers}
+          rollType={rollType}
+          onCommand={onCommand}
+          onRequestInitiativeRoll={onRequestInitiativeRoll}
+          onClearGmInitiativeQueue={onClearGmInitiativeQueue}
+          onSetGmInitiativeQueue={onSetGmInitiativeQueue}
+          setRollType={setRollType}
+        />
+
+        <GmDashboardRestControlCard
+          combatUiActive={combatUiActive}
+          commandFeedback={commandFeedback}
+          commandSending={commandSending}
+          restState={restState}
+          onCommand={onCommand}
+        />
       </div>
     </div>
   );

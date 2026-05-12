@@ -43,10 +43,10 @@ export const GmDashboardRestControlCard = ({
     commandFeedback?.type === "end_rest";
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
+    <div className="rounded-[28px] border border-white/8 bg-white/[0.04] p-5 backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+          <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
             {t("gm.dashboard.restControl")}
           </label>
           <p className="mt-1 text-xs text-slate-400">
@@ -66,7 +66,7 @@ export const GmDashboardRestControlCard = ({
             type="button"
             onClick={() => onCommand("start_short_rest")}
             disabled={commandSending || combatUiActive}
-            className="rounded-2xl bg-amber-900/50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-amber-100 transition-colors hover:bg-amber-900/70 disabled:opacity-50"
+            className="rounded-2xl bg-amber-900/50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-amber-100 transition-all hover:bg-amber-900/70 active:scale-95 disabled:opacity-50"
           >
             {t("gm.dashboard.startShortRest")}
           </button>
@@ -74,7 +74,7 @@ export const GmDashboardRestControlCard = ({
             type="button"
             onClick={() => onCommand("start_long_rest")}
             disabled={commandSending || combatUiActive}
-            className="rounded-2xl bg-sky-900/50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-sky-100 transition-colors hover:bg-sky-900/70 disabled:opacity-50"
+            className="rounded-2xl bg-sky-900/50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-sky-100 transition-all hover:bg-sky-900/70 active:scale-95 disabled:opacity-50"
           >
             {t("gm.dashboard.startLongRest")}
           </button>
@@ -90,7 +90,7 @@ export const GmDashboardRestControlCard = ({
             type="button"
             onClick={() => onCommand("end_rest")}
             disabled={commandSending}
-            className="w-full rounded-2xl bg-slate-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-slate-200 transition-colors hover:bg-slate-700 disabled:opacity-50"
+            className="w-full rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 transition-all hover:border-white/16 hover:bg-white/10 active:scale-95 disabled:opacity-50"
           >
             {t("gm.dashboard.endRest")}
           </button>

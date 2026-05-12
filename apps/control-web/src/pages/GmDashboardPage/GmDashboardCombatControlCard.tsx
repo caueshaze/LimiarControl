@@ -130,10 +130,10 @@ export const GmDashboardCombatControlCard = ({
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
+      <div className="rounded-[28px] border border-white/8 bg-white/[0.04] p-5 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
               {t("gm.dashboard.combatControl")}
             </label>
             <p className="mt-1 text-xs text-slate-400">
@@ -160,11 +160,11 @@ export const GmDashboardCombatControlCard = ({
             combatUiActive ? void handleEndCombat() : void handleOpenCombatModal();
           }}
           disabled={commandSending || combatLoading}
-          className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
+          className={`mt-4 w-full rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] transition-all active:scale-95 ${
             combatUiActive
-              ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-              : "bg-rose-900/50 text-rose-100 hover:bg-rose-900/70"
-          } disabled:opacity-50`}
+              ? "bg-white/8 text-slate-200 hover:bg-white/12"
+              : "bg-rose-900/50 text-rose-100 shadow-[0_0_16px_rgba(239,68,68,0.25)] hover:bg-rose-900/70 hover:shadow-[0_0_24px_rgba(239,68,68,0.4)]"
+          } disabled:opacity-50 disabled:shadow-none`}
         >
           {combatLoading
             ? t("gm.dashboard.combatSyncing")

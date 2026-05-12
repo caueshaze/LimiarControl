@@ -64,26 +64,30 @@ export const GmDashboardRollRequestCard = ({
 }: Props) => {
   const { t } = useLocale();
 
+  const selectCls = "w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none";
+
   return (
-    <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
-      <div>
-        <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+    <div className="rounded-[28px] border border-white/8 bg-white/[0.04] p-5 backdrop-blur-xl">
+      <div className="mb-4">
+        <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-400">
           {t("gm.dashboard.diceRequest")}
         </label>
-        <p className="mt-1 text-xs text-slate-400">{t("gm.dashboard.diceRequestDescription")}</p>
+        <p className="mt-1 text-xs text-slate-500">{t("gm.dashboard.diceRequestDescription")}</p>
       </div>
-      <div className="mt-4 space-y-3">
-        {/* Roll type selector */}
+
+      {/* Two-column grid for form when wide enough */}
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        {/* Roll type */}
         <select
           value={rollType ?? ""}
-          onChange={(event) => {
-            const val = event.target.value || null;
+          onChange={(e) => {
+            const val = e.target.value || null;
             setRollType(val);
             setRollAbility(null);
             setRollSkill(null);
             if (val) setRollExpression("d20");
           }}
-          className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+          className={selectCls}
         >
           <option value="">{t("gm.dashboard.freeRollLegacy")}</option>
           <option value="ability">{t("rolls.abilityCheck")}</option>
@@ -97,12 +101,26 @@ export const GmDashboardRollRequestCard = ({
           )}
         </select>
 
-        {/* Ability/skill selector when roll type requires it */}
+        {/* Target player */}
+        <select
+          value={rollTargetUserId ?? ""}
+          onChange={(e) => setRollTargetUserId(e.target.value || null)}
+          className={selectCls}
+        >
+          <option value="">{t("gm.dashboard.allPlayers")}</option>
+          {partyPlayers.map((player) => (
+            <option key={player.userId} value={player.userId}>
+              {player.displayName || player.username || t("gm.dashboard.playerLabel")}
+            </option>
+          ))}
+        </select>
+
+        {/* Ability selector */}
         {(rollType === "ability" || rollType === "save") && (
           <select
             value={rollAbility ?? ""}
-            onChange={(event) => setRollAbility(event.target.value || null)}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+            onChange={(e) => setRollAbility(e.target.value || null)}
+            className={selectCls}
           >
             <option value="">{t("gm.dashboard.selectAbility")}</option>
             <option value="strength">{t("rolls.ability.strength")}</option>
@@ -113,11 +131,13 @@ export const GmDashboardRollRequestCard = ({
             <option value="charisma">{t("rolls.ability.charisma")}</option>
           </select>
         )}
+
+        {/* Skill selector */}
         {rollType === "skill" && (
           <select
             value={rollSkill ?? ""}
-            onChange={(event) => setRollSkill(event.target.value || null)}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
+            onChange={(e) => setRollSkill(e.target.value || null)}
+            className={selectCls}
           >
             <option value="">{t("gm.dashboard.selectSkill")}</option>
             <option value="acrobatics">{t("rolls.skill.acrobatics")}</option>
@@ -141,24 +161,24 @@ export const GmDashboardRollRequestCard = ({
           </select>
         )}
 
-        {/* DC input for authoritative rolls */}
+        {/* DC input */}
         {rollType && rollType !== "initiative" && (
           <input
             type="number"
             min={1}
             value={rollDc}
-            onChange={(event) => setRollDc(event.target.value)}
+            onChange={(e) => setRollDc(e.target.value)}
             placeholder={t("gm.dashboard.dcPlaceholder")}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-limiar-500 focus:outline-none"
+            className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-limiar-500 focus:outline-none"
           />
         )}
 
-        {/* Die selector (only for legacy/free rolls) */}
+        {/* Die selector (free roll) */}
         {!rollType && (
           <select
             value={rollExpression}
-            onChange={(event) => setRollExpression(event.target.value)}
-            className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white focus:border-limiar-500 focus:outline-none"
+            onChange={(e) => setRollExpression(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white focus:border-limiar-500 focus:outline-none"
           >
             {rollOptions.map((option) => (
               <option key={option} value={option} className="text-slate-900">
@@ -168,78 +188,64 @@ export const GmDashboardRollRequestCard = ({
           </select>
         )}
 
-        {/* Target player */}
-        <select
-          value={rollTargetUserId ?? ""}
-          onChange={(event) => setRollTargetUserId(event.target.value || null)}
-          className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:border-limiar-500 focus:outline-none"
-        >
-          <option value="">{t("gm.dashboard.allPlayers")}</option>
-          {partyPlayers.map((player) => (
-            <option key={player.userId} value={player.userId}>
-              {player.displayName || player.username || t("gm.dashboard.playerLabel")}
-            </option>
-          ))}
-        </select>
-
+        {/* Reason */}
         <input
           type="text"
           value={rollReason}
-          onChange={(event) => setRollReason(event.target.value)}
+          onChange={(e) => setRollReason(e.target.value)}
           placeholder={t("gm.dashboard.reasonPlaceholder")}
-          className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-limiar-500 focus:outline-none"
+          className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-limiar-500 focus:outline-none sm:col-span-2"
         />
-        <div className="flex overflow-hidden rounded-2xl border border-slate-700 text-[10px] font-bold uppercase tracking-widest">
-          {(["normal", "advantage", "disadvantage"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setRollAdvantage(option)}
-              className={`flex-1 py-2 transition-colors ${
-                rollAdvantage === option
-                  ? option === "advantage"
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : option === "disadvantage"
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-slate-700 text-white"
-                  : "bg-slate-900 text-slate-500 hover:bg-slate-800"
-              }`}
-            >
-              {option === "normal"
-                ? t("gm.dashboard.advantageNormal")
-                : option === "advantage"
-                ? t("gm.dashboard.advantageAdv")
-                : t("gm.dashboard.advantageDisadv")}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => onCommand("request_roll", { expression: rollExpression })}
-          disabled={
-            commandSending ||
-            (rollType === "ability" && !rollAbility) ||
-            (rollType === "save" && !rollAbility) ||
-            (rollType === "skill" && !rollSkill)
-          }
-          className="w-full rounded-2xl bg-slate-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-200 hover:bg-slate-700 disabled:opacity-50"
-        >
-          {t("gm.dashboard.requestRollTo")}
-          {rollTargetUserId
-            ? ` → ${partyPlayers.find((player) => player.userId === rollTargetUserId)?.displayName ?? ""}`
-            : ""}
-        </button>
-        {commandFeedback?.type === "request_roll" && (
-          <div
-            className={`rounded-2xl border px-3 py-2 text-[11px] ${
-              commandFeedback.tone === "success"
-                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+      </div>
+
+      {/* Advantage toggle */}
+      <div className="mt-3 flex overflow-hidden rounded-xl border border-white/10 text-[10px] font-bold uppercase tracking-widest">
+        {(["normal", "advantage", "disadvantage"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setRollAdvantage(option)}
+            className={`flex-1 py-2 transition-all ${
+              rollAdvantage === option
+                ? option === "advantage"
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : option === "disadvantage"
+                  ? "bg-rose-500/20 text-rose-400"
+                  : "bg-white/10 text-white"
+                : "text-slate-500 hover:bg-white/5 hover:text-slate-400"
             }`}
           >
-            {commandFeedback.message}
-          </div>
-        )}
+            {option === "normal"
+              ? t("gm.dashboard.advantageNormal")
+              : option === "advantage"
+              ? t("gm.dashboard.advantageAdv")
+              : t("gm.dashboard.advantageDisadv")}
+          </button>
+        ))}
       </div>
+
+      {/* Submit */}
+      <button
+        onClick={() => onCommand("request_roll", { expression: rollExpression })}
+        disabled={
+          commandSending ||
+          (rollType === "ability" && !rollAbility) ||
+          (rollType === "save" && !rollAbility) ||
+          (rollType === "skill" && !rollSkill)
+        }
+        className="mt-3 w-full rounded-xl border border-white/10 bg-white/6 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/10 active:scale-[0.98] disabled:opacity-50"
+      >
+        {t("gm.dashboard.requestRollTo")}
+        {rollTargetUserId
+          ? ` → ${partyPlayers.find((p) => p.userId === rollTargetUserId)?.displayName ?? ""}`
+          : ""}
+      </button>
+
+      {commandFeedback?.type === "request_roll" && (
+        <p className={`mt-2 text-[11px] ${commandFeedback.tone === "success" ? "text-emerald-400" : "text-rose-400"}`}>
+          {commandFeedback.message}
+        </p>
+      )}
     </div>
   );
 };

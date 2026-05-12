@@ -45,6 +45,7 @@ export const usePlayerBoardResources = ({
     shopOpen: shopAvailable,
     combatActive,
     restState,
+    gameTimeSeconds,
   } = useSessionCommands();
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? activeSession?.campaignId ?? null;
   const { lastEvent } = useCampaignEvents(effectiveCampaignId);
@@ -340,6 +341,7 @@ export const usePlayerBoardResources = ({
     clearSessionEnded,
     combatActive,
     effectiveCampaignId,
+    gameTimeSeconds,
     lastCommand,
     lastEvent,
     myInventory,

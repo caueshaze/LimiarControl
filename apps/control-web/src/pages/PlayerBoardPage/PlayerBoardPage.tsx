@@ -60,6 +60,7 @@ export const PlayerBoardPage = () => {
     clearSessionEnded,
     combatActive,
     effectiveCampaignId,
+    gameTimeSeconds,
     lastCommand,
     lastEvent,
     myInventory,
@@ -400,6 +401,7 @@ export const PlayerBoardPage = () => {
         sessionStatusTone={sessionStatusTone}
         shopOpen={shopOpen}
         combatActive={combatActive}
+        gameTimeSeconds={gameTimeSeconds}
         inventoryTotal={inventoryTotal}
         onBack={() =>
           navigateBackOrFallback(navigate, {
