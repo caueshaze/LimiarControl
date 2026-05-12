@@ -233,4 +233,55 @@ describe("AuthoritativeRollDialog", () => {
     );
     expect(markup).toContain("Perdição: -1d4");
   });
+
+  it("exibe bônus de Orientação +1d4 em teste de atributo", () => {
+    useRollResolutionMock.mockReturnValue({
+      result: {
+        event_id: "roll-4",
+        roll_type: "ability",
+        actor_kind: "player",
+        actor_ref_id: "player-1",
+        actor_display_name: "Hero",
+        rolls: [12, 12],
+        selected_roll: 12,
+        advantage_mode: "normal",
+        modifier_used: 1,
+        override_used: false,
+        formula: "1d20 + 1",
+        total: 16,
+        check_modifier_sources: [
+          {
+            source_label: "Orientação",
+            modifier_type: "roll_dice_modifier",
+            mode: "bonus",
+            roll_type: "ability",
+            dice: "1d4",
+            rolls: [3],
+            signed_total: 3,
+            display_label: "Orientação: +1d4",
+            applied: true,
+            skip_reason: null,
+          },
+        ],
+        is_gm_roll: false,
+        roll_source: "system",
+        timestamp: "2026-05-01T00:00:00Z",
+      },
+      loading: false,
+      error: null,
+      submitRoll: vi.fn(),
+      clearResult: vi.fn(),
+    });
+
+    const markup = renderToStaticMarkup(
+      <AuthoritativeRollDialog
+        request={{ rollType: "ability", advantageMode: "normal", reason: "Ability check" }}
+        sessionId="session-1"
+        actorKind="player"
+        actorRefId="player-1"
+        onClose={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Orientação: +1d4");
+  });
 });

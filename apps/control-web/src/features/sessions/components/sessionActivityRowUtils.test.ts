@@ -126,4 +126,21 @@ describe("sessionActivityRowUtils", () => {
       }),
     ).toBe("Perdição: -1d4");
   });
+
+  it("formats Guidance roll bonus source", () => {
+    expect(
+      formatCheckModifierSource({
+        source_label: "Orientação",
+        modifier_type: "roll_dice_modifier",
+        mode: "bonus",
+        roll_type: "ability",
+        dice: "1d4",
+        rolls: [3],
+        signed_total: 3,
+        display_label: "Orientação: +1d4",
+        applied: true,
+        skip_reason: null,
+      }),
+    ).toBe("Orientação: +1d4");
+  });
 });

@@ -187,6 +187,7 @@ class RollDiceModifierParams(BaseModel):
     mode: Literal["bonus", "penalty"]
     roll_types: list[Literal["attack", "save", "ability", "skill"]]
     dice: str
+    consume_on_apply: bool = False
 
 
 class ArmorClassFormulaParams(BaseModel):
