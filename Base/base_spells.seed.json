@@ -1163,10 +1163,6 @@
       "concentration": false,
       "ritual": false,
       "resolutionType": "buff",
-      "upcast": {
-        "mode": "additional_targets",
-        "perLevel": 1
-      },
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
@@ -1188,10 +1184,15 @@
           "type": "modify_movement_speed",
           "target": "selected_target",
           "duration": {
-            "type": "manual"
+            "type": "timed",
+            "seconds": 3600
           },
           "params": {
-            "bonus_meters": 3
+            "bonus_meters": 3.0
+          },
+          "out_of_combat_duration": {
+            "type": "timed",
+            "seconds": 3600
           }
         }
       ]
