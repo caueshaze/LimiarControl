@@ -94,4 +94,19 @@ describe("sessionActivityRowUtils", () => {
       }),
     ).toBe("1d20 + 0 = 14 ✓ · Vantagem por Sabedoria da Coruja em wisdom");
   });
+
+  it("formats Bless roll bonus dice source", () => {
+    expect(
+      formatCheckModifierSource({
+        source_label: "Bênção",
+        modifier_type: "roll_bonus_dice",
+        roll_type: "save",
+        dice: "1d4",
+        rolls: [2],
+        signed_total: 2,
+        applied: true,
+        skip_reason: null,
+      }),
+    ).toBe("Bênção: +1d4");
+  });
 });

@@ -127,4 +127,59 @@ describe("AuthoritativeRollDialog", () => {
     expect(markup).toContain("Vantagem por Friends em charisma");
     expect(markup).toContain("Não aplicado: Friends só vale contra Other Guard");
   });
+
+  it("exibe bônus de Bênção +1d4 quando backend envia roll_bonus_dice", () => {
+    useRollResolutionMock.mockReturnValue({
+      result: {
+        event_id: "roll-2",
+        roll_type: "attack",
+        actor_kind: "player",
+        actor_ref_id: "player-1",
+        actor_display_name: "Hero",
+        rolls: [12, 12],
+        selected_roll: 12,
+        advantage_mode: "normal",
+        modifier_used: 5,
+        override_used: false,
+        formula: "1d20 + 5",
+        total: 20,
+        check_modifier_sources: [
+          {
+            source_label: "Bênção",
+            modifier_type: "roll_bonus_dice",
+            roll_type: "attack",
+            dice: "1d4",
+            rolls: [3],
+            signed_total: 3,
+            applied: true,
+            skip_reason: null,
+          },
+        ],
+        is_gm_roll: false,
+        roll_source: "system",
+        timestamp: "2026-05-01T00:00:00Z",
+      },
+      loading: false,
+      error: null,
+      submitRoll: vi.fn(),
+      clearResult: vi.fn(),
+    });
+
+    const markup = renderToStaticMarkup(
+      <AuthoritativeRollDialog
+        request={{
+          rollType: "attack",
+          advantageMode: "normal",
+          reason: "Attack roll",
+        }}
+        sessionId="session-1"
+        actorKind="player"
+        actorRefId="player-1"
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Contexto do efeito");
+    expect(markup).toContain("Bênção: +1d4");
+  });
 });

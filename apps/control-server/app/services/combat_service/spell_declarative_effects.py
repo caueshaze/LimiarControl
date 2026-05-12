@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, SkillName
 from .condition_effects_predicates import (
     explain_check_modifier_sources,
+    get_roll_bonus_dice_sources,
     resolve_actor_participant,
     resolve_check_advantage_mode,
 )
@@ -23,6 +24,32 @@ from .exceptions import CombatServiceError, _roll_dice_expression
 
 
 class CombatSpellDeclarativeEffectsMixin:
+    @classmethod
+    def _apply_roll_bonus_dice_to_roll_result(
+        cls,
+        *,
+        participant: dict,
+        roll_result,
+        roll_type: Literal["attack", "save"],
+    ) -> None:
+        sources = get_roll_bonus_dice_sources(participant, roll_type=roll_type)
+        if not sources:
+            return
+        extra_total = sum(int(s.get("signed_total") or 0) for s in sources)
+        roll_result.total = int(roll_result.total) + extra_total
+        merged = list(roll_result.check_modifier_sources or [])
+        merged.extend(sources)
+        roll_result.check_modifier_sources = merged
+        if roll_type == "attack" and roll_result.target_ac is not None:
+            if roll_result.selected_roll == 20:
+                roll_result.success = True
+            elif roll_result.selected_roll == 1:
+                roll_result.success = False
+            else:
+                roll_result.success = roll_result.total >= roll_result.target_ac
+        elif roll_type == "save" and roll_result.dc is not None:
+            roll_result.success = roll_result.total >= roll_result.dc
+
     @classmethod
     def _build_temp_hp_observability_from_metadata(
         cls,

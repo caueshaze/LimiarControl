@@ -42,6 +42,11 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
             ability=spell_context["save_ability"],
             dc=result.effective_dc,
         )
+        cls._apply_roll_bonus_dice_to_roll_result(
+            participant=target_p,
+            roll_result=result.roll_result,
+            roll_type="save",
+        )
         result.roll_result.is_gm_roll = is_gm
         result.roll_total = result.roll_result.total
         result.is_saved = bool(result.roll_result.success)

@@ -251,9 +251,15 @@ class CombatNpcActionResolutionMixin:
                 roll_source=req.roll_source,
                 manual_roll=req.manual_roll,
             )
+            cls._apply_roll_bonus_dice_to_roll_result(
+                participant=target_p,
+                roll_result=roll_result,
+                roll_type="save",
+            )
             roll_result.check_modifier_sources = [
                 *save_mod.advantage_source_details,
                 *save_mod.disadvantage_source_details,
+                *(roll_result.check_modifier_sources or []),
             ]
             roll_result.is_gm_roll = is_gm
             is_saved = False if save_mod.auto_fail else bool(roll_result.success)

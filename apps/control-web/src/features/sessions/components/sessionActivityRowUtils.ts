@@ -108,6 +108,14 @@ export function formatResolvedRollBreakdown(
 }
 
 export function formatCheckModifierSource(entry: NonNullable<RollResolvedActivityEvent["check_modifier_sources"]>[number]): string {
+  if (entry.modifier_type === "roll_bonus_dice") {
+    const source = entry.source_label || "efeito ativo";
+    const dice = entry.dice || "";
+    if (entry.applied) {
+      return `${source}: +${dice}`;
+    }
+    return `Não aplicado: ${source}`;
+  }
   const subject = entry.roll_type === "skill"
     ? entry.skill ?? entry.ability ?? "check"
     : entry.ability ?? "check";

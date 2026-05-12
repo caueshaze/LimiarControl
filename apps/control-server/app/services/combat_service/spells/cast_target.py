@@ -860,6 +860,11 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             target_ac=target_ac,
             roll_source="system",
         )
+        cls._apply_roll_bonus_dice_to_roll_result(
+            participant=attacker,
+            roll_result=roll_result,
+            roll_type="attack",
+        )
         roll_result.is_gm_roll = is_gm
         roll_result.roll_source = "system"
 
