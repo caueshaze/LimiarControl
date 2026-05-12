@@ -23,13 +23,15 @@ export type AuthoritativeRollRequest = {
   issuedByLabel?: string;
   debugModifiers?: Array<{
     source_label: string;
-    modifier_type: "advantage" | "disadvantage" | "roll_bonus_dice";
+    modifier_type: "advantage" | "disadvantage" | "roll_bonus_dice" | "roll_dice_modifier";
     roll_type: "ability" | "skill" | "attack" | "save";
     ability?: string | null;
     skill?: string | null;
     dice?: string | null;
     rolls?: number[] | null;
     signed_total?: number | null;
+    mode?: "bonus" | "penalty" | null;
+    display_label?: string | null;
     against?: "any" | "effect_target" | "selected_target" | null;
     selected_target_participant_id?: string | null;
     selected_target_display_name?: string | null;
@@ -205,7 +207,9 @@ export const AuthoritativeRollDialog = ({
               {(() => {
                 if (!displayedResult) return "Contexto do efeito";
                 const applied = modifierSources.filter((s) => s.applied);
-                const hasRollBonusDice = applied.some((s) => s.modifier_type === "roll_bonus_dice");
+                const hasRollBonusDice = applied.some(
+                  (s) => s.modifier_type === "roll_bonus_dice" || s.modifier_type === "roll_dice_modifier",
+                );
                 if (hasRollBonusDice) return "Contexto do efeito";
                 const hasAdv = applied.some((s) => s.modifier_type === "advantage");
                 const hasDis = applied.some((s) => s.modifier_type === "disadvantage");

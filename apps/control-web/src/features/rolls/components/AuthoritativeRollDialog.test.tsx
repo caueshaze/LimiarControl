@@ -182,4 +182,55 @@ describe("AuthoritativeRollDialog", () => {
     expect(markup).toContain("Contexto do efeito");
     expect(markup).toContain("Bênção: +1d4");
   });
+
+  it("exibe penalidade de Perdição -1d4 quando backend envia roll_dice_modifier", () => {
+    useRollResolutionMock.mockReturnValue({
+      result: {
+        event_id: "roll-3",
+        roll_type: "save",
+        actor_kind: "player",
+        actor_ref_id: "player-1",
+        actor_display_name: "Hero",
+        rolls: [13, 13],
+        selected_roll: 13,
+        advantage_mode: "normal",
+        modifier_used: 2,
+        override_used: false,
+        formula: "1d20 + 2",
+        total: 12,
+        check_modifier_sources: [
+          {
+            source_label: "Perdição",
+            modifier_type: "roll_dice_modifier",
+            mode: "penalty",
+            roll_type: "save",
+            dice: "1d4",
+            rolls: [3],
+            signed_total: -3,
+            display_label: "Perdição: -1d4",
+            applied: true,
+            skip_reason: null,
+          },
+        ],
+        is_gm_roll: false,
+        roll_source: "system",
+        timestamp: "2026-05-01T00:00:00Z",
+      },
+      loading: false,
+      error: null,
+      submitRoll: vi.fn(),
+      clearResult: vi.fn(),
+    });
+
+    const markup = renderToStaticMarkup(
+      <AuthoritativeRollDialog
+        request={{ rollType: "save", advantageMode: "normal", reason: "Saving throw" }}
+        sessionId="session-1"
+        actorKind="player"
+        actorRefId="player-1"
+        onClose={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Perdição: -1d4");
+  });
 });

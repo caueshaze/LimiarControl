@@ -504,6 +504,30 @@ def _movement_speed_group_key(metadata: dict, effect: dict, params: dict) -> str
     )
 
 
+def _normalize_roll_dice_modifier_declarative(declarative: dict) -> dict | None:
+    raw_type = declarative.get("type")
+    params = declarative.get("params")
+    if not isinstance(params, dict):
+        return None
+    if raw_type == "roll_bonus_dice":
+        mode = "bonus"
+        roll_types = params.get("roll_types")
+        dice = params.get("dice")
+    elif raw_type == "roll_dice_modifier":
+        mode = params.get("mode")
+        roll_types = params.get("roll_types")
+        dice = params.get("dice")
+    else:
+        return None
+    if mode not in {"bonus", "penalty"}:
+        return None
+    if not isinstance(roll_types, list) or not all(isinstance(rt, str) for rt in roll_types):
+        return None
+    if not isinstance(dice, str) or not dice.strip():
+        return None
+    return {"type": "roll_dice_modifier", "mode": mode, "roll_types": roll_types, "dice": dice.strip()}
+
+
 def get_roll_bonus_dice_sources(
     participant: dict,
     *,
@@ -520,31 +544,34 @@ def get_roll_bonus_dice_sources(
         declarative = metadata.get("declarative_effect")
         if not isinstance(declarative, dict):
             continue
-        if declarative.get("type") != "roll_bonus_dice":
+        normalized = _normalize_roll_dice_modifier_declarative(declarative)
+        if not isinstance(normalized, dict):
             continue
-        params = declarative.get("params")
-        if not isinstance(params, dict):
-            continue
-        roll_types = params.get("roll_types")
-        dice = params.get("dice")
+        roll_types = normalized.get("roll_types")
+        dice = normalized.get("dice")
+        mode = normalized.get("mode")
         if not isinstance(roll_types, list) or roll_type not in roll_types:
             continue
         if not isinstance(dice, str) or not dice.strip():
             continue
-        dedup_key = f"{_declarative_effect_group_key(metadata, effect, 'roll_bonus_dice', roll_type)}|{dice.strip()}"
+        dedup_key = f"{_declarative_effect_group_key(metadata, effect, 'roll_dice_modifier', roll_type)}|{dice.strip()}|{mode}"
         if dedup_key in seen_keys:
             continue
         seen_keys.add(dedup_key)
         rolls, total = _roll_dice_expression(dice.strip())
+        signed_total = -abs(total) if mode == "penalty" else abs(total)
         source_label = metadata.get("source_spell_name") or effect.get("display_label") or "Spell effect"
+        sign_label = "-" if mode == "penalty" else "+"
         sources.append(
             {
                 "source_label": source_label,
-                "modifier_type": "roll_bonus_dice",
+                "modifier_type": "roll_dice_modifier",
                 "roll_type": roll_type,
+                "mode": mode,
                 "dice": dice.strip(),
                 "rolls": rolls,
-                "signed_total": total,
+                "signed_total": signed_total,
+                "display_label": f"{source_label}: {sign_label}{dice.strip()}",
                 "applied": True,
                 "skip_reason": None,
             }
