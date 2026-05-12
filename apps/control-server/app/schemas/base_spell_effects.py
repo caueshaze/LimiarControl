@@ -27,6 +27,7 @@ SpellDeclarativeEffectType = Literal[
     "heal",
     "roll_bonus_dice",
     "roll_dice_modifier",
+    "attack_advantage_against_target",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -190,6 +191,14 @@ class RollDiceModifierParams(BaseModel):
     consume_on_apply: bool = False
 
 
+class AttackAdvantageAgainstTargetParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["advantage"] = "advantage"
+    roll_types: list[Literal["attack"]] = Field(default_factory=lambda: ["attack"])
+    applies_to_attackers: Literal["any"] = "any"
+    consume_on_apply: bool = True
+
+
 class ArmorClassFormulaParams(BaseModel):
     base_value: int = Field(ge=0)
     ability: AbilityName
@@ -237,6 +246,7 @@ class SpellDeclarativeEffect(BaseModel):
         | HealParams
         | RollBonusDiceParams
         | RollDiceModifierParams
+        | AttackAdvantageAgainstTargetParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -280,4 +290,10 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError("roll_bonus_dice effects require RollBonusDiceParams")
         if self.type == "roll_dice_modifier" and not isinstance(self.params, RollDiceModifierParams):
             raise ValueError("roll_dice_modifier effects require RollDiceModifierParams")
+        if self.type == "attack_advantage_against_target" and not isinstance(
+            self.params, AttackAdvantageAgainstTargetParams
+        ):
+            raise ValueError(
+                "attack_advantage_against_target effects require AttackAdvantageAgainstTargetParams"
+            )
         return self

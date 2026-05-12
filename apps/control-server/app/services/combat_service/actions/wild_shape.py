@@ -179,6 +179,8 @@ class WildShapeMixin:
         has_dis = req.has_disadvantage or cls._has_effect_kind(attacker, "disadvantage_on_attacks") or cls._has_effect_kind(target_p, "dodging") or bool(_adv_ctx.disadvantage_sources)
         if not req.has_advantage and cls._has_effect_kind(attacker, "advantage_on_attacks"):
             cls._consume_first_effect(attacker, "advantage_on_attacks")
+        if _adv_ctx.consumed_effect_ids_on_roll:
+            cls._consume_effect_ids(target_p, _adv_ctx.consumed_effect_ids_on_roll)
         adv_mode = "advantage" if (has_adv and not has_dis) else (
             "disadvantage" if (has_dis and not has_adv) else "normal"
         )

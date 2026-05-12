@@ -10,6 +10,7 @@ from .condition_effects_predicates import has_condition
 class AttackAdvantageContext:
     advantage_sources: list[str] = field(default_factory=list)
     disadvantage_sources: list[str] = field(default_factory=list)
+    consumed_effect_ids_on_roll: list[str] = field(default_factory=list)
     result: Literal["advantage", "normal", "disadvantage"] = "normal"
 
     def describe(self) -> str:
@@ -26,6 +27,7 @@ class AttackAdvantageContext:
 def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "melee") -> AttackAdvantageContext:
     adv: list[str] = []
     dis: list[str] = []
+    consume_effect_ids: list[str] = []
     if has_condition(attacker, "prone"):
         dis.append("attacker_prone")
     if has_condition(attacker, "frightened"):
@@ -51,13 +53,52 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
             adv.append("target_prone_melee")
         elif attack_kind == "ranged":
             dis.append("target_prone_ranged")
+    # Guiding Bolt rider: target carries a spell_effect that grants advantage
+    # to the next attack roll against this specific participant and is consumed
+    # only after a valid attack roll is resolved.
+    target_id = target.get("id")
+    if isinstance(target_id, str) and target_id:
+        for effect in target.get("active_effects") or []:
+            if effect.get("kind") != "spell_effect":
+                continue
+            metadata = effect.get("metadata")
+            if not isinstance(metadata, dict):
+                continue
+            declarative = metadata.get("declarative_effect")
+            if not isinstance(declarative, dict):
+                continue
+            if declarative.get("type") != "attack_advantage_against_target":
+                continue
+            params = declarative.get("params")
+            if not isinstance(params, dict):
+                continue
+            if params.get("mode") != "advantage":
+                continue
+            roll_types = params.get("roll_types")
+            if not isinstance(roll_types, list) or "attack" not in roll_types:
+                continue
+            if params.get("applies_to_attackers") != "any":
+                continue
+            marked_target = metadata.get("marked_target_participant_id")
+            if isinstance(marked_target, str) and marked_target != target_id:
+                continue
+            adv.append(metadata.get("source_spell_name") or "Guiding Bolt")
+            if params.get("consume_on_apply") is True:
+                effect_id = effect.get("id")
+                if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
+                    consume_effect_ids.append(effect_id)
     if adv and not dis:
         result: Literal["advantage", "normal", "disadvantage"] = "advantage"
     elif dis and not adv:
         result = "disadvantage"
     else:
         result = "normal"
-    return AttackAdvantageContext(advantage_sources=adv, disadvantage_sources=dis, result=result)
+    return AttackAdvantageContext(
+        advantage_sources=adv,
+        disadvantage_sources=dis,
+        consumed_effect_ids_on_roll=consume_effect_ids,
+        result=result,
+    )
 
 
 def get_attack_advantage_penalty(attacker: dict, target: dict) -> int:

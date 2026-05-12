@@ -107,13 +107,13 @@ def upgrade() -> None:
                     description_pt = :description_pt,
                     level = :level,
                     school = :school,
-                    classes_json = :classes_json::jsonb,
+                    classes_json = CAST(:classes_json AS jsonb),
                     casting_time_type = :casting_time_type,
                     casting_time = :casting_time,
                     range_meters = :range_meters,
                     range_text = :range_text,
                     duration = :duration,
-                    components_json = :components_json::jsonb,
+                    components_json = CAST(:components_json AS jsonb),
                     material_component_text = :material_component_text,
                     concentration = :concentration,
                     ritual = :ritual,
@@ -131,7 +131,7 @@ def upgrade() -> None:
                     requires_target_effect = :requires_target_effect,
                     requires_point_sight = :requires_point_sight,
                     requires_point_effect = :requires_point_effect,
-                    effects_json = :effects_json::jsonb,
+                    effects_json = CAST(:effects_json AS jsonb),
                     source = :source,
                     is_srd = :is_srd,
                     is_active = :is_active
@@ -163,10 +163,10 @@ def upgrade() -> None:
                 ) VALUES (
                     :id, :system, :canonical_key,
                     :name_en, :name_pt, :description_en, :description_pt,
-                    :level, :school, :classes_json::jsonb,
+                    :level, :school, CAST(:classes_json AS jsonb),
                     :casting_time_type, :casting_time,
                     :range_meters, :range_text, :duration,
-                    :components_json::jsonb, :material_component_text,
+                    CAST(:components_json AS jsonb), :material_component_text,
                     :concentration, :ritual,
                     :out_of_combat_castable, :out_of_combat_target,
                     :resolution_type,
@@ -174,7 +174,7 @@ def upgrade() -> None:
                     :attack_type, :range_kind, :effect_timing,
                     :requires_target_sight, :requires_target_effect,
                     :requires_point_sight, :requires_point_effect,
-                    :effects_json::jsonb, :source, :is_srd, :is_active
+                    CAST(:effects_json AS jsonb), :source, :is_srd, :is_active
                 )
                 """
             ),
@@ -219,10 +219,10 @@ def upgrade() -> None:
                 ) VALUES (
                     :id, :campaign_id, :base_spell_id, :canonical_key,
                     :name_en, :name_pt, :description_en, :description_pt,
-                    :level, :school, :classes_json::jsonb,
+                    :level, :school, CAST(:classes_json AS jsonb),
                     :casting_time_type, :casting_time,
                     :range_meters, :range_text, :duration,
-                    :components_json::jsonb, :material_component_text,
+                    CAST(:components_json AS jsonb), :material_component_text,
                     :concentration, :ritual,
                     :out_of_combat_castable, :out_of_combat_target,
                     :resolution_type,
@@ -230,7 +230,7 @@ def upgrade() -> None:
                     :attack_type, :range_kind, :effect_timing,
                     :requires_target_sight, :requires_target_effect,
                     :requires_point_sight, :requires_point_effect,
-                    :effects_json::jsonb, :source, :is_srd, :is_enabled, :is_custom
+                    CAST(:effects_json AS jsonb), :source, :is_srd, :is_enabled, :is_custom
                 )
                 """
             ),

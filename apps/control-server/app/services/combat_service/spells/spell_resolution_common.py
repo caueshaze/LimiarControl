@@ -345,6 +345,8 @@ class SpellResolutionCommonMixin:
             "is_critical": is_critical,
             "roll": roll_total,
             "roll_result": roll_result.model_dump(mode="json") if roll_result else None,
+            "effects": list(spell_context.get("effects") or []),
+            "on_end_effects": list(spell_context.get("on_end_effects") or []),
             **cls._build_pending_modal_payload(spell_context, target_p),
         }
         if target_ac is not None:
