@@ -7,11 +7,13 @@ from fastapi import HTTPException
 from sqlmodel import Session as DbSession, select
 
 from app.models.campaign_member import CampaignMember
+from app.models.campaign import RoleMode
 from app.models.item import Item
 from app.models.session import SessionStatus
 from app.models.session_command_event import SessionCommandEvent
 from app.schemas.inventory import (
     InventoryBuy,
+    InventoryConditionTagAdd,
     InventoryRead,
     InventorySell,
     InventorySellRead,
@@ -35,6 +37,12 @@ from .shop_common import (
 from app.models.inventory import InventoryItem
 from app.services.combat import CombatService
 from app.services.magic_item_effects import inventory_item_supports_stacking
+from app.services.item_condition_tags import (
+    ALLOWED_ITEM_CONDITION_TAGS,
+    add_item_condition_tag,
+    normalize_item_condition_tags,
+    remove_item_condition_tag,
+)
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
 
@@ -76,6 +84,13 @@ def ensure_shop_open(entry, runtime) -> None:
         raise HTTPException(status_code=400, detail="Session is not active")
     if not runtime.shop_open:
         raise HTTPException(status_code=400, detail="Shop is closed")
+
+
+def _require_inventory_access(entry, user, session: DbSession) -> CampaignMember:
+    member = require_campaign_member(entry, user, session)
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a campaign member")
+    return member
 
 
 def list_session_shop_items_service(
@@ -311,3 +326,118 @@ async def sell_session_shop_item_service(
         refundLabel=refund_label,
         currentCurrency=_to_currency_read(next_currency),
     )
+
+
+def _build_condition_tag_event_payload(*, inventory_item: InventoryItem, item: Item, tag: str, action: str) -> dict:
+    return {
+        "inventoryItemId": require_identifier(inventory_item.id, "Inventory item is missing an id"),
+        "itemId": inventory_item.item_id,
+        "itemName": item.name,
+        "tag": tag,
+        "action": action,
+    }
+
+
+async def add_inventory_item_condition_tag_service(
+    session_id: str,
+    inventory_item_id: str,
+    payload: InventoryConditionTagAdd,
+    user,
+    session: DbSession,
+) -> InventoryRead:
+    entry, _runtime = require_active_shop_session(session_id, session)
+    member = _require_inventory_access(entry, user, session)
+    inventory_item = session.exec(
+        select(InventoryItem).where(
+            InventoryItem.id == inventory_item_id,
+            InventoryItem.campaign_id == entry.campaign_id,
+            InventoryItem.party_id == entry.party_id,
+        )
+    ).first()
+    if not inventory_item:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+    if member.role_mode != RoleMode.GM and inventory_item.member_id != require_identifier(member.id, "Campaign member is missing an id"):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    tag = payload.tag.strip() if isinstance(payload.tag, str) else ""
+    if tag not in ALLOWED_ITEM_CONDITION_TAGS:
+        raise HTTPException(status_code=400, detail="Invalid item condition tag")
+
+    next_tags, changed = add_item_condition_tag(inventory_item.condition_tags, tag)
+    inventory_item.condition_tags = normalize_item_condition_tags(next_tags)
+    session.add(inventory_item)
+
+    item = session.exec(select(Item).where(Item.id == inventory_item.item_id)).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if changed:
+        session.add(
+            create_session_command_event(
+                session_id=session_id,
+                user_id=user.id,
+                member=member,
+                command_type="inventory_condition_tag_added",
+                payload_json=_build_condition_tag_event_payload(
+                    inventory_item=inventory_item,
+                    item=item,
+                    tag=tag,
+                    action="add",
+                ),
+            )
+        )
+    session.commit()
+    session.refresh(inventory_item)
+    return to_inventory_read(inventory_item)
+
+
+async def remove_inventory_item_condition_tag_service(
+    session_id: str,
+    inventory_item_id: str,
+    tag: str,
+    user,
+    session: DbSession,
+) -> InventoryRead:
+    entry, _runtime = require_active_shop_session(session_id, session)
+    member = _require_inventory_access(entry, user, session)
+    inventory_item = session.exec(
+        select(InventoryItem).where(
+            InventoryItem.id == inventory_item_id,
+            InventoryItem.campaign_id == entry.campaign_id,
+            InventoryItem.party_id == entry.party_id,
+        )
+    ).first()
+    if not inventory_item:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+    if member.role_mode != RoleMode.GM and inventory_item.member_id != require_identifier(member.id, "Campaign member is missing an id"):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    normalized_tag = tag.strip()
+    if normalized_tag not in ALLOWED_ITEM_CONDITION_TAGS:
+        raise HTTPException(status_code=400, detail="Invalid item condition tag")
+    next_tags, changed = remove_item_condition_tag(inventory_item.condition_tags, normalized_tag)
+    inventory_item.condition_tags = normalize_item_condition_tags(next_tags)
+    session.add(inventory_item)
+
+    item = session.exec(select(Item).where(Item.id == inventory_item.item_id)).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if changed:
+        session.add(
+            create_session_command_event(
+                session_id=session_id,
+                user_id=user.id,
+                member=member,
+                command_type="inventory_condition_tag_removed",
+                payload_json=_build_condition_tag_event_payload(
+                    inventory_item=inventory_item,
+                    item=item,
+                    tag=normalized_tag,
+                    action="remove",
+                ),
+            )
+        )
+    session.commit()
+    session.refresh(inventory_item)
+    return to_inventory_read(inventory_item)
