@@ -268,8 +268,6 @@ def derive_active_concentration(state_json: dict | None) -> dict | None:
     first_group: str | None = None
     first_metadata: dict | None = None
     for effect in persisted:
-        if not is_mechanical_effect(effect):
-            continue
         metadata = effect.get("metadata")
         if not isinstance(metadata, dict):
             continue
