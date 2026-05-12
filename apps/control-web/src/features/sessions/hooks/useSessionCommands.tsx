@@ -11,6 +11,7 @@ export const useSessionCommands = () => {
     restState,
     sessionEndedAt,
     shopOpen,
+    gameTimeSeconds,
   } = useSession();
 
   return {
@@ -22,5 +23,6 @@ export const useSessionCommands = () => {
     shopOpen,
     combatActive,
     restState,
+    gameTimeSeconds,
   };
 };

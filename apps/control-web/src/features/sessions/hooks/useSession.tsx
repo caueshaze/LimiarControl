@@ -42,6 +42,7 @@ type SessionContextValue = {
   expandCombatUi: () => void;
   collapseCombatUi: () => void;
   restState: SessionRestState;
+  gameTimeSeconds: number;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -100,6 +101,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             shopOpen: nextRuntime.shopOpen,
             combatActive: nextRuntime.combatActive,
             restState: nextRuntime.restState,
+            gameTimeSeconds: nextRuntime.gameTimeSeconds,
           }));
         })
         .catch((err: { status?: number }) => {
@@ -112,6 +114,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             shopOpen: false,
             combatActive: false,
             restState: "exploration",
+            gameTimeSeconds: 0,
           }));
         });
     };
@@ -228,6 +231,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         setCombatUiExpanded(false);
       },
       restState: runtime.restState,
+      gameTimeSeconds: runtime.gameTimeSeconds,
     }),
     [combatUiExpanded, persistSelectedSessionId, runtime, selectedSessionId]
   );

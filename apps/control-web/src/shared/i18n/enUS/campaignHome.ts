@@ -22,6 +22,7 @@ export const campaignHomeEnUSDictionary = {
   "campaignHome.startSession": "Start Session",
   "campaignHome.starting": "Starting...",
   "campaignHome.startSessionHelper": "Enter a title to begin a new session.",
+  "campaignHome.sessionStartTime": "Game start time",
   "campaignHome.sessionNamePlaceholder": "e.g. The Dark Forest",
   "campaignHome.loadingPartyDetails": "Loading party details...",
   "campaignHome.partyNotFound": "Party not found.",

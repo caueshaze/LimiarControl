@@ -1,4 +1,5 @@
 import { SessionTimer } from "../../shared/ui/SessionTimer";
+import { useState } from "react";
 import type { ActiveSession, LobbyStatus } from "../../shared/api/sessionsRepo";
 import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CampaignMapConfig } from "../../entities/campaign";
@@ -23,6 +24,7 @@ type Props = {
   onlineUsers: Record<string, string>;
   partyPlayers: PartyMemberSummary[];
   restState: "exploration" | "short_rest" | "long_rest";
+  gameTimeSeconds: number;
   rollAbility: string | null;
   rollAdvantage: "normal" | "advantage" | "disadvantage";
   rollDc: string;
@@ -43,7 +45,8 @@ type Props = {
       | "end_combat"
       | "start_short_rest"
       | "start_long_rest"
-      | "end_rest",
+      | "end_rest"
+      | "advance_game_time",
     payload?: Record<string, unknown>,
   ) => void;
   onEndSession: () => void;
@@ -74,6 +77,7 @@ export const GmDashboardSessionPanel = ({
   onlineUsers,
   partyPlayers,
   restState,
+  gameTimeSeconds,
   rollAbility,
   rollAdvantage,
   rollDc,
@@ -101,6 +105,18 @@ export const GmDashboardSessionPanel = ({
   setRollType,
 }: Props) => {
   const { t } = useLocale();
+  const [customHours, setCustomHours] = useState("1");
+  const gameDay = Math.floor(gameTimeSeconds / 86400) + 1;
+  const daySeconds = gameTimeSeconds % 86400;
+  const gameTimeHours = Math.floor(daySeconds / 3600);
+  const gameTimeMinutes = Math.floor((daySeconds % 3600) / 60);
+  const gameTimeRemainderSeconds = daySeconds % 60;
+  const gameClockLabel = `${String(gameTimeHours).padStart(2, "0")}:${String(gameTimeMinutes).padStart(2, "0")}:${String(
+    gameTimeRemainderSeconds,
+  ).padStart(2, "0")}`;
+  const customHoursNumber = Number(customHours);
+  const customHoursIsValid = Number.isFinite(customHoursNumber) && customHoursNumber > 0;
+  const isAdvanceFeedback = commandFeedback?.type === "advance_game_time";
 
   return (
     <div className="grid gap-6">
@@ -195,6 +211,83 @@ export const GmDashboardSessionPanel = ({
 
         {activeSession?.status === "ACTIVE" && (
           <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+                    {t("gm.dashboard.gameClock")}
+                  </label>
+                  <p className="mt-1 text-xs text-slate-400">{t("gm.dashboard.gameClockDescription")}</p>
+                </div>
+                <span className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-limiar-300">
+                  {t("gm.dashboard.gameClockLive")}
+                </span>
+              </div>
+              <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  {t("gm.dashboard.gameClockDay").replace("{day}", String(gameDay))}
+                </p>
+                <p className="font-mono text-2xl font-semibold tracking-[0.18em] text-limiar-200">{gameClockLabel}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onCommand("advance_game_time", { seconds: 3600 })}
+                  disabled={commandSending}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
+                >
+                  +1h
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCommand("advance_game_time", { seconds: 7200 })}
+                  disabled={commandSending}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
+                >
+                  +2h
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCommand("advance_game_time", { seconds: 28800 })}
+                  disabled={commandSending}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-50"
+                >
+                  +8h
+                </button>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={customHours}
+                  onChange={(event) => setCustomHours(event.target.value)}
+                  className="w-24 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
+                  aria-label={t("gm.dashboard.gameClockCustomHours")}
+                />
+                <span className="text-xs text-slate-400">{t("gm.dashboard.gameClockHoursSuffix")}</span>
+                <button
+                  type="button"
+                  onClick={() => onCommand("advance_game_time", { seconds: Math.round(customHoursNumber * 3600) })}
+                  disabled={commandSending || !customHoursIsValid}
+                  className="ml-auto rounded-xl bg-limiar-500 px-3 py-2 text-xs font-semibold text-white hover:bg-limiar-400 disabled:opacity-50"
+                >
+                  {t("gm.dashboard.gameClockAdvance")}
+                </button>
+              </div>
+              {isAdvanceFeedback && commandFeedback ? (
+                <div
+                  className={`mt-3 rounded-2xl border px-3 py-2 text-[11px] ${
+                    commandFeedback.tone === "success"
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                      : "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                  }`}
+                >
+                  {commandFeedback.message}
+                </div>
+              ) : null}
+            </div>
+
             {/* Shop control card */}
             <div className="rounded-2xl border border-slate-800 bg-linear-to-br from-slate-950/60 to-slate-900/40 p-4">
               <div className="flex items-center justify-between">

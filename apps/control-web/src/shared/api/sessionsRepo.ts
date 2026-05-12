@@ -455,6 +455,7 @@ export type SessionRuntime = {
   shopOpen: boolean;
   combatActive: boolean;
   restState: SessionRestState;
+  gameTimeSeconds: number;
 };
 
 export type SessionSummary = {
@@ -479,7 +480,7 @@ export const sessionsRepo = {
     http.get<ActiveSession>(`/campaigns/${campaignId}/sessions/active`),
   list: (campaignId: string) =>
     http.get<SessionSummary[]>(`/campaigns/${campaignId}/sessions`),
-  activate: (campaignId: string, payload: { title: string }) =>
+  activate: (campaignId: string, payload: { title: string; initialGameTimeSeconds: number }) =>
     http.post<ActiveSession>(`/campaigns/${campaignId}/sessions`, payload),
   end: (sessionId: string) =>
     http.post<ActiveSession>(`/sessions/${sessionId}/close`, {}),

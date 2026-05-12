@@ -124,6 +124,7 @@ async def _start_session_for_party(
         ))
     session.commit()
     runtime = get_or_create_session_runtime(entry.id, session)
+    runtime.game_time_seconds = payload.initialGameTimeSeconds
 
     from app.models.user import User as UserModel
     expected: dict[str, str] = {}
@@ -139,6 +140,7 @@ async def _start_session_for_party(
         runtime.lobby_ready = []
         runtime.shop_open = False
         runtime.combat_active = False
+        runtime.game_time_seconds = payload.initialGameTimeSeconds
         session.add(entry)
         session.add(runtime)
         session.commit()
@@ -165,6 +167,7 @@ async def _start_session_for_party(
         runtime.lobby_ready = []
         runtime.shop_open = False
         runtime.combat_active = False
+        runtime.game_time_seconds = payload.initialGameTimeSeconds
         session.add(runtime)
         session.commit()
         await centrifugo.publish(

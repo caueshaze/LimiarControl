@@ -70,12 +70,12 @@ export const useActiveSession = (campaignId?: string | null) => {
   }, [refresh]);
 
   const activate = useCallback(
-    (title: string) => {
+    (title: string, initialGameTimeSeconds: number) => {
       if (!effectiveCampaignId) {
         return Promise.resolve(null);
       }
       return sessionsRepo
-        .activate(effectiveCampaignId, { title })
+        .activate(effectiveCampaignId, { title, initialGameTimeSeconds })
         .then((data) => {
           setState({
             campaignId: effectiveCampaignId,
