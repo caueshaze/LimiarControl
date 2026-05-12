@@ -97,6 +97,11 @@ class WeaponAttackRollMixin:
             manual_roll=req.manual_roll,
             manual_rolls=req.manual_rolls,
         )
+        cls._apply_roll_bonus_dice_to_roll_result(
+            participant=attacker,
+            roll_result=roll_result,
+            roll_type="attack",
+        )
         roll_result.is_gm_roll = is_gm
         roll_result.roll_source = req.roll_source
         is_crit = roll_result.selected_roll == 20

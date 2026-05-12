@@ -121,10 +121,13 @@ export type RollResult = {
   success?: boolean | null;
   check_modifier_sources?: Array<{
     source_label: string;
-    modifier_type: "advantage" | "disadvantage";
-    roll_type: "ability" | "skill";
+    modifier_type: "advantage" | "disadvantage" | "roll_bonus_dice";
+    roll_type: "ability" | "skill" | "attack" | "save";
     ability?: string | null;
     skill?: string | null;
+    dice?: string | null;
+    rolls?: number[] | null;
+    signed_total?: number | null;
     against?: "any" | "effect_target" | "selected_target" | null;
     selected_target_participant_id?: string | null;
     selected_target_display_name?: string | null;

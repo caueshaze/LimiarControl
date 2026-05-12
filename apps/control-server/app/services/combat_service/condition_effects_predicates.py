@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Literal
+from app.services.combat_service.exceptions import _roll_dice_expression
 
 from app.schemas.campaign_entity_shared import AbilityName
 from .entity_size import SizeCategory, normalize_size_category, size_carrying_capacity_multiplier
@@ -501,6 +502,54 @@ def _movement_speed_group_key(metadata: dict, effect: dict, params: dict) -> str
         "modify_movement_speed",
         str(params.get("bonus_meters", "")),
     )
+
+
+def get_roll_bonus_dice_sources(
+    participant: dict,
+    *,
+    roll_type: Literal["attack", "save"],
+) -> list[dict]:
+    sources: list[dict] = []
+    seen_keys: set[str] = set()
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "roll_bonus_dice":
+            continue
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        roll_types = params.get("roll_types")
+        dice = params.get("dice")
+        if not isinstance(roll_types, list) or roll_type not in roll_types:
+            continue
+        if not isinstance(dice, str) or not dice.strip():
+            continue
+        dedup_key = f"{_declarative_effect_group_key(metadata, effect, 'roll_bonus_dice', roll_type)}|{dice.strip()}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+        rolls, total = _roll_dice_expression(dice.strip())
+        source_label = metadata.get("source_spell_name") or effect.get("display_label") or "Spell effect"
+        sources.append(
+            {
+                "source_label": source_label,
+                "modifier_type": "roll_bonus_dice",
+                "roll_type": roll_type,
+                "dice": dice.strip(),
+                "rolls": rolls,
+                "signed_total": total,
+                "applied": True,
+                "skip_reason": None,
+            }
+        )
+    return sources
 
 
 def get_passive_skill_bonus(participant: dict, skill: str) -> int:

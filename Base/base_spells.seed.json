@@ -678,6 +678,72 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "bless",
+      "nameEn": "Bless",
+      "namePt": "Bênção",
+      "descriptionEn": "You bless up to three creatures of your choice within range. Whenever a target makes an attack roll or a saving throw before the spell ends, the target can add 1d4 to the roll.",
+      "descriptionPt": "Você abençoa até três criaturas à sua escolha dentro do alcance. Sempre que um alvo fizer uma jogada de ataque ou uma salvaguarda antes da magia terminar, ele pode adicionar 1d4 à rolagem.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Cleric",
+        "Paladin"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a sprinkling of holy water",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "maxTargets": 3,
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "effects": [
+        {
+          "type": "roll_bonus_dice",
+          "target": "selected_target",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "roll_types": [
+              "attack",
+              "save"
+            ],
+            "dice": "1d4"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "burning_hands",
       "nameEn": "Burning Hands",
       "namePt": "Mãos Flamejantes",
