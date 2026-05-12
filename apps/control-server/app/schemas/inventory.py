@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CurrencyRead(BaseModel):
@@ -18,6 +18,8 @@ class InventoryRead(BaseModel):
     chargesCurrent: Optional[int] = None
     isEquipped: bool
     notes: Optional[str]
+    conditionTags: list[str] = Field(default_factory=list)
+    conditionTagLabels: list[dict[str, str]] = Field(default_factory=list)
     sourceSpellCanonicalKey: Optional[str] = None
     expiresAt: Optional[datetime] = None
     createdAt: datetime
@@ -48,3 +50,7 @@ class InventoryUpdate(BaseModel):
     quantity: Optional[int] = None
     isEquipped: Optional[bool] = None
     notes: Optional[str] = None
+
+
+class InventoryConditionTagAdd(BaseModel):
+    tag: str

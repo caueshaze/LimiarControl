@@ -15,6 +15,7 @@ from app.models.party import Party
 from app.models.session import Session as CampaignSession, SessionStatus
 from app.models.user import User
 from app.schemas.inventory import InventoryBuy, InventoryRead, InventoryUpdate
+from app.services.item_condition_tags import normalize_item_condition_tags
 from app.services.inventory_expiration import purge_expired_inventory_items
 from app.services.magic_item_effects import initialize_inventory_item_charges, inventory_item_supports_stacking
 
@@ -23,6 +24,14 @@ DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
 
 
 def to_inventory_read(entry: InventoryItem) -> InventoryRead:
+    try:
+        condition_tags = normalize_item_condition_tags(entry.condition_tags)
+    except ValueError:
+        condition_tags = []
+    condition_tag_labels = [
+        {"tag": tag, "label": "Quebrado" if tag == "broken" else tag}
+        for tag in condition_tags
+    ]
     return InventoryRead(
         id=entry.id,
         campaignId=entry.campaign_id,
@@ -33,6 +42,8 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
         chargesCurrent=entry.charges_current,
         isEquipped=entry.is_equipped,
         notes=entry.notes,
+        conditionTags=condition_tags,
+        conditionTagLabels=condition_tag_labels,
         sourceSpellCanonicalKey=entry.source_spell_canonical_key,
         expiresAt=entry.expires_at,
         createdAt=entry.created_at,

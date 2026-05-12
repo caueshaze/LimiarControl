@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -16,6 +17,7 @@ class InventoryItem(SQLModel, table=True):
     charges_current: int | None = Field(default=None)
     is_equipped: bool = Field(default=False)
     notes: str | None = None
+    condition_tags: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False, server_default="[]"))
     source_spell_canonical_key: str | None = Field(
         default=None,
         sa_column=Column(String, nullable=True, index=True),

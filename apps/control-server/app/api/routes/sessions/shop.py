@@ -5,6 +5,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_session
 from app.schemas.inventory import (
     InventoryBuy,
+    InventoryConditionTagAdd,
     InventoryRead,
     InventorySell,
     InventorySellRead,
@@ -18,8 +19,10 @@ from .shop_common import (
     _to_currency_read,
 )
 from .shop_service import (
+    add_inventory_item_condition_tag_service,
     buy_session_shop_item_service,
     list_session_shop_items_service,
+    remove_inventory_item_condition_tag_service,
     sell_session_shop_item_service,
 )
 
@@ -53,6 +56,40 @@ async def sell_session_shop_item(
     session: DbSession = Depends(get_session),
 ):
     return await sell_session_shop_item_service(session_id, payload, user, session)
+
+
+@router.post("/sessions/{session_id}/inventory/items/{inventory_item_id}/condition-tags", response_model=InventoryRead)
+async def add_inventory_item_condition_tag(
+    session_id: str,
+    inventory_item_id: str,
+    payload: InventoryConditionTagAdd,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    return await add_inventory_item_condition_tag_service(
+        session_id,
+        inventory_item_id,
+        payload,
+        user,
+        session,
+    )
+
+
+@router.delete("/sessions/{session_id}/inventory/items/{inventory_item_id}/condition-tags/{tag}", response_model=InventoryRead)
+async def remove_inventory_item_condition_tag(
+    session_id: str,
+    inventory_item_id: str,
+    tag: str,
+    user=Depends(get_current_user),
+    session: DbSession = Depends(get_session),
+):
+    return await remove_inventory_item_condition_tag_service(
+        session_id,
+        inventory_item_id,
+        tag,
+        user,
+        session,
+    )
 
 
 __all__ = [

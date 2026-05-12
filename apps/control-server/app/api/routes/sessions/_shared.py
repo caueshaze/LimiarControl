@@ -16,6 +16,7 @@ from app.models.session_command_event import SessionCommandEvent
 from app.models.session_runtime import SessionRuntime
 from app.models.session_state import SessionState
 from app.schemas.inventory import InventoryRead
+from app.services.item_condition_tags import normalize_item_condition_tags
 from app.schemas.item import ItemRead
 from app.schemas.roll_event import RollDice, RollEventRead
 from app.schemas.session import (
@@ -132,6 +133,14 @@ def to_roll_read_local(entry: RollEvent) -> RollEventRead:
     )
 
 def to_inventory_read(entry: InventoryItem) -> InventoryRead:
+    try:
+        condition_tags = normalize_item_condition_tags(entry.condition_tags)
+    except ValueError:
+        condition_tags = []
+    condition_tag_labels = [
+        {"tag": tag, "label": "Quebrado" if tag == "broken" else tag}
+        for tag in condition_tags
+    ]
     return InventoryRead(
         id=require_identifier(entry.id, "Inventory item is missing an id"),
         campaignId=entry.campaign_id,
@@ -142,6 +151,8 @@ def to_inventory_read(entry: InventoryItem) -> InventoryRead:
         chargesCurrent=entry.charges_current,
         isEquipped=entry.is_equipped,
         notes=entry.notes,
+        conditionTags=condition_tags,
+        conditionTagLabels=condition_tag_labels,
         sourceSpellCanonicalKey=entry.source_spell_canonical_key,
         expiresAt=entry.expires_at,
         createdAt=entry.created_at,
