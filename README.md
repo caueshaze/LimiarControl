@@ -113,7 +113,7 @@ The defaults in `.env.example` work out of the box for local development.
 Start PostgreSQL, MinIO, and Centrifugo:
 
 ```bash
-docker compose up -d
+docker compose up -d.
 ```
 
 ### 3. Backend setup
