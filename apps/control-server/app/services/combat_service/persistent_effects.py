@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select as sa_select
 from sqlalchemy.orm.attributes import flag_modified
-from sqlmodel import select
 
 from app.models.session_state import SessionState
 from app.services.game_time import get_game_time_seconds
@@ -70,7 +70,7 @@ def sync_persisted_effects_from_combat_participants(
         if not ref_id:
             continue
         session_state = db.exec(
-            select(SessionState).where(
+            sa_select(SessionState).where(
                 SessionState.session_id == state.session_id,
                 SessionState.player_user_id == ref_id,
             )
@@ -124,7 +124,7 @@ def restore_persisted_effects(
     if not ref_id:
         return
     session_state = db.exec(
-        select(SessionState).where(
+        sa_select(SessionState).where(
             SessionState.session_id == session_id,
             SessionState.player_user_id == ref_id,
         )
@@ -196,7 +196,7 @@ def sync_effect_removal_to_state_json(
     if not ref_id:
         return
     session_state = db.exec(
-        select(SessionState).where(
+        sa_select(SessionState).where(
             SessionState.session_id == session_id,
             SessionState.player_user_id == ref_id,
         )
@@ -410,7 +410,7 @@ def clear_concentration_group_across_session(
     Returns the list of modified SessionState objects.
     """
     states = db.exec(
-        select(SessionState).where(SessionState.session_id == session_id)
+        sa_select(SessionState).where(SessionState.session_id == session_id)
     ).all()
 
     modified: list[SessionState] = []

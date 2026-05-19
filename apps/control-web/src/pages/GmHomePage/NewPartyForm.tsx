@@ -42,46 +42,60 @@ export const NewPartyForm = ({
           </p>
         </div>
 
-        {campaigns.length === 0 ? (
-          <div className="rounded-2xl border border-white/8 bg-white/4 px-4 py-5 text-center">
-            <p className="text-sm text-slate-400">
-              Crie uma campanha primeiro para poder abrir uma mesa.
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-4 backdrop-blur-xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {t("gm.home.menuCampaigns")}
+            </p>
+            <p className="mt-3 font-display text-3xl font-bold text-white">{campaigns.length}</p>
+          </div>
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-4 backdrop-blur-xl sm:col-span-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {t("home.activeCampaign")}
+            </p>
+            <p className="mt-3 truncate text-sm font-semibold text-white">
+              {campaigns.find((campaign) => campaign.id === campaignId)?.name ??
+                t("gm.home.partyCampaignMissing")}
             </p>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <label className="space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                {t("gm.home.partyFormTitle")}
-              </span>
-              <input
-                value={partyName}
-                onChange={(event) => setPartyName(event.target.value)}
-                placeholder={t("gm.home.partyNamePlaceholder")}
-                disabled={saving}
-                className="w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-limiar-300/40 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </label>
+        </div>
 
-            <label className="space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                {t("gm.home.menuCampaigns")}
-              </span>
-              <select
-                value={campaignId}
-                onChange={(event) => setCampaignId(event.target.value)}
-                disabled={saving}
-                className="w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-limiar-300/40 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {campaigns.map((campaign) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.85fr)]">
+          <label className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {t("gm.home.partyFormTitle")}
+            </span>
+            <input
+              autoFocus
+              value={partyName}
+              onChange={(event) => setPartyName(event.target.value)}
+              placeholder={t("gm.home.partyNamePlaceholder")}
+              disabled={campaigns.length === 0 || saving}
+              className="w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-limiar-300/40 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {t("gm.home.menuCampaigns")}
+            </span>
+            <select
+              value={campaignId}
+              onChange={(event) => setCampaignId(event.target.value)}
+              disabled={campaigns.length === 0 || saving}
+              className="w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-limiar-300/40 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {campaigns.length === 0 && (
+                <option value="">{t("gm.home.partyCampaignMissing")}</option>
+              )}
+              {campaigns.map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         {error && (
           <div className="rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">

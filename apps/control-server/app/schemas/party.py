@@ -39,7 +39,6 @@ class PartyMemberRead(BaseModel):
     createdAt: datetime = Field(validation_alias="created_at")
     displayName: Optional[str] = Field(default=None, validation_alias="display_name")
     username: Optional[str] = None
-    avatarUrl: Optional[str] = None
 
 
 class PartyDetail(PartyRead):

@@ -237,7 +237,6 @@ def get_party_details_service(
             member,
             display_name=member_user.display_name if member_user else None,
             username=member_user.username if member_user else None,
-            avatar_url=member_user.avatar_url if member_user else None,
         )
         for member in members
         for member_user in [session.get(User, member.user_id)]

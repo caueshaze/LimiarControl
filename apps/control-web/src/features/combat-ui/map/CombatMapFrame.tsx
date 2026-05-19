@@ -173,44 +173,18 @@ const buildMapFrameUrl = (sessionId: string) => {
   return nextUrl.toString();
 };
 
-type BootstrapPresentation = {
-  message: string;
-  tone: "info" | "error";
-  canRetry: boolean;
-};
-
-export const resolveBootstrapPresentation = (reason?: string | null): BootstrapPresentation => {
+const resolveBootstrapMessage = (reason?: string | null) => {
   switch (reason) {
     case "combat_not_active":
-      return {
-        message: "Aguardando o combate comecar para abrir o mapa tatico.",
-        tone: "info",
-        canRetry: false,
-      };
+      return "O mapa tatico fica disponivel quando o combate estiver ativo.";
     case "combat_not_found":
-      return {
-        message: "Aguardando o inicio do combate para abrir o mapa tatico.",
-        tone: "info",
-        canRetry: false,
-      };
+      return "O combate desta sessao ainda nao foi iniciado.";
     case "limiar_map_disabled":
-      return {
-        message: "A integracao do mapa tatico esta desativada neste ambiente.",
-        tone: "error",
-        canRetry: false,
-      };
+      return "A integracao do mapa tatico esta desativada neste ambiente.";
     case "no_combatants":
-      return {
-        message: "Nao foi possivel sincronizar o mapa porque o combate nao possui participantes validos.",
-        tone: "error",
-        canRetry: true,
-      };
+      return "Nao foi possivel sincronizar o mapa porque o combate nao possui participantes validos.";
     default:
-      return {
-        message: "Nao foi possivel preparar o mapa tatico desta sessao.",
-        tone: "error",
-        canRetry: true,
-      };
+      return "Nao foi possivel preparar o mapa tatico desta sessao.";
   }
 };
 
@@ -241,8 +215,6 @@ export const CombatMapFrame = ({
   const [bootstrapState, setBootstrapState] = useState<{
     status: "preparing" | "ready" | "unavailable" | "error";
     message?: string;
-    tone?: "info" | "error";
-    canRetry?: boolean;
   }>({ status: "preparing" });
   const frameUrl = useMemo(() => buildMapFrameUrl(sessionId), [sessionId]);
 
@@ -296,12 +268,9 @@ export const CombatMapFrame = ({
           return;
         }
 
-        const unavailable = resolveBootstrapPresentation(result.reason);
         setBootstrapState({
           status: "unavailable",
-          message: unavailable.message,
-          tone: unavailable.tone,
-          canRetry: unavailable.canRetry,
+          message: resolveBootstrapMessage(result.reason),
         });
       })
       .catch((error) => {
@@ -315,8 +284,6 @@ export const CombatMapFrame = ({
             error instanceof Error && error.message
               ? error.message
               : "Nao foi possivel preparar o mapa tatico.",
-          tone: "error",
-          canRetry: true,
         });
       });
 
@@ -497,25 +464,17 @@ export const CombatMapFrame = ({
 
         {bootstrapState.status !== "preparing" && bootstrapState.status !== "ready" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70 p-6 backdrop-blur-sm">
-            <div
-              className={
-                bootstrapState.tone === "info"
-                  ? "max-w-md rounded-3xl border border-sky-300/20 bg-slate-900/75 px-5 py-4 text-center text-sm leading-7 text-slate-100 shadow-[0_18px_50px_rgba(15,23,42,0.32)]"
-                  : "max-w-md rounded-3xl border border-rose-400/30 bg-rose-500/10 px-5 py-4 text-center text-sm leading-7 text-rose-100 shadow-[0_18px_50px_rgba(15,23,42,0.32)]"
-              }
-            >
+            <div className="max-w-md rounded-3xl border border-rose-400/30 bg-rose-500/10 px-5 py-4 text-center text-sm leading-7 text-rose-100 shadow-[0_18px_50px_rgba(15,23,42,0.32)]">
               <p>{bootstrapState.message}</p>
-              {bootstrapState.canRetry ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBootstrapNonce((current) => current + 1);
-                  }}
-                  className="mt-4 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white/15"
-                >
-                  Tentar novamente
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setBootstrapNonce((current) => current + 1);
+                }}
+                className="mt-4 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white/15"
+              >
+                Tentar novamente
+              </button>
             </div>
           </div>
         ) : null}

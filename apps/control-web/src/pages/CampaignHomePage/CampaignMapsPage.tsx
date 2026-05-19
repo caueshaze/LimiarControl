@@ -8,26 +8,28 @@ import {
   type CampaignSystemType,
 } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
+import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { CampaignMapConfigCard } from "./CampaignMapConfig";
 
 export const CampaignMapsPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const {
-    campaigns,
     selectedCampaign,
     selectedCampaignId,
     selectCampaign,
   } = useCampaigns();
   const navigate = useNavigate();
   const { t } = useLocale();
+  const { user } = useAuth();
+  const role = user?.role ?? "PLAYER";
   const [gmName, setGmName] = useState<string | null>(null);
   const [overviewName, setOverviewName] = useState<string | null>(null);
   const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
   const [overviewMaps, setOverviewMaps] = useState<CampaignMapConfig[]>([]);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
-  const isGm = campaigns.some((c) => c.id === effectiveCampaignId && c.roleMode === "GM");
+  const isGm = role === "GM";
 
   useEffect(() => {
     if (!effectiveCampaignId) {

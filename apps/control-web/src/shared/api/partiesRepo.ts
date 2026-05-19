@@ -15,7 +15,6 @@ export type PartyMemberSummary = {
   createdAt: string;
   displayName?: string | null;
   username?: string | null;
-  avatarUrl?: string | null;
 };
 
 export type PartyDetail = PartySummary & {

@@ -23,44 +23,6 @@ def read_base_spell_seed_document(
     path: Path = DEFAULT_BASE_SPELLS_SEED_PATH,
 ) -> BaseSpellSeedDocument:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    spells = payload.get("spells")
-    if isinstance(spells, list):
-        deduped: list[dict] = []
-        seen_indexes: dict[tuple[str, str], int] = {}
-        duplicate_count = 0
-        for entry in spells:
-            if not isinstance(entry, dict):
-                deduped.append(entry)
-                continue
-            classes_json = entry.get("classesJson")
-            if isinstance(classes_json, list):
-                normalized_classes = [
-                    klass
-                    for klass in classes_json
-                    if str(klass).strip().lower() != "artificer"
-                ]
-                if len(normalized_classes) != len(classes_json):
-                    logger.warning(
-                        "Removed unsupported class 'Artificer' from seed spell %s",
-                        entry.get("canonicalKey"),
-                    )
-                entry = {**entry, "classesJson": normalized_classes}
-            system = str(entry.get("system") or "").strip()
-            canonical_key = str(entry.get("canonicalKey") or "").strip()
-            key = (system, canonical_key)
-            if system and canonical_key and key in seen_indexes:
-                deduped[seen_indexes[key]] = entry
-                duplicate_count += 1
-                continue
-            seen_indexes[key] = len(deduped)
-            deduped.append(entry)
-        if duplicate_count:
-            logger.warning(
-                "Deduplicated %s duplicate base spell seed entries while reading %s",
-                duplicate_count,
-                path,
-            )
-        payload["spells"] = deduped
     return BaseSpellSeedDocument.model_validate(payload)
 
 
