@@ -17,6 +17,7 @@ from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, S
 from .condition_effects_predicates import (
     explain_check_modifier_sources,
     get_roll_bonus_dice_sources,
+    has_condition_immunity,
     resolve_actor_participant,
     resolve_check_advantage_mode,
 )
@@ -451,16 +452,41 @@ class CombatSpellDeclarativeEffectsMixin:
 
         created: list[dict] = []
         if effect.type == "apply_condition":
+            condition_type = params["condition"]
+            if has_condition_immunity(resolved_target, condition_type):
+                return []
             active_effect = cls._build_active_effect(
                 kind="condition",
                 source_participant_id=attacker.get("id"),
-                condition_type=params["condition"],
+                condition_type=condition_type,
                 metadata=metadata,
                 display_label=spell_context.get("spell_name"),
                 **duration_kwargs,
             )
             cls._append_effect_to_participant(resolved_target, active_effect)
             created.append(active_effect)
+        elif effect.type == "condition_immunity":
+            immune_conditions: list[str] = params.get("conditions") or []
+            active_effect = cls._build_active_effect(
+                kind="spell_effect",
+                source_participant_id=attacker.get("id"),
+                metadata={
+                    **metadata,
+                    "condition_immunity": True,
+                    "immune_conditions": immune_conditions,
+                },
+                display_label=spell_context.get("spell_name"),
+                **duration_kwargs,
+            )
+            cls._append_effect_to_participant(resolved_target, active_effect)
+            created.append(active_effect)
+            # Suppress any matching conditions already present on the target
+            existing_effects = cls._get_participant_effects(resolved_target)
+            kept = [
+                e for e in existing_effects
+                if not (e.get("kind") == "condition" and e.get("condition_type") in immune_conditions)
+            ]
+            cls._set_participant_effects(resolved_target, kept)
         elif effect.type == "modify_stat":
             active_effect = cls._build_active_effect(
                 kind=params["stat"],
@@ -498,6 +524,27 @@ class CombatSpellDeclarativeEffectsMixin:
                 source_participant_id=attacker.get("id"),
                 numeric_value=params["value"],
                 metadata=metadata,
+                display_label=spell_context.get("spell_name"),
+                **duration_kwargs,
+            )
+            cls._append_effect_to_participant(resolved_target, active_effect)
+            created.append(active_effect)
+        elif effect.type == "recurring_temp_hp":
+            amount_source = params.get("amount_source")
+            if amount_source == "caster_spellcasting_modifier":
+                temp_hp_per_turn = max(0, int(spell_context.get("caster_spell_mod") or 0))
+            else:
+                temp_hp_per_turn = 0
+            active_effect = cls._build_active_effect(
+                kind="spell_effect",
+                source_participant_id=attacker.get("id"),
+                metadata={
+                    **metadata,
+                    "recurring_temp_hp": True,
+                    "temp_hp_per_turn": temp_hp_per_turn,
+                    "last_granted_temp_hp": 0,
+                    "remove_granted_temp_hp_on_end": params.get("remove_granted_temp_hp_on_end", True),
+                },
                 display_label=spell_context.get("spell_name"),
                 **duration_kwargs,
             )
@@ -653,6 +700,47 @@ class CombatSpellDeclarativeEffectsMixin:
             metadata["applied_temp_hp"] = True
             metadata["previous_temp_hp"] = previous_temp_hp
             metadata["final_temp_hp"] = final_temp_hp
+
+    @classmethod
+    def _cleanup_recurring_temp_hp_effects(
+        cls,
+        db,
+        state,
+        removed_effects: list[dict],
+    ) -> None:
+        from app.services.session_state_finalize import finalize_session_state_data
+        from sqlalchemy.orm.attributes import flag_modified as _flag_modified
+
+        for effect in removed_effects:
+            metadata = cls._get_effect_metadata(effect)
+            if not metadata.get("recurring_temp_hp"):
+                continue
+            if not metadata.get("remove_granted_temp_hp_on_end"):
+                continue
+            last_granted = cls._safe_int(metadata.get("last_granted_temp_hp"), 0)
+            if last_granted <= 0:
+                continue
+            target_ref_id = metadata.get("effect_target_ref_id")
+            target_kind = None
+            for p in (state.participants if state else []):
+                if p.get("ref_id") == target_ref_id or p.get("id") == metadata.get("effect_target_participant_id"):
+                    target_kind = p.get("kind")
+                    target_ref_id = p.get("ref_id")
+                    break
+            if target_kind != "player" or not target_ref_id:
+                continue
+            try:
+                session_id = state.session_id if state else ""
+                target_model, *_ = cls._get_stats(db, target_ref_id, "player", session_id)
+                data = cls._as_dict(target_model.state_json)
+                current_temp_hp = max(0, cls._safe_int(data.get("tempHP"), 0))
+                if current_temp_hp <= last_granted:
+                    data["tempHP"] = 0
+                    target_model.state_json = finalize_session_state_data(data)
+                    _flag_modified(target_model, "state_json")
+                    db.add(target_model)
+            except Exception:
+                pass
 
     @classmethod
     async def _cast_spell_via_declarative_effects(

@@ -94,6 +94,16 @@ def has_condition(participant: dict, condition_type: str) -> bool:
     return False
 
 
+def has_condition_immunity(participant: dict, condition_type: str) -> bool:
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata") or {}
+        if metadata.get("condition_immunity") and condition_type in (metadata.get("immune_conditions") or []):
+            return True
+    return False
+
+
 def is_incapacitated(participant: dict) -> bool:
     return any(has_condition(participant, c) for c in _INCAPACITATING_CONDITIONS)
 

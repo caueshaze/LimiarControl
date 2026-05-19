@@ -509,7 +509,7 @@ class CastAreaMixin:
         if spell_context.get("effect_timing") == "persistent":
             if spell_context.get("concentration"):
                 prev = cls._clear_concentration_for_source(
-                    state, source_participant_id=attacker["id"],
+                    state, source_participant_id=attacker["id"], db=db,
                 )
                 if prev["removed_effects"]:
                     flag_modified(state, "participants")

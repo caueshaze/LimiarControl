@@ -124,6 +124,56 @@ class CombatLifecycleTurnsMixin:
                 )
 
     @classmethod
+    async def _process_recurring_temp_hp(
+        cls,
+        db,
+        session_id: str,
+        state,
+        participant: dict,
+    ) -> None:
+        from app.services.session_state_finalize import finalize_session_state_data
+        from sqlalchemy.orm.attributes import flag_modified as _flag_modified
+
+        effects = cls._get_participant_effects(participant)
+        for effect in effects:
+            metadata = cls._get_effect_metadata(effect)
+            if not metadata.get("recurring_temp_hp"):
+                continue
+            temp_hp_per_turn = cls._safe_int(metadata.get("temp_hp_per_turn"), 0)
+            if temp_hp_per_turn <= 0:
+                continue
+            target_ref_id = metadata.get("effect_target_ref_id")
+            target_kind = None
+            for p in state.participants:
+                if p.get("ref_id") == target_ref_id or p.get("id") == metadata.get("effect_target_participant_id"):
+                    target_kind = p.get("kind")
+                    target_ref_id = p.get("ref_id")
+                    break
+            if target_kind == "player" and target_ref_id:
+                try:
+                    target_model, *_ = cls._get_stats(db, target_ref_id, "player", session_id)
+                    data = cls._as_dict(target_model.state_json)
+                    previous = max(0, cls._safe_int(data.get("tempHP"), 0))
+                    final = max(previous, temp_hp_per_turn)
+                    metadata["last_granted_temp_hp"] = temp_hp_per_turn
+                    if final > previous:
+                        data["tempHP"] = final
+                        target_model.state_json = finalize_session_state_data(data)
+                        _flag_modified(target_model, "state_json")
+                        if db is not None:
+                            db.add(target_model)
+                    spell_name = metadata.get("source_spell_name") or "Spell"
+                    await cls._emit_log(
+                        session_id,
+                        {
+                            "message": f"{participant['display_name']} ganhou {temp_hp_per_turn} PV temporários de {spell_name}.",
+                            "source": "recurring_temp_hp",
+                        },
+                    )
+                except Exception:
+                    pass
+
+    @classmethod
     async def next_turn(
         cls,
         db,
@@ -211,6 +261,7 @@ class CombatLifecycleTurnsMixin:
             label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
         cls._reset_turn_resources(incoming)
+        await cls._process_recurring_temp_hp(db, session_id, state, incoming)
         db.add(state)
         db.commit()
         db.refresh(state)
@@ -261,7 +312,7 @@ class CombatLifecycleTurnsMixin:
 
         all_removed: list[dict] = []
         for source_id in concentration_source_ids:
-            result = cls._clear_concentration_for_source(state, source_participant_id=source_id)
+            result = cls._clear_concentration_for_source(state, source_participant_id=source_id, db=db)
             all_removed.extend(result["removed_effects"])
 
         persist_surviving_spell_effects(db, state)
