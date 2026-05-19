@@ -95,6 +95,7 @@ class CombatStatusMixin:
                     cls._clear_concentration_for_participant_status(
                         state,
                         source_participant_id=participant.get("id"),
+                        db=db,
                     )
 
             return status
@@ -116,6 +117,7 @@ class CombatStatusMixin:
                 cls._clear_concentration_for_participant_status(
                     state,
                     source_participant_id=participant.get("id"),
+                    db=db,
                 )
 
         return status

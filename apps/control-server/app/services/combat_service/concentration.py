@@ -193,6 +193,7 @@ class CombatConcentrationMixin:
         state: CombatState | None,
         *,
         source_participant_id: str | None,
+        db=None,
     ) -> dict:
         empty = {"removed_effects": [], "removed_area_effects": []}
         if not state or not source_participant_id:
@@ -200,6 +201,7 @@ class CombatConcentrationMixin:
         result = cls._clear_concentration_for_source(
             state,
             source_participant_id=source_participant_id,
+            db=db,
         )
         if result["removed_effects"]:
             flag_modified(state, "participants")
