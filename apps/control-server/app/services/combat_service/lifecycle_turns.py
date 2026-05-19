@@ -100,6 +100,7 @@ class CombatLifecycleTurnsMixin:
                         cls._clear_concentration_for_source(
                             state,
                             source_participant_id=metadata.get("source_participant_id"),
+                            db=db,
                         )
                 await cls._emit_log(
                     session_id,

@@ -4,7 +4,8 @@ import json
 import os
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
@@ -984,6 +985,217 @@ class ConcentrationEndCleanupIntegrationTests(unittest.TestCase):
 
         self.assertEqual(caster.get("active_effects") or [], [])
         self.assertEqual(target.get("active_effects") or [], [])
+
+
+# ---------------------------------------------------------------------------
+# Cleanup via _sync_participant_status (status-change path)
+# ---------------------------------------------------------------------------
+
+class HeroismCleanupOnStatusChangeTests(unittest.TestCase):
+    def _setup(self):
+        caster = _make_player("p1", "u1")
+        heroism_target = _make_player("t1", "u2")
+        heroism_target["active_effects"] = [
+            {
+                "id": "recurring-eff",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "metadata": {
+                    "recurring_temp_hp": True,
+                    "temp_hp_per_turn": 3,
+                    "last_granted_temp_hp": 3,
+                    "remove_granted_temp_hp_on_end": True,
+                    "concentration": True,
+                    "concentration_group": "grp-heroism",
+                    "effect_target_participant_id": "t1",
+                    "effect_target_ref_id": "t1",
+                    "source_spell_name": "Heroísmo",
+                },
+            }
+        ]
+        state = _make_state([caster, heroism_target])
+        player_model = SimpleNamespace()
+        player_model.state_json = {"currentHP": 0, "deathSaves": {"successes": 0, "failures": 0}}
+        target_model = SimpleNamespace()
+        target_model.state_json = {"tempHP": 3}
+        return state, caster, heroism_target, player_model, target_model
+
+    def test_cleanup_runs_when_caster_downed(self):
+        state, caster, heroism_target, player_model, target_model = self._setup()
+
+        def get_stats_side_effect(db, ref_id, kind, session_id):
+            if ref_id == "t1":
+                return (target_model, 20, 20, 15, 3, 3)
+            return (player_model, 20, 20, 15, 3, 3)
+
+        with (
+            patch("app.services.combat_service.status.finalize_session_state_data", side_effect=lambda d: d),
+            patch.object(CombatService, "_get_stats", side_effect=get_stats_side_effect),
+            patch("app.services.session_state_finalize.finalize_session_state_data", side_effect=lambda d: d),
+        ):
+            db_mock = MagicMock()
+            CombatService._sync_participant_status(db_mock, state, "p1", "player", player_model)
+
+        self.assertEqual(caster["status"], "downed")
+        self.assertEqual(target_model.state_json["tempHP"], 0)
+
+    def test_no_db_does_not_crash_and_leaves_temp_hp(self):
+        caster = _make_player("p1", "u1")
+        heroism_target = _make_player("t1", "u2")
+        heroism_target["active_effects"] = [
+            {
+                "id": "recurring-eff",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "metadata": {
+                    "recurring_temp_hp": True,
+                    "temp_hp_per_turn": 3,
+                    "last_granted_temp_hp": 3,
+                    "remove_granted_temp_hp_on_end": True,
+                    "concentration": True,
+                    "concentration_group": "grp-heroism",
+                    "effect_target_participant_id": "t1",
+                    "effect_target_ref_id": "t1",
+                },
+            }
+        ]
+        state = _make_state([caster, heroism_target])
+        target_model = SimpleNamespace()
+        target_model.state_json = {"tempHP": 3}
+
+        with patch.object(CombatService, "_get_stats", return_value=(target_model, 20, 20, 15, 3, 3)) as mock_stats:
+            CombatService._clear_concentration_for_participant_status(
+                state,
+                source_participant_id="p1",
+            )
+            mock_stats.assert_not_called()
+
+        self.assertEqual(target_model.state_json["tempHP"], 3)
+
+
+# ---------------------------------------------------------------------------
+# Cleanup via _resolve_turn_end_repeat_saves (repeat-save path)
+# ---------------------------------------------------------------------------
+
+class HeroismCleanupOnRepeatSaveTests(unittest.IsolatedAsyncioTestCase):
+    def _make_roll_result(self, success: bool = True) -> "RollResult":
+        from app.schemas.roll import RollResult
+        return RollResult(
+            event_id="r1",
+            roll_type="save",
+            actor_kind="player",
+            actor_ref_id="t1",
+            actor_display_name="Hero",
+            rolls=[18],
+            selected_roll=18,
+            advantage_mode="normal",
+            modifier_used=0,
+            override_used=False,
+            formula="1d20",
+            total=18,
+            ability="wisdom",
+            dc=14,
+            success=success,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+    async def test_cleanup_runs_when_repeat_save_breaks_concentration(self):
+        # t1 has: (a) a paralyzed condition with repeat_save (concentration_group="grp-hp"),
+        #         (b) a heroism recurring_temp_hp effect (concentration_group="grp-heroism")
+        # Both are sourced from p1. When t1 saves against paralyzed, _clear_concentration_for_source
+        # is called for p1, which also removes the heroism effect and triggers cleanup.
+        caster = _make_player("p1", "u1")
+        target = _make_player("t1", "u2")
+        target["active_effects"] = [
+            {
+                "id": "paralyzed-eff",
+                "kind": "condition",
+                "condition_type": "paralyzed",
+                "source_participant_id": "p1",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "grp-hp",
+                    "repeat_save": {
+                        "timing": "target_turn_end",
+                        "ability": "wisdom",
+                        "dc": 14,
+                        "ends_on_success": True,
+                    },
+                    "source_participant_id": "p1",
+                },
+            },
+            {
+                "id": "heroism-recurring",
+                "kind": "spell_effect",
+                "source_participant_id": "p1",
+                "metadata": {
+                    "recurring_temp_hp": True,
+                    "temp_hp_per_turn": 3,
+                    "last_granted_temp_hp": 3,
+                    "remove_granted_temp_hp_on_end": True,
+                    "concentration": True,
+                    "concentration_group": "grp-heroism",
+                    "effect_target_participant_id": "t1",
+                    "effect_target_ref_id": "t1",
+                    "source_spell_name": "Heroísmo",
+                    "source_participant_id": "p1",
+                },
+            },
+        ]
+        state = _make_state([caster, target])
+        target_model = SimpleNamespace()
+        target_model.state_json = {"tempHP": 3}
+
+        with (
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.lifecycle_turns.resolve_saving_throw", return_value=self._make_roll_result(True)),
+            patch.object(CombatService, "_get_stats", return_value=(target_model, 20, 20, 15, 3, 3)),
+            patch.object(CombatService, "_emit_log", new_callable=AsyncMock),
+            patch("app.services.session_state_finalize.finalize_session_state_data", side_effect=lambda d: d),
+        ):
+            db_mock = MagicMock()
+            await CombatService._resolve_turn_end_repeat_saves(db_mock, "s1", state, target)
+
+        remaining = target.get("active_effects") or []
+        self.assertFalse(any(e["id"] == "paralyzed-eff" for e in remaining))
+        self.assertEqual(target_model.state_json["tempHP"], 0)
+
+    async def test_failed_repeat_save_does_not_clear_concentration(self):
+        target = _make_player("t1", "u2")
+        target["active_effects"] = [
+            {
+                "id": "paralyzed-eff",
+                "kind": "condition",
+                "condition_type": "paralyzed",
+                "source_participant_id": "p1",
+                "metadata": {
+                    "concentration": True,
+                    "concentration_group": "grp-hp",
+                    "repeat_save": {
+                        "timing": "target_turn_end",
+                        "ability": "wisdom",
+                        "dc": 14,
+                        "ends_on_success": True,
+                    },
+                    "source_participant_id": "p1",
+                },
+            },
+        ]
+        state = _make_state([_make_player("p1", "u1"), target])
+        target_model = SimpleNamespace()
+        target_model.state_json = {"tempHP": 3}
+
+        with (
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.lifecycle_turns.resolve_saving_throw", return_value=self._make_roll_result(False)),
+            patch.object(CombatService, "_emit_log", new_callable=AsyncMock),
+        ):
+            db_mock = MagicMock()
+            await CombatService._resolve_turn_end_repeat_saves(db_mock, "s1", state, target)
+
+        remaining = target.get("active_effects") or []
+        self.assertTrue(any(e["id"] == "paralyzed-eff" for e in remaining))
+        self.assertEqual(target_model.state_json["tempHP"], 3)
 
 
 if __name__ == "__main__":
