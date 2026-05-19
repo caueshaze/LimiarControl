@@ -3011,6 +3011,45 @@
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "inflict_wounds",
+      "nameEn": "Inflict Wounds",
+      "namePt": "Infligir Ferimentos",
+      "level": 1,
+      "school": "necromancy",
+      "classesJson": ["Cleric"],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "Instantaneous",
+      "componentsJson": ["V", "S"],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "3d10",
+      "damageType": "Necrotic",
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d10",
+        "levelStep": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "melee",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "melee_spell",
+      "rangeKind": "touch",
+      "effectTiming": "immediate"
     }
   ]
 }
