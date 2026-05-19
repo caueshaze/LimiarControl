@@ -2957,6 +2957,60 @@
           "stacking": "replace"
         }
       ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "poison_spray",
+      "nameEn": "Poison Spray",
+      "namePt": "Borrifo Venenoso",
+      "level": 0,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 3,
+      "rangeText": "10 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "savingThrow": "CON",
+      "saveSuccessOutcome": "none",
+      "damageDice": "1d12",
+      "damageType": "Poison",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {"characterLevel": 1, "damage": {"dice": "1d12"}},
+          {"characterLevel": 5, "damage": {"dice": "2d12"}},
+          {"characterLevel": 11, "damage": {"dice": "3d12"}},
+          {"characterLevel": 17, "damage": {"dice": "4d12"}}
+        ]
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     }
   ]
 }
