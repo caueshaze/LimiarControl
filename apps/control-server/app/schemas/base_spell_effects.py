@@ -9,6 +9,7 @@ from app.schemas.campaign_entity_shared import AbilityName
 
 SpellDeclarativeEffectType = Literal[
     "apply_condition",
+    "condition_immunity",
     "modify_stat",
     "modify_weapon_damage",
     "armor_class_formula",
@@ -28,6 +29,7 @@ SpellDeclarativeEffectType = Literal[
     "roll_bonus_dice",
     "roll_dice_modifier",
     "attack_advantage_against_target",
+    "recurring_temp_hp",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -106,6 +108,20 @@ class SpellOutOfCombatTimedDuration(BaseModel):
 
 class ApplyConditionParams(BaseModel):
     condition: SpellDeclarativeConditionType
+
+
+class ConditionImmunityParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conditions: list[SpellDeclarativeConditionType]
+
+
+class RecurringTempHpParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount_source: Literal["caster_spellcasting_modifier"]
+    timing: Literal["start_of_target_turn"]
+    remove_granted_temp_hp_on_end: bool = True
 
 
 class ModifyStatParams(BaseModel):
@@ -230,6 +246,7 @@ class SpellDeclarativeEffect(BaseModel):
     repeat_save: SpellDeclarativeRepeatSave | None = None
     params: (
         ApplyConditionParams
+        | ConditionImmunityParams
         | ModifyStatParams
         | GrantTempHpParams
         | ModifyWeaponDamageParams
@@ -247,6 +264,7 @@ class SpellDeclarativeEffect(BaseModel):
         | RollBonusDiceParams
         | RollDiceModifierParams
         | AttackAdvantageAgainstTargetParams
+        | RecurringTempHpParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -254,6 +272,8 @@ class SpellDeclarativeEffect(BaseModel):
     def validate_params_shape(self):
         if self.type == "apply_condition" and not isinstance(self.params, ApplyConditionParams):
             raise ValueError("apply_condition effects require ApplyConditionParams")
+        if self.type == "condition_immunity" and not isinstance(self.params, ConditionImmunityParams):
+            raise ValueError("condition_immunity effects require ConditionImmunityParams")
         if self.type == "modify_stat" and not isinstance(self.params, ModifyStatParams):
             raise ValueError("modify_stat effects require ModifyStatParams")
         if self.type == "modify_weapon_damage" and not isinstance(self.params, ModifyWeaponDamageParams):
@@ -296,4 +316,6 @@ class SpellDeclarativeEffect(BaseModel):
             raise ValueError(
                 "attack_advantage_against_target effects require AttackAdvantageAgainstTargetParams"
             )
+        if self.type == "recurring_temp_hp" and not isinstance(self.params, RecurringTempHpParams):
+            raise ValueError("recurring_temp_hp effects require RecurringTempHpParams")
         return self

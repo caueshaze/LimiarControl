@@ -15,6 +15,7 @@ from app.schemas.combat import (
     CombatRemoveEffectRequest,
 )
 
+from .condition_effects_predicates import has_condition_immunity
 from .effects_core import CombatEffectsCoreMixin
 from .exceptions import CombatServiceError
 
@@ -48,6 +49,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
             raise CombatServiceError("Target participant not found in combat", 404)
         if req.kind == "condition" and not req.condition_type:
             raise CombatServiceError("condition_type is required when kind is 'condition'")
+        if req.kind == "condition" and req.condition_type and has_condition_immunity(target, req.condition_type):
+            raise CombatServiceError(f"Target is immune to {req.condition_type}", 409)
         if req.kind in ("temp_ac_bonus", "attack_bonus", "damage_bonus", "size_modifier") and req.numeric_value is None:
             raise CombatServiceError(f"numeric_value is required for kind '{req.kind}'")
         if req.kind == "size_modifier" and req.numeric_value not in (-1, 1):

@@ -2884,6 +2884,79 @@
           }
         }
       ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "heroism",
+      "nameEn": "Heroism",
+      "namePt": "Heroísmo",
+      "descriptionEn": "A willing creature you touch is imbued with bravery. Until the spell ends, the creature is immune to being frightened and gains temporary hit points equal to your spellcasting ability modifier at the start of each of its turns. When the spell ends, the target loses any remaining temporary hit points from this spell.",
+      "descriptionPt": "Uma criatura voluntária que você toca é imbuída de bravura. Até o fim da magia, a criatura fica imune a amedrontado e ganha pontos de vida temporários iguais ao seu modificador de habilidade de conjuração no início de cada um de seus turnos. Quando a magia termina, o alvo perde quaisquer pontos de vida temporários restantes desta magia.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Paladin"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "maxTargets": 1,
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent",
+      "effects": [
+        {
+          "type": "condition_immunity",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "conditions": [
+              "frightened"
+            ]
+          },
+          "stacking": "replace"
+        },
+        {
+          "type": "recurring_temp_hp",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "amount_source": "caster_spellcasting_modifier",
+            "timing": "start_of_target_turn",
+            "remove_granted_temp_hp_on_end": true
+          },
+          "stacking": "replace"
+        }
+      ]
     }
   ]
 }

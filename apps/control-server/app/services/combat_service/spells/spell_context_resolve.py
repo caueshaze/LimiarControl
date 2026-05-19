@@ -390,6 +390,7 @@ class SpellContextResolveMixin:
         resolved_math: dict,
         resolved_upcast: dict,
         spell_level: int,
+        caster_spell_mod: int = 0,
     ) -> dict:
         upcast_result = resolved_upcast["upcast_result"]
         base_max_targets = getattr(catalog_spell, "max_targets", None)
@@ -487,6 +488,7 @@ class SpellContextResolveMixin:
             "ignore_components": source_context["ignore_components"],
             "no_free_hand_required": source_context["no_free_hand_required"],
             "source_item": source_context["source_item"],
+            "caster_spell_mod": caster_spell_mod,
         }
 
     @classmethod
@@ -546,4 +548,5 @@ class SpellContextResolveMixin:
             resolved_math=resolved_math,
             resolved_upcast=resolved_upcast,
             spell_level=catalog_context["spell_level"],
+            caster_spell_mod=spell_mod,
         )

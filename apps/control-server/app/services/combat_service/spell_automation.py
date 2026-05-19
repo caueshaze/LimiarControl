@@ -276,6 +276,7 @@ class CombatSpellAutomationMixin:
         result = cls._clear_concentration_for_source(
             state,
             source_participant_id=attacker["id"],
+            db=db,
         )
         cls._sync_area_effects_if_changed(
             session_id, state, result["removed_area_effects"],
@@ -1140,6 +1141,7 @@ class CombatSpellAutomationMixin:
         result = cls._clear_concentration_for_source(
             state,
             source_participant_id=attacker["id"],
+            db=db,
         )
         cls._sync_area_effects_if_changed(
             session_id, state, result["removed_area_effects"],

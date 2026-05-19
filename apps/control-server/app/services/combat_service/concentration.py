@@ -156,6 +156,7 @@ class CombatConcentrationMixin:
         state: CombatState,
         *,
         source_participant_id: str,
+        db=None,
     ) -> dict:
         groups: set[str] = set()
         for participant in state.participants:
@@ -179,6 +180,8 @@ class CombatConcentrationMixin:
                 state=state,
                 removed_effects=all_removed,
             )
+        if db is not None and all_removed:
+            cls._cleanup_recurring_temp_hp_effects(db, state, all_removed)
         return {
             "removed_effects": all_removed,
             "removed_area_effects": all_area_removed,
@@ -331,6 +334,7 @@ class CombatConcentrationMixin:
             result = cls._clear_concentration_for_source(
                 state,
                 source_participant_id=target_participant.get("id", ""),
+                db=db,
             )
             removed = result["removed_effects"]
             area_removed = result["removed_area_effects"]
