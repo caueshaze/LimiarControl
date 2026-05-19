@@ -38,9 +38,11 @@ from app.services.out_of_combat_cast import (
     check_out_of_combat_cast_eligibility,
     collect_create_consumable_effects,
     collect_heal_effects,
+    collect_temp_hp_effects,
     consume_spell_slot,
     has_castable_effects,
     roll_spell_heal_effects,
+    roll_spell_temp_hp_effects,
 )
 from app.services.wild_shape_catalog import get_form
 from app.services.wild_shape_service import apply_healing_to_form
@@ -81,6 +83,13 @@ def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
     current, max_hp = _extract_hp_snapshot(data)
     new_hp = min(max_hp, current + max(0, amount))
     return {**data, "currentHP": new_hp}
+
+
+def _apply_temp_hp_to_state_dict(data: dict, amount: int) -> dict:
+    """Apply temp HP to a state dict using keep-higher policy."""
+    previous = max(0, int(data.get("tempHP") or 0))
+    final = max(previous, amount)
+    return {**data, "tempHP": final}
 
 
 def _find_effect_by_id(state_json: dict | None, effect_id: str) -> dict | None:
@@ -417,7 +426,15 @@ async def _cast_spell_out_of_combat_for_player(
         else []
     )
 
-    if not new_target_effects and not consumables_granted_count and not heal_rolled:
+    # --- Precompute temporary HP (grant_temp_hp effects) ---
+    temp_hp_effects = collect_temp_hp_effects(campaign_spell, req.variantKey)
+    temp_hp_rolled = (
+        roll_spell_temp_hp_effects(temp_hp_effects, campaign_spell, req.slotLevel)
+        if temp_hp_effects
+        else []
+    )
+
+    if not new_target_effects and not consumables_granted_count and not heal_rolled and not temp_hp_rolled:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
 
     group_id: str | None = (
@@ -479,6 +496,8 @@ async def _cast_spell_out_of_combat_for_player(
                 updated_caster_json = _apply_heal_to_state_dict(updated_caster_json, hr["amount"])
             else:
                 target_json = _apply_heal_to_state_dict(target_json, hr["amount"])
+        for thr in temp_hp_rolled:
+            updated_caster_json = _apply_temp_hp_to_state_dict(updated_caster_json, thr["amount"])
         target_state.state_json = finalize_session_state_data(  # type: ignore[union-attr]
             target_json,
             game_time_seconds=current_game_time_seconds,
@@ -494,6 +513,8 @@ async def _cast_spell_out_of_combat_for_player(
         # Immediate healing on self (target == caster)
         for hr in heal_rolled:
             updated_caster_json = _apply_heal_to_state_dict(updated_caster_json, hr["amount"])
+        for thr in temp_hp_rolled:
+            updated_caster_json = _apply_temp_hp_to_state_dict(updated_caster_json, thr["amount"])
 
     # --- Persist caster state ---
     caster_state.state_json = finalize_session_state_data(
@@ -562,6 +583,13 @@ async def _cast_spell_out_of_combat_for_player(
             activity_payload["healing_rolls"] = [
                 {"dice": hr["effective_dice"], "rolls": hr["rolls"], "modifier": hr["modifier"], "total": hr["amount"]}
                 for hr in heal_rolled
+            ]
+        if temp_hp_rolled:
+            total_temp_hp = sum(thr["amount"] for thr in temp_hp_rolled)
+            activity_payload["temp_hp_applied"] = total_temp_hp
+            activity_payload["temp_hp_rolls"] = [
+                {"base_dice": thr["base_dice"], "upcast_bonus": thr["upcast_bonus"], "total": thr["amount"]}
+                for thr in temp_hp_rolled
             ]
         record_session_activity(
             entry,

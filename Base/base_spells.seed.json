@@ -2818,6 +2818,72 @@
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "false_life",
+      "nameEn": "False Life",
+      "namePt": "Vitalidade Vazia",
+      "descriptionEn": "Bolstering yourself with a necromantic facsimile of life, you gain 1d4 + 4 temporary hit points for the duration.",
+      "descriptionPt": "Amparando-se com uma fachada necromântica de vida, você ganha 1d4 + 4 pontos de vida temporários pela duração.",
+      "level": 1,
+      "school": "necromancy",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a small amount of alcohol or blood",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "upcast": {
+        "mode": "extra_temp_hp",
+        "flat": 5,
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self",
+      "effects": [
+        {
+          "type": "grant_temp_hp",
+          "target": "caster",
+          "duration": {
+            "type": "timed",
+            "seconds": 3600
+          },
+          "out_of_combat_duration": {
+            "type": "timed",
+            "seconds": 3600
+          },
+          "params": {
+            "dice": "1d4 + 4"
+          }
+        }
+      ]
     }
   ]
 }

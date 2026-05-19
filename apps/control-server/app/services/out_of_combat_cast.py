@@ -415,6 +415,69 @@ def collect_heal_effects(
     ]
 
 
+def collect_temp_hp_effects(
+    spell,
+    variant_key: str | None,
+) -> list[dict]:
+    """Return only grant_temp_hp effect dicts from the spell's effective effects list."""
+    return [
+        e for e in _resolve_effects(spell, variant_key)
+        if isinstance(e, dict) and e.get("type") == "grant_temp_hp"
+    ]
+
+
+def compute_temp_hp_upcast_bonus(
+    spell,
+    slot_level: int | None,
+) -> int:
+    """Compute the flat upcast bonus for grant_temp_hp via the canonical combat pipeline."""
+    from app.services.combat_service.spell_dice_math import CombatSpellDiceMathMixin
+
+    spell_level = getattr(spell, "level", 1) or 1
+    raw_upcast = getattr(spell, "upcast_json", None)
+    structured = CombatSpellDiceMathMixin._get_structured_spell_upcast(raw_upcast)
+    if not structured or structured.get("mode") != "extra_temp_hp":
+        return 0
+    effective_slot = slot_level if isinstance(slot_level, int) else spell_level
+    result = CombatSpellDiceMathMixin._apply_structured_spell_upcast(
+        spell_level=spell_level,
+        slot_level=effective_slot,
+        effect_kind=None,
+        effect_dice=None,
+        effect_bonus=0,
+        upcast=structured,
+    )
+    return int(result.get("effect_bonus") or 0)
+
+
+def roll_spell_temp_hp_effects(
+    temp_hp_effects: list[dict],
+    spell,
+    slot_level: int | None,
+) -> list[dict]:
+    """Roll temp HP for each grant_temp_hp effect.
+
+    Returns a list of dicts with keys: amount, target, base_dice, upcast_bonus.
+    Uses the same canonical math as the combat upcast pipeline.
+    """
+    from app.services.combat_service.exceptions import _roll_dice_expression as _roll
+
+    upcast_bonus = compute_temp_hp_upcast_bonus(spell, slot_level)
+
+    results = []
+    for effect in temp_hp_effects:
+        params = effect.get("params") or {}
+        base_dice = params.get("dice") or "1d4"
+        rolled = _roll(base_dice) + upcast_bonus
+        results.append({
+            "amount": rolled,
+            "target": effect.get("target", "caster"),
+            "base_dice": base_dice,
+            "upcast_bonus": upcast_bonus,
+        })
+    return results
+
+
 def compute_heal_dice_with_upcast(
     base_dice: str,
     spell,

@@ -255,6 +255,7 @@ class CombatSpellDiceMathMixin:
             "add_damage",
             "add_heal",
             "increase_targets",
+            "extra_temp_hp",
         }:
             if dice:
                 next_effect_dice = cls._merge_dice_expressions(

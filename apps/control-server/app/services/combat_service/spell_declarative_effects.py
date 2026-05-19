@@ -474,6 +474,9 @@ class CombatSpellDeclarativeEffectsMixin:
             created.append(active_effect)
         elif effect.type == "grant_temp_hp":
             rolled = _roll_dice_expression(params["dice"])
+            upcast_bonus = int(spell_context.get("effect_bonus") or 0)
+            if upcast_bonus:
+                rolled += upcast_bonus
             active_effect = cls._build_active_effect(
                 kind="temp_hp_granted",
                 source_participant_id=attacker.get("id"),
