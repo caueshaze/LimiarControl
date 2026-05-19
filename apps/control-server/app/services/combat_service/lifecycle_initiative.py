@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pydantic import ValidationError
 from sqlmodel import select
 
 from app.models.campaign_tactical_map import CampaignTacticalMap
@@ -60,7 +61,7 @@ def get_player_total_inventory_weight_lb(db, session_id: str, player_user_id: st
             InventoryItem.campaign_id == session_entry.campaign_id,
             InventoryItem.member_id == member.id,
         )
-    ).scalar()
+    ).first()
     return float(result or 0.0)
 
 
@@ -76,7 +77,11 @@ def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, ac
     if not entry:
         return "normal"
     sj = entry.state_json or {}
-    strength = float((sj.get("abilities") or {}).get("strength") or 10)
+    raw_strength = (sj.get("abilities") or {}).get("strength")
+    try:
+        strength = float(raw_strength if raw_strength is not None else 10)
+    except (TypeError, ValueError):
+        strength = 10.0
     total_lb = get_player_total_inventory_weight_lb(db, session_id, player_user_id)
     capacity_multiplier = (
         get_effective_capacity_multiplier({
@@ -300,18 +305,24 @@ class CombatLifecycleInitiativeMixin:
             "height": campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
         }
         obstacles = decode_obstacles(getattr(campaign_map, "obstacles_json", None))
-        selection = CombatMapSelection(
-            kind="campaign_map",
-            mapId=campaign_map.id,
-            mapName=campaign_map.name or "Campaign map",
-            imageUrl=campaign_map.image_url,
-            gridWidth=campaign_map.grid_width,
-            gridHeight=campaign_map.grid_height,
-            calibration=calibration,
-            obstacles=obstacles,
-            edgeObstacles=decode_edge_obstacles(getattr(campaign_map, "edge_obstacles_json", None)),
-            blockedCells=decode_blocked_cells(getattr(campaign_map, "blocked_cells_json", None)) if obstacles is None else [],
-        )
+        try:
+            selection = CombatMapSelection(
+                kind="campaign_map",
+                mapId=campaign_map.id,
+                mapName=campaign_map.name or "Campaign map",
+                imageUrl=campaign_map.image_url,
+                gridWidth=campaign_map.grid_width,
+                gridHeight=campaign_map.grid_height,
+                calibration=calibration,
+                obstacles=obstacles,
+                edgeObstacles=decode_edge_obstacles(getattr(campaign_map, "edge_obstacles_json", None)),
+                blockedCells=decode_blocked_cells(getattr(campaign_map, "blocked_cells_json", None)) if obstacles is None else [],
+            )
+        except ValidationError as exc:
+            raise CombatServiceError(
+                "Selected tactical map has invalid configuration",
+                400,
+            ) from exc
         return selection.model_dump(mode="json")
 
     @classmethod

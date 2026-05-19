@@ -147,11 +147,29 @@ class BaseSpellWrite(BaseModel):
             raise ValueError("Spell level must be between 0 and 9")
         return value
 
-    @field_validator("rangeMeters")
+    @field_validator("rangeMeters", mode="before")
     @classmethod
-    def validate_range_meters(cls, value: Optional[int]):
+    def validate_range_meters(cls, value):
         if value is None:
             return None
+        if isinstance(value, float):
+            if value.is_integer():
+                value = int(value)
+            else:
+                # Catalog compatibility: normalize decimal meter ranges into integer
+                # storage without rejecting seed sync (e.g., 1.5m touch range).
+                value = int(round(value))
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            try:
+                parsed = float(value)
+            except ValueError as exc:
+                raise ValueError("rangeMeters must be numeric") from exc
+            value = int(round(parsed))
+        if not isinstance(value, int):
+            raise ValueError("rangeMeters must be an integer")
         if value < 0:
             raise ValueError("rangeMeters cannot be negative")
         return value
@@ -481,9 +499,9 @@ class BaseSpellWrite(BaseModel):
                 raise ValueError(
                     "Upcast 'extra_heal_dice' requires resolutionType 'heal'."
                 )
-            if self.upcast.mode == "extra_damage_dice" and rt != "damage":
+            if self.upcast.mode == "extra_damage_dice" and rt not in {"damage", "attack"}:
                 raise ValueError(
-                    "Upcast 'extra_damage_dice' requires resolutionType 'damage'."
+                    "Upcast 'extra_damage_dice' requires resolutionType 'damage' or 'attack'."
                 )
         if self.cantripScaling is not None and self.level is not None and self.level > 0:
             raise ValueError("Only cantrips can use cantripScaling.")

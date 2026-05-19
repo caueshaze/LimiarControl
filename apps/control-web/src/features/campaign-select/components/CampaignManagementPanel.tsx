@@ -136,7 +136,9 @@ const CampaignCard = ({
 };
 
 export const CampaignManagementPanel = () => {
-  const { campaigns, selectedCampaignId, createCampaign, selectCampaign } = useCampaigns();
+  const { campaigns: allCampaigns, selectedCampaignId, createCampaign, selectCampaign } = useCampaigns();
+  // Only show campaigns where the current user is the GM — player memberships are excluded
+  const campaigns = allCampaigns.filter((c) => c.roleMode === "GM");
   const { t } = useLocale();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);

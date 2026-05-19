@@ -1,5 +1,6 @@
 import type { PartyMemberSummary } from "../../../shared/api/partiesRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { ManagedImage } from "../../../shared/ui";
 import { getMemberBadgeLabel } from "../playerParty.utils";
 
 type Props = {
@@ -57,8 +58,12 @@ export const PlayerPartyMembersCard = ({
               className="flex items-center justify-between gap-4 rounded-3xl border border-white/8 bg-white/3 px-4 py-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-bold uppercase text-limiar-100">
-                  {name.charAt(0)}
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5 text-sm font-bold uppercase text-limiar-100">
+                  {member.avatarUrl ? (
+                    <ManagedImage src={member.avatarUrl} alt={name} className="h-full w-full object-cover" />
+                  ) : (
+                    name.charAt(0)
+                  )}
                 </div>
 
                 <div className="min-w-0">

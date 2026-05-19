@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useLocale } from "../hooks/useLocale";
 import type { RoleMode } from "../types/role";
@@ -18,10 +18,39 @@ type AppLayoutProps = {
   onLogout?: () => void;
 };
 
+const MODE_KEY = "limiar_experience_mode";
+
 export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
   const { toggleLocale, locale, t } = useLocale();
+  const { pathname } = useLocation();
+  const isHome = pathname === routes.home;
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [focusMode, setFocusMode] = useState<"GM" | "PLAYER">(() => {
+    const saved = localStorage.getItem(MODE_KEY);
+    return saved === "GM" || saved === "PLAYER" ? saved : "GM";
+  });
+  const [buttonOrder, setButtonOrder] = useState<["GM" | "PLAYER", "GM" | "PLAYER"]>(() => {
+    const saved = localStorage.getItem(MODE_KEY);
+    return saved === "PLAYER" ? ["PLAYER", "GM"] : ["GM", "PLAYER"];
+  });
+
+  // Re-sync order when entering home so the active preference is always on the left.
+  // Does NOT run on every focusMode change — only when isHome flips to true.
+  useEffect(() => {
+    if (isHome) {
+      const saved = localStorage.getItem(MODE_KEY) as "GM" | "PLAYER" | null;
+      const current = saved === "GM" || saved === "PLAYER" ? saved : "GM";
+      setButtonOrder(current === "PLAYER" ? ["PLAYER", "GM"] : ["GM", "PLAYER"]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHome]);
+
+  const switchMode = (m: "GM" | "PLAYER") => {
+    setFocusMode(m);
+    localStorage.setItem(MODE_KEY, m);
+    window.dispatchEvent(new CustomEvent("limiar-mode-change"));
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -42,9 +71,10 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
     <div className="min-h-screen text-slate-100">
       <header className="sticky top-0 z-50 border-b border-white/6 bg-[linear-gradient(180deg,rgba(5,2,8,0.92),rgba(5,2,8,0.78))] backdrop-blur-xl">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-limiar-300/35 to-transparent" />
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
+        <div className="mx-auto flex w-full max-w-6xl items-center px-5 py-3.5">
 
-          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          {/* Left: brand */}
+          <div className="flex flex-1 items-center gap-2.5">
             <BrandMark size="sm" className="shrink-0" />
             <div className="hidden min-w-0 sm:block">
               <p className="bg-linear-to-r from-limiar-100 via-white to-sky-100 bg-clip-text text-base font-bold tracking-tight text-transparent">
@@ -55,6 +85,37 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               </p>
             </div>
           </div>
+
+          {/* Center: mode switch — only on home */}
+          {user && isHome && (
+            <div className="relative hidden h-8 items-center rounded-full border border-white/10 bg-white/4 p-1 sm:flex">
+              <span
+                aria-hidden
+                className={`absolute top-1 bottom-1 w-[calc(50%-2px)] rounded-full transition-all duration-300 ease-in-out ${
+                  focusMode === buttonOrder[0]
+                    ? `left-1 ${buttonOrder[0] === "GM" ? "bg-amber-400/20" : "bg-sky-400/20"}`
+                    : `left-[calc(50%+1px)] ${buttonOrder[1] === "GM" ? "bg-amber-400/20" : "bg-sky-400/20"}`
+                }`}
+              />
+              {buttonOrder.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={`relative z-10 w-20 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors duration-200 ${
+                    focusMode === m
+                      ? m === "GM" ? "text-amber-200" : "text-sky-200"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  {m === "GM" ? "Mestre" : "Jogador"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Right: user menu placeholder to balance layout */}
+          <div className="flex flex-1 justify-end">
 
           {/* User menu */}
           {user && (
@@ -151,6 +212,7 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
               )}
             </div>
           )}
+          </div>{/* end right */}
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl px-5 py-8 pb-24">

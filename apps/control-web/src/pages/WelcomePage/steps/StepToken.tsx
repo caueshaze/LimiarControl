@@ -30,9 +30,7 @@ type StepTokenProps = {
   onColorChange: (value: string | null) => void;
   onImageChange: (value: string | null) => void;
   onBack: () => void;
-  onFinish: () => void;
-  submitting: boolean;
-  submitError: string | null;
+  onNext: () => void;
 };
 
 export const StepToken = ({
@@ -41,9 +39,7 @@ export const StepToken = ({
   onColorChange,
   onImageChange,
   onBack,
-  onFinish,
-  submitting,
-  submitError,
+  onNext,
 }: StepTokenProps) => {
   const [tab, setTab] = useState<Tab>(tokenImageUrl ? "image" : "color");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -198,29 +194,21 @@ export const StepToken = ({
         {uploadError && <p className="mt-2 text-[11px] text-rose-400">{uploadError}</p>}
       </div>
 
-      {submitError && (
-        <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-300">
-          {submitError}
-        </p>
-      )}
-
       {/* Actions */}
       <div className="mt-8 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
-          disabled={submitting}
-          className="rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/20 hover:text-white active:scale-95 disabled:opacity-40"
+          className="rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/20 hover:text-white active:scale-95"
         >
           ← Voltar
         </button>
         <button
           type="button"
-          onClick={onFinish}
-          disabled={submitting}
-          className="rounded-full bg-gradient-to-r from-emerald-500 to-limiar-400 px-7 py-2.5 text-[11px] font-bold uppercase tracking-[0.24em] text-white shadow-[0_0_24px_rgba(16,185,129,0.45)] transition-all hover:shadow-[0_0_36px_rgba(16,185,129,0.65)] active:scale-95 disabled:opacity-60 disabled:shadow-none"
+          onClick={onNext}
+          className="rounded-full bg-gradient-to-r from-limiar-500 to-limiar-400 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.24em] text-white shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_0_30px_rgba(139,92,246,0.6)] active:scale-95"
         >
-          {submitting ? "Salvando..." : "Começar agora ✨"}
+          Próximo →
         </button>
       </div>
     </div>

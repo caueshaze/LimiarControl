@@ -55,7 +55,20 @@ SPELL_SAVE_SUCCESS_OUTCOME_MAP = {
 }
 
 CASTING_TIME_TYPE_MAP = {member.value: member.value for member in CastingTimeType}
+CASTING_TIME_TYPE_MAP.update(
+    {
+        "minute": CastingTimeType.MINUTE_1.value,
+        "1 minute": CastingTimeType.MINUTE_1.value,
+        "10 minutes": CastingTimeType.MINUTES_10.value,
+    }
+)
 TARGET_TYPE_MAP = {member.value: member.value for member in TargetType}
+TARGET_TYPE_MAP.update(
+    {
+        "utility": TargetType.SPECIAL.value,
+        "point": TargetType.SPECIAL.value,
+    }
+)
 AREA_SHAPE_MAP = {member.value: member.value for member in AreaShape}
 SPELL_SELECTION_TYPE_MAP = {member.value: member.value for member in SpellSelectionType}
 SPELL_ORIGIN_TYPE_MAP = {member.value: member.value for member in SpellOriginType}
@@ -70,6 +83,13 @@ RESOLUTION_TYPE_MAP.update(
         "spell_attack": "spell_attack",
         "saving_throw": "saving_throw",
         "automatic": "automatic",
+        # Structured/runtime-specific resolution modes present in seed catalog
+        "attack": "attack",
+        "teleport": "teleport",
+        "utility_anchor": "utility_anchor",
+        "narrative_utility": "narrative_utility",
+        "narrative_item_effect": "narrative_item_effect",
+        "item_condition_repair": "item_condition_repair",
     }
 )
 UPCAST_MODE_MAP = {member.value: member.value for member in UpcastMode}
