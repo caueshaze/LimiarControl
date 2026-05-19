@@ -7,7 +7,6 @@ import {
   type CampaignSystemType,
 } from "../../entities/campaign";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { useAuth } from "../../features/auth";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { CampaignQuickLinkCard } from "./CampaignQuickLinkCard";
 import { CampaignHero } from "./CampaignHero";
@@ -15,6 +14,7 @@ import { CampaignHero } from "./CampaignHero";
 export const CampaignHomePage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const {
+    campaigns,
     selectedCampaign,
     selectedCampaignId,
     selectCampaign,
@@ -23,14 +23,13 @@ export const CampaignHomePage = () => {
   } = useCampaigns();
   const navigate = useNavigate();
   const { t } = useLocale();
-  const { user } = useAuth();
-  const role = user?.role ?? "PLAYER";
   const [gmName, setGmName] = useState<string | null>(null);
   const [overviewSystem, setOverviewSystem] = useState<CampaignSystemType | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [deletingCampaign, setDeletingCampaign] = useState(false);
-  const isGm = role === "GM";
   const effectiveCampaignId = campaignId ?? selectedCampaignId ?? null;
+  // isGm is true when user has GM membership in this specific campaign
+  const isGm = campaigns.some((c) => c.id === effectiveCampaignId && c.roleMode === "GM");
 
   useEffect(() => {
     if (!effectiveCampaignId) {

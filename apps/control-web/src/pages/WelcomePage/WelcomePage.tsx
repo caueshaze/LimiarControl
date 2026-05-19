@@ -6,8 +6,12 @@ import { useAuth } from "../../features/auth";
 import { StepWelcome } from "./steps/StepWelcome";
 import { StepProfile } from "./steps/StepProfile";
 import { StepToken } from "./steps/StepToken";
+import { StepExperience } from "./steps/StepExperience";
 
-type Step = 0 | 1 | 2;
+type Step = 0 | 1 | 2 | 3;
+type ExperienceMode = "GM" | "PLAYER";
+
+const EXPERIENCE_MODE_KEY = "limiar_experience_mode";
 
 export const WelcomePage = () => {
   const navigate = useNavigate();
@@ -20,6 +24,7 @@ export const WelcomePage = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [tokenColor, setTokenColor] = useState<string | null>(null);
   const [tokenImageUrl, setTokenImageUrl] = useState<string | null>(null);
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode | null>(null);
 
   const handleFinish = async () => {
     setSubmitting(true);
@@ -32,6 +37,9 @@ export const WelcomePage = () => {
         tokenImageUrl,
         markOnboarded: true,
       });
+      if (experienceMode) {
+        localStorage.setItem(EXPERIENCE_MODE_KEY, experienceMode);
+      }
       await refreshUser();
       navigate(routes.home);
     } catch (err) {
@@ -41,6 +49,8 @@ export const WelcomePage = () => {
       setSubmitting(false);
     }
   };
+
+  const TOTAL_STEPS = 4;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-void-950">
@@ -62,10 +72,10 @@ export const WelcomePage = () => {
         <div className="w-full max-w-2xl">
           {/* Step indicator dots */}
           <div className="mb-6 flex items-center justify-center gap-2">
-            {[0, 1, 2].map((idx) => (
+            {Array.from({ length: TOTAL_STEPS }).map((_, idx) => (
               <span
                 key={idx}
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === step
                     ? "w-8 bg-limiar-400"
                     : idx < step
@@ -101,6 +111,14 @@ export const WelcomePage = () => {
                 onColorChange={setTokenColor}
                 onImageChange={setTokenImageUrl}
                 onBack={() => setStep(1)}
+                onNext={() => setStep(3)}
+              />
+            )}
+            {step === 3 && (
+              <StepExperience
+                mode={experienceMode}
+                onModeChange={setExperienceMode}
+                onBack={() => setStep(2)}
                 onFinish={handleFinish}
                 submitting={submitting}
                 submitError={submitError}

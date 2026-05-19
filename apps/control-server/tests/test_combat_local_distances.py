@@ -15,6 +15,10 @@ from app.schemas.combat import (
     CombatUpdateDistancesRequest,
 )
 from app.services.combat import CombatService, CombatServiceError
+from app.services.combat_service.lifecycle_initiative import (
+    get_player_total_inventory_weight_lb,
+    _encumbrance_tier_for_player,
+)
 
 
 def _distance_entry(
@@ -40,6 +44,107 @@ class CombatLocalDistanceSchemaTests(unittest.TestCase):
 
 
 class CombatLocalDistanceLifecycleTests(TestCombatServiceBase):
+    def test_get_player_total_inventory_weight_reads_scalar_select_via_first(self) -> None:
+        session_entry = MagicMock(campaign_id="campaign-1")
+        member = MagicMock(id="member-1")
+
+        db = MagicMock()
+        db.exec.side_effect = [
+            MagicMock(first=MagicMock(return_value=session_entry)),
+            MagicMock(first=MagicMock(return_value=member)),
+            MagicMock(first=MagicMock(return_value=42.5)),
+        ]
+
+        total_lb = get_player_total_inventory_weight_lb(
+            db,
+            "session-123",
+            "player-123",
+        )
+
+        self.assertEqual(total_lb, 42.5)
+
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    @patch("app.services.combat.CombatService._sync_all_participant_statuses")
+    @patch("app.services.combat.CombatService.get_state", return_value=None)
+    async def test_start_combat_rejects_invalid_campaign_map_configuration(
+        self,
+        _mock_get_state,
+        _mock_sync_all_participant_statuses,
+        _mock_emit_log,
+        _mock_emit_state,
+    ) -> None:
+        self.db.exec.side_effect = [
+            MagicMock(
+                first=MagicMock(
+                    return_value=MagicMock(campaign_id="campaign-1")
+                )
+            ),
+            MagicMock(
+                first=MagicMock(
+                    return_value=MagicMock(
+                        id="map-1",
+                        campaign_id="campaign-1",
+                        name="Broken map",
+                        image_url="https://example.com/map.png",
+                        grid_width=20,
+                        grid_height=20,
+                        calibration_x=0.9,
+                        calibration_y=0.9,
+                        calibration_width=0.5,
+                        calibration_height=0.5,
+                        obstacles_json=None,
+                        edge_obstacles_json=None,
+                        blocked_cells_json=None,
+                    )
+                )
+            ),
+        ]
+
+        req = CombatStartRequest(
+            participants=[
+                CombatParticipant(
+                    id="e1",
+                    ref_id="enemy-123",
+                    kind="session_entity",
+                    display_name="Goblin",
+                    team="enemies",
+                    visible=True,
+                ),
+            ],
+            useMap=True,
+            selectedMap={"kind": "campaign_map", "mapId": "map-1"},
+        )
+
+        with self.assertRaises(CombatServiceError) as context:
+            await CombatService.start_combat(self.db, "session-123", req)
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertEqual(
+            context.exception.detail,
+            "Selected tactical map has invalid configuration",
+        )
+
+    @patch(
+        "app.services.combat_service.lifecycle_initiative.get_player_total_inventory_weight_lb",
+        return_value=0.0,
+    )
+    def test_encumbrance_tier_tolerates_non_numeric_strength_in_state(
+        self,
+        _mock_total_weight,
+    ) -> None:
+        session_state = MagicMock()
+        session_state.state_json = {
+            "abilities": {"strength": "not-a-number"},
+            "currentHP": 12,
+            "maxHP": 12,
+        }
+
+        db = MagicMock()
+        db.exec.return_value.first.return_value = session_state
+        tier = _encumbrance_tier_for_player(db, "session-123", "player-123")
+        self.assertEqual(tier, "normal")
+
     @patch("app.services.combat.CombatService._emit_state")
     @patch("app.services.combat.CombatService._emit_log")
     @patch("app.services.combat.CombatService._sync_all_participant_statuses")

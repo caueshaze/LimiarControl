@@ -5,9 +5,7 @@ import { APP_NAME } from "../config/appConfig";
 import { routes } from "./routes";
 import { RequireAuth, useAuth } from "../../features/auth";
 import { useCampaigns } from "../../features/campaign-select";
-import type { RoleMode } from "../../shared/types/role";
 import { useLocale } from "../../shared/hooks/useLocale";
-import { resolveWorkspaceMode } from "./workspaceRouting";
 import { JoinPage } from "../../pages/JoinPage";
 import { LandingPage } from "../../pages/LandingPage";
 import { LoginPage } from "../../pages/LoginPage";
@@ -54,10 +52,6 @@ const GmDashboardPage = lazy(async () => {
   const module = await import("../../pages/GmDashboardPage/GmDashboardPage");
   return { default: module.GmDashboardPage };
 });
-const GmHomePage = lazy(async () => {
-  const module = await import("../../pages/GmHomePage/GmHomePage");
-  return { default: module.GmHomePage };
-});
 const NpcsPage = lazy(async () => {
   const module = await import("../../pages/NpcsPage");
   return { default: module.NpcsPage };
@@ -70,9 +64,9 @@ const PlayerBoardPage = lazy(async () => {
   const module = await import("../../pages/PlayerBoardPage");
   return { default: module.PlayerBoardPage };
 });
-const PlayerHomePage = lazy(async () => {
-  const module = await import("../../pages/PlayerHomePage/PlayerHomePage");
-  return { default: module.PlayerHomePage };
+const UnifiedHomePage = lazy(async () => {
+  const module = await import("../../pages/UnifiedHomePage/UnifiedHomePage");
+  return { default: module.UnifiedHomePage };
 });
 const PlayerPartyPage = lazy(async () => {
   const module = await import("../../pages/PlayerPartyPage");
@@ -103,14 +97,6 @@ const AdminDiagnosticsPage = lazy(async () => {
   return { default: module.AdminDiagnosticsPage };
 });
 
-const RequireGmRole = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  if (user?.role !== "GM") {
-    return <Navigate to={routes.home} replace />;
-  }
-  return <>{children}</>;
-};
-
 const RequireSystemAdmin = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   if (!user?.isSystemAdmin) {
@@ -123,7 +109,6 @@ export const AppRoutes = () => {
   const { user, logout } = useAuth();
   const { selectedCampaignId } = useCampaigns();
   const { locale } = useLocale();
-  const userRole: RoleMode = user?.role ?? "PLAYER";
   const loadingLabel = locale === "pt" ? "Carregando..." : "Loading...";
 
   const renderRoute = (children: ReactNode) => (
@@ -152,48 +137,38 @@ export const AppRoutes = () => {
         }
       />
       <Route element={<AppLayout title={APP_NAME} user={user ?? undefined} onLogout={logout} />}>
+        {/* Home — unified for all users */}
         <Route
           path={routes.home}
           element={
             <RequireAuth>
-              {renderRoute(userRole === "PLAYER" ? <PlayerHomePage /> : <GmHomePage />)}
+              {renderRoute(<UnifiedHomePage />)}
             </RequireAuth>
           }
         />
+        {/* Legacy /gm and /workspace routes redirect to unified home */}
         <Route
           path={routes.gmHome}
-          element={
-            <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<GmHomePage />)}
-              </RequireGmRole>
-            </RequireAuth>
-          }
+          element={<Navigate to={routes.home} replace />}
         />
         <Route
           path={routes.workspaceHome}
-          element={
-            <RequireAuth>
-              {renderRoute(
-                resolveWorkspaceMode(userRole) === "gm" ? <GmHomePage /> : <PlayerHomePage />,
-              )}
-            </RequireAuth>
-          }
+          element={<Navigate to={routes.home} replace />}
         />
+
+        {/* Campaign management — open to any authenticated user */}
         <Route
           path={routes.campaigns}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                <Navigate
-                  to={
-                    selectedCampaignId
-                      ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
-                      : routes.home
-                  }
-                  replace
-                />
-              </RequireGmRole>
+              <Navigate
+                to={
+                  selectedCampaignId
+                    ? routes.campaignEdit.replace(":campaignId", selectedCampaignId)
+                    : routes.home
+                }
+                replace
+              />
             </RequireAuth>
           }
         />
@@ -201,9 +176,7 @@ export const AppRoutes = () => {
           path={routes.campaignEdit}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CampaignHomePage />)}
-              </RequireGmRole>
+              {renderRoute(<CampaignHomePage />)}
             </RequireAuth>
           }
         />
@@ -211,9 +184,7 @@ export const AppRoutes = () => {
           path={routes.campaignMaps}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CampaignMapsPage />)}
-              </RequireGmRole>
+              {renderRoute(<CampaignMapsPage />)}
             </RequireAuth>
           }
         />
@@ -221,9 +192,7 @@ export const AppRoutes = () => {
           path={routes.partyDetails}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<PartyDetailsPage />)}
-              </RequireGmRole>
+              {renderRoute(<PartyDetailsPage />)}
             </RequireAuth>
           }
         />
@@ -231,9 +200,7 @@ export const AppRoutes = () => {
           path={routes.gmPartyCharacterSheetDraftNew}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CharacterSheetDraftPage />)}
-              </RequireGmRole>
+              {renderRoute(<CharacterSheetDraftPage />)}
             </RequireAuth>
           }
         />
@@ -241,9 +208,7 @@ export const AppRoutes = () => {
           path={routes.gmPartyCharacterSheetDraft}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CharacterSheetDraftPage />)}
-              </RequireGmRole>
+              {renderRoute(<CharacterSheetDraftPage />)}
             </RequireAuth>
           }
         />
@@ -260,11 +225,7 @@ export const AppRoutes = () => {
           path={routes.playerPartyDetails}
           element={
             <RequireAuth>
-              {userRole === "PLAYER" ? (
-                renderRoute(<PlayerPartyPage />)
-              ) : (
-                <Navigate to={routes.gmHome} replace />
-              )}
+              {renderRoute(<PlayerPartyPage />)}
             </RequireAuth>
           }
         />
@@ -272,21 +233,17 @@ export const AppRoutes = () => {
           path={routes.board}
           element={
             <RequireAuth>
-              {userRole === "PLAYER" ? (
-                renderRoute(<PlayerBoardPage />)
-              ) : (
-                <Navigate to={routes.gmHome} replace />
-              )}
+              {renderRoute(<PlayerBoardPage />)}
             </RequireAuth>
           }
         />
+
+        {/* Catalog — open to any authenticated user; API handles mutation auth */}
         <Route
           path={routes.catalog}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CatalogPage />)}
-              </RequireGmRole>
+              {renderRoute(<CatalogPage />)}
             </RequireAuth>
           }
         />
@@ -294,9 +251,7 @@ export const AppRoutes = () => {
           path={routes.catalogItems}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CatalogItemsPage />)}
-              </RequireGmRole>
+              {renderRoute(<CatalogItemsPage />)}
             </RequireAuth>
           }
         />
@@ -304,9 +259,7 @@ export const AppRoutes = () => {
           path={routes.catalogSpells}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CatalogSpellsPage />)}
-              </RequireGmRole>
+              {renderRoute(<CatalogSpellsPage />)}
             </RequireAuth>
           }
         />
@@ -314,9 +267,7 @@ export const AppRoutes = () => {
           path={routes.catalogSpellNew}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CatalogSpellNewPage />)}
-              </RequireGmRole>
+              {renderRoute(<CatalogSpellNewPage />)}
             </RequireAuth>
           }
         />
@@ -324,9 +275,7 @@ export const AppRoutes = () => {
           path={routes.catalogSpellEdit}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<CatalogSpellEditPage />)}
-              </RequireGmRole>
+              {renderRoute(<CatalogSpellEditPage />)}
             </RequireAuth>
           }
         />
@@ -334,9 +283,7 @@ export const AppRoutes = () => {
           path={routes.bestiary}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<NpcsPage />)}
-              </RequireGmRole>
+              {renderRoute(<NpcsPage />)}
             </RequireAuth>
           }
         />
@@ -344,9 +291,7 @@ export const AppRoutes = () => {
           path={routes.npcs}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                <Navigate to={routes.bestiary} replace />
-              </RequireGmRole>
+              <Navigate to={routes.bestiary} replace />
             </RequireAuth>
           }
         />
@@ -354,9 +299,7 @@ export const AppRoutes = () => {
           path={routes.campaignDashboard}
           element={
             <RequireAuth>
-              <RequireGmRole>
-                {renderRoute(<GmDashboardPage />)}
-              </RequireGmRole>
+              {renderRoute(<GmDashboardPage />)}
             </RequireAuth>
           }
         />
@@ -365,7 +308,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {renderRoute(
-                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />,
+                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={user?.role ?? "PLAYER"} />,
               )}
             </RequireAuth>
           }
@@ -375,7 +318,7 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {renderRoute(
-                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={userRole} />,
+                <CharacterSheetPage viewerUserId={user?.userId ?? null} viewerRole={user?.role ?? "PLAYER"} />,
               )}
             </RequireAuth>
           }

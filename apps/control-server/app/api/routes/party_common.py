@@ -54,6 +54,7 @@ def party_member_to_read(
     *,
     display_name: str | None = None,
     username: str | None = None,
+    avatar_url: str | None = None,
 ) -> PartyMemberRead:
     return PartyMemberRead(
         userId=member.user_id,
@@ -62,6 +63,7 @@ def party_member_to_read(
         createdAt=member.created_at,
         displayName=display_name,
         username=username,
+        avatarUrl=avatar_url,
     )
 
 
