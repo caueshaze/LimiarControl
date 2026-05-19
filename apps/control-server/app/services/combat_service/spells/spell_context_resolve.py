@@ -356,6 +356,31 @@ class SpellContextResolveMixin:
         }
 
     @classmethod
+    def _build_temp_hp_preview(cls, catalog_spell, upcast_result: dict) -> dict | None:
+        effects_list = getattr(catalog_spell, "effects_json", None) or []
+        temp_hp_effects = [
+            e for e in effects_list
+            if isinstance(e, dict) and e.get("type") == "grant_temp_hp"
+        ]
+        if not temp_hp_effects:
+            return None
+        base_dice = (temp_hp_effects[0].get("params") or {}).get("dice", "")
+        if not base_dice:
+            return None
+        upcast_bonus_val = cls._safe_int(upcast_result.get("effect_bonus"), 0)
+        if upcast_bonus_val > 0:
+            _, count, sides, mod = _parse_dice(base_dice)
+            total_mod = mod + upcast_bonus_val
+            resolved_formula = cls._build_dice_expression(count, sides, total_mod) or base_dice
+        else:
+            resolved_formula = base_dice
+        return {
+            "base_dice": base_dice,
+            "effect_bonus": upcast_bonus_val,
+            "resolved_formula": resolved_formula,
+        }
+
+    @classmethod
     def _build_spell_context_response(
         cls,
         *,
@@ -371,6 +396,8 @@ class SpellContextResolveMixin:
         upcast_added_instances = cls._safe_int(
             upcast_result.get("upcast_added_instances"), 0
         )
+
+        temp_hp_preview = cls._build_temp_hp_preview(catalog_spell, upcast_result)
         effective_max_targets = (
             base_max_targets + upcast_added_instances
             if isinstance(base_max_targets, int)
@@ -419,6 +446,7 @@ class SpellContextResolveMixin:
             if isinstance(upcast_result.get("effect_dice"), str) or upcast_result.get("effect_dice") is None
             else resolved_math["effect_dice"],
             "effect_bonus": cls._safe_int(upcast_result.get("effect_bonus"), resolved_math["effect_bonus"]),
+            "temp_hp_preview": temp_hp_preview,
             "damage_type": resolved_math["damage_type"],
             "save_ability": resolved_math["save_ability"],
             "save_dc": resolved_math["save_dc"],
