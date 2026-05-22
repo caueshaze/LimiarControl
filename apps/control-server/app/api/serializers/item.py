@@ -31,6 +31,7 @@ def to_item_read(item: Item) -> ItemRead:
         weaponRangeType=item.weapon_range_type,
         armorCategory=item.armor_category,
         armorClassBase=item.armor_class_base,
+        armorMaterial=item.armor_material,
         dexBonusRule=item.dex_bonus_rule,
         strengthRequirement=item.strength_requirement,
         stealthDisadvantage=item.stealth_disadvantage,

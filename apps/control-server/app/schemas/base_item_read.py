@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.models.base_item import (
     BaseItemArmorCategory,
+    BaseItemArmorMaterial,
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
@@ -49,6 +50,7 @@ class BaseItemRead(BaseModel):
     weaponPropertiesJson: list[BaseItemProperty] = Field(default_factory=list)
     armorCategory: Optional[BaseItemArmorCategory] = None
     armorClassBase: Optional[int] = None
+    armorMaterial: Optional[BaseItemArmorMaterial] = None
     dexBonusRule: Optional[BaseItemDexBonusRule] = None
     strengthRequirement: Optional[int] = None
     stealthDisadvantage: Optional[bool] = None
