@@ -30,6 +30,7 @@ class CampaignEntityBase(BaseModel):
     description: str | None = None
     imageUrl: str | None = None
     armorClass: int | None = Field(default=None, ge=0)
+    wearingMetalArmor: bool | None = None
     maxHp: int | None = Field(default=None, ge=0)
     speedMeters: int | None = Field(default=None, ge=0)
     initiativeBonus: int | None = None
