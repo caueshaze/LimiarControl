@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models.base_item import (
     BaseItemArmorCategory,
+    BaseItemArmorMaterial,
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
@@ -83,6 +84,7 @@ class BaseItemWrite(BaseModel):
     weaponPropertiesJson: list[BaseItemProperty] = Field(default_factory=list)
     armorCategory: Optional[BaseItemArmorCategory] = None
     armorClassBase: Optional[int] = None
+    armorMaterial: Optional[BaseItemArmorMaterial] = None
     dexBonusRule: Optional[BaseItemDexBonusRule] = None
     strengthRequirement: Optional[int] = None
     stealthDisadvantage: bool = False
@@ -277,6 +279,7 @@ class BaseItemWrite(BaseModel):
                 )
             self.armorCategory = None
             self.armorClassBase = None
+            self.armorMaterial = None
             self.dexBonusRule = None
             self.strengthRequirement = None
             self.stealthDisadvantage = False

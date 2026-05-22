@@ -93,6 +93,7 @@ def _base_item_to_campaign_item(
         weapon_range_type=base_item.weapon_range_type,
         armor_category=base_item.armor_category,
         armor_class_base=base_item.armor_class_base,
+        armor_material=base_item.armor_material,
         dex_bonus_rule=None if base_item.is_shield else base_item.dex_bonus_rule,
         strength_requirement=base_item.strength_requirement,
         stealth_disadvantage=bool(base_item.stealth_disadvantage),

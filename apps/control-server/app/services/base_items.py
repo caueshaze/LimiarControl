@@ -104,6 +104,7 @@ def _apply_payload(item: BaseItem, payload: BaseItemCreate | BaseItemUpdate) -> 
     ] or None
     item.armor_category = payload.armorCategory
     item.armor_class_base = payload.armorClassBase
+    item.armor_material = payload.armorMaterial
     item.dex_bonus_rule = payload.dexBonusRule
     item.strength_requirement = payload.strengthRequirement
     item.stealth_disadvantage = payload.stealthDisadvantage

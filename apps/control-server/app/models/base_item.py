@@ -77,6 +77,15 @@ class BaseItemArmorCategory(str, Enum):
     SHIELD = "shield"
 
 
+class BaseItemArmorMaterial(str, Enum):
+    METAL = "metal"
+    LEATHER = "leather"
+    HIDE = "hide"
+    WOOD = "wood"
+    NATURAL = "natural"
+    OTHER = "other"
+
+
 class BaseItemDamageType(str, Enum):
     ACID = "acid"
     BLUDGEONING = "bludgeoning"
@@ -242,6 +251,17 @@ class BaseItem(SQLModel, table=True):
         ),
     )
     armor_class_base: Optional[int] = None
+    armor_material: Optional[BaseItemArmorMaterial] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemArmorMaterial,
+                name="baseitemarmormaterial",
+                values_callable=_enum_values,
+            ),
+            nullable=True,
+        ),
+    )
     dex_bonus_rule: Optional[BaseItemDexBonusRule] = Field(
         default=None,
         sa_column=Column(

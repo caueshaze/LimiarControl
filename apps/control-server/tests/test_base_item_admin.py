@@ -19,6 +19,7 @@ from app.api.routes.admin_base_items import (
 from app.models.base_item import (
     BaseItem,
     BaseItemArmorCategory,
+    BaseItemArmorMaterial,
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
@@ -68,6 +69,7 @@ def make_base_item(**overrides):
         "weapon_properties_json": ["finesse", "light", "thrown"],
         "armor_category": None,
         "armor_class_base": None,
+        "armor_material": None,
         "dex_bonus_rule": None,
         "strength_requirement": None,
         "stealth_disadvantage": False,
@@ -99,6 +101,10 @@ class RequireSystemAdminTests(unittest.TestCase):
                 display_name="Admin",
                 role="GM",
                 is_system_admin=True,
+                avatar_url=None,
+                token_color=None,
+                token_image_url=None,
+                onboarded_at=None,
             )
         )
         self.assertTrue(profile.isSystemAdmin)
@@ -139,6 +145,40 @@ class BaseItemSchemaTests(unittest.TestCase):
 
         self.assertEqual(payload.dexBonusRule, BaseItemDexBonusRule.NONE)
         self.assertIsNone(payload.strengthRequirement)
+
+    def test_accepts_armor_material_for_armor_and_shield(self):
+        armor_payload = BaseItemCreate(
+            canonicalKey="chain_mail",
+            nameEn="Chain Mail",
+            itemKind=BaseItemKind.ARMOR,
+            armorCategory=BaseItemArmorCategory.HEAVY,
+            armorClassBase=16,
+            armorMaterial=BaseItemArmorMaterial.METAL,
+            dexBonusRule="none",
+        )
+        shield_payload = BaseItemCreate(
+            canonicalKey="shield",
+            nameEn="Shield",
+            itemKind=BaseItemKind.ARMOR,
+            armorCategory=BaseItemArmorCategory.SHIELD,
+            armorClassBase=2,
+            armorMaterial=BaseItemArmorMaterial.WOOD,
+        )
+
+        self.assertEqual(armor_payload.armorMaterial, BaseItemArmorMaterial.METAL)
+        self.assertEqual(shield_payload.armorMaterial, BaseItemArmorMaterial.WOOD)
+
+    def test_rejects_invalid_armor_material(self):
+        with self.assertRaisesRegex(ValueError, "Input should be"):
+            BaseItemCreate(
+                canonicalKey="chain_mail",
+                nameEn="Chain Mail",
+                itemKind=BaseItemKind.ARMOR,
+                armorCategory=BaseItemArmorCategory.HEAVY,
+                armorClassBase=16,
+                armorMaterial="cloth",
+                dexBonusRule="none",
+            )
 
     def test_accepts_enum_instances_from_serializers(self):
         payload = BaseItemCreate(
@@ -718,6 +758,40 @@ class ItemSchemaTests(unittest.TestCase):
 
         self.assertEqual(payload.healDice, "2d4")
         self.assertEqual(payload.healBonus, 2)
+
+    def test_accepts_armor_material_on_armor_and_shield(self):
+        armor_payload = ItemCreate(
+            name="Chain Mail",
+            type=ItemType.ARMOR,
+            description="Heavy armor.",
+            armorCategory=BaseItemArmorCategory.HEAVY,
+            armorClassBase=16,
+            armorMaterial=BaseItemArmorMaterial.METAL,
+            dexBonusRule=BaseItemDexBonusRule.NONE,
+        )
+        shield_payload = ItemCreate(
+            name="Shield",
+            type=ItemType.ARMOR,
+            description="Basic shield.",
+            armorCategory=BaseItemArmorCategory.SHIELD,
+            armorClassBase=2,
+            armorMaterial=BaseItemArmorMaterial.WOOD,
+        )
+
+        self.assertEqual(armor_payload.armorMaterial, BaseItemArmorMaterial.METAL)
+        self.assertEqual(shield_payload.armorMaterial, BaseItemArmorMaterial.WOOD)
+
+    def test_rejects_invalid_item_armor_material(self):
+        with self.assertRaisesRegex(ValueError, "Input should be"):
+            ItemCreate(
+                name="Mystery Armor",
+                type=ItemType.ARMOR,
+                description="Unknown material.",
+                armorCategory=BaseItemArmorCategory.MEDIUM,
+                armorClassBase=14,
+                armorMaterial="fabric",
+                dexBonusRule=BaseItemDexBonusRule.MAX_2,
+            )
 
     def test_rejects_healing_fields_for_non_consumable_campaign_item(self):
         with self.assertRaisesRegex(

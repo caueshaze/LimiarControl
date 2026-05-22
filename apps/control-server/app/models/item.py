@@ -11,6 +11,7 @@ from sqlmodel import Field, SQLModel
 
 from app.models.base_item import (
     BaseItemArmorCategory,
+    BaseItemArmorMaterial,
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
@@ -109,6 +110,18 @@ class Item(SQLModel, table=True):
         ),
     )
     armor_class_base: int | None = None
+    armor_material: Optional[BaseItemArmorMaterial] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemArmorMaterial,
+                name="baseitemarmormaterial",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
     dex_bonus_rule: Optional[BaseItemDexBonusRule] = Field(
         default=None,
         sa_column=Column(

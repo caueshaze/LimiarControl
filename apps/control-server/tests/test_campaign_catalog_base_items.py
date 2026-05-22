@@ -2,7 +2,9 @@ import unittest
 
 from app.models.base_item import (
     BaseItem,
+    BaseItemArmorCategory,
     BaseItemCostUnit,
+    BaseItemArmorMaterial,
     BaseItemKind,
     BaseItemEquipmentCategory,
     BaseItemWeaponCategory,
@@ -15,6 +17,30 @@ from app.services.campaign_catalog import _base_item_to_campaign_item
 
 
 class CampaignCatalogBaseItemCompatibilityTests(unittest.TestCase):
+    def test_base_item_snapshot_preserves_armor_material(self):
+        base_item = BaseItem(
+            id="base-shield",
+            system=SystemType.DND5E,
+            canonical_key="shield",
+            name_en="Shield",
+            name_pt="Escudo",
+            description_en="Basic shield.",
+            description_pt="Escudo básico.",
+            item_kind=BaseItemKind.ARMOR,
+            cost_quantity=10.0,
+            cost_unit=BaseItemCostUnit.GP,
+            weight=6.0,
+            armor_category=BaseItemArmorCategory.SHIELD,
+            armor_class_base=2,
+            armor_material=BaseItemArmorMaterial.WOOD,
+            is_shield=True,
+            is_srd=False,
+            is_active=True,
+        )
+
+        item = _base_item_to_campaign_item(base_item, "campaign-1")
+        self.assertEqual(item.armor_material, BaseItemArmorMaterial.WOOD)
+
     def test_base_item_snapshot_preserves_catalog_fields_for_campaign_items(self):
         base_item = BaseItem(
             id="base-dagger",
@@ -120,8 +146,8 @@ class CampaignCatalogBaseItemCompatibilityTests(unittest.TestCase):
 
 class CombatDamageParsingTests(unittest.TestCase):
     def test_parse_dice_supports_static_damage_values(self):
-        self.assertEqual(_parse_dice("1"), (0, 0, 1))
-        self.assertEqual(_parse_dice("12"), (0, 0, 12))
+        self.assertEqual(_parse_dice("1"), (1, 0, 0, 1))
+        self.assertEqual(_parse_dice("12"), (1, 0, 0, 12))
 
 
 if __name__ == "__main__":
