@@ -3,8 +3,10 @@ from __future__ import annotations
 from pydantic import ValidationError
 from sqlmodel import select
 
+from app.models.campaign_entity import CampaignEntity
 from app.models.campaign_tactical_map import CampaignTacticalMap
 from app.models.combat import CombatPhase
+from app.models.session_entity import SessionEntity
 from app.models.session import Session as CampaignSession
 from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, decode_obstacles
 from app.schemas.combat import CombatMapSelection
@@ -167,6 +169,7 @@ class CombatLifecycleInitiativeMixin:
         from app.models.combat import CombatState
 
         built_participants = []
+        entity_metal_armor_cache: dict[str, bool | None] = {}
         for p in req.participants:
             entry = {
                 **p.model_dump(),
@@ -202,6 +205,30 @@ class CombatLifecycleInitiativeMixin:
                     active_effects=entry.get("active_effects"),
                     effective_size=size_payload["effective_size"],
                 )
+            elif p.kind == "session_entity":
+                wearing_metal_armor = entity_metal_armor_cache.get(p.ref_id)
+                if p.ref_id not in entity_metal_armor_cache:
+                    try:
+                        session_entity = db.exec(
+                            select(SessionEntity).where(
+                                SessionEntity.id == p.ref_id,
+                                SessionEntity.session_id == session_id,
+                            )
+                        ).first()
+                        if session_entity and isinstance(session_entity.campaign_entity_id, str):
+                            campaign_entity = db.exec(
+                                select(CampaignEntity).where(
+                                    CampaignEntity.id == session_entity.campaign_entity_id
+                                )
+                            ).first()
+                            raw_flag = campaign_entity.wearing_metal_armor if campaign_entity else None
+                            wearing_metal_armor = raw_flag if isinstance(raw_flag, bool) else None
+                        else:
+                            wearing_metal_armor = None
+                    except Exception:
+                        wearing_metal_armor = None
+                    entity_metal_armor_cache[p.ref_id] = wearing_metal_armor
+                entry["wearingMetalArmor"] = wearing_metal_armor
             built_participants.append(entry)
 
         new_state = CombatState(

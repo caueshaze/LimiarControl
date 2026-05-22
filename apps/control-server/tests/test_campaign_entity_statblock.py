@@ -38,6 +38,7 @@ class TestCampaignEntityStatblock(unittest.TestCase):
             skills={"stealth": 6, "perception": 3},
             senses={"darkvisionMeters": 18, "passivePerception": 13},
             spellcasting={"ability": "wisdom", "saveDc": 12, "attackBonus": 4},
+            wearingMetalArmor=True,
             damageResistances=["fire"],
             conditionImmunities=["poisoned"],
             combatActions=[
@@ -58,6 +59,7 @@ class TestCampaignEntityStatblock(unittest.TestCase):
         self.assertEqual(payload.skills["stealth"], 6)
         self.assertEqual(payload.senses.darkvisionMeters, 18)
         self.assertEqual(payload.spellcasting.saveDc, 12)
+        self.assertIs(payload.wearingMetalArmor, True)
 
     def test_campaign_entity_create_prunes_redundant_derived_overrides(self):
         payload = CampaignEntityCreate(
@@ -104,6 +106,7 @@ class TestCampaignEntityStatblock(unittest.TestCase):
             size="medium",
             creature_type="undead",
             armor_class=12,
+            wearing_metal_armor=False,
             max_hp=22,
             speed_meters=9,
             initiative_bonus=2,
@@ -148,6 +151,7 @@ class TestCampaignEntityStatblock(unittest.TestCase):
         self.assertEqual(serialized.spellcasting.saveDc, 11)
         self.assertEqual(serialized.damageImmunities, ["poison"])
         self.assertEqual(serialized.combatActions[0].name, "Claws")
+        self.assertIs(serialized.wearingMetalArmor, False)
 
     def test_serialization_normalizes_redundant_overrides(self):
         entity = CampaignEntity(

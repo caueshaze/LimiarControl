@@ -20,6 +20,7 @@ class CampaignEntity(SQLModel, table=True):
     description: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     image_url: str | None = None
     armor_class: int | None = Field(default=None, sa_column=Column(Integer, nullable=True))
+    wearing_metal_armor: bool | None = Field(default=None, nullable=True)
     max_hp: int | None = Field(default=None, sa_column=Column(Integer, nullable=True))
     speed_meters: int | None = Field(default=None, sa_column=Column(Integer, nullable=True))
     initiative_bonus: int | None = Field(default=None, sa_column=Column(Integer, nullable=True))

@@ -116,6 +116,7 @@ def to_campaign_entity_read(entry: CampaignEntity) -> CampaignEntityRead:
         description=entry.description,
         imageUrl=entry.image_url,
         armorClass=entry.armor_class,
+        wearingMetalArmor=entry.wearing_metal_armor,
         maxHp=entry.max_hp,
         speedMeters=entry.speed_meters,
         initiativeBonus=entry.initiative_bonus,
@@ -149,6 +150,7 @@ def to_campaign_entity_public_read(entry: CampaignEntity) -> CampaignEntityPubli
         description=entry.description,
         imageUrl=entry.image_url,
         armorClass=entry.armor_class,
+        wearingMetalArmor=entry.wearing_metal_armor,
         maxHp=entry.max_hp,
         speedMeters=entry.speed_meters,
         initiativeBonus=entry.initiative_bonus,
@@ -212,6 +214,7 @@ def create_campaign_entity(
         description=payload.description,
         image_url=None,
         armor_class=payload.armorClass,
+        wearing_metal_armor=payload.wearingMetalArmor,
         max_hp=payload.maxHp,
         speed_meters=payload.speedMeters,
         initiative_bonus=payload.initiativeBonus,
@@ -293,6 +296,7 @@ def update_campaign_entity(
     else:
         entry.image_url = source_image_ref.url
     entry.armor_class = payload.armorClass
+    entry.wearing_metal_armor = payload.wearingMetalArmor
     entry.max_hp = payload.maxHp
     entry.speed_meters = payload.speedMeters
     entry.initiative_bonus = payload.initiativeBonus
