@@ -4,6 +4,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
+from app.services.combat_service.condition_effects_predicates import target_wearing_metal_armor
 from app.services.combat_service.cover_modifiers import resolve_cover_modifier
 from app.services.combat_service.visibility import resolve_target_visibility
 from app.services.roll_resolution import resolve_attack_base
@@ -43,6 +44,10 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
         result.base_ac = base_ac if base_ac is not None else 10
         result.target_ac = result.base_ac + result.cover_modifier
         result.adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
+        raw_adv_condition = spell_context.get("attack_advantage_condition")
+        if isinstance(raw_adv_condition, dict) and raw_adv_condition.get("type") == "target_wearing_metal_armor":
+            if target_wearing_metal_armor(target_p):
+                result.adv_ctx.advantage_sources.append("target_wearing_metal_armor")
         result.vis_ctx = resolve_target_visibility(attacker, target_p, has_line_of_sight=bool(targeting_result.spatial_metadata.has_line_of_sight or True))
         has_adv = req.has_advantage or bool(result.adv_ctx.advantage_sources)
         has_dis = req.has_disadvantage or bool(result.adv_ctx.disadvantage_sources) or not result.vis_ctx.is_directly_visible

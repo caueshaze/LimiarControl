@@ -9,7 +9,7 @@ from app.models.campaign import SystemType
 
 from .base_spell_upcast import SpellUpcastConfig
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
-from .base_spell_effects import SpellDeclarativeEffect
+from .base_spell_effects import AttackAdvantageCondition, SpellDeclarativeEffect
 from .base_spell_persistent_area import SpellPersistentAreaEffect
 from .base_spell_variants import SpellVariant
 
@@ -64,6 +64,7 @@ class BaseSpellRead(BaseModel):
     damageType: Optional[str] = None
     healDice: Optional[str] = None
     effects: list[SpellDeclarativeEffect] | None = None
+    attackAdvantageCondition: AttackAdvantageCondition | None = None
     onEndEffects: list[SpellDeclarativeEffect] | None = None
     variants: list[SpellVariant] | None = None
     persistentArea: SpellPersistentAreaEffect | None = None

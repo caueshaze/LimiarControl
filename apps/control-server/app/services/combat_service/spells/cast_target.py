@@ -13,6 +13,7 @@ from app.models.session_command_event import SessionCommandEvent
 from app.schemas.base_spell import SpellVariant
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
+from app.services.combat_service.condition_effects_predicates import target_wearing_metal_armor
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 from app.services.magic_item_effects import (
     consume_inventory_item_charge,
@@ -841,6 +842,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         target_ac = base_ac + cover_modifier
 
         adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
+        raw_adv_condition = spell_context.get("attack_advantage_condition")
+        if isinstance(raw_adv_condition, dict) and raw_adv_condition.get("type") == "target_wearing_metal_armor":
+            if target_wearing_metal_armor(target_p):
+                adv_ctx.advantage_sources.append("target_wearing_metal_armor")
         has_adv = req.has_advantage or bool(adv_ctx.advantage_sources)
         has_dis = req.has_disadvantage or bool(adv_ctx.disadvantage_sources)
         adv_mode = (

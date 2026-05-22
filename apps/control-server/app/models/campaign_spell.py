@@ -146,6 +146,10 @@ class CampaignSpell(SQLModel, table=True):
         default=None,
         sa_column=Column(JSONB, nullable=True),
     )
+    attack_advantage_condition_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
     on_end_effects_json: Optional[list[dict]] = Field(
         default=None,
         sa_column=Column(JSONB, nullable=True),

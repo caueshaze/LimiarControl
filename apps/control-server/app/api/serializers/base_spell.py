@@ -15,6 +15,11 @@ def _optional_str_attr(source: object, name: str) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def _optional_attack_advantage_condition_attr(source: object, name: str = "attack_advantage_condition_json") -> dict | None:
+    value = getattr(source, name, None)
+    return value if isinstance(value, dict) else None
+
+
 def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
     automation = resolve_spell_automation_metadata_from_catalog(
         spell,
@@ -61,6 +66,7 @@ def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
         effects=spell.effects_json,
+        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
         onEndEffects=spell.on_end_effects_json,
         variants=spell.variants_json,
         persistentArea=spell.persistent_area_json,
@@ -127,6 +133,7 @@ def to_base_spell_seed_entry(spell: BaseSpell) -> BaseSpellCreate:
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
         effects=spell.effects_json,
+        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
         onEndEffects=spell.on_end_effects_json,
         variants=spell.variants_json,
         persistentArea=spell.persistent_area_json,

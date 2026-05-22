@@ -35,6 +35,7 @@ from .base_spell_cantrip_scaling import (
     SpellCantripScalingConfig,
 )
 from .base_spell_effects import (
+    AttackAdvantageCondition,
     ApplyConditionParams,
     CheckModifierParams,
     ModifyStatParams,
@@ -104,6 +105,7 @@ __all__ = [
     "_CANONICAL_KEY_RE",
     "_normalize_canonical_key",
     "BaseSpellAliasRead",
+    "AttackAdvantageCondition",
     "ApplyConditionParams",
     "BaseSpellCreate",
     "BaseSpellRead",

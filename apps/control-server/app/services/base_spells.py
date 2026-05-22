@@ -52,6 +52,7 @@ _FIELD_MAP: dict[str, str] = {
     "damageType": "damage_type",
     "healDice": "heal_dice",
     "effects": "effects_json",
+    "attackAdvantageCondition": "attack_advantage_condition_json",
     "onEndEffects": "on_end_effects_json",
     "variants": "variants_json",
     "persistentArea": "persistent_area_json",

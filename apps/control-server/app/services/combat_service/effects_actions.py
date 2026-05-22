@@ -15,7 +15,7 @@ from app.schemas.combat import (
     CombatRemoveEffectRequest,
 )
 
-from .condition_effects_predicates import has_condition_immunity
+from .condition_effects_predicates import has_condition_immunity, is_reaction_blocked
 from .effects_core import CombatEffectsCoreMixin
 from .exceptions import CombatServiceError
 
@@ -25,6 +25,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
     def _consume_turn_resource(cls, participant: dict, cost: str, *, is_gm: bool = False, override_resource_limit: bool = False) -> bool:
         if cost == "free":
             return False
+        if cost == "reaction" and is_reaction_blocked(participant):
+            raise CombatServiceError("Reaction is restricted by active effect.", 403)
         resources = cls._get_turn_resources(participant)
         key = f"{cost}_used"
         if key not in resources:

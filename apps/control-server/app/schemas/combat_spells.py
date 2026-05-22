@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.campaign_entity_shared import AbilityName
+from app.schemas.base_spell_effects import AttackAdvantageCondition
 from app.schemas.base_spell import SpellVariantManualNote
 from app.schemas.roll import RollResult, RollSource
 
@@ -148,6 +149,7 @@ class CombatResolvedSpellContext(BaseModel):
     save_ability: AbilityName | None = None
     damage_type: str | None = None
     damage_preview: str | None = None
+    attack_advantage_condition: AttackAdvantageCondition | None = None
     effect_instance_count: int = 1
     effect_instance_dice: str | None = None
     base_effect_instance_count: int | None = None
