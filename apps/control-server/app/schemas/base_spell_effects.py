@@ -215,6 +215,14 @@ class AttackAdvantageAgainstTargetParams(BaseModel):
     consume_on_apply: bool = True
 
 
+AttackAdvantageConditionType = Literal["target_wearing_metal_armor"]
+
+
+class AttackAdvantageCondition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: AttackAdvantageConditionType
+
+
 class ArmorClassFormulaParams(BaseModel):
     base_value: int = Field(ge=0)
     ability: AbilityName

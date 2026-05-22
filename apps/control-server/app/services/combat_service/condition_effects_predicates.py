@@ -161,6 +161,16 @@ def is_action_blocked(participant: dict) -> bool:
     return False
 
 
+def is_reaction_blocked(participant: dict) -> bool:
+    for declarative in _iter_declarative_spell_effects(participant):
+        if declarative.get("type") != "restrict_action":
+            continue
+        params = declarative.get("params")
+        if isinstance(params, dict) and params.get("action") == "reactions":
+            return True
+    return False
+
+
 def is_movement_blocked(participant: dict) -> bool:
     for effect in participant.get("active_effects") or []:
         if effect.get("kind") == "condition" and effect.get("condition_type") in _MOVEMENT_BLOCKING_CONDITIONS:

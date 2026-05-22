@@ -31,7 +31,7 @@ from .base_spell_constants import (
 )
 from .base_spell_upcast import SpellUpcastConfig, _build_structured_upcast_from_legacy
 from .base_spell_cantrip_scaling import SpellCantripScalingConfig
-from .base_spell_effects import SpellDeclarativeEffect
+from .base_spell_effects import AttackAdvantageCondition, SpellDeclarativeEffect
 from .base_spell_persistent_area import SpellPersistentAreaEffect
 from .base_spell_variants import SpellVariant
 
@@ -76,6 +76,7 @@ class BaseSpellWrite(BaseModel):
     damageType: Optional[str] = None
     healDice: Optional[str] = None
     effects: Optional[list[SpellDeclarativeEffect]] = None
+    attackAdvantageCondition: Optional[AttackAdvantageCondition] = None
     onEndEffects: Optional[list[SpellDeclarativeEffect]] = None
     variants: Optional[list[SpellVariant]] = None
     persistentArea: Optional[SpellPersistentAreaEffect] = None

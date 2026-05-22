@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
+from app.api.serializers.base_spell import _optional_attack_advantage_condition_attr
 from app.db.session import get_session
 from app.models.base_spell import SpellSchool
 from app.models.campaign import Campaign
@@ -76,6 +77,7 @@ def to_campaign_spell_read(
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
         effects=spell.effects_json,
+        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
         onEndEffects=spell.on_end_effects_json,
         variants=spell.variants_json,
         persistentArea=spell.persistent_area_json,
@@ -202,6 +204,7 @@ def update_spell(
         "damageType": "damage_type",
         "healDice": "heal_dice",
         "effects": "effects_json",
+        "attackAdvantageCondition": "attack_advantage_condition_json",
         "onEndEffects": "on_end_effects_json",
         "variants": "variants_json",
         "persistentArea": "persistent_area_json",

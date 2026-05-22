@@ -453,6 +453,7 @@ class SpellContextResolveMixin:
             "save_dc": resolved_math["save_dc"],
             "save_success_outcome": resolved_math["save_success_outcome"],
             "effects": getattr(catalog_spell, "effects_json", None),
+            "attack_advantage_condition": getattr(catalog_spell, "attack_advantage_condition_json", None),
             "on_end_effects": getattr(catalog_spell, "on_end_effects_json", None),
             "variant_definitions": getattr(catalog_spell, "variants_json", None),
             "variants": cls._build_spell_variant_summaries(

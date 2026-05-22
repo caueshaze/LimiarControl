@@ -236,6 +236,94 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "shocking_grasp",
+      "nameEn": "Shocking Grasp",
+      "namePt": "Toque Chocante",
+      "descriptionEn": "Lightning springs from your hand to deliver a shock to a creature you try to touch. Make a melee spell attack against the target. On a hit, the target takes 1d8 lightning damage, and it can't take reactions until the start of its next turn.",
+      "descriptionPt": "Relâmpagos saltam da sua mão para aplicar um choque na criatura que você tenta tocar. Faça um ataque mágico corpo a corpo contra o alvo. Em um acerto, o alvo sofre 1d8 de dano elétrico e não pode realizar reações até o início do próximo turno dele.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "1d8",
+      "damageType": "Lightning",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "melee",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "melee_spell",
+      "rangeKind": "touch",
+      "effectTiming": "immediate",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
+            }
+          }
+        ]
+      },
+      "attackAdvantageCondition": {
+        "type": "target_wearing_metal_armor"
+      },
+      "effects": [
+        {
+          "type": "restrict_action",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_start",
+            "anchor": "target"
+          },
+          "params": {
+            "action": "reactions"
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "light",
       "nameEn": "Light",
       "namePt": "Luz",
