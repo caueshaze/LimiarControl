@@ -94,6 +94,20 @@ def has_condition(participant: dict, condition_type: str) -> bool:
     return False
 
 
+def target_wearing_metal_armor(participant: dict | None) -> bool:
+    if not isinstance(participant, dict):
+        return False
+
+    equipped_armor = participant.get("equippedArmor")
+    if isinstance(equipped_armor, dict):
+        armor_type = equipped_armor.get("armorType")
+        armor_material = equipped_armor.get("armorMaterial")
+        if isinstance(armor_type, str) and armor_type != "none" and armor_material == "metal":
+            return True
+
+    return participant.get("wearingMetalArmor") is True
+
+
 def has_condition_immunity(participant: dict, condition_type: str) -> bool:
     for effect in participant.get("active_effects") or []:
         if effect.get("kind") != "spell_effect":
