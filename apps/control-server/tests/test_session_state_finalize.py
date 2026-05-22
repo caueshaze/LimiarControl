@@ -152,6 +152,44 @@ class SessionStateFinalizeTests(unittest.TestCase):
 
         self.assertEqual(armor_class, 16)
 
+    def test_armor_material_does_not_change_armor_class_metal_vs_leather(self):
+        metal_state = {
+            "abilities": {"dexterity": 14},
+            "equippedArmor": {
+                "name": "Chain Shirt",
+                "baseAC": 13,
+                "dexCap": 2,
+                "armorType": "medium",
+                "allowsDex": True,
+                "armorMaterial": "metal",
+            },
+        }
+        leather_state = {
+            "abilities": {"dexterity": 14},
+            "equippedArmor": {
+                "name": "Leather",
+                "baseAC": 13,
+                "dexCap": 2,
+                "armorType": "medium",
+                "allowsDex": True,
+                "armorMaterial": "leather",
+            },
+        }
+        unknown_material_state = {
+            "abilities": {"dexterity": 14},
+            "equippedArmor": {
+                "name": "Leather",
+                "baseAC": 13,
+                "dexCap": 2,
+                "armorType": "medium",
+                "allowsDex": True,
+            },
+        }
+
+        self.assertEqual(calculate_player_armor_class_from_state(metal_state), 15)
+        self.assertEqual(calculate_player_armor_class_from_state(leather_state), 15)
+        self.assertEqual(calculate_player_armor_class_from_state(unknown_material_state), 15)
+
     def test_temp_ac_bonus_applies_after_formula_selection(self):
         armor_class = calculate_player_armor_class_from_state(
             {
