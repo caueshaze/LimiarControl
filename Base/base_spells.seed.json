@@ -1035,7 +1035,9 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally"
     },
     {
       "system": "DND5E",

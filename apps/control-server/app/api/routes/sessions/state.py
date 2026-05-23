@@ -394,11 +394,11 @@ async def _cast_spell_out_of_combat_for_player(
         spell_name_for_notes = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
         for ce in consumable_effects:
             params = ce.get("params") or {}
-            canonical_key = params.get("canonical_key")
+            consumable_canonical_key = params.get("canonical_key")
             raw_qty = params.get("quantity", 1)
             quantity = raw_qty if isinstance(raw_qty, int) else 1
             expires_in_seconds = params.get("expires_in_seconds")
-            if not canonical_key:
+            if not consumable_canonical_key:
                 continue
             expires_at = (
                 datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
@@ -410,7 +410,7 @@ async def _cast_spell_out_of_combat_for_player(
                 session_entry=entry,
                 player_user_id=caster_user_id,
                 system=campaign.system,
-                canonical_key=canonical_key,
+                canonical_key=consumable_canonical_key,
                 quantity=quantity,
                 notes=f"Criado por {spell_name_for_notes}",
                 expires_at=expires_at,
@@ -433,6 +433,105 @@ async def _cast_spell_out_of_combat_for_player(
         if temp_hp_effects
         else []
     )
+
+    # --- Spare the Dying: stabilize target at 0 HP (OOC) ---
+    if canonical_key == "spare_the_dying":
+        if is_ally_target and target_state is not None:
+            std_target_json = target_state.state_json if isinstance(target_state.state_json, dict) else {}
+        else:
+            std_target_json = updated_caster_json
+
+        std_current_hp = _safe_int(std_target_json.get("currentHP"), 0)
+        if std_current_hp > 0:
+            raise HTTPException(status_code=400, detail="Poupar os Moribundos só pode afetar criaturas com 0 HP.")
+
+        std_death_saves = std_target_json.get("deathSaves")
+        if not isinstance(std_death_saves, dict):
+            std_death_saves = {"successes": 0, "failures": 0}
+        std_failures = _safe_int(std_death_saves.get("failures"), 0)
+        if std_failures >= 3:
+            raise HTTPException(status_code=400, detail="Poupar os Moribundos não afeta criaturas mortas.")
+
+        std_target_json = dict(std_target_json)
+        std_target_json["deathSaves"] = {"successes": 3, "failures": 0}
+
+        if is_ally_target and target_state is not None:
+            target_state.state_json = finalize_session_state_data(
+                std_target_json,
+                game_time_seconds=current_game_time_seconds,
+            )
+            flag_modified(target_state, "state_json")
+            session.add(target_state)
+        else:
+            updated_caster_json = std_target_json
+            caster_state.state_json = finalize_session_state_data(
+                updated_caster_json,
+                game_time_seconds=current_game_time_seconds,
+            )
+            flag_modified(caster_state, "state_json")
+            session.add(caster_state)
+
+        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
+        if actor_member_id:
+            spell_name = (
+                campaign_spell.name_pt
+                or campaign_spell.name_en
+                or campaign_spell.canonical_key
+            )
+            record_session_activity(
+                entry,
+                "out_of_combat_spell_cast",
+                session,
+                member_id=actor_member_id,
+                user_id=actor_user.id,
+                actor_name=actor_display_name,
+                payload={
+                    "actor_user_id": actor_user.id,
+                    "actor_player_user_id": actor_user.id,
+                    "actor_display_name": actor_display_name,
+                    "caster_player_user_id": caster_user_id,
+                    "caster_display_name": (
+                        actor_display_name if caster_user_id == actor_user.id else caster_user_id
+                    ),
+                    "target_player_user_id": target_user_id,
+                    "target_display_name": (
+                        actor_display_name if target_user_id == actor_user.id else target_user_id
+                    ),
+                    "spell_key": "spare_the_dying",
+                    "spell_name": spell_name,
+                    "variant_key": None,
+                    "variant_label": None,
+                    "created_effect_ids": [],
+                    "concentration_group": None,
+                    "replaced_concentration": False,
+                    "previous_concentration_group": None,
+                    "new_concentration_group": None,
+                    "previous_spell_name": None,
+                    "previous_variant_label": None,
+                    "cast_by_gm": cast_by_gm,
+                    "spare_the_dying_stabilized": True,
+                },
+            )
+            _prune_out_of_combat_session_activity(session, session_id)
+
+        session.commit()
+        session.refresh(caster_state)
+        if is_ally_target and target_state is not None:
+            session.refresh(target_state)
+
+        states_to_publish: dict[str, SessionState] = {caster_user_id: caster_state}
+        if is_ally_target and target_state is not None:
+            states_to_publish[target_user_id] = target_state
+
+        for player_id, publish_state in states_to_publish.items():
+            await publish_state_update(
+                entry,
+                player_id,
+                publish_state.updated_at or publish_state.created_at,
+                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+            )
+
+        return to_state_read(caster_state)
 
     if not new_target_effects and not consumables_granted_count and not heal_rolled and not temp_hp_rolled:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
