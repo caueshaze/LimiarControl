@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from math import floor
 from uuid import uuid4
 
-_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic", "druidcraft", "produce_flame", "thaumaturgy"}
+_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic", "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages"}
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
     "alter_eyes",
@@ -264,6 +264,44 @@ def build_persisted_effects(
                     "utility": "thaumaturgy",
                     "spell_level": 0,
                     "allowed_effects": _THAUMATURGY_ALLOWED_EFFECTS,
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "comprehend_languages":
+            spell_name = spell.name_pt or spell.name_en
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 3600,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "comprehend_languages",
+                    "source_spell_name": spell_name,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": caster_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": False,
+                    "narrative": True,
+                    "visible_to_all": True,
+                    "utility": "comprehend_languages",
+                    "spell_level": 1,
+                    "duration_seconds": 3600,
+                    "understands_spoken_languages": True,
+                    "understands_written_languages": True,
+                    "requires_touch_for_written_text": True,
+                    "literal_meaning_only": True,
+                    "deciphers_secret_messages": False,
                 },
                 "display_label": spell_name,
             }]

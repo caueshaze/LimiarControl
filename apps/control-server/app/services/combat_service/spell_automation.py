@@ -147,6 +147,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_detect_magic_automation",
         ),
+        "comprehend_languages": SpellAutomationSpec(
+            canonical_key="comprehend_languages",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_comprehend_languages_automation",
+        ),
         "druidcraft": SpellAutomationSpec(
             canonical_key="druidcraft",
             default_mode="utility",
@@ -1224,6 +1230,88 @@ class CombatSpellAutomationMixin:
             ),
             extra={
                 "concentration_group": concentration_group,
+            },
+        )
+
+    @classmethod
+    async def _cast_comprehend_languages_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        raw_variant = getattr(req, "variant_key", None)
+        if raw_variant is not None:
+            raise CombatServiceError(
+                "Compreender Idiomas não possui variantes.",
+                400,
+            )
+
+        attacker_data = cls._as_dict(attacker_model.state_json)
+        existing = attacker_data.get("active_spell_effects") or []
+        attacker_data["active_spell_effects"] = [
+            e for e in existing
+            if not (
+                e.get("kind") == "spell_effect"
+                and e.get("metadata", {}).get("source_spell_key") == "comprehend_languages"
+            )
+        ]
+
+        game_time = get_game_time_seconds(session_id, db)
+        effect_id = f"narrative_effect:{uuid4()}"
+        spell_name = spell_context["spell_name"]
+        effect = {
+            "id": effect_id,
+            "kind": "spell_effect",
+            "duration_type": "timed",
+            "expires_at_participant_id": None,
+            "expires_at_game_time_seconds": game_time + 3600,
+            "metadata": {
+                "source_spell_key": "comprehend_languages",
+                "source_spell_name": spell_name,
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "mechanical": False,
+                "narrative": True,
+                "visible_to_all": True,
+                "utility": "comprehend_languages",
+                "spell_level": 1,
+                "duration_seconds": 3600,
+                "understands_spoken_languages": True,
+                "understands_written_languages": True,
+                "requires_touch_for_written_text": True,
+                "literal_meaning_only": True,
+                "deciphers_secret_messages": False,
+            },
+            "display_label": spell_name,
+        }
+
+        attacker_data["active_spell_effects"].append(effect)
+        attacker_model.state_json = finalize_session_state_data(
+            attacker_data,
+            game_time_seconds=game_time,
+        )
+        flag_modified(attacker_model, "state_json")
+        db.add(attacker_model)
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=f"{spell_name} ativa: compreensão literal de idiomas por 1 hora.",
+            log_message=f"{attacker['display_name']} conjurou {spell_name}.",
+            extra={
+                "created_effect_id": effect_id,
+                "__player_state_ids_to_emit": {attacker["ref_id"]},
             },
         )
 

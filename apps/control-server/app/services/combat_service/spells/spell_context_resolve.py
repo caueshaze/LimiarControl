@@ -38,6 +38,18 @@ class SpellContextResolveMixin:
                 "open_or_close_unlocked_door",
             ]),
         },
+        "comprehend_languages": {
+            "type": "narrative_effect",
+            "subtype": "comprehend_languages",
+            "mechanical": False,
+            "narrative": True,
+            "durationSeconds": 3600,
+            "understandsSpokenLanguages": True,
+            "understandsWrittenLanguages": True,
+            "requiresTouchForWrittenText": True,
+            "literalMeaningOnly": True,
+            "deciphersSecretMessages": False,
+        },
     }
 
     @classmethod
