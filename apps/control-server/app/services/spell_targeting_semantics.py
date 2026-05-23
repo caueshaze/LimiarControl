@@ -56,6 +56,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "disguise_self": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "prestidigitation": SpellTargetingSemantics("none", "caster", "caster", "none", "distance", "immediate"),
     "druidcraft": SpellTargetingSemantics("none", "caster", "caster", "none", "distance", "immediate"),
+    "thaumaturgy": SpellTargetingSemantics("none", "caster", "caster", "none", "distance", "immediate"),
     "minor_illusion": SpellTargetingSemantics("point", "caster", "selected_point", "none", "distance", "persistent"),
     "floating_disk": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
 }

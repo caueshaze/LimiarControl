@@ -23,6 +23,23 @@ class SpellContextResolveMixin:
         "throw_attack_type": "ranged_spell",
     }
 
+    _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
+        "thaumaturgy": {
+            "type": "narrative_effect",
+            "subtype": "thaumaturgy",
+            "mechanical": False,
+            "narrative": True,
+            "allowedEffects": sorted([
+                "alter_eyes",
+                "booming_voice",
+                "flame_omen",
+                "harmless_tremor",
+                "instantaneous_sound",
+                "open_or_close_unlocked_door",
+            ]),
+        },
+    }
+
     @classmethod
     def _normalize_spell_variants(cls, raw_variants: object) -> list[SpellVariant]:
         if not isinstance(raw_variants, list):
@@ -578,7 +595,8 @@ class SpellContextResolveMixin:
             "effect_instance_count": effect_instance_count,
             "effect_instance_dice": effect_instance_dice,
             "base_effect_instance_count": base_effect_instance_count,
-            "utility": cls._PRODUCE_FLAME_UTILITY_META if spell_key == "produce_flame" else None,
+            "utility": cls._PRODUCE_FLAME_UTILITY_META if spell_key == "produce_flame"
+                       else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key),
             "throw_attack": (
                 {
                     "attack_type": "ranged_spell",

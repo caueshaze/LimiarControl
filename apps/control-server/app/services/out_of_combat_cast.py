@@ -13,7 +13,16 @@ from datetime import datetime, timezone
 from math import floor
 from uuid import uuid4
 
-_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic", "druidcraft", "produce_flame"}
+_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic", "druidcraft", "produce_flame", "thaumaturgy"}
+
+_THAUMATURGY_ALLOWED_EFFECTS = [
+    "alter_eyes",
+    "booming_voice",
+    "flame_omen",
+    "harmless_tremor",
+    "instantaneous_sound",
+    "open_or_close_unlocked_door",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +230,40 @@ def build_persisted_effects(
                         "harmless_natural_effect",
                         "ignite_or_extinguish_small_flame",
                     ],
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "thaumaturgy":
+            spell_name = spell.name_pt or spell.name_en
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 60,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "thaumaturgy",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": caster_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": False,
+                    "narrative": True,
+                    "visible_to_all": True,
+                    "utility": "thaumaturgy",
+                    "spell_level": 0,
+                    "allowed_effects": _THAUMATURGY_ALLOWED_EFFECTS,
                 },
                 "display_label": spell_name,
             }]
