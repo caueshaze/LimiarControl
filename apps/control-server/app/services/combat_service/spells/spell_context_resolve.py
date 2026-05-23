@@ -68,6 +68,25 @@ class SpellContextResolveMixin:
                 "woodOrEarthMeters": 1,
             },
         },
+        "detect_evil_and_good": {
+            "type": "narrative_detection",
+            "subtype": "detect_evil_and_good",
+            "mechanical": False,
+            "narrative": True,
+            "durationSeconds": 600,
+            "radiusMeters": 9,
+            "detectsCreatureTypes": [
+                "aberration", "celestial", "elemental",
+                "fey", "fiend", "undead",
+            ],
+            "detectsConsecratedOrDesecrated": True,
+            "blockedBy": {
+                "stoneCm": 30,
+                "commonMetalCm": 2.5,
+                "leadSheet": True,
+                "woodOrEarthMeters": 1,
+            },
+        },
     }
 
     @classmethod

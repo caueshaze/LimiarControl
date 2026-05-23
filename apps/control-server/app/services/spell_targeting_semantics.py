@@ -41,6 +41,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "shield": SpellTargetingSemantics("none", "caster", "caster", "none", "self", "triggered"),
     "detect_magic": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "detect_poison_disease": SpellTargetingSemantics("none", "caster", "caster", "none", "self", "persistent"),
+    "detect_evil_and_good": SpellTargetingSemantics("none", "caster", "caster", "none", "self", "persistent"),
     "hunters_mark": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "distance", "persistent"),
     "hex": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "distance", "persistent"),
     "ensnaring_strike": SpellTargetingSemantics("none", "caster", "trigger_target", "none", "self", "triggered"),
