@@ -79,6 +79,120 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "druidcraft",
+      "nameEn": "Druidcraft",
+      "namePt": "Druidismo",
+      "descriptionEn": "Whispering to the spirits of nature, you create one of the following effects within range: you create a tiny, harmless sensory effect that predicts what the weather will be at your location for the next 24 hours; you instantly make a flower blossom, a seed sprout, or a leaf bud; you create an instantaneous, harmless sensory effect, such as falling leaves, a puff of wind, or the sound of a small animal; or you instantly light or snuff out a candle, a torch, or a small campfire.",
+      "descriptionPt": "Sussurrando aos espíritos da natureza, você cria um dos seguintes efeitos dentro do alcance: você cria um efeito sensorial minúsculo e inofensivo que prevê como será o clima em sua localização nas próximas 24 horas; você faz instantaneamente uma flor desabrochar, uma semente brotar ou uma folha gemar; você cria um efeito sensorial instantâneo e inofensivo, como folhas caindo, uma lufada de vento ou o som de um animal pequeno; ou você acende ou apaga instantaneamente uma vela, uma tocha ou uma pequena fogueira.",
+      "level": 0,
+      "school": "transmutation",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "narrative_utility",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "eldritch_blast",
+      "nameEn": "Eldritch Blast",
+      "namePt": "Explosão Eldritch",
+      "descriptionEn": "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage.",
+      "descriptionPt": "Um feixe de energia crepitante se estende até uma criatura dentro do alcance. Faça um ataque de magia à distância contra o alvo. Em um acerto, o alvo sofre 1d10 de dano de força.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Warlock"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "1d10",
+      "damageType": "Force",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "effect_instances",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "instances": 1,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "instances": 2,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "instances": 3,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "instances": 4,
+            "instanceDamage": {
+              "dice": "1d10"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "fire_bolt",
       "nameEn": "Fire Bolt",
       "namePt": "Raio de Fogo",
@@ -144,6 +258,542 @@
             "characterLevel": 17,
             "damage": {
               "dice": "4d10"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "friends",
+      "nameEn": "Friends",
+      "namePt": "Amizade",
+      "descriptionEn": "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you. When the spell ends, the creature realizes that you used magic to influence its mood and becomes hostile toward you.",
+      "descriptionPt": "Pela duração, você tem vantagem em todos os testes de Carisma direcionados a uma criatura de sua escolha que não seja hostil a você. Quando a magia termina, a criatura percebe que você usou magia para influenciar seu humor e se torna hostil a você.",
+      "level": 0,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 minute",
+      "componentsJson": [
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a small amount of makeup applied to the face as this spell is cast",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "effects": [
+        {
+          "type": "advantage_on_checks",
+          "target": "caster",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "ability": "charisma",
+            "against": "selected_target"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "onEndEffects": [
+        {
+          "type": "apply_condition",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "condition": "hostile_to_caster"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "requiresTargetSight": true,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "self",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "guidance",
+      "nameEn": "Guidance",
+      "namePt": "Orientação",
+      "descriptionEn": "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice. The spell then ends.",
+      "descriptionPt": "Você toca uma criatura voluntária. Antes que a magia termine, o alvo pode rolar um d4 e adicionar o número obtido em um teste de habilidade de sua escolha. A magia então termina.",
+      "level": 0,
+      "school": "divination",
+      "classesJson": [
+        "Cleric",
+        "Druid"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "requiresTargetSight": false,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent",
+      "effects": [
+        {
+          "type": "roll_dice_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "bonus",
+            "roll_types": [
+              "ability",
+              "skill"
+            ],
+            "dice": "1d4",
+            "consume_on_apply": true
+          },
+          "stacking": "replace"
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "light",
+      "nameEn": "Light",
+      "namePt": "Luz",
+      "descriptionEn": "You touch one object that is no larger than 10 feet in any dimension. Until the spell ends, the object sheds bright light in a 20-foot radius and dim light for an additional 20 feet.",
+      "descriptionPt": "Você toca um objeto que não seja maior que 3 metros em qualquer dimensão. Até a magia acabar, o objeto emite luz plena em um raio de 6 metros e luz fraca por mais 6 metros.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Touch",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "M"
+      ],
+      "materialComponentText": "a firefly or phosphorescent moss",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility_anchor",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "object",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "light",
+      "nameEn": "Light",
+      "namePt": "Luz",
+      "descriptionEn": "You touch one object that sheds bright light and dim light for 1 hour.",
+      "descriptionPt": "Você toca um objeto que passa a emitir luz brilhante e penumbra por 1 hora.",
+      "level": 0,
+      "school": "evocation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "M"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "narrative_item_effect",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "utility",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "mage_hand",
+      "nameEn": "Mage Hand",
+      "namePt": "Mãos Mágicas",
+      "descriptionEn": "A spectral, floating hand appears at a point you choose within range. The hand lasts for the duration or until you dismiss it as an action. You can use your action to control the hand.",
+      "descriptionPt": "Uma mão espectral flutuante aparece em um ponto que você escolher dentro do alcance. A mão dura pela duração ou até você dispensá-la com uma ação. Você pode usar sua ação para controlar a mão.",
+      "level": 0,
+      "school": "conjuration",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "1 minute",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility_anchor",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "point",
+      "selectionType": "point",
+      "originType": "caster",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "mending",
+      "nameEn": "Mending",
+      "namePt": "Consertar",
+      "descriptionEn": "This spell repairs a single break or tear in an object you touch.",
+      "descriptionPt": "Esta magia repara uma única quebra ou rasgo em um objeto que você toca.",
+      "level": 0,
+      "school": "transmutation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Sorcerer",
+        "Wizard",
+        "Artificer"
+      ],
+      "castingTime": "1 minute",
+      "castingTimeType": "minute",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "two lodestones",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "item_condition_repair",
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "utility",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "minor_illusion",
+      "nameEn": "Minor Illusion",
+      "namePt": "Ilusão Menor",
+      "descriptionEn": "You create a sound or an image of an object within range that lasts for the duration. The illusion also ends if you dismiss it as an action or cast this spell again.",
+      "descriptionPt": "Você cria um som ou uma imagem de um objeto dentro do alcance que dura pela duração. A ilusão também termina se você a dispensar como uma ação ou conjurar essa magia novamente.",
+      "level": 0,
+      "school": "illusion",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTime": "1 action",
+      "castingTimeType": "action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "1 minute",
+      "componentsJson": [
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a bit of fleece",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility_anchor",
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
+      "targetType": "ranged",
+      "selectionType": "point",
+      "originType": "caster",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "poison_spray",
+      "nameEn": "Poison Spray",
+      "namePt": "Borrifo Venenoso",
+      "level": 0,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 3,
+      "rangeText": "10 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "savingThrow": "CON",
+      "saveSuccessOutcome": "none",
+      "damageDice": "1d12",
+      "damageType": "Poison",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d12"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d12"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d12"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d12"
+            }
+          }
+        ]
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "prestidigitation",
+      "nameEn": "Prestidigitation",
+      "namePt": "Prestidigitação",
+      "descriptionEn": "This spell is a minor magical trick that novice spellcasters use for practice. You create a harmless sensory effect, clean or soil an object, chill, warm, or flavor nonliving material, or make a small mark that lasts for 1 hour.",
+      "descriptionPt": "Esta magia é um truque mágico menor usado por conjuradores iniciantes para praticar. Você cria um efeito sensorial inofensivo, limpa ou suja um objeto, resfria, aquece ou dá sabor a material não vivo, ou faz uma pequena marca que dura 1 hora.",
+      "level": 0,
+      "school": "transmutation",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 3,
+      "rangeText": "10 ft",
+      "duration": "Up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "narrative_utility",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "produce_flame",
+      "nameEn": "Produce Flame",
+      "namePt": "Criar Chamas",
+      "descriptionEn": "A flickering flame appears in your hand. The flame remains there for up to 10 minutes. While it persists, you can hurl it at a creature within range as a ranged spell attack.",
+      "descriptionPt": "Uma chama tremulante aparece na sua mão e permanece por até 10 minutos. Enquanto ela persistir, você pode arremessá-la contra uma criatura no alcance como um ataque de magia à distância.",
+      "level": 0,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "10 minutes",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility",
+      "damageDice": "1d8",
+      "damageType": "Fire",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
             }
           }
         ]
@@ -236,44 +886,32 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "produce_flame",
-      "nameEn": "Produce Flame",
-      "namePt": "Criar Chamas",
-      "descriptionEn": "A flickering flame appears in your hand. The flame remains there for up to 10 minutes. While it persists, you can hurl it at a creature within range as a ranged spell attack.",
-      "descriptionPt": "Uma chama tremulante aparece na sua mão e permanece por até 10 minutos. Enquanto ela persistir, você pode arremessá-la contra uma criatura no alcance como um ataque de magia à distância.",
+      "canonicalKey": "sacred_flame",
+      "nameEn": "Sacred Flame",
+      "namePt": "Chama Sagrada",
+      "descriptionEn": "Flame-like radiance descends on a creature that you can see within range. The target must succeed on a Dexterity saving throw or take 1d8 radiant damage.",
+      "descriptionPt": "Um brilho semelhante a chamas desce sobre uma criatura que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
       "level": 0,
-      "school": "conjuration",
+      "school": "evocation",
       "classesJson": [
-        "Druid"
+        "Cleric"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "10 minutes",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Instantaneous",
       "componentsJson": [
         "V",
         "S"
       ],
       "concentration": false,
       "ritual": false,
-      "resolutionType": "utility",
+      "resolutionType": "damage",
+      "savingThrow": "DEX",
+      "saveSuccessOutcome": "none",
       "damageDice": "1d8",
-      "damageType": "Fire",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "self",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "persistent",
+      "damageType": "Radiant",
       "cantripScaling": {
         "scalingMode": "character_level",
         "scalingEffectType": "damage_dice",
@@ -303,7 +941,22 @@
             }
           }
         ]
-      }
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -395,198 +1048,61 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "light",
-      "nameEn": "Light",
-      "namePt": "Luz",
-      "descriptionEn": "You touch one object that is no larger than 10 feet in any dimension. Until the spell ends, the object sheds bright light in a 20-foot radius and dim light for an additional 20 feet.",
-      "descriptionPt": "Você toca um objeto que não seja maior que 3 metros em qualquer dimensão. Até a magia acabar, o objeto emite luz plena em um raio de 6 metros e luz fraca por mais 6 metros.",
+      "canonicalKey": "thorn_whip",
+      "nameEn": "Thorn Whip",
+      "namePt": "Chicote de Espinhos",
+      "descriptionEn": "You create a long, vine-like whip covered in thorns that lashes out toward a creature in range. Make a melee spell attack against the target. On a hit, the creature takes 1d6 piercing damage, and if Large or smaller, you pull it up to 10 feet closer to you.",
+      "descriptionPt": "Você cria um chicote longo coberto de espinhos que açoita em direção a uma criatura dentro do alcance. Faça um ataque de magia corpo a corpo contra o alvo. Em um acerto, a criatura sofre 1d6 de dano perfurante e, se for Grande ou menor, você a puxa até 3 metros em sua direção.",
       "level": 0,
-      "school": "evocation",
+      "school": "transmutation",
       "classesJson": [
-        "Bard",
-        "Cleric",
-        "Sorcerer",
-        "Wizard"
+        "Druid"
       ],
-      "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Touch",
-      "duration": "1 hour",
-      "componentsJson": [
-        "V",
-        "M"
-      ],
-      "materialComponentText": "a firefly or phosphorescent moss",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "utility_anchor",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "touch",
-      "selectionType": "object",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "sacred_flame",
-      "nameEn": "Sacred Flame",
-      "namePt": "Chama Sagrada",
-      "descriptionEn": "Flame-like radiance descends on a creature that you can see within range. The target must succeed on a Dexterity saving throw or take 1d8 radiant damage.",
-      "descriptionPt": "Um brilho semelhante a chamas desce sobre uma criatura que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
-      "level": 0,
-      "school": "evocation",
-      "classesJson": [
-        "Cleric"
-      ],
       "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 18,
-      "rangeText": "60 ft",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
       "duration": "Instantaneous",
       "componentsJson": [
         "V",
-        "S"
+        "S",
+        "M"
       ],
+      "materialComponentText": "the stem of a plant with thorns",
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
-      "savingThrow": "DEX",
-      "saveSuccessOutcome": "none",
-      "damageDice": "1d8",
-      "damageType": "Radiant",
-      "cantripScaling": {
-        "scalingMode": "character_level",
-        "scalingEffectType": "damage_dice",
-        "thresholds": [
-          {
-            "characterLevel": 1,
-            "damage": {
-              "dice": "1d8"
-            }
-          },
-          {
-            "characterLevel": 5,
-            "damage": {
-              "dice": "2d8"
-            }
-          },
-          {
-            "characterLevel": 11,
-            "damage": {
-              "dice": "3d8"
-            }
-          },
-          {
-            "characterLevel": 17,
-            "damage": {
-              "dice": "4d8"
-            }
-          }
-        ]
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
+      "damageDice": "1d6",
+      "damageType": "Piercing",
       "requiresTargetSight": true,
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "coverAppliesToSave": "none",
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
       "targetType": "ranged",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
-      "attackType": "none",
+      "attackType": "melee_spell",
       "rangeKind": "distance",
       "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
-      "canonicalKey": "cure_wounds",
-      "nameEn": "Cure Wounds",
-      "namePt": "Curar Ferimentos",
-      "descriptionEn": "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier.",
-      "descriptionPt": "Uma criatura que você tocar recupera pontos de vida iguais a 1d8 + seu modificador de habilidade de conjuração.",
-      "level": 1,
-      "school": "evocation",
+      "canonicalKey": "vicious_mockery",
+      "nameEn": "Vicious Mockery",
+      "namePt": "Zombaria Viciosa",
+      "descriptionEn": "You unleash a string of insults laced with subtle enchantments at a creature you can see within range. If the target can hear you, it must succeed on a Wisdom saving throw or take 1d4 psychic damage and have disadvantage on the next attack roll it makes before the end of its next turn.",
+      "descriptionPt": "Você desfere uma sequência de insultos carregados de encantamento sutil contra uma criatura que você possa ver dentro do alcance. Se o alvo puder ouvi-lo, deve obter sucesso em uma salvaguarda de Sabedoria ou sofrer 1d4 de dano psíquico e ter desvantagem na próxima jogada de ataque que fizer antes do fim do próximo turno dele.",
+      "level": 0,
+      "school": "enchantment",
       "classesJson": [
-        "Bard",
-        "Cleric",
-        "Druid",
-        "Paladin",
-        "Ranger"
+        "Bard"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Touch",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "heal",
-      "healDice": "1d8",
-      "upcast": {
-        "mode": "extra_heal_dice",
-        "dice": "1d8",
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "touch",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "immediate",
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self_or_ally",
-      "effects": [
-        {
-          "type": "heal",
-          "target": "selected_target",
-          "params": {
-            "dice": "1d8",
-            "ability_modifier": "spellcasting"
-          }
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "healing_word",
-      "nameEn": "Healing Word",
-      "namePt": "Palavra Curativa",
-      "descriptionEn": "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier.",
-      "descriptionPt": "Uma criatura à sua escolha que você possa ver dentro do alcance recupera pontos de vida iguais a 1d4 + seu modificador de habilidade de conjuração.",
-      "level": 1,
-      "school": "evocation",
-      "classesJson": [
-        "Bard",
-        "Cleric",
-        "Druid"
-      ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "duration": "Instantaneous",
@@ -595,17 +1111,65 @@
       ],
       "concentration": false,
       "ritual": false,
-      "resolutionType": "heal",
-      "healDice": "1d4",
-      "upcast": {
-        "mode": "extra_heal_dice",
-        "dice": "1d4",
-        "perLevel": 1
+      "resolutionType": "damage",
+      "savingThrow": "WIS",
+      "saveSuccessOutcome": "none",
+      "damageDice": "1d4",
+      "damageType": "Psychic",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d4"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d4"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d4"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d4"
+            }
+          }
+        ]
       },
+      "effects": [
+        {
+          "type": "roll_disadvantage_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_end",
+            "anchor": "target"
+          },
+          "params": {
+            "mode": "disadvantage",
+            "roll_types": [
+              "attack"
+            ],
+            "consume_on_apply": true,
+            "source": "vicious_mockery"
+          },
+          "stacking": "replace"
+        }
+      ],
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
       "requiresTargetSight": true,
+      "requiresTargetHearing": true,
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
@@ -615,19 +1179,7 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "immediate",
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self_or_ally",
-      "effects": [
-        {
-          "type": "heal",
-          "target": "selected_target",
-          "params": {
-            "dice": "1d4",
-            "ability_modifier": "spellcasting"
-          }
-        }
-      ]
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -681,31 +1233,58 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "hunters_mark",
-      "nameEn": "Hunter's Mark",
-      "namePt": "Marca do Caçador",
-      "descriptionEn": "You mark a creature you can see within range as your quarry. Until the spell ends, you deal extra damage to the marked target when you hit it with a weapon attack.",
-      "descriptionPt": "Você marca uma criatura que possa ver dentro do alcance como sua presa. Até a magia terminar, você causa dano extra ao alvo marcado quando o atinge com um ataque de arma.",
+      "canonicalKey": "bane",
+      "nameEn": "Bane",
+      "namePt": "Perdição",
+      "descriptionEn": "Up to three creatures of your choice that you can see within range must make Charisma saving throws. Whenever a target that fails this saving throw makes an attack roll or a saving throw before the spell ends, the target must roll a d4 and subtract the number rolled from the attack roll or saving throw.",
+      "descriptionPt": "Até três criaturas à sua escolha que você possa ver no alcance devem realizar uma salvaguarda de Carisma. Sempre que um alvo que falhar nessa salvaguarda fizer uma jogada de ataque ou uma salvaguarda antes do fim da magia, ele deve rolar 1d4 e subtrair o resultado da jogada.",
       "level": 1,
-      "school": "divination",
+      "school": "enchantment",
       "classesJson": [
-        "Ranger"
+        "Bard",
+        "Cleric"
       ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
-      "rangeMeters": 27,
-      "rangeText": "90 ft",
-      "duration": "Concentration, up to 1 hour",
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Concentration, up to 1 minute",
       "componentsJson": [
-        "V"
+        "V",
+        "S",
+        "M"
       ],
+      "materialComponentText": "a drop of blood",
       "concentration": true,
       "ritual": false,
-      "resolutionType": "buff",
+      "resolutionType": "control",
+      "maxTargets": 3,
       "upcast": {
-        "mode": "duration_scaling",
+        "mode": "additional_targets",
         "perLevel": 1
       },
+      "savingThrow": "cha",
+      "saveEffect": "negates",
+      "effects": [
+        {
+          "type": "roll_dice_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "rounds",
+            "rounds": 10,
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "penalty",
+            "roll_types": [
+              "attack",
+              "save"
+            ],
+            "dice": "1d4"
+          },
+          "stacking": "replace"
+        }
+      ],
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
@@ -720,304 +1299,6 @@
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "goodberry",
-      "nameEn": "Goodberry",
-      "namePt": "Bom Fruto",
-      "descriptionEn": "Up to ten berries appear in your hand. A creature can use an action to eat one berry and regain 1 hit point.",
-      "descriptionPt": "Até dez bagas aparecem em sua mão. Uma criatura pode usar uma ação para comer uma baga e recuperar 1 ponto de vida.",
-      "level": 1,
-      "school": "transmutation",
-      "classesJson": [
-        "Druid",
-        "Ranger"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Touch",
-      "duration": "24 hours",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a sprig of mistletoe",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "utility_anchor",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "touch",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "immediate",
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self",
-      "effects": [
-        {
-          "type": "create_consumable",
-          "target": "caster",
-          "params": {
-            "canonical_key": "goodberry",
-            "quantity": 10,
-            "expires_in_seconds": 86400
-          }
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "magic_missile",
-      "nameEn": "Magic Missile",
-      "namePt": "Mísseis Mágicos",
-      "descriptionEn": "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target.",
-      "descriptionPt": "Você cria três dardos brilhantes de força mágica. Cada dardo atinge uma criatura à sua escolha que você possa ver dentro do alcance. Um dardo causa 1d4+1 de dano de força.",
-      "level": 1,
-      "school": "evocation",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 36,
-      "rangeText": "120 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "3d4+3",
-      "damageType": "Force",
-      "upcast": {
-        "mode": "additional_effect_instances",
-        "dice": "1d4+1",
-        "perLevel": 1,
-        "baseEffectInstances": 3
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "maxTargets": 3,
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "scorching_ray",
-      "nameEn": "Scorching Ray",
-      "namePt": "Raio Ardente",
-      "descriptionEn": "You create three rays of fire and hurl them at targets within range. You can hurl them at one target or several. Make a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.",
-      "descriptionPt": "Você cria três raios de fogo e os arremessa contra alvos dentro do alcance. Você pode lançar todos contra um alvo ou distribuí-los entre vários. Faça um ataque mágico à distância para cada raio. No acerto, o alvo sofre 2d6 de dano de fogo.",
-      "level": 2,
-      "school": "evocation",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 36,
-      "rangeText": "120 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "6d6",
-      "damageType": "Fire",
-      "upcast": {
-        "mode": "additional_effect_instances",
-        "dice": "2d6",
-        "perLevel": 1,
-        "baseEffectInstances": 3
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "maxTargets": 3,
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "ranged_spell",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "acid_arrow",
-      "nameEn": "Melf's Acid Arrow",
-      "namePt": "Flecha Ácida",
-      "descriptionEn": "A shimmering green arrow streaks toward a target within range and bursts in a spray of acid. Make a ranged spell attack against the target. On a hit, the target takes 4d4 acid damage immediately and 2d4 acid damage at the end of its next turn. On a miss, the arrow splashes and the target takes half of the immediate damage.",
-      "descriptionPt": "Uma flecha verde cintilante voa até um alvo no alcance e explode em ácido. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d4 de dano ácido imediatamente e 2d4 de dano ácido no fim do próximo turno dele. No erro, o ácido espirra e o alvo sofre metade do dano imediato.",
-      "level": 2,
-      "school": "evocation",
-      "classesJson": [
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 27,
-      "rangeText": "90 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "Powdered rhubarb leaf and an adder's stomach.",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "4d4",
-      "damageType": "Acid",
-      "attackMissOutcome": "half_damage",
-      "effects": [
-        {
-          "type": "delayed_damage",
-          "target": "selected_target",
-          "duration": {
-            "type": "manual"
-          },
-          "params": {
-            "dice": "2d4",
-            "damageType": "Acid",
-            "timing": "target_turn_end",
-            "apply_once": true
-          }
-        }
-      ],
-      "upcast": {
-        "mode": "extra_damage_dice",
-        "dice": "1d4",
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "maxTargets": 1,
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "ranged_spell",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "misty_step",
-      "nameEn": "Misty Step",
-      "namePt": "Passo Nebuloso",
-      "descriptionEn": "Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.",
-      "descriptionPt": "Brevemente envolto por névoa prateada, você se teleporta até 9 metros para um espaço desocupado que possa ver.",
-      "level": 2,
-      "school": "conjuration",
-      "classesJson": [
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
-      ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "teleport",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": true,
-      "requiresPointEffect": true,
-      "targetType": "self",
-      "selectionType": "point",
-      "originType": "caster",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "shield",
-      "nameEn": "Shield",
-      "namePt": "Escudo Arcano",
-      "descriptionEn": "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack.",
-      "descriptionPt": "Uma barreira invisível de força mágica aparece e protege você. Até o início do seu próximo turno, você tem +5 de bônus na CA, inclusive contra o ataque que acionou a magia.",
-      "level": 1,
-      "school": "abjuration",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "reaction",
-      "castingTime": "1 reaction",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "1 round",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "buff",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "triggered"
     },
     {
       "system": "DND5E",
@@ -1140,6 +1421,117 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "charm_person",
+      "nameEn": "Charm Person",
+      "namePt": "Enfeitiçar Pessoa",
+      "descriptionEn": "You attempt to charm a humanoid you can see. It must make a Wisdom saving throw, and on a failure it is charmed by you until the spell ends.",
+      "descriptionPt": "Você tenta enfeitiçar um humanoide que possa ver. Ele deve fazer uma salvaguarda de Sabedoria e, em falha, fica enfeitiçado por você até o fim da magia.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "control",
+      "savingThrow": "WIS",
+      "saveSuccessOutcome": "none",
+      "maxTargets": 1,
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "cure_wounds",
+      "nameEn": "Cure Wounds",
+      "namePt": "Curar Ferimentos",
+      "descriptionEn": "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier.",
+      "descriptionPt": "Uma criatura que você tocar recupera pontos de vida iguais a 1d8 + seu modificador de habilidade de conjuração.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Paladin",
+        "Ranger"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Touch",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "heal",
+      "healDice": "1d8",
+      "upcast": {
+        "mode": "extra_heal_dice",
+        "dice": "1d8",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "heal",
+          "target": "selected_target",
+          "params": {
+            "dice": "1d8",
+            "ability_modifier": "spellcasting"
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "detect_magic",
       "nameEn": "Detect Magic",
       "namePt": "Detectar Magia",
@@ -1182,6 +1574,476 @@
       "attackType": "none",
       "rangeKind": "self",
       "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "disguise_self",
+      "nameEn": "Disguise Self",
+      "namePt": "Disfarçar-se",
+      "descriptionEn": "You alter your appearance, including clothing, armor, weapons, and other visible belongings on your person, until the spell ends or until you use your action to dismiss it.",
+      "descriptionPt": "Você altera sua aparência, incluindo roupas, armadura, armas e outros pertences visíveis em você, até a magia terminar ou até usar sua ação para encerrá-la.",
+      "level": 1,
+      "school": "illusion",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "ensnaring_strike",
+      "nameEn": "Ensnaring Strike",
+      "namePt": "Golpe Enredante",
+      "descriptionEn": "The next time you hit a creature with a weapon attack before this spell ends, a writhing mass of thorny vines appears at the point of impact, and the target must succeed on a Strength saving throw or be restrained by the magical vines until the spell ends. A Large or larger creature has advantage on this saving throw. If the target succeeds on the save, the vines shrivel away. While restrained by this spell, the target takes 1d6 piercing damage at the start of each of its turns. A creature restrained by the vines or one that can touch the creature can use its action to make a Strength check against your spell save DC. On a success, the target is freed.",
+      "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma antes que esta magia termine, uma massa retorcida de vinhas espinhosas aparece no ponto de impacto, e o alvo deve ter sucesso em uma salvaguarda de Força ou ficar impedido pelas vinhas mágicas até a magia terminar. Uma criatura Grande ou maior tem vantagem nessa salvaguarda. Se o alvo tiver sucesso na salvaguarda, as vinhas definham. Enquanto impedido por esta magia, o alvo sofre 1d6 de dano perfurante no início de cada um de seus turnos.",
+      "level": 1,
+      "school": "conjuration",
+      "classesJson": [
+        "Ranger"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "control",
+      "savingThrow": "STR",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none",
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "trigger_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "false_life",
+      "nameEn": "False Life",
+      "namePt": "Vitalidade Vazia",
+      "descriptionEn": "Bolstering yourself with a necromantic facsimile of life, you gain 1d4 + 4 temporary hit points for the duration.",
+      "descriptionPt": "Amparando-se com uma fachada necromântica de vida, você ganha 1d4 + 4 pontos de vida temporários pela duração.",
+      "level": 1,
+      "school": "necromancy",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a small amount of alcohol or blood",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "upcast": {
+        "mode": "extra_temp_hp",
+        "flat": 5,
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self",
+      "effects": [
+        {
+          "type": "grant_temp_hp",
+          "target": "caster",
+          "duration": {
+            "type": "timed",
+            "seconds": 3600
+          },
+          "out_of_combat_duration": {
+            "type": "timed",
+            "seconds": 3600
+          },
+          "params": {
+            "dice": "1d4 + 4"
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "floating_disk",
+      "nameEn": "Floating Disk",
+      "namePt": "Disco Flutuante",
+      "descriptionEn": "A circular plane of force appears and follows you, carrying weight while it remains within range.",
+      "descriptionPt": "Um disco circular de força aparece e segue você, carregando peso enquanto permanecer ao seu alcance.",
+      "level": 1,
+      "school": "conjuration",
+      "classesJson": [
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a drop of mercury",
+      "concentration": false,
+      "ritual": true,
+      "resolutionType": "utility",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "fog_cloud",
+      "nameEn": "Fog Cloud",
+      "namePt": "Nuvem de Névoa",
+      "descriptionEn": "You create a 20-foot-radius sphere of fog centered on a point within range. The sphere spreads around corners, and its area is heavily obscured. It lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it.",
+      "descriptionPt": "Você cria uma esfera de névoa com 6 metros de raio centrada em um ponto dentro do alcance. A esfera se espalha ao redor dos cantos, e sua área está fortemente obscurecida. Dura pela duração ou até que um vento de velocidade moderada ou maior (pelo menos 16 km/h) a disperse.",
+      "level": 1,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid",
+        "Ranger",
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "utility",
+      "upcast": {
+        "mode": "effect_scaling",
+        "scalingKey": "radius_meters",
+        "scalingSummary": "+6 m de raio por nível de espaço acima do 1º",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "targetType": "ranged",
+      "areaShape": "sphere",
+      "radiusMeters": 6,
+      "selectionType": "point",
+      "originType": "caster",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "persistentArea": {
+        "kind": "obscurement",
+        "params": {
+          "obscurement": "heavily_obscured"
+        }
+      }
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "goodberry",
+      "nameEn": "Goodberry",
+      "namePt": "Bom Fruto",
+      "descriptionEn": "Up to ten berries appear in your hand. A creature can use an action to eat one berry and regain 1 hit point.",
+      "descriptionPt": "Até dez bagas aparecem em sua mão. Uma criatura pode usar uma ação para comer uma baga e recuperar 1 ponto de vida.",
+      "level": 1,
+      "school": "transmutation",
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Touch",
+      "duration": "24 hours",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a sprig of mistletoe",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility_anchor",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self",
+      "effects": [
+        {
+          "type": "create_consumable",
+          "target": "caster",
+          "params": {
+            "canonical_key": "goodberry",
+            "quantity": 10,
+            "expires_in_seconds": 86400
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "guiding_bolt",
+      "nameEn": "Guiding Bolt",
+      "namePt": "Raio Guiador",
+      "descriptionEn": "A flash of light streaks toward a creature of your choice within range. Make a ranged spell attack against the target. On a hit, the target takes 4d6 radiant damage, and the next attack roll made against this target before the end of your next turn has advantage.",
+      "descriptionPt": "Um clarão de luz dispara em direção a uma criatura à sua escolha dentro do alcance. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d6 de dano radiante, e a próxima jogada de ataque feita contra ele antes do fim do seu próximo turno tem vantagem.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Cleric"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "1 round",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "4d6",
+      "damageType": "Radiant",
+      "effects": [
+        {
+          "type": "attack_advantage_against_target",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_end",
+            "anchor": "caster"
+          },
+          "params": {
+            "mode": "advantage",
+            "roll_types": [
+              "attack"
+            ],
+            "applies_to_attackers": "any",
+            "consume_on_apply": true
+          },
+          "stacking": "replace"
+        }
+      ],
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d6",
+        "levelStep": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "hail_of_thorns",
+      "nameEn": "Hail of Thorns",
+      "namePt": "Chuva de Espinhos",
+      "descriptionEn": "The next time you hit a creature with a ranged weapon attack before the spell ends, this spell creates a rain of thorns that sprouts from your ranged weapon or ammunition. In addition to the normal effect of the attack, the target of the attack and each creature within 5 feet of it must make a Dexterity saving throw. A creature takes 1d10 piercing damage on a failed save, or half as much damage on a successful one.",
+      "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma à distância antes que a magia termine, esta magia cria uma chuva de espinhos que brota de sua arma ou munição à distância. Além do efeito normal do ataque, o alvo do ataque e cada criatura em um raio de 1,5 metro devem fazer uma salvaguarda de Destreza. Uma criatura sofre 1d10 de dano perfurante em uma falha, ou metade em um sucesso.",
+      "level": 1,
+      "school": "conjuration",
+      "classesJson": [
+        "Ranger"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "damage",
+      "savingThrow": "DEX",
+      "saveSuccessOutcome": "half_damage",
+      "damageDice": "1d10",
+      "damageType": "Piercing",
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d10",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "physical",
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "trigger_target",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "healing_word",
+      "nameEn": "Healing Word",
+      "namePt": "Palavra Curativa",
+      "descriptionEn": "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier.",
+      "descriptionPt": "Uma criatura à sua escolha que você possa ver dentro do alcance recupera pontos de vida iguais a 1d4 + seu modificador de habilidade de conjuração.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "heal",
+      "healDice": "1d4",
+      "upcast": {
+        "mode": "extra_heal_dice",
+        "dice": "1d4",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "heal",
+          "target": "selected_target",
+          "params": {
+            "dice": "1d4",
+            "ability_modifier": "spellcasting"
+          }
+        }
+      ]
     },
     {
       "system": "DND5E",
@@ -1231,55 +2093,34 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "hold_person",
-      "nameEn": "Hold Person",
-      "namePt": "Imobilizar Pessoa",
-      "descriptionEn": "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration.",
-      "descriptionPt": "Escolha um humanoide que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Sabedoria ou ficará paralisado pela duração.",
-      "level": 2,
+      "canonicalKey": "heroism",
+      "nameEn": "Heroism",
+      "namePt": "Heroísmo",
+      "descriptionEn": "A willing creature you touch is imbued with bravery. Until the spell ends, the creature is immune to being frightened and gains temporary hit points equal to your spellcasting ability modifier at the start of each of its turns. When the spell ends, the target loses any remaining temporary hit points from this spell.",
+      "descriptionPt": "Uma criatura voluntária que você toca é imbuída de bravura. Até o fim da magia, a criatura fica imune a amedrontado e ganha pontos de vida temporários iguais ao seu modificador de habilidade de conjuração no início de cada um de seus turnos. Quando a magia termina, o alvo perde quaisquer pontos de vida temporários restantes desta magia.",
+      "level": 1,
       "school": "enchantment",
       "classesJson": [
         "Bard",
-        "Cleric",
-        "Druid",
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
+        "Paladin"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 18,
-      "rangeText": "60 ft",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
       "duration": "Concentration, up to 1 minute",
       "componentsJson": [
         "V",
-        "S",
-        "M"
+        "S"
       ],
-      "materialComponentText": "a small, straight piece of iron",
       "concentration": true,
       "ritual": false,
-      "resolutionType": "control",
-      "savingThrow": "WIS",
+      "resolutionType": "buff",
+      "maxTargets": 1,
       "upcast": {
         "mode": "additional_targets",
         "perLevel": 1
       },
-      "maxTargets": 1,
-      "effects": [
-        {
-          "type": "apply_condition",
-          "target": "selected_target",
-          "params": {
-            "condition": "paralyzed"
-          },
-          "repeat_save": {
-            "timing": "target_turn_end",
-            "ability": "wisdom",
-            "ends_on_success": true
-          }
-        }
-      ],
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
@@ -1287,156 +2128,168 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "coverAppliesToSave": "none",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "persistent",
+      "effects": [
+        {
+          "type": "condition_immunity",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "conditions": [
+              "frightened"
+            ]
+          },
+          "stacking": "replace"
+        },
+        {
+          "type": "recurring_temp_hp",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "amount_source": "caster_spellcasting_modifier",
+            "timing": "start_of_target_turn",
+            "remove_granted_temp_hp_on_end": true
+          },
+          "stacking": "replace"
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "hex",
+      "nameEn": "Hex",
+      "namePt": "Maldição",
+      "descriptionEn": "You place a curse on a creature you can see within range. Until the spell ends, you deal an extra 1d6 necrotic damage whenever you hit it with an attack. Also, choose one ability; the target has disadvantage on ability checks with that ability.",
+      "descriptionPt": "Você coloca uma maldição em uma criatura que pode ver dentro do alcance. Até a magia acabar, você causa 1d6 de dano necrótico extra ao alvo sempre que o acertar com um ataque. Além disso, escolha uma habilidade; o alvo tem desvantagem nos testes feitos com ela.",
+      "level": 1,
+      "school": "enchantment",
+      "classesJson": [
+        "Warlock"
+      ],
+      "castingTime": "1 bonus action",
+      "castingTimeType": "bonus_action",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "the petrified eye of a newt",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "debuff",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "isSrd": true,
+      "isActive": true,
+      "source": "seed_json_bootstrap",
       "targetType": "ranged",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "immediate"
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
-      "canonicalKey": "fireball",
-      "nameEn": "Fireball",
-      "namePt": "Bola de Fogo",
-      "descriptionEn": "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one.",
-      "descriptionPt": "Um clarão brilhante sai do seu dedo indicador até um ponto que você escolher dentro do alcance e então floresce com um rugido grave em uma explosão de chamas. Cada criatura em uma esfera de 6 metros de raio centrada naquele ponto deve fazer uma salvaguarda de Destreza. O alvo sofre 8d6 de dano de fogo em uma falha, ou metade em um sucesso.",
-      "level": 3,
-      "school": "evocation",
+      "canonicalKey": "hunters_mark",
+      "nameEn": "Hunter's Mark",
+      "namePt": "Marca do Caçador",
+      "descriptionEn": "You mark a creature you can see within range as your quarry. Until the spell ends, you deal extra damage to the marked target when you hit it with a weapon attack.",
+      "descriptionPt": "Você marca uma criatura que possa ver dentro do alcance como sua presa. Até a magia terminar, você causa dano extra ao alvo marcado quando o atinge com um ataque de arma.",
+      "level": 1,
+      "school": "divination",
       "classesJson": [
-        "Sorcerer",
-        "Wizard"
+        "Ranger"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "upcast": {
+        "mode": "duration_scaling",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "inflict_wounds",
+      "nameEn": "Inflict Wounds",
+      "namePt": "Infligir Ferimentos",
+      "level": 1,
+      "school": "necromancy",
+      "classesJson": [
+        "Cleric"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 45,
-      "rangeText": "150 ft",
+      "rangeMeters": 1.5,
+      "rangeText": "Touch",
       "duration": "Instantaneous",
       "componentsJson": [
         "V",
-        "S",
-        "M"
+        "S"
       ],
-      "materialComponentText": "a tiny ball of bat guano and sulfur",
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
-      "savingThrow": "DEX",
-      "saveSuccessOutcome": "half_damage",
-      "damageDice": "8d6",
-      "damageType": "Fire",
-      "upcast": {
-        "mode": "extra_damage_dice",
-        "dice": "1d6",
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": true,
-      "coverAppliesToSave": "physical",
-      "targetType": "ranged",
-      "areaShape": "sphere",
-      "radiusMeters": 6,
-      "selectionType": "point",
-      "originType": "caster",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "ensnaring_strike",
-      "nameEn": "Ensnaring Strike",
-      "namePt": "Golpe Enredante",
-      "descriptionEn": "The next time you hit a creature with a weapon attack before this spell ends, a writhing mass of thorny vines appears at the point of impact, and the target must succeed on a Strength saving throw or be restrained by the magical vines until the spell ends. A Large or larger creature has advantage on this saving throw. If the target succeeds on the save, the vines shrivel away. While restrained by this spell, the target takes 1d6 piercing damage at the start of each of its turns. A creature restrained by the vines or one that can touch the creature can use its action to make a Strength check against your spell save DC. On a success, the target is freed.",
-      "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma antes que esta magia termine, uma massa retorcida de vinhas espinhosas aparece no ponto de impacto, e o alvo deve ter sucesso em uma salvaguarda de Força ou ficar impedido pelas vinhas mágicas até a magia terminar. Uma criatura Grande ou maior tem vantagem nessa salvaguarda. Se o alvo tiver sucesso na salvaguarda, as vinhas definham. Enquanto impedido por esta magia, o alvo sofre 1d6 de dano perfurante no início de cada um de seus turnos.",
-      "level": 1,
-      "school": "conjuration",
-      "classesJson": [
-        "Ranger"
-      ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "control",
-      "savingThrow": "STR",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "coverAppliesToSave": "none",
-      "targetType": "self",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "trigger_target",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "triggered"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "hail_of_thorns",
-      "nameEn": "Hail of Thorns",
-      "namePt": "Chuva de Espinhos",
-      "descriptionEn": "The next time you hit a creature with a ranged weapon attack before the spell ends, this spell creates a rain of thorns that sprouts from your ranged weapon or ammunition. In addition to the normal effect of the attack, the target of the attack and each creature within 5 feet of it must make a Dexterity saving throw. A creature takes 1d10 piercing damage on a failed save, or half as much damage on a successful one.",
-      "descriptionPt": "Na próxima vez que você acertar uma criatura com um ataque de arma à distância antes que a magia termine, esta magia cria uma chuva de espinhos que brota de sua arma ou munição à distância. Além do efeito normal do ataque, o alvo do ataque e cada criatura em um raio de 1,5 metro devem fazer uma salvaguarda de Destreza. Uma criatura sofre 1d10 de dano perfurante em uma falha, ou metade em um sucesso.",
-      "level": 1,
-      "school": "conjuration",
-      "classesJson": [
-        "Ranger"
-      ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "damage",
-      "savingThrow": "DEX",
-      "saveSuccessOutcome": "half_damage",
-      "damageDice": "1d10",
-      "damageType": "Piercing",
+      "damageDice": "3d10",
+      "damageType": "Necrotic",
       "upcast": {
         "mode": "extra_damage_dice",
         "dice": "1d10",
-        "perLevel": 1
+        "levelStep": 1
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "coverAppliesToSave": "physical",
-      "targetType": "self",
-      "selectionType": "none",
+      "targetType": "melee",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "trigger_target",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "triggered"
+      "targetAnchor": "selected_target",
+      "attackType": "melee_spell",
+      "rangeKind": "touch",
+      "effectTiming": "immediate"
     },
     {
       "system": "DND5E",
@@ -1502,6 +2355,221 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "mage_armor",
+      "nameEn": "Mage Armor",
+      "namePt": "Armadura Arcana",
+      "descriptionEn": "You touch a willing creature who isn't wearing armor, and a protective magical force surrounds it until the spell ends. The target's base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
+      "descriptionPt": "Você toca uma criatura disposta que não está usando armadura, e uma força mágica protetora a envolve até o final da magia. A CA base do alvo se torna 13 + seu modificador de Destreza. A magia termina se o alvo usar armadura ou se você dispensar a magia como uma ação.",
+      "level": 1,
+      "school": "abjuration",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 1,
+      "rangeText": "Touch",
+      "duration": "8 hours",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a piece of cured leather",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "touch",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "effects": [
+        {
+          "type": "armor_class_formula",
+          "target": "selected_target",
+          "duration": {
+            "type": "timed",
+            "seconds": 28800
+          },
+          "out_of_combat_duration": {
+            "type": "timed",
+            "seconds": 28800
+          },
+          "params": {
+            "base_value": 13,
+            "ability": "dexterity",
+            "requires_unarmored": true
+          },
+          "termination_conditions": [
+            {
+              "type": "target_dons_armor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "magic_missile",
+      "nameEn": "Magic Missile",
+      "namePt": "Mísseis Mágicos",
+      "descriptionEn": "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target.",
+      "descriptionPt": "Você cria três dardos brilhantes de força mágica. Cada dardo atinge uma criatura à sua escolha que você possa ver dentro do alcance. Um dardo causa 1d4+1 de dano de força.",
+      "level": 1,
+      "school": "evocation",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "3d4+3",
+      "damageType": "Force",
+      "upcast": {
+        "mode": "additional_effect_instances",
+        "dice": "1d4+1",
+        "perLevel": 1,
+        "baseEffectInstances": 3
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "maxTargets": 3,
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "shield",
+      "nameEn": "Shield",
+      "namePt": "Escudo Arcano",
+      "descriptionEn": "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack.",
+      "descriptionPt": "Uma barreira invisível de força mágica aparece e protege você. Até o início do seu próximo turno, você tem +5 de bônus na CA, inclusive contra o ataque que acionou a magia.",
+      "level": 1,
+      "school": "abjuration",
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "reaction",
+      "castingTime": "1 reaction",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "1 round",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "buff",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "triggered"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "shield_of_faith",
+      "nameEn": "Shield of Faith",
+      "namePt": "Escudo da Fé",
+      "descriptionEn": "A shimmering field appears and surrounds a creature of your choice within range, granting it a +2 bonus to AC for the duration.",
+      "descriptionPt": "Um campo cintilante aparece ao redor de uma criatura que você escolher dentro do alcance, concedendo a ela um bônus de +2 na CA pela duração.",
+      "level": 1,
+      "school": "abjuration",
+      "classesJson": [
+        "Cleric",
+        "Paladin"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 18,
+      "rangeText": "60 feet",
+      "duration": "Up to 10 minutes",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "A small parchment with a bit of holy text written on it",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "effects": [
+        {
+          "type": "modify_stat",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "stat": "temp_ac_bonus",
+            "value": 2
+          },
+          "stacking": "replace"
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self_or_ally",
+      "targetType": "touch",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "speak_with_animals",
       "nameEn": "Speak with Animals",
       "namePt": "Falar com Animais",
@@ -1539,239 +2607,6 @@
       "targetAnchor": "caster",
       "attackType": "none",
       "rangeKind": "self",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "fog_cloud",
-      "nameEn": "Fog Cloud",
-      "namePt": "Nuvem de Névoa",
-      "descriptionEn": "You create a 20-foot-radius sphere of fog centered on a point within range. The sphere spreads around corners, and its area is heavily obscured. It lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it.",
-      "descriptionPt": "Você cria uma esfera de névoa com 6 metros de raio centrada em um ponto dentro do alcance. A esfera se espalha ao redor dos cantos, e sua área está fortemente obscurecida. Dura pela duração ou até que um vento de velocidade moderada ou maior (pelo menos 16 km/h) a disperse.",
-      "level": 1,
-      "school": "conjuration",
-      "classesJson": [
-        "Druid",
-        "Ranger",
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 36,
-      "rangeText": "120 ft",
-      "duration": "Concentration, up to 1 hour",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "utility",
-      "upcast": {
-        "mode": "effect_scaling",
-        "scalingKey": "radius_meters",
-        "scalingSummary": "+6 m de raio por nível de espaço acima do 1º",
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": true,
-      "targetType": "ranged",
-      "areaShape": "sphere",
-      "radiusMeters": 6,
-      "selectionType": "point",
-      "originType": "caster",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent",
-      "persistentArea": {
-        "kind": "obscurement",
-        "params": {
-          "obscurement": "heavily_obscured"
-        }
-      }
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "pass_without_trace",
-      "nameEn": "Pass without Trace",
-      "namePt": "Passar sem Rastros",
-      "descriptionEn": "A veil of shadows and silence radiates from you, masking you and your companions from detection. For the duration, each creature you choose within 30 feet of you (including you) has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means. A creature that receives this bonus leaves behind no tracks or other traces of its passage.",
-      "descriptionPt": "Um véu de sombras e silêncio irradia de você, mascarando você e seus companheiros da detecção. Pela duração, cada criatura que você escolher em um raio de 9 metros de você (incluindo você) recebe um bônus de +10 nas verificações de Destreza (Furtividade) e não pode ser rastreada, exceto por meios mágicos.",
-      "level": 2,
-      "school": "abjuration",
-      "classesJson": [
-        "Druid",
-        "Ranger"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "Concentration, up to 1 hour",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "ashes from a burned leaf of mistletoe and a sprig of spruce",
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "buff",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "self",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "spike_growth",
-      "nameEn": "Spike Growth",
-      "namePt": "Crescimento de Espinhos",
-      "descriptionEn": "The ground in a 20-foot radius centered on a point within range twists and sprouts hard spikes and thorns. The area becomes difficult terrain for the duration. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet it travels. The transformation of the ground is camouflaged to look natural. Any creature that can't see the area at the time the spell is cast must make a Wisdom (Perception) check against your spell save DC to recognize the terrain as hazardous before entering it.",
-      "descriptionPt": "O chão em um raio de 6 metros centrado em um ponto dentro do alcance torce-se e brota espinhos e espinheiros. A área torna-se terreno difícil pela duração. Quando uma criatura se move para dentro ou dentro da área, ela sofre 2d4 de dano perfurante para cada 1,5 metro percorrido.",
-      "level": 2,
-      "school": "transmutation",
-      "classesJson": [
-        "Druid",
-        "Ranger"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 45,
-      "rangeText": "150 ft",
-      "duration": "Concentration, up to 10 minutes",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "2d4",
-      "damageType": "Piercing",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": true,
-      "targetType": "ranged",
-      "areaShape": "sphere",
-      "radiusMeters": 6,
-      "selectionType": "point",
-      "originType": "selected_point",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent",
-      "persistentArea": {
-        "kind": "hazard",
-        "params": {
-          "terrainEffect": "difficult_terrain",
-          "movementDamageDice": "2d4",
-          "damageType": "Piercing",
-          "damagePerMeters": 1.5
-        }
-      }
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "disguise_self",
-      "nameEn": "Disguise Self",
-      "namePt": "Disfarçar-se",
-      "descriptionEn": "You alter your appearance, including clothing, armor, weapons, and other visible belongings on your person, until the spell ends or until you use your action to dismiss it.",
-      "descriptionPt": "Você altera sua aparência, incluindo roupas, armadura, armas e outros pertences visíveis em você, até a magia terminar ou até usar sua ação para encerrá-la.",
-      "level": 1,
-      "school": "illusion",
-      "classesJson": [
-        "Bard",
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "1 hour",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "buff",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "self",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "floating_disk",
-      "nameEn": "Floating Disk",
-      "namePt": "Disco Flutuante",
-      "descriptionEn": "A circular plane of force appears and follows you, carrying weight while it remains within range.",
-      "descriptionPt": "Um disco circular de força aparece e segue você, carregando peso enquanto permanecer ao seu alcance.",
-      "level": 1,
-      "school": "conjuration",
-      "classesJson": [
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "1 hour",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a drop of mercury",
-      "concentration": false,
-      "ritual": true,
-      "resolutionType": "utility",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "selectionType": "point",
-      "originType": "selected_point",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "distance",
       "effectTiming": "persistent"
     },
     {
@@ -1830,36 +2665,51 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "charm_person",
-      "nameEn": "Charm Person",
-      "namePt": "Enfeitiçar Pessoa",
-      "descriptionEn": "You attempt to charm a humanoid you can see. It must make a Wisdom saving throw, and on a failure it is charmed by you until the spell ends.",
-      "descriptionPt": "Você tenta enfeitiçar um humanoide que possa ver. Ele deve fazer uma salvaguarda de Sabedoria e, em falha, fica enfeitiçado por você até o fim da magia.",
-      "level": 1,
-      "school": "enchantment",
+      "canonicalKey": "acid_arrow",
+      "nameEn": "Melf's Acid Arrow",
+      "namePt": "Flecha Ácida",
+      "descriptionEn": "A shimmering green arrow streaks toward a target within range and bursts in a spray of acid. Make a ranged spell attack against the target. On a hit, the target takes 4d4 acid damage immediately and 2d4 acid damage at the end of its next turn. On a miss, the arrow splashes and the target takes half of the immediate damage.",
+      "descriptionPt": "Uma flecha verde cintilante voa até um alvo no alcance e explode em ácido. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d4 de dano ácido imediatamente e 2d4 de dano ácido no fim do próximo turno dele. No erro, o ácido espirra e o alvo sofre metade do dano imediato.",
+      "level": 2,
+      "school": "evocation",
       "classesJson": [
-        "Bard",
-        "Sorcerer",
-        "Warlock",
         "Wizard"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "1 hour",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "duration": "Instantaneous",
       "componentsJson": [
         "V",
-        "S"
+        "S",
+        "M"
       ],
+      "materialComponentText": "Powdered rhubarb leaf and an adder's stomach.",
       "concentration": false,
       "ritual": false,
-      "resolutionType": "control",
-      "savingThrow": "WIS",
-      "saveSuccessOutcome": "none",
-      "maxTargets": 1,
+      "resolutionType": "damage",
+      "damageDice": "4d4",
+      "damageType": "Acid",
+      "attackMissOutcome": "half_damage",
+      "effects": [
+        {
+          "type": "delayed_damage",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "dice": "2d4",
+            "damageType": "Acid",
+            "timing": "target_turn_end",
+            "apply_once": true
+          }
+        }
+      ],
       "upcast": {
-        "mode": "additional_targets",
+        "mode": "extra_damage_dice",
+        "dice": "1d4",
         "perLevel": 1
       },
       "source": "seed_json_bootstrap",
@@ -1869,648 +2719,14 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "coverAppliesToSave": "none",
       "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "guidance",
-      "nameEn": "Guidance",
-      "namePt": "Orientação",
-      "descriptionEn": "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice. The spell then ends.",
-      "descriptionPt": "Você toca uma criatura voluntária. Antes que a magia termine, o alvo pode rolar um d4 e adicionar o número obtido em um teste de habilidade de sua escolha. A magia então termina.",
-      "level": 0,
-      "school": "divination",
-      "classesJson": [
-        "Cleric",
-        "Druid"
-      ],
-      "castingTime": "1 action",
-      "castingTimeType": "action",
-      "rangeMeters": 1.5,
-      "rangeText": "Touch",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "buff",
-      "requiresTargetSight": false,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "touch",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "persistent",
-      "effects": [
-        {
-          "type": "roll_dice_modifier",
-          "target": "selected_target",
-          "duration": {
-            "type": "rounds",
-            "rounds": 10,
-            "anchor": "caster"
-          },
-          "params": {
-            "mode": "bonus",
-            "roll_types": [
-              "ability",
-              "skill"
-            ],
-            "dice": "1d4",
-            "consume_on_apply": true
-          },
-          "stacking": "replace"
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "mending",
-      "nameEn": "Mending",
-      "namePt": "Consertar",
-      "descriptionEn": "This spell repairs a single break or tear in an object you touch.",
-      "descriptionPt": "Esta magia repara uma única quebra ou rasgo em um objeto que você toca.",
-      "level": 0,
-      "school": "transmutation",
-      "classesJson": [
-        "Bard",
-        "Cleric",
-        "Druid",
-        "Sorcerer",
-        "Wizard",
-        "Artificer"
-      ],
-      "castingTime": "1 minute",
-      "castingTimeType": "minute",
-      "rangeMeters": 1.5,
-      "rangeText": "Touch",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "two lodestones",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "item_condition_repair",
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "utility",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "light",
-      "nameEn": "Light",
-      "namePt": "Luz",
-      "descriptionEn": "You touch one object that sheds bright light and dim light for 1 hour.",
-      "descriptionPt": "Você toca um objeto que passa a emitir luz brilhante e penumbra por 1 hora.",
-      "level": 0,
-      "school": "evocation",
-      "classesJson": [
-        "Bard",
-        "Cleric",
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 1.5,
-      "rangeText": "Touch",
-      "duration": "1 hour",
-      "componentsJson": [
-        "V",
-        "M"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "narrative_item_effect",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "utility",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "prestidigitation",
-      "nameEn": "Prestidigitation",
-      "namePt": "Prestidigitação",
-      "descriptionEn": "This spell is a minor magical trick that novice spellcasters use for practice. You create a harmless sensory effect, clean or soil an object, chill, warm, or flavor nonliving material, or make a small mark that lasts for 1 hour.",
-      "descriptionPt": "Esta magia é um truque mágico menor usado por conjuradores iniciantes para praticar. Você cria um efeito sensorial inofensivo, limpa ou suja um objeto, resfria, aquece ou dá sabor a material não vivo, ou faz uma pequena marca que dura 1 hora.",
-      "level": 0,
-      "school": "transmutation",
-      "classesJson": [
-        "Bard",
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 3,
-      "rangeText": "10 ft",
-      "duration": "Up to 1 hour",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "narrative_utility",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "none",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "minor_illusion",
-      "nameEn": "Minor Illusion",
-      "namePt": "Ilusão Menor",
-      "descriptionEn": "You create a sound or an image of an object within range that lasts for the duration. The illusion also ends if you dismiss it as an action or cast this spell again.",
-      "descriptionPt": "Você cria um som ou uma imagem de um objeto dentro do alcance que dura pela duração. A ilusão também termina se você a dispensar como uma ação ou conjurar essa magia novamente.",
-      "level": 0,
-      "school": "illusion",
-      "classesJson": [
-        "Bard",
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
-      ],
-      "castingTime": "1 action",
-      "castingTimeType": "action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "1 minute",
-      "componentsJson": [
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a bit of fleece",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "utility_anchor",
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "ranged",
-      "selectionType": "point",
-      "originType": "caster",
-      "targetAnchor": "selected_point",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "eldritch_blast",
-      "nameEn": "Eldritch Blast",
-      "namePt": "Explosão Eldritch",
-      "descriptionEn": "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage.",
-      "descriptionPt": "Um feixe de energia crepitante se estende até uma criatura dentro do alcance. Faça um ataque de magia à distância contra o alvo. Em um acerto, o alvo sofre 1d10 de dano de força.",
-      "level": 0,
-      "school": "evocation",
-      "classesJson": [
-        "Warlock"
-      ],
-      "castingTime": "1 action",
-      "castingTimeType": "action",
-      "rangeMeters": 36,
-      "rangeText": "120 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "1d10",
-      "damageType": "Force",
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "ranged",
+      "maxTargets": 1,
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "ranged_spell",
       "rangeKind": "distance",
-      "effectTiming": "immediate",
-      "cantripScaling": {
-        "scalingMode": "character_level",
-        "scalingEffectType": "effect_instances",
-        "thresholds": [
-          {
-            "characterLevel": 1,
-            "instances": 1,
-            "instanceDamage": {
-              "dice": "1d10"
-            }
-          },
-          {
-            "characterLevel": 5,
-            "instances": 2,
-            "instanceDamage": {
-              "dice": "1d10"
-            }
-          },
-          {
-            "characterLevel": 11,
-            "instances": 3,
-            "instanceDamage": {
-              "dice": "1d10"
-            }
-          },
-          {
-            "characterLevel": 17,
-            "instances": 4,
-            "instanceDamage": {
-              "dice": "1d10"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "thorn_whip",
-      "nameEn": "Thorn Whip",
-      "namePt": "Chicote de Espinhos",
-      "descriptionEn": "You create a long, vine-like whip covered in thorns that lashes out toward a creature in range. Make a melee spell attack against the target. On a hit, the creature takes 1d6 piercing damage, and if Large or smaller, you pull it up to 10 feet closer to you.",
-      "descriptionPt": "Você cria um chicote longo coberto de espinhos que açoita em direção a uma criatura dentro do alcance. Faça um ataque de magia corpo a corpo contra o alvo. Em um acerto, a criatura sofre 1d6 de dano perfurante e, se for Grande ou menor, você a puxa até 3 metros em sua direção.",
-      "level": 0,
-      "school": "transmutation",
-      "classesJson": [
-        "Druid"
-      ],
-      "castingTime": "1 action",
-      "castingTimeType": "action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "the stem of a plant with thorns",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "1d6",
-      "damageType": "Piercing",
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "melee_spell",
-      "rangeKind": "distance",
       "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "friends",
-      "nameEn": "Friends",
-      "namePt": "Amizade",
-      "descriptionEn": "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you. When the spell ends, the creature realizes that you used magic to influence its mood and becomes hostile toward you.",
-      "descriptionPt": "Pela duração, você tem vantagem em todos os testes de Carisma direcionados a uma criatura de sua escolha que não seja hostil a você. Quando a magia termina, a criatura percebe que você usou magia para influenciar seu humor e se torna hostil a você.",
-      "level": 0,
-      "school": "enchantment",
-      "classesJson": [
-        "Bard",
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
-      ],
-      "castingTime": "1 action",
-      "castingTimeType": "action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "1 minute",
-      "componentsJson": [
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a small amount of makeup applied to the face as this spell is cast",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "buff",
-      "effects": [
-        {
-          "type": "advantage_on_checks",
-          "target": "caster",
-          "duration": {
-            "type": "rounds",
-            "rounds": 10,
-            "anchor": "caster"
-          },
-          "params": {
-            "ability": "charisma",
-            "against": "selected_target"
-          },
-          "stacking": "replace"
-        }
-      ],
-      "onEndEffects": [
-        {
-          "type": "apply_condition",
-          "target": "selected_target",
-          "duration": {
-            "type": "manual"
-          },
-          "params": {
-            "condition": "hostile_to_caster"
-          },
-          "stacking": "replace"
-        }
-      ],
-      "requiresTargetSight": true,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "self",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "hex",
-      "nameEn": "Hex",
-      "namePt": "Maldição",
-      "descriptionEn": "You place a curse on a creature you can see within range. Until the spell ends, you deal an extra 1d6 necrotic damage whenever you hit it with an attack. Also, choose one ability; the target has disadvantage on ability checks with that ability.",
-      "descriptionPt": "Você coloca uma maldição em uma criatura que pode ver dentro do alcance. Até a magia acabar, você causa 1d6 de dano necrótico extra ao alvo sempre que o acertar com um ataque. Além disso, escolha uma habilidade; o alvo tem desvantagem nos testes feitos com ela.",
-      "level": 1,
-      "school": "enchantment",
-      "classesJson": [
-        "Warlock"
-      ],
-      "castingTime": "1 bonus action",
-      "castingTimeType": "bonus_action",
-      "rangeMeters": 27,
-      "rangeText": "90 ft",
-      "duration": "Concentration, up to 1 hour",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "the petrified eye of a newt",
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "debuff",
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "enlarge_reduce",
-      "nameEn": "Enlarge/Reduce",
-      "namePt": "Aumentar/Reduzir",
-      "descriptionEn": "You cause a creature or object you can see within range to grow larger or smaller for the duration.",
-      "descriptionPt": "Você faz uma criatura ou objeto que possa ver dentro do alcance aumentar ou reduzir pela duração.",
-      "level": 2,
-      "school": "transmutation",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a pinch of powdered iron",
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "buff",
-      "variants": [
-        {
-          "key": "enlarge",
-          "labelPt": "Aumentar",
-          "labelEn": "Enlarge",
-          "descriptionPt": "O alvo aumenta uma categoria de tamanho, recebe vantagem em testes e salvaguardas de Força, e seus ataques de arma causam +1d4 de dano.",
-          "descriptionEn": "The target increases by one size category, gains advantage on Strength checks and saves, and its weapon attacks deal +1d4 damage.",
-          "effects": [
-            {
-              "type": "size_modifier",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "value": 1
-              }
-            },
-            {
-              "type": "advantage_on_checks",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "ability": "strength",
-                "against": "any"
-              },
-              "stacking": "replace"
-            },
-            {
-              "type": "advantage_on_saves",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "abilities": [
-                  "strength"
-                ]
-              },
-              "stacking": "replace"
-            },
-            {
-              "type": "modify_weapon_damage",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "dice": "1d4",
-                "operation": "add"
-              },
-              "stacking": "replace"
-            }
-          ],
-          "onEndEffects": [],
-          "manualNotes": []
-        },
-        {
-          "key": "reduce",
-          "labelPt": "Reduzir",
-          "labelEn": "Reduce",
-          "descriptionPt": "O alvo reduz uma categoria de tamanho, recebe desvantagem em testes e salvaguardas de Força, e seus ataques de arma causam -1d4 de dano.",
-          "descriptionEn": "The target decreases by one size category, has disadvantage on Strength checks and saves, and its weapon attacks deal -1d4 damage.",
-          "effects": [
-            {
-              "type": "size_modifier",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "value": -1
-              }
-            },
-            {
-              "type": "disadvantage_on_checks",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "ability": "strength",
-                "against": "any"
-              },
-              "stacking": "replace"
-            },
-            {
-              "type": "disadvantage_on_saves",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "abilities": [
-                  "strength"
-                ]
-              },
-              "stacking": "replace"
-            },
-            {
-              "type": "modify_weapon_damage",
-              "target": "selected_target",
-              "duration": {
-                "type": "timed",
-                "seconds": 60
-              },
-              "params": {
-                "dice": "1d4",
-                "operation": "subtract",
-                "minimum_total_damage": 1
-              },
-              "stacking": "replace"
-            }
-          ],
-          "onEndEffects": [],
-          "manualNotes": []
-        }
-      ],
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "isSrd": true,
-      "isActive": true,
-      "source": "seed_json_bootstrap",
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
@@ -2746,79 +2962,340 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "shield_of_faith",
-      "nameEn": "Shield of Faith",
-      "namePt": "Escudo da Fé",
-      "descriptionEn": "A shimmering field appears and surrounds a creature of your choice within range, granting it a +2 bonus to AC for the duration.",
-      "descriptionPt": "Um campo cintilante aparece ao redor de uma criatura que você escolher dentro do alcance, concedendo a ela um bônus de +2 na CA pela duração.",
-      "level": 1,
-      "school": "abjuration",
+      "canonicalKey": "enlarge_reduce",
+      "nameEn": "Enlarge/Reduce",
+      "namePt": "Aumentar/Reduzir",
+      "descriptionEn": "You cause a creature or object you can see within range to grow larger or smaller for the duration.",
+      "descriptionPt": "Você faz uma criatura ou objeto que possa ver dentro do alcance aumentar ou reduzir pela duração.",
+      "level": 2,
+      "school": "transmutation",
       "classesJson": [
-        "Cleric",
-        "Paladin"
+        "Sorcerer",
+        "Wizard"
       ],
-      "castingTimeType": "bonus_action",
-      "castingTime": "1 bonus action",
-      "rangeMeters": 18,
-      "rangeText": "60 feet",
-      "duration": "Up to 10 minutes",
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Concentration, up to 1 minute",
       "componentsJson": [
         "V",
         "S",
         "M"
       ],
-      "materialComponentText": "A small parchment with a bit of holy text written on it",
+      "materialComponentText": "a pinch of powdered iron",
       "concentration": true,
       "ritual": false,
       "resolutionType": "buff",
-      "effects": [
+      "variants": [
         {
-          "type": "modify_stat",
-          "target": "selected_target",
-          "duration": {
-            "type": "manual"
-          },
-          "params": {
-            "stat": "temp_ac_bonus",
-            "value": 2
-          },
-          "stacking": "replace"
+          "key": "enlarge",
+          "labelPt": "Aumentar",
+          "labelEn": "Enlarge",
+          "descriptionPt": "O alvo aumenta uma categoria de tamanho, recebe vantagem em testes e salvaguardas de Força, e seus ataques de arma causam +1d4 de dano.",
+          "descriptionEn": "The target increases by one size category, gains advantage on Strength checks and saves, and its weapon attacks deal +1d4 damage.",
+          "effects": [
+            {
+              "type": "size_modifier",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "value": 1
+              }
+            },
+            {
+              "type": "advantage_on_checks",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "ability": "strength",
+                "against": "any"
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "advantage_on_saves",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "abilities": [
+                  "strength"
+                ]
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "modify_weapon_damage",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "dice": "1d4",
+                "operation": "add"
+              },
+              "stacking": "replace"
+            }
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
+        },
+        {
+          "key": "reduce",
+          "labelPt": "Reduzir",
+          "labelEn": "Reduce",
+          "descriptionPt": "O alvo reduz uma categoria de tamanho, recebe desvantagem em testes e salvaguardas de Força, e seus ataques de arma causam -1d4 de dano.",
+          "descriptionEn": "The target decreases by one size category, has disadvantage on Strength checks and saves, and its weapon attacks deal -1d4 damage.",
+          "effects": [
+            {
+              "type": "size_modifier",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "value": -1
+              }
+            },
+            {
+              "type": "disadvantage_on_checks",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "ability": "strength",
+                "against": "any"
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "disadvantage_on_saves",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "abilities": [
+                  "strength"
+                ]
+              },
+              "stacking": "replace"
+            },
+            {
+              "type": "modify_weapon_damage",
+              "target": "selected_target",
+              "duration": {
+                "type": "timed",
+                "seconds": 60
+              },
+              "params": {
+                "dice": "1d4",
+                "operation": "subtract",
+                "minimum_total_damage": 1
+              },
+              "stacking": "replace"
+            }
+          ],
+          "onEndEffects": [],
+          "manualNotes": []
         }
       ],
-      "source": "seed_json_bootstrap",
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
       "isSrd": true,
       "isActive": true,
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self_or_ally",
-      "targetType": "touch",
+      "source": "seed_json_bootstrap",
+      "targetType": "ranged",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "immediate",
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false
+      "effectTiming": "persistent"
     },
     {
       "system": "DND5E",
-      "canonicalKey": "guiding_bolt",
-      "nameEn": "Guiding Bolt",
-      "namePt": "Raio Guiador",
-      "descriptionEn": "A flash of light streaks toward a creature of your choice within range. Make a ranged spell attack against the target. On a hit, the target takes 4d6 radiant damage, and the next attack roll made against this target before the end of your next turn has advantage.",
-      "descriptionPt": "Um clarão de luz dispara em direção a uma criatura à sua escolha dentro do alcance. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d6 de dano radiante, e a próxima jogada de ataque feita contra ele antes do fim do seu próximo turno tem vantagem.",
-      "level": 1,
+      "canonicalKey": "hold_person",
+      "nameEn": "Hold Person",
+      "namePt": "Imobilizar Pessoa",
+      "descriptionEn": "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration.",
+      "descriptionPt": "Escolha um humanoide que você possa ver dentro do alcance. O alvo deve ter sucesso em uma salvaguarda de Sabedoria ou ficará paralisado pela duração.",
+      "level": 2,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Concentration, up to 1 minute",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "a small, straight piece of iron",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "control",
+      "savingThrow": "WIS",
+      "upcast": {
+        "mode": "additional_targets",
+        "perLevel": 1
+      },
+      "maxTargets": 1,
+      "effects": [
+        {
+          "type": "apply_condition",
+          "target": "selected_target",
+          "params": {
+            "condition": "paralyzed"
+          },
+          "repeat_save": {
+            "timing": "target_turn_end",
+            "ability": "wisdom",
+            "ends_on_success": true
+          }
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "coverAppliesToSave": "none",
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "misty_step",
+      "nameEn": "Misty Step",
+      "namePt": "Passo Nebuloso",
+      "descriptionEn": "Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.",
+      "descriptionPt": "Brevemente envolto por névoa prateada, você se teleporta até 9 metros para um espaço desocupado que possa ver.",
+      "level": 2,
+      "school": "conjuration",
+      "classesJson": [
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
+      "castingTimeType": "bonus_action",
+      "castingTime": "1 bonus action",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "teleport",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": true,
+      "requiresPointEffect": true,
+      "targetType": "self",
+      "selectionType": "point",
+      "originType": "caster",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "pass_without_trace",
+      "nameEn": "Pass without Trace",
+      "namePt": "Passar sem Rastros",
+      "descriptionEn": "A veil of shadows and silence radiates from you, masking you and your companions from detection. For the duration, each creature you choose within 30 feet of you (including you) has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means. A creature that receives this bonus leaves behind no tracks or other traces of its passage.",
+      "descriptionPt": "Um véu de sombras e silêncio irradia de você, mascarando você e seus companheiros da detecção. Pela duração, cada criatura que você escolher em um raio de 9 metros de você (incluindo você) recebe um bônus de +10 nas verificações de Destreza (Furtividade) e não pode ser rastreada, exceto por meios mágicos.",
+      "level": 2,
+      "school": "abjuration",
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "Concentration, up to 1 hour",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "ashes from a burned leaf of mistletoe and a sprig of spruce",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "buff",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "scorching_ray",
+      "nameEn": "Scorching Ray",
+      "namePt": "Raio Ardente",
+      "descriptionEn": "You create three rays of fire and hurl them at targets within range. You can hurl them at one target or several. Make a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.",
+      "descriptionPt": "Você cria três raios de fogo e os arremessa contra alvos dentro do alcance. Você pode lançar todos contra um alvo ou distribuí-los entre vários. Faça um ataque mágico à distância para cada raio. No acerto, o alvo sofre 2d6 de dano de fogo.",
+      "level": 2,
       "school": "evocation",
       "classesJson": [
-        "Cleric"
+        "Sorcerer",
+        "Wizard"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 36,
       "rangeText": "120 ft",
-      "duration": "1 round",
+      "duration": "Instantaneous",
       "componentsJson": [
         "V",
         "S"
@@ -2826,31 +3303,13 @@
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
-      "damageDice": "4d6",
-      "damageType": "Radiant",
-      "effects": [
-        {
-          "type": "attack_advantage_against_target",
-          "target": "selected_target",
-          "duration": {
-            "type": "until_turn_end",
-            "anchor": "caster"
-          },
-          "params": {
-            "mode": "advantage",
-            "roll_types": [
-              "attack"
-            ],
-            "applies_to_attackers": "any",
-            "consume_on_apply": true
-          },
-          "stacking": "replace"
-        }
-      ],
+      "damageDice": "6d6",
+      "damageType": "Fire",
       "upcast": {
-        "mode": "extra_damage_dice",
-        "dice": "1d6",
-        "levelStep": 1
+        "mode": "additional_effect_instances",
+        "dice": "2d6",
+        "perLevel": 1,
+        "baseEffectInstances": 3
       },
       "source": "seed_json_bootstrap",
       "isSrd": true,
@@ -2860,12 +3319,66 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "targetType": "ranged",
+      "maxTargets": 3,
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "ranged_spell",
       "rangeKind": "distance",
       "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
+      "canonicalKey": "spike_growth",
+      "nameEn": "Spike Growth",
+      "namePt": "Crescimento de Espinhos",
+      "descriptionEn": "The ground in a 20-foot radius centered on a point within range twists and sprouts hard spikes and thorns. The area becomes difficult terrain for the duration. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet it travels. The transformation of the ground is camouflaged to look natural. Any creature that can't see the area at the time the spell is cast must make a Wisdom (Perception) check against your spell save DC to recognize the terrain as hazardous before entering it.",
+      "descriptionPt": "O chão em um raio de 6 metros centrado em um ponto dentro do alcance torce-se e brota espinhos e espinheiros. A área torna-se terreno difícil pela duração. Quando uma criatura se move para dentro ou dentro da área, ela sofre 2d4 de dano perfurante para cada 1,5 metro percorrido.",
+      "level": 2,
+      "school": "transmutation",
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 45,
+      "rangeText": "150 ft",
+      "duration": "Concentration, up to 10 minutes",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "2d4",
+      "damageType": "Piercing",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "targetType": "ranged",
+      "areaShape": "sphere",
+      "radiusMeters": 6,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "persistentArea": {
+        "kind": "hazard",
+        "params": {
+          "terrainEffect": "difficult_terrain",
+          "movementDamageDice": "2d4",
+          "damageType": "Piercing",
+          "damagePerMeters": 1.5
+        }
+      }
     },
     {
       "system": "DND5E",
@@ -2915,485 +3428,56 @@
     },
     {
       "system": "DND5E",
-      "canonicalKey": "mage_hand",
-      "nameEn": "Mage Hand",
-      "namePt": "Mãos Mágicas",
-      "descriptionEn": "A spectral, floating hand appears at a point you choose within range. The hand lasts for the duration or until you dismiss it as an action. You can use your action to control the hand.",
-      "descriptionPt": "Uma mão espectral flutuante aparece em um ponto que você escolher dentro do alcance. A mão dura pela duração ou até você dispensá-la com uma ação. Você pode usar sua ação para controlar a mão.",
-      "level": 0,
-      "school": "conjuration",
+      "canonicalKey": "fireball",
+      "nameEn": "Fireball",
+      "namePt": "Bola de Fogo",
+      "descriptionEn": "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one.",
+      "descriptionPt": "Um clarão brilhante sai do seu dedo indicador até um ponto que você escolher dentro do alcance e então floresce com um rugido grave em uma explosão de chamas. Cada criatura em uma esfera de 6 metros de raio centrada naquele ponto deve fazer uma salvaguarda de Destreza. O alvo sofre 8d6 de dano de fogo em uma falha, ou metade em um sucesso.",
+      "level": 3,
+      "school": "evocation",
       "classesJson": [
-        "Bard",
         "Sorcerer",
-        "Warlock",
         "Wizard"
       ],
       "castingTimeType": "action",
       "castingTime": "1 action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "1 minute",
+      "rangeMeters": 45,
+      "rangeText": "150 ft",
+      "duration": "Instantaneous",
       "componentsJson": [
         "V",
-        "S"
+        "S",
+        "M"
       ],
+      "materialComponentText": "a tiny ball of bat guano and sulfur",
       "concentration": false,
       "ritual": false,
-      "resolutionType": "utility_anchor",
+      "resolutionType": "damage",
+      "savingThrow": "DEX",
+      "saveSuccessOutcome": "half_damage",
+      "damageDice": "8d6",
+      "damageType": "Fire",
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d6",
+        "perLevel": 1
+      },
       "source": "seed_json_bootstrap",
       "isSrd": true,
       "isActive": true,
       "requiresTargetSight": false,
       "requiresTargetEffect": false,
       "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "point",
+      "requiresPointEffect": true,
+      "coverAppliesToSave": "physical",
+      "targetType": "ranged",
+      "areaShape": "sphere",
+      "radiusMeters": 6,
       "selectionType": "point",
       "originType": "caster",
       "targetAnchor": "selected_point",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "mage_armor",
-      "nameEn": "Mage Armor",
-      "namePt": "Armadura Arcana",
-      "descriptionEn": "You touch a willing creature who isn't wearing armor, and a protective magical force surrounds it until the spell ends. The target's base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
-      "descriptionPt": "Você toca uma criatura disposta que não está usando armadura, e uma força mágica protetora a envolve até o final da magia. A CA base do alvo se torna 13 + seu modificador de Destreza. A magia termina se o alvo usar armadura ou se você dispensar a magia como uma ação.",
-      "level": 1,
-      "school": "abjuration",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 1,
-      "rangeText": "Touch",
-      "duration": "8 hours",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a piece of cured leather",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "buff",
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "touch",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "immediate",
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self_or_ally",
-      "effects": [
-        {
-          "type": "armor_class_formula",
-          "target": "selected_target",
-          "duration": {
-            "type": "timed",
-            "seconds": 28800
-          },
-          "out_of_combat_duration": {
-            "type": "timed",
-            "seconds": 28800
-          },
-          "params": {
-            "base_value": 13,
-            "ability": "dexterity",
-            "requires_unarmored": true
-          },
-          "termination_conditions": [
-            {
-              "type": "target_dons_armor"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "bane",
-      "nameEn": "Bane",
-      "namePt": "Perdição",
-      "descriptionEn": "Up to three creatures of your choice that you can see within range must make Charisma saving throws. Whenever a target that fails this saving throw makes an attack roll or a saving throw before the spell ends, the target must roll a d4 and subtract the number rolled from the attack roll or saving throw.",
-      "descriptionPt": "Até três criaturas à sua escolha que você possa ver no alcance devem realizar uma salvaguarda de Carisma. Sempre que um alvo que falhar nessa salvaguarda fizer uma jogada de ataque ou uma salvaguarda antes do fim da magia, ele deve rolar 1d4 e subtrair o resultado da jogada.",
-      "level": 1,
-      "school": "enchantment",
-      "classesJson": [
-        "Bard",
-        "Cleric"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 9,
-      "rangeText": "30 ft",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a drop of blood",
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "control",
-      "maxTargets": 3,
-      "upcast": {
-        "mode": "additional_targets",
-        "perLevel": 1
-      },
-      "savingThrow": "cha",
-      "saveEffect": "negates",
-      "effects": [
-        {
-          "type": "roll_dice_modifier",
-          "target": "selected_target",
-          "duration": {
-            "type": "rounds",
-            "rounds": 10,
-            "anchor": "caster"
-          },
-          "params": {
-            "mode": "penalty",
-            "roll_types": [
-              "attack",
-              "save"
-            ],
-            "dice": "1d4"
-          },
-          "stacking": "replace"
-        }
-      ],
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "persistent"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "false_life",
-      "nameEn": "False Life",
-      "namePt": "Vitalidade Vazia",
-      "descriptionEn": "Bolstering yourself with a necromantic facsimile of life, you gain 1d4 + 4 temporary hit points for the duration.",
-      "descriptionPt": "Amparando-se com uma fachada necromântica de vida, você ganha 1d4 + 4 pontos de vida temporários pela duração.",
-      "level": 1,
-      "school": "necromancy",
-      "classesJson": [
-        "Sorcerer",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 0,
-      "rangeText": "Self",
-      "duration": "1 hour",
-      "componentsJson": [
-        "V",
-        "S",
-        "M"
-      ],
-      "materialComponentText": "a small amount of alcohol or blood",
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "buff",
-      "upcast": {
-        "mode": "extra_temp_hp",
-        "flat": 5,
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": false,
-      "requiresTargetEffect": false,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "self",
-      "selectionType": "self",
-      "originType": "caster",
-      "targetAnchor": "caster",
-      "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "immediate",
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "self",
-      "effects": [
-        {
-          "type": "grant_temp_hp",
-          "target": "caster",
-          "duration": {
-            "type": "timed",
-            "seconds": 3600
-          },
-          "out_of_combat_duration": {
-            "type": "timed",
-            "seconds": 3600
-          },
-          "params": {
-            "dice": "1d4 + 4"
-          }
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "heroism",
-      "nameEn": "Heroism",
-      "namePt": "Heroísmo",
-      "descriptionEn": "A willing creature you touch is imbued with bravery. Until the spell ends, the creature is immune to being frightened and gains temporary hit points equal to your spellcasting ability modifier at the start of each of its turns. When the spell ends, the target loses any remaining temporary hit points from this spell.",
-      "descriptionPt": "Uma criatura voluntária que você toca é imbuída de bravura. Até o fim da magia, a criatura fica imune a amedrontado e ganha pontos de vida temporários iguais ao seu modificador de habilidade de conjuração no início de cada um de seus turnos. Quando a magia termina, o alvo perde quaisquer pontos de vida temporários restantes desta magia.",
-      "level": 1,
-      "school": "enchantment",
-      "classesJson": [
-        "Bard",
-        "Paladin"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 1.5,
-      "rangeText": "Touch",
-      "duration": "Concentration, up to 1 minute",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": true,
-      "ritual": false,
-      "resolutionType": "buff",
-      "maxTargets": 1,
-      "upcast": {
-        "mode": "additional_targets",
-        "perLevel": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "touch",
-      "effectTiming": "persistent",
-      "effects": [
-        {
-          "type": "condition_immunity",
-          "target": "selected_target",
-          "duration": {
-            "type": "manual"
-          },
-          "params": {
-            "conditions": [
-              "frightened"
-            ]
-          },
-          "stacking": "replace"
-        },
-        {
-          "type": "recurring_temp_hp",
-          "target": "selected_target",
-          "duration": {
-            "type": "manual"
-          },
-          "params": {
-            "amount_source": "caster_spellcasting_modifier",
-            "timing": "start_of_target_turn",
-            "remove_granted_temp_hp_on_end": true
-          },
-          "stacking": "replace"
-        }
-      ]
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "vicious_mockery",
-      "nameEn": "Vicious Mockery",
-      "namePt": "Zombaria Viciosa",
-      "descriptionEn": "You unleash a string of insults laced with subtle enchantments at a creature you can see within range. If the target can hear you, it must succeed on a Wisdom saving throw or take 1d4 psychic damage and have disadvantage on the next attack roll it makes before the end of its next turn.",
-      "descriptionPt": "Você desfere uma sequência de insultos carregados de encantamento sutil contra uma criatura que você possa ver dentro do alcance. Se o alvo puder ouvi-lo, deve obter sucesso em uma salvaguarda de Sabedoria ou sofrer 1d4 de dano psíquico e ter desvantagem na próxima jogada de ataque que fizer antes do fim do próximo turno dele.",
-      "level": 0,
-      "school": "enchantment",
-      "classesJson": [
-        "Bard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 18,
-      "rangeText": "60 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "savingThrow": "WIS",
-      "saveSuccessOutcome": "none",
-      "damageDice": "1d4",
-      "damageType": "Psychic",
-      "cantripScaling": {
-        "scalingMode": "character_level",
-        "scalingEffectType": "damage_dice",
-        "thresholds": [
-          {"characterLevel": 1, "damage": {"dice": "1d4"}},
-          {"characterLevel": 5, "damage": {"dice": "2d4"}},
-          {"characterLevel": 11, "damage": {"dice": "3d4"}},
-          {"characterLevel": 17, "damage": {"dice": "4d4"}}
-        ]
-      },
-      "effects": [
-        {
-          "type": "roll_disadvantage_modifier",
-          "target": "selected_target",
-          "duration": {
-            "type": "until_turn_end",
-            "anchor": "target"
-          },
-          "params": {
-            "mode": "disadvantage",
-            "roll_types": [
-              "attack"
-            ],
-            "consume_on_apply": true,
-            "source": "vicious_mockery"
-          },
-          "stacking": "replace"
-        }
-      ],
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetHearing": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "poison_spray",
-      "nameEn": "Poison Spray",
-      "namePt": "Borrifo Venenoso",
-      "level": 0,
-      "school": "conjuration",
-      "classesJson": [
-        "Druid",
-        "Sorcerer",
-        "Warlock",
-        "Wizard"
-      ],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 3,
-      "rangeText": "10 ft",
-      "duration": "Instantaneous",
-      "componentsJson": [
-        "V",
-        "S"
-      ],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "savingThrow": "CON",
-      "saveSuccessOutcome": "none",
-      "damageDice": "1d12",
-      "damageType": "Poison",
-      "cantripScaling": {
-        "scalingMode": "character_level",
-        "scalingEffectType": "damage_dice",
-        "thresholds": [
-          {"characterLevel": 1, "damage": {"dice": "1d12"}},
-          {"characterLevel": 5, "damage": {"dice": "2d12"}},
-          {"characterLevel": 11, "damage": {"dice": "3d12"}},
-          {"characterLevel": 17, "damage": {"dice": "4d12"}}
-        ]
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "ranged",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "none",
-      "rangeKind": "distance",
-      "effectTiming": "immediate"
-    },
-    {
-      "system": "DND5E",
-      "canonicalKey": "inflict_wounds",
-      "nameEn": "Inflict Wounds",
-      "namePt": "Infligir Ferimentos",
-      "level": 1,
-      "school": "necromancy",
-      "classesJson": ["Cleric"],
-      "castingTimeType": "action",
-      "castingTime": "1 action",
-      "rangeMeters": 1.5,
-      "rangeText": "Touch",
-      "duration": "Instantaneous",
-      "componentsJson": ["V", "S"],
-      "concentration": false,
-      "ritual": false,
-      "resolutionType": "damage",
-      "damageDice": "3d10",
-      "damageType": "Necrotic",
-      "upcast": {
-        "mode": "extra_damage_dice",
-        "dice": "1d10",
-        "levelStep": 1
-      },
-      "source": "seed_json_bootstrap",
-      "isSrd": true,
-      "isActive": true,
-      "requiresTargetSight": true,
-      "requiresTargetEffect": true,
-      "requiresPointSight": false,
-      "requiresPointEffect": false,
-      "targetType": "melee",
-      "selectionType": "creature",
-      "originType": "caster",
-      "targetAnchor": "selected_target",
-      "attackType": "melee_spell",
-      "rangeKind": "touch",
       "effectTiming": "immediate"
     }
   ]
