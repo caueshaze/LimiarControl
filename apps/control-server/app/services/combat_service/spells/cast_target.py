@@ -646,9 +646,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     def _validate_instance_targets(cls, *, req, spell_context, state):
         raw = getattr(req, "effect_instance_targets", None)
         if not raw:
-            if cls._normalize_lookup(spell_context.get("spell_canonical_key")) == "magic missile":
+            spell_key = cls._normalize_lookup(spell_context.get("spell_canonical_key"))
+            if spell_key in {"magic missile", "scorching ray"}:
                 raise CombatServiceError(
-                    "Magic Missile requires effect_instance_targets for every missile instance.",
+                    "This spell requires effect_instance_targets for every instance.",
                     400,
                 )
             return None
@@ -874,6 +875,9 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
         )
         roll_result.is_gm_roll = is_gm
         roll_result.roll_source = "system"
+        if adv_ctx.consumed_effect_ids_on_roll:
+            cls._consume_effect_ids(attacker, adv_ctx.consumed_effect_ids_on_roll)
+            cls._consume_effect_ids(target_p, adv_ctx.consumed_effect_ids_on_roll)
 
         is_critical = roll_result.selected_roll == 20
         is_hit = bool(roll_result.success)
