@@ -50,6 +50,24 @@ class SpellContextResolveMixin:
             "literalMeaningOnly": True,
             "deciphersSecretMessages": False,
         },
+        "detect_poison_disease": {
+            "type": "narrative_effect",
+            "subtype": "detect_poison_disease",
+            "mechanical": False,
+            "narrative": True,
+            "durationSeconds": 600,
+            "radiusMeters": 9,
+            "detectsPoisons": True,
+            "detectsPoisonousCreatures": True,
+            "detectsDiseases": True,
+            "canIdentifyPoisonOrDiseaseWithAction": True,
+            "blockedBy": {
+                "stoneCm": 30,
+                "commonMetalCm": 2.5,
+                "leadSheet": True,
+                "woodOrEarthMeters": 1,
+            },
+        },
     }
 
     @classmethod

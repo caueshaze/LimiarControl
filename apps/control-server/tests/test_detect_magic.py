@@ -21,7 +21,9 @@ from app.services.persistent_effect_expiry import prune_expired_persisted_effect
 
 class DetectMagicSeedTests(unittest.TestCase):
     def test_detect_magic_seed_contract(self):
-        payload = json.loads(open("Base/base_spells.seed.json", encoding="utf-8").read())
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")
+        payload = json.loads(open(os.path.abspath(path), encoding="utf-8").read())
         raw = next(entry for entry in payload["spells"] if entry["canonicalKey"] == "detect_magic")
 
         self.assertEqual(raw["level"], 1)
