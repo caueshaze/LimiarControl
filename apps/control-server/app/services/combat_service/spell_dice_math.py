@@ -6,6 +6,7 @@ from .spell_automation_metadata import _RESOLUTION_TYPE_TO_SPELL_MODE as _SPELL_
 
 class CombatSpellDiceMathMixin:
     _SAVE_SUCCESS_OUTCOME_VALUES = {"none", "half_damage"}
+    _ATTACK_MISS_OUTCOME_VALUES = {"none", "half_damage"}
     _COMBAT_SPELL_ACTION_COSTS = {"action", "bonus_action", "reaction"}
     _RESOLUTION_TYPE_TO_SPELL_MODE: dict[str, str] = dict(_SPELL_MODE_MAP)
 
@@ -348,5 +349,12 @@ class CombatSpellDiceMathMixin:
     def _normalize_save_success_outcome(cls, value: object) -> str | None:
         normalized = cls._normalize_lookup(value).replace(" ", "_")
         if normalized in cls._SAVE_SUCCESS_OUTCOME_VALUES:
+            return normalized
+        return None
+
+    @classmethod
+    def _normalize_attack_miss_outcome(cls, value: object) -> str | None:
+        normalized = cls._normalize_lookup(value).replace(" ", "_")
+        if normalized in cls._ATTACK_MISS_OUTCOME_VALUES:
             return normalized
         return None

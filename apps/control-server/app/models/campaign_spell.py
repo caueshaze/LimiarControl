@@ -132,6 +132,7 @@ class CampaignSpell(SQLModel, table=True):
     resolution_type: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     saving_throw: Optional[str] = None
     save_success_outcome: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    attack_miss_outcome: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     # Governs whether cover modifies the effective DC for this saving throw.
     # "physical" → cover applies (spatial/blast effects).
     # "none"     → cover does not apply (mental, control, etc.).

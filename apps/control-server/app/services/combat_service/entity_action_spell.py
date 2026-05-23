@@ -52,7 +52,22 @@ class CombatEntitySpellActionMixin:
                 effect_bonus=damage_bonus if isinstance(damage_bonus, int) else 0,
                 upcast=structured_upcast,
             )
-            resolved.update({"spellAttackBonus": attack_bonus, "damageDice": upcast_result.get("effect_dice"), "damageBonus": cls._safe_int(upcast_result.get("effect_bonus"), damage_bonus if isinstance(damage_bonus, int) else 0)})
+            resolved.update(
+                {
+                    "spellAttackBonus": attack_bonus,
+                    "damageDice": upcast_result.get("effect_dice"),
+                    "damageBonus": cls._safe_int(
+                        upcast_result.get("effect_bonus"),
+                        damage_bonus if isinstance(damage_bonus, int) else 0,
+                    ),
+                    "attackMissOutcome": (
+                        cls._normalize_attack_miss_outcome(
+                            getattr(base_spell, "attack_miss_outcome", None)
+                        )
+                        or "none"
+                    ),
+                }
+            )
             return resolved
         if action.kind == "saving_throw":
             save_dc = action.saveDc if action.saveDc is not None else (spellcasting.get("saveDc") if isinstance(spellcasting.get("saveDc"), int) else None)

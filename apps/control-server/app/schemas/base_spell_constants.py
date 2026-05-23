@@ -45,6 +45,7 @@ SPELL_DAMAGE_TYPE_VALUES = (
 )
 SPELL_SAVING_THROW_VALUES = ("STR", "DEX", "CON", "INT", "WIS", "CHA")
 SPELL_SAVE_SUCCESS_OUTCOME_VALUES = ("none", "half_damage")
+SPELL_ATTACK_MISS_OUTCOME_VALUES = ("none", "half_damage")
 
 SPELL_CLASS_MAP = {value.lower(): value for value in SPELL_CLASS_VALUES}
 SPELL_COMPONENT_MAP = {value.lower(): value for value in SPELL_COMPONENT_VALUES}
@@ -52,6 +53,9 @@ SPELL_DAMAGE_TYPE_MAP = {value.lower(): value for value in SPELL_DAMAGE_TYPE_VAL
 SPELL_SAVING_THROW_MAP = {value.lower(): value for value in SPELL_SAVING_THROW_VALUES}
 SPELL_SAVE_SUCCESS_OUTCOME_MAP = {
     value.lower(): value for value in SPELL_SAVE_SUCCESS_OUTCOME_VALUES
+}
+SPELL_ATTACK_MISS_OUTCOME_MAP = {
+    value.lower(): value for value in SPELL_ATTACK_MISS_OUTCOME_VALUES
 }
 
 CASTING_TIME_TYPE_MAP = {member.value: member.value for member in CastingTimeType}

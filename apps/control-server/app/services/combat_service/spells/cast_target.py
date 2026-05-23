@@ -50,6 +50,73 @@ def _resolve_instance_spatial_error_phrase(result: TargetingResult) -> str:
 
 class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
     @classmethod
+    def _build_delayed_damage_metadata_from_spell_context(
+        cls,
+        *,
+        spell_context: dict,
+        source_participant_id: str | None,
+        target_participant_id: str | None,
+        target_ref_id: str | None,
+    ) -> dict | None:
+        effects = spell_context.get("effects")
+        if not isinstance(effects, list):
+            return None
+        for effect in effects:
+            if not isinstance(effect, dict) or effect.get("type") != "delayed_damage":
+                continue
+            params = effect.get("params")
+            if not isinstance(params, dict):
+                continue
+            damage_formula = spell_context.get("delayed_damage_preview") or params.get("dice")
+            if not isinstance(damage_formula, str) or not damage_formula.strip():
+                continue
+            damage_type = params.get("damageType") or spell_context.get("damage_type")
+            if not isinstance(damage_type, str) or not damage_type.strip():
+                continue
+            return {
+                "source_spell_key": spell_context.get("spell_canonical_key"),
+                "source_spell_name": spell_context.get("spell_name"),
+                "delayed_damage": True,
+                "timing": "target_turn_end",
+                "damage_formula": damage_formula.strip(),
+                "damage_type": damage_type.strip(),
+                "remaining_triggers": 1,
+                "created_slot_level": spell_context.get("slot_level"),
+                "effect_target_participant_id": target_participant_id,
+                "effect_target_ref_id": target_ref_id,
+                "source_participant_id": source_participant_id,
+            }
+        return None
+
+    @classmethod
+    def _apply_spell_attack_delayed_damage_effect(
+        cls,
+        *,
+        target_participant: dict,
+        spell_context: dict,
+        attacker: dict,
+    ) -> bool:
+        metadata = cls._build_delayed_damage_metadata_from_spell_context(
+            spell_context=spell_context,
+            source_participant_id=attacker.get("id"),
+            target_participant_id=target_participant.get("id"),
+            target_ref_id=target_participant.get("ref_id"),
+        )
+        if metadata is None:
+            return False
+        cls._append_effect_to_participant(
+            target_participant,
+            cls._build_active_effect(
+                kind="damage",
+                source_participant_id=attacker.get("id"),
+                duration_type="manual",
+                metadata=metadata,
+                display_label="Delayed Damage",
+            ),
+        )
+        return True
+
+    @classmethod
     def _validate_spell_target_creature_type_restriction(
         cls,
         db,
@@ -397,8 +464,10 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "requires_saving_throw": resolution_type == "saving_throw",
             "requires_target_hearing": spell_context.get("requires_target_hearing"),
             "save_ability": spell_context.get("save_ability"),
+            "attack_miss_outcome": spell_context.get("attack_miss_outcome"),
             "damage_type": spell_context.get("damage_type"),
             "damage_preview": spell_context.get("effect_dice"),
+            "delayed_damage_preview": spell_context.get("delayed_damage_preview"),
             "effect_instance_count": cls._safe_int(
                 spell_context.get("effect_instance_count"),
                 1,
@@ -1698,6 +1767,12 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                     on_hit_applied_declarative_effects_by_target = (
                         cls._build_applied_declarative_effects_by_target(applied_effects)
                     )
+            if result.is_hit:
+                cls._apply_spell_attack_delayed_damage_effect(
+                    target_participant=target_p,
+                    spell_context=spell_context,
+                    attacker=attacker,
+                )
         elif spell_mode == "saving_throw":
             result = cls._resolve_saving_throw_spell(
                 db,

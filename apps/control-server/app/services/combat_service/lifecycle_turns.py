@@ -9,7 +9,7 @@ from app.services.game_time import (
 from app.services.combat_service.condition_effects_saves import modify_saving_throw
 from app.services.roll_resolution import resolve_saving_throw
 
-from .exceptions import CombatServiceError
+from .exceptions import CombatServiceError, _roll_dice_expression
 from .limiar_map_projection import (
     maybe_project_combat_advance_to_limiar_map as _project_combat_advance_to_limiar_map,
     maybe_project_combat_end_to_limiar_map as _project_combat_end_to_limiar_map,
@@ -47,6 +47,76 @@ def maybe_project_combat_end_to_limiar_map(session_id: str, state) -> None:
 
 
 class CombatLifecycleTurnsMixin:
+    @classmethod
+    async def _resolve_turn_end_delayed_damage_effects(
+        cls,
+        db,
+        session_id: str,
+        state,
+        participant: dict,
+    ) -> None:
+        effects = list(cls._get_participant_effects(participant))
+        kept_effects: list[dict] = []
+        for effect in effects:
+            metadata = cls._get_effect_metadata(effect)
+            if (
+                effect.get("kind") != "damage"
+                or not metadata.get("delayed_damage")
+                or metadata.get("timing") != "target_turn_end"
+            ):
+                kept_effects.append(effect)
+                continue
+            remaining = cls._safe_int(metadata.get("remaining_triggers"), 0)
+            if remaining <= 0:
+                continue
+            damage_formula = metadata.get("damage_formula")
+            damage_type = metadata.get("damage_type")
+            if not isinstance(damage_formula, str) or not damage_formula.strip():
+                continue
+            if not isinstance(damage_type, str) or not damage_type.strip():
+                continue
+            rolled_total = _roll_dice_expression(damage_formula)
+            amount = max(0, rolled_total)
+            if amount > 0:
+                source_participant_id = metadata.get("source_participant_id")
+                source_participant = None
+                if isinstance(source_participant_id, str):
+                    source_participant = next(
+                        (p for p in state.participants if p.get("id") == source_participant_id),
+                        None,
+                    )
+                source_display_name = (
+                    source_participant.get("display_name")
+                    if isinstance(source_participant, dict)
+                    else None
+                )
+                _, effect_msg, _, _ = cls._apply_spell_effect(
+                    db,
+                    state,
+                    participant["ref_id"],
+                    participant["kind"],
+                    "damage",
+                    amount,
+                    damage_type=damage_type,
+                    is_critical=False,
+                    attacker_participant_id=source_participant_id if isinstance(source_participant_id, str) else None,
+                )
+                await cls._emit_log(
+                    session_id,
+                    {
+                        "message": (
+                            f"{participant['display_name']} sofreu {amount} de dano de {damage_type} "
+                            f"({metadata.get('source_spell_name') or metadata.get('source_spell_key') or 'efeito atrasado'} no fim do turno"
+                            f"{f', conjurado por {source_display_name}' if isinstance(source_display_name, str) and source_display_name else ''})."
+                            f"{effect_msg}"
+                        ),
+                        "source": "delayed_damage_resolve",
+                    },
+                )
+            metadata["remaining_triggers"] = 0
+
+        cls._set_participant_effects(participant, kept_effects)
+
     @classmethod
     async def _resolve_turn_end_repeat_saves(
         cls,
@@ -217,6 +287,7 @@ class CombatLifecycleTurnsMixin:
             label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
         await cls._resolve_turn_end_repeat_saves(db, session_id, state, outgoing)
+        await cls._resolve_turn_end_delayed_damage_effects(db, session_id, state, outgoing)
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):

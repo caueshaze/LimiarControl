@@ -58,6 +58,7 @@ class BaseSpellRead(BaseModel):
     resolutionType: Optional[str] = None
     savingThrow: Optional[str] = None
     saveSuccessOutcome: Optional[str] = None
+    attackMissOutcome: Optional[str] = None
     coverAppliesToSave: Optional[str] = None
 
     damageDice: Optional[str] = None

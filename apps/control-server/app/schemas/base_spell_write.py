@@ -14,6 +14,7 @@ from .base_spell_constants import (
     SPELL_CLASS_MAP,
     SPELL_COMPONENT_MAP,
     SPELL_DAMAGE_TYPE_MAP,
+    SPELL_ATTACK_MISS_OUTCOME_MAP,
     SPELL_SAVE_SUCCESS_OUTCOME_MAP,
     SPELL_SAVING_THROW_MAP,
     SPELL_SOURCE_MAP,
@@ -70,6 +71,7 @@ class BaseSpellWrite(BaseModel):
     resolutionType: Optional[str] = None
     savingThrow: Optional[str] = None
     saveSuccessOutcome: Optional[str] = None
+    attackMissOutcome: Optional[str] = None
     coverAppliesToSave: Optional[str] = None
 
     damageDice: Optional[str] = None
@@ -281,6 +283,19 @@ class BaseSpellWrite(BaseModel):
             raise ValueError(f"Unknown save success outcome: {value}")
         return canonical
 
+    @field_validator("attackMissOutcome")
+    @classmethod
+    def normalize_attack_miss_outcome(cls, value: Optional[str]):
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        canonical = SPELL_ATTACK_MISS_OUTCOME_MAP.get(text.lower())
+        if canonical is None:
+            raise ValueError(f"Unknown attack miss outcome: {value}")
+        return canonical
+
     @field_validator("coverAppliesToSave")
     @classmethod
     def normalize_cover_applies_to_save(cls, value: Optional[str]):
@@ -488,6 +503,9 @@ class BaseSpellWrite(BaseModel):
 
         if rt != "damage" or self.savingThrow is None:
             self.saveSuccessOutcome = None
+
+        if rt != "damage":
+            self.attackMissOutcome = None
 
         if rt is not None and rt not in CAN_HAVE_SAVING_THROW:
             self.savingThrow = None

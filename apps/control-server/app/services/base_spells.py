@@ -47,6 +47,7 @@ _FIELD_MAP: dict[str, str] = {
     "resolutionType": "resolution_type",
     "savingThrow": "saving_throw",
     "saveSuccessOutcome": "save_success_outcome",
+    "attackMissOutcome": "attack_miss_outcome",
     "coverAppliesToSave": "cover_applies_to_save",
     "damageDice": "damage_dice",
     "damageType": "damage_type",

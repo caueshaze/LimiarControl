@@ -31,6 +31,7 @@ SpellDeclarativeEffectType = Literal[
     "attack_advantage_against_target",
     "roll_disadvantage_modifier",
     "recurring_temp_hp",
+    "delayed_damage",
 ]
 
 SpellDeclarativeEffectTarget = Literal["selected_target", "caster"]
@@ -123,6 +124,15 @@ class RecurringTempHpParams(BaseModel):
     amount_source: Literal["caster_spellcasting_modifier"]
     timing: Literal["start_of_target_turn"]
     remove_granted_temp_hp_on_end: bool = True
+
+
+class DelayedDamageParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dice: str
+    damageType: str
+    timing: Literal["target_turn_end"] = "target_turn_end"
+    apply_once: bool = True
 
 
 class ModifyStatParams(BaseModel):
@@ -283,6 +293,7 @@ class SpellDeclarativeEffect(BaseModel):
         | AttackAdvantageAgainstTargetParams
         | RollDisadvantageModifierParams
         | RecurringTempHpParams
+        | DelayedDamageParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
 
@@ -342,4 +353,6 @@ class SpellDeclarativeEffect(BaseModel):
             )
         if self.type == "recurring_temp_hp" and not isinstance(self.params, RecurringTempHpParams):
             raise ValueError("recurring_temp_hp effects require RecurringTempHpParams")
+        if self.type == "delayed_damage" and not isinstance(self.params, DelayedDamageParams):
+            raise ValueError("delayed_damage effects require DelayedDamageParams")
         return self

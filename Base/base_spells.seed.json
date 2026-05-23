@@ -805,6 +805,71 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "acid_arrow",
+      "nameEn": "Melf's Acid Arrow",
+      "namePt": "Flecha Ácida",
+      "descriptionEn": "A shimmering green arrow streaks toward a target within range and bursts in a spray of acid. Make a ranged spell attack against the target. On a hit, the target takes 4d4 acid damage immediately and 2d4 acid damage at the end of its next turn. On a miss, the arrow splashes and the target takes half of the immediate damage.",
+      "descriptionPt": "Uma flecha verde cintilante voa até um alvo no alcance e explode em ácido. Faça um ataque mágico à distância contra o alvo. No acerto, o alvo sofre 4d4 de dano ácido imediatamente e 2d4 de dano ácido no fim do próximo turno dele. No erro, o ácido espirra e o alvo sofre metade do dano imediato.",
+      "level": 2,
+      "school": "evocation",
+      "classesJson": [
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "Powdered rhubarb leaf and an adder's stomach.",
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "damageDice": "4d4",
+      "damageType": "Acid",
+      "attackMissOutcome": "half_damage",
+      "effects": [
+        {
+          "type": "delayed_damage",
+          "target": "selected_target",
+          "duration": {
+            "type": "manual"
+          },
+          "params": {
+            "dice": "2d4",
+            "damageType": "Acid",
+            "timing": "target_turn_end",
+            "apply_once": true
+          }
+        }
+      ],
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d4",
+        "perLevel": 1
+      },
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "maxTargets": 1,
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "ranged_spell",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "misty_step",
       "nameEn": "Misty Step",
       "namePt": "Passo Nebuloso",

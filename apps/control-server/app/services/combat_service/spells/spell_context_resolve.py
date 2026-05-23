@@ -239,6 +239,7 @@ class SpellContextResolveMixin:
         save_ability = None
         save_dc = None
         save_success_outcome = None
+        attack_miss_outcome = None
         attack_bonus = None
 
         if spell_mode == "heal":
@@ -269,6 +270,9 @@ class SpellContextResolveMixin:
             attack_bonus = req.spell_attack_bonus if isinstance(req.spell_attack_bonus, int) else None
             if not isinstance(attack_bonus, int):
                 attack_bonus = spell_mod + prof_bonus
+            attack_miss_outcome = cls._normalize_attack_miss_outcome(
+                getattr(catalog_spell, "attack_miss_outcome", None)
+            ) or "none"
         elif spell_mode == "saving_throw":
             save_ability = cls._normalize_ability_name(req.save_ability or catalog_save_ability)
             save_dc = req.save_dc if isinstance(req.save_dc, int) else None
@@ -290,6 +294,7 @@ class SpellContextResolveMixin:
             "save_ability": save_ability,
             "save_dc": save_dc,
             "save_success_outcome": save_success_outcome,
+            "attack_miss_outcome": attack_miss_outcome,
         }
 
     @classmethod
@@ -417,6 +422,34 @@ class SpellContextResolveMixin:
         else:
             effect_instance_count = 1
             effect_instance_dice = None
+        delayed_damage_preview = None
+        effects = getattr(catalog_spell, "effects_json", None)
+        if isinstance(effects, list):
+            for effect in effects:
+                if not isinstance(effect, dict) or effect.get("type") != "delayed_damage":
+                    continue
+                params = effect.get("params")
+                if not isinstance(params, dict):
+                    continue
+                base_delayed_dice = params.get("dice")
+                if not isinstance(base_delayed_dice, str) or not base_delayed_dice.strip():
+                    continue
+                delayed_damage_preview = base_delayed_dice.strip()
+                structured_upcast = resolved_upcast.get("structured_upcast")
+                upcast_levels = cls._safe_int(upcast_result.get("upcast_levels"), 0)
+                if isinstance(structured_upcast, dict) and upcast_levels > 0:
+                    upcast_dice = structured_upcast.get("dice")
+                    per_level = structured_upcast.get("perLevel")
+                    repeats = upcast_levels * (
+                        per_level if isinstance(per_level, int) and per_level > 0 else 1
+                    )
+                    if isinstance(upcast_dice, str) and upcast_dice.strip() and repeats > 0:
+                        delayed_damage_preview = cls._merge_dice_expressions(
+                            delayed_damage_preview,
+                            upcast_dice,
+                            repeats=repeats,
+                        )
+                break
         return {
             "spell_name": source_context["spell_name"],
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
@@ -453,7 +486,9 @@ class SpellContextResolveMixin:
             "save_ability": resolved_math["save_ability"],
             "save_dc": resolved_math["save_dc"],
             "save_success_outcome": resolved_math["save_success_outcome"],
+            "attack_miss_outcome": resolved_math["attack_miss_outcome"],
             "effects": getattr(catalog_spell, "effects_json", None),
+            "delayed_damage_preview": delayed_damage_preview,
             "attack_advantage_condition": getattr(catalog_spell, "attack_advantage_condition_json", None),
             "on_end_effects": getattr(catalog_spell, "on_end_effects_json", None),
             "variant_definitions": getattr(catalog_spell, "variants_json", None),

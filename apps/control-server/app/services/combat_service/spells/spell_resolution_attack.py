@@ -105,5 +105,37 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
             else:
                 result.damage = amount
         else:
+            attack_miss_outcome = cls._normalize_attack_miss_outcome(
+                spell_context.get("attack_miss_outcome")
+            ) or "none"
+            if (
+                attack_miss_outcome == "half_damage"
+                and effect_kind == "damage"
+                and effect_roll_required
+                and isinstance(spell_context.get("effect_dice"), str)
+            ):
+                _, rolled_total = cls._resolve_damage_roll(
+                    spell_context.get("effect_dice") or "",
+                    critical=False,
+                    roll_source=req.roll_source if req.roll_source in {"system", "manual"} else "system",
+                    manual_rolls=req.manual_rolls,
+                )
+                result.rolled_effect_total = rolled_total
+                amount = max(0, rolled_total // 2)
+                if amount > 0:
+                    result.new_hp, result.effect_msg, result.previous_hp, result.concentration_check = cls._apply_spell_effect(
+                        db,
+                        state,
+                        target_p["ref_id"],
+                        target_p["kind"],
+                        effect_kind,
+                        amount,
+                        damage_type=spell_context.get("damage_type"),
+                        is_critical=False,
+                        concentration_roll_source=req.concentration_roll_source,
+                        concentration_manual_roll=req.concentration_manual_roll,
+                        attacker_participant_id=attacker.get("id"),
+                    )
+                    result.damage = amount
             flag_modified(state, "participants")
         return result

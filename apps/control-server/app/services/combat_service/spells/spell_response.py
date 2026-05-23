@@ -104,6 +104,11 @@ class SpellResponseMixin:
                     f"{attacker['display_name']} conjurou {spell_context['spell_name']} em {target_p['display_name']}: "
                     f"{result.roll_total} total vs {ac_display}{cover_text}{adv_text}{vis_text} - errou."
                 )
+                if result.damage > 0:
+                    log_message += (
+                        f" Ainda assim causou {result.damage} de dano de "
+                        f"{spell_context.get('damage_type') or 'energia'} por efeito em erro."
+                    )
         elif spell_mode == "saving_throw":
             if result.pending_save_id:
                 log_message = (
@@ -262,6 +267,7 @@ class SpellResponseMixin:
             "save_ability": spell_context.get("save_ability"),
             "save_dc": response_save_dc,
             "save_success_outcome": save_success_outcome,
+            "attack_miss_outcome": spell_context.get("attack_miss_outcome"),
             "effect_dice": effect_dice,
             "effect_bonus": resp_effect_bonus,
             "pending_spell_id": result.pending_spell_id,
@@ -301,5 +307,10 @@ class SpellResponseMixin:
                 automation_result.get("applied_declarative_effects_by_target")
                 if automation_result is not None
                 else on_hit_applied_declarative_effects_by_target
+            ),
+            "damage_mode": (
+                "half_on_miss"
+                if spell_mode == "spell_attack" and result.is_hit is False and result.damage > 0
+                else "normal"
             ),
         }

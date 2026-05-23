@@ -148,8 +148,10 @@ class CombatResolvedSpellContext(BaseModel):
     requires_saving_throw: bool = False
     requires_target_hearing: bool | None = None
     save_ability: AbilityName | None = None
+    attack_miss_outcome: Literal["none", "half_damage"] | None = None
     damage_type: str | None = None
     damage_preview: str | None = None
+    delayed_damage_preview: str | None = None
     attack_advantage_condition: AttackAdvantageCondition | None = None
     effect_instance_count: int = 1
     effect_instance_dice: str | None = None
@@ -412,6 +414,7 @@ class CombatSpellResult(BaseModel):
     # Area spells expose per-target base_save_dc + effective_save_dc via CombatAreaTargetOutcome.
     save_dc: int | None = None
     save_success_outcome: Literal["none", "half_damage"] | None = None
+    attack_miss_outcome: Literal["none", "half_damage"] | None = None
     effect_dice: str | None = None
     effect_bonus: int | None = None
     pending_spell_id: str | None = None
@@ -443,3 +446,4 @@ class CombatSpellResult(BaseModel):
     target_variant_assignments: list[dict] | None = None
     manual_notes_by_target: list[dict] | None = None
     applied_declarative_effects_by_target: list[AppliedDeclarativeEffectsByTargetEntry] | None = None
+    damage_mode: Literal["normal", "half_on_miss"] = "normal"
