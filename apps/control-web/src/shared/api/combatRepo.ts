@@ -410,8 +410,10 @@ export type CombatResolvedSpellContext = {
   requires_attack_roll: boolean;
   requires_saving_throw: boolean;
   save_ability?: string | null;
+  attack_miss_outcome?: "none" | "half_damage" | null;
   damage_type?: string | null;
   damage_preview?: string | null;
+  delayed_damage_preview?: string | null;
   effect_instance_count: number;
   effect_instance_dice?: string | null;
   base_effect_instance_count?: number | null;
@@ -460,6 +462,7 @@ export type CombatSpellResult = {
   save_ability?: string | null;
   save_dc?: number | null;
   save_success_outcome?: "none" | "half_damage" | null;
+  attack_miss_outcome?: "none" | "half_damage" | null;
   effect_dice?: string | null;
   effect_bonus?: number | null;
   pending_spell_id?: string | null;
@@ -535,6 +538,7 @@ export type CombatSpellResult = {
     manual_notes: SpellVariantManualNote[];
   }> | null;
   applied_declarative_effects_by_target?: AppliedDeclarativeEffectsByTargetEntry[] | null;
+  damage_mode?: "normal" | "half_on_miss";
 };
 
 export type CombatMapPreviewToken = {

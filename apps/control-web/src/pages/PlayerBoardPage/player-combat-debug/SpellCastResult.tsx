@@ -45,6 +45,9 @@ const buildNarrativeText = (
         ? `${result.spell_name} acertou ${result.target_display_name}. Agora role o ${effectKindLabel}${result.is_critical ? ` critico (${effectDiceLabel})` : ""}.`
         : `${result.spell_name} acertou ${result.target_display_name} e ${result.effect_kind === "healing" ? `curou ${result.healing}` : `causou ${result.damage} de dano`}.`;
     }
+    if (result.damage_mode === "half_on_miss" && result.damage > 0) {
+      return `${result.spell_name} errou ${result.target_display_name}, mas ainda causou metade do dano: ${result.damage}.`;
+    }
     return `${result.spell_name} nao acertou ${result.target_display_name}.`;
   }
 

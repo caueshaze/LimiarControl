@@ -59,6 +59,7 @@ export type BaseSpell = {
   damageType: string | null;
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
+  attackMissOutcome?: "none" | "half_damage" | null;
   requiresTargetSight?: boolean | null;
   requiresTargetEffect?: boolean | null;
   requiresPointSight?: boolean | null;
@@ -152,6 +153,7 @@ const adapt = (api: ApiBaseSpell, scope: "base" | "campaign"): BaseSpell => ({
   damageType: api.damageType ?? null,
   savingThrow: api.savingThrow ?? null,
   saveSuccessOutcome: api.saveSuccessOutcome ?? null,
+  attackMissOutcome: api.attackMissOutcome ?? null,
   requiresTargetSight: api.requiresTargetSight ?? null,
   requiresTargetEffect: api.requiresTargetEffect ?? null,
   requiresPointSight: api.requiresPointSight ?? null,

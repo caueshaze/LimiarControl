@@ -21,6 +21,7 @@ const resolvedContextDefaults: CombatResolvedSpellContext = {
   resolution_type: "direct_damage",
   requires_attack_roll: false,
   requires_saving_throw: false,
+  attack_miss_outcome: null,
   effect_instance_count: 1,
   upcast_applied: false,
   upcast_added_instances: 0,
@@ -61,6 +62,8 @@ describe("buildSpellPreviewModel", () => {
     expect(model.effectInstanceCount).toBe(5);
     expect(model.effectInstanceDice).toBe("1d4+1");
     expect(model.damagePreview).toBe("5d4+5");
+    expect(model.delayedDamagePreview).toBeNull();
+    expect(model.attackMissOutcome).toBeNull();
     expect(model.rangeMeters).toBe(36);
   });
 
@@ -102,6 +105,7 @@ describe("buildSpellPreviewModel", () => {
     expect(model.effectInstanceCount).toBe(2);
     expect(model.effectInstanceDice).toBe("1d10");
     expect(model.damagePreview).toBe("2d10");
+    expect(model.delayedDamagePreview).toBeNull();
     expect(model.requiresAttackRoll).toBe(true);
     expect(model.resolutionType).toBe("spell_attack");
   });
@@ -142,6 +146,7 @@ describe("buildSpellPreviewModel", () => {
     expect(model.effectInstanceCount).toBe(1);
     expect(model.effectInstanceDice).toBeNull();
     expect(model.damagePreview).toBe("2d6");
+    expect(model.delayedDamagePreview).toBeNull();
   });
 
   it("does not let fallback override fields present on resolvedContext", () => {
@@ -323,5 +328,31 @@ describe("buildSpellPreviewModel", () => {
 
     expect(model.source).toBe("fallback");
     expect(model.coverAppliesToSave).toBeNull();
+  });
+
+  it("maps acid arrow miss outcome and delayed damage preview from resolved context", () => {
+    const model = buildSpellPreviewModel(
+      {
+        ...resolvedContextDefaults,
+        spell_name: "Melf's Acid Arrow",
+        spell_level: 2,
+        resolution_type: "spell_attack",
+        requires_attack_roll: true,
+        attack_miss_outcome: "half_damage",
+        damage_preview: "6d4",
+        delayed_damage_preview: "4d4",
+        damage_type: "acid",
+      },
+      {
+        spell: baseFallbackSpell,
+        selectedSlotLevel: 4,
+        spellMode: "spell_attack",
+        spellEffectDice: "4d4",
+      },
+    );
+
+    expect(model.attackMissOutcome).toBe("half_damage");
+    expect(model.delayedDamagePreview).toBe("4d4");
+    expect(model.damagePreview).toBe("6d4");
   });
 });

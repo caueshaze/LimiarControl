@@ -5,7 +5,9 @@ import { resolveEffectInstanceContext } from "./InstanceTargetSelector";
 export type SpellPreviewModel = {
   resolutionType: CombatSpellMode | null;
   damagePreview: string | null;
+  delayedDamagePreview: string | null;
   damageType: string | null;
+  attackMissOutcome: "none" | "half_damage" | null;
   effectInstanceCount: number;
   effectInstanceDice: string | null;
   targetType: string | null;
@@ -67,7 +69,9 @@ export const buildSpellPreviewModel = (
     return {
       resolutionType: resolvedContext.resolution_type ?? null,
       damagePreview: normalizeString(resolvedContext.damage_preview),
+      delayedDamagePreview: normalizeString(resolvedContext.delayed_damage_preview),
       damageType: normalizeString(resolvedContext.damage_type),
+      attackMissOutcome: resolvedContext.attack_miss_outcome ?? null,
       effectInstanceCount: Math.max(1, resolvedContext.effect_instance_count ?? 1),
       effectInstanceDice: normalizeString(resolvedContext.effect_instance_dice),
       targetType: normalizeString(resolvedContext.target_type),
@@ -90,7 +94,9 @@ export const buildSpellPreviewModel = (
   return {
     resolutionType: fallback.spellMode ?? null,
     damagePreview: normalizeString(fallback.spellEffectDice),
+    delayedDamagePreview: null,
     damageType: normalizeString(fallback.spell.damageType ?? null),
+    attackMissOutcome: null,
     effectInstanceCount: Math.max(1, fallbackInstance.instanceCount),
     effectInstanceDice: normalizeString(fallbackInstance.instanceDice),
     targetType: normalizeString(fallback.spell.targetType ?? null),

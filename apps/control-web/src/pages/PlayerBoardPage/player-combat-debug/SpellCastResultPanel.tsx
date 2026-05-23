@@ -98,7 +98,9 @@ export const SpellCastResultPanel = ({
               ? pendingEffect
                 ? `${result.spell_name} acertou ${result.target_display_name}. Agora role o ${effectKindLabel}${result.is_critical ? ` critico (${effectDiceLabel})` : ""}.`
                 : `${result.spell_name} acertou ${result.target_display_name} e ${result.effect_kind === "healing" ? `curou ${result.healing}` : `causou ${result.damage} de dano`}.`
-              : `${result.spell_name} nao acertou ${result.target_display_name}.`
+              : result.damage_mode === "half_on_miss" && result.damage > 0
+                ? `${result.spell_name} errou ${result.target_display_name}, mas ainda causou metade do dano: ${result.damage}.`
+                : `${result.spell_name} nao acertou ${result.target_display_name}.`
             : result.action_kind === "saving_throw"
               ? result.is_saved
                 ? result.save_success_outcome === "half_damage"

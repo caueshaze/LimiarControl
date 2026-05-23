@@ -130,6 +130,7 @@ const buildSpellOptions = (
         areaShape: catalogSpell?.areaShape ?? null,
         savingThrow: catalogSpell?.savingThrow ?? null,
         saveSuccessOutcome: catalogSpell?.saveSuccessOutcome ?? null,
+        attackMissOutcome: catalogSpell?.attackMissOutcome ?? null,
         cantripScaling: catalogSpell?.cantripScaling ?? null,
         characterLevel: playerSheet?.level ?? null,
         availableSlotLevels:

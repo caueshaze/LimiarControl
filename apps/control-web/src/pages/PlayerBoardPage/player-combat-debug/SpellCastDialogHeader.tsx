@@ -236,6 +236,12 @@ export const SpellCastDialogHeader = ({
         </p>
         <p className="mt-1 text-sm text-slate-200">
           {previewModel.damagePreview ? `Dano ${previewModel.damagePreview}` : "Sem dano direto"}
+          {previewModel.attackMissOutcome === "half_damage" ? (
+            <span className="text-amber-300"> · no erro: metade do dano</span>
+          ) : null}
+          {previewModel.delayedDamagePreview ? (
+            <span className="text-cyan-300">{` · fim do próximo turno: ${previewModel.delayedDamagePreview}`}</span>
+          ) : null}
           {showInstanceCount ? (
             <span className="text-fuchsia-300">
               {` · ${previewModel.effectInstanceCount} instâncias`}

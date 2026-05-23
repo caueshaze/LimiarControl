@@ -47,6 +47,7 @@ export type CombatSpellOption = {
   damageType: string | null;
   savingThrow: string | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
+  attackMissOutcome?: "none" | "half_damage" | null;
   targetType?: "self" | "touch" | "ranged" | "special" | null;
   selectionType?: SpellSelectionType | null;
   originType?: SpellOriginType | null;

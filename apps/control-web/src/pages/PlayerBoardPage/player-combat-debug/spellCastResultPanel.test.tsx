@@ -146,6 +146,33 @@ describe("SpellCastResultPanel", () => {
     expect(markup).toContain("1d6: [6] = 6");
   });
 
+  it("exibe narrativa de metade no erro para Flecha Ácida", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastResultPanel
+        {...baseProps}
+        result={{
+          spell_name: "Flecha Ácida",
+          spell_canonical_key: "acid_arrow",
+          action_kind: "spell_attack",
+          effect_kind: "damage",
+          damage: 4,
+          healing: 0,
+          is_hit: false,
+          damage_mode: "half_on_miss",
+          target_display_name: "Goblin A",
+          target_kind: "session_entity",
+          effect_dice: "4d4",
+          effect_rolls: [2, 2, 2, 3],
+          base_effect: 9,
+          effect_bonus: 0,
+        }}
+      />,
+    );
+
+    expect(markup).toContain("errou Goblin A, mas ainda causou metade do dano: 4");
+    expect(markup).toContain("metade aplicada = 4");
+  });
+
   it("explica quando um alvo de area foi excluido por guardrail mecanico", () => {
     const markup = renderToStaticMarkup(
       <SpellCastResultPanel

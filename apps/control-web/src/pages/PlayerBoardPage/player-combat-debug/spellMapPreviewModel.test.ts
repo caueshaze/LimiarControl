@@ -8,7 +8,9 @@ import type { SpellPreviewModel } from "./spellPreviewModel";
 const baseSingleTargetModel: SpellPreviewModel = {
   resolutionType: "direct_damage",
   damagePreview: "3d4+3",
+  delayedDamagePreview: null,
   damageType: "force",
+  attackMissOutcome: null,
   effectInstanceCount: 1,
   effectInstanceDice: null,
   targetType: "ranged",
@@ -166,7 +168,9 @@ describe("buildSpellMapPreviewModel – Acid Splash (saving throw, single-instan
   const acidSplashModel: SpellPreviewModel = {
     resolutionType: "saving_throw",
     damagePreview: "2d6",
+    delayedDamagePreview: null,
     damageType: "acid",
+    attackMissOutcome: null,
     effectInstanceCount: 1,
     effectInstanceDice: null,
     targetType: "ranged",
@@ -204,7 +208,9 @@ describe("buildSpellMapPreviewModel – Magic Missile slot 3 (effectInstanceCoun
   const magicMissileSlot3: SpellPreviewModel = {
     resolutionType: "direct_damage",
     damagePreview: "5d4+5",
+    delayedDamagePreview: null,
     damageType: "force",
+    attackMissOutcome: null,
     effectInstanceCount: 5,
     effectInstanceDice: "1d4+1",
     targetType: "ranged",
@@ -364,7 +370,9 @@ describe("buildSpellMapPreviewModel – Eldritch Blast level 5 (effectInstanceCo
   const eldritchBlastLvl5: SpellPreviewModel = {
     resolutionType: "spell_attack",
     damagePreview: "2d10",
+    delayedDamagePreview: null,
     damageType: "force",
+    attackMissOutcome: null,
     effectInstanceCount: 2,
     effectInstanceDice: "1d10",
     targetType: "ranged",
@@ -433,7 +441,9 @@ describe("buildSpellMapPreviewModel – Fireball (area spell)", () => {
   const fireballModel: SpellPreviewModel = {
     resolutionType: "saving_throw",
     damagePreview: "8d6",
+    delayedDamagePreview: null,
     damageType: "fire",
+    attackMissOutcome: null,
     effectInstanceCount: 1,
     effectInstanceDice: null,
     targetType: "ranged",
@@ -622,7 +632,9 @@ describe("buildSpellMapPreviewModel – Chebyshev distance boundary", () => {
 const baseAreaModel: SpellPreviewModel = {
   resolutionType: "direct_damage",
   damagePreview: "8d6",
+  delayedDamagePreview: null,
   damageType: "fire",
+  attackMissOutcome: null,
   effectInstanceCount: 1,
   effectInstanceDice: null,
   targetType: "area",

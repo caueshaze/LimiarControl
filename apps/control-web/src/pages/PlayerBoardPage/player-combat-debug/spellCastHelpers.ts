@@ -24,15 +24,20 @@ export const formatSpellEffectBreakdown = (result: CombatSpellResult) => {
     result.is_saved &&
     result.save_success_outcome === "half_damage" &&
     result.effect_kind !== "healing";
+  const isHalfDamageMiss =
+    result.action_kind === "spell_attack" &&
+    result.is_hit === false &&
+    result.damage_mode === "half_on_miss" &&
+    result.effect_kind !== "healing";
 
   if (!rolls.length) {
     const baseText = `Base ${result.base_effect ?? 0}${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
-    return isHalfDamageSave
+    return isHalfDamageSave || isHalfDamageMiss
       ? `${baseText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
       : `${baseText} = ${effectTotal}`;
   }
   const rollText = `${effectDiceLabel}: [${rolls.join(", ")}]${result.effect_bonus ? ` ${result.effect_bonus >= 0 ? "+" : "-"} ${Math.abs(result.effect_bonus)}` : ""}`;
-  return isHalfDamageSave
+  return isHalfDamageSave || isHalfDamageMiss
     ? `${rollText} = ${rolledTotal}; metade aplicada = ${effectTotal}`
     : `${rollText} = ${effectTotal}`;
 };

@@ -64,7 +64,9 @@ const baseProps = {
 const buildPreviewModel = (overrides: Partial<SpellPreviewModel>): SpellPreviewModel => ({
   resolutionType: "direct_damage",
   damagePreview: null,
+  delayedDamagePreview: null,
   damageType: null,
+  attackMissOutcome: null,
   effectInstanceCount: 1,
   effectInstanceDice: null,
   targetType: null,
@@ -384,6 +386,28 @@ describe("SpellCastDialogHeader tactical preview", () => {
     expect(markup).toContain("Dano 8d6");
     expect(markup).toContain("Afetados: 3");
     expect(markup).toContain("Alvos: Goblin A, Goblin B, Orc C");
+  });
+
+  it("renderiza Flecha Ácida com metade no erro e dano atrasado", () => {
+    const markup = renderToStaticMarkup(
+      <SpellCastDialogHeader
+        {...baseProps}
+        spell={{ ...baseSpell, name: "Flecha Ácida", canonicalKey: "acid_arrow", level: 2 }}
+        spellMode="spell_attack"
+        previewModel={buildPreviewModel({
+          resolutionType: "spell_attack",
+          requiresAttackRoll: true,
+          damagePreview: "6d4",
+          delayedDamagePreview: "4d4",
+          attackMissOutcome: "half_damage",
+          damageType: "acid",
+        })}
+      />,
+    );
+
+    expect(markup).toContain("Dano 6d4");
+    expect(markup).toContain("no erro: metade do dano");
+    expect(markup).toContain("fim do próximo turno: 4d4");
   });
 
   it("Fireball válida mostra Origem da área: válida", () => {

@@ -45,6 +45,7 @@ export type CombatSpellOption = {
   chargesCurrent?: number | null;
   chargesMax?: number | null;
   saveSuccessOutcome?: "none" | "half_damage" | null;
+  attackMissOutcome?: "none" | "half_damage" | null;
   savingThrow: string | null;
   suggestedMode: CombatSpellMode | null;
   availableSlotLevels: number[];
