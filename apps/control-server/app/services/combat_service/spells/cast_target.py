@@ -481,6 +481,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             ),
             "upcast_instance_effect_dice": spell_context.get("upcast_instance_effect_dice"),
             "cover_applies_to_save": spell_context.get("cover_applies_to_save"),
+            "utility": spell_context.get("utility"),
+            "throw_attack": spell_context.get("throw_attack"),
             "variants": spell_context.get("variants"),
             "selected_variant_key": spell_context.get("selected_variant_key"),
             "target_variant_assignments": spell_context.get("target_variant_assignments"),

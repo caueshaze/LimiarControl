@@ -236,6 +236,77 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "produce_flame",
+      "nameEn": "Produce Flame",
+      "namePt": "Criar Chamas",
+      "descriptionEn": "A flickering flame appears in your hand. The flame remains there for up to 10 minutes. While it persists, you can hurl it at a creature within range as a ranged spell attack.",
+      "descriptionPt": "Uma chama tremulante aparece na sua mão e permanece por até 10 minutos. Enquanto ela persistir, você pode arremessá-la contra uma criatura no alcance como um ataque de magia à distância.",
+      "level": 0,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 0,
+      "rangeText": "Self",
+      "duration": "10 minutes",
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "utility",
+      "damageDice": "1d8",
+      "damageType": "Fire",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "self",
+      "selectionType": "self",
+      "originType": "caster",
+      "targetAnchor": "caster",
+      "attackType": "none",
+      "rangeKind": "self",
+      "effectTiming": "persistent",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "shocking_grasp",
       "nameEn": "Shocking Grasp",
       "namePt": "Toque Chocante",

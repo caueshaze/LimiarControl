@@ -6,10 +6,23 @@ from app.services.magic_item_effects import get_magic_item_spell_key
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 from ..exceptions import CombatServiceError, _parse_dice
-from ..targeting_requirements import resolve_spell_targeting_requirements
+from ..targeting_requirements import (
+    TargetingRequirements,
+    resolve_spell_targeting_requirements,
+)
 
 
 class SpellContextResolveMixin:
+    _PRODUCE_FLAME_UTILITY_META = {
+        "type": "produce_flame",
+        "creates_light": True,
+        "bright_light_meters": 3,
+        "dim_light_meters": 3,
+        "can_throw": True,
+        "throw_range_meters": 9,
+        "throw_attack_type": "ranged_spell",
+    }
+
     @classmethod
     def _normalize_spell_variants(cls, raw_variants: object) -> list[SpellVariant]:
         if not isinstance(raw_variants, list):
@@ -160,6 +173,9 @@ class SpellContextResolveMixin:
         catalog_resolution = getattr(catalog_spell, "resolution_type", None)
         catalog_spell_mode = cls._map_resolution_type_to_spell_mode(catalog_resolution)
         targeting_semantics = resolve_spell_targeting_semantics(catalog_spell)
+        normalized_key = cls._normalize_lookup(
+            catalog_spell.canonical_key or requested_canonical_key
+        ).replace(" ", "_")
         automation_default_mode = cls._spell_default_mode_override(
             catalog_spell.canonical_key or requested_canonical_key
         )
@@ -179,6 +195,25 @@ class SpellContextResolveMixin:
         )
         if spell_mode not in ("spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"):
             raise CombatServiceError("Spell cast mode is required for this spell.", 400)
+        if normalized_key == "produce_flame":
+            if spell_mode == "spell_attack":
+                targeting_semantics = targeting_semantics.__class__(
+                    selection_type="creature",
+                    origin_type="caster",
+                    target_anchor="selected_target",
+                    attack_type="ranged_spell",
+                    range_kind="distance",
+                    effect_timing="immediate",
+                )
+            else:
+                targeting_semantics = targeting_semantics.__class__(
+                    selection_type="self",
+                    origin_type="caster",
+                    target_anchor="caster",
+                    attack_type="none",
+                    range_kind="self",
+                    effect_timing="persistent",
+                )
         if spell_mode == "direct_damage" and catalog_save_ability:
             raise CombatServiceError(
                 "This spell is structured as a saving throw spell. direct_damage is only allowed as an explicit fallback for spells without attack/save automation.",
@@ -188,6 +223,21 @@ class SpellContextResolveMixin:
             catalog_spell,
             spell_mode=spell_mode,
         )
+        if normalized_key == "produce_flame":
+            if spell_mode == "spell_attack":
+                targeting_requirements = TargetingRequirements(
+                    requires_target_sight=True,
+                    requires_target_effect=True,
+                    requires_point_sight=False,
+                    requires_point_effect=False,
+                )
+            else:
+                targeting_requirements = TargetingRequirements(
+                    requires_target_sight=False,
+                    requires_target_effect=False,
+                    requires_point_sight=False,
+                    requires_point_effect=False,
+                )
         slot_level = None
         if spell_level > 0:
             if source_kind == "magic_item":
@@ -247,6 +297,13 @@ class SpellContextResolveMixin:
             if not isinstance(effect_dice, str) or not effect_dice.strip():
                 effect_dice = req.heal_dice or (legacy_expression if req.is_heal else None)
             effect_bonus = req.heal_bonus if isinstance(req.heal_bonus, int) else 0
+        elif (
+            spell_mode == "utility"
+            and cls._normalize_lookup(getattr(catalog_spell, "canonical_key", None)).replace(" ", "_")
+            == "produce_flame"
+        ):
+            effect_dice = catalog_spell.damage_dice
+            damage_type = catalog_spell.damage_type
         elif spell_mode not in ("utility", "teleport"):
             effect_dice = catalog_spell.damage_dice
             if not isinstance(effect_dice, str) or not effect_dice.strip():
@@ -422,6 +479,12 @@ class SpellContextResolveMixin:
         else:
             effect_instance_count = 1
             effect_instance_dice = None
+        spell_key = cls._normalize_lookup(catalog_spell.canonical_key).replace(" ", "_")
+        range_meters = getattr(catalog_spell, "range_meters", None)
+        target_type = getattr(catalog_spell, "target_type", None)
+        if spell_key == "produce_flame" and resolved_mode["spell_mode"] == "spell_attack":
+            range_meters = 9
+            target_type = "ranged"
         delayed_damage_preview = None
         effects = getattr(catalog_spell, "effects_json", None)
         if isinstance(effects, list):
@@ -455,7 +518,7 @@ class SpellContextResolveMixin:
             "spell_canonical_key": catalog_spell.canonical_key or source_context["requested_canonical_key"],
             "spell_level": spell_level,
             "spell_mode": resolved_mode["spell_mode"],
-            "target_type": getattr(catalog_spell, "target_type", None),
+            "target_type": target_type,
             "max_targets": effective_max_targets,
             "base_max_targets": base_max_targets,
             "selection_type": resolved_mode["targeting_semantics"].selection_type,
@@ -465,7 +528,7 @@ class SpellContextResolveMixin:
             "range_kind": resolved_mode["targeting_semantics"].range_kind,
             "effect_timing": resolved_mode["targeting_semantics"].effect_timing,
             "area_shape": getattr(catalog_spell, "area_shape", None),
-            "range_meters": getattr(catalog_spell, "range_meters", None),
+            "range_meters": range_meters,
             "radius_meters": getattr(catalog_spell, "radius_meters", None),
             "length_meters": getattr(catalog_spell, "length_meters", None),
             "side_meters": getattr(catalog_spell, "side_meters", None),
@@ -515,6 +578,21 @@ class SpellContextResolveMixin:
             "effect_instance_count": effect_instance_count,
             "effect_instance_dice": effect_instance_dice,
             "base_effect_instance_count": base_effect_instance_count,
+            "utility": cls._PRODUCE_FLAME_UTILITY_META if spell_key == "produce_flame" else None,
+            "throw_attack": (
+                {
+                    "attack_type": "ranged_spell",
+                    "range_meters": 9,
+                    "damage_preview": {
+                        "dice": upcast_result["effect_dice"]
+                        if isinstance(upcast_result.get("effect_dice"), str)
+                        else resolved_math["effect_dice"],
+                        "damage_type": resolved_math["damage_type"] or "Fire",
+                    },
+                }
+                if spell_key == "produce_flame"
+                else None
+            ),
             "elemental_affinity_eligible": bool(resolved_upcast["elemental_affinity"].get("eligible")),
             "elemental_affinity_damage_type": resolved_upcast["elemental_affinity"].get("damageType"),
             "elemental_affinity_bonus": resolved_upcast["elemental_affinity"].get("bonus"),

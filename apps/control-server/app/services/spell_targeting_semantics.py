@@ -45,6 +45,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "ensnaring_strike": SpellTargetingSemantics("none", "caster", "trigger_target", "none", "self", "triggered"),
     "hail_of_thorns": SpellTargetingSemantics("none", "caster", "trigger_target", "none", "self", "triggered"),
     "light": SpellTargetingSemantics("object", "caster", "selected_target", "none", "touch", "persistent"),
+    "produce_flame": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "guidance": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
     "longstrider": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
     "goodberry": SpellTargetingSemantics("none", "caster", "caster", "none", "self", "immediate"),

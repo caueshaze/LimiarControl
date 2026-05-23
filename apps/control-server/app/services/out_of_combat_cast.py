@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from math import floor
 from uuid import uuid4
 
-_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic"}
+_SPECIAL_OOC_UTILITY_SPELLS = {"detect_magic", "produce_flame"}
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +136,50 @@ def build_persisted_effects(
                         "lead_sheet": True,
                         "wood_or_earth_meters": 1,
                     },
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "produce_flame":
+            spell_name = spell.name_pt or spell.name_en
+            damage_dice = getattr(spell, "damage_dice", None) or "1d8"
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 600,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "produce_flame",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": caster_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": True,
+                    "narrative": True,
+                    "visual": True,
+                    "visible_to_all": True,
+                    "utility": "produce_flame",
+                    "creates_light": True,
+                    "bright_light_meters": 3,
+                    "dim_light_meters": 3,
+                    "can_throw": True,
+                    "throw_range_meters": 9,
+                    "throw_attack_type": "ranged_spell",
+                    "damage_dice": damage_dice,
+                    "damage_type": "Fire",
+                    "resolved_at_character_level": None,
                 },
                 "display_label": spell_name,
             }]

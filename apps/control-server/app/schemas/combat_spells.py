@@ -160,6 +160,8 @@ class CombatResolvedSpellContext(BaseModel):
     upcast_added_instances: int = 0
     upcast_instance_effect_dice: str | None = None
     cover_applies_to_save: str | None = None
+    utility: dict[str, Any] | None = None
+    throw_attack: dict[str, Any] | None = None
     variants: list["SpellVariantSummaryPayload"] | None = None
     selected_variant_key: str | None = None
     target_variant_assignments: list[TargetVariantAssignment] | None = None
