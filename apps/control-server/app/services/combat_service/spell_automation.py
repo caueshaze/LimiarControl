@@ -105,6 +105,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_goodberry_automation",
         ),
+        "purify_food_and_drink": SpellAutomationSpec(
+            canonical_key="purify_food_and_drink",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_purify_food_and_drink_automation",
+        ),
         "spiritual_weapon": SpellAutomationSpec(
             canonical_key="spiritual_weapon",
             default_mode="spell_attack",
@@ -567,6 +573,48 @@ class CombatSpellAutomationMixin:
             ),
             extra={
                 "__inventory_item_id": getattr(inventory_entry, "id", None),
+            },
+        )
+
+    @classmethod
+    async def _cast_purify_food_and_drink_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        variant_key = getattr(req, "variant_key", None)
+        if variant_key:
+            raise CombatServiceError("purify_food_and_drink não possui variantes.", status_code=400)
+
+        spell_name = spell_context["spell_name"]
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=(
+                f"{spell_name}: alimentos e bebidas não mágicos "
+                "em uma esfera de 1,5m foram purificados."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name}, "
+                "purificando alimentos e bebidas na área."
+            ),
+            extra={
+                "utility": "purify_food_and_drink",
+                "purified_food_and_drink": True,
+                "radius_meters": 1.5,
+                "instantaneous": True,
             },
         )
 

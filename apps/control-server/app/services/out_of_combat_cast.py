@@ -16,6 +16,7 @@ from uuid import uuid4
 _SPECIAL_OOC_UTILITY_SPELLS = {
     "detect_magic", "detect_poison_disease", "detect_evil_and_good",
     "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
+    "purify_food_and_drink",
 }
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
@@ -107,6 +108,9 @@ def build_persisted_effects(
     raw_effects = _resolve_effects(spell, variant_key)
     canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
     if not raw_effects:
+        if canonical_key == "purify_food_and_drink":
+            # Magia instantânea: sem efeito persistente. Retorna [] de propósito.
+            return []
         if canonical_key == "detect_magic":
             spell_name = spell.name_pt or spell.name_en
             group_id = str(uuid4()) if spell.concentration else None
