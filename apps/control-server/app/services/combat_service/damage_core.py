@@ -164,6 +164,14 @@ class CombatDamageCoreMixin:
             remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
         return target_model.current_hp, message, current, concentration_check
 
+    @staticmethod
+    def _participant_has_prevent_healing(participant: dict) -> bool:
+        for effect in (participant.get("active_effects") or []):
+            if effect.get("kind") == "spell_effect":
+                if (effect.get("metadata") or {}).get("prevent_healing") is True:
+                    return True
+        return False
+
     @classmethod
     def _apply_healing_to_target(cls, db: Session, target_ref_id: str, kind: str, amount: int, state: CombatState | None = None) -> tuple[int, str, int | None]:
         target_model, *_ = cls._get_stats(db, target_ref_id, kind, state.session_id if state else "")
@@ -176,6 +184,10 @@ class CombatDamageCoreMixin:
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
             if cls._is_player_dead_state(data):
                 return current, " (Dead characters require explicit revive, not normal healing.)", current
+            if state is not None:
+                _p = next((p for p in (state.participants or []) if p.get("ref_id") == target_ref_id), None)
+                if _p is not None and cls._participant_has_prevent_healing(_p):
+                    return current, " (Recuperação de PV impedida — efeito ativo no alvo.)", current
             if ws_is_active(data):
                 form_key = (data.get("wildShape") or {}).get("formKey")
                 form = get_form(form_key) if isinstance(form_key, str) else None
@@ -204,6 +216,10 @@ class CombatDamageCoreMixin:
         npc = db.exec(select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)).first()
         base_hp = npc.max_hp if npc else 999
         current = target_model.current_hp if target_model.current_hp is not None else base_hp or 0
+        if state is not None:
+            _p = next((p for p in (state.participants or []) if p.get("ref_id") == target_ref_id), None)
+            if _p is not None and cls._participant_has_prevent_healing(_p):
+                return current, " (Recuperação de PV impedida — efeito ativo no alvo.)", current
         target_model.current_hp = min(base_hp or 999, current + amount)
         status = cls._sync_participant_status(db, state, target_ref_id, kind, target_model)
         if current == 0 and target_model.current_hp > 0 and status == "active":

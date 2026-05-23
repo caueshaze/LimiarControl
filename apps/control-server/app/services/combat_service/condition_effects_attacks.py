@@ -72,6 +72,9 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
         roll_types = params.get("roll_types")
         if not isinstance(roll_types, list) or "attack" not in roll_types:
             continue
+        applies_when = params.get("applies_when_attacking_participant_id")
+        if isinstance(applies_when, str) and applies_when and applies_when != target.get("id"):
+            continue
         dis.append(params.get("source") or metadata.get("source_spell_name") or "roll_disadvantage_modifier")
         if params.get("consume_on_apply") is True:
             effect_id = effect.get("id")
