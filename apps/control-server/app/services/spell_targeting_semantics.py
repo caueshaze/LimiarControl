@@ -63,6 +63,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "purify_food_and_drink": SpellTargetingSemantics("none", "caster", "caster", "none", "distance", "immediate"),
     "minor_illusion": SpellTargetingSemantics("point", "caster", "selected_point", "none", "distance", "persistent"),
     "floating_disk": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
+    "spare_the_dying": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "immediate"),
 }
 
 

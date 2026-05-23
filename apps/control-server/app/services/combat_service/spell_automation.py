@@ -189,6 +189,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_produce_flame_automation",
         ),
+        "spare_the_dying": SpellAutomationSpec(
+            canonical_key="spare_the_dying",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_spare_the_dying_automation",
+        ),
     }
 
     @classmethod
@@ -226,15 +232,26 @@ class CombatSpellAutomationMixin:
         spell_canonical_key: str,
         target_participant: dict,
     ) -> None:
-        if cls._normalize_spell_automation_key(spell_canonical_key) != "animal_friendship":
-            return
-        creature_type = cls.resolve_effective_creature_type(
-            db,
-            session_id,
-            target_participant,
-        )
-        if creature_type != "beast":
-            raise CombatServiceError("Animal Friendship can only target beasts.", 400)
+        spell_key = cls._normalize_spell_automation_key(spell_canonical_key)
+        if spell_key == "animal_friendship":
+            creature_type = cls.resolve_effective_creature_type(
+                db,
+                session_id,
+                target_participant,
+            )
+            if creature_type != "beast":
+                raise CombatServiceError("Animal Friendship can only target beasts.", 400)
+        elif spell_key == "spare_the_dying":
+            creature_type = cls.resolve_effective_creature_type(
+                db,
+                session_id,
+                target_participant,
+            )
+            if creature_type in ("undead", "construct"):
+                raise CombatServiceError(
+                    "Poupar os Moribundos não afeta mortos-vivos ou constructos.",
+                    400,
+                )
 
     @classmethod
     def _is_hostile_team_context(cls, attacker: dict, target_participant: dict) -> bool:
@@ -1943,6 +1960,95 @@ class CombatSpellAutomationMixin:
         raise CombatServiceError(
             "Criar Chamas suporta apenas os modos utility e spell_attack.",
             400,
+        )
+
+    @classmethod
+    async def _cast_spare_the_dying_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        variant_key = getattr(req, "variant_key", None)
+        if variant_key:
+            raise CombatServiceError(
+                "Poupar os Moribundos não possui variantes.", 400
+            )
+
+        if not isinstance(target_participant, dict) or not target_participant:
+            raise CombatServiceError(
+                "Poupar os Moribundos exige um alvo.", 400
+            )
+
+        target_status = target_participant.get("status")
+        if target_status == "dead":
+            raise CombatServiceError(
+                "Poupar os Moribundos não afeta criaturas mortas.", 400
+            )
+
+        spell_name = spell_context["spell_name"]
+        target_kind = target_participant.get("kind", "session_entity")
+        target_ref_id = target_participant["ref_id"]
+
+        if target_kind == "player":
+            target_model, *_ = cls._get_stats(
+                db, target_ref_id, target_kind, session_id, combat_state=state
+            )
+            data = cls._as_dict(target_model.state_json)
+            current_hp = max(0, cls._safe_int(data.get("currentHP"), 0))
+            if current_hp > 0:
+                raise CombatServiceError(
+                    "Poupar os Moribundos só pode afetar criaturas com 0 HP.", 400
+                )
+
+            data["deathSaves"] = {"successes": 3, "failures": 0}
+            target_model.state_json = finalize_session_state_data(data)
+            cls._sync_participant_status(
+                db, state, target_ref_id, target_kind, target_model
+            )
+            flag_modified(target_model, "state_json")
+            db.add(target_model)
+            flag_modified(state, "participants")
+        else:
+            target_model, *_ = cls._get_stats(
+                db, target_ref_id, target_kind, session_id, combat_state=state
+            )
+            current_hp = max(0, target_model.current_hp or 0)
+            if current_hp > 0:
+                raise CombatServiceError(
+                    "Poupar os Moribundos só pode afetar criaturas com 0 HP.", 400
+                )
+
+            target_participant["status"] = "stable"
+            flag_modified(state, "participants")
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_kind,
+            action_kind="utility",
+            summary_text=(
+                f"{target_participant['display_name']} foi estabilizado por {spell_name}."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} em "
+                f"{target_participant['display_name']}, estabilizando a criatura."
+            ),
+            extra={
+                "utility": "spare_the_dying",
+                "stabilized": True,
+                "healing": 0,
+                "target_hp_after": 0,
+            },
         )
 
     @classmethod
