@@ -3048,6 +3048,78 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "vicious_mockery",
+      "nameEn": "Vicious Mockery",
+      "namePt": "Zombaria Viciosa",
+      "descriptionEn": "You unleash a string of insults laced with subtle enchantments at a creature you can see within range. If the target can hear you, it must succeed on a Wisdom saving throw or take 1d4 psychic damage and have disadvantage on the next attack roll it makes before the end of its next turn.",
+      "descriptionPt": "Você desfere uma sequência de insultos carregados de encantamento sutil contra uma criatura que você possa ver dentro do alcance. Se o alvo puder ouvi-lo, deve obter sucesso em uma salvaguarda de Sabedoria ou sofrer 1d4 de dano psíquico e ter desvantagem na próxima jogada de ataque que fizer antes do fim do próximo turno dele.",
+      "level": 0,
+      "school": "enchantment",
+      "classesJson": [
+        "Bard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 18,
+      "rangeText": "60 ft",
+      "duration": "Instantaneous",
+      "componentsJson": [
+        "V"
+      ],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "damage",
+      "savingThrow": "WIS",
+      "saveSuccessOutcome": "none",
+      "damageDice": "1d4",
+      "damageType": "Psychic",
+      "cantripScaling": {
+        "scalingMode": "character_level",
+        "scalingEffectType": "damage_dice",
+        "thresholds": [
+          {"characterLevel": 1, "damage": {"dice": "1d4"}},
+          {"characterLevel": 5, "damage": {"dice": "2d4"}},
+          {"characterLevel": 11, "damage": {"dice": "3d4"}},
+          {"characterLevel": 17, "damage": {"dice": "4d4"}}
+        ]
+      },
+      "effects": [
+        {
+          "type": "roll_disadvantage_modifier",
+          "target": "selected_target",
+          "duration": {
+            "type": "until_turn_end",
+            "anchor": "target"
+          },
+          "params": {
+            "mode": "disadvantage",
+            "roll_types": [
+              "attack"
+            ],
+            "consume_on_apply": true,
+            "source": "vicious_mockery"
+          },
+          "stacking": "replace"
+        }
+      ],
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetHearing": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "selectionType": "creature",
+      "originType": "caster",
+      "targetAnchor": "selected_target",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate"
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "poison_spray",
       "nameEn": "Poison Spray",
       "namePt": "Borrifo Venenoso",

@@ -395,6 +395,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "resolution_type": resolution_type,
             "requires_attack_roll": resolution_type == "spell_attack",
             "requires_saving_throw": resolution_type == "saving_throw",
+            "requires_target_hearing": spell_context.get("requires_target_hearing"),
             "save_ability": spell_context.get("save_ability"),
             "damage_type": spell_context.get("damage_type"),
             "damage_preview": spell_context.get("effect_dice"),

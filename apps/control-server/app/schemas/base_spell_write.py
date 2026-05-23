@@ -82,6 +82,7 @@ class BaseSpellWrite(BaseModel):
     persistentArea: Optional[SpellPersistentAreaEffect] = None
 
     requiresTargetSight: Optional[bool] = None
+    requiresTargetHearing: Optional[bool] = None
     requiresTargetEffect: Optional[bool] = None
     requiresPointSight: Optional[bool] = None
     requiresPointEffect: Optional[bool] = None

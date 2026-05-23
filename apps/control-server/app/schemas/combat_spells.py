@@ -146,6 +146,7 @@ class CombatResolvedSpellContext(BaseModel):
     ]
     requires_attack_roll: bool = False
     requires_saving_throw: bool = False
+    requires_target_hearing: bool | None = None
     save_ability: AbilityName | None = None
     damage_type: str | None = None
     damage_preview: str | None = None

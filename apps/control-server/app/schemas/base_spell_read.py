@@ -70,6 +70,7 @@ class BaseSpellRead(BaseModel):
     persistentArea: SpellPersistentAreaEffect | None = None
 
     requiresTargetSight: Optional[bool] = None
+    requiresTargetHearing: Optional[bool] = None
     requiresTargetEffect: Optional[bool] = None
     requiresPointSight: Optional[bool] = None
     requiresPointEffect: Optional[bool] = None
