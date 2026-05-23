@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,7 +15,7 @@ from app.services.combat import CombatService
 class HoldPersonSeedTests(unittest.TestCase):
     def test_hold_person_has_apply_condition_and_repeat_save(self):
         import json
-        payload = json.loads(open("Base/base_spells.seed.json", encoding="utf-8").read())
+        payload = json.loads(open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json"), encoding="utf-8").read())
         raw_spell = next(entry for entry in payload["spells"] if entry["canonicalKey"] == "hold_person")
         spell = BaseSpellCreate.model_validate(raw_spell)
         self.assertEqual(spell.savingThrow, "WIS")

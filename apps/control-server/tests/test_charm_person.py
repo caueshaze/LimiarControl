@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -98,7 +99,7 @@ def _make_charm_catalog_spell(max_targets: int = 1):
 
 class CharmPersonSeedTests(unittest.TestCase):
     def test_charm_person_seed_contract(self):
-        payload = json.loads(open("Base/base_spells.seed.json", encoding="utf-8").read())
+        payload = json.loads(open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json"), encoding="utf-8").read())
         raw_spell = next(entry for entry in payload["spells"] if entry["canonicalKey"] == "charm_person")
         spell = BaseSpellCreate.model_validate(raw_spell)
 

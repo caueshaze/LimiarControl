@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -52,13 +53,13 @@ def _make_spell(
 
 class FalseLifeSeedContractTests(unittest.TestCase):
     def test_seed_contains_false_life(self):
-        with open("Base/base_spells.seed.json") as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")) as f:
             data = json.load(f)
         keys = [s["canonicalKey"] for s in data["spells"]]
         self.assertIn("false_life", keys)
 
     def test_seed_false_life_metadata(self):
-        with open("Base/base_spells.seed.json") as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")) as f:
             data = json.load(f)
         spell = next(s for s in data["spells"] if s["canonicalKey"] == "false_life")
         self.assertEqual(spell["level"], 1)
@@ -79,7 +80,7 @@ class FalseLifeSeedContractTests(unittest.TestCase):
         self.assertEqual(spell["outOfCombatTarget"], "self")
 
     def test_seed_false_life_effect(self):
-        with open("Base/base_spells.seed.json") as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")) as f:
             data = json.load(f)
         spell = next(s for s in data["spells"] if s["canonicalKey"] == "false_life")
         effects = spell["effects"]
@@ -92,7 +93,7 @@ class FalseLifeSeedContractTests(unittest.TestCase):
         self.assertEqual(eff["params"]["dice"], "1d4 + 4")
 
     def test_seed_false_life_upcast(self):
-        with open("Base/base_spells.seed.json") as f:
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Base", "base_spells.seed.json")) as f:
             data = json.load(f)
         spell = next(s for s in data["spells"] if s["canonicalKey"] == "false_life")
         upcast = spell["upcast"]
