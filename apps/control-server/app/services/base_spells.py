@@ -57,6 +57,7 @@ _FIELD_MAP: dict[str, str] = {
     "variants": "variants_json",
     "persistentArea": "persistent_area_json",
     "requiresTargetSight": "requires_target_sight",
+    "requiresTargetHearing": "requires_target_hearing",
     "requiresTargetEffect": "requires_target_effect",
     "requiresPointSight": "requires_point_sight",
     "requiresPointEffect": "requires_point_effect",

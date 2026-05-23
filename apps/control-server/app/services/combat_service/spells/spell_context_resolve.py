@@ -439,6 +439,7 @@ class SpellContextResolveMixin:
             "duration": getattr(catalog_spell, "duration", None),
             "concentration": getattr(catalog_spell, "concentration", None),
             "requires_target_sight": resolved_mode["targeting_requirements"].requires_target_sight,
+            "requires_target_hearing": getattr(catalog_spell, "requires_target_hearing", None),
             "requires_target_effect": resolved_mode["targeting_requirements"].requires_target_effect,
             "requires_point_sight": resolved_mode["targeting_requirements"].requires_point_sight,
             "requires_point_effect": resolved_mode["targeting_requirements"].requires_point_effect,

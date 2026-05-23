@@ -53,6 +53,30 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
             adv.append("target_prone_melee")
         elif attack_kind == "ranged":
             dis.append("target_prone_ranged")
+    for effect in attacker.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "roll_disadvantage_modifier":
+            continue
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        if params.get("mode") != "disadvantage":
+            continue
+        roll_types = params.get("roll_types")
+        if not isinstance(roll_types, list) or "attack" not in roll_types:
+            continue
+        dis.append(params.get("source") or metadata.get("source_spell_name") or "roll_disadvantage_modifier")
+        if params.get("consume_on_apply") is True:
+            effect_id = effect.get("id")
+            if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
+                consume_effect_ids.append(effect_id)
     # Guiding Bolt rider: target carries a spell_effect that grants advantage
     # to the next attack roll against this specific participant and is consumed
     # only after a valid attack roll is resolved.

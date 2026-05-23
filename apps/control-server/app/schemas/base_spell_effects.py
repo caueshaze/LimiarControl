@@ -29,6 +29,7 @@ SpellDeclarativeEffectType = Literal[
     "roll_bonus_dice",
     "roll_dice_modifier",
     "attack_advantage_against_target",
+    "roll_disadvantage_modifier",
     "recurring_temp_hp",
 ]
 
@@ -215,6 +216,14 @@ class AttackAdvantageAgainstTargetParams(BaseModel):
     consume_on_apply: bool = True
 
 
+class RollDisadvantageModifierParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["disadvantage"] = "disadvantage"
+    roll_types: list[Literal["attack"]] = Field(default_factory=lambda: ["attack"])
+    consume_on_apply: bool = True
+    source: str | None = None
+
+
 AttackAdvantageConditionType = Literal["target_wearing_metal_armor"]
 
 
@@ -272,6 +281,7 @@ class SpellDeclarativeEffect(BaseModel):
         | RollBonusDiceParams
         | RollDiceModifierParams
         | AttackAdvantageAgainstTargetParams
+        | RollDisadvantageModifierParams
         | RecurringTempHpParams
     )
     stacking: SpellDeclarativeEffectStacking | None = None
@@ -323,6 +333,12 @@ class SpellDeclarativeEffect(BaseModel):
         ):
             raise ValueError(
                 "attack_advantage_against_target effects require AttackAdvantageAgainstTargetParams"
+            )
+        if self.type == "roll_disadvantage_modifier" and not isinstance(
+            self.params, RollDisadvantageModifierParams
+        ):
+            raise ValueError(
+                "roll_disadvantage_modifier effects require RollDisadvantageModifierParams"
             )
         if self.type == "recurring_temp_hp" and not isinstance(self.params, RecurringTempHpParams):
             raise ValueError("recurring_temp_hp effects require RecurringTempHpParams")

@@ -65,6 +65,7 @@ def _make_campaign_spell(**overrides) -> CampaignSpell:
     spell.save_success_outcome = "half_damage"
     spell.cover_applies_to_save = None
     spell.requires_target_sight = False
+    spell.requires_target_hearing = None
     spell.requires_target_effect = False
     spell.requires_point_sight = False
     spell.requires_point_effect = True
@@ -110,6 +111,7 @@ class CampaignSpellReadSerializerTests(unittest.TestCase):
     def test_targeting_requirement_fields_are_returned(self) -> None:
         spell = _make_campaign_spell(
             requires_target_sight=True,
+            requires_target_hearing=True,
             requires_target_effect=True,
             requires_point_sight=False,
             requires_point_effect=False,
@@ -117,6 +119,7 @@ class CampaignSpellReadSerializerTests(unittest.TestCase):
         campaign = _make_campaign()
         result = to_campaign_spell_read(spell, campaign)
         self.assertTrue(result.requiresTargetSight)
+        self.assertTrue(result.requiresTargetHearing)
         self.assertTrue(result.requiresTargetEffect)
         self.assertFalse(result.requiresPointSight)
         self.assertFalse(result.requiresPointEffect)
@@ -136,6 +139,7 @@ class CampaignSpellReadSerializerTests(unittest.TestCase):
         # Records predating migration 0051 have NULL; they fall back in combat.
         spell = _make_campaign_spell(
             requires_target_sight=None,
+            requires_target_hearing=None,
             requires_target_effect=None,
             requires_point_sight=None,
             requires_point_effect=None,
@@ -143,6 +147,7 @@ class CampaignSpellReadSerializerTests(unittest.TestCase):
         campaign = _make_campaign()
         result = to_campaign_spell_read(spell, campaign)
         self.assertIsNone(result.requiresTargetSight)
+        self.assertIsNone(result.requiresTargetHearing)
         self.assertIsNone(result.requiresTargetEffect)
         self.assertIsNone(result.requiresPointSight)
         self.assertIsNone(result.requiresPointEffect)

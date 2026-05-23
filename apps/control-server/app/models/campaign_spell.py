@@ -168,6 +168,10 @@ class CampaignSpell(SQLModel, table=True):
         default=None,
         sa_column=Column(Boolean, nullable=True),
     )
+    requires_target_hearing: Optional[bool] = Field(
+        default=None,
+        sa_column=Column(Boolean, nullable=True),
+    )
     requires_target_effect: Optional[bool] = Field(
         default=None,
         sa_column=Column(Boolean, nullable=True),
