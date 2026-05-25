@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class PendingSpellPreparationRead(BaseModel):
@@ -29,7 +29,12 @@ class ClearConcentrationRequest(BaseModel):
 
 
 class OutOfCombatCastRequest(BaseModel):
-    spellId: str
+    spellId: str | None = None
+    canonicalKey: str | None = None
+    weapon_item_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("weapon_item_id", "weaponItemId"),
+    )
     slotLevel: int | None = None
     variantKey: str | None = None
     targetPlayerUserId: str | None = None

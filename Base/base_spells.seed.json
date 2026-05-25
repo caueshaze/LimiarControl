@@ -1004,7 +1004,9 @@
       "targetAnchor": "caster",
       "attackType": "none",
       "rangeKind": "touch",
-      "effectTiming": "persistent"
+      "effectTiming": "persistent",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "self"
     },
     {
       "system": "DND5E",

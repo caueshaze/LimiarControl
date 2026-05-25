@@ -71,6 +71,7 @@ OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES = (
     "out_of_combat_effect_removed",
 )
 OUT_OF_COMBAT_ACTIVITY_CAP = 50
+_SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
 
 
 def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
@@ -278,16 +279,68 @@ async def _cast_spell_out_of_combat_for_player(
     state_json = caster_state.state_json or {}
     spellcasting = state_json.get("spellcasting") or {}
     player_spells = spellcasting.get("spells") or []
-    player_spell = next(
-        (s for s in player_spells if isinstance(s, dict) and s.get("id") == req.spellId),
+    requested_spell_id = req.spellId.strip() if isinstance(req.spellId, str) and req.spellId.strip() else None
+    requested_canonical_key = (
+        req.canonicalKey.strip().lower()
+        if isinstance(req.canonicalKey, str) and req.canonicalKey.strip()
+        else None
+    )
+    if not requested_spell_id and not requested_canonical_key:
+        raise HTTPException(status_code=400, detail="spellId or canonicalKey is required")
+
+    player_spell_by_id = next(
+        (
+            s
+            for s in player_spells
+            if isinstance(s, dict)
+            and requested_spell_id is not None
+            and s.get("id") == requested_spell_id
+        ),
         None,
     )
+    if requested_spell_id is not None and player_spell_by_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Spell not found in character spell list: {requested_spell_id!r}",
+        )
+
+    player_spell_by_key = next(
+        (
+            s
+            for s in player_spells
+            if isinstance(s, dict)
+            and requested_canonical_key is not None
+            and isinstance(s.get("canonicalKey"), str)
+            and s.get("canonicalKey", "").strip().lower() == requested_canonical_key
+        ),
+        None,
+    )
+    if requested_canonical_key is not None and player_spell_by_key is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Spell not found in character spell list by canonicalKey: {requested_canonical_key!r}",
+        )
+
+    if (
+        requested_spell_id is not None
+        and requested_canonical_key is not None
+        and player_spell_by_id is not None
+        and player_spell_by_key is not None
+        and player_spell_by_id.get("id") != player_spell_by_key.get("id")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="spellId and canonicalKey refer to different spells.",
+        )
+
+    player_spell = player_spell_by_id or player_spell_by_key
     if player_spell is None:
-        raise HTTPException(status_code=400, detail=f"Spell not found in character spell list: {req.spellId!r}")
+        raise HTTPException(status_code=400, detail="Spell not found in character spell list")
 
     canonical_key = player_spell.get("canonicalKey")
     if not canonical_key:
         raise HTTPException(status_code=400, detail="Spell entry is missing canonicalKey")
+    canonical_key = str(canonical_key).strip().lower()
 
     spell_level = player_spell.get("level", 0)
     if spell_level > 0 and player_spell.get("prepared") is False:
@@ -308,6 +361,44 @@ async def _cast_spell_out_of_combat_for_player(
 
     if is_ally_target and campaign_spell.out_of_combat_target not in ("ally", "self_or_ally"):
         raise HTTPException(status_code=400, detail="Spell cannot target allies out of combat")
+
+    weapon_item_id = (
+        req.weapon_item_id.strip()
+        if isinstance(req.weapon_item_id, str) and req.weapon_item_id.strip()
+        else None
+    )
+    shillelagh_weapon_item = None
+    shillelagh_weapon_catalog_item = None
+    if canonical_key == "shillelagh":
+        if is_ally_target:
+            raise HTTPException(status_code=400, detail="Bordão Místico só pode afetar uma arma do próprio conjurador.")
+        if not weapon_item_id:
+            raise HTTPException(status_code=400, detail="Bordão Místico exige uma arma alvo.")
+        caster_member = session.exec(
+            select(CampaignMember).where(
+                CampaignMember.campaign_id == entry.campaign_id,
+                CampaignMember.user_id == caster_user_id,
+            )
+        ).first()
+        if not caster_member:
+            raise HTTPException(status_code=400, detail="Bordão Místico só pode afetar uma arma do próprio conjurador.")
+        resolved_weapon = resolve_owned_inventory_item(
+            session_entry=entry,
+            member=caster_member,
+            db=session,
+            inventory_item_id=weapon_item_id,
+            expected_type=ItemType.WEAPON,
+        )
+        if resolved_weapon is None:
+            raise HTTPException(status_code=400, detail="Arma alvo não encontrada.")
+        shillelagh_weapon_item, shillelagh_weapon_catalog_item = resolved_weapon
+        if not getattr(shillelagh_weapon_item, "is_equipped", False):
+            raise HTTPException(status_code=400, detail="Bordão Místico exige uma arma equipada/empunhada.")
+        normalized_weapon_key = str(
+            getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", "") or ""
+        ).strip().lower()
+        if normalized_weapon_key not in _SHILLELAGH_ELIGIBLE_WEAPONS:
+            raise HTTPException(status_code=400, detail="Bordão Místico só pode afetar porrete ou bordão.")
 
     target_state_json_for_check = (
         target_state.state_json if target_state and isinstance(target_state.state_json, dict)
@@ -358,6 +449,20 @@ async def _cast_spell_out_of_combat_for_player(
 
     # --- Spend slot and clear caster concentration ---
     updated_caster_json = dict(state_json)
+    replaced_shillelagh = False
+    if canonical_key == "shillelagh":
+        existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
+        filtered_effects = []
+        for effect in existing_effects:
+            metadata = effect.get("metadata") if isinstance(effect, dict) else None
+            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "shillelagh":
+                replaced_shillelagh = True
+                continue
+            filtered_effects.append(effect)
+        if filtered_effects:
+            updated_caster_json["active_spell_effects"] = filtered_effects
+        else:
+            updated_caster_json.pop("active_spell_effects", None)
 
     if spell_level > 0 and req.slotLevel is not None:
         try:
@@ -382,6 +487,17 @@ async def _cast_spell_out_of_combat_for_player(
         target_user_id=target_user_id,
         variant_key=req.variantKey,
         game_time_seconds=current_game_time_seconds,
+        weapon_item_id=weapon_item_id,
+        weapon_canonical_key=(
+            getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", None)
+            if shillelagh_weapon_catalog_item is not None
+            else None
+        ),
+        weapon_name=(
+            getattr(shillelagh_weapon_catalog_item, "name", None)
+            if shillelagh_weapon_catalog_item is not None
+            else None
+        ),
     )
 
     # --- Grant consumable items (create_consumable effects) ---
@@ -690,6 +806,19 @@ async def _cast_spell_out_of_combat_for_player(
                 {"base_dice": thr["base_dice"], "upcast_bonus": thr["upcast_bonus"], "total": thr["amount"]}
                 for thr in temp_hp_rolled
             ]
+        if canonical_key == "shillelagh":
+            activity_payload["replaced_shillelagh"] = replaced_shillelagh
+            activity_payload["weapon_item_id"] = weapon_item_id
+            activity_payload["weapon_canonical_key"] = (
+                getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", None)
+                if shillelagh_weapon_catalog_item is not None
+                else None
+            )
+            activity_payload["weapon_name"] = (
+                getattr(shillelagh_weapon_catalog_item, "name", None)
+                if shillelagh_weapon_catalog_item is not None
+                else None
+            )
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",

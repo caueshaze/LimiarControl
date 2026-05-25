@@ -16,7 +16,7 @@ from uuid import uuid4
 _SPECIAL_OOC_UTILITY_SPELLS = {
     "detect_magic", "detect_poison_disease", "detect_evil_and_good",
     "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
-    "purify_food_and_drink", "spare_the_dying",
+    "purify_food_and_drink", "spare_the_dying", "shillelagh",
 }
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
@@ -96,6 +96,9 @@ def build_persisted_effects(
     target_user_id: str,
     variant_key: str | None,
     game_time_seconds: int,
+    weapon_item_id: str | None = None,
+    weapon_canonical_key: str | None = None,
+    weapon_name: str | None = None,
 ) -> list[dict]:
     """Build the list of persisted effect dicts for an out-of-combat cast.
 
@@ -403,6 +406,57 @@ def build_persisted_effects(
                     "requires_touch_for_written_text": True,
                     "literal_meaning_only": True,
                     "deciphers_secret_messages": False,
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "shillelagh":
+            if (
+                not isinstance(weapon_item_id, str)
+                or not weapon_item_id.strip()
+                or not isinstance(weapon_canonical_key, str)
+                or not weapon_canonical_key.strip()
+            ):
+                return []
+            normalized_weapon_key = weapon_canonical_key.strip().lower()
+            spell_name = spell.name_pt or spell.name_en
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 60,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "shillelagh",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": caster_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": True,
+                    "utility": "shillelagh",
+                    "weapon_item_id": weapon_item_id.strip(),
+                    "weapon_key": normalized_weapon_key,
+                    "weapon_canonical_key": normalized_weapon_key,
+                    "weapon_name": weapon_name,
+                    "eligible_weapon_keys": ["club", "quarterstaff"],
+                    "override_attack_ability": "spellcasting",
+                    "override_damage_ability": "spellcasting",
+                    "override_damage_die": "1d8",
+                    "damage_counts_as_magical": True,
+                    "ends_on_recast": True,
+                    "ends_on_drop_weapon": True,
+                    "created_out_of_combat": True,
                 },
                 "display_label": spell_name,
             }]

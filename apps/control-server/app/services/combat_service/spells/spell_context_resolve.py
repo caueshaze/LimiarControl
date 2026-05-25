@@ -35,6 +35,8 @@ class SpellContextResolveMixin:
         "damageCountsAsMagical": True,
         "endsOnRecast": True,
         "endsOnDropWeapon": True,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self",
     }
 
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {

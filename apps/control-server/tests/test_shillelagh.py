@@ -48,7 +48,8 @@ class ShillelaghSeedTests(unittest.TestCase):
         self.assertNotIn("savingThrow", self.entry)
         self.assertIsNone(self.entry.get("cantripScaling"))
         self.assertIsNone(self.entry.get("upcast"))
-        self.assertNotIn("outOfCombatCastable", self.entry)
+        self.assertTrue(self.entry.get("outOfCombatCastable"))
+        self.assertEqual(self.entry.get("outOfCombatTarget"), "self")
 
 
 class ShillelaghSchemaTests(unittest.TestCase):
@@ -385,12 +386,12 @@ class ShillelaghSpellAttackIsolationTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ShillelaghOocScopeTests(unittest.TestCase):
-    def test_not_in_special_ooc_utility_spells(self):
-        self.assertNotIn("shillelagh", _SPECIAL_OOC_UTILITY_SPELLS)
+    def test_in_special_ooc_utility_spells(self):
+        self.assertIn("shillelagh", _SPECIAL_OOC_UTILITY_SPELLS)
 
-    def test_no_build_persisted_effects_branch(self):
+    def test_has_build_persisted_effects_branch(self):
         src = inspect.getsource(build_persisted_effects)
-        self.assertNotIn('canonical_key == "shillelagh"', src)
+        self.assertIn('canonical_key == "shillelagh"', src)
 
 
 if __name__ == "__main__":
