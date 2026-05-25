@@ -98,6 +98,14 @@ class CombatEffectsCoreMixin:
             keep: list[dict] = []
             for effect in effects:
                 if effect.get("expires_on") == trigger and effect.get("expires_at_participant_id") == participant_id:
+                    _meta = effect.get("metadata") or {}
+                    if (
+                        effect.get("duration_type") == "until_turn_end"
+                        and _meta.get("source_spell_key") == "true_strike"
+                        and _meta.get("available_from_next_turn") is True
+                    ):
+                        keep.append(effect)
+                        continue
                     if effect.get("duration_type") == "rounds":
                         remaining = effect.get("remaining_rounds")
                         if isinstance(remaining, int) and remaining > 1:

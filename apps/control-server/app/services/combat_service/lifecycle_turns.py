@@ -332,6 +332,7 @@ class CombatLifecycleTurnsMixin:
         for anchor in expired_anchor_start:
             label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
+        cls._activate_deferred_spell_effects(state, incoming["id"])
         cls._reset_turn_resources(incoming)
         await cls._process_recurring_temp_hp(db, session_id, state, incoming)
         db.add(state)
@@ -345,6 +346,19 @@ class CombatLifecycleTurnsMixin:
         else:
             await cls._emit_log(session_id, {"message": f"It is now {active_name}'s turn."})
         return state
+
+    @classmethod
+    def _activate_deferred_spell_effects(cls, state, participant_id: str) -> None:
+        for participant in state.participants or []:
+            for effect in (participant.get("active_effects") or []):
+                metadata = effect.get("metadata")
+                if not isinstance(metadata, dict):
+                    continue
+                if (
+                    metadata.get("available_from_next_turn") is True
+                    and effect.get("source_participant_id") == participant_id
+                ):
+                    metadata["available_from_next_turn"] = False
 
     @classmethod
     async def end_combat(cls, db, session_id: str, is_gm: bool):

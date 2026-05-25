@@ -88,6 +88,7 @@ class WeaponAttackRollMixin:
         if not req.has_advantage and cls._has_effect_kind(attacker, "advantage_on_attacks"):
             cls._consume_first_effect(attacker, "advantage_on_attacks")
         if adv_ctx.consumed_effect_ids_on_roll:
+            cls._consume_effect_ids(attacker, adv_ctx.consumed_effect_ids_on_roll)
             cls._consume_effect_ids(target, adv_ctx.consumed_effect_ids_on_roll)
         adv_mode = "advantage" if (has_adv and not has_dis) else ("disadvantage" if (has_dis and not has_adv) else "normal")
         roll_result = weapon_attacks_module.resolve_attack_base(

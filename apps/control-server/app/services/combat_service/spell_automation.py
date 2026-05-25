@@ -118,6 +118,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_chill_touch_automation",
         ),
+        "true_strike": SpellAutomationSpec(
+            canonical_key="true_strike",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_true_strike_automation",
+        ),
         "spiritual_weapon": SpellAutomationSpec(
             canonical_key="spiritual_weapon",
             default_mode="spell_attack",
@@ -639,6 +645,97 @@ class CombatSpellAutomationMixin:
                 "purified_food_and_drink": True,
                 "radius_meters": 1.5,
                 "instantaneous": True,
+            },
+        )
+
+    @classmethod
+    async def _cast_true_strike_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if target_participant is None:
+            raise CombatServiceError("Golpe Certeiro exige um alvo.", 400)
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Golpe Certeiro não possui variantes.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state, source_participant_id=attacker["id"], db=db,
+        )
+        cls._sync_area_effects_if_changed(session_id, state, result["removed_area_effects"])
+
+        concentration_group = str(uuid4())
+        spell_name = spell_context["spell_name"]
+        game_time = get_game_time_seconds(session_id, db)
+
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="until_turn_end",
+            expires_at_participant_id=attacker["id"],
+            created_at_game_time_seconds=game_time,
+            metadata={
+                "source_spell_key": "true_strike",
+                "source_spell_name": spell_name,
+                "concentration": True,
+                "concentration_group": concentration_group,
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "target_participant_id": target_participant["id"],
+                "target_ref_id": target_participant["ref_id"],
+                "target_kind": target_participant["kind"],
+                "target_display_name": target_participant["display_name"],
+                "mechanical": True,
+                "utility": "true_strike",
+                "available_from_next_turn": True,
+                "declarative_effect": {
+                    "type": "roll_advantage_modifier",
+                    "params": {
+                        "mode": "advantage",
+                        "roll_types": ["attack"],
+                        "applies_when_attacking_participant_id": target_participant["id"],
+                        "consume_on_apply": True,
+                        "source": "true_strike",
+                    },
+                },
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(attacker, effect)
+        flag_modified(state, "participants")
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=(
+                f"{spell_name}: {attacker['display_name']} focou nas defesas de "
+                f"{target_participant['display_name']}. No próximo turno, o primeiro "
+                "ataque contra esse alvo terá Vantagem."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name}, mirando "
+                f"{target_participant['display_name']}."
+            ),
+            extra={
+                "utility": "true_strike",
+                "target_participant_id": target_participant["id"],
+                "target_ref_id": target_participant["ref_id"],
+                "concentration_group": concentration_group,
+                "grants_advantage": True,
+                "available_from_next_turn": True,
+                "consume_on_first_eligible_attack": True,
             },
         )
 

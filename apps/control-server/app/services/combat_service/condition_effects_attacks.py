@@ -80,6 +80,36 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
             effect_id = effect.get("id")
             if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
                 consume_effect_ids.append(effect_id)
+    # True Strike / attacker-side advantage modifiers (roll_advantage_modifier on attacker)
+    for effect in attacker.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("available_from_next_turn") is True:
+            continue
+        declarative = metadata.get("declarative_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "roll_advantage_modifier":
+            continue
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        if params.get("mode") != "advantage":
+            continue
+        roll_types = params.get("roll_types")
+        if not isinstance(roll_types, list) or "attack" not in roll_types:
+            continue
+        applies_when = params.get("applies_when_attacking_participant_id")
+        if isinstance(applies_when, str) and applies_when and applies_when != target.get("id"):
+            continue
+        adv.append(params.get("source") or metadata.get("source_spell_name") or "roll_advantage_modifier")
+        if params.get("consume_on_apply") is True:
+            effect_id = effect.get("id")
+            if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
+                consume_effect_ids.append(effect_id)
     # Guiding Bolt rider: target carries a spell_effect that grants advantage
     # to the next attack roll against this specific participant and is consumed
     # only after a valid attack roll is resolved.
