@@ -65,6 +65,16 @@ class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str | None = None
     target_ref_ids: list[str] | None = None
+    reaction_trigger: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("reaction_trigger", "reactionTrigger"),
+    )
+    falling_target_ref_ids: list[str] | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "falling_target_ref_ids", "fallingTargetRefIds"
+        ),
+    )
     origin_cell: "CombatGridCell | None" = None
     anchor_cell: "CombatGridCell | None" = None
     inventory_item_id: str | None = None

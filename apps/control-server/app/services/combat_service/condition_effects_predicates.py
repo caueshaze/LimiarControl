@@ -564,6 +564,20 @@ def resolve_climb_speed_mode(participant: dict) -> dict:
     }
 
 
+def has_feather_fall_protection(participant: dict) -> bool:
+    for effect in participant.get("active_effects") or []:
+        if not isinstance(effect, dict):
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if str(metadata.get("source_spell_key") or "").strip().lower() != "feather_fall":
+            continue
+        if metadata.get("prevents_fall_damage") is True:
+            return True
+    return False
+
+
 def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
     return _declarative_effect_group_key(
         metadata,

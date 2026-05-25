@@ -8,7 +8,12 @@ from sqlmodel import Session
 
 from app.services.session_state_finalize import finalize_session_state_data
 
-from .condition_effects_predicates import get_fall_damage_immunity_threshold, has_condition, is_incapacitated
+from .condition_effects_predicates import (
+    get_fall_damage_immunity_threshold,
+    has_condition,
+    has_feather_fall_protection,
+    is_incapacitated,
+)
 from .damage_core import CombatDamageCoreMixin
 from .exceptions import CombatServiceError, _roll_dice_expression
 from .fall_damage import FallDamageComputation, FallDamageResolution, compute_fall_damage
@@ -157,6 +162,17 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
         kind = participant.get("kind")
         display_name = participant.get("display_name") or "Combatant"
         computation = compute_fall_damage(height_meters)
+        feather_fall_effect = None
+        for effect in participant.get("active_effects") or []:
+            metadata = cls._get_effect_metadata(effect)
+            if (
+                cls._normalize_lookup(metadata.get("source_spell_key")).replace(" ", "_")
+                == "feather_fall"
+                and metadata.get("prevents_fall_damage") is True
+            ):
+                feather_fall_effect = effect
+                break
+
         if not computation.causes_damage:
             resolution = FallDamageResolution(
                 participant_id=participant_id,
@@ -190,6 +206,52 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                 ),
             )
             return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
+        if has_feather_fall_protection(participant):
+            resolution = FallDamageResolution(
+                participant_id=participant_id,
+                height_meters=computation.height_meters,
+                effective_height_meters=computation.effective_height_meters,
+                dice_count=computation.dice_count,
+                dice_sides=computation.dice_sides,
+                damage_formula=computation.damage_formula,
+                damage_type=computation.damage_type,
+                damage_total=0,
+                causes_damage=True,
+                applied_damage=False,
+                prevented=True,
+                prevention_sources=["Feather Fall"],
+            )
+            if feather_fall_effect is not None:
+                effects = cls._get_participant_effects(participant)
+                effect_id = feather_fall_effect.get("id")
+                if effect_id:
+                    effects = [e for e in effects if e.get("id") != effect_id]
+                    cls._set_participant_effects(participant, effects)
+                    flag_modified(state, "participants")
+            db.commit()
+            await cls._emit_state(session_id, state)
+            await cls._emit_and_persist_log(
+                db,
+                session_id,
+                actor_user_id,
+                None,
+                cls._build_fall_log_payload(
+                    message=f"{display_name} pousou suavemente graças a Queda Suave e não sofreu dano de queda.",
+                    actor_user_id=actor_user_id,
+                    participant_id=participant_id,
+                    computation=computation,
+                    damage_total=0,
+                    applied_damage=False,
+                    prevented=True,
+                    prevention_sources=["Feather Fall"],
+                    applied_conditions=[],
+                ),
+            )
+            return {
+                "resolution": resolution.model_dump(mode="json"),
+                "new_hp": None,
+                "concentration_check": None,
+            }
         immunity_threshold, immunity_label = get_fall_damage_immunity_threshold(participant)
         if (
             immunity_threshold is not None

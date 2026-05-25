@@ -70,6 +70,24 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _FEATHER_FALL_UTILITY_META = {
+        "type": "reaction_fall_protection",
+        "subtype": "feather_fall",
+        "requiresReaction": True,
+        "trigger": "creature_falls",
+        "maxTargets": 5,
+        "rangeMeters": 18,
+        "durationSeconds": 60,
+        "fallSpeedMetersPerRound": 18,
+        "preventsFallDamage": True,
+        "preventsProneFromFall": True,
+        "landsOnFeet": True,
+        "endsOnLanding": True,
+        "requiresConcentration": False,
+        "grantsFlight": False,
+        "grantsExtraMovement": False,
+        "outOfCombatCastable": False,
+    }
 
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
@@ -230,6 +248,26 @@ class SpellContextResolveMixin:
             ignore_components = bool(magic_effect.get("ignoreComponents"))
             no_free_hand_required = bool(magic_effect.get("noFreeHandRequired"))
         else:
+            requested_by_canonical = (
+                req.spell_canonical_key.strip().lower()
+                if isinstance(req.spell_canonical_key, str)
+                and req.spell_canonical_key.strip()
+                else None
+            )
+            requested_by_id = (
+                req.spell_id.strip().lower()
+                if isinstance(req.spell_id, str) and req.spell_id.strip()
+                else None
+            )
+            if (
+                requested_by_canonical
+                and requested_by_id
+                and requested_by_canonical != requested_by_id
+            ):
+                raise CombatServiceError(
+                    "spellId and canonicalKey point to different spells.",
+                    400,
+                )
             requested_canonical_key = (
                 req.spell_canonical_key.strip()
                 if isinstance(req.spell_canonical_key, str) and req.spell_canonical_key.strip()
@@ -715,6 +753,8 @@ class SpellContextResolveMixin:
                 if spell_key == "jump"
                 else cls._SPIDER_CLIMB_UTILITY_META
                 if spell_key == "spider_climb"
+                else cls._FEATHER_FALL_UTILITY_META
+                if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
             ),
             "throw_attack": (

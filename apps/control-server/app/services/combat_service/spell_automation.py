@@ -142,6 +142,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_spider_climb_automation",
         ),
+        "feather_fall": SpellAutomationSpec(
+            canonical_key="feather_fall",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_feather_fall_automation",
+        ),
         "spiritual_weapon": SpellAutomationSpec(
             canonical_key="spiritual_weapon",
             default_mode="spell_attack",
@@ -1076,6 +1082,92 @@ class CombatSpellAutomationMixin:
                 "can_move_on_ceilings": True,
                 "grants_flight": False,
                 "prevents_fall_damage": False,
+            },
+        )
+
+    @classmethod
+    async def _cast_feather_fall_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if target_participant is None:
+            raise CombatServiceError("Queda Suave exige ao menos um alvo.", 400)
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Queda Suave não possui variantes.", 400)
+
+        spell_name = spell_context["spell_name"]
+        game_time = get_game_time_seconds(session_id, db)
+        active_effects = target_participant.get("active_effects")
+        if not isinstance(active_effects, list):
+            active_effects = []
+            target_participant["active_effects"] = active_effects
+        target_participant["active_effects"] = [
+            effect
+            for effect in active_effects
+            if cls._normalize_lookup(
+                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
+            )
+            != "feather_fall"
+        ]
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 60,
+            metadata={
+                "source_spell_key": "feather_fall",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "feather_fall",
+                "movement_modifier": True,
+                "fall_protection": True,
+                "fall_speed_meters_per_round": 18,
+                "prevents_fall_damage": True,
+                "prevents_prone_from_fall": True,
+                "lands_on_feet": True,
+                "ends_on_landing": True,
+                "grants_flight": False,
+                "grants_extra_movement": False,
+                "duration_seconds": 60,
+                "source_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(target_participant, effect)
+
+        flag_modified(state, "participants")
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=(
+                f"{spell_name}: {target_participant['display_name']} foi protegido(a) contra dano de queda por 1 minuto."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} em {target_participant['display_name']}."
+            ),
+            extra={
+                "utility": "feather_fall",
+                "targets_count": 1,
+                "fall_speed_meters_per_round": 18,
+                "prevents_fall_damage": True,
+                "prevents_prone_from_fall": True,
+                "ends_on_landing": True,
             },
         )
 
