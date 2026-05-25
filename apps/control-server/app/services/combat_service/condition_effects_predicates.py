@@ -520,6 +520,22 @@ def _passive_bonus_group_key(metadata: dict, effect: dict, params: dict) -> str:
     )
 
 
+def resolve_jump_distance_multiplier(participant: dict) -> int:
+    multiplier = 1
+    for effect in participant.get("active_effects") or []:
+        if not isinstance(effect, dict):
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if str(metadata.get("source_spell_key") or "").strip().lower() != "jump":
+            continue
+        raw = metadata.get("jump_distance_multiplier")
+        if isinstance(raw, (int, float)) and raw > multiplier:
+            multiplier = int(raw)
+    return multiplier
+
+
 def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
     return _declarative_effect_group_key(
         metadata,

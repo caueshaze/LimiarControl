@@ -130,6 +130,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_shillelagh_automation",
         ),
+        "jump": SpellAutomationSpec(
+            canonical_key="jump",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_jump_automation",
+        ),
         "spiritual_weapon": SpellAutomationSpec(
             canonical_key="spiritual_weapon",
             default_mode="spell_attack",
@@ -872,6 +878,88 @@ class CombatSpellAutomationMixin:
                 "duration_seconds": 60,
                 "damage_die_override": "1d8",
                 "damage_counts_as_magical": True,
+            },
+        )
+
+    @classmethod
+    async def _cast_jump_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if target_participant is None:
+            raise CombatServiceError("Salto exige um alvo.", 400)
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Salto não possui variantes.", 400)
+
+        spell_name = spell_context["spell_name"]
+        game_time = get_game_time_seconds(session_id, db)
+
+        active_effects = target_participant.get("active_effects")
+        if not isinstance(active_effects, list):
+            active_effects = []
+            target_participant["active_effects"] = active_effects
+        target_participant["active_effects"] = [
+            effect
+            for effect in active_effects
+            if cls._normalize_lookup(
+                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
+            )
+            != "jump"
+        ]
+
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 60,
+            metadata={
+                "source_spell_key": "jump",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "jump",
+                "movement_modifier": True,
+                "jump_distance_multiplier": 3,
+                "affects_jump_distance": True,
+                "grants_extra_movement": False,
+                "grants_flight": False,
+                "prevents_fall_damage": False,
+                "duration_seconds": 60,
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(target_participant, effect)
+        flag_modified(state, "participants")
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=(
+                f"{spell_name}: a distância de salto de {target_participant['display_name']} foi triplicada por 1 minuto."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} em {target_participant['display_name']}."
+            ),
+            extra={
+                "utility": "jump",
+                "jump_distance_multiplier": 3,
+                "duration_seconds": 60,
+                "grants_extra_movement": False,
+                "grants_flight": False,
+                "prevents_fall_damage": False,
             },
         )
 

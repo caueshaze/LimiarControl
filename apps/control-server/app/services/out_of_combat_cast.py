@@ -16,7 +16,7 @@ from uuid import uuid4
 _SPECIAL_OOC_UTILITY_SPELLS = {
     "detect_magic", "detect_poison_disease", "detect_evil_and_good",
     "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
-    "purify_food_and_drink", "spare_the_dying", "shillelagh",
+    "purify_food_and_drink", "spare_the_dying", "shillelagh", "jump",
 }
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
@@ -456,6 +456,45 @@ def build_persisted_effects(
                     "damage_counts_as_magical": True,
                     "ends_on_recast": True,
                     "ends_on_drop_weapon": True,
+                    "created_out_of_combat": True,
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "jump":
+            spell_name = spell.name_pt or spell.name_en
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 60,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "jump",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": target_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": True,
+                    "utility": "jump",
+                    "movement_modifier": True,
+                    "jump_distance_multiplier": 3,
+                    "affects_jump_distance": True,
+                    "grants_extra_movement": False,
+                    "grants_flight": False,
+                    "prevents_fall_damage": False,
+                    "duration_seconds": 60,
                     "created_out_of_combat": True,
                 },
                 "display_label": spell_name,

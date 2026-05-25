@@ -450,6 +450,8 @@ async def _cast_spell_out_of_combat_for_player(
     # --- Spend slot and clear caster concentration ---
     updated_caster_json = dict(state_json)
     replaced_shillelagh = False
+    replaced_jump = False
+    updated_target_json: dict | None = None
     if canonical_key == "shillelagh":
         existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
         filtered_effects = []
@@ -463,6 +465,25 @@ async def _cast_spell_out_of_combat_for_player(
             updated_caster_json["active_spell_effects"] = filtered_effects
         else:
             updated_caster_json.pop("active_spell_effects", None)
+    elif canonical_key == "jump":
+        base_target_json = (
+            dict(target_state.state_json or {})
+            if is_ally_target and target_state is not None
+            else dict(updated_caster_json)
+        )
+        existing_effects = list(base_target_json.get("active_spell_effects") or [])
+        filtered_effects = []
+        for effect in existing_effects:
+            metadata = effect.get("metadata") if isinstance(effect, dict) else None
+            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "jump":
+                replaced_jump = True
+                continue
+            filtered_effects.append(effect)
+        if filtered_effects:
+            base_target_json["active_spell_effects"] = filtered_effects
+        else:
+            base_target_json.pop("active_spell_effects", None)
+        updated_target_json = base_target_json
 
     if spell_level > 0 and req.slotLevel is not None:
         try:
@@ -701,7 +722,11 @@ async def _cast_spell_out_of_combat_for_player(
             marker_effect_id = None
 
         # Buff effects land on the target
-        target_json = dict(target_state.state_json or {})  # type: ignore[union-attr]
+        target_json = (
+            dict(updated_target_json)
+            if isinstance(updated_target_json, dict)
+            else dict(target_state.state_json or {})
+        )  # type: ignore[union-attr]
         target_effects = list(target_json.get("active_spell_effects") or [])
         target_effects.extend(new_target_effects)
         target_json["active_spell_effects"] = target_effects
@@ -721,7 +746,9 @@ async def _cast_spell_out_of_combat_for_player(
         session.add(target_state)
     else:
         # Self-target: original behaviour unchanged
-        existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
+        existing_effects = list(
+            (updated_target_json if isinstance(updated_target_json, dict) else updated_caster_json).get("active_spell_effects") or []
+        )
         existing_effects.extend(new_target_effects)
         updated_caster_json["active_spell_effects"] = existing_effects
         marker_effect_id = None
@@ -819,6 +846,10 @@ async def _cast_spell_out_of_combat_for_player(
                 if shillelagh_weapon_catalog_item is not None
                 else None
             )
+        if canonical_key == "jump":
+            activity_payload["replaced_jump"] = replaced_jump
+            activity_payload["jump_distance_multiplier"] = 3
+            activity_payload["duration_seconds"] = 60
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",
