@@ -16,7 +16,7 @@ from uuid import uuid4
 _SPECIAL_OOC_UTILITY_SPELLS = {
     "detect_magic", "detect_poison_disease", "detect_evil_and_good",
     "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
-    "purify_food_and_drink", "spare_the_dying", "shillelagh", "jump",
+    "purify_food_and_drink", "spare_the_dying", "shillelagh", "jump", "spider_climb",
 }
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
@@ -495,6 +495,53 @@ def build_persisted_effects(
                     "grants_flight": False,
                     "prevents_fall_damage": False,
                     "duration_seconds": 60,
+                    "created_out_of_combat": True,
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "spider_climb":
+            spell_name = spell.name_pt or spell.name_en
+            group_id = str(uuid4()) if spell.concentration else None
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 3600,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "spider_climb",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": True,
+                    "concentration_group": group_id,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": target_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": True,
+                    "utility": "spider_climb",
+                    "movement_modifier": True,
+                    "movement_mode": "spider_climb",
+                    "grants_climb_speed": True,
+                    "climb_speed_equals_walking_speed": True,
+                    "can_move_on_vertical_surfaces": True,
+                    "can_move_on_ceilings": True,
+                    "can_move_upside_down": True,
+                    "hands_free_while_climbing": True,
+                    "grants_extra_movement": False,
+                    "grants_flight": False,
+                    "prevents_fall_damage": False,
+                    "ignores_difficult_terrain": False,
+                    "duration_seconds": 3600,
                     "created_out_of_combat": True,
                 },
                 "display_label": spell_name,

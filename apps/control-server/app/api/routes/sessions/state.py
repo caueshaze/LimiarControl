@@ -451,6 +451,7 @@ async def _cast_spell_out_of_combat_for_player(
     updated_caster_json = dict(state_json)
     replaced_shillelagh = False
     replaced_jump = False
+    replaced_spider_climb = False
     updated_target_json: dict | None = None
     if canonical_key == "shillelagh":
         existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
@@ -477,6 +478,25 @@ async def _cast_spell_out_of_combat_for_player(
             metadata = effect.get("metadata") if isinstance(effect, dict) else None
             if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "jump":
                 replaced_jump = True
+                continue
+            filtered_effects.append(effect)
+        if filtered_effects:
+            base_target_json["active_spell_effects"] = filtered_effects
+        else:
+            base_target_json.pop("active_spell_effects", None)
+        updated_target_json = base_target_json
+    elif canonical_key == "spider_climb":
+        base_target_json = (
+            dict(target_state.state_json or {})
+            if is_ally_target and target_state is not None
+            else dict(updated_caster_json)
+        )
+        existing_effects = list(base_target_json.get("active_spell_effects") or [])
+        filtered_effects = []
+        for effect in existing_effects:
+            metadata = effect.get("metadata") if isinstance(effect, dict) else None
+            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "spider_climb":
+                replaced_spider_climb = True
                 continue
             filtered_effects.append(effect)
         if filtered_effects:
@@ -850,6 +870,10 @@ async def _cast_spell_out_of_combat_for_player(
             activity_payload["replaced_jump"] = replaced_jump
             activity_payload["jump_distance_multiplier"] = 3
             activity_payload["duration_seconds"] = 60
+        if canonical_key == "spider_climb":
+            activity_payload["replaced_spider_climb"] = replaced_spider_climb
+            activity_payload["movement_mode"] = "spider_climb"
+            activity_payload["duration_seconds"] = 3600
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",

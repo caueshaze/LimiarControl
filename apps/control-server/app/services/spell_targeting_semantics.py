@@ -68,6 +68,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "true_strike": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "distance", "persistent"),
     "shillelagh": SpellTargetingSemantics("self", "caster", "caster", "none", "touch", "persistent"),
     "jump": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
+    "spider_climb": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
 }
 
 

@@ -52,6 +52,24 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _SPIDER_CLIMB_UTILITY_META = {
+        "type": "movement_mode_buff",
+        "subtype": "spider_climb",
+        "requiresTarget": True,
+        "requiresConcentration": True,
+        "durationSeconds": 3600,
+        "grantsClimbSpeed": True,
+        "climbSpeedEqualsWalkingSpeed": True,
+        "canMoveOnVerticalSurfaces": True,
+        "canMoveOnCeilings": True,
+        "canMoveUpsideDown": True,
+        "handsFreeWhileClimbing": True,
+        "grantsExtraMovement": False,
+        "grantsFlight": False,
+        "preventsFallDamage": False,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self_or_ally",
+    }
 
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
@@ -695,6 +713,8 @@ class SpellContextResolveMixin:
                 if spell_key == "shillelagh"
                 else cls._JUMP_UTILITY_META
                 if spell_key == "jump"
+                else cls._SPIDER_CLIMB_UTILITY_META
+                if spell_key == "spider_climb"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
             ),
             "throw_attack": (

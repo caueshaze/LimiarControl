@@ -536,6 +536,34 @@ def resolve_jump_distance_multiplier(participant: dict) -> int:
     return multiplier
 
 
+def has_spider_climb(participant: dict) -> bool:
+    for effect in participant.get("active_effects") or []:
+        if not isinstance(effect, dict):
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if str(metadata.get("source_spell_key") or "").strip().lower() == "spider_climb":
+            return True
+    return False
+
+
+def resolve_climb_speed_mode(participant: dict) -> dict:
+    enabled = has_spider_climb(participant)
+    return {
+        "hasSpiderClimb": enabled,
+        "grantsClimbSpeed": enabled,
+        "climbSpeedEqualsWalkingSpeed": enabled,
+        "canMoveOnVerticalSurfaces": enabled,
+        "canMoveOnCeilings": enabled,
+        "canMoveUpsideDown": enabled,
+        "handsFreeWhileClimbing": enabled,
+        "grantsExtraMovement": False,
+        "grantsFlight": False,
+        "preventsFallDamage": False,
+    }
+
+
 def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
     return _declarative_effect_group_key(
         metadata,
