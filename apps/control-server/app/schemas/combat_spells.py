@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from app.schemas.campaign_entity_shared import AbilityName
 from app.schemas.base_spell_effects import AttackAdvantageCondition
@@ -39,6 +39,7 @@ class CombatAttackResult(BaseModel):
     damage_bonus: int
     attack_bonus: int
     damage_type: Optional[str] = None
+    is_magical_damage: bool = False
     pending_attack_id: str | None = None
     damage_roll_required: bool = False
     damage_rolls: list[int] = Field(default_factory=list)
@@ -67,6 +68,10 @@ class CombatCastSpellRequest(BaseModel):
     origin_cell: "CombatGridCell | None" = None
     anchor_cell: "CombatGridCell | None" = None
     inventory_item_id: str | None = None
+    weapon_item_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("weapon_item_id", "weaponItemId"),
+    )
     spell_id: str | None = None
     spell_canonical_key: str | None = None
     campaign_spell_id: str | None = None

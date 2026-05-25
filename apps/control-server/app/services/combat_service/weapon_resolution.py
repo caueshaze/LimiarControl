@@ -64,6 +64,7 @@ def _normalize_class_id(value: object) -> str:
 
 class CombatWeaponResolutionMixin:
     _SPECIFIC_WEAPON_PROFICIENCY_ALIASES = _SPECIFIC_WEAPON_PROFICIENCY_ALIASES
+    _SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
 
     @classmethod
     def _get_player_legacy_weapon_profile(cls, data: dict, item: Item) -> dict | None:
@@ -224,6 +225,7 @@ class CombatWeaponResolutionMixin:
         player_user_id: str,
         data: dict,
         requested_weapon_item_id: str | None = None,
+        attacker_effects: list[dict] | None = None,
     ) -> dict:
         requested_id = (
             requested_weapon_item_id.strip()
@@ -353,10 +355,24 @@ class CombatWeaponResolutionMixin:
         fighting_style_attack_bonus = (
             2 if fighting_style == "archery" and is_ranged_weapon else 0
         )
+        shillelagh_override = cls._resolve_shillelagh_weapon_override(
+            attacker_data=data,
+            attacker_effects=attacker_effects,
+            inventory_item_id=inventory_item.id,
+            weapon_canonical_key=getattr(item, "canonical_key_snapshot", None),
+            weapon_range_type=(
+                item.weapon_range_type.value
+                if getattr(item, "weapon_range_type", None) is not None
+                else None
+            ),
+        )
+        if shillelagh_override is not None:
+            ability_name = shillelagh_override["attack_ability"]
+            ability_mod = shillelagh_override["attack_ability_mod"]
 
         return {
             "name": item.name,
-            "damage_dice": item.damage_dice or "1d4",
+            "damage_dice": shillelagh_override["damage_die"] if shillelagh_override else (item.damage_dice or "1d4"),
             "attack_bonus": (
                 ability_mod
                 + (proficiency_bonus if is_proficient else 0)
@@ -394,4 +410,54 @@ class CombatWeaponResolutionMixin:
                 for value in (item.properties or [])
                 if isinstance(value, str)
             },
+            "is_magical_damage": bool(
+                shillelagh_override and shillelagh_override["damage_counts_as_magical"]
+            ),
         }
+
+    @classmethod
+    def _resolve_shillelagh_weapon_override(
+        cls,
+        *,
+        attacker_data: dict,
+        attacker_effects: list[dict] | None,
+        inventory_item_id: str | None,
+        weapon_canonical_key: str | None,
+        weapon_range_type: str | None,
+    ) -> dict | None:
+        if not isinstance(inventory_item_id, str) or not inventory_item_id.strip():
+            return None
+        if _normalize_lookup(weapon_range_type) != "melee":
+            return None
+        normalized_weapon_key = _normalize_lookup(weapon_canonical_key).replace(" ", "_")
+        if normalized_weapon_key not in cls._SHILLELAGH_ELIGIBLE_WEAPONS:
+            return None
+        for effect in attacker_effects or []:
+            if not isinstance(effect, dict):
+                continue
+            metadata = effect.get("metadata")
+            if not isinstance(metadata, dict):
+                continue
+            if _normalize_lookup(metadata.get("source_spell_key")) != "shillelagh":
+                continue
+            if metadata.get("weapon_item_id") != inventory_item_id:
+                continue
+            spellcasting = cls._as_dict(attacker_data.get("spellcasting"))
+            spell_ability = _normalize_lookup(spellcasting.get("ability"))
+            if spell_ability not in cls._ENTITY_ABILITY_ALIASES:
+                spell_ability = "wisdom"
+            spell_mod = spellcasting.get("modifier")
+            if not isinstance(spell_mod, int):
+                spell_mod = cls._ability_modifier(
+                    cls._get_player_ability_score(attacker_data, spell_ability)
+                )
+            return {
+                "attack_ability": spell_ability,
+                "attack_ability_mod": spell_mod,
+                "damage_ability": spell_ability,
+                "damage_ability_mod": spell_mod,
+                "damage_die": "1d8",
+                "damage_counts_as_magical": True,
+                "source_spell_key": "shillelagh",
+            }
+        return None

@@ -33,7 +33,14 @@ class WeaponAttackRollMixin:
         attacker_data = cls._as_dict(attacker_model.state_json)
         if cls._as_dict(attacker_data.get("wildShape")).get("active"):
             raise CombatServiceError("Cannot use weapon attacks while in Wild Shape. Use wild-shape-attack instead.", 400)
-        attack_context = cls._build_player_attack_context(db, session_id, attacker["ref_id"], attacker_data, req.weapon_item_id)
+        attack_context = cls._build_player_attack_context(
+            db,
+            session_id,
+            attacker["ref_id"],
+            attacker_data,
+            req.weapon_item_id,
+            attacker.get("active_effects"),
+        )
         targeting_intent = WeaponAttackIntent(
             session_id=session_id,
             action_id=f"targeting:{uuid4()}",
@@ -131,6 +138,7 @@ class WeaponAttackRollMixin:
                     "attack_bonus": attack_context["attack_bonus"],
                     "damage_type": attack_context.get("damage_type"),
                     "inventory_item_id": attack_context.get("inventory_item_id"),
+                    "is_magical_damage": bool(attack_context.get("is_magical_damage")),
                     "is_weapon_attack": attack_context.get("inventory_item_id") != "unarmed",
                     "is_critical": is_crit,
                     "roll_result": roll_result.model_dump(mode="json"),

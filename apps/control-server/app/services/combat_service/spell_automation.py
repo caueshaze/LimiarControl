@@ -124,6 +124,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_true_strike_automation",
         ),
+        "shillelagh": SpellAutomationSpec(
+            canonical_key="shillelagh",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_shillelagh_automation",
+        ),
         "spiritual_weapon": SpellAutomationSpec(
             canonical_key="spiritual_weapon",
             default_mode="spell_attack",
@@ -736,6 +742,136 @@ class CombatSpellAutomationMixin:
                 "grants_advantage": True,
                 "available_from_next_turn": True,
                 "consume_on_first_eligible_attack": True,
+            },
+        )
+
+    @classmethod
+    def _resolve_shillelagh_weapon(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        weapon_item_id: str,
+    ) -> tuple[InventoryItem, Item, str]:
+        inventory_item, item = cls._resolve_player_weapon_item(
+            db,
+            session_id,
+            attacker.get("ref_id", ""),
+            weapon_item_id,
+        )
+        if not inventory_item.is_equipped:
+            raise CombatServiceError(
+                "Bordão Místico exige arma equipada/empunhada.",
+                400,
+            )
+        weapon_key = cls._normalize_lookup(
+            getattr(item, "canonical_key_snapshot", None)
+        ).replace(" ", "_")
+        if weapon_key not in {"club", "quarterstaff"}:
+            raise CombatServiceError(
+                "Bordão Místico só pode afetar porrete (club) ou bordão (quarterstaff).",
+                400,
+            )
+        return inventory_item, item, weapon_key
+
+    @classmethod
+    async def _cast_shillelagh_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Bordão Místico não possui variantes.", 400)
+        weapon_item_id = (
+            req.weapon_item_id.strip()
+            if isinstance(getattr(req, "weapon_item_id", None), str)
+            and req.weapon_item_id.strip()
+            else None
+        )
+        if not weapon_item_id:
+            raise CombatServiceError(
+                "weapon_item_id (weaponItemId) é obrigatório para Bordão Místico.",
+                400,
+            )
+
+        _, weapon_item, weapon_key = cls._resolve_shillelagh_weapon(
+            db,
+            session_id,
+            attacker=attacker,
+            weapon_item_id=weapon_item_id,
+        )
+
+        spell_name = spell_context["spell_name"]
+        game_time = get_game_time_seconds(session_id, db)
+        active_effects = attacker.get("active_effects")
+        if not isinstance(active_effects, list):
+            active_effects = []
+            attacker["active_effects"] = active_effects
+        attacker["active_effects"] = [
+            effect
+            for effect in active_effects
+            if cls._normalize_lookup(
+                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
+            )
+            != "shillelagh"
+        ]
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 60,
+            metadata={
+                "source_spell_key": "shillelagh",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "shillelagh",
+                "weapon_item_id": weapon_item_id,
+                "weapon_key": weapon_key,
+                "weapon_name": weapon_item.name,
+                "eligible_weapon_keys": ["club", "quarterstaff"],
+                "override_attack_ability": "spellcasting",
+                "override_damage_ability": "spellcasting",
+                "override_damage_die": "1d8",
+                "damage_counts_as_magical": True,
+                "ends_on_recast": True,
+                "ends_on_drop_weapon": True,
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(attacker, effect)
+        flag_modified(state, "participants")
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            action_kind="utility",
+            summary_text=(
+                f"{spell_name}: {weapon_item.name} foi imbuído com poder natural."
+            ),
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} em {weapon_item.name}."
+            ),
+            extra={
+                "utility": "shillelagh",
+                "weapon_item_id": weapon_item_id,
+                "weapon_key": weapon_key,
+                "weapon_name": weapon_item.name,
+                "duration_seconds": 60,
+                "damage_die_override": "1d8",
+                "damage_counts_as_magical": True,
             },
         )
 

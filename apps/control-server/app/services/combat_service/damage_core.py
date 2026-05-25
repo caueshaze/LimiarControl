@@ -46,6 +46,7 @@ class CombatDamageCoreMixin:
         state: CombatState | None = None,
         *,
         damage_type: str | None = None,
+        is_magical_damage: bool = False,
         concentration_roll_source: str = "system",
         concentration_manual_roll: int | None = None,
         attacker_participant_id: str | None = None,

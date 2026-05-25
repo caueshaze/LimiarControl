@@ -22,6 +22,20 @@ class SpellContextResolveMixin:
         "throw_range_meters": 9,
         "throw_attack_type": "ranged_spell",
     }
+    _SHILLELAGH_UTILITY_META = {
+        "type": "weapon_buff",
+        "subtype": "shillelagh",
+        "requiresWeapon": True,
+        "eligibleWeaponKeys": ["club", "quarterstaff"],
+        "durationSeconds": 60,
+        "requiresConcentration": False,
+        "attackAbilityOverride": "spellcasting",
+        "damageAbilityOverride": "spellcasting",
+        "damageDieOverride": "1d8",
+        "damageCountsAsMagical": True,
+        "endsOnRecast": True,
+        "endsOnDropWeapon": True,
+    }
 
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
@@ -658,8 +672,13 @@ class SpellContextResolveMixin:
             "effect_instance_count": effect_instance_count,
             "effect_instance_dice": effect_instance_dice,
             "base_effect_instance_count": base_effect_instance_count,
-            "utility": cls._PRODUCE_FLAME_UTILITY_META if spell_key == "produce_flame"
-                       else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key),
+            "utility": (
+                cls._PRODUCE_FLAME_UTILITY_META
+                if spell_key == "produce_flame"
+                else cls._SHILLELAGH_UTILITY_META
+                if spell_key == "shillelagh"
+                else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
+            ),
             "throw_attack": (
                 {
                     "attack_type": "ranged_spell",
