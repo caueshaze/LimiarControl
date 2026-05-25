@@ -153,6 +153,8 @@ def is_action_blocked(participant: dict) -> bool:
     for effect in participant.get("active_effects") or []:
         if effect.get("kind") == "condition" and effect.get("condition_type") in _INCAPACITATING_CONDITIONS:
             return True
+        if effect.get("kind") == "spell_effect" and (effect.get("metadata") or {}).get("action_blocked") is True:
+            return True
     for declarative in _iter_declarative_spell_effects(participant):
         if declarative.get("type") == "restrict_action":
             params = declarative.get("params")
@@ -174,6 +176,8 @@ def is_reaction_blocked(participant: dict) -> bool:
 def is_movement_blocked(participant: dict) -> bool:
     for effect in participant.get("active_effects") or []:
         if effect.get("kind") == "condition" and effect.get("condition_type") in _MOVEMENT_BLOCKING_CONDITIONS:
+            return True
+        if effect.get("kind") == "spell_effect" and (effect.get("metadata") or {}).get("movement_blocked") is True:
             return True
     for declarative in _iter_declarative_spell_effects(participant):
         if declarative.get("type") == "restrict_action":
@@ -808,6 +812,50 @@ def get_movement_speed_bonus_meters(participant: dict) -> tuple[float, list[dict
 
 
 LESSER_RESTORATION_CONDITIONS: frozenset[str] = frozenset({"blinded", "deafened", "paralyzed", "poisoned"})
+
+COMMAND_VARIANTS: frozenset[str] = frozenset({"approach", "drop", "flee", "grovel", "halt"})
+COMMAND_VARIANT_LABELS: dict[str, str] = {
+    "approach": "Aproxime-se",
+    "drop": "Largue",
+    "flee": "Fuja",
+    "grovel": "Prostre-se",
+    "halt": "Pare",
+}
+
+
+def _extract_languages(participant: dict) -> set[str]:
+    raw = (
+        participant.get("languages")
+        or (participant.get("metadata") or {}).get("languages")
+    )
+    if isinstance(raw, list):
+        return {str(lang).strip().lower() for lang in raw if lang}
+    if isinstance(raw, str):
+        return {raw.strip().lower()}
+    return set()
+
+
+def is_undead_participant(participant: dict) -> bool:
+    raw = (
+        participant.get("creature_type")
+        or participant.get("creatureType")
+        or (participant.get("metadata") or {}).get("creature_type")
+        or (participant.get("metadata") or {}).get("creatureType")
+    )
+    return str(raw or "").strip().lower() == "undead"
+
+
+def target_cannot_understand_command(caster: dict, target: dict) -> bool:
+    meta = target.get("metadata") or {}
+    if meta.get("cannot_understand_command") is True:
+        return True
+    if meta.get("understands_languages") is False:
+        return True
+    caster_langs = _extract_languages(caster)
+    target_langs = _extract_languages(target)
+    if caster_langs and target_langs:
+        return not bool(caster_langs & target_langs)
+    return False
 
 _TRUESIGHT_KEYS = frozenset({"truesightMeters", "truesight_meters", "truesight"})
 _BLINDSIGHT_KEYS = frozenset({"blindsightMeters", "blindsight_meters", "blindsight"})

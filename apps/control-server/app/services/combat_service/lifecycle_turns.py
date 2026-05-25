@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.models.combat import CombatPhase
 from app.services.game_time import (
     COMBAT_ROUND_GAME_TIME_SECONDS,
@@ -315,6 +317,7 @@ class CombatLifecycleTurnsMixin:
             if status == "stable":
                 await cls._emit_log(session_id, {"message": f"Turn skipped for stable participant {state.participants[state.current_turn_index]['display_name']}."})
         incoming = state.participants[state.current_turn_index]
+        cls._apply_command_grovel_prone(state, incoming["id"])
         expired_start = await cls._expire_effects_for_participant(session_id, state, incoming["id"], "turn_start")
         expired_anchor_start = tick_spell_anchors_for_turn(
             state,
@@ -346,6 +349,36 @@ class CombatLifecycleTurnsMixin:
         else:
             await cls._emit_log(session_id, {"message": f"It is now {active_name}'s turn."})
         return state
+
+    @classmethod
+    def _apply_command_grovel_prone(cls, state, participant_id: str) -> None:
+        participant = next(
+            (p for p in (state.participants or []) if p.get("id") == participant_id), None
+        )
+        if not participant:
+            return
+        needs_prone = any(
+            (effect.get("metadata") or {}).get("apply_prone_on_turn_start") is True
+            for effect in (participant.get("active_effects") or [])
+            if effect.get("kind") == "spell_effect"
+        )
+        if not needs_prone:
+            return
+        already_prone = any(
+            e.get("kind") == "condition" and e.get("condition_type") == "prone"
+            for e in (participant.get("active_effects") or [])
+        )
+        if not already_prone:
+            prone_effect = cls._build_active_effect(
+                kind="condition",
+                condition_type="prone",
+                source_participant_id=None,
+                duration_type="manual",
+                metadata={"source_spell_key": "command", "command_grovel_applied": True},
+                display_label="Prostrado (Comando)",
+            )
+            cls._append_effect_to_participant(participant, prone_effect)
+            flag_modified(state, "participants")
 
     @classmethod
     def _activate_deferred_spell_effects(cls, state, participant_id: str) -> None:

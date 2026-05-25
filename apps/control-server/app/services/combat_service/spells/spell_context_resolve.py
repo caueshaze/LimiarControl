@@ -111,6 +111,24 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _COMMAND_UTILITY_META = {
+        "type": "control",
+        "subtype": "command",
+        "requiresTarget": True,
+        "requiresConcentration": False,
+        "requiresVariantKey": True,
+        "saveAbility": "wisdom",
+        "saveEffect": "negates",
+        "durationRounds": 1,
+        "expiresOnTargetTurnEnd": True,
+        "allowedCommands": ["approach", "drop", "flee", "grovel", "halt"],
+        "invalidAgainstUndead": True,
+        "requiresSharedLanguage": True,
+        "disallowsDirectlyHarmfulCommand": True,
+        "supportsUpcastAdditionalTargets": True,
+        "targetsPerSlotAboveBase": 1,
+        "outOfCombatCastable": False,
+    }
     _FEATHER_FALL_UTILITY_META = {
         "type": "reaction_fall_protection",
         "subtype": "feather_fall",
@@ -800,6 +818,8 @@ class SpellContextResolveMixin:
                 if spell_key == "blur"
                 else cls._LESSER_RESTORATION_UTILITY_META
                 if spell_key == "lesser_restoration"
+                else cls._COMMAND_UTILITY_META
+                if spell_key == "command"
                 else cls._FEATHER_FALL_UTILITY_META
                 if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)

@@ -72,6 +72,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "barkskin": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "persistent"),
     "blur": SpellTargetingSemantics("self", "caster", "caster", "none", "self", "persistent"),
     "lesser_restoration": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "immediate"),
+    "command": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
     "feather_fall": SpellTargetingSemantics("multi_creature", "caster", "selected_targets", "none", "distance", "persistent"),
 }
 
