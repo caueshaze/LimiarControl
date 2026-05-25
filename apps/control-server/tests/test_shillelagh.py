@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
+from app.schemas.combat import CombatResolveDamageRequest
 from app.schemas.combat_spells import CombatCastSpellRequest
 from app.services.combat import CombatService, CombatServiceError
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
@@ -216,6 +217,171 @@ class ShillelaghWeaponOverrideTests(unittest.TestCase):
             weapon_range_type="melee",
         )
         self.assertIsNone(override)
+
+    def test_override_does_not_apply_to_ranged_weapon(self):
+        override = CombatService._resolve_shillelagh_weapon_override(
+            attacker_data={"abilities": {"strength": 10, "wisdom": 16}, "spellcasting": {"ability": "wisdom"}},
+            attacker_effects=[
+                {"metadata": {"source_spell_key": "shillelagh", "weapon_item_id": "inv-1"}}
+            ],
+            inventory_item_id="inv-1",
+            weapon_canonical_key="quarterstaff",
+            weapon_range_type="ranged",
+        )
+        self.assertIsNone(override)
+
+    def test_effect_from_other_participant_does_not_apply(self):
+        # Pipeline passes only attacker.active_effects to resolver.
+        override = CombatService._resolve_shillelagh_weapon_override(
+            attacker_data={"abilities": {"strength": 10, "wisdom": 16}, "spellcasting": {"ability": "wisdom"}},
+            attacker_effects=[],
+            inventory_item_id="inv-1",
+            weapon_canonical_key="quarterstaff",
+            weapon_range_type="melee",
+        )
+        self.assertIsNone(override)
+
+
+class ShillelaghDamagePropagationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_damage_type_preserved_and_magical_flag_propagated(self):
+        state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "p1",
+                    "ref_id": "player-1",
+                    "kind": "player",
+                    "display_name": "Druida",
+                    "status": "active",
+                    "team": "players",
+                    "visible": True,
+                    "actor_user_id": "u1",
+                    "turn_resources": {"action_used": False},
+                    "active_effects": [],
+                    "pending_attack": {
+                        "id": "pa-1",
+                        "type": "player_attack",
+                        "weapon_name": "Quarterstaff",
+                        "weapon_item_id": "inv-1",
+                        "damage_dice": "1d8",
+                        "damage_bonus": 3,
+                        "attack_bonus": 6,
+                        "damage_type": "bludgeoning",
+                        "is_magical_damage": True,
+                        "target_ref_id": "enemy-1",
+                        "target_kind": "session_entity",
+                        "target_display_name": "Goblin",
+                        "is_weapon_attack": True,
+                        "is_critical": False,
+                        "roll": 16,
+                        "target_ac": 14,
+                    },
+                },
+                {
+                    "id": "e1",
+                    "ref_id": "enemy-1",
+                    "kind": "session_entity",
+                    "display_name": "Goblin",
+                    "status": "active",
+                    "team": "enemies",
+                    "visible": True,
+                    "actor_user_id": None,
+                    "active_effects": [],
+                },
+            ],
+        )
+        req = CombatResolveDamageRequest(pending_attack_id="pa-1")
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", side_effect=[
+                (MagicMock(state_json={}), 10, 10, 10, 2, 0),
+                (MagicMock(), 12, 10, 10, 2, 0),
+            ]),
+            patch("app.services.combat.CombatService._get_target_hp_snapshot", return_value=(20, 20)),
+            patch("app.services.combat.CombatService._resolve_damage_roll", return_value=([5], 5)),
+            patch("app.services.combat.CombatService._emit_and_persist_log"),
+            patch("app.services.combat.CombatService._emit_state"),
+            patch("app.services.combat.CombatService._emit_player_state_update"),
+            patch("app.services.combat.CombatService._emit_entity_hp_update"),
+            patch("app.services.combat.CombatService._apply_damage_to_target", return_value=(12, "", 20, None)) as apply_damage_mock,
+        ):
+            res = await CombatService.attack_damage(MagicMock(), "session-1", req, "u1", False)
+
+        self.assertEqual(res["damage_type"], "bludgeoning")
+        self.assertTrue(res["is_magical_damage"])
+        _, kwargs = apply_damage_mock.call_args
+        self.assertEqual(kwargs["damage_type"], "bludgeoning")
+        self.assertTrue(kwargs["is_magical_damage"])
+
+
+class ShillelaghSpellAttackIsolationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_spell_attack_path_ignores_shillelagh_weapon_override(self):
+        state = CombatState(
+            id="c1",
+            session_id="s1",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            use_map=False,
+            participants=[
+                {
+                    "id": "caster-p1",
+                    "ref_id": "player-1",
+                    "kind": "player",
+                    "display_name": "Feiticeiro",
+                    "status": "active",
+                    "team": "players",
+                    "visible": True,
+                    "actor_user_id": "u1",
+                    "active_effects": [
+                        {
+                            "kind": "spell_effect",
+                            "metadata": {"source_spell_key": "shillelagh", "weapon_item_id": "inv-1"},
+                        }
+                    ],
+                    "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False},
+                },
+                {
+                    "id": "target-p2",
+                    "ref_id": "npc-1",
+                    "kind": "session_entity",
+                    "display_name": "Goblin",
+                    "status": "active",
+                    "team": "enemies",
+                    "visible": True,
+                    "actor_user_id": None,
+                    "active_effects": [],
+                    "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False},
+                },
+            ],
+        )
+        with (
+            patch("app.services.combat_service.spell_automation.resolve_attack_base", return_value=SimpleNamespace(success=False, total=3, selected_roll=3, is_gm_roll=False)),
+            patch("app.services.combat_service.spell_automation.resolve_attack_advantage", return_value=SimpleNamespace(advantage_sources=[], disadvantage_sources=[], consumed_effect_ids_on_roll=[])),
+            patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 12, 30, 30, 3, 3)),
+        ):
+            result = await CombatService._cast_chill_touch_automation(
+                MagicMock(),
+                "s1",
+                attacker=state.participants[0],
+                attacker_model=MagicMock(),
+                actor_user_id="u1",
+                is_gm=False,
+                req=SimpleNamespace(has_advantage=False, has_disadvantage=False, roll_source="system", manual_roll=None, manual_rolls=None),
+                state=state,
+                spell_context={
+                    "spell_name": "Toque Necrótico",
+                    "spell_canonical_key": "chill_touch",
+                    "effect_dice": "1d8",
+                    "attack_bonus": 5,
+                },
+                target_participant=state.participants[1],
+            )
+        self.assertEqual(result["action_kind"], "spell_attack")
 
 
 class ShillelaghOocScopeTests(unittest.TestCase):
