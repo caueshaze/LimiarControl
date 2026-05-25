@@ -578,6 +578,24 @@ def has_feather_fall_protection(participant: dict) -> bool:
     return False
 
 
+def resolve_armor_class_floor(participant: dict) -> int | None:
+    floor_value: int | None = None
+    for effect in participant.get("active_effects") or []:
+        if not isinstance(effect, dict):
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("sets_minimum_ac") is not True:
+            continue
+        raw = metadata.get("armor_class_floor")
+        if not isinstance(raw, int):
+            raw = metadata.get("ac_floor")
+        if isinstance(raw, int):
+            floor_value = raw if floor_value is None else max(floor_value, raw)
+    return floor_value
+
+
 def _carrying_capacity_group_key(metadata: dict, effect: dict, params: dict) -> str:
     return _declarative_effect_group_key(
         metadata,

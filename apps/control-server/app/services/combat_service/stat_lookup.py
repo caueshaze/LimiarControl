@@ -9,6 +9,7 @@ from app.models.session_entity import SessionEntity
 from app.models.session_state import SessionState
 from app.schemas.campaign_entity import CombatAction
 
+from .condition_effects_predicates import resolve_armor_class_floor
 from .exceptions import CombatServiceError
 
 
@@ -60,6 +61,10 @@ class CombatStatLookupMixin:
                 data,
                 active_effects=combat_effects,
             )
+            if isinstance(participant, dict):
+                ac_floor = resolve_armor_class_floor(participant)
+                if isinstance(ac_floor, int):
+                    ac = max(ac, ac_floor)
 
             wild_shape = cls._as_dict(data.get("wildShape"))
             if wild_shape.get("active"):
@@ -102,6 +107,19 @@ class CombatStatLookupMixin:
             str_val = cls._get_entity_ability_score(abilities, overrides, "strength")
             dex_val = cls._get_entity_ability_score(abilities, overrides, "dexterity")
             ac = cls._get_entity_armor_class(npc, overrides)
+            if combat_state is not None:
+                participant = next(
+                    (
+                        entry
+                        for entry in combat_state.participants
+                        if entry.get("kind") != "player" and entry.get("ref_id") == ref_id
+                    ),
+                    None,
+                )
+                if isinstance(participant, dict):
+                    ac_floor = resolve_armor_class_floor(participant)
+                    if isinstance(ac_floor, int):
+                        ac = max(ac, ac_floor)
             spell_ability = (
                 cls._normalize_ability_name(spellcasting.get("ability"))
                 or "intelligence"

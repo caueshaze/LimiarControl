@@ -70,6 +70,19 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _BARKSKIN_UTILITY_META = {
+        "type": "defense_buff",
+        "subtype": "barkskin",
+        "requiresTarget": True,
+        "requiresConcentration": True,
+        "durationSeconds": 3600,
+        "armorClassFloor": 16,
+        "setsMinimumAC": True,
+        "isFlatBonus": False,
+        "stacksAsFloor": True,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self_or_ally",
+    }
     _FEATHER_FALL_UTILITY_META = {
         "type": "reaction_fall_protection",
         "subtype": "feather_fall",
@@ -753,6 +766,8 @@ class SpellContextResolveMixin:
                 if spell_key == "jump"
                 else cls._SPIDER_CLIMB_UTILITY_META
                 if spell_key == "spider_climb"
+                else cls._BARKSKIN_UTILITY_META
+                if spell_key == "barkskin"
                 else cls._FEATHER_FALL_UTILITY_META
                 if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)

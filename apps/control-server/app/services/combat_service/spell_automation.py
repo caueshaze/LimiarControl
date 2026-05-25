@@ -142,6 +142,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_spider_climb_automation",
         ),
+        "barkskin": SpellAutomationSpec(
+            canonical_key="barkskin",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_barkskin_automation",
+        ),
         "feather_fall": SpellAutomationSpec(
             canonical_key="feather_fall",
             default_mode="utility",
@@ -1082,6 +1088,107 @@ class CombatSpellAutomationMixin:
                 "can_move_on_ceilings": True,
                 "grants_flight": False,
                 "prevents_fall_damage": False,
+            },
+        )
+
+    @classmethod
+    async def _cast_barkskin_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if target_participant is None:
+            raise CombatServiceError("Pele de Árvore exige um alvo.", 400)
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Pele de Árvore não possui variantes.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(
+            session_id, state, result["removed_area_effects"],
+        )
+
+        spell_name = spell_context["spell_name"]
+        concentration_group = str(uuid4())
+        game_time = get_game_time_seconds(session_id, db)
+
+        active_effects = target_participant.get("active_effects")
+        if not isinstance(active_effects, list):
+            active_effects = []
+            target_participant["active_effects"] = active_effects
+        target_participant["active_effects"] = [
+            effect
+            for effect in active_effects
+            if cls._normalize_lookup(
+                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
+            )
+            != "barkskin"
+        ]
+
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 3600,
+            metadata={
+                "source_spell_key": "barkskin",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "barkskin",
+                "concentration": True,
+                "concentration_group": concentration_group,
+                "source_participant_id": attacker["id"],
+                "owner_participant_id": target_participant["id"],
+                "created_by_participant_id": attacker["id"],
+                "defense_modifier": True,
+                "armor_class_floor": 16,
+                "ac_floor": 16,
+                "sets_minimum_ac": True,
+                "stacks_as_floor": True,
+                "is_flat_bonus": False,
+                "duration_seconds": 3600,
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(target_participant, effect)
+        flag_modified(state, "participants")
+
+        summary_text = (
+            f"{spell_name}: a CA de {target_participant['display_name']} não pode ser menor que 16 por até 1 hora."
+        )
+        if result["removed_effects"] or result["removed_area_effects"]:
+            summary_text += " A concentração anterior terminou."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_participant["display_name"],
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} em {target_participant['display_name']}."
+            ),
+            extra={
+                "utility": "barkskin",
+                "concentration_group": concentration_group,
+                "armor_class_floor": 16,
+                "sets_minimum_ac": True,
+                "is_flat_bonus": False,
+                "duration_seconds": 3600,
             },
         )
 
