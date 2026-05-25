@@ -148,6 +148,18 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_barkskin_automation",
         ),
+        "blur": SpellAutomationSpec(
+            canonical_key="blur",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_blur_automation",
+        ),
+        "lesser_restoration": SpellAutomationSpec(
+            canonical_key="lesser_restoration",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_lesser_restoration_automation",
+        ),
         "feather_fall": SpellAutomationSpec(
             canonical_key="feather_fall",
             default_mode="utility",
@@ -1189,6 +1201,197 @@ class CombatSpellAutomationMixin:
                 "sets_minimum_ac": True,
                 "is_flat_bonus": False,
                 "duration_seconds": 3600,
+            },
+        )
+
+    @classmethod
+    async def _cast_blur_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Reflexos não possui variantes.", 400)
+        if target_participant is not None and target_participant.get("id") != attacker.get("id"):
+            raise CombatServiceError("Reflexos só pode afetar o próprio conjurador.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(session_id, state, result["removed_area_effects"])
+
+        active_effects = attacker.get("active_effects")
+        if isinstance(active_effects, list):
+            attacker["active_effects"] = [
+                e for e in active_effects
+                if cls._normalize_lookup(
+                    (cls._get_effect_metadata(e) or {}).get("source_spell_key")
+                ) != "blur"
+            ]
+
+        spell_name = spell_context["spell_name"]
+        concentration_group = str(uuid4())
+        game_time = get_game_time_seconds(session_id, db)
+
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 60,
+            metadata={
+                "source_spell_key": "blur",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "blur",
+                "concentration": True,
+                "concentration_group": concentration_group,
+                "source_participant_id": attacker["id"],
+                "owner_participant_id": attacker["id"],
+                "created_by_participant_id": attacker["id"],
+                "defense_modifier": True,
+                "illusion_defense": True,
+                "attack_disadvantage_against_target": True,
+                "applies_to_attack_rolls_against_owner": True,
+                "grants_ac_bonus": False,
+                "armor_class_bonus": 0,
+                "grants_resistance": False,
+                "duration_seconds": 60,
+                "declarative_effect": {
+                    "type": "attack_disadvantage_against_target",
+                    "params": {
+                        "mode": "disadvantage",
+                        "roll_types": ["attack"],
+                        "source": "blur",
+                        "requires_attacker_sight": True,
+                        "ignored_by_senses": ["blindsight", "truesight"],
+                        "consume_on_apply": False,
+                    },
+                },
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(attacker, effect)
+        flag_modified(state, "participants")
+
+        summary_text = (
+            f"{spell_name}: ataques contra {attacker['display_name']} têm desvantagem "
+            "enquanto a concentração for mantida."
+        )
+        if result["removed_effects"] or result["removed_area_effects"]:
+            summary_text += " A concentração anterior terminou."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            action_kind="utility",
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name}. "
+                "Ataques contra ele têm desvantagem enquanto a concentração for mantida."
+            ),
+            extra={
+                "utility": "blur",
+                "concentration_group": concentration_group,
+                "attack_disadvantage_against_target": True,
+                "duration_seconds": 60,
+            },
+        )
+
+    @classmethod
+    async def _cast_lesser_restoration_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        from .condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
+
+        if target_participant is None:
+            raise CombatServiceError("Restauração Menor requer um alvo.", 400)
+
+        variant_key = cls._normalize_lookup(getattr(req, "variant_key", None) or "")
+        if not variant_key:
+            raise CombatServiceError(
+                "Especifique o que remover via variant_key "
+                "(ex: 'poisoned', 'blinded', 'deafened', 'paralyzed', 'disease').",
+                400,
+            )
+        if variant_key not in LESSER_RESTORATION_CONDITIONS and variant_key != "disease":
+            raise CombatServiceError(
+                f"lesser_restoration não pode remover '{variant_key}'. "
+                f"Valores válidos: {sorted(LESSER_RESTORATION_CONDITIONS | {'disease'})}.",
+                400,
+            )
+
+        spell_name = spell_context["spell_name"]
+        target_name = target_participant["display_name"]
+
+        active = target_participant.get("active_effects") or []
+        if variant_key == "disease":
+            def _is_removable_disease(e: dict) -> bool:
+                if e.get("kind") != "condition":
+                    return False
+                meta = e.get("metadata") or {}
+                return meta.get("removable_by_lesser_restoration") is True or meta.get("disease") is True
+            matching = [e for e in active if _is_removable_disease(e)]
+            removed_label = "doença"
+        else:
+            matching = [
+                e for e in active
+                if e.get("kind") == "condition" and e.get("condition_type") == variant_key
+            ]
+            removed_label = variant_key
+
+        if not matching:
+            raise CombatServiceError(
+                f"{target_name} não possui a condição '{removed_label}' para ser removida.",
+                400,
+            )
+
+        matching_ids = {id(e) for e in matching}
+        target_participant["active_effects"] = [e for e in active if id(e) not in matching_ids]
+        flag_modified(state, "participants")
+
+        summary_text = f"{spell_name}: condição '{removed_label}' removida de {target_name}."
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_name} em {target_name}. "
+            f"Condição '{removed_label}' removida."
+        )
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_name,
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=summary_text,
+            log_message=log_message,
+            extra={
+                "utility": "lesser_restoration",
+                "removed_condition": variant_key,
+                "removed_count": len(matching),
             },
         )
 

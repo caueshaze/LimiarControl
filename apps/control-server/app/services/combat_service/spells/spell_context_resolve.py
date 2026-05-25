@@ -83,6 +83,34 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _BLUR_UTILITY_META = {
+        "type": "defense_buff",
+        "subtype": "blur",
+        "requiresTarget": False,
+        "requiresConcentration": True,
+        "durationSeconds": 60,
+        "attackDisadvantageAgainstTarget": True,
+        "appliesToAttackRolls": True,
+        "ignoredByBlindsight": True,
+        "ignoredByTruesight": True,
+        "ignoredIfAttackerDoesNotRelyOnSight": True,
+        "grantsACBonus": False,
+        "armorClassBonus": 0,
+        "grantsResistance": False,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self",
+    }
+    _LESSER_RESTORATION_UTILITY_META = {
+        "type": "condition_removal",
+        "subtype": "lesser_restoration",
+        "requiresTarget": True,
+        "requiresConcentration": False,
+        "durationSeconds": 0,
+        "removableConditions": ["blinded", "deafened", "paralyzed", "poisoned", "disease"],
+        "requiresVariantKey": True,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self_or_ally",
+    }
     _FEATHER_FALL_UTILITY_META = {
         "type": "reaction_fall_protection",
         "subtype": "feather_fall",
@@ -768,6 +796,10 @@ class SpellContextResolveMixin:
                 if spell_key == "spider_climb"
                 else cls._BARKSKIN_UTILITY_META
                 if spell_key == "barkskin"
+                else cls._BLUR_UTILITY_META
+                if spell_key == "blur"
+                else cls._LESSER_RESTORATION_UTILITY_META
+                if spell_key == "lesser_restoration"
                 else cls._FEATHER_FALL_UTILITY_META
                 if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)

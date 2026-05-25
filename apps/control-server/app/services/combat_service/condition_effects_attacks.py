@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from .condition_effects_predicates import has_condition
+from .condition_effects_predicates import has_condition, attacker_ignores_incoming_attack_disadvantage_from_sight
 
 
 @dataclass
@@ -140,6 +140,37 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
             if isinstance(marked_target, str) and marked_target != target_id:
                 continue
             adv.append(metadata.get("source_spell_name") or "Guiding Bolt")
+            if params.get("consume_on_apply") is True:
+                effect_id = effect.get("id")
+                if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
+                    consume_effect_ids.append(effect_id)
+    # Blur / target-side attack disadvantage effects (e.g. blur illusion defense)
+    target_id = target.get("id")
+    if isinstance(target_id, str) and target_id:
+        for effect in target.get("active_effects") or []:
+            if effect.get("kind") != "spell_effect":
+                continue
+            metadata = effect.get("metadata")
+            if not isinstance(metadata, dict):
+                continue
+            declarative = metadata.get("declarative_effect")
+            if not isinstance(declarative, dict):
+                continue
+            if declarative.get("type") != "attack_disadvantage_against_target":
+                continue
+            params = declarative.get("params")
+            if not isinstance(params, dict):
+                continue
+            if params.get("mode") != "disadvantage":
+                continue
+            roll_types = params.get("roll_types")
+            if not isinstance(roll_types, list) or "attack" not in roll_types:
+                continue
+            if params.get("requires_attacker_sight") and attacker_ignores_incoming_attack_disadvantage_from_sight(attacker):
+                continue
+            source = params.get("source") or metadata.get("source_spell_name") or "attack_disadvantage_against_target"
+            if source not in dis:
+                dis.append(source)
             if params.get("consume_on_apply") is True:
                 effect_id = effect.get("id")
                 if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:

@@ -710,6 +710,115 @@ async def _cast_spell_out_of_combat_for_player(
 
         return to_state_read(caster_state)
 
+    # --- Lesser Restoration: remove a condition/disease (OOC) ---
+    if canonical_key == "lesser_restoration":
+        from app.services.combat_service.condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
+
+        lr_variant_key = str(req.variantKey or "").strip().lower()
+        if not lr_variant_key:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Especifique o que remover via variantKey "
+                    "(ex: 'poisoned', 'blinded', 'deafened', 'paralyzed', 'disease')."
+                ),
+            )
+        if lr_variant_key not in LESSER_RESTORATION_CONDITIONS and lr_variant_key != "disease":
+            raise HTTPException(
+                status_code=400,
+                detail=f"lesser_restoration não pode remover '{lr_variant_key}'.",
+            )
+
+        lr_target_json: dict = (
+            dict(target_state.state_json or {})
+            if is_ally_target and target_state is not None
+            else dict(updated_caster_json)
+        )
+        lr_active = lr_target_json.get("active_spell_effects") or []
+
+        if lr_variant_key == "disease":
+            def _lr_is_removable_disease(e: dict) -> bool:
+                if e.get("kind") != "condition":
+                    return False
+                meta = e.get("metadata") or {}
+                return meta.get("removable_by_lesser_restoration") is True or meta.get("disease") is True
+            lr_matching = [e for e in lr_active if _lr_is_removable_disease(e)]
+        else:
+            lr_matching = [
+                e for e in lr_active
+                if e.get("kind") == "condition" and e.get("condition_type") == lr_variant_key
+            ]
+
+        if not lr_matching:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Alvo não possui a condição '{lr_variant_key}' para ser removida.",
+            )
+
+        lr_matching_ids = {id(e) for e in lr_matching}
+        lr_target_json["active_spell_effects"] = [e for e in lr_active if id(e) not in lr_matching_ids]
+
+        spell_name = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
+
+        if is_ally_target and target_state is not None:
+            target_state.state_json = finalize_session_state_data(
+                lr_target_json,
+                game_time_seconds=current_game_time_seconds,
+            )
+            flag_modified(target_state, "state_json")
+            session.add(target_state)
+        else:
+            updated_caster_json = lr_target_json
+            caster_state.state_json = finalize_session_state_data(
+                updated_caster_json,
+                game_time_seconds=current_game_time_seconds,
+            )
+            flag_modified(caster_state, "state_json")
+            session.add(caster_state)
+
+        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
+        if actor_member_id:
+            record_session_activity(
+                entry,
+                "out_of_combat_spell_cast",
+                session,
+                member_id=actor_member_id,
+                user_id=actor_user.id,
+                actor_name=actor_display_name,
+                payload={
+                    "actor_user_id": actor_user.id,
+                    "actor_player_user_id": actor_user.id,
+                    "actor_display_name": actor_display_name,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "spell_key": "lesser_restoration",
+                    "spell_name": spell_name,
+                    "variant_key": lr_variant_key,
+                    "removed_condition": lr_variant_key,
+                    "cast_by_gm": cast_by_gm,
+                },
+            )
+            _prune_out_of_combat_session_activity(session, session_id)
+
+        session.commit()
+        session.refresh(caster_state)
+        if is_ally_target and target_state is not None:
+            session.refresh(target_state)
+
+        states_to_publish: dict[str, SessionState] = {caster_user_id: caster_state}
+        if is_ally_target and target_state is not None:
+            states_to_publish[target_user_id] = target_state
+
+        for player_id, publish_state in states_to_publish.items():
+            await publish_state_update(
+                entry,
+                player_id,
+                publish_state.updated_at or publish_state.created_at,
+                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+            )
+
+        return to_state_read(caster_state)
+
     if not new_target_effects and not consumables_granted_count and not heal_rolled and not temp_hp_rolled:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
 

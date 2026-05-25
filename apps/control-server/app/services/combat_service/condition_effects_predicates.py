@@ -805,3 +805,31 @@ def get_movement_speed_bonus_meters(participant: dict) -> tuple[float, list[dict
         total_bonus += source["value"]
         sources.append(source)
     return total_bonus, sources
+
+
+LESSER_RESTORATION_CONDITIONS: frozenset[str] = frozenset({"blinded", "deafened", "paralyzed", "poisoned"})
+
+_TRUESIGHT_KEYS = frozenset({"truesightMeters", "truesight_meters", "truesight"})
+_BLINDSIGHT_KEYS = frozenset({"blindsightMeters", "blindsight_meters", "blindsight"})
+
+
+def _has_sight_bypass_sense(senses: dict) -> bool:
+    return any(senses.get(k) for k in _TRUESIGHT_KEYS | _BLINDSIGHT_KEYS)
+
+
+def attacker_ignores_incoming_attack_disadvantage_from_sight(attacker: dict) -> bool:
+    """Return True if attacker has blindsight or truesight (ignores illusion-based disadvantage)."""
+    senses = attacker.get("senses") or {}
+    if isinstance(senses, dict):
+        if _has_sight_bypass_sense(senses):
+            return True
+    elif isinstance(senses, list):
+        for s in senses:
+            if isinstance(s, dict) and s.get("type") in ("truesight", "blindsight"):
+                return True
+    meta_senses = (attacker.get("metadata") or {}).get("senses") or {}
+    if isinstance(meta_senses, dict) and _has_sight_bypass_sense(meta_senses):
+        return True
+    if attacker.get("does_not_rely_on_sight") is True:
+        return True
+    return False

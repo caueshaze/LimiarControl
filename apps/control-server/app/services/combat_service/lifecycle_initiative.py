@@ -170,6 +170,7 @@ class CombatLifecycleInitiativeMixin:
 
         built_participants = []
         entity_metal_armor_cache: dict[str, bool | None] = {}
+        entity_senses_cache: dict[str, dict | None] = {}
         for p in req.participants:
             entry = {
                 **p.model_dump(),
@@ -223,12 +224,17 @@ class CombatLifecycleInitiativeMixin:
                             ).first()
                             raw_flag = campaign_entity.wearing_metal_armor if campaign_entity else None
                             wearing_metal_armor = raw_flag if isinstance(raw_flag, bool) else None
+                            raw_senses = campaign_entity.senses if campaign_entity else None
+                            entity_senses_cache[p.ref_id] = raw_senses if isinstance(raw_senses, dict) else None
                         else:
                             wearing_metal_armor = None
+                            entity_senses_cache[p.ref_id] = None
                     except Exception:
                         wearing_metal_armor = None
+                        entity_senses_cache[p.ref_id] = None
                     entity_metal_armor_cache[p.ref_id] = wearing_metal_armor
                 entry["wearingMetalArmor"] = wearing_metal_armor
+                entry["senses"] = entity_senses_cache.get(p.ref_id)
             built_participants.append(entry)
 
         new_state = CombatState(
