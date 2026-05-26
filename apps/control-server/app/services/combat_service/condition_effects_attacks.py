@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from .condition_effects_predicates import has_condition, attacker_ignores_incoming_attack_disadvantage_from_sight
+from .condition_effects_predicates import (
+    has_condition,
+    attacker_ignores_incoming_attack_disadvantage_from_sight,
+    get_participant_creature_type,
+)
 
 
 @dataclass
@@ -168,6 +172,11 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
                 continue
             if params.get("requires_attacker_sight") and attacker_ignores_incoming_attack_disadvantage_from_sight(attacker):
                 continue
+            required_attacker_types = params.get("requires_attacker_creature_type")
+            if isinstance(required_attacker_types, list) and required_attacker_types:
+                attacker_type = get_participant_creature_type(attacker)
+                if attacker_type not in {str(t).lower() for t in required_attacker_types}:
+                    continue
             source = params.get("source") or metadata.get("source_spell_name") or "attack_disadvantage_against_target"
             if source not in dis:
                 dis.append(source)

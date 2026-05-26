@@ -813,6 +813,14 @@ def get_movement_speed_bonus_meters(participant: dict) -> tuple[float, list[dict
 
 LESSER_RESTORATION_CONDITIONS: frozenset[str] = frozenset({"blinded", "deafened", "paralyzed", "poisoned"})
 
+PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES: frozenset[str] = frozenset({
+    "aberration", "celestial", "elemental", "fey", "fiend", "undead",
+})
+
+PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS: frozenset[str] = frozenset({
+    "charmed", "frightened",
+})
+
 COMMAND_VARIANTS: frozenset[str] = frozenset({"approach", "drop", "flee", "grovel", "halt"})
 COMMAND_VARIANT_LABELS: dict[str, str] = {
     "approach": "Aproxime-se",
@@ -843,6 +851,56 @@ def is_undead_participant(participant: dict) -> bool:
         or (participant.get("metadata") or {}).get("creatureType")
     )
     return str(raw or "").strip().lower() == "undead"
+
+
+def get_participant_creature_type(participant: dict) -> str | None:
+    raw = (
+        participant.get("creature_type")
+        or participant.get("creatureType")
+        or (participant.get("metadata") or {}).get("creature_type")
+        or (participant.get("metadata") or {}).get("creatureType")
+    )
+    normalized = str(raw or "").strip().lower()
+    return normalized or None
+
+
+def is_protection_from_evil_and_good_type(participant: dict) -> bool:
+    return get_participant_creature_type(participant) in PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES
+
+
+def has_condition_immunity_from_source(
+    participant: dict,
+    condition_type: str,
+    source_participant: dict | None = None,
+) -> bool:
+    """Source-aware condition immunity. Additive — does NOT replace has_condition_immunity.
+
+    Returns True only if:
+    - a spell_effect has condition_immunity=True and condition_type in immune_conditions
+    - AND the effect has immune_conditions_from_creature_types
+    - AND source_participant creature_type is in that list
+
+    If source_participant is None, does not grant immunity (source type unconfirmed).
+    V1: not plugged into charm_person/hold_person handlers.
+    """
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata") or {}
+        if not metadata.get("condition_immunity"):
+            continue
+        immune_conditions = metadata.get("immune_conditions") or []
+        if condition_type not in immune_conditions:
+            continue
+        source_creature_types = metadata.get("immune_conditions_from_creature_types")
+        if isinstance(source_creature_types, list) and source_creature_types:
+            if source_participant is None:
+                continue
+            source_type = get_participant_creature_type(source_participant)
+            if source_type not in {str(t).lower() for t in source_creature_types}:
+                continue
+        return True
+    return False
 
 
 def target_cannot_understand_command(caster: dict, target: dict) -> bool:

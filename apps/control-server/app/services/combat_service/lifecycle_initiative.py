@@ -171,6 +171,7 @@ class CombatLifecycleInitiativeMixin:
         built_participants = []
         entity_metal_armor_cache: dict[str, bool | None] = {}
         entity_senses_cache: dict[str, dict | None] = {}
+        entity_creature_type_cache: dict[str, str | None] = {}
         for p in req.participants:
             entry = {
                 **p.model_dump(),
@@ -206,6 +207,8 @@ class CombatLifecycleInitiativeMixin:
                     active_effects=entry.get("active_effects"),
                     effective_size=size_payload["effective_size"],
                 )
+                entry["creature_type"] = "humanoid"
+                entry["creatureType"] = "humanoid"
             elif p.kind == "session_entity":
                 wearing_metal_armor = entity_metal_armor_cache.get(p.ref_id)
                 if p.ref_id not in entity_metal_armor_cache:
@@ -226,15 +229,22 @@ class CombatLifecycleInitiativeMixin:
                             wearing_metal_armor = raw_flag if isinstance(raw_flag, bool) else None
                             raw_senses = campaign_entity.senses if campaign_entity else None
                             entity_senses_cache[p.ref_id] = raw_senses if isinstance(raw_senses, dict) else None
+                            raw_ct = campaign_entity.creature_type if campaign_entity else None
+                            entity_creature_type_cache[p.ref_id] = cls.normalize_creature_type(raw_ct)
                         else:
                             wearing_metal_armor = None
                             entity_senses_cache[p.ref_id] = None
+                            entity_creature_type_cache[p.ref_id] = None
                     except Exception:
                         wearing_metal_armor = None
                         entity_senses_cache[p.ref_id] = None
+                        entity_creature_type_cache[p.ref_id] = None
                     entity_metal_armor_cache[p.ref_id] = wearing_metal_armor
                 entry["wearingMetalArmor"] = wearing_metal_armor
                 entry["senses"] = entity_senses_cache.get(p.ref_id)
+                resolved_ct = entity_creature_type_cache.get(p.ref_id)
+                entry["creature_type"] = resolved_ct
+                entry["creatureType"] = resolved_ct
             built_participants.append(entry)
 
         new_state = CombatState(

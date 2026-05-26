@@ -111,6 +111,30 @@ class SpellContextResolveMixin:
         "outOfCombatCastable": True,
         "outOfCombatTarget": "self_or_ally",
     }
+    _PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META = {
+        "type": "defense_buff",
+        "subtype": "protection_from_evil_and_good",
+        "requiresTarget": True,
+        "requiresConcentration": True,
+        "durationSeconds": 600,
+        "protectedCreatureTypes": [
+            "aberration", "celestial", "elemental", "fey", "fiend", "undead"
+        ],
+        "attackDisadvantageAgainstProtectedTarget": True,
+        "conditionImmunity": True,
+        "immuneConditions": ["charmed", "frightened"],
+        "immuneConditionsFromCreatureTypes": [
+            "aberration", "celestial", "elemental", "fey", "fiend", "undead"
+        ],
+        "savingThrowAdvantageAgainstCreatureTypes": False,
+        "savingThrowAdvantageDeferred": True,
+        "possessedConditionSupported": False,
+        "grantsACBonus": False,
+        "armorClassBonus": 0,
+        "grantsResistance": False,
+        "outOfCombatCastable": True,
+        "outOfCombatTarget": "self_or_ally",
+    }
     _COMMAND_UTILITY_META = {
         "type": "control",
         "subtype": "command",
@@ -820,6 +844,8 @@ class SpellContextResolveMixin:
                 if spell_key == "lesser_restoration"
                 else cls._COMMAND_UTILITY_META
                 if spell_key == "command"
+                else cls._PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META
+                if spell_key == "protection_from_evil_and_good"
                 else cls._FEATHER_FALL_UTILITY_META
                 if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)

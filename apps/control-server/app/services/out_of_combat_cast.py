@@ -17,7 +17,7 @@ _SPECIAL_OOC_UTILITY_SPELLS = {
     "detect_magic", "detect_poison_disease", "detect_evil_and_good",
     "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
     "purify_food_and_drink", "spare_the_dying", "shillelagh", "jump", "spider_climb",
-    "barkskin", "blur", "lesser_restoration",
+    "barkskin", "blur", "lesser_restoration", "protection_from_evil_and_good",
 }
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
@@ -635,6 +635,65 @@ def build_persisted_effects(
                             "source": "blur",
                             "requires_attacker_sight": True,
                             "ignored_by_senses": ["blindsight", "truesight"],
+                            "consume_on_apply": False,
+                        },
+                    },
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "protection_from_evil_and_good":
+            spell_name = spell.name_pt or spell.name_en
+            group_id = str(uuid4()) if spell.concentration else None
+            protected_types = sorted({
+                "aberration", "celestial", "elemental", "fey", "fiend", "undead"
+            })
+            immune_conditions = sorted({"charmed", "frightened"})
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds + 600,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "protection_from_evil_and_good",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": None,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": True,
+                    "concentration_group": group_id,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": target_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": True,
+                    "utility": "protection_from_evil_and_good",
+                    "defense_modifier": True,
+                    "abjuration_protection": True,
+                    "protected_creature_types": protected_types,
+                    "attack_disadvantage_against_target": True,
+                    "condition_immunity": True,
+                    "immune_conditions": immune_conditions,
+                    "immune_conditions_from_creature_types": protected_types,
+                    "grants_ac_bonus": False,
+                    "armor_class_bonus": 0,
+                    "grants_resistance": False,
+                    "duration_seconds": 600,
+                    "created_out_of_combat": True,
+                    "declarative_effect": {
+                        "type": "attack_disadvantage_against_target",
+                        "params": {
+                            "mode": "disadvantage",
+                            "roll_types": ["attack"],
+                            "source": "protection_from_evil_and_good",
+                            "requires_attacker_creature_type": protected_types,
                             "consume_on_apply": False,
                         },
                     },

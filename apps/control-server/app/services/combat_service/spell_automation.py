@@ -166,6 +166,12 @@ class CombatSpellAutomationMixin:
             requires_effect_payload=False,
             handler_name="_cast_command_automation",
         ),
+        "protection_from_evil_and_good": SpellAutomationSpec(
+            canonical_key="protection_from_evil_and_good",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_protection_from_evil_and_good_automation",
+        ),
         "feather_fall": SpellAutomationSpec(
             canonical_key="feather_fall",
             default_mode="utility",
@@ -3361,6 +3367,162 @@ class CombatSpellAutomationMixin:
                 if kind is None or p.get("kind") == kind:
                     return p
         return None
+
+
+    @classmethod
+    async def _cast_protection_from_evil_and_good_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        from .condition_effects_predicates import (
+            PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES,
+            PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS,
+            get_participant_creature_type,
+        )
+
+        if target_participant is None:
+            raise CombatServiceError("Proteção Contra Mal e Bem requer um alvo.", 400)
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Proteção Contra Mal e Bem não possui variantes.", 400)
+
+        spell_name = spell_context["spell_name"]
+        game_time = get_game_time_seconds(session_id, db)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(
+            session_id,
+            state,
+            result["removed_area_effects"],
+        )
+        concentration_group = str(uuid4())
+
+        existing = target_participant.get("active_effects") or []
+        target_participant["active_effects"] = [
+            e for e in existing
+            if cls._normalize_lookup(
+                (cls._get_effect_metadata(e) or {}).get("source_spell_key")
+            ) != "protection_from_evil_and_good"
+        ]
+
+        suppressed_conditions: list[str] = []
+        remaining_effects = []
+        for e in (target_participant.get("active_effects") or []):
+            if (
+                e.get("kind") == "condition"
+                and e.get("condition_type") in PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS
+            ):
+                source_id = e.get("source_participant_id")
+                source_p = (
+                    next(
+                        (p for p in (state.participants or []) if p.get("id") == source_id),
+                        None,
+                    )
+                    if source_id
+                    else None
+                )
+                if (
+                    source_p
+                    and get_participant_creature_type(source_p)
+                    in PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES
+                ):
+                    suppressed_conditions.append(e.get("condition_type", ""))
+                    continue
+            remaining_effects.append(e)
+        target_participant["active_effects"] = remaining_effects
+
+        protected_types = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES)
+        immune_conditions = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
+        effect = cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=attacker["id"],
+            duration_type="timed",
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=game_time + 600,
+            metadata={
+                "source_spell_key": "protection_from_evil_and_good",
+                "source_spell_name": spell_name,
+                "mechanical": True,
+                "utility": "protection_from_evil_and_good",
+                "defense_modifier": True,
+                "abjuration_protection": True,
+                "concentration": True,
+                "concentration_group": concentration_group,
+                "source_participant_id": attacker["id"],
+                "owner_participant_id": target_participant["id"],
+                "created_by_participant_id": attacker["id"],
+                "protected_creature_types": protected_types,
+                "attack_disadvantage_against_target": True,
+                "condition_immunity": True,
+                "immune_conditions": immune_conditions,
+                "immune_conditions_from_creature_types": protected_types,
+                "grants_ac_bonus": False,
+                "armor_class_bonus": 0,
+                "grants_resistance": False,
+                "requires_concentration": True,
+                "duration_seconds": 600,
+                "declarative_effect": {
+                    "type": "attack_disadvantage_against_target",
+                    "params": {
+                        "mode": "disadvantage",
+                        "roll_types": ["attack"],
+                        "source": "protection_from_evil_and_good",
+                        "requires_attacker_creature_type": protected_types,
+                        "consume_on_apply": False,
+                    },
+                },
+            },
+            display_label=spell_name,
+        )
+        cls._append_effect_to_participant(target_participant, effect)
+        flag_modified(state, "participants")
+
+        suppression_note = ""
+        if suppressed_conditions:
+            unique = sorted(set(suppressed_conditions))
+            suppression_note = f" Condições removidas: {', '.join(unique)}."
+
+        target_name = target_participant["display_name"]
+        summary_text = (
+            f"{spell_name} ativa em {target_name}. "
+            f"Criaturas protegidas têm desvantagem em ataques contra o alvo."
+            + suppression_note
+        )
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_name} em {target_name}. "
+            f"Proteção ativa contra: {', '.join(protected_types)}."
+            + suppression_note
+        )
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=target_name,
+            target_kind=target_participant["kind"],
+            action_kind="utility",
+            summary_text=summary_text,
+            log_message=log_message,
+            extra={
+                "utility": "protection_from_evil_and_good",
+                "concentration_group": concentration_group,
+                "protected_creature_types": protected_types,
+                "immune_conditions": immune_conditions,
+                "suppressed_conditions": suppressed_conditions,
+            },
+        )
 
 
 def _build_command_effect_metadata(
