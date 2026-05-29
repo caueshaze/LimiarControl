@@ -128,6 +128,12 @@ class TestGetSaveDeclarativeContext(unittest.TestCase):
         self.assertEqual(mode, "normal")
         self.assertEqual(details, [])
 
+    def test_source_none_is_behavior_invisible(self):
+        p = _participant_with_save_effects([_save_effect("advantage_on_saves", ["strength"])])
+        legacy = _get_save_declarative_context(p, "strength")
+        explicit_none = _get_save_declarative_context(p, "strength", source_participant=None)
+        self.assertEqual(legacy, explicit_none)
+
 
 class TestResolveSaveAdvantageModeForActor(unittest.TestCase):
     @patch("app.services.combat.CombatService.get_state")

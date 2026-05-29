@@ -25,6 +25,7 @@ from app.models.inventory import InventoryItem
 from app.models.session import Session as CampaignSession
 
 from .condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
+from .condition_effects_saves import modify_saving_throw
 from .exceptions import CombatServiceError
 from .spell_anchors import (
     create_spell_anchor,
@@ -493,6 +494,11 @@ class CombatSpellAutomationMixin:
                 extra={"immune": True, "immune_reason": "protection_from_evil_and_good"},
             )
 
+        save_mod = modify_saving_throw(
+            target_participant,
+            spell_context["save_ability"],
+            source_participant=attacker,
+        )
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -502,8 +508,14 @@ class CombatSpellAutomationMixin:
                 target_participant["display_name"],
             ),
             ability=spell_context["save_ability"],
+            advantage_mode=save_mod.result,
             dc=cls._safe_int(spell_context.get("save_dc"), 0),
         )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
         roll_result.is_gm_roll = is_gm
         roll_total = roll_result.total
         is_saved = bool(roll_result.success)
@@ -594,6 +606,12 @@ class CombatSpellAutomationMixin:
 
         is_hostile = cls._is_hostile_team_context(attacker, target_participant)
         advantage_mode = "advantage" if is_hostile else "normal"
+        save_mod = modify_saving_throw(
+            target_participant,
+            spell_context["save_ability"],
+            manual_mode=advantage_mode,
+            source_participant=attacker,
+        )
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -604,8 +622,13 @@ class CombatSpellAutomationMixin:
             ),
             ability=spell_context["save_ability"],
             dc=cls._safe_int(spell_context.get("save_dc"), 0),
-            advantage_mode=advantage_mode,
+            advantage_mode=save_mod.result,
         )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
         roll_result.is_gm_roll = is_gm
         roll_total = roll_result.total
         is_saved = bool(roll_result.success)
@@ -1509,6 +1532,11 @@ class CombatSpellAutomationMixin:
                 extra={"immune": True, "immune_reason": "cannot_understand", "command_word": variant_key},
             )
 
+        save_mod = modify_saving_throw(
+            target_participant,
+            spell_context.get("save_ability") or "wisdom",
+            source_participant=attacker,
+        )
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -1518,8 +1546,14 @@ class CombatSpellAutomationMixin:
                 target_participant["display_name"],
             ),
             ability=spell_context.get("save_ability") or "wisdom",
+            advantage_mode=save_mod.result,
             dc=cls._safe_int(spell_context.get("save_dc"), 0),
         )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
         roll_result.is_gm_roll = is_gm
         is_saved = bool(roll_result.success)
 
@@ -3507,11 +3541,23 @@ class CombatSpellAutomationMixin:
                 "condition_immunity": True,
                 "immune_conditions": immune_conditions,
                 "immune_conditions_from_creature_types": protected_types,
+                "saving_throw_advantage_against_creature_types": True,
+                "saving_throw_advantage_creature_types": protected_types,
                 "grants_ac_bonus": False,
                 "armor_class_bonus": 0,
                 "grants_resistance": False,
                 "requires_concentration": True,
                 "duration_seconds": 600,
+                "declarative_save_effect": {
+                    "type": "saving_throw_advantage_against_creature_types",
+                    "params": {
+                        "mode": "advantage",
+                        "source": "protection_from_evil_and_good",
+                        "source_creature_types": protected_types,
+                        "roll_types": ["saving_throw"],
+                        "consume_on_apply": False,
+                    },
+                },
                 "declarative_effect": {
                     "type": "attack_disadvantage_against_target",
                     "params": {

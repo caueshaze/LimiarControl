@@ -12,6 +12,7 @@ from app.models.combat import CombatState
 from app.models.inventory import InventoryItem
 from app.schemas.combat import CombatCastSpellRequest
 from app.services.magic_item_effects import consume_inventory_item_charge
+from app.services.combat_service.condition_effects_saves import modify_saving_throw
 from app.services.roll_resolution import resolve_saving_throw
 
 from ..combat_targeting import get_combat_targeting_service
@@ -215,6 +216,11 @@ class CastAreaMixin:
                 cover_applies_to_save,
                 spell_context.get("save_ability"),
             )
+            save_mod = modify_saving_throw(
+                target_participant,
+                spell_context["save_ability"],
+                source_participant=attacker,
+            )
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
                     db,
@@ -224,8 +230,14 @@ class CastAreaMixin:
                     target_participant["display_name"],
                 ),
                 ability=spell_context["save_ability"],
+                advantage_mode=save_mod.result,
                 dc=effective_dc,
             )
+            roll_result.check_modifier_sources = [
+                *save_mod.advantage_source_details,
+                *save_mod.disadvantage_source_details,
+                *(roll_result.check_modifier_sources or []),
+            ]
             roll_result.is_gm_roll = is_gm
             is_saved = bool(roll_result.success)
             outcome = {

@@ -682,11 +682,23 @@ def build_persisted_effects(
                     "condition_immunity": True,
                     "immune_conditions": immune_conditions,
                     "immune_conditions_from_creature_types": protected_types,
+                    "saving_throw_advantage_against_creature_types": True,
+                    "saving_throw_advantage_creature_types": protected_types,
                     "grants_ac_bonus": False,
                     "armor_class_bonus": 0,
                     "grants_resistance": False,
                     "duration_seconds": 600,
                     "created_out_of_combat": True,
+                    "declarative_save_effect": {
+                        "type": "saving_throw_advantage_against_creature_types",
+                        "params": {
+                            "mode": "advantage",
+                            "source": "protection_from_evil_and_good",
+                            "source_creature_types": protected_types,
+                            "roll_types": ["saving_throw"],
+                            "consume_on_apply": False,
+                        },
+                    },
                     "declarative_effect": {
                         "type": "attack_disadvantage_against_target",
                         "params": {

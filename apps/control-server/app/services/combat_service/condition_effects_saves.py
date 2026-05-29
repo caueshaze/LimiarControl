@@ -28,6 +28,8 @@ def modify_saving_throw(
     actor: dict,
     ability: str,
     manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
+    *,
+    source_participant: dict | None = None,
 ) -> SaveModifierContext:
     normalized = ability.lower()
     if normalized in _AUTO_FAIL_SAVE_ABILITIES:
@@ -41,7 +43,7 @@ def modify_saving_throw(
 
     # Declarative active effects
     auto_mode, decl_adv_strs, decl_dis_strs, decl_details = _get_save_declarative_context(
-        actor, normalized
+        actor, normalized, source_participant=source_participant
     )
 
     # Merge hardcoded + declarative automatic sources

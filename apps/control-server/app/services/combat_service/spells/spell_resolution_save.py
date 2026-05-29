@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.services.combat_service.cover_modifiers import resolve_cover_save_dc
+from app.services.combat_service.condition_effects_saves import modify_saving_throw
 
 from .spell_resolution_common import SpellResolutionCommonMixin, SpellResolutionResult
 
@@ -37,11 +38,22 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
             spell_context.get("save_ability"),
         )
 
+        save_mod = modify_saving_throw(
+            target_p,
+            spell_context["save_ability"],
+            source_participant=attacker,
+        )
         result.roll_result = cast_target_module.resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(db, session_id, target_p["ref_id"], target_p["kind"], target_p["display_name"]),
             ability=spell_context["save_ability"],
+            advantage_mode=save_mod.result,
             dc=result.effective_dc,
         )
+        result.roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(result.roll_result.check_modifier_sources or []),
+        ]
         cls._apply_roll_bonus_dice_to_roll_result(
             participant=target_p,
             roll_result=result.roll_result,

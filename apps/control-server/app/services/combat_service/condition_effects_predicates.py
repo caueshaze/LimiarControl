@@ -435,6 +435,8 @@ def explain_check_modifier_sources(
 def _get_save_declarative_context(
     participant: dict,
     ability: AbilityName,
+    *,
+    source_participant: dict | None = None,
 ) -> tuple[str, list[str], list[str], list[dict]]:
     """Extract declared save-modifier effects for the given ability.
 
@@ -496,7 +498,99 @@ def _get_save_declarative_context(
                 "skip_reason": None,
             })
 
+    source_ctx = resolve_saving_throw_advantage_from_effects(
+        participant,
+        source_participant=source_participant,
+        ability=ability,
+    )
+    for source_label in source_ctx["advantage_sources"]:
+        automatic_mode = combine_advantage_modes(automatic_mode, "advantage")
+        adv_strs.append(source_label)
+        details.append({
+            "source_label": source_label,
+            "modifier_type": "advantage",
+            "roll_type": "save",
+            "ability": ability,
+            "applied": True,
+            "skip_reason": None,
+        })
+    for source_label in source_ctx["disadvantage_sources"]:
+        automatic_mode = combine_advantage_modes(automatic_mode, "disadvantage")
+        dis_strs.append(source_label)
+        details.append({
+            "source_label": source_label,
+            "modifier_type": "disadvantage",
+            "roll_type": "save",
+            "ability": ability,
+            "applied": True,
+            "skip_reason": None,
+        })
+
     return automatic_mode, adv_strs, dis_strs, details
+
+
+def resolve_saving_throw_advantage_from_effects(
+    participant: dict,
+    *,
+    source_participant: dict | None = None,
+    ability: str | None = None,
+) -> dict:
+    adv: set[str] = set()
+    dis: set[str] = set()
+    consume_effect_ids: list[str] = []
+
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+
+        declarative = metadata.get("declarative_save_effect")
+        if not isinstance(declarative, dict):
+            continue
+        if declarative.get("type") != "saving_throw_advantage_against_creature_types":
+            continue
+
+        params = declarative.get("params")
+        if not isinstance(params, dict):
+            continue
+        roll_types = params.get("roll_types")
+        if isinstance(roll_types, list) and "saving_throw" not in roll_types:
+            continue
+        mode = str(params.get("mode") or "").strip().lower()
+        if mode not in {"advantage", "disadvantage"}:
+            continue
+
+        required_types = params.get("source_creature_types")
+        if isinstance(required_types, list) and required_types:
+            if source_participant is None:
+                continue
+            source_type = get_participant_creature_type(source_participant)
+            allowed = {str(t).strip().lower() for t in required_types if t}
+            if source_type not in allowed:
+                continue
+
+        source_label = (
+            str(params.get("source") or "").strip()
+            or str(metadata.get("source_spell_key") or "").strip()
+            or "saving_throw_advantage"
+        )
+        if mode == "advantage":
+            adv.add(source_label)
+        else:
+            dis.add(source_label)
+
+        if params.get("consume_on_apply") is True:
+            effect_id = effect.get("id")
+            if isinstance(effect_id, str) and effect_id and effect_id not in consume_effect_ids:
+                consume_effect_ids.append(effect_id)
+
+    return {
+        "advantage_sources": sorted(adv),
+        "disadvantage_sources": sorted(dis),
+        "consume_effect_ids": consume_effect_ids,
+    }
 
 
 def _declarative_effect_group_key(

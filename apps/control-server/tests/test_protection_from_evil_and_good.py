@@ -151,6 +151,18 @@ def _make_protection_effect(
             "condition_immunity": True,
             "immune_conditions": conditions,
             "immune_conditions_from_creature_types": types,
+            "saving_throw_advantage_against_creature_types": True,
+            "saving_throw_advantage_creature_types": types,
+            "declarative_save_effect": {
+                "type": "saving_throw_advantage_against_creature_types",
+                "params": {
+                    "mode": "advantage",
+                    "source": "protection_from_evil_and_good",
+                    "source_creature_types": types,
+                    "roll_types": ["saving_throw"],
+                    "consume_on_apply": False,
+                },
+            },
             "grants_ac_bonus": False,
             "grants_resistance": False,
             "declarative_effect": {
@@ -434,6 +446,11 @@ class ProtectionFromEvilAndGoodAutomationTests(unittest.IsolatedAsyncioTestCase)
         for t in ["aberration", "celestial", "elemental", "fey", "fiend", "undead"]:
             self.assertIn(t, params["requires_attacker_creature_type"])
 
+    async def test_declarative_save_effect_type(self):
+        _, _, target = await _cast()
+        decl = target["active_effects"][0]["metadata"]["declarative_save_effect"]
+        self.assertEqual(decl["type"], "saving_throw_advantage_against_creature_types")
+
     async def test_no_effect_on_caster_when_caster_is_not_target(self):
         _, caster, _ = await _cast()
         spell_effects = [e for e in caster["active_effects"] if e.get("kind") == "spell_effect"]
@@ -682,6 +699,15 @@ class ProtectionFromEvilAndGoodOocTests(unittest.TestCase):
         decl = effects[0]["metadata"]["declarative_effect"]
         self.assertEqual(decl["type"], "attack_disadvantage_against_target")
 
+    def test_build_persisted_effects_has_declarative_save_effect(self):
+        spell = _make_ooc_spell()
+        effects = build_persisted_effects(
+            spell=spell, caster_user_id="u1", target_user_id="u1",
+            variant_key=None, game_time_seconds=0,
+        )
+        decl = effects[0]["metadata"]["declarative_save_effect"]
+        self.assertEqual(decl["type"], "saving_throw_advantage_against_creature_types")
+
     def test_build_persisted_effects_condition_immunity_true(self):
         spell = _make_ooc_spell()
         effects = build_persisted_effects(
@@ -776,10 +802,10 @@ class ProtectionFromEvilAndGoodSpellContextTests(unittest.TestCase):
         self.assertIn("frightened", self.meta["immuneConditions"])
 
     def test_saving_throw_advantage_deferred(self):
-        self.assertTrue(self.meta["savingThrowAdvantageDeferred"])
+        self.assertFalse(self.meta["savingThrowAdvantageDeferred"])
 
     def test_saving_throw_advantage_not_in_v1(self):
-        self.assertFalse(self.meta["savingThrowAdvantageAgainstCreatureTypes"])
+        self.assertTrue(self.meta["savingThrowAdvantageAgainstCreatureTypes"])
 
     def test_possessed_not_supported(self):
         self.assertFalse(self.meta["possessedConditionSupported"])

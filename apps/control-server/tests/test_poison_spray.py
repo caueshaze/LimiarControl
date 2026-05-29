@@ -57,6 +57,26 @@ def _make_target() -> dict:
     }
 
 
+def _protection_effect() -> dict:
+    return {
+        "id": "eff-protection",
+        "kind": "spell_effect",
+        "metadata": {
+            "source_spell_key": "protection_from_evil_and_good",
+            "declarative_save_effect": {
+                "type": "saving_throw_advantage_against_creature_types",
+                "params": {
+                    "mode": "advantage",
+                    "source": "protection_from_evil_and_good",
+                    "source_creature_types": ["aberration", "celestial", "elemental", "fey", "fiend", "undead"],
+                    "roll_types": ["saving_throw"],
+                    "consume_on_apply": False,
+                },
+            },
+        },
+    }
+
+
 def _make_state() -> CombatState:
     return CombatState(
         id="c1",
@@ -354,6 +374,35 @@ class PoisonSprayCastFlowTests(unittest.IsolatedAsyncioTestCase):
             if (e.get("metadata") or {}).get("concentration")
         ]
         self.assertEqual(concentration_effects, [])
+
+    async def test_source_aware_advantage_against_fiend(self):
+        state = _make_state()
+        state.participants[0]["creature_type"] = "fiend"
+        state.participants[1]["active_effects"] = [_protection_effect()]
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"spellcasting": {"cantrips": []}}
+        req = CombatCastSpellRequest(
+            actor_participant_id="p1",
+            spell_canonical_key="poison_spray",
+            target_ref_id="enemy-a",
+        )
+        targeting_result = MagicMock(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-a",
+            spatial_metadata=MagicMock(cover=None),
+        )
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 20, 20, 15, 3, 3)),
+            patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=_poison_spray_context()),
+            patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=MagicMock(validate=MagicMock(return_value=targeting_result))),
+            patch("app.services.combat_service.spells.cast_target.resolve_saving_throw", return_value=_roll(False)) as save_mock,
+            patch.object(CombatService, "_emit_state", new_callable=AsyncMock),
+            patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock),
+        ):
+            await CombatService.cast_spell(MagicMock(), "s1", req, "u1", False)
+        self.assertEqual(save_mock.call_args.kwargs["advantage_mode"], "advantage")
 
 
 if __name__ == "__main__":

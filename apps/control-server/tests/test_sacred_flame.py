@@ -11,7 +11,12 @@ from __future__ import annotations
 
 import json
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.models.combat import CombatPhase, CombatState
+from app.schemas.combat import CombatCastSpellRequest
+from app.schemas.roll import RollResult
 from app.services.combat import CombatService
 from app.services.combat_service.cover_modifiers import resolve_cover_save_dc
 from app.services.combat_service.spell_dice_math import CombatSpellDiceMathMixin
@@ -148,6 +153,135 @@ class SacredFlameCoverBehaviorTests(unittest.TestCase):
         effective, modifier = resolve_cover_save_dc(15, "half", "physical", "dexterity")
         self.assertEqual(effective, 13)
         self.assertEqual(modifier, 2)
+
+
+def _make_state() -> CombatState:
+    return CombatState(
+        id="c1",
+        session_id="s1",
+        phase=CombatPhase.active,
+        round=1,
+        current_turn_index=0,
+        participants=[
+            {
+                "id": "p1",
+                "ref_id": "caster",
+                "kind": "player",
+                "display_name": "Caster",
+                "status": "active",
+                "team": "players",
+                "actor_user_id": "u1",
+                "creature_type": "fiend",
+                "active_effects": [],
+                "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False},
+            },
+            {
+                "id": "e1",
+                "ref_id": "enemy-a",
+                "kind": "session_entity",
+                "display_name": "Target",
+                "status": "active",
+                "team": "enemies",
+                "active_effects": [
+                    {
+                        "id": "prot-1",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "source_spell_key": "protection_from_evil_and_good",
+                            "declarative_save_effect": {
+                                "type": "saving_throw_advantage_against_creature_types",
+                                "params": {
+                                    "mode": "advantage",
+                                    "source": "protection_from_evil_and_good",
+                                    "source_creature_types": ["aberration", "celestial", "elemental", "fey", "fiend", "undead"],
+                                    "roll_types": ["saving_throw"],
+                                    "consume_on_apply": False,
+                                },
+                            },
+                        },
+                    }
+                ],
+                "turn_resources": {"action_used": False, "bonus_action_used": False, "reaction_used": False},
+            },
+        ],
+        use_map=False,
+    )
+
+
+def _sacred_flame_context() -> dict:
+    return {
+        "spell_name": "Chama Sagrada",
+        "spell_canonical_key": "sacred_flame",
+        "spell_mode": "saving_throw",
+        "selection_type": "creature",
+        "slot_level": None,
+        "action_cost": "action",
+        "source_kind": "spell",
+        "effect_kind": "damage",
+        "effect_dice": "1d8",
+        "effect_bonus": 0,
+        "damage_type": "Radiant",
+        "save_ability": "dexterity",
+        "save_dc": 13,
+        "save_success_outcome": "none",
+        "target_type": "ranged",
+        "range_kind": "distance",
+        "attack_type": "none",
+        "requires_target_sight": True,
+        "requires_target_effect": True,
+        "concentration": False,
+        "cover_applies_to_save": "none",
+    }
+
+
+def _roll(success: bool) -> RollResult:
+    return RollResult(
+        event_id="r1",
+        roll_type="save",
+        actor_kind="session_entity",
+        actor_ref_id="enemy-a",
+        actor_display_name="Target",
+        rolls=[5 if not success else 18],
+        selected_roll=5 if not success else 18,
+        advantage_mode="normal",
+        modifier_used=0,
+        override_used=False,
+        formula="1d20",
+        total=5 if not success else 18,
+        ability="dexterity",
+        dc=13,
+        success=success,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+
+class SacredFlameSourceAwareSaveTests(unittest.IsolatedAsyncioTestCase):
+    async def test_source_aware_advantage_against_fiend(self):
+        state = _make_state()
+        attacker_state = MagicMock()
+        attacker_state.state_json = {"spellcasting": {"cantrips": []}}
+        req = CombatCastSpellRequest(
+            actor_participant_id="p1",
+            spell_canonical_key="sacred_flame",
+            target_ref_id="enemy-a",
+        )
+        targeting_result = MagicMock(
+            is_valid=True,
+            validated_primary_target_ref_id="enemy-a",
+            spatial_metadata=MagicMock(cover=None),
+        )
+
+        with (
+            patch("app.services.combat.CombatService.get_state", return_value=state),
+            patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 20, 20, 15, 3, 3)),
+            patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=_sacred_flame_context()),
+            patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=MagicMock(validate=MagicMock(return_value=targeting_result))),
+            patch("app.services.combat_service.spells.cast_target.resolve_saving_throw", return_value=_roll(False)) as save_mock,
+            patch.object(CombatService, "_emit_state", new_callable=AsyncMock),
+            patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock),
+        ):
+            await CombatService.cast_spell(MagicMock(), "s1", req, "u1", False)
+        self.assertEqual(save_mock.call_args.kwargs["advantage_mode"], "advantage")
 
 
 if __name__ == "__main__":

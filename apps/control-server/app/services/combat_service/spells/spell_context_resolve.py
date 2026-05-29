@@ -126,8 +126,8 @@ class SpellContextResolveMixin:
         "immuneConditionsFromCreatureTypes": [
             "aberration", "celestial", "elemental", "fey", "fiend", "undead"
         ],
-        "savingThrowAdvantageAgainstCreatureTypes": False,
-        "savingThrowAdvantageDeferred": True,
+        "savingThrowAdvantageAgainstCreatureTypes": True,
+        "savingThrowAdvantageDeferred": False,
         "possessedConditionSupported": False,
         "grantsACBonus": False,
         "armorClassBonus": 0,
