@@ -123,5 +123,44 @@ class SourceAwareSaveContextTests(unittest.TestCase):
         self.assertIn("protection_from_evil_and_good", ctx.advantage_sources)
 
 
+class SourceAwareModifierSemanticsTests(unittest.TestCase):
+    # These tests cover the modifier behaviour exercised by npc_action_resolution.py.
+    # Integration tests that verify the actual call site are in test_npc_action_resolution.py.
+
+    def _mod(self, creature_type):
+        return modify_saving_throw(
+            _participant([_protection_effect()]),
+            "wisdom",
+            source_participant=_source(creature_type),
+        )
+
+    def test_fiend_source_grants_advantage(self):
+        self.assertEqual(self._mod("fiend").result, "advantage")
+
+    def test_undead_source_grants_advantage(self):
+        self.assertEqual(self._mod("undead").result, "advantage")
+
+    def test_humanoid_source_no_advantage(self):
+        self.assertEqual(self._mod("humanoid").result, "normal")
+
+    def test_missing_creature_type_no_advantage(self):
+        ctx = modify_saving_throw(
+            _participant([_protection_effect()]),
+            "wisdom",
+            source_participant={"id": "src-1"},  # sem creature_type
+        )
+        self.assertEqual(ctx.result, "normal")
+
+    def test_condition_repeat_pattern_no_advantage(self):
+        # lifecycle_turns.py passa source_participant=None
+        ctx = modify_saving_throw(_participant([_protection_effect()]), "wisdom")
+        self.assertEqual(ctx.result, "normal")
+
+    def test_manual_gm_save_pattern_no_advantage(self):
+        # save_resolve.py passa source_participant=None
+        ctx = modify_saving_throw(_participant([_protection_effect()]), "constitution")
+        self.assertEqual(ctx.result, "normal")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -141,6 +141,9 @@ class CombatLifecycleTurnsMixin:
             if ability not in cls._ENTITY_ABILITY_ALIASES or dc <= 0:
                 continue
 
+            # Persisted condition repeat saves have no active source: do not pass attacker here.
+            # Source-aware effects (e.g. protection_from_evil_and_good) must not apply to
+            # passive condition triggers that outlive their original caster.
             save_mod = modify_saving_throw(participant, ability)
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
