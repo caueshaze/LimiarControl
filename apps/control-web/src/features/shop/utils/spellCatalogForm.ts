@@ -433,6 +433,23 @@ export const buildSpellUpdatePayload = (
   if (normalizedVariants.errors.length > 0) {
     throw new Error(normalizedVariants.errors[0]);
   }
+  const materialOptionKeys =
+    state.componentsJson.includes("M") && state.materialComponentConsumed
+      ? Array.from(
+          new Set(
+            state.consumableMaterialOptionKeys
+              .map((entry) => entry.trim())
+              .filter((entry) => entry.length > 0),
+          ),
+        )
+      : [];
+  const consumableMaterialOptions = materialOptionKeys.map((key) => ({
+    key,
+    nameEn: key,
+    namePt: key,
+    quantity: 1,
+  }));
+
   return {
     castingTimeType: toNullableText(state.castingTimeType) as CastingTimeType | null,
     nameEn: state.nameEn.trim(),
@@ -468,9 +485,14 @@ export const buildSpellUpdatePayload = (
         : null,
     duration: toNullableText(state.duration),
     componentsJson: state.componentsJson.length > 0 ? state.componentsJson : null,
-    materialComponentText: state.componentsJson.includes("M")
-      ? toNullableText(state.materialComponentText)
-      : null,
+    materialComponentText:
+      state.componentsJson.includes("M") && consumableMaterialOptions.length > 0
+        ? `${consumableMaterialOptions.map((entry) => entry.nameEn ?? entry.key).join(" or ")}, which the spell consumes`
+        : null,
+    materialComponentConsumed:
+      state.componentsJson.includes("M") && consumableMaterialOptions.length > 0,
+    consumableMaterialOptions:
+      consumableMaterialOptions.length > 0 ? consumableMaterialOptions : null,
     concentration: state.concentration,
     ritual: state.ritual,
     resolutionType: toNullableText(state.resolutionType) as ResolutionType | null,
@@ -552,6 +574,8 @@ export type SpellCatalogEditorState = {
   duration: string;
   componentsJson: string[];
   materialComponentText: string;
+  materialComponentConsumed: boolean;
+  consumableMaterialOptionKeys: string[];
   concentration: boolean;
   ritual: boolean;
   resolutionType: ResolutionType | "";
@@ -745,6 +769,10 @@ export const createSpellEditorState = (spell: BaseSpell): SpellCatalogEditorStat
   duration: spell.duration ?? "",
   componentsJson: filterKnownSpellValues(spell.componentsJson, SPELL_COMPONENT_OPTION_SET),
   materialComponentText: spell.materialComponentText ?? "",
+  materialComponentConsumed: Boolean(spell.materialComponentConsumed),
+  consumableMaterialOptionKeys: (spell.consumableMaterialOptions ?? [])
+    .map((option) => option?.key?.trim())
+    .filter((key): key is string => Boolean(key)),
   concentration: spell.concentration,
   ritual: spell.ritual,
   resolutionType: spell.resolutionType ?? "",
@@ -832,6 +860,8 @@ export const createEmptySpellEditorState = (): SpellCatalogEditorState => ({
   duration: "",
   componentsJson: [],
   materialComponentText: "",
+  materialComponentConsumed: false,
+  consumableMaterialOptionKeys: [],
   concentration: false,
   ritual: false,
   resolutionType: "",

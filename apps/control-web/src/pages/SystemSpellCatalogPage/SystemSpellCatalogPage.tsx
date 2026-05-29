@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import type { BaseSpell } from "../../entities/base-spell";
+import { BaseItemKind, type BaseItem } from "../../entities/base-item";
+import { adminBaseItemsRepo } from "../../shared/api/adminBaseItemsRepo";
 import { adminBaseSpellsRepo } from "../../shared/api/adminBaseSpellsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SystemSpellCatalogSidebar } from "./SystemSpellCatalogSidebar";
@@ -17,6 +19,7 @@ import {
 export const SystemSpellCatalogPage = () => {
   const { locale, t } = useLocale();
   const [spells, setSpells] = useState<BaseSpell[]>([]);
+  const [consumableItems, setConsumableItems] = useState<BaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"idle" | "saving" | "success" | "error">("idle");
@@ -63,9 +66,26 @@ export const SystemSpellCatalogPage = () => {
     }
   };
 
+  const loadConsumableItems = async () => {
+    try {
+      const result = await adminBaseItemsRepo.list({
+        system: "DND5E",
+        itemKind: BaseItemKind.CONSUMABLE,
+        isActive: true,
+      });
+      setConsumableItems(result);
+    } catch {
+      setConsumableItems([]);
+    }
+  };
+
   useEffect(() => {
     void loadSpells();
   }, [deferredSearch, levelFilter, schoolFilter, activeFilter]);
+
+  useEffect(() => {
+    void loadConsumableItems();
+  }, []);
 
   useEffect(() => {
     if (!selectedSpellId) return;
@@ -93,7 +113,17 @@ export const SystemSpellCatalogPage = () => {
 
   const handleSave = async () => {
     const isNew = !selectedSpellId;
-    const built = buildPayload(form, isNew, locale);
+    const built = buildPayload(
+      form,
+      isNew,
+      locale,
+      Object.fromEntries(
+        consumableItems.map((item) => [
+          item.canonicalKey,
+          { nameEn: item.nameEn, namePt: item.namePt },
+        ]),
+      ),
+    );
     if (!built.payload) {
       setError(built.error ?? "Payload inválido.");
       return;
@@ -248,6 +278,7 @@ export const SystemSpellCatalogPage = () => {
         <SystemSpellCatalogSpellForm
           form={form}
           setForm={setForm}
+          consumableItems={consumableItems}
           selectedSpellId={selectedSpellId}
           statusMessage={statusMessage}
           statusTone={statusTone}

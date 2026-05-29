@@ -1,5 +1,7 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import type { BaseItem } from "../../../entities/base-item";
 import type { BaseSpell } from "../../../entities/base-spell";
+import { adminBaseItemsRepo } from "../../../shared/api/adminBaseItemsRepo";
 import { SpellAoeFootprintPreview } from "../../../pages/SystemSpellCatalogPage/SpellAoeFootprintPreview";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
@@ -36,6 +38,7 @@ import {
     type SpellCatalogEditorState,
     toggleSpellListValue,
 } from "../utils/spellCatalogForm";
+import { BaseItemKind } from "../../../entities/base-item";
 
 type Props = {
   state: SpellCatalogEditorState;
@@ -92,6 +95,22 @@ export const SpellCatalogFormFields = ({
   const showRadiusField = state.areaShape === "sphere" || state.areaShape === "cylinder";
   const showLengthField = state.areaShape === "cone" || state.areaShape === "line";
   const showSideField = state.areaShape === "cube";
+  const [consumableItems, setConsumableItems] = useState<BaseItem[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    void adminBaseItemsRepo
+      .list({ system: "DND5E", itemKind: BaseItemKind.CONSUMABLE, isActive: true })
+      .then((items) => {
+        if (alive) setConsumableItems(items);
+      })
+      .catch(() => {
+        if (alive) setConsumableItems([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -293,15 +312,85 @@ export const SpellCatalogFormFields = ({
         </SpellCatalogField>
 
         {state.componentsJson.includes("M") ? (
-          <SpellCatalogField label={t("catalog.spells.form.material")}>
-            <input
-              value={state.materialComponentText}
-              onChange={(event) =>
-                setState((current) => ({ ...current, materialComponentText: event.target.value }))
-              }
-              className={fieldClassName}
-            />
-          </SpellCatalogField>
+          <div className="space-y-3">
+            <SpellCatalogField label="Componente consumível">
+              <div className="flex items-center gap-3">
+                <SpellCatalogToggleChip
+                  active={state.materialComponentConsumed}
+                  label={state.materialComponentConsumed ? "Consome item" : "Não consome"}
+                  onClick={() =>
+                    setState((current) => ({
+                      ...current,
+                      materialComponentConsumed: !current.materialComponentConsumed,
+                      consumableMaterialOptionKeys: !current.materialComponentConsumed
+                        ? current.consumableMaterialOptionKeys
+                        : [],
+                    }))
+                  }
+                />
+              </div>
+            </SpellCatalogField>
+            {state.materialComponentConsumed ? (
+              <SpellCatalogField label="Itens consumíveis">
+                <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  {(state.consumableMaterialOptionKeys.length > 0
+                    ? state.consumableMaterialOptionKeys
+                    : [""]).map((selectedKey, index) => (
+                    <div key={`${index}-${selectedKey}`} className="flex items-center gap-2">
+                      <select
+                        value={selectedKey}
+                        onChange={(event) =>
+                          setState((current) => ({
+                            ...current,
+                            consumableMaterialOptionKeys:
+                              current.consumableMaterialOptionKeys.length === 0
+                                ? [event.target.value]
+                                : current.consumableMaterialOptionKeys.map((entry, i) =>
+                                    i === index ? event.target.value : entry,
+                                  ),
+                          }))
+                        }
+                        className={`${fieldClassName} flex-1`}
+                      >
+                        <option value="">Selecione um item consumível</option>
+                        {consumableItems.map((item) => (
+                          <option key={item.canonicalKey} value={item.canonicalKey}>
+                            {((locale === "pt" && item.namePt) ? item.namePt : item.nameEn) ?? item.canonicalKey}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setState((current) => ({
+                            ...current,
+                            consumableMaterialOptionKeys: current.consumableMaterialOptionKeys.filter(
+                              (_entry, i) => i !== index,
+                            ),
+                          }))
+                        }
+                        className="rounded-lg border border-rose-300/30 bg-rose-400/10 px-2 py-1 text-xs font-semibold text-rose-100"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setState((current) => ({
+                        ...current,
+                        consumableMaterialOptionKeys: [...current.consumableMaterialOptionKeys, ""],
+                      }))
+                    }
+                    className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100"
+                  >
+                    Adicionar item consumível
+                  </button>
+                </div>
+              </SpellCatalogField>
+            ) : null}
+          </div>
         ) : null}
       </Section>
 

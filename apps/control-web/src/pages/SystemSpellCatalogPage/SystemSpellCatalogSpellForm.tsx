@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import type { BaseSpell, SpellSchool, SpellSource } from "../../entities/base-spell";
+import type { BaseItem } from "../../entities/base-item";
 import { useLocale } from "../../shared/hooks/useLocale";
 import {
   localizeSpellAdminValue,
@@ -26,6 +27,7 @@ import {
 type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
+  consumableItems: BaseItem[];
   selectedSpellId: string | null;
   statusMessage: string | null;
   statusTone: "idle" | "saving" | "success" | "error";
@@ -38,6 +40,7 @@ type Props = {
 export const SystemSpellCatalogSpellForm = ({
   form,
   setForm,
+  consumableItems,
   selectedSpellId,
   statusMessage,
   statusTone,
@@ -222,7 +225,11 @@ export const SystemSpellCatalogSpellForm = ({
         </div>
       </SystemSpellCatalogFormSection>
 
-      <SystemSpellCatalogCastingFields form={form} setForm={setForm} />
+      <SystemSpellCatalogCastingFields
+        form={form}
+        setForm={setForm}
+        consumableItems={consumableItems}
+      />
 
       <SystemSpellCatalogResolutionFields form={form} setForm={setForm} />
 

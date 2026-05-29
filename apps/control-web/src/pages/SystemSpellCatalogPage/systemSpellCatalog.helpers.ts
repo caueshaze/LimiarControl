@@ -133,6 +133,8 @@ export const createEmptyForm = (): FormState => ({
   duration: "",
   componentsJson: [],
   materialComponentText: "",
+  materialComponentConsumed: false,
+  consumableMaterialOptionKeys: [],
   concentration: false,
   ritual: false,
   resolutionType: "",
@@ -250,6 +252,10 @@ export const formFromSpell = (spell: BaseSpell): FormState => ({
   duration: spell.duration ?? "",
   componentsJson: spell.componentsJson ?? [],
   materialComponentText: spell.materialComponentText ?? "",
+  materialComponentConsumed: Boolean(spell.materialComponentConsumed),
+  consumableMaterialOptionKeys: (spell.consumableMaterialOptions ?? [])
+    .map((option) => option?.key?.trim())
+    .filter((key): key is string => Boolean(key)),
   concentration: spell.concentration,
   ritual: spell.ritual,
   resolutionType: spell.resolutionType ?? "",
@@ -285,6 +291,7 @@ export const buildPayload = (
   form: FormState,
   isNew: boolean,
   locale: Locale = "pt",
+  consumableItemsByKey?: Record<string, { nameEn?: string | null; namePt?: string | null }>,
 ): { payload?: BaseSpellWritePayload; error?: string } => {
   const canonicalKey = normalizeCanonicalKey(form.canonicalKey);
   if (!canonicalKey) return { error: catalogPtBRDictionary["catalog.spells.validation.canonicalKeyRequired"] };
@@ -386,6 +393,27 @@ export const buildPayload = (
     return { error: normalizedVariants.errors[0] };
   }
 
+  const materialOptionKeys =
+    form.componentsJson.includes("M") && form.materialComponentConsumed
+      ? Array.from(
+          new Set(
+            form.consumableMaterialOptionKeys
+              .map((entry) => entry.trim())
+              .filter((entry) => entry.length > 0),
+          ),
+        )
+      : [];
+  const consumableMaterialOptions = materialOptionKeys.map((key) => ({
+    key,
+    nameEn: consumableItemsByKey?.[key]?.nameEn ?? key,
+    namePt: consumableItemsByKey?.[key]?.namePt ?? key,
+    quantity: 1,
+  }));
+  const materialComponentText =
+    form.componentsJson.includes("M") && consumableMaterialOptions.length > 0
+      ? `${consumableMaterialOptions.map((entry) => entry.nameEn ?? entry.key).join(" or ")}, which the spell consumes`
+      : null;
+
   return {
     payload: {
       ...(isNew ? { system: form.system, canonicalKey } : {}),
@@ -423,9 +451,11 @@ export const buildPayload = (
           : null,
       duration: normalizeOptionalText(form.duration) ?? null,
       componentsJson: form.componentsJson.length > 0 ? form.componentsJson : null,
-      materialComponentText: form.componentsJson.includes("M")
-        ? normalizeOptionalText(form.materialComponentText) ?? null
-        : null,
+      materialComponentText,
+      materialComponentConsumed:
+        form.componentsJson.includes("M") && consumableMaterialOptions.length > 0,
+      consumableMaterialOptions:
+        consumableMaterialOptions.length > 0 ? consumableMaterialOptions : null,
       concentration: form.concentration,
       ritual: form.ritual,
       resolutionType: form.resolutionType || null,

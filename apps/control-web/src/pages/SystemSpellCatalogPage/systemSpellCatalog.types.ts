@@ -69,6 +69,8 @@ export type FormState = {
   duration: string;
   componentsJson: string[];
   materialComponentText: string;
+  materialComponentConsumed: boolean;
+  consumableMaterialOptionKeys: string[];
   concentration: boolean;
   ritual: boolean;
   resolutionType: ResolutionType | "";

@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import type { BaseItem } from "../../entities/base-item";
 import { SpellAoeFootprintPreview } from "./SpellAoeFootprintPreview";
 import type {
   AreaShape,
@@ -35,9 +36,10 @@ import {
 type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
+  consumableItems: BaseItem[];
 };
 
-export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
+export const SystemSpellCatalogCastingFields = ({ form, setForm, consumableItems }: Props) => {
   const { locale, t } = useLocale();
 
   const formatSpellChoiceLabel = (value: string) =>
@@ -170,22 +172,93 @@ export const SystemSpellCatalogCastingFields = ({ form, setForm }: Props) => {
         </div>
 
         {showMaterialComponent && (
-          <label className="block min-w-0">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              {t("catalog.spells.form.materialComponentDetailed")}
-            </span>
-            <input
-              value={form.materialComponentText}
-              onChange={(event) =>
-                setForm((c) => ({
-                  ...c,
-                  materialComponentText: event.target.value,
-                }))
-              }
-              className={`${inputClassName} mt-2`}
-              placeholder={t("catalog.spells.form.materialComponentPlaceholder")}
-            />
-          </label>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Componente consumível
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((c) => ({
+                    ...c,
+                    materialComponentConsumed: !c.materialComponentConsumed,
+                    consumableMaterialOptionKeys: !c.materialComponentConsumed
+                      ? c.consumableMaterialOptionKeys
+                      : [],
+                  }))
+                }
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  form.materialComponentConsumed
+                    ? "border-amber-300/40 bg-amber-400/15 text-amber-100"
+                    : "border-white/10 bg-white/4 text-slate-400 hover:bg-white/8"
+                }`}
+              >
+                {form.materialComponentConsumed ? "Consome item" : "Não consome"}
+              </button>
+            </div>
+            {form.materialComponentConsumed ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <p className="mb-2 text-xs text-slate-400">Itens aceitos como componente consumível:</p>
+                <div className="space-y-2">
+                  {(form.consumableMaterialOptionKeys.length > 0
+                    ? form.consumableMaterialOptionKeys
+                    : [""]).map((selectedKey, index) => (
+                    <div key={`${index}-${selectedKey}`} className="flex items-center gap-2">
+                      <select
+                        value={selectedKey}
+                        onChange={(event) =>
+                          setForm((c) => ({
+                            ...c,
+                            consumableMaterialOptionKeys:
+                              c.consumableMaterialOptionKeys.length === 0
+                                ? [event.target.value]
+                                : c.consumableMaterialOptionKeys.map((entry, i) =>
+                                    i === index ? event.target.value : entry,
+                                  ),
+                          }))
+                        }
+                        className={`${inputClassName} flex-1`}
+                      >
+                        <option value="">Selecione um item consumível</option>
+                        {consumableItems.map((item) => (
+                          <option key={item.canonicalKey} value={item.canonicalKey}>
+                            {((locale === "pt" && item.namePt) ? item.namePt : item.nameEn) ?? item.canonicalKey}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((c) => ({
+                            ...c,
+                            consumableMaterialOptionKeys: c.consumableMaterialOptionKeys.filter(
+                              (_entry, i) => i !== index,
+                            ),
+                          }))
+                        }
+                        className="rounded-lg border border-rose-300/30 bg-rose-400/10 px-2 py-1 text-xs font-semibold text-rose-100"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((c) => ({
+                      ...c,
+                      consumableMaterialOptionKeys: [...c.consumableMaterialOptionKeys, ""],
+                    }))
+                  }
+                  className="mt-3 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100"
+                >
+                  Adicionar item consumível
+                </button>
+              </div>
+            ) : null}
+          </div>
         )}
       </SystemSpellCatalogFormSection>
 

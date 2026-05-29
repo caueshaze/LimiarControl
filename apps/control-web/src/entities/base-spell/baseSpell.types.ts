@@ -455,6 +455,13 @@ export type BaseSpellAlias = {
   aliasType?: string | null;
 };
 
+export type SpellConsumableMaterialOption = {
+  key: string;
+  nameEn?: string | null;
+  namePt?: string | null;
+  quantity?: number | null;
+};
+
 export type BaseSpell = {
   id: string;
   system: CampaignSystemType;
@@ -490,6 +497,8 @@ export type BaseSpell = {
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;
+  materialComponentConsumed?: boolean;
+  consumableMaterialOptions?: SpellConsumableMaterialOption[] | null;
   concentration: boolean;
   ritual: boolean;
 
@@ -573,6 +582,8 @@ export type BaseSpellWritePayload = {
   duration?: string | null;
   componentsJson?: string[] | null;
   materialComponentText?: string | null;
+  materialComponentConsumed?: boolean;
+  consumableMaterialOptions?: SpellConsumableMaterialOption[] | null;
   concentration?: boolean;
   ritual?: boolean;
   resolutionType?: ResolutionType | null;
