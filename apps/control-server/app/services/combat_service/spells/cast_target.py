@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -21,6 +22,12 @@ from app.services.roll_resolution import resolve_attack_base, resolve_saving_thr
 from app.services.magic_item_effects import (
     consume_inventory_item_charge,
     get_inventory_item_charges_current,
+)
+from app.services.spell_material_components import (
+    MaterialConsumptionResult,
+    SpellMaterialError,
+    consume_spell_material,
+    validate_spell_material,
 )
 from app.integrations import LimiarMapClientError
 
@@ -284,6 +291,29 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             raise CombatServiceError(movement.reason or "Invalid teleport destination.", 400)
 
         slot_spent = False
+        material_result = MaterialConsumptionResult(
+            required=False,
+            consumed=False,
+            material_key=None,
+            material_label=None,
+            quantity=0,
+            inventory_item_id=None,
+        )
+        spell_material_config = SimpleNamespace(
+            material_component_consumed=bool(spell_context.get("material_component_consumed")),
+            consumable_material_options_json=spell_context.get("consumable_material_options_json"),
+        )
+        caster_user_id = str(attacker.get("actor_user_id") or attacker.get("ref_id") or "").strip()
+        try:
+            material_result = validate_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, exc.status_code) from exc
         action_cost = spell_context.get("action_cost") or "bonus_action"
         was_overridden = cls._consume_turn_resource(
             attacker, action_cost, is_gm=is_gm, override_resource_limit=req.override_resource_limit
@@ -572,6 +602,7 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             "upcast_instance_effect_dice": spell_context.get("upcast_instance_effect_dice"),
             "cover_applies_to_save": spell_context.get("cover_applies_to_save"),
             "utility": spell_context.get("utility"),
+            "materialComponent": spell_context.get("materialComponent"),
             "throw_attack": spell_context.get("throw_attack"),
             "variants": spell_context.get("variants"),
             "selected_variant_key": spell_context.get("selected_variant_key"),
@@ -1126,6 +1157,23 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
             cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
             db.add(attacker_model)
             slot_spent = True
+        try:
+            material_result = consume_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, exc.status_code) from exc
+        spell_context["material_consumed"] = material_result.consumed
+        spell_context["material_key"] = material_result.material_key
+        spell_context["material_label"] = material_result.material_label
+        spell_context["material_quantity"] = (
+            material_result.quantity if material_result.required else None
+        )
+        spell_context["material_inventory_item_id"] = material_result.inventory_item_id
 
         spell_mode = spell_context["spell_mode"]
         is_hostile = spell_mode in ("spell_attack", "saving_throw", "direct_damage")

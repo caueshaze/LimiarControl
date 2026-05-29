@@ -51,6 +51,11 @@ from app.services.declarative_effect_lifecycle import remove_armor_don_effects_f
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.spell_preparation import apply_prepared_spells_with_long_rest_tracking
+from app.services.spell_material_components import (
+    SpellMaterialError,
+    consume_spell_material,
+    validate_spell_material,
+)
 from ._shared import record_session_activity, require_identifier
 from .state_common import (
     ensure_session_state,
@@ -417,6 +422,17 @@ async def _cast_spell_out_of_combat_for_player(
     if not ok:
         raise HTTPException(status_code=400, detail=rejection)
 
+    try:
+        validate_spell_material(
+            session,
+            session_id=session_id,
+            caster_user_id=caster_user_id,
+            spell=campaign_spell,
+            consumable_material_key=req.consumable_material_key,
+        )
+    except SpellMaterialError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
     # --- Capture previous concentration metadata BEFORE any mutation ---
     previous_concentration_metadata = next(
         (
@@ -530,6 +546,16 @@ async def _cast_spell_out_of_combat_for_player(
             updated_caster_json = consume_spell_slot(updated_caster_json, req.slotLevel)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        material_result = consume_spell_material(
+            session,
+            session_id=session_id,
+            caster_user_id=caster_user_id,
+            spell=campaign_spell,
+            consumable_material_key=req.consumable_material_key,
+        )
+    except SpellMaterialError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     affected_allies: list[SessionState] = []
     if campaign_spell.concentration:
@@ -965,6 +991,13 @@ async def _cast_spell_out_of_combat_for_player(
         }
         if req.slotLevel is not None:
             activity_payload["slot_level"] = req.slotLevel
+        if material_result.required:
+            activity_payload["material_consumed"] = material_result.consumed
+            activity_payload["material_key"] = material_result.material_key
+            activity_payload["material_label"] = material_result.material_label
+            activity_payload["material_quantity"] = material_result.quantity
+            activity_payload["material_inventory_item_id"] = material_result.inventory_item_id
+            activity_payload["inventory_refresh_required"] = True
         if consumables_granted_count:
             activity_payload["consumables_granted_count"] = consumables_granted_count
             activity_payload["inventory_refresh_required"] = True

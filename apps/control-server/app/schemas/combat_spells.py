@@ -86,6 +86,10 @@ class CombatCastSpellRequest(BaseModel):
     spell_canonical_key: str | None = None
     campaign_spell_id: str | None = None
     variant_key: str | None = None
+    consumable_material_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("consumable_material_key", "consumableMaterialKey"),
+    )
     target_variant_assignments: list[TargetVariantAssignment] | None = None
     spell_mode: (
         Literal["spell_attack", "saving_throw", "direct_damage", "heal", "utility", "teleport"]
@@ -176,6 +180,7 @@ class CombatResolvedSpellContext(BaseModel):
     upcast_instance_effect_dice: str | None = None
     cover_applies_to_save: str | None = None
     utility: dict[str, Any] | None = None
+    materialComponent: dict[str, Any] | None = None
     throw_attack: dict[str, Any] | None = None
     variants: list["SpellVariantSummaryPayload"] | None = None
     selected_variant_key: str | None = None
@@ -464,3 +469,8 @@ class CombatSpellResult(BaseModel):
     manual_notes_by_target: list[dict] | None = None
     applied_declarative_effects_by_target: list[AppliedDeclarativeEffectsByTargetEntry] | None = None
     damage_mode: Literal["normal", "half_on_miss"] = "normal"
+    material_consumed: bool = False
+    material_key: str | None = None
+    material_label: str | None = None
+    material_quantity: int | None = None
+    material_inventory_item_id: str | None = None

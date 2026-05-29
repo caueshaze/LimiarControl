@@ -281,6 +281,11 @@ class SpellResponseMixin:
             "action_cost": action_cost,
             "summary_text": summary_text,
             "inventory_refresh_required": inventory_refresh_required,
+            "material_consumed": bool(spell_context.get("material_consumed")),
+            "material_key": spell_context.get("material_key"),
+            "material_label": spell_context.get("material_label"),
+            "material_quantity": spell_context.get("material_quantity"),
+            "material_inventory_item_id": spell_context.get("material_inventory_item_id"),
             "concentration_check": result.concentration_check,
             "elemental_affinity_eligible": bool(
                 spell_context.get("elemental_affinity_eligible")

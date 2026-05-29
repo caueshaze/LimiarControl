@@ -274,6 +274,14 @@ class ProtectionFromEvilAndGoodSeedTests(unittest.TestCase):
     def test_out_of_combat_target(self):
         self.assertEqual(self.entry.get("outOfCombatTarget"), "self_or_ally")
 
+    def test_material_component_consumed_true(self):
+        self.assertTrue(self.entry.get("materialComponentConsumed"))
+
+    def test_consumable_material_options(self):
+        options = self.entry.get("consumableMaterialOptions") or []
+        keys = {opt.get("key") for opt in options if isinstance(opt, dict)}
+        self.assertEqual(keys, {"holy_water", "powdered_silver_and_iron"})
+
     def test_no_damage_dice(self):
         self.assertIsNone(self.entry.get("damageDice"))
 

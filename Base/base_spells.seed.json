@@ -1249,6 +1249,21 @@
       "durationSeconds": 600,
       "componentsJson": ["V", "S", "M"],
       "materialComponent": "holy water or powdered silver and iron, which the spell consumes",
+      "materialComponentConsumed": true,
+      "consumableMaterialOptions": [
+        {
+          "key": "holy_water",
+          "nameEn": "Holy water",
+          "namePt": "Água benta",
+          "quantity": 1
+        },
+        {
+          "key": "powdered_silver_and_iron",
+          "nameEn": "Powdered silver and iron",
+          "namePt": "Prata e ferro em pó",
+          "quantity": 1
+        }
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "utility",

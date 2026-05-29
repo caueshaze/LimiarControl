@@ -52,6 +52,8 @@ class BaseSpellRead(BaseModel):
     duration: Optional[str] = None
     componentsJson: Optional[Any] = None
     materialComponentText: Optional[str] = None
+    materialComponentConsumed: bool = False
+    consumableMaterialOptions: Optional[list[dict]] = None
     concentration: bool
     ritual: bool
 

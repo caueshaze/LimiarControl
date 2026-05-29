@@ -111,6 +111,14 @@ class CampaignSpell(SQLModel, table=True):
     material_component_text: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
     )
+    material_component_consumed: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
+    consumable_material_options_json: Optional[list[dict]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
     concentration: bool = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),

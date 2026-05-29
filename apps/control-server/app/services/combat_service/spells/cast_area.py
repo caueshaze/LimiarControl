@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from types import SimpleNamespace
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -14,6 +15,12 @@ from app.schemas.combat import CombatCastSpellRequest
 from app.services.magic_item_effects import consume_inventory_item_charge
 from app.services.combat_service.condition_effects_saves import modify_saving_throw
 from app.services.roll_resolution import resolve_saving_throw
+from app.services.spell_material_components import (
+    MaterialConsumptionResult,
+    SpellMaterialError,
+    consume_spell_material,
+    validate_spell_material,
+)
 
 from ..combat_targeting import get_combat_targeting_service
 from ..cover_modifiers import cover_label, resolve_cover_modifier, resolve_cover_save_dc, resolve_cover_save_modifier, should_cover_apply_to_save
@@ -152,6 +159,29 @@ class CastAreaMixin:
         )
 
         slot_spent = False
+        material_result = MaterialConsumptionResult(
+            required=False,
+            consumed=False,
+            material_key=None,
+            material_label=None,
+            quantity=0,
+            inventory_item_id=None,
+        )
+        spell_material_config = SimpleNamespace(
+            material_component_consumed=bool(spell_context.get("material_component_consumed")),
+            consumable_material_options_json=spell_context.get("consumable_material_options_json"),
+        )
+        caster_user_id = str(attacker.get("actor_user_id") or attacker.get("ref_id") or "").strip()
+        try:
+            material_result = validate_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, 400) from exc
         if spell_context.get("source_kind") == "magic_item":
             inventory_item = spell_context.get("inventory_item")
             source_item = spell_context.get("source_item")
@@ -166,6 +196,23 @@ class CastAreaMixin:
             cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
             db.add(attacker_model)
             slot_spent = True
+        try:
+            material_result = consume_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, 400) from exc
+        spell_context["material_consumed"] = material_result.consumed
+        spell_context["material_key"] = material_result.material_key
+        spell_context["material_label"] = material_result.material_label
+        spell_context["material_quantity"] = (
+            material_result.quantity if material_result.required else None
+        )
+        spell_context["material_inventory_item_id"] = material_result.inventory_item_id
 
         affected_participants = [
             participant
@@ -324,6 +371,11 @@ class CastAreaMixin:
                 "action_cost": action_cost,
                 "summary_text": "Todos os alvos na área foram excluídos por regras mecânicas.",
                 "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+                "material_consumed": bool(spell_context.get("material_consumed")),
+                "material_key": spell_context.get("material_key"),
+                "material_label": spell_context.get("material_label"),
+                "material_quantity": spell_context.get("material_quantity"),
+                "material_inventory_item_id": spell_context.get("material_inventory_item_id"),
                 "concentration_check": None,
                 "concentration_checks": [],
                 "area_shape": area_spec["shape"],
@@ -464,6 +516,11 @@ class CastAreaMixin:
             "action_cost": action_cost,
             "summary_text": None,
             "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "material_consumed": bool(spell_context.get("material_consumed")),
+            "material_key": spell_context.get("material_key"),
+            "material_label": spell_context.get("material_label"),
+            "material_quantity": spell_context.get("material_quantity"),
+            "material_inventory_item_id": spell_context.get("material_inventory_item_id"),
             "concentration_check": None,
             "concentration_checks": [],
             "area_shape": area_spec["shape"],
@@ -501,6 +558,29 @@ class CastAreaMixin:
         )
 
         slot_spent = False
+        material_result = MaterialConsumptionResult(
+            required=False,
+            consumed=False,
+            material_key=None,
+            material_label=None,
+            quantity=0,
+            inventory_item_id=None,
+        )
+        spell_material_config = SimpleNamespace(
+            material_component_consumed=bool(spell_context.get("material_component_consumed")),
+            consumable_material_options_json=spell_context.get("consumable_material_options_json"),
+        )
+        caster_user_id = str(attacker.get("actor_user_id") or attacker.get("ref_id") or "").strip()
+        try:
+            material_result = validate_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, 400) from exc
         if spell_context.get("source_kind") == "magic_item":
             inventory_item = spell_context.get("inventory_item")
             source_item = spell_context.get("source_item")
@@ -515,6 +595,23 @@ class CastAreaMixin:
             cls._consume_player_spell_slot(attacker_model, spell_context["slot_level"])
             db.add(attacker_model)
             slot_spent = True
+        try:
+            material_result = consume_spell_material(
+                db,
+                session_id=session_id,
+                caster_user_id=caster_user_id,
+                spell=spell_material_config,
+                consumable_material_key=req.consumable_material_key,
+            )
+        except SpellMaterialError as exc:
+            raise CombatServiceError(exc.detail, 400) from exc
+        spell_context["material_consumed"] = material_result.consumed
+        spell_context["material_key"] = material_result.material_key
+        spell_context["material_label"] = material_result.material_label
+        spell_context["material_quantity"] = (
+            material_result.quantity if material_result.required else None
+        )
+        spell_context["material_inventory_item_id"] = material_result.inventory_item_id
 
         active_area_effect: dict[str, Any] | None = None
         concentration_group: str | None = None
@@ -620,6 +717,11 @@ class CastAreaMixin:
             "action_cost": action_cost,
             "summary_text": None,
             "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "material_consumed": bool(spell_context.get("material_consumed")),
+            "material_key": spell_context.get("material_key"),
+            "material_label": spell_context.get("material_label"),
+            "material_quantity": spell_context.get("material_quantity"),
+            "material_inventory_item_id": spell_context.get("material_inventory_item_id"),
             "concentration_check": None,
             "concentration_checks": [],
             "area_shape": area_spec["shape"],

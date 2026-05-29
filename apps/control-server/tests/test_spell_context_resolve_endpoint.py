@@ -75,6 +75,12 @@ def _build_attacker_state() -> SessionState:
                         "level": 0,
                         "prepared": True,
                     },
+                    {
+                        "name": "Protection from Evil and Good",
+                        "canonicalKey": "protection_from_evil_and_good",
+                        "level": 1,
+                        "prepared": True,
+                    },
                 ],
                 "slots": {
                     "1": {"used": 0, "max": 4},
@@ -123,6 +129,9 @@ def _catalog_spell(**overrides):
         "cover_applies_to_save": None,
         "max_targets": 3,
         "variants_json": None,
+        "material_component_text": None,
+        "material_component_consumed": False,
+        "consumable_material_options_json": None,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -178,6 +187,39 @@ class ResolveSpellContextTests(unittest.TestCase):
         self.assertEqual(result["range_meters"], 36)
         self.assertEqual(result["damage_type"], "force")
         self.assertIsNone(result["save_ability"])
+
+    def test_resolves_consumable_material_context_block(self):
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="protection_from_evil_and_good",
+                spell_mode="utility",
+                slot_level=1,
+            ),
+            _catalog_spell(
+                canonical_key="protection_from_evil_and_good",
+                name_en="Protection from Evil and Good",
+                name_pt="Proteção Contra Mal e Bem",
+                resolution_type="utility",
+                target_type="touch",
+                range_kind="touch",
+                material_component_text="holy water or powdered silver and iron, which the spell consumes",
+                material_component_consumed=True,
+                consumable_material_options_json=[
+                    {"key": "holy_water", "nameEn": "Holy water", "namePt": "Água benta", "quantity": 1},
+                    {
+                        "key": "powdered_silver_and_iron",
+                        "nameEn": "Powdered silver and iron",
+                        "namePt": "Prata e ferro em pó",
+                        "quantity": 1,
+                    },
+                ],
+            ),
+        )
+        material = result.get("materialComponent") or {}
+        self.assertTrue(material.get("consumed"))
+        self.assertTrue(material.get("requiresSelection"))
+        self.assertEqual(len(material.get("options") or []), 2)
 
     def test_resolves_magic_missile_slot_3_effect_instance_count_5(self):
         result = self._resolve(

@@ -44,6 +44,8 @@ _FIELD_MAP: dict[str, str] = {
     "sideMeters": "side_meters",
     "componentsJson": "components_json",
     "materialComponentText": "material_component_text",
+    "materialComponentConsumed": "material_component_consumed",
+    "consumableMaterialOptions": "consumable_material_options_json",
     "resolutionType": "resolution_type",
     "savingThrow": "saving_throw",
     "saveSuccessOutcome": "save_success_outcome",

@@ -850,6 +850,15 @@ class SpellContextResolveMixin:
                 if spell_key == "feather_fall"
                 else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
             ),
+            "materialComponent": {
+                "text": getattr(catalog_spell, "material_component_text", None),
+                "consumed": bool(getattr(catalog_spell, "material_component_consumed", False)),
+                "options": getattr(catalog_spell, "consumable_material_options_json", None) or [],
+                "requiresSelection": bool(
+                    isinstance(getattr(catalog_spell, "consumable_material_options_json", None), list)
+                    and len(getattr(catalog_spell, "consumable_material_options_json", None) or []) > 1
+                ),
+            },
             "throw_attack": (
                 {
                     "attack_type": "ranged_spell",
@@ -875,6 +884,8 @@ class SpellContextResolveMixin:
             "no_free_hand_required": source_context["no_free_hand_required"],
             "source_item": source_context["source_item"],
             "caster_spell_mod": caster_spell_mod,
+            "material_component_consumed": bool(getattr(catalog_spell, "material_component_consumed", False)),
+            "consumable_material_options_json": getattr(catalog_spell, "consumable_material_options_json", None),
         }
 
     @classmethod

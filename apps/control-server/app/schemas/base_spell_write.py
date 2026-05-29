@@ -65,6 +65,8 @@ class BaseSpellWrite(BaseModel):
     duration: Optional[str] = None
     componentsJson: Optional[list[str]] = None
     materialComponentText: Optional[str] = None
+    materialComponentConsumed: Optional[bool] = None
+    consumableMaterialOptions: Optional[list[dict]] = None
     concentration: Optional[bool] = None
     ritual: Optional[bool] = None
 
