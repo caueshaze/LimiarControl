@@ -18,6 +18,7 @@ from .condition_effects_predicates import (
     explain_check_modifier_sources,
     get_roll_bonus_dice_sources,
     has_condition_immunity,
+    has_condition_immunity_from_source,
     resolve_actor_participant,
     resolve_check_advantage_mode,
 )
@@ -453,7 +454,7 @@ class CombatSpellDeclarativeEffectsMixin:
         created: list[dict] = []
         if effect.type == "apply_condition":
             condition_type = params["condition"]
-            if has_condition_immunity(resolved_target, condition_type):
+            if has_condition_immunity_from_source(resolved_target, condition_type, source_participant=attacker):
                 return []
             active_effect = cls._build_active_effect(
                 kind="condition",

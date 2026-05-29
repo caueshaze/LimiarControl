@@ -789,3 +789,292 @@ class ProtectionFromEvilAndGoodSpellContextTests(unittest.TestCase):
 
     def test_ooc_target(self):
         self.assertEqual(self.meta["outOfCombatTarget"], "self_or_ally")
+
+
+# ---------------------------------------------------------------------------
+# 10. Condition immunity: handler integration
+# ---------------------------------------------------------------------------
+
+def _make_attacker_participant(creature_type: str | None = None) -> dict:
+    return {
+        "id": "att1",
+        "ref_id": "att-ref",
+        "kind": "session_entity",
+        "display_name": "Attacker",
+        "team": "enemies",
+        "creature_type": creature_type,
+        "active_effects": [],
+    }
+
+
+def _make_target_participant_for_handler(protected: bool = True) -> dict:
+    target: dict = {
+        "id": "tgt1",
+        "ref_id": "tgt-ref",
+        "kind": "session_entity",
+        "display_name": "Hero",
+        "team": "players",
+        "active_effects": [],
+    }
+    if protected:
+        target["active_effects"] = [_make_protection_effect()]
+    return target
+
+
+def _spell_ctx(key: str = "charm_person", name: str = "Charm Person") -> dict:
+    return {
+        "spell_name": name,
+        "spell_canonical_key": key,
+        "save_ability": "wisdom",
+        "save_dc": 14,
+        "save_success_outcome": "none",
+        "concentration": False,
+    }
+
+
+class ConditionImmunityHandlerTests(unittest.IsolatedAsyncioTestCase):
+    # --- Animal Friendship ---
+
+    async def test_animal_friendship_blocked_fiend(self):
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=True)
+        result = await CombatService._cast_animal_friendship_automation(
+            MagicMock(),
+            "sess",
+            attacker=attacker,
+            attacker_model=MagicMock(),
+            actor_user_id="u1",
+            is_gm=False,
+            req=MagicMock(),
+            state=MagicMock(),
+            spell_context=_spell_ctx("animal_friendship", "Amizade com Animais"),
+            target_participant=target,
+        )
+        self.assertTrue(result.get("immune"))
+        self.assertEqual(result["immune_reason"], "protection_from_evil_and_good")
+        charmed = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(charmed, [])
+
+    async def test_animal_friendship_blocked_undead(self):
+        attacker = _make_attacker_participant("undead")
+        target = _make_target_participant_for_handler(protected=True)
+        result = await CombatService._cast_animal_friendship_automation(
+            MagicMock(),
+            "sess",
+            attacker=attacker,
+            attacker_model=MagicMock(),
+            actor_user_id="u1",
+            is_gm=False,
+            req=MagicMock(),
+            state=MagicMock(),
+            spell_context=_spell_ctx("animal_friendship", "Amizade com Animais"),
+            target_participant=target,
+        )
+        self.assertTrue(result.get("immune"))
+        charmed = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(charmed, [])
+
+    async def test_animal_friendship_not_blocked_humanoid(self):
+        from app.schemas.roll import RollResult
+        from datetime import datetime, timezone
+
+        attacker = _make_attacker_participant("humanoid")
+        target = _make_target_participant_for_handler(protected=True)
+        roll_fail = RollResult(
+            event_id="r1", roll_type="save", actor_kind="session_entity",
+            actor_ref_id="tgt-ref", actor_display_name="Hero",
+            rolls=[2], selected_roll=2, advantage_mode="normal",
+            modifier_used=0, override_used=False, formula="1d20",
+            total=2, ability="wisdom", dc=14, success=False,
+            timestamp=datetime.now(timezone.utc),
+        )
+        with (
+            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_fail),
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch.object(CombatService, "_append_effect_to_participant",
+                         side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)),
+            patch("app.services.combat_service.spell_automation.flag_modified"),
+        ):
+            result = await CombatService._cast_animal_friendship_automation(
+                MagicMock(), "sess",
+                attacker=attacker, attacker_model=MagicMock(), actor_user_id="u1",
+                is_gm=False, req=MagicMock(), state=MagicMock(),
+                spell_context=_spell_ctx("animal_friendship", "Amizade com Animais"),
+                target_participant=target,
+            )
+        self.assertFalse(result.get("immune"))
+        charmed = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(len(charmed), 1)
+
+    async def test_animal_friendship_not_blocked_no_protection(self):
+        from app.schemas.roll import RollResult
+        from datetime import datetime, timezone
+
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=False)
+        roll_fail = RollResult(
+            event_id="r1", roll_type="save", actor_kind="session_entity",
+            actor_ref_id="tgt-ref", actor_display_name="Hero",
+            rolls=[2], selected_roll=2, advantage_mode="normal",
+            modifier_used=0, override_used=False, formula="1d20",
+            total=2, ability="wisdom", dc=14, success=False,
+            timestamp=datetime.now(timezone.utc),
+        )
+        with (
+            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_fail),
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch.object(CombatService, "_append_effect_to_participant",
+                         side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)),
+            patch("app.services.combat_service.spell_automation.flag_modified"),
+        ):
+            result = await CombatService._cast_animal_friendship_automation(
+                MagicMock(), "sess",
+                attacker=attacker, attacker_model=MagicMock(), actor_user_id="u1",
+                is_gm=False, req=MagicMock(), state=MagicMock(),
+                spell_context=_spell_ctx("animal_friendship", "Amizade com Animais"),
+                target_participant=target,
+            )
+        self.assertFalse(result.get("immune"))
+
+    # --- Charm Person ---
+
+    async def test_charm_person_blocked_fiend(self):
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=True)
+        result = await CombatService._cast_charm_person_automation(
+            MagicMock(), "sess",
+            attacker=attacker, attacker_model=MagicMock(), actor_user_id="u1",
+            is_gm=False, req=MagicMock(), state=MagicMock(),
+            spell_context=_spell_ctx(),
+            target_participant=target,
+        )
+        self.assertTrue(result.get("immune"))
+        self.assertEqual(result["immune_reason"], "protection_from_evil_and_good")
+        charmed = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(charmed, [])
+
+    async def test_charm_person_not_blocked_humanoid(self):
+        from app.schemas.roll import RollResult
+        from datetime import datetime, timezone
+
+        attacker = _make_attacker_participant("humanoid")
+        target = _make_target_participant_for_handler(protected=True)
+        roll_pass = RollResult(
+            event_id="r1", roll_type="save", actor_kind="session_entity",
+            actor_ref_id="tgt-ref", actor_display_name="Hero",
+            rolls=[18], selected_roll=18, advantage_mode="normal",
+            modifier_used=0, override_used=False, formula="1d20",
+            total=18, ability="wisdom", dc=14, success=True,
+            timestamp=datetime.now(timezone.utc),
+        )
+        with (
+            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass),
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+        ):
+            result = await CombatService._cast_charm_person_automation(
+                MagicMock(), "sess",
+                attacker=attacker, attacker_model=MagicMock(), actor_user_id="u1",
+                is_gm=False, req=MagicMock(), state=MagicMock(),
+                spell_context=_spell_ctx(),
+                target_participant=target,
+            )
+        self.assertFalse(result.get("immune"))
+
+    async def test_charm_person_not_blocked_no_protection(self):
+        from app.schemas.roll import RollResult
+        from datetime import datetime, timezone
+
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=False)
+        roll_pass = RollResult(
+            event_id="r1", roll_type="save", actor_kind="session_entity",
+            actor_ref_id="tgt-ref", actor_display_name="Hero",
+            rolls=[18], selected_roll=18, advantage_mode="normal",
+            modifier_used=0, override_used=False, formula="1d20",
+            total=18, ability="wisdom", dc=14, success=True,
+            timestamp=datetime.now(timezone.utc),
+        )
+        with (
+            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass),
+            patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
+            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+        ):
+            result = await CombatService._cast_charm_person_automation(
+                MagicMock(), "sess",
+                attacker=attacker, attacker_model=MagicMock(), actor_user_id="u1",
+                is_gm=False, req=MagicMock(), state=MagicMock(),
+                spell_context=_spell_ctx(),
+                target_participant=target,
+            )
+        self.assertFalse(result.get("immune"))
+
+    # --- Declarative effects apply_condition path ---
+
+    def _make_minimal_state(self, attacker: dict, target: dict) -> CombatState:
+        return CombatState(
+            id="c1", session_id="s1", phase=CombatPhase.active,
+            round=1, current_turn_index=0,
+            participants=[attacker, target], use_map=False,
+        )
+
+    def _make_apply_condition_effect(self, condition: str) -> "SpellDeclarativeEffect":
+        from app.schemas.base_spell_effects import ApplyConditionParams, SpellDeclarativeEffect as SDE
+        return SDE(type="apply_condition", target="selected_target",
+                   params=ApplyConditionParams(condition=condition))
+
+    def test_declarative_charmed_blocked_fiend(self):
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=True)
+        state = self._make_minimal_state(attacker, target)
+        effect = self._make_apply_condition_effect("charmed")
+        created = CombatService._apply_single_declarative_effect(
+            state=state, attacker=attacker, target_participant=target,
+            spell_context=_spell_ctx(), effect=effect,
+            effect_group_id="grp1", on_end_effects=[],
+        )
+        self.assertEqual(created, [])
+        charmed = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(charmed, [])
+
+    def test_declarative_charmed_not_blocked_humanoid(self):
+        attacker = _make_attacker_participant("humanoid")
+        target = _make_target_participant_for_handler(protected=True)
+        state = self._make_minimal_state(attacker, target)
+        effect = self._make_apply_condition_effect("charmed")
+        with patch.object(CombatService, "_append_effect_to_participant",
+                          side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)):
+            created = CombatService._apply_single_declarative_effect(
+                state=state, attacker=attacker, target_participant=target,
+                spell_context=_spell_ctx(), effect=effect,
+                effect_group_id="grp1", on_end_effects=[],
+            )
+        self.assertEqual(len(created), 1)
+
+    def test_declarative_frightened_blocked_undead(self):
+        attacker = _make_attacker_participant("undead")
+        target = _make_target_participant_for_handler(protected=True)
+        state = self._make_minimal_state(attacker, target)
+        effect = self._make_apply_condition_effect("frightened")
+        created = CombatService._apply_single_declarative_effect(
+            state=state, attacker=attacker, target_participant=target,
+            spell_context=_spell_ctx(), effect=effect,
+            effect_group_id="grp1", on_end_effects=[],
+        )
+        self.assertEqual(created, [])
+
+    def test_declarative_charmed_no_protection(self):
+        attacker = _make_attacker_participant("fiend")
+        target = _make_target_participant_for_handler(protected=False)
+        state = self._make_minimal_state(attacker, target)
+        effect = self._make_apply_condition_effect("charmed")
+        with patch.object(CombatService, "_append_effect_to_participant",
+                          side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)):
+            created = CombatService._apply_single_declarative_effect(
+                state=state, attacker=attacker, target_participant=target,
+                spell_context=_spell_ctx(), effect=effect,
+                effect_group_id="grp1", on_end_effects=[],
+            )
+        self.assertEqual(len(created), 1)

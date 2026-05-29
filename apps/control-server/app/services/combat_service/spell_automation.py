@@ -473,6 +473,26 @@ class CombatSpellAutomationMixin:
         actor_user_id: str, is_gm: bool, req, state: CombatState,
         spell_context: dict, target_participant: dict,
     ) -> dict:
+        from .condition_effects_predicates import has_condition_immunity_from_source
+
+        spell_name = spell_context["spell_name"]
+        target_name = target_participant["display_name"]
+
+        if has_condition_immunity_from_source(target_participant, "charmed", source_participant=attacker):
+            return cls._base_spell_result(
+                spell_name=spell_name,
+                spell_context=spell_context,
+                target_display_name=target_name,
+                target_kind=target_participant["kind"],
+                action_kind="saving_throw",
+                summary_text=f"{spell_name} não teve efeito em {target_name} (alvo protegido).",
+                log_message=(
+                    f"{attacker['display_name']} lançou {spell_name} em {target_name}; "
+                    f"o alvo está protegido contra encantamentos dessa criatura."
+                ),
+                extra={"immune": True, "immune_reason": "protection_from_evil_and_good"},
+            )
+
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -511,21 +531,20 @@ class CombatSpellAutomationMixin:
             )
             flag_modified(state, "participants")
 
-        spell_name = spell_context["spell_name"]
         if is_saved:
-            summary_text = f"{target_participant['display_name']} passou na salvaguarda contra {spell_name}."
+            summary_text = f"{target_name} passou na salvaguarda contra {spell_name}."
         else:
-            summary_text = f"{target_participant['display_name']} falhou na salvaguarda e ficou enfeitiçado."
+            summary_text = f"{target_name} falhou na salvaguarda e ficou enfeitiçado."
 
         return cls._base_spell_result(
             spell_name=spell_name,
             spell_context=spell_context,
-            target_display_name=target_participant["display_name"],
+            target_display_name=target_name,
             target_kind=target_participant["kind"],
             action_kind="saving_throw",
             summary_text=summary_text,
             log_message=(
-                f"{attacker['display_name']} lançou {spell_name} em {target_participant['display_name']}: "
+                f"{attacker['display_name']} lançou {spell_name} em {target_name}: "
                 f"{'o alvo passou na salvaguarda' if is_saved else 'o alvo falhou e ficou enfeitiçado'}."
             ),
             extra={
@@ -553,6 +572,26 @@ class CombatSpellAutomationMixin:
         spell_context: dict,
         target_participant: dict,
     ) -> dict:
+        from .condition_effects_predicates import has_condition_immunity_from_source
+
+        spell_name = spell_context["spell_name"]
+        target_name = target_participant["display_name"]
+
+        if has_condition_immunity_from_source(target_participant, "charmed", source_participant=attacker):
+            return cls._base_spell_result(
+                spell_name=spell_name,
+                spell_context=spell_context,
+                target_display_name=target_name,
+                target_kind=target_participant["kind"],
+                action_kind="saving_throw",
+                summary_text=f"{spell_name} não teve efeito em {target_name} (alvo protegido).",
+                log_message=(
+                    f"{attacker['display_name']} lançou {spell_name} em {target_name}; "
+                    f"o alvo está protegido contra encantamentos dessa criatura."
+                ),
+                extra={"immune": True, "immune_reason": "protection_from_evil_and_good"},
+            )
+
         is_hostile = cls._is_hostile_team_context(attacker, target_participant)
         advantage_mode = "advantage" if is_hostile else "normal"
         roll_result = resolve_saving_throw(
@@ -595,21 +634,20 @@ class CombatSpellAutomationMixin:
             )
             flag_modified(state, "participants")
 
-        spell_name = spell_context["spell_name"]
         if is_saved:
-            summary_text = f"{target_participant['display_name']} passou na salvaguarda contra {spell_name}."
+            summary_text = f"{target_name} passou na salvaguarda contra {spell_name}."
         else:
-            summary_text = f"{target_participant['display_name']} falhou na salvaguarda e ficou enfeitiçado."
+            summary_text = f"{target_name} falhou na salvaguarda e ficou enfeitiçado."
 
         return cls._base_spell_result(
             spell_name=spell_name,
             spell_context=spell_context,
-            target_display_name=target_participant["display_name"],
+            target_display_name=target_name,
             target_kind=target_participant["kind"],
             action_kind="saving_throw",
             summary_text=summary_text,
             log_message=(
-                f"{attacker['display_name']} lançou {spell_name} em {target_participant['display_name']}: "
+                f"{attacker['display_name']} lançou {spell_name} em {target_name}: "
                 f"{'o alvo passou na salvaguarda' if is_saved else 'o alvo falhou e ficou enfeitiçado'}."
             ),
             extra={
