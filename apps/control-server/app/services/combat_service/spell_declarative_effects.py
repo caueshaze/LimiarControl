@@ -931,7 +931,7 @@ class CombatSpellDeclarativeEffectsMixin:
             participant,
             ability,
             manual_mode=manual_mode,
-            source_kind="unknown_legacy",
+            source_kind="preview",
         )
         return ctx.result
 
@@ -966,6 +966,6 @@ class CombatSpellDeclarativeEffectsMixin:
             participant,
             ability,
             manual_mode="normal",
-            source_kind="unknown_legacy",
+            source_kind="preview",
         )
         return [*ctx.advantage_source_details, *ctx.disadvantage_source_details]

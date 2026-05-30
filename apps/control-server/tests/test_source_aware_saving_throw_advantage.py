@@ -119,6 +119,7 @@ class SourceAwareSaveContextTests(unittest.TestCase):
             _participant([_protection_effect()]),
             "wisdom",
             source_participant=_source("fiend"),
+            source_kind="participant",
         )
         self.assertEqual(ctx.result, "advantage")
         self.assertIn("protection_from_evil_and_good", ctx.advantage_sources)
@@ -133,6 +134,7 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
             _participant([_protection_effect()]),
             "wisdom",
             source_participant=_source(creature_type),
+            source_kind="participant",
         )
 
     def test_fiend_source_grants_advantage(self):
@@ -149,6 +151,7 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
             _participant([_protection_effect()]),
             "wisdom",
             source_participant={"id": "src-1"},  # sem creature_type
+            source_kind="participant",
         )
         self.assertEqual(ctx.result, "normal")
 
@@ -170,30 +173,34 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
         )
         self.assertEqual(ctx.result, "normal")
 
+    def test_preview_pattern_no_advantage_without_source_participant(self):
+        ctx = modify_saving_throw(
+            _participant([_protection_effect()]),
+            "wisdom",
+            source_kind="preview",
+        )
+        self.assertEqual(ctx.result, "normal")
+
 
 class SourceKindLegacyAuditTests(unittest.TestCase):
-    def test_unknown_legacy_call_sites_are_explicit_and_limited(self):
-        files = [
-            "app/services/combat_service/spell_declarative_effects.py",
-            "app/services/combat_service/spell_automation.py",
-            "app/services/combat_service/spells/cast_area.py",
-            "app/services/combat_service/spells/spell_resolution_save.py",
-            "app/services/combat_service/npc_action_resolution.py",
-            "app/services/combat_service/lifecycle_turns.py",
-            "app/services/combat_service/save_resolve.py",
-        ]
+    def test_legacy_placeholder_source_kind_not_used_in_app_services(self):
         repo_root = Path(__file__).resolve().parents[1]
+        files = [
+            str(path.relative_to(repo_root))
+            for path in (repo_root / "app/services").rglob("*.py")
+        ]
+        legacy_kind = "unknown" + "_legacy"
         counts: dict[str, int] = {}
         total = 0
         for rel in files:
             text = (repo_root / rel).read_text(encoding="utf-8")
-            count = text.count('source_kind="unknown_legacy"')
+            count = text.count(f'source_kind="{legacy_kind}"')
             counts[rel] = count
             total += count
         self.assertEqual(
             total,
-            2,
-            f"Expected 2 unknown_legacy call sites in this round, found {total}: {counts}",
+            0,
+            f"Expected 0 legacy placeholder source_kind call sites in app/services, found {total}: {counts}",
         )
 
     def test_explicit_source_kind_call_site_markers_exist(self):

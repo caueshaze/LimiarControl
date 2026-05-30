@@ -574,7 +574,11 @@ class TestModifySavingThrow(unittest.TestCase):
     """Phase F2 — condition-based saving throw modifiers."""
 
     def _mod(self, conditions=None, ability="strength"):
-        return modify_saving_throw(_participant(conditions), ability)
+        return modify_saving_throw(
+            _participant(conditions),
+            ability,
+            source_kind="preview",
+        )
 
     # ── baseline ─────────────────────────────────────────────────────────────
     def test_no_conditions_no_modifier(self):
@@ -657,12 +661,21 @@ class TestModifySavingThrow(unittest.TestCase):
     # ── case insensitivity ────────────────────────────────────────────────────
     def test_ability_case_insensitive(self):
         ctx_lower = self._mod(["paralyzed"], "strength")
-        ctx_upper = modify_saving_throw(_participant(["paralyzed"]), "STRENGTH")
+        ctx_upper = modify_saving_throw(
+            _participant(["paralyzed"]),
+            "STRENGTH",
+            source_kind="preview",
+        )
         self.assertEqual(ctx_lower.auto_fail, ctx_upper.auto_fail)
 
     # ── declared save effects ────────────────────────────────────────────────
     def _mod_with_effects(self, extra_effects=None, ability="strength", manual_mode="normal"):
-        return modify_saving_throw(_participant(extra_effects=extra_effects), ability, manual_mode=manual_mode)
+        return modify_saving_throw(
+            _participant(extra_effects=extra_effects),
+            ability,
+            manual_mode=manual_mode,
+            source_kind="preview",
+        )
 
     def test_declared_advantage_on_save_matching_ability(self):
         ctx = self._mod_with_effects(
@@ -805,6 +818,7 @@ class TestModifySavingThrow(unittest.TestCase):
                 ],
             ),
             "dexterity",
+            source_kind="preview",
         )
         self.assertEqual(ctx.result, "normal")
 
@@ -825,29 +839,31 @@ class TestModifySavingThrow(unittest.TestCase):
                 ],
             ),
             "strength",
+            source_kind="preview",
         )
         self.assertTrue(ctx.auto_fail)
         self.assertEqual(ctx.result, "normal")
 
-    def test_source_kind_default_unknown_legacy_is_backward_compatible(self):
-        legacy_ctx = modify_saving_throw(_participant(["restrained"]), "dexterity")
-        explicit_ctx = modify_saving_throw(
-            _participant(["restrained"]),
-            "dexterity",
-            source_kind="unknown_legacy",
-        )
-        self.assertEqual(legacy_ctx.result, explicit_ctx.result)
-        self.assertEqual(legacy_ctx.disadvantage_sources, explicit_ctx.disadvantage_sources)
+    def test_modify_saving_throw_requires_source_kind(self):
+        with self.assertRaises(TypeError):
+            modify_saving_throw(_participant(["restrained"]), "dexterity")
 
-    def test_source_participant_with_non_participant_kind_does_not_break(self):
-        ctx = modify_saving_throw(
-            _participant(),
-            "wisdom",
-            source_participant={"id": "src-1", "creature_type": "fiend"},
-            source_kind="manual_gm",
-        )
-        self.assertFalse(ctx.auto_fail)
-        self.assertEqual(ctx.result, "normal")
+    def test_participant_source_kind_requires_source_participant(self):
+        with self.assertRaises(ValueError):
+            modify_saving_throw(
+                _participant(),
+                "wisdom",
+                source_kind="participant",
+            )
+
+    def test_source_participant_requires_participant_source_kind(self):
+        with self.assertRaises(ValueError):
+            modify_saving_throw(
+                _participant(),
+                "wisdom",
+                source_participant={"id": "src-1", "creature_type": "fiend"},
+                source_kind="preview",
+            )
 
 
 # ─── resolve_spell_attack_kind ───────────────────────────────────────────────

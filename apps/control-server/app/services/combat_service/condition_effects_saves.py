@@ -35,11 +35,13 @@ def modify_saving_throw(
         "passive_condition",
         "manual_gm",
         "environment",
-        "unknown_legacy",
-    ] = "unknown_legacy",
+        "preview",
+    ],
 ) -> SaveModifierContext:
-    if source_participant is not None and source_kind != "participant":
-        source_kind = "participant"
+    if source_kind == "participant" and source_participant is None:
+        raise ValueError("source_kind='participant' requires source_participant")
+    if source_kind != "participant" and source_participant is not None:
+        raise ValueError("source_participant is only valid with source_kind='participant'")
 
     normalized = ability.lower()
     if normalized in _AUTO_FAIL_SAVE_ABILITIES:
