@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from app.api.routes.sessions.state import _cast_spell_out_of_combat_for_player
 from app.schemas.session_state import OutOfCombatCastRequest
-from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS, build_persisted_effects
+from app.services.out_of_combat_cast import _is_ooc_utility_spell, build_persisted_effects
 
 
 class ShillelaghOocSchemaTests(unittest.TestCase):
@@ -33,7 +33,7 @@ class ShillelaghOocSchemaTests(unittest.TestCase):
 
 class ShillelaghOocServiceTests(unittest.TestCase):
     def test_shillelagh_in_special_ooc_utility_spells(self):
-        self.assertIn("shillelagh", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("shillelagh"))
 
     def test_build_persisted_effects_shillelagh_returns_timed_effect(self):
         spell = SimpleNamespace(

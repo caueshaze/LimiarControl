@@ -12,7 +12,7 @@ from app.schemas.combat import CombatResolveDamageRequest
 from app.schemas.combat_spells import CombatCastSpellRequest
 from app.services.combat import CombatService, CombatServiceError
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
-from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS, build_persisted_effects
+from app.services.out_of_combat_cast import _is_ooc_utility_spell, build_persisted_effects
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
@@ -387,7 +387,7 @@ class ShillelaghSpellAttackIsolationTests(unittest.IsolatedAsyncioTestCase):
 
 class ShillelaghOocScopeTests(unittest.TestCase):
     def test_in_special_ooc_utility_spells(self):
-        self.assertIn("shillelagh", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("shillelagh"))
 
     def test_has_build_persisted_effects_branch(self):
         src = inspect.getsource(build_persisted_effects)

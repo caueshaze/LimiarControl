@@ -5,7 +5,7 @@ Covers:
 - Targeting semantics: selection_type=none, range_kind=self, effect_timing=persistent
 - Runtime handler: concentration pattern (participant.active_effects, NOT state_json), deduplication
   via _clear_concentration_for_source, variant_key→400
-- OOC support: in _SPECIAL_OOC_UTILITY_SPELLS + build_persisted_effects with concentration_group
+- OOC support: in _is_ooc_utility_spell + build_persisted_effects with concentration_group
 - OOC/combat metadata consistency: same fields, same values
 - Cross-spell concentration: casting detect_evil_and_good clears detect_magic and detect_poison_disease
 
@@ -26,7 +26,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
 )
 
@@ -381,7 +381,7 @@ class DetectEvilGoodOOCTests(unittest.TestCase):
         )
 
     def test_in_special_ooc_set(self):
-        self.assertIn("detect_evil_and_good", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("detect_evil_and_good"))
 
     def test_build_persisted_effects_returns_concentration_effect(self):
         effects = self._ooc_effect()

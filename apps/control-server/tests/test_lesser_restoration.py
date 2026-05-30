@@ -14,7 +14,7 @@ from app.services.combat_service.condition_effects_predicates import LESSER_REST
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
 )
@@ -547,7 +547,7 @@ class LesserRestorationAutomationTests(unittest.IsolatedAsyncioTestCase):
 
 class LesserRestorationOocTests(unittest.TestCase):
     def test_in_special_ooc_utility_spells(self):
-        self.assertIn("lesser_restoration", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("lesser_restoration"))
 
     def test_check_ooc_eligibility_accepts_self(self):
         spell = _make_spell_ooc()
@@ -581,7 +581,7 @@ class LesserRestorationOocTests(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_build_persisted_effects_returns_empty(self):
-        # lesser_restoration is in _SPECIAL_OOC_UTILITY_SPELLS but has no branch in
+        # lesser_restoration is in _is_ooc_utility_spell but has no branch in
         # build_persisted_effects — it returns [] so the OOC route handler uses the
         # hardcoded branch in _cast_spell_out_of_combat_for_player instead
         spell = _make_spell_ooc()

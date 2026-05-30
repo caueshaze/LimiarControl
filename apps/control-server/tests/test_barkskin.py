@@ -12,7 +12,7 @@ from app.services.combat_service.condition_effects_predicates import (
     resolve_armor_class_floor,
 )
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
-from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS, build_persisted_effects
+from app.services.out_of_combat_cast import _is_ooc_utility_spell, build_persisted_effects
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
@@ -78,7 +78,7 @@ class BarkskinSemanticsRegistryTests(unittest.TestCase):
         self.assertEqual(spec.handler_name, "_cast_barkskin_automation")
 
     def test_ooc_allowlist(self):
-        self.assertIn("barkskin", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("barkskin"))
 
 
 class BarkskinFloorHelperTests(unittest.TestCase):

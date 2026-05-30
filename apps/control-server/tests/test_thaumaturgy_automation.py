@@ -6,7 +6,7 @@ Covers:
 - Runtime automation: description validation, variant validation, effect structure
 - No mechanical side-effects: no damage, no attack roll, no save, no concentration
 - expires_at 60s (not 3600s like druidcraft)
-- OOC support: thaumaturgy in _SPECIAL_OOC_UTILITY_SPELLS + build_persisted_effects
+- OOC support: thaumaturgy in _is_ooc_utility_spell + build_persisted_effects
 - Consistency: allowed_effects list is the same in handler, OOC, and context_resolve
 """
 
@@ -24,7 +24,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     _THAUMATURGY_ALLOWED_EFFECTS,
     build_persisted_effects,
 )
@@ -272,7 +272,7 @@ class ThaumaturgyAutomationTests(unittest.IsolatedAsyncioTestCase):
 
 class ThaumaturgyOOCTests(unittest.TestCase):
     def test_in_special_ooc_set(self):
-        self.assertIn("thaumaturgy", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("thaumaturgy"))
 
     def test_build_persisted_effects_returns_narrative_effect(self):
         spell = MagicMock()

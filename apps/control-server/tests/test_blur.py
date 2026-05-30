@@ -14,7 +14,7 @@ from app.services.combat_service.condition_effects_predicates import (
 )
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
 )
@@ -566,7 +566,7 @@ class BlurSensesHelperTests(unittest.TestCase):
 
 class BlurOocTests(unittest.TestCase):
     def test_blur_in_special_ooc_utility_spells(self):
-        self.assertIn("blur", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("blur"))
 
     def test_check_ooc_eligibility_accepts(self):
         spell = _make_spell_ooc()

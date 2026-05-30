@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 from pydantic import ValidationError
 
+import app.services.out_of_combat_cast as out_of_combat_cast
 from app.api.routes.sessions.state import (
     _prune_out_of_combat_session_activity,
     cast_spell_out_of_combat_for_player,
@@ -34,6 +35,7 @@ from app.services.out_of_combat_cast import (
     OOC_NARRATIVE_UTILITY_SPELLS,
     OOC_REMOVAL_UTILITY_SPELLS,
     OOC_SPECIAL_INPUT_SPELLS,
+    _is_ooc_utility_spell,
     build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
@@ -3396,6 +3398,9 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
 
 
 class TestOocPersistedFactoryDispatch(unittest.TestCase):
+    def test_legacy_special_ooc_alias_removed(self):
+        self.assertFalse(hasattr(out_of_combat_cast, "_SPECIAL_OOC_UTILITY_SPELLS"))
+
     def test_ooc_spell_categories_are_disjoint(self):
         categories = [
             OOC_NARRATIVE_UTILITY_SPELLS,
@@ -3407,6 +3412,18 @@ class TestOocPersistedFactoryDispatch(unittest.TestCase):
         for category in categories:
             all_keys.extend(category)
         self.assertEqual(len(all_keys), len(set(all_keys)))
+
+    def test_is_ooc_utility_spell_matches_category_union(self):
+        categories_union = (
+            OOC_NARRATIVE_UTILITY_SPELLS
+            | OOC_FACTORY_EFFECT_SPELLS
+            | OOC_REMOVAL_UTILITY_SPELLS
+            | OOC_SPECIAL_INPUT_SPELLS
+        )
+        self.assertTrue(_is_ooc_utility_spell("detect_magic"))
+        self.assertFalse(_is_ooc_utility_spell("fire_bolt"))
+        for spell_key in categories_union:
+            self.assertTrue(_is_ooc_utility_spell(spell_key))
 
     def test_factory_category_matches_factory_registry_keys(self):
         self.assertEqual(

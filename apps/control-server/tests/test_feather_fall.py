@@ -13,7 +13,7 @@ from app.services.combat_service.condition_effects_predicates import (
     has_feather_fall_protection,
 )
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
-from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS
+from app.services.out_of_combat_cast import _is_ooc_utility_spell
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
@@ -188,7 +188,7 @@ class FeatherFallFallProtectionTests(unittest.IsolatedAsyncioTestCase):
 
 class FeatherFallOocGuardrailTests(unittest.TestCase):
     def test_not_ooc_allowlisted(self):
-        self.assertNotIn("feather_fall", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertFalse(_is_ooc_utility_spell("feather_fall"))
 
 
 if __name__ == "__main__":

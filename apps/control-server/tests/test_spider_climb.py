@@ -18,7 +18,7 @@ from app.services.combat_service.condition_effects_predicates import (
     resolve_climb_speed_mode,
 )
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
-from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS, build_persisted_effects
+from app.services.out_of_combat_cast import _is_ooc_utility_spell, build_persisted_effects
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
@@ -199,7 +199,7 @@ class SpiderClimbCombatTests(unittest.IsolatedAsyncioTestCase):
 
 class SpiderClimbOocTests(unittest.IsolatedAsyncioTestCase):
     def test_ooc_allowlist_and_persisted_shape(self):
-        self.assertIn("spider_climb", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("spider_climb"))
         spell = SimpleNamespace(
             canonical_key="spider_climb",
             name_pt="Escalada de Aranha",

@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     has_castable_effects,
@@ -137,7 +137,7 @@ class OocAvailabilityTests(unittest.TestCase):
         self.assertEqual(self.entry.get("outOfCombatTarget"), "self_or_ally")
 
     def test_in_special_ooc_utility_spells(self):
-        self.assertIn("spare_the_dying", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("spare_the_dying"))
 
     def test_has_castable_effects(self):
         spell = _make_campaign_spell()

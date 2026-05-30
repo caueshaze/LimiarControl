@@ -692,8 +692,8 @@ class TrueStrikeConcentrationTests(unittest.IsolatedAsyncioTestCase):
 class TrueStrikeOocTests(unittest.TestCase):
 
     def test_not_in_special_ooc_utility_spells(self):
-        from app.services.out_of_combat_cast import _SPECIAL_OOC_UTILITY_SPELLS
-        self.assertNotIn("true_strike", _SPECIAL_OOC_UTILITY_SPELLS)
+        from app.services.out_of_combat_cast import _is_ooc_utility_spell
+        self.assertFalse(_is_ooc_utility_spell("true_strike"))
 
     def test_no_build_persisted_effects_branch(self):
         from app.services.out_of_combat_cast import build_persisted_effects

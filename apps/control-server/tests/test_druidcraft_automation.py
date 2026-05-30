@@ -12,7 +12,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
 )
 
@@ -299,7 +299,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
 
 class TestDruidcraftOutOfCombat(unittest.TestCase):
     def test_in_special_ooc_set(self):
-        self.assertIn("druidcraft", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("druidcraft"))
 
     def test_build_persisted_effects_returns_narrative(self):
         spell = MagicMock()

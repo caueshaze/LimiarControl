@@ -51,14 +51,6 @@ OOC_SPECIAL_INPUT_SPELLS = {
     "shillelagh",
 }
 
-# Backward-compatible aggregate alias kept for legacy tests/imports.
-_SPECIAL_OOC_UTILITY_SPELLS = (
-    OOC_NARRATIVE_UTILITY_SPELLS
-    | OOC_FACTORY_EFFECT_SPELLS
-    | OOC_REMOVAL_UTILITY_SPELLS
-    | OOC_SPECIAL_INPUT_SPELLS
-)
-
 _THAUMATURGY_ALLOWED_EFFECTS = [
     "alter_eyes",
     "booming_voice",

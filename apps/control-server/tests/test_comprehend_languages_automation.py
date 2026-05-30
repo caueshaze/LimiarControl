@@ -5,7 +5,7 @@ Covers:
 - Targeting semantics: selection_type=none, range_kind=self, effect_timing=persistent
 - Runtime handler: no description required, variant_key→400, deduplication on recast
 - No mechanical effects: no damage, attack, save, concentration
-- OOC support: in _SPECIAL_OOC_UTILITY_SPELLS + build_persisted_effects
+- OOC support: in _is_ooc_utility_spell + build_persisted_effects
 - OOC/combat metadata consistency: same fields, same values
 
 Note: ritual casting runtime is OUT OF SCOPE for this issue.
@@ -26,7 +26,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
 )
 
@@ -308,7 +308,7 @@ class ComprehendLanguagesOOCTests(unittest.TestCase):
         return effects
 
     def test_in_special_ooc_set(self):
-        self.assertIn("comprehend_languages", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("comprehend_languages"))
 
     def test_build_persisted_effects_returns_narrative_effect(self):
         effects = self._ooc_effect()

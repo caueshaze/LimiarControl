@@ -19,7 +19,7 @@ from app.services.combat_service.condition_effects_predicates import (
 )
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
 )
@@ -685,7 +685,7 @@ class ConditionImmunityTests(unittest.TestCase):
 
 class ProtectionFromEvilAndGoodOocTests(unittest.TestCase):
     def test_in_special_ooc_utility_spells(self):
-        self.assertIn("protection_from_evil_and_good", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("protection_from_evil_and_good"))
 
     def test_build_persisted_effects_creates_one_effect(self):
         spell = _make_ooc_spell()

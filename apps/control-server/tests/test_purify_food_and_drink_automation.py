@@ -5,7 +5,7 @@ Covers:
 - areaShape/radiusMeters are descriptive metadata only — NOT runtime AoE mechanics
 - Targeting semantics: selection_type=none, range_kind=distance, effect_timing=immediate
 - Runtime handler: instantaneous, no active_effect, no state modification, no concentration
-- OOC: in _SPECIAL_OOC_UTILITY_SPELLS, build_persisted_effects returns [] (intentionally — no false
+- OOC: in _is_ooc_utility_spell, build_persisted_effects returns [] (intentionally — no false
   persistent effect for an instantaneous spell)
 - Context: narrative_utility metadata with purification fields
 """
@@ -24,7 +24,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 from app.services.out_of_combat_cast import (
-    _SPECIAL_OOC_UTILITY_SPELLS,
+    _is_ooc_utility_spell,
     build_persisted_effects,
 )
 
@@ -246,7 +246,7 @@ class PurifyFoodDrinkOOCTests(unittest.TestCase):
         return spell
 
     def test_in_special_ooc_set(self):
-        self.assertIn("purify_food_and_drink", _SPECIAL_OOC_UTILITY_SPELLS)
+        self.assertTrue(_is_ooc_utility_spell("purify_food_and_drink"))
 
     def test_build_persisted_effects_returns_empty_list(self):
         # Magia instantânea: OOC retorna [] de propósito.
