@@ -2902,7 +2902,7 @@ class CombatFlowTestsMixin:
                 return_value=target_stats,
             ),
             patch(
-                "app.services.combat_service.spell_automation.get_game_time_seconds",
+                "app.services.combat_service.spells.automation._social_spells.get_game_time_seconds",
                 return_value=1000,
             ),
         ):
@@ -2955,7 +2955,7 @@ class CombatFlowTestsMixin:
         self.assertTrue(saved_result["is_saved"])
 
     @patch(
-        "app.services.combat_service.spell_automation.grant_catalog_item_to_player_inventory"
+        "app.services.combat_service.spells.automation._hunters_mark_inventory.grant_catalog_item_to_player_inventory"
     )
     @patch(
         "app.services.combat.CombatService._get_campaign_system_for_session",

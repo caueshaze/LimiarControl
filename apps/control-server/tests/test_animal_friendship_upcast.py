@@ -482,7 +482,7 @@ class TestResolvePlainMultiTargetAutomationCast(unittest.IsolatedAsyncioTestCase
                 return_value=(attacker_state, 12, 10, 10, 2, 3),
             ),
             patch(
-                "app.services.combat_service.spell_automation.get_game_time_seconds",
+                "app.services.combat_service.spells.automation._social_spells.get_game_time_seconds",
                 return_value=1000,
             ),
             patch("app.services.combat.CombatService._emit_state", new_callable=AsyncMock),

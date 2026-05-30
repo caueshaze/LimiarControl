@@ -109,7 +109,7 @@ class DetectMagicCombatCastTests(unittest.IsolatedAsyncioTestCase):
             patch("app.services.combat.CombatService.get_state", return_value=state),
             patch("app.services.combat.CombatService._get_stats", return_value=(attacker_state, 10, 10, 10, 2, 3)),
             patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=spell_context),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000),
+            patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=1000),
             patch.object(CombatService, "_emit_state", new_callable=AsyncMock),
             patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock),
         ):
@@ -156,7 +156,7 @@ class DetectMagicCombatCastTests(unittest.IsolatedAsyncioTestCase):
         ]
 
         with (
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=200),
+            patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=200),
         ):
             result = await CombatService._cast_detect_magic_automation(
                 MagicMock(),

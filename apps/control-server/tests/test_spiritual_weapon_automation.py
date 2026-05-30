@@ -20,7 +20,7 @@ from app.services.combat_service.spell_anchors import (
     get_spell_anchors_for_owner,
     create_spell_anchor,
 )
-from app.services.combat_service.spell_automation import resolve_spiritual_weapon_damage_dice
+from app.services.combat_service.spells.automation._spiritual_weapon import resolve_spiritual_weapon_damage_dice
 
 
 _FAKE_BATTLE_MAP = {

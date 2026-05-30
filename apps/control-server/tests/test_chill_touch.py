@@ -236,8 +236,8 @@ class ChillTouchAutomationTests(unittest.IsolatedAsyncioTestCase):
         adv_ctx_mock.consumed_effect_ids_on_roll = []
 
         with (
-            patch("app.services.combat_service.spell_automation.resolve_attack_base", return_value=roll),
-            patch("app.services.combat_service.spell_automation.resolve_attack_advantage", return_value=adv_ctx_mock),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_base", return_value=roll),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_advantage", return_value=adv_ctx_mock),
             patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 12, 30, 30, 3, 3)),
             patch.object(CombatService, "_apply_spell_effect", return_value=(25, "", 30, None)),
             patch.object(CombatService, "_resolve_damage_roll", return_value=([damage], damage)),
@@ -380,8 +380,8 @@ class ChillTouchAutomationTests(unittest.IsolatedAsyncioTestCase):
         adv_ctx_mock.consumed_effect_ids_on_roll = []
 
         with (
-            patch("app.services.combat_service.spell_automation.resolve_attack_base", return_value=roll),
-            patch("app.services.combat_service.spell_automation.resolve_attack_advantage", return_value=adv_ctx_mock),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_base", return_value=roll),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_advantage", return_value=adv_ctx_mock),
             patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 12, 30, 30, 3, 3)),
             patch.object(CombatService, "_apply_spell_effect", return_value=(25, "", 30, None)),
             patch.object(CombatService, "_resolve_damage_roll", return_value=([5], 5)),

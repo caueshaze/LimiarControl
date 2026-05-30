@@ -13,10 +13,8 @@ from __future__ import annotations
 
 import unittest
 
-from app.services.combat_service.spell_automation import (
-    CombatSpellAutomationMixin,
-    resolve_spiritual_weapon_damage_dice,
-)
+from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
+from app.services.combat_service.spells.automation._spiritual_weapon import resolve_spiritual_weapon_damage_dice
 from app.services.spell_targeting_semantics import (
     explicit_spell_targeting_overrides,
     resolve_spell_targeting_semantics,

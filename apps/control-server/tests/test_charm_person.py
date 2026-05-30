@@ -264,7 +264,7 @@ class CharmPersonCastFlowTests(unittest.IsolatedAsyncioTestCase):
             patch("app.services.combat.CombatService._resolve_player_spell_context", return_value=spell_context),
             patch("app.services.combat.CombatService.resolve_effective_creature_type", return_value=None),
             patch("app.services.combat_service.spells.cast_target.get_combat_targeting_service", return_value=MagicMock(validate=MagicMock(return_value=targeting_result))),
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_fail),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_fail),
             patch.object(CombatService, "_emit_state", new_callable=AsyncMock),
             patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock),
         ):
@@ -295,7 +295,7 @@ class CharmPersonCastFlowTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
 
-        with patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass) as save_mock:
+        with patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_pass) as save_mock:
             await CombatService._cast_charm_person_automation(
                 MagicMock(),
                 "s1",
@@ -332,7 +332,7 @@ class CharmPersonCastFlowTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
 
-        with patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass) as save_mock:
+        with patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_pass) as save_mock:
             await CombatService._cast_charm_person_automation(
                 MagicMock(),
                 "s1",
@@ -537,7 +537,7 @@ class CharmPersonCastFlowTests(unittest.IsolatedAsyncioTestCase):
                 "app.services.combat_service.spells.cast_target.get_combat_targeting_service",
                 return_value=MagicMock(validate=MagicMock(return_value=targeting_result)),
             ),
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", side_effect=[roll_fail_a, roll_fail_b]),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", side_effect=[roll_fail_a, roll_fail_b]),
             patch.object(CombatService, "_emit_state", new_callable=AsyncMock),
             patch.object(CombatService, "_emit_and_persist_log", new_callable=AsyncMock),
         ):

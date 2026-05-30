@@ -300,7 +300,7 @@ class LesserRestorationAutomationTests(unittest.IsolatedAsyncioTestCase):
             "slot_level": 2,
         }
 
-        with patch("app.services.combat_service.spell_automation.flag_modified"):
+        with patch("app.services.combat_service.spells.automation._restoration_spells.flag_modified"):
             result = await CombatService._cast_lesser_restoration_automation(
                 db=db,
                 session_id="sess1",
@@ -377,7 +377,7 @@ class LesserRestorationAutomationTests(unittest.IsolatedAsyncioTestCase):
             "slot_level": 2,
         }
         with self.assertRaises(CombatServiceError) as ctx:
-            with patch("app.services.combat_service.spell_automation.flag_modified"):
+            with patch("app.services.combat_service.spells.automation._restoration_spells.flag_modified"):
                 await CombatService._cast_lesser_restoration_automation(
                     db=self._make_db(),
                     session_id="sess1",
@@ -406,7 +406,7 @@ class LesserRestorationAutomationTests(unittest.IsolatedAsyncioTestCase):
             "slot_level": 2,
         }
         with self.assertRaises(CombatServiceError) as ctx:
-            with patch("app.services.combat_service.spell_automation.flag_modified"):
+            with patch("app.services.combat_service.spells.automation._restoration_spells.flag_modified"):
                 await CombatService._cast_lesser_restoration_automation(
                     db=self._make_db(),
                     session_id="sess1",

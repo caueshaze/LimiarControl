@@ -3445,6 +3445,7 @@ class TestOocPersistedFactoryDispatch(unittest.TestCase):
                 "blur",
                 "protection_from_evil_and_good",
                 "jump",
+                "sanctuary",
                 "spider_climb",
             },
         )

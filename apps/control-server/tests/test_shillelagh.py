@@ -149,7 +149,7 @@ class ShillelaghAutomationTests(unittest.IsolatedAsyncioTestCase):
                 SimpleNamespace(id="inv-new", is_equipped=True),
                 SimpleNamespace(name="Bordão", canonical_key_snapshot="quarterstaff"),
             )),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=100),
+            patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=100),
         ):
             result = await CombatService._cast_shillelagh_automation(
                 MagicMock(),
@@ -361,8 +361,8 @@ class ShillelaghSpellAttackIsolationTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
         with (
-            patch("app.services.combat_service.spell_automation.resolve_attack_base", return_value=SimpleNamespace(success=False, total=3, selected_roll=3, is_gm_roll=False)),
-            patch("app.services.combat_service.spell_automation.resolve_attack_advantage", return_value=SimpleNamespace(advantage_sources=[], disadvantage_sources=[], consumed_effect_ids_on_roll=[])),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_base", return_value=SimpleNamespace(success=False, total=3, selected_roll=3, is_gm_roll=False)),
+            patch("app.services.combat_service.spells.automation._chill_touch.resolve_attack_advantage", return_value=SimpleNamespace(advantage_sources=[], disadvantage_sources=[], consumed_effect_ids_on_roll=[])),
             patch.object(CombatService, "_get_stats", return_value=(MagicMock(), 12, 30, 30, 3, 3)),
         ):
             result = await CombatService._cast_chill_touch_automation(

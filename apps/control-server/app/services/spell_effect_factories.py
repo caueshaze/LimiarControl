@@ -23,6 +23,7 @@ class SpellEffectBuildContext:
     selected_variant_label: str | None = None
     created_out_of_combat: bool = False
     extra_metadata: dict = field(default_factory=dict)
+    spell_save_dc: int | None = None
 
 
 def _build_base_metadata(ctx: SpellEffectBuildContext) -> dict:
@@ -197,6 +198,35 @@ def build_spider_climb_effect(ctx: SpellEffectBuildContext) -> dict:
             "prevents_fall_damage": False,
             "ignores_difficult_terrain": False,
             "duration_seconds": ctx.duration_seconds,
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
+def build_sanctuary_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    metadata.update(
+        {
+            "defense_modifier": True,
+            "abjuration_protection": True,
+            "sanctuary": True,
+            "targeting_guard": True,
+            "targeting_guard_type": "sanctuary",
+            "guard_save_ability": "wisdom",
+            "guard_save_dc": ctx.spell_save_dc or 0,
+            "blocks_direct_attacks": True,
+            "blocks_direct_hostile_spells": True,
+            "does_not_block_area_effects": True,
+            "supports_retarget": True,
+            "breaks_on_attack": True,
+            "breaks_on_offensive_spell": True,
+            "breaks_on_damage_dealt": True,
+            "concentration": False,
+            "requires_concentration": False,
+            "duration_seconds": ctx.duration_seconds,
+            "grants_ac_bonus": False,
+            "armor_class_bonus": 0,
+            "grants_resistance": False,
         }
     )
     return _build_timed_spell_effect_base(ctx, metadata=metadata)

@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.schemas.combat import CombatResolveDamageRequest
 from app.schemas.roll import RollResult
+from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 
 from .combat_targeting import get_combat_targeting_service
@@ -52,6 +53,50 @@ class CombatNpcActionMixin(
                 spell_canonical_key=context["resolved_action"].get("spellCanonicalKey"),
                 target_participant=context["target_p"],
             )
+        # Break attacker's own sanctuary when they declare a hostile attack.
+        if context["action_kind"] in ("weapon_attack", "spell_attack") and context["target_p"] is not None:
+            if cls._is_hostile_team_context(context["attacker"], context["target_p"]):
+                break_sanctuary_if_active(context["attacker"], context["state"])
+        # Check if the target is protected by Sanctuary for direct attacks.
+        if context["action_kind"] in ("weapon_attack", "spell_attack") and context["target_p"] is not None:
+            if cls._is_hostile_team_context(context["attacker"], context["target_p"]):
+                sanctuary_block = resolve_sanctuary_guard(
+                    db=db,
+                    session_id=session_id,
+                    attacker_participant=context["attacker"],
+                    target_participant=context["target_p"],
+                )
+                if sanctuary_block:
+                    target_name = context["target_p"].get("display_name", "")
+                    attacker_name = context["attacker"].get("display_name", "")
+                    flag_modified(context["state"], "participants")
+                    db.add(context["state"])
+                    db.commit()
+                    db.refresh(context["state"])
+                    await cls._emit_state(session_id, context["state"])
+                    await cls._emit_and_persist_log(
+                        db, session_id, actor_user_id, attacker_name,
+                        {
+                            "message": (
+                                f"{attacker_name} falhou no teste de Sabedoria contra o Santuário de {target_name} "
+                                f"(CD {sanctuary_block['guard_save_dc']}, resultado {sanctuary_block['save_roll']})."
+                            ),
+                            "actorUserId": actor_user_id,
+                            "source": "gm_override" if is_gm else "entity_turn",
+                            "is_override": False,
+                        },
+                    )
+                    return {
+                        "is_hit": False,
+                        "damage": 0,
+                        "is_critical": False,
+                        "new_hp": None,
+                        "action_name": context["action_name"],
+                        "action_kind": context["action_kind"],
+                        "target_display_name": target_name,
+                        "blocked_by": "sanctuary",
+                        "retarget_required": True,
+                    }
         result = cls._resolve_npc_action_result(
             db,
             session_id,

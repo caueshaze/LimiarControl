@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.schemas.roll import RollResult
+from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active
 
 from ..exceptions import CombatServiceError
 
@@ -184,6 +185,9 @@ class WeaponAttackDamageMixin:
             )
         roll_result = RollResult.model_validate(pending_attack.get("roll_result")) if isinstance(pending_attack.get("roll_result"), dict) else None
         cls._clear_participant_pending_attack(attacker)
+        # Attacker dealt damage — their own sanctuary ends.
+        if final_damage > 0:
+            break_sanctuary_if_active(attacker, state)
         from sqlalchemy.orm.attributes import flag_modified
 
         flag_modified(state, "participants")

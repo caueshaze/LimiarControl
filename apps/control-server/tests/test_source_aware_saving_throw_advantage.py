@@ -185,6 +185,55 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
         self.assertEqual(ctx.result, "normal")
 
 
+class SpellEffectSourceKindContractTests(unittest.TestCase):
+    """Contract tests for source_kind='spell_effect' (sanctuary guard save pattern)."""
+
+    def test_spell_effect_accepted_without_source_participant(self):
+        ctx = modify_saving_throw(
+            _participant([]),
+            "wisdom",
+            source_kind="spell_effect",
+        )
+        self.assertIsNotNone(ctx)
+        self.assertEqual(ctx.result, "normal")
+
+    def test_spell_effect_with_source_participant_raises(self):
+        with self.assertRaises(ValueError):
+            modify_saving_throw(
+                _participant([]),
+                "wisdom",
+                source_participant={"id": "src-1"},
+                source_kind="spell_effect",
+            )
+
+    def test_spell_effect_auto_fail_propagates(self):
+        # paralyzed causes auto-fail on strength/dexterity saves (not wisdom)
+        paralyzed = {
+            "id": "cond-paralyzed",
+            "kind": "condition",
+            "condition_type": "paralyzed",
+        }
+        ctx_str = modify_saving_throw(
+            _participant([paralyzed]),
+            "strength",
+            source_kind="spell_effect",
+        )
+        self.assertTrue(ctx_str.auto_fail)
+        ctx_wis = modify_saving_throw(
+            _participant([paralyzed]),
+            "wisdom",
+            source_kind="spell_effect",
+        )
+        self.assertFalse(ctx_wis.auto_fail)
+
+    def test_sanctuary_guard_uses_spell_effect_source_kind(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        guard_text = (
+            repo_root / "app/services/combat_service/sanctuary_guard.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('source_kind="spell_effect"', guard_text)
+
+
 class SourceKindLegacyAuditTests(unittest.TestCase):
     def test_legacy_placeholder_source_kind_not_used_in_app_services(self):
         repo_root = Path(__file__).resolve().parents[1]

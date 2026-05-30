@@ -94,7 +94,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={"spellcasting": {"slots": {"1": {"used": 0, "max": 2}}}},
         )
         req = SimpleNamespace(description="uma flor desabrocha na mão do druida")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._nature_cantrips.get_game_time_seconds", return_value=1000):
             result = await CombatService._cast_druidcraft_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -175,7 +175,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={},
         )
         req = SimpleNamespace(description="folhas caem suavemente")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._nature_cantrips.get_game_time_seconds", return_value=1000):
             result = await CombatService._cast_druidcraft_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -200,7 +200,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={},
         )
         req = SimpleNamespace(description="previsão de chuva amanhã", variant_key="weather_prediction")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._nature_cantrips.get_game_time_seconds", return_value=1000):
             result = await CombatService._cast_druidcraft_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -245,7 +245,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={},
         )
         req = SimpleNamespace(description="acender uma vela")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._nature_cantrips.get_game_time_seconds", return_value=1000):
             result = await CombatService._cast_druidcraft_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -276,7 +276,7 @@ class TestDruidcraftAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={},
         )
         req = SimpleNamespace(description="uma semente brota")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._nature_cantrips.get_game_time_seconds", return_value=1000):
             await CombatService._cast_druidcraft_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],

@@ -280,8 +280,8 @@ class BlurAutomationTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(CombatService, "_clear_concentration_for_source", return_value={"removed_effects": [], "removed_area_effects": []}), \
              patch.object(CombatService, "_sync_area_effects_if_changed"), \
              patch.object(CombatService, "_append_effect_to_participant", side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)), \
-             patch("app.services.combat_service.spell_automation.flag_modified"), \
-             patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=100):
+             patch("app.services.combat_service.spells.automation._buffs_defense.flag_modified"), \
+             patch("app.services.combat_service.spells.automation._buffs_defense.get_game_time_seconds", return_value=100):
             return await CombatService._cast_blur_automation(
                 db=db,
                 session_id="sess1",
@@ -395,8 +395,8 @@ class BlurAutomationTests(unittest.IsolatedAsyncioTestCase):
              patch.object(CombatService, "_normalize_lookup", side_effect=lambda x: x), \
              patch.object(CombatService, "_get_effect_metadata", side_effect=lambda e: e.get("metadata", {})), \
              patch.object(CombatService, "_append_effect_to_participant", side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)), \
-             patch("app.services.combat_service.spell_automation.flag_modified"), \
-             patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=100):
+             patch("app.services.combat_service.spells.automation._buffs_defense.flag_modified"), \
+             patch("app.services.combat_service.spells.automation._buffs_defense.get_game_time_seconds", return_value=100):
             await CombatService._cast_blur_automation(
                 db=self._make_db(),
                 session_id="sess1",

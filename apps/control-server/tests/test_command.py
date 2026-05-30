@@ -19,10 +19,8 @@ from app.services.combat_service.condition_effects_predicates import (
     target_cannot_understand_command,
 )
 from app.services.combat import CombatService as _CombatServiceForGrovel
-from app.services.combat_service.spell_automation import (
-    CombatSpellAutomationMixin,
-    _build_command_effect_metadata,
-)
+from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
+from app.services.combat_service.spells.automation._command import _build_command_effect_metadata
 from app.services.combat_service.exceptions import CombatServiceError
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
@@ -109,9 +107,9 @@ async def _cast(
     save_result = _mock_save_result(save_success)
 
     with (
-        patch("app.services.combat_service.spell_automation.flag_modified"),
+        patch("app.services.combat_service.spells.automation._command.flag_modified"),
         patch(
-            "app.services.combat_service.spell_automation.resolve_saving_throw",
+            "app.services.combat_service.spells.automation._command.resolve_saving_throw",
             return_value=save_result,
         ),
         patch.object(

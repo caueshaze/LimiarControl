@@ -35,6 +35,7 @@ def modify_saving_throw(
         "passive_condition",
         "manual_gm",
         "environment",
+        "spell_effect",
         "preview",
     ],
 ) -> SaveModifierContext:

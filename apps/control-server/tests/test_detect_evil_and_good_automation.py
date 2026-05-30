@@ -79,7 +79,7 @@ async def _cast(req=None, *, game_time: int = 1000, state: CombatState | None = 
         player_user_id="player-1",
         state_json={"spellcasting": {"slots": {"1": {"used": 0, "max": 2}}}},
     )
-    with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=game_time):
+    with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=game_time):
         result = await CombatService._cast_detect_evil_and_good_automation(
             MagicMock(), "s1",
             attacker=state.participants[0],
@@ -255,7 +255,7 @@ class DetectEvilGoodAutomationTests(unittest.IsolatedAsyncioTestCase):
         _, state = await _cast(game_time=1000)
         first_group = state.participants[0]["active_effects"][0]["metadata"]["concentration_group"]
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=2000):
+        with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=2000):
             result2 = await CombatService._cast_detect_evil_and_good_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -289,7 +289,7 @@ class DetectEvilGoodAutomationTests(unittest.IsolatedAsyncioTestCase):
         }
         state = _state(extra_effects=[detect_magic_effect])
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=1000):
             await CombatService._cast_detect_evil_and_good_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],
@@ -323,7 +323,7 @@ class DetectEvilGoodAutomationTests(unittest.IsolatedAsyncioTestCase):
         }
         state = _state(extra_effects=[dpd_effect])
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=1000):
             await CombatService._cast_detect_evil_and_good_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],

@@ -90,7 +90,7 @@ async def _cast(req=None, *, game_time: int = 1000) -> tuple[dict, SessionState]
         player_user_id="player-1",
         state_json={"spellcasting": {"slots": {"1": {"used": 0, "max": 2}}}},
     )
-    with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=game_time):
+    with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=game_time):
         result = await CombatService._cast_comprehend_languages_automation(
             MagicMock(), "s1",
             attacker=state.participants[0],
@@ -242,7 +242,7 @@ class ComprehendLanguagesAutomationTests(unittest.IsolatedAsyncioTestCase):
         # Cast 2 com attacker_model já atualizado, game_time avançado
         state = _state()
         req = SimpleNamespace()
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=2000):
+        with patch("app.services.combat_service.spells.automation._detection_spells.get_game_time_seconds", return_value=2000):
             await CombatService._cast_comprehend_languages_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],

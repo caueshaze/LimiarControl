@@ -18,6 +18,7 @@ from app.services.combat_service.condition_effects_predicates import (
     is_reaction_blocked,
     target_wearing_metal_armor,
 )
+from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 from app.services.magic_item_effects import (
     consume_inventory_item_charge,
@@ -1186,6 +1187,8 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
                         attacker, vt["participant"], action_label="a hostile spell",
                     )
                     seen.add(ref_id)
+            # Caster is casting a hostile spell — their own sanctuary ends immediately.
+            break_sanctuary_if_active(attacker, state)
 
         logger.info(
             "[cast_spell] pipeline=multi_instance spell=%s instances=%d session=%s actor=%s",
@@ -1200,6 +1203,30 @@ class CastTargetMixin(CastTargetCommitMixin, CastTargetEffectMixin):
 
         for vt in validated_targets:
             target_p = vt["participant"]
+
+            # For direct single-target hostile spell attacks, check Sanctuary on target.
+            if spell_mode == "spell_attack" and cls._is_hostile_team_context(attacker, target_p):
+                sanctuary_block = resolve_sanctuary_guard(
+                    db=db,
+                    session_id=session_id,
+                    attacker_participant=attacker,
+                    target_participant=target_p,
+                )
+                if sanctuary_block:
+                    outcome = {
+                        "is_hit": False,
+                        "damage": 0,
+                        "is_critical": False,
+                        "new_hp": None,
+                        "previous_hp": None,
+                        "blocked_by": "sanctuary",
+                        "retarget_required": True,
+                        "save_roll": sanctuary_block["save_roll"],
+                        "guard_save_dc": sanctuary_block["guard_save_dc"],
+                    }
+                    outcome["instance_index"] = vt["instance_index"]
+                    outcomes.append(outcome)
+                    continue
 
             if spell_mode == "spell_attack":
                 instance_targeting_result = (spatial_results_by_target_ref or {}).get(

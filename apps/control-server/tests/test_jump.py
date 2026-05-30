@@ -167,7 +167,7 @@ class JumpCombatAutomationTests(unittest.IsolatedAsyncioTestCase):
             {"id": "other", "kind": "spell_effect", "metadata": {"source_spell_key": "bless"}},
         ]
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=10):
+        with patch("app.services.combat_service.spells.automation._buffs_physical.get_game_time_seconds", return_value=10):
             await CombatService._cast_jump_automation(
                 MagicMock(),
                 "s1",
@@ -202,7 +202,7 @@ class JumpCombatAutomationTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=20):
+        with patch("app.services.combat_service.spells.automation._buffs_physical.get_game_time_seconds", return_value=20):
             await CombatService._cast_jump_automation(
                 MagicMock(),
                 "s1",

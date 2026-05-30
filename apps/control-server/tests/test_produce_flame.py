@@ -361,7 +361,7 @@ class TestProduceFlameAutomation(unittest.IsolatedAsyncioTestCase):
                 return_value=(31, "msg", 40, None),
             ),
             patch(
-                "app.services.combat_service.spell_automation.resolve_attack_base",
+                "app.services.combat_service.spells.automation._produce_flame.resolve_attack_base",
                 return_value=SimpleNamespace(
                     success=True,
                     total=18,
@@ -410,7 +410,7 @@ class TestProduceFlameAutomation(unittest.IsolatedAsyncioTestCase):
             ),
             patch.object(CombatService, "_apply_spell_effect") as mock_apply,
             patch(
-                "app.services.combat_service.spell_automation.resolve_attack_base",
+                "app.services.combat_service.spells.automation._produce_flame.resolve_attack_base",
                 return_value=SimpleNamespace(
                     success=False,
                     total=7,

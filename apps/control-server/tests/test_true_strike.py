@@ -276,7 +276,7 @@ class TrueStrikeAutomationTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(CombatService, "_clear_concentration_for_source", return_value={"removed_area_effects": []}),
             patch.object(CombatService, "_sync_area_effects_if_changed"),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=0),
         ):
             result = await CombatService._cast_true_strike_automation(
                 MagicMock(), "s1",
@@ -362,7 +362,7 @@ class TrueStrikeAutomationTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch.object(CombatService, "_clear_concentration_for_source", return_value={"removed_area_effects": []}),
                 patch.object(CombatService, "_sync_area_effects_if_changed"),
-                patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+                patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=0),
             ):
                 await CombatService._cast_true_strike_automation(
                     MagicMock(), "s1",
@@ -388,7 +388,7 @@ class TrueStrikeAutomationTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(CombatService, "_clear_concentration_for_source", side_effect=fake_clear),
             patch.object(CombatService, "_sync_area_effects_if_changed"),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=0),
         ):
             await CombatService._cast_true_strike_automation(
                 MagicMock(), "s1",
@@ -416,7 +416,7 @@ class TrueStrikeAutomationTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(CombatService, "_clear_concentration_for_source", return_value={"removed_area_effects": []}),
             patch.object(CombatService, "_sync_area_effects_if_changed"),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=0),
         ):
             await CombatService._cast_true_strike_automation(
                 MagicMock(), "s1",
@@ -659,7 +659,7 @@ class TrueStrikeConcentrationTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(CombatService, "_clear_concentration_for_source", side_effect=fake_clear),
             patch.object(CombatService, "_sync_area_effects_if_changed"),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._buffs_weapon.get_game_time_seconds", return_value=0),
         ):
             await CombatService._cast_true_strike_automation(
                 MagicMock(), "s1",

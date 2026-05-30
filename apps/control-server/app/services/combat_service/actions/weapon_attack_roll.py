@@ -7,6 +7,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import get_attack_auto_crit, resolve_attack_advantage
 from app.services.combat_service.cover_modifiers import cover_label, resolve_cover_modifier
+from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
 from app.services.combat_service.visibility import resolve_target_visibility
 
 from ..exceptions import CombatServiceError
@@ -67,8 +68,53 @@ class WeaponAttackRollMixin:
             raise CombatServiceError("Target not found in combat")
         target_kind = "session_entity" if target.get("kind") == "entity" else target.get("kind")
         cls._assert_hostile_action_allowed(attacker, target, action_label="an attack")
+        # Attacker is declaring a weapon attack — their own sanctuary ends immediately.
+        break_sanctuary_if_active(attacker, state)
         was_overridden = cls._consume_turn_resource(attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit)
         cls._clear_participant_pending_attack(attacker)
+        # Check if the target is protected by Sanctuary; roll Wisdom save for attacker.
+        sanctuary_block = resolve_sanctuary_guard(
+            db=db,
+            session_id=session_id,
+            attacker_participant=attacker,
+            target_participant=target,
+        )
+        if sanctuary_block:
+            target_name = target.get("display_name", "")
+            attacker_name = attacker.get("display_name", "")
+            flag_modified(state, "participants")
+            db.add(state)
+            db.commit()
+            db.refresh(state)
+            await cls._emit_state(session_id, state)
+            log_msg = (
+                f"{attacker_name} falhou no teste de Sabedoria contra o Santuário de {target_name} "
+                f"(CD {sanctuary_block['guard_save_dc']}, resultado {sanctuary_block['save_roll']})."
+            )
+            await cls._emit_and_persist_log(
+                db, session_id, actor_user_id, attacker_name,
+                {"message": log_msg, "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn", "is_override": False},
+            )
+            return {
+                "roll": sanctuary_block["save_roll"],
+                "is_hit": False,
+                "damage": 0,
+                "is_critical": False,
+                "new_hp": None,
+                "roll_result": None,
+                "target_ac": None,
+                "target_display_name": target_name,
+                "target_kind": target_kind,
+                "weapon_name": attack_context["name"],
+                "damage_dice": attack_context["damage_dice"],
+                "damage_bonus": attack_context["damage_bonus"],
+                "attack_bonus": attack_context["attack_bonus"],
+                "damage_type": attack_context.get("damage_type"),
+                "pending_attack_id": None,
+                "damage_roll_required": False,
+                "blocked_by": "sanctuary",
+                "retarget_required": True,
+            }
         _, target_ac, *_ = cls._get_stats(
             db,
             target["ref_id"],

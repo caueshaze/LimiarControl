@@ -568,24 +568,31 @@ async def _cast_spell_out_of_combat_for_player(
     current_game_time_seconds = get_game_time_seconds(session_id, session)
 
     # --- Build target effects ---
-    new_target_effects = build_persisted_effects(
-        spell=campaign_spell,
-        caster_user_id=caster_user_id,
-        target_user_id=target_user_id,
-        variant_key=req.variantKey,
-        game_time_seconds=current_game_time_seconds,
-        weapon_item_id=weapon_item_id,
-        weapon_canonical_key=(
-            getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", None)
-            if shillelagh_weapon_catalog_item is not None
-            else None
-        ),
-        weapon_name=(
-            getattr(shillelagh_weapon_catalog_item, "name", None)
-            if shillelagh_weapon_catalog_item is not None
-            else None
-        ),
+    caster_spell_save_dc = int(
+        (state_json.get("spellcasting") or {}).get("saveDc") or 0
     )
+    try:
+        new_target_effects = build_persisted_effects(
+            spell=campaign_spell,
+            caster_user_id=caster_user_id,
+            target_user_id=target_user_id,
+            variant_key=req.variantKey,
+            game_time_seconds=current_game_time_seconds,
+            weapon_item_id=weapon_item_id,
+            weapon_canonical_key=(
+                getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", None)
+                if shillelagh_weapon_catalog_item is not None
+                else None
+            ),
+            weapon_name=(
+                getattr(shillelagh_weapon_catalog_item, "name", None)
+                if shillelagh_weapon_catalog_item is not None
+                else None
+            ),
+            spell_save_dc=caster_spell_save_dc if caster_spell_save_dc > 0 else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # --- Grant consumable items (create_consumable effects) ---
     consumable_effects = collect_create_consumable_effects(campaign_spell, req.variantKey)

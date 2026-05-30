@@ -19,6 +19,7 @@ from app.services.spell_effect_factories import (
     build_blur_effect,
     build_jump_effect,
     build_protection_from_evil_and_good_effect,
+    build_sanctuary_effect,
     build_shillelagh_effect,
     build_spider_climb_effect,
 )
@@ -43,6 +44,7 @@ OOC_FACTORY_EFFECT_SPELLS = {
     "barkskin",
     "blur",
     "protection_from_evil_and_good",
+    "sanctuary",
 }
 
 OOC_REMOVAL_UTILITY_SPELLS = {
@@ -69,6 +71,7 @@ _OOC_PERSISTED_FACTORY_REGISTRY: dict[str, tuple[_OOCFactory, int, bool]] = {
     "blur": (build_blur_effect, 60, True),
     "protection_from_evil_and_good": (build_protection_from_evil_and_good_effect, 600, True),
     "jump": (build_jump_effect, 60, False),
+    "sanctuary": (build_sanctuary_effect, 60, False),
     "spider_climb": (build_spider_climb_effect, 3600, True),
 }
 
@@ -99,6 +102,7 @@ def _build_ooc_factory_context(
     duration_seconds: int,
     concentration: bool,
     concentration_group: str | None,
+    spell_save_dc: int | None = None,
 ) -> SpellEffectBuildContext:
     spell_name = spell.name_pt or spell.name_en
     return SpellEffectBuildContext(
@@ -115,6 +119,7 @@ def _build_ooc_factory_context(
         caster_user_id=caster_user_id,
         target_user_id=target_user_id,
         created_out_of_combat=True,
+        spell_save_dc=spell_save_dc,
     )
 
 
@@ -188,6 +193,7 @@ def build_persisted_effects(
     weapon_item_id: str | None = None,
     weapon_canonical_key: str | None = None,
     weapon_name: str | None = None,
+    spell_save_dc: int | None = None,
 ) -> list[dict]:
     """Build the list of persisted effect dicts for an out-of-combat cast.
 
@@ -537,6 +543,12 @@ def build_persisted_effects(
         factory_entry = _OOC_PERSISTED_FACTORY_REGISTRY.get(canonical_key)
         if factory_entry:
             factory, duration_fallback_seconds, concentration_required = factory_entry
+            if canonical_key == "sanctuary":
+                if not isinstance(spell_save_dc, int) or spell_save_dc <= 0:
+                    raise ValueError(
+                        "Santuário requer uma CD de conjuração válida "
+                        "(verifique o estado de magia do conjurador)."
+                    )
             duration_seconds = _resolve_ooc_factory_duration_seconds(
                 spell, duration_fallback_seconds
             )
@@ -554,6 +566,7 @@ def build_persisted_effects(
                         duration_seconds=duration_seconds,
                         concentration=concentration_required,
                         concentration_group=concentration_group,
+                        spell_save_dc=spell_save_dc,
                     )
                 )
             ]

@@ -83,7 +83,7 @@ class TestPrestidigitationAutomation(unittest.IsolatedAsyncioTestCase):
             state_json={"spellcasting": {"slots": {"1": {"used": 0, "max": 2}}}},
         )
         req = SimpleNamespace(description="  marca azul na porta  ")
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=1000):
+        with patch("app.services.combat_service.spells.automation._cantrip_anchors.get_game_time_seconds", return_value=1000):
             result = await CombatService._cast_prestidigitation_automation(
                 MagicMock(), "s1",
                 attacker=state.participants[0],

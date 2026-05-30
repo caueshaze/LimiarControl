@@ -19,6 +19,21 @@ from .spell_lookup import CombatSpellLookupMixin
 from .spells.cast_area_effect import CastAreaEffectMixin
 from .spells.spell_resolution import SpellResolutionMixin
 from .spells.spell_response import SpellResponseMixin
+from .spells.automation._social_spells import SocialSpellsAutomationMixin
+from .spells.automation._hunters_mark_inventory import HuntersMarkInventoryAutomationMixin
+from .spells.automation._buffs_weapon import BuffsWeaponAutomationMixin
+from .spells.automation._buffs_physical import BuffsPhysicalAutomationMixin
+from .spells.automation._buffs_defense import BuffsDefenseAutomationMixin
+from .spells.automation._restoration_spells import RestorationSpellsAutomationMixin
+from .spells.automation._command import CommandAutomationMixin
+from .spells.automation._chill_touch import ChillTouchAutomationMixin
+from .spells.automation._spiritual_weapon import SpiritualWeaponAutomationMixin
+from .spells.automation._cantrip_anchors import CantripAnchorsAutomationMixin
+from .spells.automation._light import LightAutomationMixin
+from .spells.automation._detection_spells import DetectionSpellsAutomationMixin
+from .spells.automation._nature_cantrips import NatureCantripsAutomationMixin
+from .spells.automation._produce_flame import ProduceFlameAutomationMixin
+from .spells.automation._protection_sanctuary import ProtectionSanctuaryAutomationMixin
 from .standard_actions import CombatStandardActionMixin
 from .stat_lookup import CombatStatLookupMixin
 from .status import CombatStatusMixin
@@ -41,6 +56,21 @@ class CombatService(
     CombatSpellDiceMathMixin,
     CombatConcentrationMixin,
     CombatSpellAutomationMixin,
+    SocialSpellsAutomationMixin,
+    HuntersMarkInventoryAutomationMixin,
+    BuffsWeaponAutomationMixin,
+    BuffsPhysicalAutomationMixin,
+    BuffsDefenseAutomationMixin,
+    RestorationSpellsAutomationMixin,
+    CommandAutomationMixin,
+    ChillTouchAutomationMixin,
+    SpiritualWeaponAutomationMixin,
+    CantripAnchorsAutomationMixin,
+    LightAutomationMixin,
+    DetectionSpellsAutomationMixin,
+    NatureCantripsAutomationMixin,
+    ProduceFlameAutomationMixin,
+    ProtectionSanctuaryAutomationMixin,
     CombatSpellDeclarativeEffectsMixin,
     SpellResolutionMixin,
     SpellResponseMixin,

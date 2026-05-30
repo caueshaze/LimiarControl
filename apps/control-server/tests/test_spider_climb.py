@@ -152,7 +152,7 @@ class SpiderClimbCombatTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=100):
+        with patch("app.services.combat_service.spells.automation._buffs_physical.get_game_time_seconds", return_value=100):
             await CombatService._cast_spider_climb_automation(
                 MagicMock(), "s1", attacker=caster, attacker_model=MagicMock(), actor_user_id="ua", is_gm=False,
                 req=SimpleNamespace(variant_key=None), state=st,
@@ -183,7 +183,7 @@ class SpiderClimbCombatTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        with patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=120):
+        with patch("app.services.combat_service.spells.automation._buffs_physical.get_game_time_seconds", return_value=120):
             await CombatService._cast_spider_climb_automation(
                 MagicMock(), "s1", attacker=st.participants[1], attacker_model=MagicMock(), actor_user_id="ub", is_gm=False,
                 req=SimpleNamespace(variant_key=None), state=st,

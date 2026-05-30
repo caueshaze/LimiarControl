@@ -116,8 +116,8 @@ async def _cast(
             "_append_effect_to_participant",
             side_effect=lambda p, e: p.setdefault("active_effects", []).append(e),
         ),
-        patch("app.services.combat_service.spell_automation.flag_modified"),
-        patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=100),
+        patch("app.services.combat_service.spells.automation._protection_sanctuary.flag_modified"),
+        patch("app.services.combat_service.spells.automation._protection_sanctuary.get_game_time_seconds", return_value=100),
     ):
         result = await CombatService._cast_protection_from_evil_and_good_automation(
             db=db,
@@ -988,12 +988,12 @@ class ConditionImmunityHandlerTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
         with (
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_fail),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_fail),
             patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._social_spells.get_game_time_seconds", return_value=0),
             patch.object(CombatService, "_append_effect_to_participant",
                          side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)),
-            patch("app.services.combat_service.spell_automation.flag_modified"),
+            patch("app.services.combat_service.spells.automation._social_spells.flag_modified"),
         ):
             result = await CombatService._cast_animal_friendship_automation(
                 MagicMock(), "sess",
@@ -1021,12 +1021,12 @@ class ConditionImmunityHandlerTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
         with (
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_fail),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_fail),
             patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._social_spells.get_game_time_seconds", return_value=0),
             patch.object(CombatService, "_append_effect_to_participant",
                          side_effect=lambda p, e: p.setdefault("active_effects", []).append(e)),
-            patch("app.services.combat_service.spell_automation.flag_modified"),
+            patch("app.services.combat_service.spells.automation._social_spells.flag_modified"),
         ):
             result = await CombatService._cast_animal_friendship_automation(
                 MagicMock(), "sess",
@@ -1069,9 +1069,9 @@ class ConditionImmunityHandlerTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
         with (
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_pass),
             patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._social_spells.get_game_time_seconds", return_value=0),
         ):
             result = await CombatService._cast_charm_person_automation(
                 MagicMock(), "sess",
@@ -1097,9 +1097,9 @@ class ConditionImmunityHandlerTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime.now(timezone.utc),
         )
         with (
-            patch("app.services.combat_service.spell_automation.resolve_saving_throw", return_value=roll_pass),
+            patch("app.services.combat_service.spells.automation._social_spells.resolve_saving_throw", return_value=roll_pass),
             patch.object(CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()),
-            patch("app.services.combat_service.spell_automation.get_game_time_seconds", return_value=0),
+            patch("app.services.combat_service.spells.automation._social_spells.get_game_time_seconds", return_value=0),
         ):
             result = await CombatService._cast_charm_person_automation(
                 MagicMock(), "sess",
