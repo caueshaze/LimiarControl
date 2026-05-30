@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import unittest
 
 from app.services.combat_service.condition_effects_predicates import (
@@ -152,14 +153,63 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
         self.assertEqual(ctx.result, "normal")
 
     def test_condition_repeat_pattern_no_advantage(self):
-        # lifecycle_turns.py passa source_participant=None
-        ctx = modify_saving_throw(_participant([_protection_effect()]), "wisdom")
+        # lifecycle_turns.py passes source_kind="passive_condition"
+        ctx = modify_saving_throw(
+            _participant([_protection_effect()]),
+            "wisdom",
+            source_kind="passive_condition",
+        )
         self.assertEqual(ctx.result, "normal")
 
     def test_manual_gm_save_pattern_no_advantage(self):
-        # save_resolve.py passa source_participant=None
-        ctx = modify_saving_throw(_participant([_protection_effect()]), "constitution")
+        # save_resolve.py passes source_kind="manual_gm"
+        ctx = modify_saving_throw(
+            _participant([_protection_effect()]),
+            "constitution",
+            source_kind="manual_gm",
+        )
         self.assertEqual(ctx.result, "normal")
+
+
+class SourceKindLegacyAuditTests(unittest.TestCase):
+    def test_unknown_legacy_call_sites_are_explicit_and_limited(self):
+        files = [
+            "app/services/combat_service/spell_declarative_effects.py",
+            "app/services/combat_service/spell_automation.py",
+            "app/services/combat_service/spells/cast_area.py",
+            "app/services/combat_service/spells/spell_resolution_save.py",
+            "app/services/combat_service/npc_action_resolution.py",
+            "app/services/combat_service/lifecycle_turns.py",
+            "app/services/combat_service/save_resolve.py",
+        ]
+        repo_root = Path(__file__).resolve().parents[1]
+        counts: dict[str, int] = {}
+        total = 0
+        for rel in files:
+            text = (repo_root / rel).read_text(encoding="utf-8")
+            count = text.count('source_kind="unknown_legacy"')
+            counts[rel] = count
+            total += count
+        self.assertEqual(
+            total,
+            2,
+            f"Expected 2 unknown_legacy call sites in this round, found {total}: {counts}",
+        )
+
+    def test_explicit_source_kind_call_site_markers_exist(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        lifecycle_text = (
+            repo_root / "app/services/combat_service/lifecycle_turns.py"
+        ).read_text(encoding="utf-8")
+        save_resolve_text = (
+            repo_root / "app/services/combat_service/save_resolve.py"
+        ).read_text(encoding="utf-8")
+        npc_action_text = (
+            repo_root / "app/services/combat_service/npc_action_resolution.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('source_kind="passive_condition"', lifecycle_text)
+        self.assertIn('source_kind="manual_gm"', save_resolve_text)
+        self.assertIn('source_kind="participant"', npc_action_text)
 
 
 if __name__ == "__main__":

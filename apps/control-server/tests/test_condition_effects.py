@@ -829,6 +829,26 @@ class TestModifySavingThrow(unittest.TestCase):
         self.assertTrue(ctx.auto_fail)
         self.assertEqual(ctx.result, "normal")
 
+    def test_source_kind_default_unknown_legacy_is_backward_compatible(self):
+        legacy_ctx = modify_saving_throw(_participant(["restrained"]), "dexterity")
+        explicit_ctx = modify_saving_throw(
+            _participant(["restrained"]),
+            "dexterity",
+            source_kind="unknown_legacy",
+        )
+        self.assertEqual(legacy_ctx.result, explicit_ctx.result)
+        self.assertEqual(legacy_ctx.disadvantage_sources, explicit_ctx.disadvantage_sources)
+
+    def test_source_participant_with_non_participant_kind_does_not_break(self):
+        ctx = modify_saving_throw(
+            _participant(),
+            "wisdom",
+            source_participant={"id": "src-1", "creature_type": "fiend"},
+            source_kind="manual_gm",
+        )
+        self.assertFalse(ctx.auto_fail)
+        self.assertEqual(ctx.result, "normal")
+
 
 # ─── resolve_spell_attack_kind ───────────────────────────────────────────────
 

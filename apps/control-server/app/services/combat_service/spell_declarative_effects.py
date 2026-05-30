@@ -927,7 +927,12 @@ class CombatSpellDeclarativeEffectsMixin:
                 session_id, actor_ref_id, actor_kind, participant.get("kind"),
             )
             return "normal"
-        ctx = modify_saving_throw(participant, ability, manual_mode=manual_mode)
+        ctx = modify_saving_throw(
+            participant,
+            ability,
+            manual_mode=manual_mode,
+            source_kind="unknown_legacy",
+        )
         return ctx.result
 
     @classmethod
@@ -957,5 +962,10 @@ class CombatSpellDeclarativeEffectsMixin:
                 session_id, actor_ref_id, actor_kind, participant.get("kind"),
             )
             return []
-        ctx = modify_saving_throw(participant, ability, manual_mode="normal")
+        ctx = modify_saving_throw(
+            participant,
+            ability,
+            manual_mode="normal",
+            source_kind="unknown_legacy",
+        )
         return [*ctx.advantage_source_details, *ctx.disadvantage_source_details]

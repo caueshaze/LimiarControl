@@ -239,7 +239,12 @@ class CombatNpcActionResolutionMixin:
                 resolved_action.get("coverAppliesToSave"),
                 ability_name,
             )
-            save_mod = modify_saving_throw(target_p, ability_name, source_participant=attacker)
+            save_mod = modify_saving_throw(
+                target_p,
+                ability_name,
+                source_participant=attacker,
+                source_kind="participant",
+            )
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
                     db,

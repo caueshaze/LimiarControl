@@ -42,6 +42,7 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
             target_p,
             spell_context["save_ability"],
             source_participant=attacker,
+            source_kind="participant",
         )
         result.roll_result = cast_target_module.resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(db, session_id, target_p["ref_id"], target_p["kind"], target_p["display_name"]),

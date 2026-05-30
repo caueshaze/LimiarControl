@@ -39,7 +39,11 @@ class CombatSaveResolveMixin:
         save_ability = pending_save["save_ability"]
         save_dc = cls._safe_int(pending_save.get("save_dc"), 0)
         # Manual saves triggered by the GM have no creature source. Do not invent one.
-        save_mod = modify_saving_throw(target_p, save_ability)
+        save_mod = modify_saving_throw(
+            target_p,
+            save_ability,
+            source_kind="manual_gm",
+        )
 
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(

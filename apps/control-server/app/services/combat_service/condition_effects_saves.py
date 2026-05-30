@@ -30,7 +30,17 @@ def modify_saving_throw(
     manual_mode: Literal["advantage", "normal", "disadvantage"] = "normal",
     *,
     source_participant: dict | None = None,
+    source_kind: Literal[
+        "participant",
+        "passive_condition",
+        "manual_gm",
+        "environment",
+        "unknown_legacy",
+    ] = "unknown_legacy",
 ) -> SaveModifierContext:
+    if source_participant is not None and source_kind != "participant":
+        source_kind = "participant"
+
     normalized = ability.lower()
     if normalized in _AUTO_FAIL_SAVE_ABILITIES:
         for cond in _AUTO_FAIL_SAVE_CONDITIONS:

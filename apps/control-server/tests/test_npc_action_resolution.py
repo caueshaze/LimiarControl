@@ -111,6 +111,7 @@ class NpcSaveActionSourceParticipantTests(unittest.TestCase):
         result, call_args = self._call(attacker, target)
         _, kwargs = call_args
         self.assertIs(kwargs.get("source_participant"), attacker)
+        self.assertEqual(kwargs.get("source_kind"), "participant")
         self.assertEqual(result["save_mod"].result, "advantage")
 
     def test_humanoid_attacker_no_advantage(self):
@@ -119,6 +120,7 @@ class NpcSaveActionSourceParticipantTests(unittest.TestCase):
         result, call_args = self._call(attacker, target)
         _, kwargs = call_args
         self.assertIs(kwargs.get("source_participant"), attacker)
+        self.assertEqual(kwargs.get("source_kind"), "participant")
         self.assertEqual(result["save_mod"].result, "normal")
 
 

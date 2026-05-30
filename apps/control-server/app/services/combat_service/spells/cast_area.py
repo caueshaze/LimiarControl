@@ -267,6 +267,7 @@ class CastAreaMixin:
                 target_participant,
                 spell_context["save_ability"],
                 source_participant=attacker,
+                source_kind="participant",
             )
             roll_result = resolve_saving_throw(
                 cls._build_roll_actor_stats_for_save(
