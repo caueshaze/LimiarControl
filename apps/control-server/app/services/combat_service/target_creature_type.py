@@ -44,18 +44,7 @@ class CombatTargetCreatureTypeMixin:
                 )
             ).first()
             state_json = state.state_json if state and isinstance(state.state_json, dict) else {}
-            wild_shape = state_json.get("wildShape")
-            if isinstance(wild_shape, dict) and wild_shape.get("active") is True:
-                form_key = wild_shape.get("formKey")
-                form = get_form(form_key) if isinstance(form_key, str) else None
-                if form is None:
-                    return None
-                tags = form.tags if isinstance(form.tags, list) else []
-                normalized_tags = {str(tag).strip().lower() for tag in tags if isinstance(tag, str)}
-                if "beast" in normalized_tags:
-                    return "beast"
-                return None
-            return "humanoid"
+            return cls.resolve_player_effective_creature_type_from_state_json(state_json)
 
         if kind == "session_entity":
             session_entity = db.exec(
@@ -71,3 +60,19 @@ class CombatTargetCreatureTypeMixin:
             return cls.normalize_creature_type(campaign_entity.creature_type)
 
         return None
+
+    @classmethod
+    def resolve_player_effective_creature_type_from_state_json(
+        cls,
+        state_json: dict | None,
+    ) -> str:
+        data = state_json if isinstance(state_json, dict) else {}
+        wild_shape = data.get("wildShape")
+        if isinstance(wild_shape, dict) and wild_shape.get("active") is True:
+            form_key = wild_shape.get("formKey")
+            form = get_form(form_key) if isinstance(form_key, str) else None
+            tags = form.tags if form is not None and isinstance(form.tags, list) else []
+            normalized_tags = {str(tag).strip().lower() for tag in tags if isinstance(tag, str)}
+            if "beast" in normalized_tags:
+                return "beast"
+        return "humanoid"

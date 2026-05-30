@@ -146,6 +146,9 @@ class SourceAwareModifierSemanticsTests(unittest.TestCase):
     def test_humanoid_source_no_advantage(self):
         self.assertEqual(self._mod("humanoid").result, "normal")
 
+    def test_beast_source_no_advantage(self):
+        self.assertEqual(self._mod("beast").result, "normal")
+
     def test_missing_creature_type_no_advantage(self):
         ctx = modify_saving_throw(
             _participant([_protection_effect()]),

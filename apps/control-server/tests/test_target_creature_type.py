@@ -42,6 +42,19 @@ class TargetCreatureTypeTests(unittest.TestCase):
             "beast",
         )
 
+    def test_player_with_invalid_active_wildshape_falls_back_to_humanoid(self):
+        db = MagicMock()
+        ss_result = MagicMock()
+        ss_result.first.return_value = MagicMock(
+            state_json={"wildShape": {"active": True, "formKey": "missing_form"}}
+        )
+        db.exec.return_value = ss_result
+        participant = {"kind": "player", "ref_id": "player-1"}
+        self.assertEqual(
+            CombatService.resolve_effective_creature_type(db, "s1", participant),
+            "humanoid",
+        )
+
     def test_session_entity_type_is_normalized(self):
         db = MagicMock()
         se_result = MagicMock()

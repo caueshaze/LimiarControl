@@ -207,8 +207,11 @@ class CombatLifecycleInitiativeMixin:
                     active_effects=entry.get("active_effects"),
                     effective_size=size_payload["effective_size"],
                 )
-                entry["creature_type"] = "humanoid"
-                entry["creatureType"] = "humanoid"
+                player_creature_type = cls.resolve_player_effective_creature_type_from_state_json(
+                    sj.state_json if sj and isinstance(sj.state_json, dict) else {}
+                )
+                entry["creature_type"] = player_creature_type
+                entry["creatureType"] = player_creature_type
             elif p.kind == "session_entity":
                 wearing_metal_armor = entity_metal_armor_cache.get(p.ref_id)
                 if p.ref_id not in entity_metal_armor_cache:
