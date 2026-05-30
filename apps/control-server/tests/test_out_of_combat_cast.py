@@ -29,6 +29,7 @@ from app.api.serializers.base_spell import (
 from app.schemas.base_spell_effects import SpellDeclarativeEffect
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.out_of_combat_cast import (
+    _OOC_PERSISTED_FACTORY_REGISTRY,
     build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
@@ -3388,3 +3389,40 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
         self.assertEqual(marker["duration_type"], "timed")
         self.assertEqual(marker["created_at_game_time_seconds"], 100)
         self.assertEqual(marker["expires_at_game_time_seconds"], 3700)
+
+
+class TestOocPersistedFactoryDispatch(unittest.TestCase):
+    def test_barkskin_uses_dispatch_and_returns_effect(self):
+        spell = _make_campaign_spell(
+            canonical_key="barkskin",
+            concentration=True,
+            effects_json=None,
+        )
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-2",
+            variant_key=None,
+            game_time_seconds=100,
+        )
+        self.assertEqual(len(effects), 1)
+        self.assertEqual((effects[0].get("metadata") or {}).get("source_spell_key"), "barkskin")
+
+    def test_spider_climb_uses_dispatch_and_returns_effect(self):
+        spell = _make_campaign_spell(
+            canonical_key="spider_climb",
+            concentration=True,
+            effects_json=None,
+        )
+        effects = build_persisted_effects(
+            spell=spell,
+            caster_user_id="user-1",
+            target_user_id="user-2",
+            variant_key=None,
+            game_time_seconds=100,
+        )
+        self.assertEqual(len(effects), 1)
+        self.assertEqual((effects[0].get("metadata") or {}).get("source_spell_key"), "spider_climb")
+
+    def test_shillelagh_is_not_in_generic_dispatch_registry(self):
+        self.assertNotIn("shillelagh", _OOC_PERSISTED_FACTORY_REGISTRY)

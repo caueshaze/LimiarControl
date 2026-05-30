@@ -11,6 +11,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 from math import floor
+from typing import Callable
 from uuid import uuid4
 from app.services.spell_effect_factories import (
     SpellEffectBuildContext,
@@ -37,6 +38,52 @@ _THAUMATURGY_ALLOWED_EFFECTS = [
     "instantaneous_sound",
     "open_or_close_unlocked_door",
 ]
+
+
+_OOCFactory = Callable[[SpellEffectBuildContext], dict]
+_OOC_PERSISTED_FACTORY_REGISTRY: dict[str, tuple[_OOCFactory, int, bool]] = {
+    "barkskin": (build_barkskin_effect, 3600, True),
+    "blur": (build_blur_effect, 60, True),
+    "protection_from_evil_and_good": (build_protection_from_evil_and_good_effect, 600, True),
+    "jump": (build_jump_effect, 60, False),
+    "spider_climb": (build_spider_climb_effect, 3600, True),
+}
+
+
+def _resolve_ooc_factory_duration_seconds(spell, fallback_seconds: int) -> int:
+    duration_seconds = getattr(spell, "duration_seconds", None)
+    if isinstance(duration_seconds, int) and duration_seconds > 0:
+        return duration_seconds
+    return fallback_seconds
+
+
+def _build_ooc_factory_context(
+    *,
+    spell,
+    spell_key: str,
+    caster_user_id: str,
+    target_user_id: str,
+    game_time_seconds: int,
+    duration_seconds: int,
+    concentration: bool,
+    concentration_group: str | None,
+) -> SpellEffectBuildContext:
+    spell_name = spell.name_pt or spell.name_en
+    return SpellEffectBuildContext(
+        spell_key=spell_key,
+        spell_name=spell_name,
+        game_time_seconds=game_time_seconds,
+        duration_seconds=duration_seconds,
+        concentration=concentration,
+        concentration_group=concentration_group,
+        source_participant_id=None,
+        owner_participant_id=target_user_id,
+        created_by_participant_id=caster_user_id,
+        context_origin="out_of_combat_cast",
+        caster_user_id=caster_user_id,
+        target_user_id=target_user_id,
+        created_out_of_combat=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +467,7 @@ def build_persisted_effects(
                 "display_label": spell_name,
             }]
         if canonical_key == "shillelagh":
+            # Intentionally outside generic dispatch: requires validated weapon input context.
             if (
                 not isinstance(weapon_item_id, str)
                 or not weapon_item_id.strip()
@@ -454,112 +502,26 @@ def build_persisted_effects(
                     )
                 )
             ]
-        if canonical_key == "jump":
-            spell_name = spell.name_pt or spell.name_en
+        factory_entry = _OOC_PERSISTED_FACTORY_REGISTRY.get(canonical_key)
+        if factory_entry:
+            factory, duration_fallback_seconds, concentration_required = factory_entry
+            duration_seconds = _resolve_ooc_factory_duration_seconds(
+                spell, duration_fallback_seconds
+            )
+            concentration_group = (
+                str(uuid4()) if concentration_required and bool(spell.concentration) else None
+            )
             return [
-                build_jump_effect(
-                    SpellEffectBuildContext(
-                        spell_key="jump",
-                        spell_name=spell_name,
-                        game_time_seconds=game_time_seconds,
-                        duration_seconds=60,
-                        concentration=False,
-                        concentration_group=None,
-                        source_participant_id=None,
-                        owner_participant_id=target_user_id,
-                        created_by_participant_id=caster_user_id,
-                        context_origin="out_of_combat_cast",
+                factory(
+                    _build_ooc_factory_context(
+                        spell=spell,
+                        spell_key=canonical_key,
                         caster_user_id=caster_user_id,
                         target_user_id=target_user_id,
-                        created_out_of_combat=True,
-                    )
-                )
-            ]
-        if canonical_key == "spider_climb":
-            spell_name = spell.name_pt or spell.name_en
-            group_id = str(uuid4()) if spell.concentration else None
-            return [
-                build_spider_climb_effect(
-                    SpellEffectBuildContext(
-                        spell_key="spider_climb",
-                        spell_name=spell_name,
                         game_time_seconds=game_time_seconds,
-                        duration_seconds=3600,
-                        concentration=True,
-                        concentration_group=group_id,
-                        source_participant_id=None,
-                        owner_participant_id=target_user_id,
-                        created_by_participant_id=caster_user_id,
-                        context_origin="out_of_combat_cast",
-                        caster_user_id=caster_user_id,
-                        target_user_id=target_user_id,
-                        created_out_of_combat=True,
-                    )
-                )
-            ]
-        if canonical_key == "barkskin":
-            spell_name = spell.name_pt or spell.name_en
-            group_id = str(uuid4()) if spell.concentration else None
-            return [
-                build_barkskin_effect(
-                    SpellEffectBuildContext(
-                        spell_key="barkskin",
-                        spell_name=spell_name,
-                        game_time_seconds=game_time_seconds,
-                        duration_seconds=3600,
-                        concentration=True,
-                        concentration_group=group_id,
-                        source_participant_id=None,
-                        owner_participant_id=target_user_id,
-                        created_by_participant_id=caster_user_id,
-                        context_origin="out_of_combat_cast",
-                        caster_user_id=caster_user_id,
-                        target_user_id=target_user_id,
-                        created_out_of_combat=True,
-                    )
-                )
-            ]
-        if canonical_key == "blur":
-            spell_name = spell.name_pt or spell.name_en
-            group_id = str(uuid4()) if spell.concentration else None
-            return [
-                build_blur_effect(
-                    SpellEffectBuildContext(
-                        spell_key="blur",
-                        spell_name=spell_name,
-                        game_time_seconds=game_time_seconds,
-                        duration_seconds=60,
-                        concentration=True,
-                        concentration_group=group_id,
-                        source_participant_id=None,
-                        owner_participant_id=target_user_id,
-                        created_by_participant_id=caster_user_id,
-                        context_origin="out_of_combat_cast",
-                        caster_user_id=caster_user_id,
-                        target_user_id=target_user_id,
-                        created_out_of_combat=True,
-                    )
-                )
-            ]
-        if canonical_key == "protection_from_evil_and_good":
-            spell_name = spell.name_pt or spell.name_en
-            group_id = str(uuid4()) if spell.concentration else None
-            return [
-                build_protection_from_evil_and_good_effect(
-                    SpellEffectBuildContext(
-                        spell_key="protection_from_evil_and_good",
-                        spell_name=spell_name,
-                        game_time_seconds=game_time_seconds,
-                        duration_seconds=600,
-                        concentration=True,
-                        concentration_group=group_id,
-                        source_participant_id=None,
-                        owner_participant_id=target_user_id,
-                        created_by_participant_id=caster_user_id,
-                        context_origin="out_of_combat_cast",
-                        caster_user_id=caster_user_id,
-                        target_user_id=target_user_id,
-                        created_out_of_combat=True,
+                        duration_seconds=duration_seconds,
+                        concentration=concentration_required,
+                        concentration_group=concentration_group,
                     )
                 )
             ]
