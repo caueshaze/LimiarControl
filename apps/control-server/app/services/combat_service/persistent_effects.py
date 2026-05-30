@@ -408,6 +408,61 @@ def _max_created_at(effects: list[dict]) -> str | None:
     return best
 
 
+def clear_warding_bonds_across_session(
+    db,
+    session_id: str,
+    ref_ids,
+) -> list[SessionState]:
+    """Remove persisted Warding Bond effects whose bond involves any of ``ref_ids``.
+
+    Used on (re)cast so a new bond ends any prior bond involving either connected
+    creature, on every player's persisted store (the lingering target effect may
+    live on a third creature's state). Stages via flag_modified; caller commits.
+    Returns the modified SessionState objects.
+    """
+    ids = {rid for rid in ref_ids if rid}
+    if not ids:
+        return []
+    states = db.exec(
+        select(SessionState).where(SessionState.session_id == session_id)
+    ).all()
+    modified: list[SessionState] = []
+    current_game_time_seconds = get_game_time_seconds(session_id, db)
+    for state in states:
+        data = state.state_json
+        if not isinstance(data, dict):
+            continue
+        effects = data.get("active_spell_effects")
+        if not isinstance(effects, list) or not effects:
+            continue
+        kept = []
+        for effect in effects:
+            metadata = effect.get("metadata") if isinstance(effect, dict) else None
+            if (
+                isinstance(metadata, dict)
+                and str(metadata.get("source_spell_key") or "").strip().lower() == "warding_bond"
+                and (
+                    {metadata.get("bond_caster_participant_id"), metadata.get("bond_target_participant_id")} & ids
+                )
+            ):
+                continue
+            kept.append(effect)
+        if len(kept) != len(effects):
+            updated = dict(data)
+            if kept:
+                updated["active_spell_effects"] = kept
+            else:
+                updated.pop("active_spell_effects", None)
+            state.state_json = finalize_session_state_data(
+                updated,
+                game_time_seconds=current_game_time_seconds,
+            )
+            flag_modified(state, "state_json")
+            db.add(state)
+            modified.append(state)
+    return modified
+
+
 def clear_concentration_group_across_session(
     db,
     session_id: str,

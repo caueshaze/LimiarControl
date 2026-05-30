@@ -76,6 +76,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "command": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
     "protection_from_evil_and_good": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "persistent"),
     "sanctuary": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
+    "warding_bond": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "persistent"),
     "feather_fall": SpellTargetingSemantics("multi_creature", "caster", "selected_targets", "none", "distance", "persistent"),
 }
 

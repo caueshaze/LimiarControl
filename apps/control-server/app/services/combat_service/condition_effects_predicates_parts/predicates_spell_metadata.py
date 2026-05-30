@@ -225,6 +225,41 @@ def get_roll_bonus_dice_sources(
     return sources
 
 
+def get_saving_throw_effect_bonus_sources(participant: dict) -> list[dict]:
+    """Flat numeric saving-throw bonuses granted by active spell effects.
+
+    Warding Bond grants a flat +1 to all of the target's saving throws via
+    ``grants_saving_throw_bonus``/``saving_throw_bonus`` metadata (not a
+    declarative dice modifier), so this is collected separately and folded into
+    the save roll alongside the dice-modifier sources.
+    """
+    sources: list[dict] = []
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict) or metadata.get("grants_saving_throw_bonus") is not True:
+            continue
+        bonus = metadata.get("saving_throw_bonus")
+        if not isinstance(bonus, int) or bonus == 0:
+            continue
+        source_label = metadata.get("source_spell_name") or effect.get("display_label") or "Spell effect"
+        sign_label = "+" if bonus >= 0 else "-"
+        sources.append(
+            {
+                "source_label": source_label,
+                "modifier_type": "save_flat_bonus",
+                "roll_type": "save",
+                "signed_total": bonus,
+                "display_label": f"{source_label}: {sign_label}{abs(bonus)}",
+                "effect_id": effect.get("id") if isinstance(effect.get("id"), str) else None,
+                "applied": True,
+                "skip_reason": None,
+            }
+        )
+    return sources
+
+
 def get_passive_skill_bonus(participant: dict, skill: str) -> int:
     groups: dict[str, int] = {}
     for effect in participant.get("active_effects") or []:

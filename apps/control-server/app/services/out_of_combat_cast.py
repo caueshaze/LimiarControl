@@ -22,6 +22,7 @@ from app.services.spell_effect_factories import (
     build_sanctuary_effect,
     build_shillelagh_effect,
     build_spider_climb_effect,
+    build_warding_bond_effects,
 )
 from app.services.canonical_keys import normalize_canonical_key
 from app.services.spell_keys import normalize_spell_key
@@ -55,6 +56,11 @@ OOC_SPECIAL_INPUT_SPELLS = {
     "shillelagh",
 }
 
+# Warding Bond persists two linked effects across two creatures, so it does not
+# fit the single-effect factory dispatch. It is handled by a dedicated route
+# block; this set only exists so eligibility/listing treat it as castable.
+OOC_LINKED_EFFECT_SPELLS = frozenset({"warding_bond"})
+
 _THAUMATURGY_ALLOWED_EFFECTS = [
     "alter_eyes",
     "booming_voice",
@@ -82,7 +88,55 @@ def _is_ooc_utility_spell(canonical_key: str) -> bool:
         or canonical_key in OOC_FACTORY_EFFECT_SPELLS
         or canonical_key in OOC_REMOVAL_UTILITY_SPELLS
         or canonical_key in OOC_SPECIAL_INPUT_SPELLS
+        or canonical_key in OOC_LINKED_EFFECT_SPELLS
     )
+
+
+def build_ooc_warding_bond_effects(
+    *,
+    spell,
+    caster_user_id: str,
+    target_user_id: str,
+    game_time_seconds: int,
+) -> tuple[dict, dict]:
+    """Build the (target_effect, caster_marker) pair for an OOC Warding Bond cast.
+
+    Bonds are keyed by ref_id; a player's ref_id is their user id, so the user
+    ids are stored directly and the bond resolves once combat restores both
+    effects. The target effect is placed on the target's state, the caster
+    marker on the caster's state.
+    """
+    duration_seconds = _resolve_ooc_factory_duration_seconds(spell, 3600)
+    bond_group = str(uuid4())
+    target_effect, caster_effect = build_warding_bond_effects(
+        SpellEffectBuildContext(
+            spell_key="warding_bond",
+            spell_name=spell.name_pt or spell.name_en,
+            game_time_seconds=game_time_seconds,
+            duration_seconds=duration_seconds,
+            concentration=False,
+            concentration_group=None,
+            source_participant_id=None,
+            owner_participant_id=target_user_id,
+            created_by_participant_id=caster_user_id,
+            context_origin="out_of_combat_cast",
+            caster_user_id=caster_user_id,
+            target_user_id=target_user_id,
+            created_out_of_combat=True,
+            extra_metadata={
+                "bond_group": bond_group,
+                "bond_caster_participant_id": caster_user_id,
+                "bond_target_participant_id": target_user_id,
+                "bond_caster_player_user_id": caster_user_id,
+                "bond_target_player_user_id": target_user_id,
+            },
+        )
+    )
+    # The caster marker must be restored onto the CASTER, so its persisted
+    # routing key points at the caster rather than the target.
+    caster_effect["metadata"]["target_player_user_id"] = caster_user_id
+    caster_effect["metadata"]["owner_participant_id"] = caster_user_id
+    return target_effect, caster_effect
 
 
 def _resolve_ooc_factory_duration_seconds(spell, fallback_seconds: int) -> int:

@@ -124,6 +124,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_sanctuary_automation",
         ),
+        "warding_bond": SpellAutomationSpec(
+            canonical_key="warding_bond",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_warding_bond_automation",
+        ),
         "feather_fall": SpellAutomationSpec(
             canonical_key="feather_fall",
             default_mode="utility",

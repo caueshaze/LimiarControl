@@ -11,6 +11,11 @@ from app.services.draconic_ancestry import resolve_draconic_lineage_state
 from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
 from app.services.declarative_effect_lifecycle import remove_damage_terminated_effects_from_participant
 from app.services.session_state_finalize import finalize_session_state_data
+from app.services.warding_bond import (
+    break_warding_bonds_for_caster,
+    find_target_role_effect,
+    remove_warding_bonds_involving_participants,
+)
 
 
 class CombatDamageCoreMixin:
@@ -48,6 +53,81 @@ class CombatDamageCoreMixin:
         return reduced, f"(Resistência a {normalized_damage_type}: {amount} -> {reduced})"
 
     @classmethod
+    def _apply_warding_bond_resistance(cls, participant: dict | None, amount: int) -> tuple[int, str]:
+        """Warding Bond grants the target resistance to all damage."""
+        if amount <= 0 or not isinstance(participant, dict):
+            return amount, ""
+        if find_target_role_effect(participant) is None:
+            return amount, ""
+        reduced = max(0, amount // 2)
+        return reduced, f"(Vínculo de Proteção: resistência {amount} -> {reduced})"
+
+    @classmethod
+    def _is_warding_bond_caster(cls, participant: dict | None) -> bool:
+        if not isinstance(participant, dict):
+            return False
+        for effect in participant.get("active_effects") or []:
+            if not isinstance(effect, dict) or effect.get("kind") != "spell_effect":
+                continue
+            metadata = effect.get("metadata") or {}
+            if metadata.get("source_spell_key") == "warding_bond" and metadata.get("warding_bond_role") == "caster":
+                return True
+        return False
+
+    @classmethod
+    def _apply_warding_bond_effects_after_damage(
+        cls,
+        db: Session,
+        state: CombatState | None,
+        target_participant: dict | None,
+        *,
+        target_new_hp: int | None,
+        final_amount: int,
+        is_crit: bool,
+        warding_bond_share: bool,
+    ) -> None:
+        if state is None or not isinstance(target_participant, dict):
+            return
+
+        # If the damaged creature is a Warding Bond caster and just dropped to 0
+        # HP, every bond it created ends. This also covers the caster receiving
+        # reflected (shared) damage, since that flows through this same path.
+        if (
+            isinstance(target_new_hp, int)
+            and target_new_hp <= 0
+            and cls._is_warding_bond_caster(target_participant)
+        ):
+            break_warding_bonds_for_caster(state, target_participant.get("ref_id"))
+
+        # Reflected damage never re-triggers sharing, and only positive damage
+        # is mirrored onto the caster.
+        if warding_bond_share or final_amount <= 0:
+            return
+        bond = find_target_role_effect(target_participant)
+        if bond is None:
+            return
+        caster_ref = (bond.get("metadata") or {}).get("bond_caster_participant_id")
+        caster = next(
+            (p for p in (state.participants or []) if isinstance(p, dict) and p.get("ref_id") == caster_ref),
+            None,
+        )
+        if caster is None or not caster.get("ref_id") or not caster.get("kind"):
+            # Dangling bond (caster gone): fail safe by removing it.
+            remove_warding_bonds_involving_participants(
+                state, [caster_ref, target_participant.get("ref_id")]
+            )
+            return
+        cls._apply_damage_to_target(
+            db,
+            caster["ref_id"],
+            caster["kind"],
+            final_amount,
+            is_crit=is_crit,
+            state=state,
+            warding_bond_share=True,
+        )
+
+    @classmethod
     def _apply_damage_to_target(
         cls,
         db: Session,
@@ -62,6 +142,7 @@ class CombatDamageCoreMixin:
         concentration_roll_source: str = "system",
         concentration_manual_roll: int | None = None,
         attacker_participant_id: str | None = None,
+        warding_bond_share: bool = False,
     ) -> tuple[int, str, int | None, dict | None]:
         target_model, *_ = cls._get_stats(db, target_ref_id, kind, state.session_id if state else "")
         message = ""
@@ -70,7 +151,12 @@ class CombatDamageCoreMixin:
             from app.services.wild_shape_service import apply_damage_to_form, is_active as ws_is_active
 
             data = cls._as_dict(target_model.state_json)
-            amount, resistance_msg = cls._apply_player_damage_resistances(data, amount, damage_type)
+            if not warding_bond_share:
+                amount, resistance_msg = cls._apply_player_damage_resistances(data, amount, damage_type)
+                amount, wb_resistance_msg = cls._apply_warding_bond_resistance(target_participant, amount)
+                resistance_msg = f"{resistance_msg} {wb_resistance_msg}".strip()
+            else:
+                resistance_msg = ""
             if ws_is_active(data):
                 data, ws_reverted, overflow = apply_damage_to_form(data, amount)
                 if ws_reverted:
@@ -114,7 +200,17 @@ class CombatDamageCoreMixin:
                     remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
                 if resistance_msg:
                     message = f"{message} {resistance_msg}".strip()
-                return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), message, None, concentration_check
+                ws_new_hp = cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0)
+                cls._apply_warding_bond_effects_after_damage(
+                    db,
+                    state,
+                    target_participant,
+                    target_new_hp=ws_new_hp,
+                    final_amount=amount,
+                    is_crit=is_crit,
+                    warding_bond_share=warding_bond_share,
+                )
+                return ws_new_hp, message, None, concentration_check
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
             data["currentHP"] = max(0, current - amount)
             if current == 0 and data["currentHP"] == 0:
@@ -150,14 +246,28 @@ class CombatDamageCoreMixin:
                 db.add(state)
             if attacker_participant_id and amount > 0 and target_participant is not None:
                 remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
-            return cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0), message, current, concentration_check
+            player_new_hp = cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0)
+            cls._apply_warding_bond_effects_after_damage(
+                db,
+                state,
+                target_participant,
+                target_new_hp=player_new_hp,
+                final_amount=amount,
+                is_crit=is_crit,
+                warding_bond_share=warding_bond_share,
+            )
+            return player_new_hp, message, current, concentration_check
         npc = db.exec(select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)).first()
         base_hp = npc.max_hp if npc else 0
         current = target_model.current_hp if target_model.current_hp is not None else base_hp or 0
+        if not warding_bond_share:
+            amount, npc_wb_resistance_msg = cls._apply_warding_bond_resistance(target_participant, amount)
+            if npc_wb_resistance_msg:
+                message = f"{message} {npc_wb_resistance_msg}".strip()
         target_model.current_hp = max(0, current - amount)
         status = cls._sync_participant_status(db, state, target_ref_id, kind, target_model)
         if current > 0 and target_model.current_hp == 0 and status == "defeated":
-            message = " (DEFEATED!)"
+            message = f"{message} (DEFEATED!)".strip()
         db.add(target_model)
         concentration_check = cls._resolve_concentration_check_after_damage(
             db,
@@ -175,6 +285,15 @@ class CombatDamageCoreMixin:
             db.add(state)
         if attacker_participant_id and amount > 0 and target_participant is not None:
             remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
+        cls._apply_warding_bond_effects_after_damage(
+            db,
+            state,
+            target_participant,
+            target_new_hp=target_model.current_hp,
+            final_amount=amount,
+            is_crit=is_crit,
+            warding_bond_share=warding_bond_share,
+        )
         return target_model.current_hp, message, current, concentration_check
 
     @staticmethod

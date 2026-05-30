@@ -26,6 +26,7 @@ from app.services.combat import CombatService
 from app.services.combat_service.persistent_effects import (
     clear_concentration_group_across_session,
     clear_persisted_concentration_effects,
+    clear_warding_bonds_across_session,
     remove_persisted_effect,
 )
 from app.services.game_time import get_game_time_seconds
@@ -34,6 +35,7 @@ from app.services.healing_consumables_types import _extract_hp_snapshot, _safe_i
 from app.services.out_of_combat_cast import (
     build_concentration_marker,
     build_healing_preview,
+    build_ooc_warding_bond_effects,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
     collect_create_consumable_effects,
@@ -575,6 +577,117 @@ async def _cast_spell_out_of_combat_for_player(
             )
 
     current_game_time_seconds = get_game_time_seconds(session_id, session)
+
+    # --- Warding Bond: two linked effects across caster and target (OOC) ---
+    if canonical_key == "warding_bond":
+        if not is_ally_target or target_state is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Vínculo de Proteção deve ser conjurado em outra criatura voluntária.",
+            )
+
+        # Recast: end any prior bond involving the caster or the target across the
+        # whole session — the other end of a prior bond may be a third creature.
+        # This stages removals on every store; the caster/target stores are then
+        # fully rebuilt below (with the slot already consumed) and override it.
+        clear_warding_bonds_across_session(
+            session, session_id, [caster_user_id, target_user_id]
+        )
+
+        def _strip_warding_bond(effects: list | None) -> list:
+            return [
+                e
+                for e in (effects or [])
+                if not (
+                    isinstance(e, dict)
+                    and str(((e.get("metadata") or {}).get("source_spell_key")) or "").strip().lower()
+                    == "warding_bond"
+                )
+            ]
+
+        # updated_caster_json already has the spell slot consumed.
+        wb_caster_json = dict(updated_caster_json)
+        wb_target_json = dict(target_state.state_json or {})
+
+        wb_target_effect, wb_caster_effect = build_ooc_warding_bond_effects(
+            spell=campaign_spell,
+            caster_user_id=caster_user_id,
+            target_user_id=target_user_id,
+            game_time_seconds=current_game_time_seconds,
+        )
+
+        wb_target_effects = _strip_warding_bond(wb_target_json.get("active_spell_effects"))
+        wb_target_effects.append(wb_target_effect)
+        wb_target_json["active_spell_effects"] = wb_target_effects
+        target_state.state_json = finalize_session_state_data(
+            wb_target_json, game_time_seconds=current_game_time_seconds
+        )
+        flag_modified(target_state, "state_json")
+        session.add(target_state)
+
+        wb_caster_effects = _strip_warding_bond(wb_caster_json.get("active_spell_effects"))
+        wb_caster_effects.append(wb_caster_effect)
+        wb_caster_json["active_spell_effects"] = wb_caster_effects
+        caster_state.state_json = finalize_session_state_data(
+            wb_caster_json, game_time_seconds=current_game_time_seconds
+        )
+        flag_modified(caster_state, "state_json")
+        session.add(caster_state)
+
+        spell_name = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
+        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
+        if actor_member_id:
+            record_session_activity(
+                entry,
+                "out_of_combat_spell_cast",
+                session,
+                member_id=actor_member_id,
+                user_id=actor_user.id,
+                actor_name=actor_display_name,
+                payload={
+                    "actor_user_id": actor_user.id,
+                    "actor_player_user_id": actor_user.id,
+                    "actor_display_name": actor_display_name,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "spell_key": "warding_bond",
+                    "spell_name": spell_name,
+                    "variant_key": None,
+                    "variant_label": None,
+                    "created_effect_ids": [
+                        eid
+                        for eid in (wb_target_effect.get("id"), wb_caster_effect.get("id"))
+                        if isinstance(eid, str) and eid
+                    ],
+                    "concentration_group": None,
+                    "replaced_concentration": False,
+                    "previous_concentration_group": None,
+                    "new_concentration_group": None,
+                    "previous_spell_name": None,
+                    "previous_variant_label": None,
+                    "cast_by_gm": cast_by_gm,
+                    "bond_group": (wb_target_effect.get("metadata") or {}).get("bond_group"),
+                },
+            )
+            _prune_out_of_combat_session_activity(session, session_id)
+
+        session.commit()
+        session.refresh(caster_state)
+        session.refresh(target_state)
+
+        states_to_publish: dict[str, SessionState] = {
+            caster_user_id: caster_state,
+            target_user_id: target_state,
+        }
+        for player_id, publish_state in states_to_publish.items():
+            await publish_state_update(
+                entry,
+                player_id,
+                publish_state.updated_at or publish_state.created_at,
+                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+            )
+
+        return to_state_read(caster_state)
 
     # --- Build target effects ---
     caster_spell_save_dc = int(

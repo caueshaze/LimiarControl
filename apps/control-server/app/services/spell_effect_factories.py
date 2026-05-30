@@ -255,3 +255,82 @@ def build_shillelagh_effect(ctx: SpellEffectBuildContext) -> dict:
     if isinstance(weapon_canonical_key, str) and weapon_canonical_key.strip():
         metadata["weapon_canonical_key"] = weapon_canonical_key
     return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
+def build_warding_bond_effects(ctx: SpellEffectBuildContext) -> tuple[dict, dict]:
+    """Build the linked Warding Bond effects.
+
+    Returns ``(target_effect, caster_marker_effect)``. Both share a single
+    ``bond_group`` so the bond can be located and torn down as a unit. The
+    target effect carries the live mechanical flags (AC/save bonus, resistance,
+    damage sharing); the caster effect is a marker used for cleanup, duplicate
+    detection, and the "caster drops to 0 HP" break.
+
+    The shared ``bond_group`` may be supplied via ``ctx.extra_metadata`` so the
+    caller can correlate both effects; otherwise a fresh UUID is generated here
+    and applied to both.
+    """
+    bond_group = ctx.extra_metadata.get("bond_group") or ctx.concentration_group or str(uuid4())
+    caster_participant_id = ctx.extra_metadata.get("bond_caster_participant_id") or ctx.source_participant_id
+    target_participant_id = ctx.extra_metadata.get("bond_target_participant_id") or ctx.owner_participant_id
+
+    bond_common = {
+        "source_spell_key": "warding_bond",
+        "source_spell_name": ctx.spell_name,
+        "utility": "warding_bond",
+        "warding_bond": True,
+        "bond_group": bond_group,
+        "bond_caster_participant_id": caster_participant_id,
+        "bond_target_participant_id": target_participant_id,
+        "concentration": False,
+        "requires_concentration": False,
+        "duration_seconds": ctx.duration_seconds,
+    }
+
+    target_metadata = _build_base_metadata(ctx)
+    target_metadata.update(bond_common)
+    target_metadata.update(
+        {
+            "warding_bond_role": "target",
+            "defense_modifier": True,
+            "abjuration_protection": True,
+            "grants_ac_bonus": True,
+            "armor_class_bonus": 1,
+            "grants_saving_throw_bonus": True,
+            "saving_throw_bonus": 1,
+            "grants_resistance": True,
+            "grants_resistance_all": True,
+            "resistance_scope": "all_damage",
+            "resistance_damage_types": ["all"],
+            "shares_damage_with_caster": True,
+            "damage_share_amount": "final_damage_taken",
+            "damage_share_target": "caster",
+            "max_distance_meters": 18,
+            "breaks_if_caster_at_zero_hp": True,
+            "breaks_if_distance_exceeded": True,
+            "breaks_if_recast_on_connected_creature": True,
+        }
+    )
+
+    caster_metadata = _build_base_metadata(ctx)
+    caster_metadata.update(bond_common)
+    caster_metadata.update(
+        {
+            "warding_bond_role": "caster",
+            "marker_only": True,
+            "grants_ac_bonus": False,
+            "armor_class_bonus": 0,
+            "grants_saving_throw_bonus": False,
+            "saving_throw_bonus": 0,
+            "grants_resistance": False,
+            "grants_resistance_all": False,
+            "shares_damage_with_caster": False,
+            "max_distance_meters": 18,
+            "breaks_if_caster_at_zero_hp": True,
+            "breaks_if_distance_exceeded": True,
+        }
+    )
+
+    target_effect = _build_timed_spell_effect_base(ctx, metadata=target_metadata)
+    caster_effect = _build_timed_spell_effect_base(ctx, metadata=caster_metadata)
+    return target_effect, caster_effect

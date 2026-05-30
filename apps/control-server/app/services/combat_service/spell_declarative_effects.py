@@ -17,6 +17,7 @@ from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, S
 from .condition_effects_predicates import (
     explain_check_modifier_sources,
     get_roll_bonus_dice_sources,
+    get_saving_throw_effect_bonus_sources,
     has_condition_immunity,
     has_condition_immunity_from_source,
     resolve_actor_participant,
@@ -38,6 +39,8 @@ class CombatSpellDeclarativeEffectsMixin(CombatServiceHostProtocol):
         state: CombatState | None = None,
     ) -> list[str]:
         sources = get_roll_bonus_dice_sources(participant, roll_type=roll_type)
+        if roll_type == "save":
+            sources = sources + get_saving_throw_effect_bonus_sources(participant)
         if not sources:
             return []
         extra_total = sum(int(s.get("signed_total") or 0) for s in sources)
@@ -74,6 +77,33 @@ class CombatSpellDeclarativeEffectsMixin(CombatServiceHostProtocol):
             if state is not None:
                 flag_modified(state, "participants")
         return consumed_effect_ids
+
+    @classmethod
+    def _apply_flat_save_effect_bonus_to_roll_result(
+        cls,
+        *,
+        participant: dict,
+        roll_result,
+    ) -> int:
+        """Apply only flat numeric saving-throw bonuses (e.g. Warding Bond's +1).
+
+        Unlike :meth:`_apply_roll_bonus_dice_to_roll_result`, this does not roll
+        or consume dice-modifier effects, so it is safe for save paths that
+        historically did not run the full modifier machinery (concentration
+        checks, turn-end repeat saves).
+        """
+        sources = get_saving_throw_effect_bonus_sources(participant)
+        if not sources:
+            return 0
+        extra_total = sum(int(s.get("signed_total") or 0) for s in sources)
+        if extra_total:
+            roll_result.total = int(roll_result.total) + extra_total
+        merged = list(roll_result.check_modifier_sources or [])
+        merged.extend(sources)
+        roll_result.check_modifier_sources = merged
+        if roll_result.dc is not None:
+            roll_result.success = roll_result.total >= roll_result.dc
+        return extra_total
 
     @classmethod
     def _apply_roll_dice_modifiers_for_actor(

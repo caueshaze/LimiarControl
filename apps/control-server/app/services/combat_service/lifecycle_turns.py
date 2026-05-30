@@ -166,6 +166,10 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
                 dc=dc,
                 roll_source="system",
             )
+            cls._apply_flat_save_effect_bonus_to_roll_result(
+                participant=participant,
+                roll_result=roll_result,
+            )
             is_saved = False if save_mod.auto_fail else bool(roll_result.success)
             if is_saved and repeat_save.get("ends_on_success", True):
                 participant["active_effects"] = [
@@ -351,6 +355,15 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
         cls._activate_deferred_spell_effects(state, incoming["id"])
         cls._reset_turn_resources(incoming)
         await cls._process_recurring_temp_hp(db, session_id, state, incoming)
+        from app.services.warding_bond import break_warding_bonds_exceeding_distance
+
+        broken_bonds = break_warding_bonds_exceeding_distance(state)
+        for effect in broken_bonds:
+            metadata = cls._get_effect_metadata(effect) or {}
+            if metadata.get("warding_bond_role") != "target":
+                continue
+            label = metadata.get("source_spell_name") or "Vínculo de Proteção"
+            await cls._emit_log(session_id, {"message": f"'{label}' terminou: as criaturas vinculadas ficaram a mais de 18m.", "source": "effect_expired"})
         db.add(state)
         db.commit()
         db.refresh(state)
@@ -502,6 +515,10 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
         cls._validate_distance_participant_refs(state, req.distances)
         cls._apply_distance_entries(state, req.distances)
         from sqlalchemy.orm.attributes import flag_modified
+
+        from app.services.warding_bond import break_warding_bonds_exceeding_distance
+
+        break_warding_bonds_exceeding_distance(state)
 
         flag_modified(state, "local_distances")
         db.add(state)

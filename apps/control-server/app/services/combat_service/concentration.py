@@ -334,6 +334,10 @@ class CombatConcentrationMixin(CombatServiceHostProtocol):
             manual_roll=manual_roll,
         )
         roll_result.roll_source = validated_roll_source
+        cls._apply_flat_save_effect_bonus_to_roll_result(
+            participant=target_participant,
+            roll_result=roll_result,
+        )
         succeeded = bool(roll_result.success)
 
         broken_effect_labels: list[str] = []

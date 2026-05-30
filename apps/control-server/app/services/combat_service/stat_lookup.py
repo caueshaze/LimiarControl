@@ -8,6 +8,7 @@ from app.models.campaign_entity import CampaignEntity
 from app.models.session_entity import SessionEntity
 from app.models.session_state import SessionState
 from app.schemas.campaign_entity import CombatAction
+from app.services.session_state_finalize import sum_spell_effect_ac_bonus
 
 from .condition_effects_predicates import resolve_armor_class_floor
 from .exceptions import CombatServiceError
@@ -122,6 +123,7 @@ class CombatStatLookupMixin(CombatServiceHostProtocol):
                     ac_floor = resolve_armor_class_floor(participant)
                     if isinstance(ac_floor, int):
                         ac = max(ac, ac_floor)
+                    ac += sum_spell_effect_ac_bonus(participant.get("active_effects"))
             spell_ability = (
                 cls._normalize_ability_name(spellcasting.get("ability"))
                 or "intelligence"

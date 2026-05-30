@@ -82,6 +82,29 @@ def _sum_temp_ac_bonus_effects(effects: list[dict]) -> int:
     return total
 
 
+def sum_spell_effect_ac_bonus(effects: list[dict] | None) -> int:
+    """Sum additive AC bonuses carried in spell_effect metadata.
+
+    Effects such as Warding Bond grant a flat ``armor_class_bonus`` via their
+    metadata (``grants_ac_bonus`` True) rather than a dedicated
+    ``temp_ac_bonus`` effect, so this provides a single source of truth that
+    works for both player (state) and NPC (participant) armor-class paths.
+    """
+    if not isinstance(effects, list):
+        return 0
+    total = 0
+    for effect in effects:
+        if not isinstance(effect, dict) or effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict) or metadata.get("grants_ac_bonus") is not True:
+            continue
+        bonus = metadata.get("armor_class_bonus")
+        if isinstance(bonus, int):
+            total += bonus
+    return total
+
+
 def _iter_active_armor_class_formula_effects(effects: list[dict]):
     for effect in effects:
         if not isinstance(effect, dict) or effect.get("kind") != "spell_effect":
@@ -203,8 +226,17 @@ def calculate_player_armor_class_from_state(
     fighting_style = _normalize_lookup(payload.get("fightingStyle"))
     defense_bonus = 1 if fighting_style == "defense" and armor_type in {"light", "medium", "heavy"} else 0
     temp_ac_bonus = _sum_temp_ac_bonus_effects(effects)
+    spell_effect_ac_bonus = sum_spell_effect_ac_bonus(effects)
 
-    return max(0, winning_base["value"] + shield_bonus + misc_bonus + defense_bonus + temp_ac_bonus)
+    return max(
+        0,
+        winning_base["value"]
+        + shield_bonus
+        + misc_bonus
+        + defense_bonus
+        + temp_ac_bonus
+        + spell_effect_ac_bonus,
+    )
 
 
 def finalize_session_state_data(

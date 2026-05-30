@@ -34,6 +34,7 @@ from .spells.automation._detection_spells import DetectionSpellsAutomationMixin
 from .spells.automation._nature_cantrips import NatureCantripsAutomationMixin
 from .spells.automation._produce_flame import ProduceFlameAutomationMixin
 from .spells.automation._protection_sanctuary import ProtectionSanctuaryAutomationMixin
+from .spells.automation._bond_spells import BondSpellsAutomationMixin
 from .standard_actions import CombatStandardActionMixin
 from .stat_lookup import CombatStatLookupMixin
 from .status import CombatStatusMixin
@@ -71,6 +72,7 @@ class CombatService(
     NatureCantripsAutomationMixin,
     ProduceFlameAutomationMixin,
     ProtectionSanctuaryAutomationMixin,
+    BondSpellsAutomationMixin,
     CombatSpellDeclarativeEffectsMixin,
     SpellResolutionMixin,
     SpellResponseMixin,
