@@ -23,6 +23,12 @@ from app.services.session_state_finalize import finalize_session_state_data
 from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.session import Session as CampaignSession
+from app.services.spell_effect_factories import (
+    SpellEffectBuildContext,
+    build_barkskin_effect,
+    build_blur_effect,
+    build_protection_from_evil_and_good_effect,
+)
 
 from .condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from .condition_effects_saves import modify_saving_throw
@@ -1222,31 +1228,19 @@ class CombatSpellAutomationMixin:
             != "barkskin"
         ]
 
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 3600,
-            metadata={
-                "source_spell_key": "barkskin",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "barkskin",
-                "concentration": True,
-                "concentration_group": concentration_group,
-                "source_participant_id": attacker["id"],
-                "owner_participant_id": target_participant["id"],
-                "created_by_participant_id": attacker["id"],
-                "defense_modifier": True,
-                "armor_class_floor": 16,
-                "ac_floor": 16,
-                "sets_minimum_ac": True,
-                "stacks_as_floor": True,
-                "is_flat_bonus": False,
-                "duration_seconds": 3600,
-            },
-            display_label=spell_name,
+        effect = build_barkskin_effect(
+            SpellEffectBuildContext(
+                spell_key="barkskin",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=3600,
+                concentration=True,
+                concentration_group=concentration_group,
+                source_participant_id=attacker["id"],
+                owner_participant_id=target_participant["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+            )
         )
         cls._append_effect_to_participant(target_participant, effect)
         flag_modified(state, "participants")
@@ -1317,43 +1311,19 @@ class CombatSpellAutomationMixin:
         concentration_group = str(uuid4())
         game_time = get_game_time_seconds(session_id, db)
 
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 60,
-            metadata={
-                "source_spell_key": "blur",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "blur",
-                "concentration": True,
-                "concentration_group": concentration_group,
-                "source_participant_id": attacker["id"],
-                "owner_participant_id": attacker["id"],
-                "created_by_participant_id": attacker["id"],
-                "defense_modifier": True,
-                "illusion_defense": True,
-                "attack_disadvantage_against_target": True,
-                "applies_to_attack_rolls_against_owner": True,
-                "grants_ac_bonus": False,
-                "armor_class_bonus": 0,
-                "grants_resistance": False,
-                "duration_seconds": 60,
-                "declarative_effect": {
-                    "type": "attack_disadvantage_against_target",
-                    "params": {
-                        "mode": "disadvantage",
-                        "roll_types": ["attack"],
-                        "source": "blur",
-                        "requires_attacker_sight": True,
-                        "ignored_by_senses": ["blindsight", "truesight"],
-                        "consume_on_apply": False,
-                    },
-                },
-            },
-            display_label=spell_name,
+        effect = build_blur_effect(
+            SpellEffectBuildContext(
+                spell_key="blur",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=60,
+                concentration=True,
+                concentration_group=concentration_group,
+                source_participant_id=attacker["id"],
+                owner_participant_id=attacker["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+            )
         )
         cls._append_effect_to_participant(attacker, effect)
         flag_modified(state, "participants")
@@ -3518,58 +3488,19 @@ class CombatSpellAutomationMixin:
 
         protected_types = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES)
         immune_conditions = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 600,
-            metadata={
-                "source_spell_key": "protection_from_evil_and_good",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "protection_from_evil_and_good",
-                "defense_modifier": True,
-                "abjuration_protection": True,
-                "concentration": True,
-                "concentration_group": concentration_group,
-                "source_participant_id": attacker["id"],
-                "owner_participant_id": target_participant["id"],
-                "created_by_participant_id": attacker["id"],
-                "protected_creature_types": protected_types,
-                "attack_disadvantage_against_target": True,
-                "condition_immunity": True,
-                "immune_conditions": immune_conditions,
-                "immune_conditions_from_creature_types": protected_types,
-                "saving_throw_advantage_against_creature_types": True,
-                "saving_throw_advantage_creature_types": protected_types,
-                "grants_ac_bonus": False,
-                "armor_class_bonus": 0,
-                "grants_resistance": False,
-                "requires_concentration": True,
-                "duration_seconds": 600,
-                "declarative_save_effect": {
-                    "type": "saving_throw_advantage_against_creature_types",
-                    "params": {
-                        "mode": "advantage",
-                        "source": "protection_from_evil_and_good",
-                        "source_creature_types": protected_types,
-                        "roll_types": ["saving_throw"],
-                        "consume_on_apply": False,
-                    },
-                },
-                "declarative_effect": {
-                    "type": "attack_disadvantage_against_target",
-                    "params": {
-                        "mode": "disadvantage",
-                        "roll_types": ["attack"],
-                        "source": "protection_from_evil_and_good",
-                        "requires_attacker_creature_type": protected_types,
-                        "consume_on_apply": False,
-                    },
-                },
-            },
-            display_label=spell_name,
+        effect = build_protection_from_evil_and_good_effect(
+            SpellEffectBuildContext(
+                spell_key="protection_from_evil_and_good",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=600,
+                concentration=True,
+                concentration_group=concentration_group,
+                source_participant_id=attacker["id"],
+                owner_participant_id=target_participant["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+            )
         )
         cls._append_effect_to_participant(target_participant, effect)
         flag_modified(state, "participants")

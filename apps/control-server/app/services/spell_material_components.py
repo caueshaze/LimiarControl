@@ -42,9 +42,13 @@ def _resolve_options(spell) -> list[dict]:
     return [opt for opt in options if isinstance(opt, dict)]
 
 
+def _is_material_component_consumed(spell) -> bool:
+    return getattr(spell, "material_component_consumed", False) is True
+
+
 def _resolve_selection_key(spell, requested_key: str | None) -> tuple[str, dict]:
     options = _resolve_options(spell)
-    if not getattr(spell, "material_component_consumed", False):
+    if not _is_material_component_consumed(spell):
         return "", {}
     if not options:
         raise SpellMaterialError("This spell requires consumed material but has no configured options.")
@@ -112,7 +116,7 @@ def validate_spell_material(
     spell,
     consumable_material_key: str | None,
 ) -> MaterialConsumptionResult:
-    if not getattr(spell, "material_component_consumed", False):
+    if not _is_material_component_consumed(spell):
         return MaterialConsumptionResult(False, False, None, None, 0, None)
     selected_key, option = _resolve_selection_key(spell, consumable_material_key)
     required_quantity = int(option.get("quantity") or 1)
