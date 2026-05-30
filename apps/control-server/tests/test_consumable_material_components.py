@@ -65,6 +65,20 @@ class ConsumableMaterialComponentsTests(unittest.TestCase):
         consume_mock.assert_not_called()
 
     @patch("app.services.spell_material_components._resolve_inventory_item_for_material")
+    def test_material_key_normalization_accepts_hyphen_and_spaces(self, mock_resolve):
+        inventory_item = SimpleNamespace(id="inv1", quantity=3)
+        item = SimpleNamespace(name="Holy water")
+        mock_resolve.return_value = (inventory_item, item)
+        result = validate_spell_material(
+            MagicMock(),
+            session_id="s1",
+            caster_user_id="u1",
+            spell=_protection_spell(),
+            consumable_material_key="holy-water",
+        )
+        self.assertEqual(result.material_key, "holy_water")
+
+    @patch("app.services.spell_material_components._resolve_inventory_item_for_material")
     def test_consume_mutates_when_valid(self, mock_resolve):
         inventory_item = SimpleNamespace(id="inv1", quantity=3)
         item = SimpleNamespace(name="Holy water")

@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from app.services.spell_keys import normalize_spell_key
 
 @dataclass(frozen=True)
 class SpellTargetingSemantics:
@@ -141,7 +142,9 @@ def resolve_spell_targeting_semantics(
     *,
     apply_overrides: bool = True,
 ) -> SpellTargetingSemantics:
-    canonical_key = _norm(_read(source, "canonical_key", "canonicalKey", "spell_canonical_key", "spellCanonicalKey"))
+    canonical_key = normalize_spell_key(
+        _read(source, "canonical_key", "canonicalKey", "spell_canonical_key", "spellCanonicalKey")
+    )
     if apply_overrides and canonical_key in _EXPLICIT_OVERRIDES:
         return _EXPLICIT_OVERRIDES[canonical_key]
     return _explicit_semantics(source) or _legacy_backfill(source)

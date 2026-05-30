@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.schemas.base_spell import SpellVariant, SpellVariantSummary
 from app.services.draconic_ancestry import resolve_elemental_affinity
 from app.services.magic_item_effects import get_magic_item_spell_key
+from app.services.spell_keys import normalize_spell_key
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 from ..exceptions import CombatServiceError, _parse_dice
@@ -325,7 +326,7 @@ class SpellContextResolveMixin:
                 isinstance(req.spell_canonical_key, str)
                 and req.spell_canonical_key.strip()
                 and requested_canonical_key
-                and req.spell_canonical_key.strip().lower() != requested_canonical_key
+                and normalize_spell_key(req.spell_canonical_key) != normalize_spell_key(requested_canonical_key)
             ):
                 raise CombatServiceError("Selected spell does not match the magic item.", 400)
             source_item_name = source_item.name
@@ -333,13 +334,13 @@ class SpellContextResolveMixin:
             no_free_hand_required = bool(magic_effect.get("noFreeHandRequired"))
         else:
             requested_by_canonical = (
-                req.spell_canonical_key.strip().lower()
+                normalize_spell_key(req.spell_canonical_key)
                 if isinstance(req.spell_canonical_key, str)
                 and req.spell_canonical_key.strip()
                 else None
             )
             requested_by_id = (
-                req.spell_id.strip().lower()
+                normalize_spell_key(req.spell_id)
                 if isinstance(req.spell_id, str) and req.spell_id.strip()
                 else None
             )
@@ -353,10 +354,10 @@ class SpellContextResolveMixin:
                     400,
                 )
             requested_canonical_key = (
-                req.spell_canonical_key.strip()
+                normalize_spell_key(req.spell_canonical_key)
                 if isinstance(req.spell_canonical_key, str) and req.spell_canonical_key.strip()
                 else (
-                    req.spell_id.strip()
+                    normalize_spell_key(req.spell_id)
                     if isinstance(req.spell_id, str) and req.spell_id.strip()
                     else None
                 )
@@ -423,9 +424,7 @@ class SpellContextResolveMixin:
         catalog_resolution = getattr(catalog_spell, "resolution_type", None)
         catalog_spell_mode = cls._map_resolution_type_to_spell_mode(catalog_resolution)
         targeting_semantics = resolve_spell_targeting_semantics(catalog_spell)
-        normalized_key = cls._normalize_lookup(
-            catalog_spell.canonical_key or requested_canonical_key
-        ).replace(" ", "_")
+        normalized_key = normalize_spell_key(catalog_spell.canonical_key or requested_canonical_key)
         automation_default_mode = cls._spell_default_mode_override(
             catalog_spell.canonical_key or requested_canonical_key
         )
@@ -549,8 +548,7 @@ class SpellContextResolveMixin:
             effect_bonus = req.heal_bonus if isinstance(req.heal_bonus, int) else 0
         elif (
             spell_mode == "utility"
-            and cls._normalize_lookup(getattr(catalog_spell, "canonical_key", None)).replace(" ", "_")
-            == "produce_flame"
+            and normalize_spell_key(getattr(catalog_spell, "canonical_key", None)) == "produce_flame"
         ):
             effect_dice = catalog_spell.damage_dice
             damage_type = catalog_spell.damage_type
@@ -729,7 +727,7 @@ class SpellContextResolveMixin:
         else:
             effect_instance_count = 1
             effect_instance_dice = None
-        spell_key = cls._normalize_lookup(catalog_spell.canonical_key).replace(" ", "_")
+        spell_key = normalize_spell_key(catalog_spell.canonical_key)
         range_meters = getattr(catalog_spell, "range_meters", None)
         target_type = getattr(catalog_spell, "target_type", None)
         if spell_key == "produce_flame" and resolved_mode["spell_mode"] == "spell_attack":

@@ -133,6 +133,19 @@ class SpellTargetingSemanticsTests(unittest.TestCase):
             with self.subTest(canonical_key=canonical_key):
                 self.assert_semantics(_source(canonical_key=canonical_key), expected)
 
+    def test_spell_key_override_normalization(self) -> None:
+        expected = {
+            "selection_type": "creature",
+            "origin_type": "caster",
+            "target_anchor": "selected_target",
+            "attack_type": "none",
+            "range_kind": "touch",
+            "effect_timing": "persistent",
+        }
+        self.assert_semantics(_source(canonical_key="Spider Climb"), expected)
+        self.assert_semantics(_source(canonical_key="spider-climb"), expected)
+        self.assert_semantics(_source(canonical_key="spider_climb"), expected)
+
     def test_legacy_target_type_backfill(self) -> None:
         self.assert_semantics(
             _source(target_type="self"),

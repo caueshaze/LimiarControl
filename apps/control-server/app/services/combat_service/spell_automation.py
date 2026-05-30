@@ -32,6 +32,7 @@ from app.services.spell_effect_factories import (
     build_shillelagh_effect,
     build_spider_climb_effect,
 )
+from app.services.spell_keys import normalize_spell_key
 
 from .condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from .condition_effects_saves import modify_saving_throw
@@ -276,7 +277,7 @@ class CombatSpellAutomationMixin:
 
     @classmethod
     def _normalize_spell_automation_key(cls, value: object) -> str:
-        return cls._normalize_lookup(value).replace(" ", "_")
+        return normalize_spell_key(value)
 
     @classmethod
     def _build_combat_spell_effect_context(
@@ -321,14 +322,13 @@ class CombatSpellAutomationMixin:
             active_effects = []
             target_participant["active_effects"] = active_effects
         if replace_existing:
-            expected_key = cls._normalize_lookup(source_spell_key).replace(" ", "_")
+            expected_key = normalize_spell_key(source_spell_key)
             target_participant["active_effects"] = [
                 e
                 for e in active_effects
-                if cls._normalize_lookup(
+                if normalize_spell_key(
                     (cls._get_effect_metadata(e) or {}).get("source_spell_key")
-                ).replace(" ", "_")
-                != expected_key
+                ) != expected_key
             ]
         cls._append_effect_to_participant(target_participant, effect)
         flag_modified(state, "participants")

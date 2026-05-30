@@ -22,6 +22,8 @@ from app.services.spell_effect_factories import (
     build_shillelagh_effect,
     build_spider_climb_effect,
 )
+from app.services.canonical_keys import normalize_canonical_key
+from app.services.spell_keys import normalize_spell_key
 
 OOC_NARRATIVE_UTILITY_SPELLS = {
     "detect_magic",
@@ -196,7 +198,7 @@ def build_persisted_effects(
     without modification.
     """
     raw_effects = _resolve_effects(spell, variant_key)
-    canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
+    canonical_key = normalize_spell_key(getattr(spell, "canonical_key", ""))
     if not raw_effects:
         if canonical_key == "purify_food_and_drink":
             return []
@@ -505,7 +507,7 @@ def build_persisted_effects(
                 or not weapon_canonical_key.strip()
             ):
                 return []
-            normalized_weapon_key = weapon_canonical_key.strip().lower()
+            normalized_weapon_key = normalize_canonical_key(weapon_canonical_key)
             spell_name = spell.name_pt or spell.name_en
             return [
                 build_shillelagh_effect(
@@ -733,7 +735,7 @@ def _resolve_effects(spell, variant_key: str | None) -> list[dict]:
 
 
 def _has_resolvable_effects(spell, variant_key: str | None) -> bool:
-    canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
+    canonical_key = normalize_spell_key(getattr(spell, "canonical_key", ""))
     if _is_ooc_utility_spell(canonical_key):
         return True
     return bool(_resolve_effects(spell, variant_key))
@@ -745,7 +747,7 @@ def has_castable_effects(spell) -> bool:
     Used by the eligible-list endpoint to exclude spells that would always be
     rejected at cast time due to having no persistable effects.
     """
-    canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
+    canonical_key = normalize_spell_key(getattr(spell, "canonical_key", ""))
     if _is_ooc_utility_spell(canonical_key):
         return True
     if spell.effects_json:

@@ -8,6 +8,7 @@ from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.item import Item
 from app.models.session import Session as CampaignSession
+from app.services.canonical_keys import normalize_canonical_key
 from app.services.healing_consumables_types import consume_inventory_item
 
 
@@ -28,13 +29,6 @@ class MaterialConsumptionResult:
     inventory_item_id: str | None
 
 
-def _normalize_key(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip().lower()
-    return normalized or None
-
-
 def _resolve_options(spell) -> list[dict]:
     options = getattr(spell, "consumable_material_options_json", None)
     if not isinstance(options, list):
@@ -52,15 +46,21 @@ def _resolve_selection_key(spell, requested_key: str | None) -> tuple[str, dict]
         return "", {}
     if not options:
         raise SpellMaterialError("This spell requires consumed material but has no configured options.")
-    normalized_key = _normalize_key(requested_key)
+    normalized_key = normalize_canonical_key(requested_key)
+    if not normalized_key:
+        normalized_key = None
     if len(options) > 1 and normalized_key is None:
         raise SpellMaterialError("This spell requires consumableMaterialKey.")
     if normalized_key is None:
-        normalized_key = _normalize_key(options[0].get("key"))
+        normalized_key = normalize_canonical_key(options[0].get("key"))
+    if not normalized_key:
+        normalized_key = None
     if normalized_key is None:
         raise SpellMaterialError("Invalid consumable material option configuration.")
     for option in options:
-        option_key = _normalize_key(option.get("key"))
+        option_key = normalize_canonical_key(option.get("key"))
+        if not option_key:
+            option_key = None
         if option_key == normalized_key:
             return normalized_key, option
     raise SpellMaterialError(f"Invalid consumable material key: {requested_key!r}")
