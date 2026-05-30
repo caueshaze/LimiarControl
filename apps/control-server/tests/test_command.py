@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
+from app.models.session_state import SessionState
+from app.schemas.combat import CombatResolveSpellContextRequest
 from app.services.combat import CombatService
 from app.services.combat_service.condition_effects_predicates import (
     COMMAND_VARIANTS,
@@ -672,35 +674,128 @@ class CommandUpcastTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class CommandSpellContextTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
-        cls.meta = SpellContextResolveMixin._COMMAND_UTILITY_META
+    def setUp(self):
+        self.db = MagicMock()
+        self.state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "p1",
+                    "ref_id": "player-1",
+                    "kind": "player",
+                    "display_name": "Hero",
+                    "initiative": 10,
+                    "status": "active",
+                    "team": "players",
+                    "visible": True,
+                    "actor_user_id": "user-1",
+                }
+            ],
+        )
+        self.attacker_state = SessionState(
+            id="state-1",
+            session_id="session-1",
+            player_user_id="user-1",
+            state_json={
+                "spellcasting": {
+                    "spells": [
+                        {"name": "Command", "canonicalKey": "command", "level": 1, "prepared": True}
+                    ],
+                    "slots": {"1": {"used": 0, "max": 2}},
+                }
+            },
+        )
+        self.catalog_spell = SimpleNamespace(
+            canonical_key="command",
+            name_en="Command",
+            name_pt="Comando",
+            level=1,
+            resolution_type="utility",
+            saving_throw="WIS",
+            save_success_outcome="none",
+            damage_type=None,
+            damage_dice=None,
+            heal_dice=None,
+            upcast_json={"mode": "additional_targets", "perLevel": 1},
+            cantrip_scaling_json=None,
+            casting_time_type="action",
+            target_type="single_target",
+            selection_type="creature",
+            origin_type="caster",
+            target_anchor="selected_target",
+            attack_type="none",
+            range_kind="distance",
+            effect_timing="immediate",
+            area_shape=None,
+            range_meters=18,
+            radius_meters=None,
+            length_meters=None,
+            side_meters=None,
+            duration="1 round",
+            concentration=False,
+            cover_applies_to_save=None,
+            max_targets=1,
+            variants_json=None,
+            material_component_text=None,
+            material_component_consumed=False,
+            consumable_material_options_json=None,
+            effects_json=None,
+            on_end_effects_json=None,
+            attack_advantage_condition_json=None,
+            persistent_area_json=None,
+        )
+
+    def _resolve(self):
+        req = CombatResolveSpellContextRequest(
+            actor_participant_id="p1",
+            spell_canonical_key="command",
+            spell_mode="utility",
+            slot_level=1,
+        )
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=self.catalog_spell,
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(self.attacker_state, 12, 10, 10, 3, 4),
+        ):
+            return CombatService.resolve_spell_context(
+                self.db,
+                "session-1",
+                req,
+                "user-1",
+                False,
+            )
 
     def test_type_control(self):
-        self.assertEqual(self.meta["type"], "control")
+        self.assertEqual((self._resolve().get("utility") or {}).get("type"), "control")
 
     def test_subtype_command(self):
-        self.assertEqual(self.meta["subtype"], "command")
+        self.assertEqual((self._resolve().get("utility") or {}).get("subtype"), "command")
 
     def test_save_ability_wisdom(self):
-        self.assertEqual(self.meta["saveAbility"], "wisdom")
+        self.assertEqual((self._resolve().get("utility") or {}).get("saveAbility"), "wisdom")
 
     def test_requires_variant_key_true(self):
-        self.assertTrue(self.meta["requiresVariantKey"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("requiresVariantKey"))
 
     def test_allowed_commands_list(self):
+        meta = self._resolve().get("utility") or {}
         for cmd in ["approach", "drop", "flee", "grovel", "halt"]:
-            self.assertIn(cmd, self.meta["allowedCommands"])
+            self.assertIn(cmd, meta["allowedCommands"])
 
     def test_invalid_against_undead_true(self):
-        self.assertTrue(self.meta["invalidAgainstUndead"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("invalidAgainstUndead"))
 
     def test_requires_shared_language_true(self):
-        self.assertTrue(self.meta["requiresSharedLanguage"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("requiresSharedLanguage"))
 
     def test_supports_upcast_additional_targets(self):
-        self.assertTrue(self.meta["supportsUpcastAdditionalTargets"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("supportsUpcastAdditionalTargets"))
 
     def test_ooc_castable_false(self):
-        self.assertFalse(self.meta["outOfCombatCastable"])
+        self.assertFalse((self._resolve().get("utility") or {}).get("outOfCombatCastable"))

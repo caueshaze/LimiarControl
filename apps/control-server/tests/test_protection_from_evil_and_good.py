@@ -782,7 +782,9 @@ class ProtectionFromEvilAndGoodSpellContextTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
-        cls.meta = SpellContextResolveMixin._PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META
+        cls.meta = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META[
+            "protection_from_evil_and_good"
+        ]
 
     def test_type_defense_buff(self):
         self.assertEqual(self.meta["type"], "defense_buff")

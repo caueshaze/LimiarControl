@@ -173,21 +173,6 @@ class SpellContextResolveMixin:
             "outOfCombatCastable": False,
         },
     }
-    # Backward-compatible aliases for existing tests and call sites that still
-    # reference the legacy constant names directly.
-    _PRODUCE_FLAME_UTILITY_META = UTILITY_SPELL_CONTEXT_META["produce_flame"]
-    _SHILLELAGH_UTILITY_META = UTILITY_SPELL_CONTEXT_META["shillelagh"]
-    _JUMP_UTILITY_META = UTILITY_SPELL_CONTEXT_META["jump"]
-    _SPIDER_CLIMB_UTILITY_META = UTILITY_SPELL_CONTEXT_META["spider_climb"]
-    _BARKSKIN_UTILITY_META = UTILITY_SPELL_CONTEXT_META["barkskin"]
-    _BLUR_UTILITY_META = UTILITY_SPELL_CONTEXT_META["blur"]
-    _LESSER_RESTORATION_UTILITY_META = UTILITY_SPELL_CONTEXT_META["lesser_restoration"]
-    _PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META = UTILITY_SPELL_CONTEXT_META[
-        "protection_from_evil_and_good"
-    ]
-    _COMMAND_UTILITY_META = UTILITY_SPELL_CONTEXT_META["command"]
-    _FEATHER_FALL_UTILITY_META = UTILITY_SPELL_CONTEXT_META["feather_fall"]
-
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
             "type": "narrative_effect",

@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.combat import CombatPhase, CombatState
+from app.models.session_state import SessionState
+from app.schemas.combat import CombatResolveSpellContextRequest
 from app.services.combat import CombatService
 from app.services.combat_service.condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
@@ -612,34 +614,132 @@ class LesserRestorationOocTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class LesserRestorationSpellContextTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
-        cls.meta = SpellContextResolveMixin._LESSER_RESTORATION_UTILITY_META
+    def setUp(self):
+        self.db = MagicMock()
+        self.state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=1,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "p1",
+                    "ref_id": "player-1",
+                    "kind": "player",
+                    "display_name": "Hero",
+                    "initiative": 10,
+                    "status": "active",
+                    "team": "players",
+                    "visible": True,
+                    "actor_user_id": "user-1",
+                }
+            ],
+        )
+        self.attacker_state = SessionState(
+            id="state-1",
+            session_id="session-1",
+            player_user_id="user-1",
+            state_json={
+                "spellcasting": {
+                    "spells": [
+                        {
+                            "name": "Lesser Restoration",
+                            "canonicalKey": "lesser_restoration",
+                            "level": 2,
+                            "prepared": True,
+                        }
+                    ],
+                    "slots": {"2": {"used": 0, "max": 2}},
+                }
+            },
+        )
+        self.catalog_spell = SimpleNamespace(
+            canonical_key="lesser_restoration",
+            name_en="Lesser Restoration",
+            name_pt="Restauração Menor",
+            level=2,
+            resolution_type="utility",
+            saving_throw=None,
+            save_success_outcome=None,
+            damage_type=None,
+            damage_dice=None,
+            heal_dice=None,
+            upcast_json=None,
+            cantrip_scaling_json=None,
+            casting_time_type="action",
+            target_type="single_target",
+            selection_type="single_target",
+            origin_type="caster",
+            target_anchor="target",
+            attack_type="none",
+            range_kind="touch",
+            effect_timing="immediate",
+            area_shape=None,
+            range_meters=0,
+            radius_meters=None,
+            length_meters=None,
+            side_meters=None,
+            duration="Instantaneous",
+            concentration=False,
+            cover_applies_to_save=None,
+            max_targets=1,
+            variants_json=None,
+            material_component_text=None,
+            material_component_consumed=False,
+            consumable_material_options_json=None,
+            effects_json=None,
+            on_end_effects_json=None,
+            attack_advantage_condition_json=None,
+            persistent_area_json=None,
+        )
+
+    def _resolve(self):
+        req = CombatResolveSpellContextRequest(
+            actor_participant_id="p1",
+            spell_canonical_key="lesser_restoration",
+            spell_mode="utility",
+            slot_level=2,
+        )
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_spell_catalog_entry_for_session",
+            return_value=self.catalog_spell,
+        ), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(self.attacker_state, 12, 10, 10, 3, 4),
+        ):
+            return CombatService.resolve_spell_context(
+                self.db,
+                "session-1",
+                req,
+                "user-1",
+                False,
+            )
 
     def test_type_condition_removal(self):
-        self.assertEqual(self.meta["type"], "condition_removal")
+        self.assertEqual((self._resolve().get("utility") or {}).get("type"), "condition_removal")
 
     def test_subtype_lesser_restoration(self):
-        self.assertEqual(self.meta["subtype"], "lesser_restoration")
+        self.assertEqual((self._resolve().get("utility") or {}).get("subtype"), "lesser_restoration")
 
     def test_requires_concentration_false(self):
-        self.assertFalse(self.meta["requiresConcentration"])
+        self.assertFalse((self._resolve().get("utility") or {}).get("requiresConcentration"))
 
     def test_duration_seconds_zero(self):
-        self.assertEqual(self.meta["durationSeconds"], 0)
+        self.assertEqual((self._resolve().get("utility") or {}).get("durationSeconds"), 0)
 
     def test_removable_conditions_list(self):
-        conds = self.meta["removableConditions"]
+        conds = (self._resolve().get("utility") or {}).get("removableConditions") or []
         for c in ["blinded", "deafened", "paralyzed", "poisoned", "disease"]:
             self.assertIn(c, conds)
 
     def test_requires_variant_key_true(self):
-        self.assertTrue(self.meta["requiresVariantKey"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("requiresVariantKey"))
 
     def test_requires_target_true(self):
-        self.assertTrue(self.meta["requiresTarget"])
+        self.assertTrue((self._resolve().get("utility") or {}).get("requiresTarget"))
 
     def test_ooc_flags(self):
-        self.assertTrue(self.meta["outOfCombatCastable"])
-        self.assertEqual(self.meta["outOfCombatTarget"], "self_or_ally")
+        utility = self._resolve().get("utility") or {}
+        self.assertTrue(utility["outOfCombatCastable"])
+        self.assertEqual(utility["outOfCombatTarget"], "self_or_ally")

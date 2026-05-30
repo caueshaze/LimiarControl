@@ -494,6 +494,16 @@ class SpellContextArchitectureTests(ResolveSpellContextTests):
         text = path.read_text(encoding="utf-8")
         self.assertNotIn("spell_effect_factories", text)
 
+    def test_legacy_utility_meta_aliases_removed(self):
+        self.assertFalse(hasattr(SpellContextResolveMixin, "_BLUR_UTILITY_META"))
+        self.assertFalse(hasattr(SpellContextResolveMixin, "_BARKSKIN_UTILITY_META"))
+        self.assertFalse(
+            hasattr(
+                SpellContextResolveMixin,
+                "_PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META",
+            )
+        )
+
     def test_resolves_cover_applies_to_save_null_is_exposed_as_none(self):
         result = self._resolve(
             CombatResolveSpellContextRequest(

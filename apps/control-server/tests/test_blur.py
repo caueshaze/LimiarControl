@@ -665,7 +665,7 @@ class BlurSpellContextTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
-        cls.meta = SpellContextResolveMixin._BLUR_UTILITY_META
+        cls.meta = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META["blur"]
 
     def test_type_defense_buff(self):
         self.assertEqual(self.meta["type"], "defense_buff")
