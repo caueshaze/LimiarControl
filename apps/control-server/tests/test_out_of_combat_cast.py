@@ -3392,6 +3392,18 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
 
 
 class TestOocPersistedFactoryDispatch(unittest.TestCase):
+    def test_registry_contains_exact_generic_spells(self):
+        self.assertEqual(
+            set(_OOC_PERSISTED_FACTORY_REGISTRY.keys()),
+            {
+                "barkskin",
+                "blur",
+                "protection_from_evil_and_good",
+                "jump",
+                "spider_climb",
+            },
+        )
+
     def test_barkskin_uses_dispatch_and_returns_effect(self):
         spell = _make_campaign_spell(
             canonical_key="barkskin",

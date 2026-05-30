@@ -3431,6 +3431,8 @@ class CombatSpellAutomationMixin:
         )
         concentration_group = str(uuid4())
 
+        # Orchestration exception: suppression of protected conditions stays in the
+        # handler (source-aware state logic), not in effect factories.
         suppressed_conditions: list[str] = []
         remaining_effects = []
         for e in (target_participant.get("active_effects") or []):
