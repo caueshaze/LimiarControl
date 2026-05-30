@@ -21,8 +21,8 @@ from app.services.combat import CombatService
 from app.services.magic_item_effects import inventory_item_supports_stacking
 from app.services.money import normalize_money
 from app.services.session_state_finalize import finalize_session_state_data
-from ._shared import record_session_activity, require_identifier
-from .rewards_common import (
+from .._shared import record_session_activity, require_identifier
+from .common import (
     create_inventory_entry,
     get_active_party_session_for_gm,
     get_actor_member,
@@ -33,7 +33,7 @@ from .rewards_common import (
     progression_optional_int,
     publish_reward_realtime,
 )
-from .shop import (
+from ..shop import (
     _ensure_player_session_state,
     _format_cp_label,
     _publish_session_state_realtime,

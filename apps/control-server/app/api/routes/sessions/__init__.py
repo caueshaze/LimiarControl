@@ -6,14 +6,14 @@ from .lobby import router as lobby_router
 from .lifecycle import router as lifecycle_router
 from .shop import router as shop_router
 from .commands import router as commands_router
-from .rolls import router as rolls_router
+from .rolls import manual_router as rolls_router
 from .activity import router as activity_router
 from .consumables import router as consumables_router
 from .runtime import router as runtime_router
 from .state import router as state_router
 from .rewards import router as rewards_router
 from .rest import router as rest_router
-from .rolls_resolution import router as rolls_resolution_router
+from .rolls import resolution_router as rolls_resolution_router
 from .combat_preview import router as combat_preview_router
 
 router = APIRouter()

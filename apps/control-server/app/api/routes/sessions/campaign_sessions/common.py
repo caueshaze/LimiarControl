@@ -19,7 +19,7 @@ from app.services.realtime import (
     event_version,
     session_channel,
 )
-from ._shared import (
+from .._shared import (
     resolve_party_id_for_campaign,
     to_session_read,
 )

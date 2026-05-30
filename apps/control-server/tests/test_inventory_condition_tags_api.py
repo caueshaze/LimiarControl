@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
 
-from app.api.routes.sessions.shop_service import (
+from app.api.routes.sessions.shop.service import (
     add_inventory_item_condition_tag_service,
     remove_inventory_item_condition_tag_service,
 )
@@ -55,8 +55,8 @@ class TestInventoryConditionTagsService(unittest.IsolatedAsyncioTestCase):
         session.exec.return_value.first.side_effect = [inventory_item, item, inventory_item, item]
 
         with (
-            patch("app.api.routes.sessions.shop_service.require_active_shop_session", return_value=(self._session_entry(), object())),
-            patch("app.api.routes.sessions.shop_service._require_inventory_access", return_value=self._member(gm=True)),
+            patch("app.api.routes.sessions.shop.service.require_active_shop_session", return_value=(self._session_entry(), object())),
+            patch("app.api.routes.sessions.shop.service._require_inventory_access", return_value=self._member(gm=True)),
         ):
             result = await add_inventory_item_condition_tag_service("s1", "inv1", SimpleNamespace(tag="broken"), user, session)
             self.assertEqual(inventory_item.condition_tags, ["broken"])
@@ -74,8 +74,8 @@ class TestInventoryConditionTagsService(unittest.IsolatedAsyncioTestCase):
         session.exec.return_value.first.side_effect = [inventory_item, item, inventory_item, item]
 
         with (
-            patch("app.api.routes.sessions.shop_service.require_active_shop_session", return_value=(self._session_entry(), object())),
-            patch("app.api.routes.sessions.shop_service._require_inventory_access", return_value=self._member(gm=True)),
+            patch("app.api.routes.sessions.shop.service.require_active_shop_session", return_value=(self._session_entry(), object())),
+            patch("app.api.routes.sessions.shop.service._require_inventory_access", return_value=self._member(gm=True)),
         ):
             await remove_inventory_item_condition_tag_service("s1", "inv1", "broken", user, session)
             self.assertEqual(inventory_item.condition_tags, [])
@@ -88,8 +88,8 @@ class TestInventoryConditionTagsService(unittest.IsolatedAsyncioTestCase):
         inventory_item = self._inventory_item()
         session.exec.return_value.first.return_value = inventory_item
         with (
-            patch("app.api.routes.sessions.shop_service.require_active_shop_session", return_value=(self._session_entry(), object())),
-            patch("app.api.routes.sessions.shop_service._require_inventory_access", return_value=self._member(gm=True)),
+            patch("app.api.routes.sessions.shop.service.require_active_shop_session", return_value=(self._session_entry(), object())),
+            patch("app.api.routes.sessions.shop.service._require_inventory_access", return_value=self._member(gm=True)),
         ):
             with self.assertRaises(HTTPException) as ctx:
                 await add_inventory_item_condition_tag_service("s1", "inv1", SimpleNamespace(tag="BROKEN"), user, session)

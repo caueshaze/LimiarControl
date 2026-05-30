@@ -9,9 +9,9 @@ from app.schemas.session import (
     SessionActivateRequest,
     SessionRead,
 )
-from ._shared import DEPRECATION_REMOVAL_DATE
-from .campaign_sessions_common import get_active_session_service, list_sessions_service
-from .campaign_sessions_start_service import start_session_service
+from .._shared import DEPRECATION_REMOVAL_DATE
+from .common import get_active_session_service, list_sessions_service
+from .start_service import start_session_service
 
 router = APIRouter()
 

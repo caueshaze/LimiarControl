@@ -44,7 +44,7 @@ from app.services.roll_resolution import (
     resolve_skill_check,
 )
 
-from ._shared import record_session_activity
+from .._shared import record_session_activity
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

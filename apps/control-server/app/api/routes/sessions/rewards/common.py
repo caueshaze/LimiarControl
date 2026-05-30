@@ -14,7 +14,7 @@ from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
-from ._shared import require_identifier, to_inventory_read
+from .._shared import require_identifier, to_inventory_read
 from app.services.magic_item_effects import initialize_inventory_item_charges
 
 

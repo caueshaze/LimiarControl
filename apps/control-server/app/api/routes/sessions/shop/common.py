@@ -20,7 +20,7 @@ from app.services.realtime import build_event, campaign_channel, event_version, 
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.magic_item_effects import initialize_inventory_item_charges
-from ._shared import get_or_create_session_runtime, require_identifier, to_inventory_read, to_item_read
+from .._shared import get_or_create_session_runtime, require_identifier, to_inventory_read, to_item_read
 
 
 def _price_to_cp(item: Item, quantity: int = 1) -> int:

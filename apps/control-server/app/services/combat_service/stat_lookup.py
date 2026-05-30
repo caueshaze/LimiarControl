@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import floor
+from typing import Any, Callable, ClassVar
 
 from sqlmodel import Session, select
 
@@ -14,6 +15,15 @@ from .exceptions import CombatServiceError
 
 
 class CombatStatLookupMixin:
+    _as_dict: ClassVar[Callable[[object], dict[str, Any]]]
+    calculate_player_armor_class_from_state: ClassVar[Callable[..., int]]
+    _get_entity_spellcasting: ClassVar[Callable[[CampaignEntity, dict[str, Any]], dict[str, Any]]]
+    _get_entity_ability_score: ClassVar[
+        Callable[[dict[str, Any], dict[str, Any], str], int]
+    ]
+    _get_entity_armor_class: ClassVar[Callable[[CampaignEntity, dict[str, Any]], int]]
+    _normalize_ability_name: ClassVar[Callable[[object], str | None]]
+    _ability_modifier: ClassVar[Callable[[int], int]]
 
     @classmethod
     def _get_stats(

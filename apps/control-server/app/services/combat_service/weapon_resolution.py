@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from math import floor
+from typing import Any, ClassVar
 import unicodedata
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -65,6 +66,47 @@ def _normalize_class_id(value: object) -> str:
 class CombatWeaponResolutionMixin:
     _SPECIFIC_WEAPON_PROFICIENCY_ALIASES = _SPECIFIC_WEAPON_PROFICIENCY_ALIASES
     _SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
+    _ENTITY_ABILITY_ALIASES: ClassVar[set[str]]
+
+    @classmethod
+    def _ability_modifier(cls, score: int) -> int:
+        raise NotImplementedError
+
+    @classmethod
+    def _get_player_ability_score(cls, data: dict, ability_name: str) -> int:
+        raise NotImplementedError
+
+    @classmethod
+    def _safe_int(cls, value: object, default: int = 0) -> int:
+        raise NotImplementedError
+
+    @classmethod
+    def _get_player_fighting_style(cls, data: dict) -> str | None:
+        raise NotImplementedError
+
+    @classmethod
+    def _as_dict(cls, value: object) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @staticmethod
+    def _enum_value_or_none(value: object) -> str | None:
+        if isinstance(value, Enum):
+            raw = value.value
+            return raw if isinstance(raw, str) else str(raw)
+        if isinstance(value, str):
+            return value
+        return None
+
+    @classmethod
+    def _coerce_optional_int(cls, value: object) -> int | None:
+        if value is None:
+            return None
+        if not isinstance(value, (int, float, str)):
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     @classmethod
     def _get_player_legacy_weapon_profile(cls, data: dict, item: Item) -> dict | None:
@@ -251,7 +293,7 @@ class CombatWeaponResolutionMixin:
         strength_mod = cls._ability_modifier(
             cls._get_player_ability_score(data, "strength")
         )
-        level = data.get("level") if isinstance(data.get("level"), int) else 1
+        level = max(1, cls._safe_int(data.get("level"), 1))
         proficiency_bonus = floor((level - 1) / 4) + 2
 
         if selected_inventory_item_id == "unarmed":
@@ -360,10 +402,8 @@ class CombatWeaponResolutionMixin:
             attacker_effects=attacker_effects,
             inventory_item_id=inventory_item.id,
             weapon_canonical_key=getattr(item, "canonical_key_snapshot", None),
-            weapon_range_type=(
-                item.weapon_range_type.value
-                if getattr(item, "weapon_range_type", None) is not None
-                else None
+            weapon_range_type=cls._enum_value_or_none(
+                getattr(item, "weapon_range_type", None)
             ),
         )
         if shillelagh_override is not None:
@@ -389,20 +429,12 @@ class CombatWeaponResolutionMixin:
             "magic_bonus": magic_bonus,
             "is_ranged_weapon": is_ranged_weapon,
             "weapon_canonical_key": getattr(item, "canonical_key_snapshot", None),
-            "range_meters": (
-                int(item.range_meters)
-                if getattr(item, "range_meters", None) is not None
-                else None
+            "range_meters": cls._coerce_optional_int(getattr(item, "range_meters", None)),
+            "range_long_meters": cls._coerce_optional_int(
+                getattr(item, "range_long_meters", None)
             ),
-            "range_long_meters": (
-                int(item.range_long_meters)
-                if getattr(item, "range_long_meters", None) is not None
-                else None
-            ),
-            "weapon_range_type": (
-                item.weapon_range_type.value
-                if getattr(item, "weapon_range_type", None) is not None
-                else None
+            "weapon_range_type": cls._enum_value_or_none(
+                getattr(item, "weapon_range_type", None)
             ),
             "has_reach": "reach"
             in {

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.campaign import RoleMode
-from app.api.routes.sessions.rolls_resolution import (
+from app.api.routes.sessions.rolls.resolution import (
     _authorize_roll,
     _build_player_stats,
     _build_entity_stats,
@@ -316,7 +316,7 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.services.roll_resolution.roll_d20_pair", return_value=(15, 8))
     async def test_ability_roll_publishes_event(self, _mock_d20):
-        from app.api.routes.sessions.rolls_resolution import roll_ability
+        from app.api.routes.sessions.rolls.resolution import roll_ability
         from app.schemas.roll import AbilityRollRequest
 
         # Mock dependencies
@@ -357,14 +357,14 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
             ) as mock_build,
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ) as mock_publish,
         ):
@@ -389,7 +389,7 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.services.roll_resolution.roll_d20_pair", return_value=(10, 14))
     async def test_ability_roll_attaches_check_modifier_sources(self, _mock_d20):
-        from app.api.routes.sessions.rolls_resolution import roll_ability
+        from app.api.routes.sessions.rolls.resolution import roll_ability
         from app.schemas.roll import AbilityRollRequest, RollActorStats
 
         user = MagicMock()
@@ -437,18 +437,18 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
             ) as mock_build,
             patch(
-                "app.api.routes.sessions.rolls_resolution.CombatService.get_state",
+                "app.api.routes.sessions.rolls.resolution.CombatService.get_state",
                 return_value=state,
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ),
         ):
@@ -470,7 +470,7 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.services.roll_resolution.roll_d20_pair", return_value=(14, 5))
     async def test_initiative_roll_updates_combat_state(self, _mock_d20):
-        from app.api.routes.sessions.rolls_resolution import roll_initiative
+        from app.api.routes.sessions.rolls.resolution import roll_initiative
         from app.schemas.roll import InitiativeRollRequest, RollActorStats
 
         user = MagicMock()
@@ -494,18 +494,18 @@ class TestEndToEndRoll(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
             ) as mock_build,
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ) as mock_publish,
             patch(
-                "app.api.routes.sessions.rolls_resolution.CombatService.apply_initiative_roll",
+                "app.api.routes.sessions.rolls.resolution.CombatService.apply_initiative_roll",
                 new_callable=AsyncMock,
             ) as mock_apply_initiative,
         ):
@@ -602,7 +602,7 @@ class TestSessionActivityRollResolvedEvent(unittest.TestCase):
 class TestSaveRollEndToEnd(unittest.IsolatedAsyncioTestCase):
     @patch("app.services.roll_resolution.roll_d20_pair", return_value=(15, 8))
     async def test_save_roll_applies_declared_advantage(self, _mock_d20):
-        from app.api.routes.sessions.rolls_resolution import roll_save
+        from app.api.routes.sessions.rolls.resolution import roll_save
         from app.schemas.roll import RollActorStats, SaveRollRequest
 
         user = MagicMock()
@@ -628,14 +628,14 @@ class TestSaveRollEndToEnd(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
             ) as mock_build,
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ) as mock_publish,
             patch(
@@ -688,7 +688,7 @@ class TestSaveRollEndToEnd(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.services.roll_resolution.roll_d20_pair", return_value=(15, 8))
     async def test_save_roll_manual_disadvantage_cancels_declared_advantage(self, _mock_d20):
-        from app.api.routes.sessions.rolls_resolution import roll_save
+        from app.api.routes.sessions.rolls.resolution import roll_save
         from app.schemas.roll import RollActorStats, SaveRollRequest
 
         user = MagicMock()
@@ -714,14 +714,14 @@ class TestSaveRollEndToEnd(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
             ) as mock_build,
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ) as mock_publish,
             patch(

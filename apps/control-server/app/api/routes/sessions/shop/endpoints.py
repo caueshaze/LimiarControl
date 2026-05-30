@@ -11,14 +11,14 @@ from app.schemas.inventory import (
     InventorySellRead,
 )
 from app.schemas.item import ItemRead
-from .shop_common import (
+from .common import (
     _ensure_player_session_state,
     _format_cp_label,
     _price_to_cp,
     _publish_session_state_realtime,
     _to_currency_read,
 )
-from .shop_service import (
+from .service import (
     add_inventory_item_condition_tag_service,
     buy_session_shop_item_service,
     list_session_shop_items_service,

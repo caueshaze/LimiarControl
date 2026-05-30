@@ -15,7 +15,7 @@ from app.schemas.roll_event import RollEventRead
 from app.schemas.session import ManualRollRequest, RollRequest
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
-from ._shared import parse_expression, to_roll_read_local
+from .._shared import parse_expression, to_roll_read_local
 
 router = APIRouter()
 

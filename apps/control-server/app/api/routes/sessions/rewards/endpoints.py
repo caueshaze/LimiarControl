@@ -11,7 +11,7 @@ from app.schemas.session_reward import (
     SessionGrantXpRead,
     SessionGrantXpRequest,
 )
-from .rewards_service import (
+from .service import (
     grant_session_currency_service,
     grant_session_item_service,
     grant_session_xp_service,

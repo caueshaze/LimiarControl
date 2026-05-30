@@ -113,7 +113,7 @@ class GameTimeSchemaTests(unittest.TestCase):
 
 class ResetRuntimeTests(unittest.TestCase):
     def test_reset_runtime_resets_game_time(self):
-        from app.api.routes.sessions.campaign_sessions_start_service import reset_runtime
+        from app.api.routes.sessions.campaign_sessions.start_service import reset_runtime
 
         runtime = SessionRuntime(session_id="s1")
         runtime.game_time_seconds = 9999

@@ -17,8 +17,8 @@ from app.models.user import User
 from app.schemas.session import ActiveSessionRead, LobbyPlayer, SessionActivateRequest
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
-from ._shared import check_character_sheets, get_or_create_session_runtime, to_session_read
-from .campaign_sessions_common import (
+from .._shared import check_character_sheets, get_or_create_session_runtime, to_session_read
+from .common import (
     build_expected_players,
     get_open_campaign_session,
     publish_session_closed,

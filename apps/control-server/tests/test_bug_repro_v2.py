@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.api.routes.sessions.rolls_resolution import (
+from app.api.routes.sessions.rolls.resolution import (
     AbilityRollRequest,
     roll_ability,
 )
@@ -70,11 +70,11 @@ class TestEnhanceAbilityBugRepro(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.api.routes.sessions.rolls_resolution._get_session_and_member",
+                "app.api.routes.sessions.rolls.resolution._get_session_and_member",
                 return_value=(session_entry, member),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._build_actor_stats",
+                "app.api.routes.sessions.rolls.resolution._build_actor_stats",
                 return_value=RollActorStats(
                     display_name="Player 1",
                     abilities={"wisdom": 10},
@@ -83,11 +83,11 @@ class TestEnhanceAbilityBugRepro(unittest.IsolatedAsyncioTestCase):
                 ),
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution.CombatService.get_state",
+                "app.api.routes.sessions.rolls.resolution.CombatService.get_state",
                 return_value=combat_state,
             ),
             patch(
-                "app.api.routes.sessions.rolls_resolution._publish_and_log",
+                "app.api.routes.sessions.rolls.resolution._publish_and_log",
                 new_callable=AsyncMock,
             ),
         ):
