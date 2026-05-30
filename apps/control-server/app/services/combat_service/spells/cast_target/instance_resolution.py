@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from app.services.combat_service.condition_effects_predicates import target_wearing_metal_armor
@@ -132,7 +134,6 @@ class CastTargetInstanceResolutionMixin:
                 return True
         return False
     @classmethod
-    @classmethod
     def _resolve_instance_direct(cls, db, state, attacker, target_p, spell_context, req):
         instance_dice = spell_context.get("effect_instance_dice")
         if not instance_dice:
@@ -213,7 +214,9 @@ class CastTargetInstanceResolutionMixin:
             else "normal"
         )
 
-        roll_result = resolve_attack_base(
+        from . import resolve_attack_base as _resolve_attack_base
+
+        roll_result = _resolve_attack_base(
             RollActorStats(
                 display_name=attacker["display_name"],
                 abilities={},

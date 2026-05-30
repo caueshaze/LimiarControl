@@ -70,7 +70,11 @@ async def use_session_hit_die(
     if not actor_member:
         raise HTTPException(status_code=404, detail="Campaign member not found")
 
-    if get_session_rest_state(entry.id, session) != "short_rest":
+    resolved_session_id = entry.id
+    if not isinstance(resolved_session_id, str) or not resolved_session_id:
+        raise HTTPException(status_code=500, detail="Session id is missing")
+
+    if get_session_rest_state(resolved_session_id, session) != "short_rest":
         raise HTTPException(status_code=400, detail="Hit Dice can only be used during a short rest")
 
     state = _ensure_player_session_state(entry, user.id, session)
@@ -103,7 +107,7 @@ async def use_session_hit_die(
     }
     version = event_version(state.updated_at or state.created_at)
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(resolved_session_id),
         build_event("hit_dice_used", payload, version=version),
     )
     await centrifugo.publish(
@@ -118,7 +122,7 @@ async def use_session_hit_die(
     )
 
     return SessionUseHitDieRead(
-        sessionId=entry.id,
+        sessionId=resolved_session_id,
         campaignId=entry.campaign_id,
         partyId=entry.party_id,
         playerUserId=user.id,

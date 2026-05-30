@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from math import floor
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session as DbSession, select
@@ -23,6 +24,7 @@ from app.models.session_state import SessionState
 from app.schemas.campaign_entity_shared import SKILL_ABILITY_MAP, ability_modifier
 from app.models.user import User
 from app.schemas.roll import (
+    AdvantageMode,
     AbilityRollRequest,
     AttackBaseRollRequest,
     InitiativeRollRequest,
@@ -94,8 +96,9 @@ def _build_player_stats(
     ).first()
     if not state:
         raise HTTPException(404, "Player state not found for this session")
-    data = state.state_json if isinstance(state.state_json, dict) else {}
-    abilities = data.get("abilities") if isinstance(data.get("abilities"), dict) else {}
+    data: dict[str, Any] = state.state_json if isinstance(state.state_json, dict) else {}
+    raw_abilities = data.get("abilities")
+    abilities: dict[str, int] = cast(dict[str, int], raw_abilities) if isinstance(raw_abilities, dict) else {}
     level = data.get("level", 1) if isinstance(data.get("level"), int) else 1
     prof = floor((level - 1) / 4) + 2
 
@@ -104,7 +107,7 @@ def _build_player_stats(
     save_profs = save_profs if isinstance(save_profs, dict) else {}
     saving_throws: dict[str, int] = {}
     for ab in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
-        bonus = ability_modifier(abilities.get(ab, 10))
+        bonus = ability_modifier(int(abilities.get(ab, 10)))
         if save_profs.get(ab) is True:
             bonus += prof
         saving_throws[ab] = bonus
@@ -114,7 +117,7 @@ def _build_player_stats(
     skill_profs = skill_profs if isinstance(skill_profs, dict) else {}
     skills: dict[str, int] = {}
     for skill_name, base_ability in SKILL_ABILITY_MAP.items():
-        bonus = ability_modifier(abilities.get(base_ability, 10))
+        bonus = ability_modifier(int(abilities.get(base_ability, 10)))
         prof_level = skill_profs.get(skill_name, 0)
         if isinstance(prof_level, (int, float)) and prof_level > 0:
             bonus += floor(prof * prof_level)
@@ -140,21 +143,21 @@ def _build_entity_stats(db: DbSession, session_entity_id: str) -> RollActorStats
     if not ce:
         raise HTTPException(404, "Campaign entity not found")
 
-    abilities_raw = ce.abilities if isinstance(ce.abilities, dict) else {}
-    overrides = se.overrides if isinstance(se.overrides, dict) else {}
+    abilities_raw: dict[str, int] = cast(dict[str, int], ce.abilities) if isinstance(ce.abilities, dict) else {}
+    overrides: dict[str, Any] = se.overrides if isinstance(se.overrides, dict) else {}
 
     # Merge abilities with overrides
-    override_abilities = overrides.get("abilities") if isinstance(overrides.get("abilities"), dict) else {}
+    override_abilities: dict[str, int] = cast(dict[str, int], overrides.get("abilities")) if isinstance(overrides.get("abilities"), dict) else {}
     abilities = {**abilities_raw, **override_abilities}
 
     # Merge saving throws
-    base_saves = ce.saving_throws if isinstance(ce.saving_throws, dict) else {}
-    override_saves = overrides.get("savingThrows") if isinstance(overrides.get("savingThrows"), dict) else {}
+    base_saves: dict[str, int] = cast(dict[str, int], ce.saving_throws) if isinstance(ce.saving_throws, dict) else {}
+    override_saves: dict[str, int] = cast(dict[str, int], overrides.get("savingThrows")) if isinstance(overrides.get("savingThrows"), dict) else {}
     saving_throws = {**base_saves, **override_saves} if (base_saves or override_saves) else None
 
     # Merge skills
-    base_skills = ce.skills if isinstance(ce.skills, dict) else {}
-    override_skills = overrides.get("skills") if isinstance(overrides.get("skills"), dict) else {}
+    base_skills: dict[str, int] = cast(dict[str, int], ce.skills) if isinstance(ce.skills, dict) else {}
+    override_skills: dict[str, int] = cast(dict[str, int], overrides.get("skills")) if isinstance(overrides.get("skills"), dict) else {}
     skills = {**base_skills, **override_skills} if (base_skills or override_skills) else None
 
     initiative_bonus = overrides.get("initiativeBonus", ce.initiative_bonus)
@@ -196,6 +199,10 @@ def _build_actor_stats(
 async def _publish_and_log(
     entry: Session, member: CampaignMember, user: User, result: RollResult, db: DbSession
 ) -> None:
+    if not isinstance(entry.id, str) or not entry.id:
+        raise HTTPException(500, "Session id is missing")
+    if not isinstance(member.id, str) or not member.id:
+        raise HTTPException(500, "Campaign member id is missing")
     payload = result.model_dump(mode="json")
     payload["partyId"] = entry.party_id
 
@@ -233,13 +240,16 @@ async def roll_ability(
     db: DbSession = Depends(get_session),
 ):
     entry, member = _get_session_and_member(session_id, user, db)
-    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
+    if not isinstance(user.id, str) or not user.id:
+        raise HTTPException(401, "Invalid authenticated user")
+    actor_user_id = user.id
+    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, actor_user_id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
     logger.info(
         "[roll_ability] session=%s actor_kind=%s actor_ref_id=%s ability=%s target_participant_id=%s manual_mode=%s",
         session_id, body.actor_kind, body.actor_ref_id, body.ability, body.target_participant_id, body.advantage_mode,
     )
-    effective_advantage_mode = CombatService._resolve_check_advantage_mode_for_actor(
+    effective_advantage_mode = cast(AdvantageMode, CombatService._resolve_check_advantage_mode_for_actor(
         db,
         session_id,
         actor_kind=body.actor_kind,
@@ -247,7 +257,7 @@ async def roll_ability(
         ability=body.ability,
         target_participant_id=body.target_participant_id,
         manual_mode=body.advantage_mode,
-    )
+    ))
     logger.info("[roll_ability] effective_advantage_mode=%s", effective_advantage_mode)
 
     result = resolve_ability_check(
@@ -288,17 +298,20 @@ async def roll_save(
     db: DbSession = Depends(get_session),
 ):
     entry, member = _get_session_and_member(session_id, user, db)
-    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
+    if not isinstance(user.id, str) or not user.id:
+        raise HTTPException(401, "Invalid authenticated user")
+    actor_user_id = user.id
+    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, actor_user_id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
 
-    effective_advantage_mode = CombatService._resolve_save_advantage_mode_for_actor(
+    effective_advantage_mode = cast(AdvantageMode, CombatService._resolve_save_advantage_mode_for_actor(
         db,
         session_id,
         actor_kind=body.actor_kind,
         actor_ref_id=body.actor_ref_id,
         ability=body.ability,
         manual_mode=body.advantage_mode,
-    )
+    ))
 
     result = resolve_saving_throw(
         stats, body.ability, effective_advantage_mode, body.bonus_override, body.dc,
@@ -327,13 +340,16 @@ async def roll_skill(
     db: DbSession = Depends(get_session),
 ):
     entry, member = _get_session_and_member(session_id, user, db)
-    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
+    if not isinstance(user.id, str) or not user.id:
+        raise HTTPException(401, "Invalid authenticated user")
+    actor_user_id = user.id
+    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, actor_user_id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
     logger.info(
         "[roll_skill] session=%s actor_kind=%s actor_ref_id=%s skill=%s ability=%s target_participant_id=%s manual_mode=%s",
         session_id, body.actor_kind, body.actor_ref_id, body.skill, SKILL_ABILITY_MAP[body.skill], body.target_participant_id, body.advantage_mode,
     )
-    effective_advantage_mode = CombatService._resolve_skill_check_advantage_mode_for_actor(
+    effective_advantage_mode = cast(AdvantageMode, CombatService._resolve_skill_check_advantage_mode_for_actor(
         db,
         session_id,
         actor_kind=body.actor_kind,
@@ -341,7 +357,7 @@ async def roll_skill(
         skill=body.skill,
         target_participant_id=body.target_participant_id,
         manual_mode=body.advantage_mode,
-    )
+    ))
     logger.info("[roll_skill] effective_advantage_mode=%s", effective_advantage_mode)
 
     result = resolve_skill_check(
@@ -383,7 +399,10 @@ async def roll_initiative(
     db: DbSession = Depends(get_session),
 ):
     entry, member = _get_session_and_member(session_id, user, db)
-    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
+    if not isinstance(user.id, str) or not user.id:
+        raise HTTPException(401, "Invalid authenticated user")
+    actor_user_id = user.id
+    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, actor_user_id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
 
     result = resolve_initiative(
@@ -412,7 +431,10 @@ async def roll_attack_base(
     db: DbSession = Depends(get_session),
 ):
     entry, member = _get_session_and_member(session_id, user, db)
-    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, user.id)
+    if not isinstance(user.id, str) or not user.id:
+        raise HTTPException(401, "Invalid authenticated user")
+    actor_user_id = user.id
+    is_gm = _authorize_roll(member, body.actor_kind, body.actor_ref_id, actor_user_id)
     stats = _build_actor_stats(db, session_id, body.actor_kind, body.actor_ref_id)
 
     result = resolve_attack_base(

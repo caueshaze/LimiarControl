@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.models.inventory import InventoryItem
 from app.models.session import Session as CampaignSession
 from app.services.spell_material_components import SpellMaterialError, validate_spell_material

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import random
 from uuid import uuid4
 
@@ -40,7 +41,7 @@ def list_rolls(
     entries = session.exec(
         select(RollEvent)
         .where(RollEvent.session_id == session_id)
-        .order_by(RollEvent.created_at.desc())
+        .order_by(RollEvent.created_at.desc())  # type: ignore[attr-defined]
         .limit(limit)
     ).all()
     return [to_roll_read_local(e) for e in entries]
@@ -94,6 +95,7 @@ async def submit_roll(
 
     event = RollEvent(
         id=str(uuid4()),
+        created_at=datetime.now(timezone.utc),
         campaign_id=entry.campaign_id,
         session_id=session_id,
         user_id=user.id,
@@ -156,6 +158,7 @@ async def submit_manual_roll(
     count, sides, modifier = parsed if parsed else (1, 20, 0)
     event = RollEvent(
         id=str(uuid4()),
+        created_at=datetime.now(timezone.utc),
         campaign_id=entry.campaign_id,
         session_id=session_id,
         user_id=user.id,

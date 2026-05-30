@@ -240,7 +240,7 @@ class GuidingBoltRiderAdvantageTests(unittest.TestCase):
         self.assertEqual(removed[0]["id"], "eff-1")
         self.assertEqual([e["id"] for e in participant["active_effects"]], ["eff-2"])
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([2], 2))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=2)
     def test_rider_not_consumed_by_non_attack_roll_dice_pipeline(self, _mock_roll):
         # Ability/save pipelines only consume roll_dice_modifier with consume_on_apply,
         # not the Guiding Bolt attack-advantage rider.

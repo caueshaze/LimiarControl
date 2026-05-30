@@ -4,11 +4,15 @@ from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.models.inventory import InventoryItem
+from app.services.magic_item_effects import consume_inventory_item_charge
+
 from ...exceptions import CombatServiceError
 from ...targeting_result import TargetingResult
 
 
 class CastTargetModalMultiTargetResolutionMixin:
+    @classmethod
     async def _resolve_modal_multi_target_cast(
         cls,
         db,

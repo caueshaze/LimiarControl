@@ -112,7 +112,8 @@ def _build_attack_preview_intent(
         attacker_model, *_ = CombatService._get_stats(
             db, source_ref_id, "player", session_id
         )
-        attacker_data = CombatService._as_dict(attacker_model.state_json)
+        attacker_state_json = getattr(attacker_model, "state_json", None)
+        attacker_data = CombatService._as_dict(attacker_state_json)
         attack_context = CombatService._build_player_attack_context(
             db,
             session_id,

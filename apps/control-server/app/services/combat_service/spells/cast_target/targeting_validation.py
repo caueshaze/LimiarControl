@@ -167,7 +167,9 @@ class CastTargetTargetingValidationMixin:
         assignments: list[dict],
         session_id: str,
     ) -> dict[str, TargetingResult]:
-        targeting_service = get_combat_targeting_service(state.use_map)
+        from . import get_combat_targeting_service as _get_targeting_service
+
+        targeting_service = _get_targeting_service(state.use_map)
         results_by_participant_id: dict[str, TargetingResult] = {}
 
         for assignment in assignments:
@@ -289,7 +291,9 @@ class CastTargetTargetingValidationMixin:
         Returns a dict of TargetingResult keyed by target_ref_id so that cover metadata
         can be reused downstream (e.g. in _resolve_instance_attack) without re-validating.
         """
-        targeting_service = get_combat_targeting_service(state.use_map)
+        from . import get_combat_targeting_service as _get_targeting_service
+
+        targeting_service = _get_targeting_service(state.use_map)
 
         unique_ref_to_first_instance: dict[str, int] = {}
         for vt in validated_targets:

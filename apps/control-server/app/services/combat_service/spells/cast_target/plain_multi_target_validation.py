@@ -8,6 +8,7 @@ from .helpers import resolve_instance_spatial_error_phrase
 
 
 class CastTargetPlainMultiTargetValidationMixin:
+    @classmethod
     def _validate_plain_multi_target_refs(
         cls,
         *,
@@ -90,7 +91,9 @@ class CastTargetPlainMultiTargetValidationMixin:
         Runs before resource consumption.  Raises CombatServiceError if any
         target fails.  Mirrors _validate_modal_variant_spatial_targets.
         """
-        targeting_service = get_combat_targeting_service(state.use_map)
+        from . import get_combat_targeting_service as _get_targeting_service
+
+        targeting_service = _get_targeting_service(state.use_map)
         results: dict[str, "TargetingResult"] = {}
 
         for participant in targets:
@@ -136,4 +139,3 @@ class CastTargetPlainMultiTargetValidationMixin:
             results[participant["id"]] = result
 
         return results
-

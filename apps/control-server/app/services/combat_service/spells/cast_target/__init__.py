@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from sqlalchemy.orm.attributes import flag_modified
+
+from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
+
+from ...combat_targeting import get_combat_targeting_service
 from ..cast_target_commit import CastTargetCommitMixin
 from ..cast_target_effect import CastTargetEffectMixin
 from .instance_resolution import CastTargetInstanceResolutionMixin
@@ -31,4 +36,10 @@ class CastTargetMixin(
     pass
 
 
-__all__ = ["CastTargetMixin"]
+__all__ = [
+    "CastTargetMixin",
+    "flag_modified",
+    "get_combat_targeting_service",
+    "resolve_attack_base",
+    "resolve_saving_throw",
+]

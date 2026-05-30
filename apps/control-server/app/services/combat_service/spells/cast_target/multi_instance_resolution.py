@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class CastTargetMultiInstanceResolutionMixin:
+    @classmethod
     async def _resolve_multi_instance_cast(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm, validated_targets,

@@ -40,7 +40,7 @@ async def _start_session_for_party(
     existing_active = session.exec(
         select(Session).where(
             Session.party_id == party.id,
-            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
+            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),  # type: ignore[attr-defined]
         )
     ).first()
     if existing_active:
@@ -53,34 +53,45 @@ async def _start_session_for_party(
             PartyMember.status == PartyMemberStatus.JOINED,
         )
     ).all()
-    check_character_sheets(party.id, player_members, session)
+    if not isinstance(party.id, str) or not party.id:
+        raise HTTPException(status_code=500, detail="Party id is missing")
+    resolved_party_id = party.id
+
+    check_character_sheets(resolved_party_id, player_members, session)
 
     last_closed_source = session.exec(
         select(Session)
-        .where(Session.party_id == party.id, Session.status == SessionStatus.CLOSED)
-        .order_by(Session.ended_at.desc(), Session.sequence_number.desc())
+            .where(Session.party_id == resolved_party_id, Session.status == SessionStatus.CLOSED)
+            .order_by(
+                Session.ended_at.desc(),  # type: ignore[attr-defined]
+                Session.sequence_number.desc(),  # type: ignore[attr-defined]
+            )
     ).first()
 
     max_retries = 5
     for attempt in range(max_retries):
         next_number = session.exec(
             select(func.coalesce(func.max(Session.sequence_number), 0)).where(
-                Session.party_id == party.id
+                Session.party_id == resolved_party_id
             )
         ).one()
-        number = int(next_number) + 1
+        resolved_next_number = int(next_number or 0)
+        number = resolved_next_number + 1
         title = payload.title.strip()
         if not title:
             raise HTTPException(status_code=400, detail="Invalid title")
         entry = Session(
             id=str(uuid4()),
-            party_id=party.id,
+            party_id=resolved_party_id,
             campaign_id=party.campaign_id,
             number=number,
             sequence_number=number,
             title=title,
             status=SessionStatus.LOBBY,
             started_at=None,
+            ended_at=None,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         session.add(entry)
         try:
@@ -105,7 +116,7 @@ async def _start_session_for_party(
         prev = previous_by_user.get(m.user_id)
         base_sheet = session.exec(
             select(CharacterSheet).where(
-                CharacterSheet.party_id == party.id,
+                CharacterSheet.party_id == resolved_party_id,
                 CharacterSheet.player_user_id == m.user_id,
             )
         ).first()
@@ -119,11 +130,24 @@ async def _start_session_for_party(
         cloned = ensure_rest_state(cloned)
         cloned["restState"] = "exploration"
         cloned = finalize_session_state_data(cloned)
-        session.add(SessionState(
-            id=str(uuid4()), session_id=entry.id, player_user_id=m.user_id, state_json=cloned,
-        ))
+        if not isinstance(entry.id, str) or not entry.id:
+            raise HTTPException(status_code=500, detail="Session id is missing")
+        session.add(
+            SessionState(
+                id=str(uuid4()),
+                session_id=entry.id,
+                player_user_id=m.user_id,
+                state_json=cloned,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
     session.commit()
-    runtime = get_or_create_session_runtime(entry.id, session)
+    if not isinstance(entry.id, str) or not entry.id:
+        raise HTTPException(status_code=500, detail="Session id is missing")
+    resolved_session_id = entry.id
+
+    runtime = get_or_create_session_runtime(resolved_session_id, session)
     runtime.game_time_seconds = payload.initialGameTimeSeconds
 
     from app.models.user import User as UserModel
@@ -154,7 +178,7 @@ async def _start_session_for_party(
         }
         version = event_version(entry.started_at or now)
         await centrifugo.publish(
-            session_channel(entry.id),
+            session_channel(resolved_session_id),
             build_event("session_started", started_payload, version=version),
         )
         await centrifugo.publish(
@@ -184,7 +208,7 @@ async def _start_session_for_party(
                     "readyCount": 0,
                     "totalCount": len(expected_list),
                 },
-                version=event_version(entry.created_at),
+                version=event_version(entry.created_at or datetime.now(timezone.utc)),
             ),
         )
     return ActiveSessionRead(**to_session_read(entry).model_dump())
@@ -210,7 +234,7 @@ def list_party_sessions(
     require_party_member_or_gm(party_id, user, session)
     entries = session.exec(
         select(Session).where(Session.party_id == party_id)
-        .order_by(Session.sequence_number.desc())
+        .order_by(Session.sequence_number.desc())  # type: ignore[attr-defined]
     ).all()
     return [to_session_read(e) for e in entries]
 
@@ -225,7 +249,7 @@ def get_party_active_session(
     active = session.exec(
         select(Session).where(
             Session.party_id == party_id,
-            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),
+            Session.status.in_([SessionStatus.ACTIVE, SessionStatus.LOBBY]),  # type: ignore[attr-defined]
         )
     ).first()
     if not active:

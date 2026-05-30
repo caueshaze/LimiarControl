@@ -71,8 +71,11 @@ async def close_party_session(
         "endedAt": now.isoformat(),
     }
     version = event_version(now)
+    closed_session_id = entry.id
+    if closed_session_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(closed_session_id),
         build_event("session_closed", closed_payload, version=version),
     )
     await centrifugo.publish(
@@ -133,8 +136,11 @@ async def close_session(
         "endedAt": now.isoformat(),
     }
     version = event_version(now)
+    closed_session_id = entry.id
+    if closed_session_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(closed_session_id),
         build_event("session_closed", closed_payload, version=version),
     )
     await centrifugo.publish(
@@ -178,7 +184,10 @@ async def end_session_deprecated(
         ).first()
     if not active:
         raise HTTPException(status_code=404, detail="No active session to end")
-    return await close_session(active.id, user, session)
+    active_id = active.id
+    if active_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
+    return await close_session(active_id, user, session)
 
 
 @router.post("/sessions/{session_id}/resume", response_model=ActiveSessionRead)
@@ -234,8 +243,11 @@ async def resume_session(
             "endedAt": now.isoformat(),
         }
         version = event_version(now)
+        active_session_id = active.id
+        if active_session_id is None:
+            raise HTTPException(status_code=500, detail="Session id missing")
         await centrifugo.publish(
-            session_channel(active.id),
+            session_channel(active_session_id),
             build_event("session_closed", closed_payload, version=version),
         )
         await centrifugo.publish(
@@ -247,7 +259,10 @@ async def resume_session(
     entry.status = SessionStatus.ACTIVE
     entry.started_at = now
     entry.ended_at = None
-    runtime = get_or_create_session_runtime(entry.id, session)
+    resumed_entry_id = entry.id
+    if resumed_entry_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
+    runtime = get_or_create_session_runtime(resumed_entry_id, session)
     runtime.lobby_expected = []
     runtime.lobby_ready = []
     runtime.shop_open = False
@@ -259,12 +274,15 @@ async def resume_session(
     resumed_payload = {
         "sessionId": entry.id,
         "campaignId": entry.campaign_id,
-        "joinCode": entry.join_code,
+        "joinCode": getattr(entry, "join_code", None),
         "startedAt": entry.started_at.isoformat() if entry.started_at else None,
     }
     version = event_version(entry.started_at or now)
+    resumed_session_id = entry.id
+    if resumed_session_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(resumed_session_id),
         build_event("session_resumed", resumed_payload, version=version),
     )
     await centrifugo.publish(

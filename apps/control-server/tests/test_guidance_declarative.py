@@ -50,7 +50,7 @@ class GuidanceSeedTests(unittest.TestCase):
 
 
 class GuidanceRuntimeTests(unittest.TestCase):
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([3], 3))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=3)
     def test_applies_to_ability_and_consumes_effect_id_only(self, _mock_roll):
         participant = {"id": "p1", "kind": "player", "active_effects": [_guidance_effect(), {"id": "other", "kind": "spell_effect", "metadata": {"source_spell_key": "bless", "declarative_effect": {"type": "roll_dice_modifier", "params": {"mode": "bonus", "roll_types": ["attack", "save"], "dice": "1d4"}}}}]}
         state = CombatState(id="c1", session_id="s1", phase=CombatPhase.active, round=1, current_turn_index=0, participants=[participant], use_map=False)
@@ -62,7 +62,7 @@ class GuidanceRuntimeTests(unittest.TestCase):
         self.assertEqual(participant["active_effects"][0]["id"], "other")
         self.assertEqual(result.check_modifier_sources[0]["display_label"], "Orientação: +1d4")
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=4)
     def test_not_applied_to_attack_and_not_consumed(self, _mock_roll):
         participant = {"id": "p1", "kind": "player", "active_effects": [_guidance_effect()]}
         result = RollResult(event_id="e2", roll_type="attack", actor_kind="player", actor_ref_id="p1", actor_display_name="Lia", rolls=[10, 10], selected_roll=10, advantage_mode="normal", modifier_used=4, override_used=False, formula="1d20 + 4", total=14, target_ac=15, success=False, roll_source="system", timestamp="2026-01-01T00:00:00Z")
@@ -71,7 +71,7 @@ class GuidanceRuntimeTests(unittest.TestCase):
         self.assertEqual(result.total, 14)
         self.assertEqual(len(participant.get("active_effects", [])), 1)
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([2], 2))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=2)
     def test_invalid_then_valid_roll_consumes_only_on_valid(self, _mock_roll):
         participant = {"id": "p1", "kind": "player", "active_effects": [_guidance_effect()]}
         atk_sources = get_roll_bonus_dice_sources(participant, roll_type="attack")

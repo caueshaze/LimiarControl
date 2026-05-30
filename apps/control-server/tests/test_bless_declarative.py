@@ -154,7 +154,7 @@ class BlessUpcastContextTests(unittest.TestCase):
 
 
 class BlessRollBonusTests(unittest.TestCase):
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([3], 3))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=3)
     def test_get_roll_bonus_sources_for_attack_and_save(self, _mock_roll):
         participant = {"active_effects": [_bless_effect()]}
         attack_sources = get_roll_bonus_dice_sources(participant, roll_type="attack")
@@ -164,7 +164,7 @@ class BlessRollBonusTests(unittest.TestCase):
         self.assertEqual(attack_sources[0]["signed_total"], 3)
         self.assertEqual(save_sources[0]["source_label"], "Bênção")
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([2], 2))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=2)
     def test_apply_roll_bonus_updates_attack_result(self, _mock_roll):
         participant = {"active_effects": [_bless_effect()]}
         result = RollResult(
@@ -194,7 +194,7 @@ class BlessRollBonusTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.check_modifier_sources[0]["modifier_type"], "roll_dice_modifier")
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=4)
     def test_apply_roll_penalty_updates_save_result(self, _mock_roll):
         participant = {"active_effects": [{
             "id": "eff-bane",
@@ -232,7 +232,7 @@ class BlessRollBonusTests(unittest.TestCase):
         self.assertEqual(result.total, 10)
         self.assertFalse(result.success)
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=4)
     def test_apply_roll_bonus_updates_save_result(self, _mock_roll):
         participant = {"active_effects": [_bless_effect()]}
         result = RollResult(

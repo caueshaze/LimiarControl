@@ -4,6 +4,7 @@ from uuid import uuid4
 
 
 class CastTargetPlainMultiTargetResolverMixin:
+    @classmethod
     async def _resolve_plain_multi_target_automation_cast(
         cls,
         db,
@@ -269,4 +270,3 @@ class CastTargetPlainMultiTargetResolverMixin:
             "target_count": target_count,
             "plain_multi_target_outcomes": outcomes,
         }
-

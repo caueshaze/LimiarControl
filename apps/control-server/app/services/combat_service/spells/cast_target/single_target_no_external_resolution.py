@@ -10,6 +10,7 @@ from ..spell_resolution import SpellResolutionResult
 
 
 class CastTargetSingleTargetNoExternalResolutionMixin:
+    @classmethod
     async def _resolve_no_external_target_cast(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm,

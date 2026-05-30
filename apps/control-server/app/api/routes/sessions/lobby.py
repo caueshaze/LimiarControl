@@ -115,8 +115,11 @@ async def join_lobby(
             "title": entry.title,
             "startedAt": now.isoformat(),
         }
+        resolved_session_id = entry.id
+        if resolved_session_id is None:
+            raise HTTPException(status_code=500, detail="Session id missing")
         await centrifugo.publish(
-            session_channel(entry.id),
+            session_channel(resolved_session_id),
             build_event("session_started", started_payload, version=version),
         )
         await centrifugo.publish(
@@ -186,9 +189,12 @@ async def force_start_lobby(
         "title": entry.title,
         "startedAt": now.isoformat(),
     }
+    resolved_session_id = entry.id
+    if resolved_session_id is None:
+        raise HTTPException(status_code=500, detail="Session id missing")
 
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(resolved_session_id),
         build_event("session_started", started_payload, version=version),
     )
     await centrifugo.publish(

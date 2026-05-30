@@ -41,7 +41,7 @@ class BaneRollPenaltyTests(unittest.TestCase):
             },
         }
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([3], 3))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=3)
     def test_penalty_sources_for_attack_and_save(self, _mock_roll):
         participant = {"active_effects": [self._bane_effect()]}
         attack_sources = get_roll_bonus_dice_sources(participant, roll_type="attack")
@@ -53,7 +53,7 @@ class BaneRollPenaltyTests(unittest.TestCase):
         self.assertEqual(attack_sources[0]["signed_total"], -3)
         self.assertEqual(attack_sources[0]["display_label"], "Perdição: -1d4")
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=4)
     def test_penalty_recalculates_attack_success_to_failure(self, _mock_roll):
         participant = {"active_effects": [self._bane_effect()]}
         result = RollResult(
@@ -78,7 +78,7 @@ class BaneRollPenaltyTests(unittest.TestCase):
         self.assertEqual(result.total, 12)
         self.assertFalse(result.success)
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([2], 2))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=2)
     def test_penalty_recalculates_save_success_to_failure(self, _mock_roll):
         participant = {"active_effects": [self._bane_effect()]}
         result = RollResult(
@@ -104,7 +104,7 @@ class BaneRollPenaltyTests(unittest.TestCase):
         self.assertEqual(result.total, 12)
         self.assertFalse(result.success)
 
-    @patch("app.services.combat_service.condition_effects_predicates._roll_dice_expression", return_value=([4], 4))
+    @patch("app.services.combat_service.condition_effects_predicates_parts.predicates_spell_metadata._roll_dice_expression", return_value=4)
     def test_not_applied_to_ability_or_skill_roll_types(self, _mock_roll):
         participant = {"active_effects": [self._bane_effect()]}
         self.assertEqual(get_roll_bonus_dice_sources(participant, roll_type="attack")[0]["signed_total"], -4)

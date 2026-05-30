@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from sqlmodel import select
 
+from app.models.campaign_member import CampaignMember
+from app.models.session import Session as CampaignSession
 from app.models.session_command_event import SessionCommandEvent
 
 from ...targeting_diagnostics import INVALID_TARGET_TYPE, MAP_UNREACHABLE, NO_LINE_OF_EFFECT, NO_LINE_OF_SIGHT, TARGET_OUT_OF_REACH
@@ -116,4 +120,3 @@ class CastTargetRejectionActivityMixin:
             )
         )
         db.commit()
-

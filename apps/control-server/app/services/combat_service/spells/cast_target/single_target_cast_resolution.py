@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
+
 from app.models.inventory import InventoryItem
 from app.services.magic_item_effects import consume_inventory_item_charge, get_inventory_item_charges_current
 
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class CastTargetSingleTargetCastResolutionMixin:
+    @classmethod
     async def _resolve_cast_resolution(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm,
@@ -34,7 +37,11 @@ class CastTargetSingleTargetCastResolutionMixin:
             requires_sight=bool(spell_context.get("requires_target_sight")),
             requires_effect=bool(spell_context.get("requires_target_effect")),
         )
-        targeting_result = get_combat_targeting_service(state.use_map).validate(
+        # Resolve through the package namespace so tests patching
+        # cast_target.get_combat_targeting_service take effect.
+        from . import get_combat_targeting_service as _get_targeting_service
+
+        targeting_result = _get_targeting_service(state.use_map).validate(
             targeting_intent, state
         )
         if not targeting_result.is_valid:

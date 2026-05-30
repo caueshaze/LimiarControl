@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from ...exceptions import CombatServiceError
 from .plain_multi_target_resolution import CastTargetPlainMultiTargetResolutionMixin
 
 logger = logging.getLogger(__name__)
