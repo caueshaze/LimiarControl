@@ -128,5 +128,6 @@ class CampaignEntityRead(CampaignEntityBase):
 class CampaignEntityPublicRead(CampaignEntityBase):
     id: str
     campaignId: str
-    notesPrivate: None = None
+    # Public schema deliberately strips private notes: only None is ever allowed.
+    notesPrivate: None = None  # type: ignore[assignment]  # intentional narrowing of CampaignEntityBase.notesPrivate
     createdAt: datetime

@@ -38,6 +38,7 @@ async def action_entity(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.entity_action(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -61,6 +62,7 @@ async def action_entity_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.entity_action_damage(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -80,6 +82,7 @@ async def action_apply_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.apply_damage(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -99,6 +102,7 @@ async def action_apply_healing(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.apply_healing(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -111,6 +115,7 @@ async def action_death_save(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.death_save(
         db,
         session_id,
@@ -129,6 +134,7 @@ async def action_revive(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.revive_player(
         db,
         session_id,
@@ -149,6 +155,7 @@ async def action_standard(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.standard_action(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -168,6 +175,7 @@ async def action_consume_reaction(
         raise CombatServiceError(
             "Players can only request reactions, not consume directly.", 403
         )
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.consume_reaction(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -180,6 +188,7 @@ async def action_reaction_request(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.request_reaction(db, session_id, req, user.id)
 
 
@@ -202,6 +211,7 @@ async def action_save_resolve(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.resolve_pending_save(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -258,6 +268,7 @@ async def action_fall(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.resolve_fall(
         db,
         session_id,

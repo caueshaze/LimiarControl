@@ -615,16 +615,18 @@ def build_persisted_effects(
             metadata["against"] = params.get("against") or "any"
 
         ooc_duration = raw_effect.get("out_of_combat_duration")
+        raw_seconds = ooc_duration.get("seconds") if isinstance(ooc_duration, dict) else None
         is_timed = (
             isinstance(ooc_duration, dict)
             and ooc_duration.get("type") == "timed"
-            and isinstance(ooc_duration.get("seconds"), int)
-            and ooc_duration.get("seconds") > 0
+            and isinstance(raw_seconds, int)
+            and raw_seconds > 0
         )
+        ooc_seconds = raw_seconds if isinstance(raw_seconds, int) else 0
         duration_type = "timed" if is_timed else "until_long_rest"
         created_at_game_time_seconds = game_time_seconds if is_timed else None
         expires_at_game_time_seconds = (
-            game_time_seconds + ooc_duration["seconds"] if is_timed else None
+            game_time_seconds + ooc_seconds if is_timed else None
         )
 
         results.append({
@@ -882,7 +884,8 @@ def compute_temp_hp_upcast_bonus(
         effect_bonus=0,
         upcast=structured,
     )
-    return int(result.get("effect_bonus") or 0)
+    effect_bonus = result.get("effect_bonus") or 0
+    return int(effect_bonus) if isinstance(effect_bonus, (int, float, str)) else 0
 
 
 def roll_spell_temp_hp_effects(

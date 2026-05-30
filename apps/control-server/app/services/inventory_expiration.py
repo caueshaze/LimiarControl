@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlmodel import Session, select
+from sqlalchemy import ColumnElement
+from sqlmodel import Session, col, select
 
 from app.models.inventory import InventoryItem
 
@@ -45,15 +46,15 @@ def purge_expired_inventory_items(
 ) -> list[str]:
     reference = normalize_inventory_timestamp(now) or utcnow()
 
-    filters = [InventoryItem.expires_at.is_not(None)]
+    filters: list[ColumnElement[bool]] = [col(InventoryItem.expires_at).is_not(None)]
     if campaign_id:
-        filters.append(InventoryItem.campaign_id == campaign_id)
+        filters.append(col(InventoryItem.campaign_id) == campaign_id)
     if member_id:
-        filters.append(InventoryItem.member_id == member_id)
+        filters.append(col(InventoryItem.member_id) == member_id)
     if party_id is not None:
-        filters.append(InventoryItem.party_id == party_id)
+        filters.append(col(InventoryItem.party_id) == party_id)
     if inventory_item_id:
-        filters.append(InventoryItem.id == inventory_item_id)
+        filters.append(col(InventoryItem.id) == inventory_item_id)
 
     entries = db.exec(select(InventoryItem).where(*filters)).all()
     removed_ids: list[str] = []

@@ -50,7 +50,7 @@ def list_base_items(
     if is_active is not None:
         statement = statement.where(BaseItem.is_active == is_active)  # noqa: E712
     statement = statement.order_by(BaseItem.item_kind, BaseItem.name_pt, BaseItem.canonical_key)
-    return db.exec(statement).all()
+    return list(db.exec(statement).all())
 
 
 def get_base_item_by_id(*, db: Session, base_item_id: str) -> BaseItem | None:
@@ -135,7 +135,7 @@ def create_base_item(
         magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
     )
 
-    item = BaseItem(id=str(uuid4()))
+    item = BaseItem(id=str(uuid4()))  # type: ignore[call-arg]  # required columns set by _apply_payload
     _apply_payload(item, payload)
     db.add(item)
     if commit:

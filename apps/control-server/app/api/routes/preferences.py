@@ -33,7 +33,7 @@ def update_preferences(
         select(Preferences).where(Preferences.user_id == user.id)
     ).first()
     if not prefs:
-        prefs = Preferences(
+        prefs = Preferences(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
             user_id=user.id, selected_campaign_id=payload.selectedCampaignId
         )
         session.add(prefs)
@@ -51,4 +51,5 @@ def update_preferences(
             session.add(prefs)
             session.commit()
 
+    assert prefs is not None  # IntegrityError implies a concurrent row exists; re-query finds it
     return PreferencesRead(selectedCampaignId=prefs.selected_campaign_id)

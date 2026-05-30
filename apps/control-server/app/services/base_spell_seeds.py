@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import cast
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.serializers.base_spell import to_base_spell_seed_entry
 from app.models.base_spell import BaseSpell
-from app.schemas.base_spell import BaseSpellCreate, BaseSpellSeedDocument
+from app.schemas.base_spell import BaseSpellCreate, BaseSpellSeedDocument, BaseSpellUpdate
 from app.services.base_spells import create_base_spell, update_base_spell
 from app.services.seed_paths import resolve_base_seed_path
 
@@ -95,9 +96,9 @@ def export_base_spell_seed_document(
 ) -> BaseSpellSeedDocument:
     spells = db.exec(
         select(BaseSpell).order_by(
-            BaseSpell.system,
-            BaseSpell.level,
-            BaseSpell.canonical_key,
+            col(BaseSpell.system),
+            col(BaseSpell.level),
+            col(BaseSpell.canonical_key),
         )
     ).all()
     document = BaseSpellSeedDocument(
@@ -141,7 +142,9 @@ def import_base_spell_seed_document(
                 update_base_spell(
                     db=db,
                     spell=existing,
-                    payload=entry,
+                    # BaseSpellCreate/BaseSpellUpdate are interchangeable BaseSpellWrite
+                    # subclasses; cast keeps the same object (no re-validation).
+                    payload=cast(BaseSpellUpdate, entry),
                     commit=False,
                     refresh=False,
                 )

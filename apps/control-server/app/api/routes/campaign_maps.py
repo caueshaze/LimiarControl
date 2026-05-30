@@ -1,7 +1,8 @@
+from typing import Any, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
@@ -28,6 +29,7 @@ router = APIRouter()
 
 
 def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMapConfigRead:
+    assert campaign.id is not None  # persisted map always has an id
     calibration = None
     if all(
         value is not None
@@ -53,7 +55,7 @@ def _serialize_campaign_map_config(campaign: CampaignTacticalMap) -> CampaignMap
         imageUrl=campaign.image_url,
         gridWidth=campaign.grid_width,
         gridHeight=campaign.grid_height,
-        calibration=calibration,
+        calibration=cast(Any, calibration),
         obstacles=obstacles,
         edgeObstacles=edge_obstacles,
         blockedCells=decode_blocked_cells(getattr(campaign, "blocked_cells_json", None)) if obstacles is None else [],
@@ -69,7 +71,7 @@ def _list_campaign_map_configs(
     statement = (
         select(CampaignTacticalMap)
         .where(CampaignTacticalMap.campaign_id == campaign_id)
-        .order_by(CampaignTacticalMap.created_at.desc())
+        .order_by(col(CampaignTacticalMap.created_at).desc())
     )
     entries = session.exec(statement).all()
     return [_serialize_campaign_map_config(entry) for entry in entries]
@@ -169,7 +171,7 @@ def create_campaign_map_config(
     session: Session = Depends(get_session),
 ):
     require_gm(campaign_id, user, session)
-    entry = CampaignTacticalMap(
+    entry = CampaignTacticalMap(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
         id=str(uuid4()),
         campaign_id=campaign_id,
     )

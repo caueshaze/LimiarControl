@@ -209,7 +209,7 @@ def list_healing_consumable_targets(
         state_payload = (
             state_map[user_id].state_json
             if user_id in state_map and isinstance(state_map[user_id].state_json, dict)
-            else sheet_map.get(user_id).data if user_id in sheet_map and isinstance(sheet_map[user_id].data, dict) else {}
+            else sheet_map[user_id].data if user_id in sheet_map and isinstance(sheet_map[user_id].data, dict) else {}
         )
         current_hp, max_hp = _extract_hp_snapshot(state_payload if isinstance(state_payload, dict) else {})
         targets.append(

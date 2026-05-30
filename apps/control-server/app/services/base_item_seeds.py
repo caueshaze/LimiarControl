@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import cast
 
 from sqlmodel import Session, select
 
 from app.api.serializers.base_item import to_base_item_seed_entry
 from app.models.base_item import BaseItem
-from app.schemas.base_item import BaseItemCreate, BaseItemSeedDocument
+from app.schemas.base_item import BaseItemCreate, BaseItemSeedDocument, BaseItemUpdate
 from app.services.base_items import create_base_item, update_base_item
 from app.services.seed_paths import resolve_base_seed_path
 
@@ -100,7 +101,13 @@ def import_base_item_seed_document(
             existing = items_by_key.get(key)
             if existing:
                 update_base_item(
-                    db=db, item=existing, payload=entry, commit=False, refresh=False
+                    db=db,
+                    item=existing,
+                    # BaseItemCreate/BaseItemUpdate are interchangeable BaseItemWrite
+                    # subclasses; cast keeps the same object (no re-validation).
+                    payload=cast(BaseItemUpdate, entry),
+                    commit=False,
+                    refresh=False,
                 )
                 updated += 1
                 continue

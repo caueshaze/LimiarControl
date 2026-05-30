@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
@@ -92,6 +94,7 @@ async def _publish_roll_result(
     ).first()
     if not session_entry:
         return
+    assert session_entry.id is not None  # persisted session always has an id
 
     member = db.exec(
         select(CampaignMember).where(
@@ -166,7 +169,9 @@ def ensure_combat_map(
             reason="combat_not_found",
         )
 
-    phase = state.phase.value if hasattr(state.phase, "value") else str(state.phase)
+    # phase is a CombatPhase value string, which matches the response's
+    # Literal combat_phase; cast(Any) bridges the str -> Literal gap.
+    phase = cast(Any, state.phase.value if hasattr(state.phase, "value") else str(state.phase))
     if state.phase not in (CombatPhase.active, CombatPhase.placement, "active", "placement"):
         return CombatMapEnsureResponse(
             session_id=session_id,
@@ -238,6 +243,7 @@ async def next_turn(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.next_turn(
         db,
         session_id,

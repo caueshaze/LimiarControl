@@ -46,6 +46,7 @@ class CombatStatLookupMixin:
             str_val = abilities.get("strength", 10)
             dex_val = abilities.get("dexterity", 10)
             combat_effects = None
+            participant = None
             if combat_state is not None:
                 participant = next(
                     (

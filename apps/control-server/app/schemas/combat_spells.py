@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from pydantic import AliasChoices, BaseModel, Field
 
 from app.schemas.campaign_entity_shared import AbilityName
 from app.schemas.base_spell_effects import AttackAdvantageCondition
 from app.schemas.base_spell import SpellVariantManualNote
-from app.schemas.roll import RollResult, RollSource
+from app.schemas.roll import RollResult, RollSource, WeaponDamageBreakdown
 
 from .combat_lifecycle import CombatActionCost
+
+if TYPE_CHECKING:
+    # Imported for forward-ref annotations only; resolved at runtime via
+    # combat.py's model_rebuild(_types_namespace=...). A runtime import would
+    # create a cycle (combat_actions imports CombatGridCell from this module).
+    from .combat_actions import CombatConcentrationCheckResult
 
 
 class CombatAttackRequest(BaseModel):

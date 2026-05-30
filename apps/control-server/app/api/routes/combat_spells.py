@@ -46,6 +46,7 @@ async def action_cast_spell(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.cast_spell(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -69,6 +70,7 @@ def get_area_targeting_map_state(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return CombatService.get_area_targeting_map_state(
         db,
         session_id,
@@ -88,6 +90,7 @@ def action_cast_spell_preview(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return CombatService.preview_area_spell_targeting(
         db,
         session_id,
@@ -107,6 +110,7 @@ def resolve_spell_context(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return CombatService.resolve_spell_context(
         db,
         session_id,
@@ -126,6 +130,7 @@ async def action_move_preview(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.preview_movement(
         db,
         session_id,
@@ -145,6 +150,7 @@ async def action_move(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.confirm_movement(
         db,
         session_id,
@@ -163,6 +169,7 @@ async def action_cast_spell_effect(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.cast_spell_effect(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -182,6 +189,7 @@ async def spiritual_weapon_action(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.use_spiritual_weapon_action(
         db,
         session_id,
@@ -198,6 +206,7 @@ async def mage_hand_action(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     return await CombatService.use_mage_hand_action(
         db,
         session_id,

@@ -214,6 +214,7 @@ class WeaponAttackDamageMixin:
             "damage_dice": pending_attack.get("damage_dice") or "",
             "damage_rolls": damage_rolls,
             "extra_damage_rolls": extra_damage_rolls,
+            "extra_damage": sum(extra_damage_rolls),
             "extra_damage_label": extra_damage_label,
             "damage_breakdown": damage_breakdown,
             "base_damage": base_damage,

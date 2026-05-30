@@ -40,7 +40,7 @@ def _make_db(campaign_id="camp-1", member_id="member-1", weight_lb=0.0, no_sessi
     db.exec.side_effect = [
         MagicMock(first=MagicMock(return_value=campaign_session)),
         MagicMock(first=MagicMock(return_value=member)),
-        MagicMock(scalar=MagicMock(return_value=weight_lb)),
+        MagicMock(first=MagicMock(return_value=weight_lb)),
     ]
     return db
 

@@ -1,8 +1,9 @@
+from typing import Any, TypeVar, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
 from app.db.session import get_session
@@ -39,7 +40,10 @@ def _model_to_dict(value: BaseModel | None) -> dict | None:
     return dumped if dumped else None
 
 
-def _dict_to_model(raw: dict | None, model_cls: type[BaseModel]) -> BaseModel | None:
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
+
+
+def _dict_to_model(raw: dict | None, model_cls: type[_ModelT]) -> _ModelT | None:
     if not raw:
         return None
     return model_cls(**raw)
@@ -62,7 +66,9 @@ def _mapping_to_dict(raw: dict | None) -> dict:
     return raw if isinstance(raw, dict) else {}
 
 
-def _string_list(raw: list | None) -> list[str]:
+def _string_list(raw: list | None) -> list[Any]:
+    # Returns validated strings; typed list[Any] so they slot into the schemas'
+    # Literal-typed fields (DamageType, ConditionType) without per-call casts.
     if not raw:
         return []
     return [entry for entry in raw if isinstance(entry, str)]
@@ -105,13 +111,14 @@ def _validated_entity_image_ref(
 
 
 def to_campaign_entity_read(entry: CampaignEntity) -> CampaignEntityRead:
+    assert entry.id is not None  # persisted entity always has an id
     return CampaignEntityRead(
         id=entry.id,
         campaignId=entry.campaign_id,
         name=entry.name,
         category=entry.category,
-        size=entry.size,
-        creatureType=entry.creature_type,
+        size=cast(Any, entry.size),
+        creatureType=cast(Any, entry.creature_type),
         creatureSubtype=entry.creature_subtype,
         description=entry.description,
         imageUrl=entry.image_url,
@@ -139,13 +146,14 @@ def to_campaign_entity_read(entry: CampaignEntity) -> CampaignEntityRead:
 
 
 def to_campaign_entity_public_read(entry: CampaignEntity) -> CampaignEntityPublicRead:
+    assert entry.id is not None  # persisted entity always has an id
     return CampaignEntityPublicRead(
         id=entry.id,
         campaignId=entry.campaign_id,
         name=entry.name,
         category=entry.category,
-        size=entry.size,
-        creatureType=entry.creature_type,
+        size=cast(Any, entry.size),
+        creatureType=cast(Any, entry.creature_type),
         creatureSubtype=entry.creature_subtype,
         description=entry.description,
         imageUrl=entry.image_url,
@@ -180,7 +188,7 @@ def list_campaign_entities(
     statement = (
         select(CampaignEntity)
         .where(CampaignEntity.campaign_id == campaign_id)
-        .order_by(CampaignEntity.created_at.desc())
+        .order_by(col(CampaignEntity.created_at).desc())
     )
     entries = session.exec(statement).all()
     return [to_campaign_entity_read(e) for e in entries]
@@ -203,7 +211,7 @@ def create_campaign_entity(
         image_url=payload.imageUrl,
         allow_existing_final=False,
     )
-    entry = CampaignEntity(
+    entry = CampaignEntity(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
         id=str(uuid4()),
         campaign_id=campaign_id,
         name=payload.name.strip(),
@@ -234,7 +242,7 @@ def create_campaign_entity(
     )
     promoted_image_url: str | None = None
     if source_image_ref is not None:
-        final_ref = build_entity_asset_ref(campaign_id, entry.id, source_image_ref.asset_id)
+        final_ref = build_entity_asset_ref(campaign_id, cast(str, entry.id), source_image_ref.asset_id)
         copy_object(source_image_ref, final_ref)
         promoted_image_url = final_ref.url
         entry.image_url = promoted_image_url
@@ -361,8 +369,8 @@ def list_public_campaign_entities(
     # Return campaign entities that are currently revealed in any active session
     statement = (
         select(CampaignEntity)
-        .join(SessionEntity, SessionEntity.campaign_entity_id == CampaignEntity.id)
-        .join(SessionModel, SessionModel.id == SessionEntity.session_id)
+        .join(SessionEntity, col(SessionEntity.campaign_entity_id) == CampaignEntity.id)
+        .join(SessionModel, col(SessionModel.id) == SessionEntity.session_id)
         .where(
             CampaignEntity.campaign_id == campaign_id,
             SessionEntity.visible_to_players == True,

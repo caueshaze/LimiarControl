@@ -359,6 +359,18 @@ def _make_spell_catalog_entry(cover_applies_to_save: str | None = None):
         range_meters=45,
         radius_meters=6,
         cover_applies_to_save=cover_applies_to_save,
+        material_component_consumed=False,
+        consumable_material_options_json=None,
+        concentration=False,
+        duration=None,
+        effects_json=None,
+        max_targets=None,
+        variants_json=None,
+        persistent_area_json=None,
+        requires_target_hearing=None,
+        on_end_effects_json=None,
+        attack_advantage_condition_json=None,
+        material_component_text=None,
     )
 
 

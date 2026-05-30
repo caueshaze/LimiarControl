@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, require_gm
 from app.db.session import get_session
@@ -50,7 +50,7 @@ def _ensure_unique_campaign_name_for_gm(
 
     statement = (
         select(Campaign.id)
-        .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
+        .join(CampaignMember, col(CampaignMember.campaign_id) == Campaign.id)
         .where(
             CampaignMember.user_id == gm_user_id,
             CampaignMember.role_mode == RoleMode.GM,
@@ -74,7 +74,7 @@ def list_campaigns(
     session: Session = Depends(get_session),
 ):
     statement = (
-        select(
+        select(  # type: ignore[call-overload]  # sqlmodel select() typed overloads cap at 4 columns
             Campaign.id,
             Campaign.name,
             Campaign.system,
@@ -82,9 +82,9 @@ def list_campaigns(
             Campaign.updated_at,
             CampaignMember.role_mode,
         )
-        .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
+        .join(CampaignMember, col(CampaignMember.campaign_id) == Campaign.id)
         .where(CampaignMember.user_id == user.id)
-        .order_by(Campaign.created_at.desc())
+        .order_by(col(Campaign.created_at).desc())
     )
     entries = session.exec(statement).all()
     return [
@@ -109,6 +109,7 @@ def campaign_overview(
     campaign = session.exec(select(Campaign).where(Campaign.id == campaign_id)).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    assert campaign.id is not None  # persisted campaign always has an id
     member = session.exec(
         select(CampaignMember).where(
             CampaignMember.campaign_id == campaign_id,
@@ -145,13 +146,15 @@ def create_campaign(
         raise HTTPException(status_code=400, detail="Invalid payload")
     campaign_name = payload.name.strip()
     _ensure_supported_system(payload.system)
+    assert user.id is not None  # authenticated user always has an id
     _ensure_unique_campaign_name_for_gm(campaign_name, user.id, session)
-    campaign = Campaign(
+    campaign = Campaign(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
         id=str(uuid4()),
         name=campaign_name,
         system=payload.system,
     )
-    member = CampaignMember(
+    assert campaign.id is not None
+    member = CampaignMember(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
         id=str(uuid4()),
         campaign_id=campaign.id,
         user_id=user.id,
@@ -183,6 +186,8 @@ def update_campaign(
     session: Session = Depends(get_session),
 ):
     campaign, _member = require_gm(campaign_id, user, session)
+    assert user.id is not None  # authenticated user always has an id
+    assert campaign.id is not None  # persisted campaign always has an id
     if payload.name is not None:
         if not payload.name.strip():
             raise HTTPException(status_code=400, detail="Invalid payload")

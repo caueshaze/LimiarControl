@@ -116,9 +116,7 @@ def _build_structured_upcast_from_legacy(
             raise ValueError(
                 f"upcastMode '{normalized_mode}' requires upcastValue (dice expression)."
             )
-        return SpellUpcastConfig(
-            mode=normalized_mode, dice=normalized_value, perLevel=1
-        )  # type: ignore[arg-type]
+        return SpellUpcastConfig(mode=normalized_mode, dice=normalized_value, perLevel=1)  # type: ignore[arg-type]
     if normalized_mode in NEW_MODES_NEEDING_FLAT:
         flat_val = (
             int(normalized_value)

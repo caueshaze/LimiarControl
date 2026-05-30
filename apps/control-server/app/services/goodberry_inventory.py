@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import unicodedata
 from uuid import uuid4
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.campaign import SystemType
 from app.models.campaign_member import CampaignMember
@@ -65,6 +65,7 @@ def grant_catalog_item_to_player_inventory(
         canonical_key=canonical_key,
         commit=False,
     )
+    assert campaign_item.id is not None  # persisted catalog item always has an id
 
     entry = None
     if expires_at is None and not source_spell_canonical_key and inventory_item_supports_stacking(campaign_item):
@@ -145,7 +146,7 @@ def remove_catalog_item_from_player_inventory(
         select(InventoryItem).where(
             InventoryItem.campaign_id == campaign_id,
             InventoryItem.member_id == member.id,
-            InventoryItem.item_id.in_(item_ids),
+            col(InventoryItem.item_id).in_(item_ids),
         )
     ).all()
 

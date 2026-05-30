@@ -10,17 +10,17 @@ router = APIRouter()
 
 
 def _list_resettable_tables(session: Session) -> list[str]:
-    rows = session.exec(
-        text(
-            """
-            SELECT tablename
-            FROM pg_tables
-            WHERE schemaname = 'public'
-              AND tablename <> 'alembic_version'
-            ORDER BY tablename
-            """
-        )
-    ).all()
+    query = text(
+        """
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+          AND tablename <> 'alembic_version'
+        ORDER BY tablename
+        """
+    )
+    # sqlmodel's exec() stub only types SELECT statements, not raw text() clauses.
+    rows = session.exec(query).all()  # type: ignore[call-overload]
     tables: list[str] = []
     for row in rows:
         if isinstance(row, str):
@@ -40,7 +40,7 @@ def truncate_all_application_tables(session: Session) -> list[str]:
         return []
 
     quoted_tables = ", ".join(f'"{table}"' for table in tables)
-    session.exec(text(f"TRUNCATE TABLE {quoted_tables} RESTART IDENTITY CASCADE"))
+    session.exec(text(f"TRUNCATE TABLE {quoted_tables} RESTART IDENTITY CASCADE"))  # type: ignore[call-overload]
     return tables
 
 @router.post("/reset")

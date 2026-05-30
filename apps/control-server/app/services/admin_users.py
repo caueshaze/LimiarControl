@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 from sqlalchemy import case, delete, func, or_, update
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.base_item import BaseItem
 from app.models.base_spell import BaseSpell
@@ -64,7 +64,7 @@ def list_admin_users(
     limit: int = 100,
 ) -> list[AdminUserRead]:
     statement = (
-        select(
+        select(  # type: ignore[call-overload]  # sqlmodel select() typed overloads cap at 4 columns
             User.id,
             User.username,
             User.display_name,
@@ -76,7 +76,7 @@ def list_admin_users(
             func.count(
                 func.distinct(
                     case(
-                        (CampaignMember.role_mode == RoleMode.GM, CampaignMember.campaign_id),
+                        (col(CampaignMember.role_mode) == RoleMode.GM, CampaignMember.campaign_id),
                     )
                 )
             ).label("gm_campaigns_count"),
@@ -94,7 +94,7 @@ def list_admin_users(
             User.created_at,
             User.updated_at,
         )
-        .order_by(User.created_at.desc())
+        .order_by(col(User.created_at).desc())
         .limit(limit)
     )
 
@@ -102,8 +102,8 @@ def list_admin_users(
         pattern = f"%{search.strip()}%"
         statement = statement.where(
             or_(
-                User.username.ilike(pattern),
-                User.display_name.ilike(pattern),
+                col(User.username).ilike(pattern),
+                col(User.display_name).ilike(pattern),
             )
         )
     if role is not None:
@@ -160,6 +160,7 @@ def update_admin_user(*, db: Session, user_id: str, payload: AdminUserUpdate) ->
     db.add(user)
     db.commit()
     db.refresh(user)
+    assert user.id is not None  # persisted user always has an id
 
     campaigns_count = db.exec(
         select(func.count(func.distinct(CampaignMember.campaign_id))).where(
@@ -239,38 +240,40 @@ def delete_admin_user(*, db: Session, user_id: str) -> None:
         if member_id
     ]
 
+    # sqlmodel's exec() stub only types SELECT statements, so DELETE/UPDATE
+    # Core statements trip its overloads; the runtime handles them fine.
     if remaining_member_ids:
-        db.exec(delete(InventoryItem).where(InventoryItem.member_id.in_(remaining_member_ids)))
-        db.exec(delete(PurchaseEvent).where(PurchaseEvent.member_id.in_(remaining_member_ids)))
-        db.exec(
+        db.exec(delete(InventoryItem).where(col(InventoryItem.member_id).in_(remaining_member_ids)))  # type: ignore[call-overload]
+        db.exec(delete(PurchaseEvent).where(col(PurchaseEvent.member_id).in_(remaining_member_ids)))  # type: ignore[call-overload]
+        db.exec(  # type: ignore[call-overload]
             delete(SessionCommandEvent).where(
-                SessionCommandEvent.member_id.in_(remaining_member_ids)
+                col(SessionCommandEvent.member_id).in_(remaining_member_ids)
             )
         )
 
-    db.exec(
+    db.exec(  # type: ignore[call-overload]
         update(CharacterSheet)
-        .where(CharacterSheet.delivered_by_user_id == user_id)
+        .where(col(CharacterSheet.delivered_by_user_id) == user_id)
         .values(delivered_by_user_id=None)
     )
-    db.exec(update(PurchaseEvent).where(PurchaseEvent.user_id == user_id).values(user_id=None))
-    db.exec(
+    db.exec(update(PurchaseEvent).where(col(PurchaseEvent.user_id) == user_id).values(user_id=None))  # type: ignore[call-overload]
+    db.exec(  # type: ignore[call-overload]
         update(SessionCommandEvent)
-        .where(SessionCommandEvent.user_id == user_id)
+        .where(col(SessionCommandEvent.user_id) == user_id)
         .values(user_id=None)
     )
-    db.exec(update(RollEvent).where(RollEvent.user_id == user_id).values(user_id=None))
+    db.exec(update(RollEvent).where(col(RollEvent.user_id) == user_id).values(user_id=None))  # type: ignore[call-overload]
 
-    db.exec(delete(SessionState).where(SessionState.player_user_id == user_id))
-    db.exec(delete(CharacterSheet).where(CharacterSheet.player_user_id == user_id))
-    db.exec(
+    db.exec(delete(SessionState).where(col(SessionState.player_user_id) == user_id))  # type: ignore[call-overload]
+    db.exec(delete(CharacterSheet).where(col(CharacterSheet.player_user_id) == user_id))  # type: ignore[call-overload]
+    db.exec(  # type: ignore[call-overload]
         delete(PartyCharacterSheetDraft).where(
-            PartyCharacterSheetDraft.created_by_user_id == user_id
+            col(PartyCharacterSheetDraft.created_by_user_id) == user_id
         )
     )
-    db.exec(delete(PartyMember).where(PartyMember.user_id == user_id))
-    db.exec(delete(Preferences).where(Preferences.user_id == user_id))
-    db.exec(delete(CampaignMember).where(CampaignMember.user_id == user_id))
+    db.exec(delete(PartyMember).where(col(PartyMember.user_id) == user_id))  # type: ignore[call-overload]
+    db.exec(delete(Preferences).where(col(Preferences.user_id) == user_id))  # type: ignore[call-overload]
+    db.exec(delete(CampaignMember).where(col(CampaignMember.user_id) == user_id))  # type: ignore[call-overload]
     db.delete(user)
     db.commit()
     for campaign_id in deleted_campaign_ids:

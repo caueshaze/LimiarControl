@@ -19,6 +19,8 @@ classResources in character_sheet.data is initialised here for druids:
 """
 from __future__ import annotations
 
+from typing import Any
+
 from app.services.wild_shape_catalog import WildFormStats, get_form
 
 
@@ -41,7 +43,7 @@ def compute_wild_shape_uses_max(druid_level: int) -> int:
 # Block helpers
 # ---------------------------------------------------------------------------
 
-def _safe_int(value: object, fallback: int = 0) -> int:
+def _safe_int(value: Any, fallback: int = 0) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -180,7 +182,7 @@ def force_revert(data: dict) -> dict:
 # Damage routing
 # ---------------------------------------------------------------------------
 
-def apply_damage_to_form(data: dict, amount: int) -> tuple[dict, bool]:
+def apply_damage_to_form(data: dict, amount: int) -> tuple[dict, bool, int]:
     """Route damage through Wild Shape HP pool.
 
     Returns (updated_data, reverted, overflow).

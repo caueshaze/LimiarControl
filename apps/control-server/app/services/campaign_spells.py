@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.base_spell import BaseSpell, SpellSchool, SpellSource
 from app.models.campaign_spell import CampaignSpell
@@ -104,13 +104,13 @@ def seed_campaign_spells(
             BaseSpell.system == system,
             BaseSpell.is_active == True,  # noqa: E712
         )
-        .order_by(BaseSpell.level, BaseSpell.name_en)
+        .order_by(col(BaseSpell.level), col(BaseSpell.name_en))
     ).all()
 
     inserted = 0
     for base_spell in base_spells:
         db.add(
-            CampaignSpell(
+            CampaignSpell(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
                 campaign_id=campaign_id,
                 base_spell_id=base_spell.id,
                 canonical_key=base_spell.canonical_key,
@@ -230,7 +230,7 @@ def list_campaign_spells(
             CampaignSpell.campaign_id == campaign_id,
             CampaignSpell.is_enabled == True,  # noqa: E712
         )
-        .order_by(CampaignSpell.level, CampaignSpell.name_en)
+        .order_by(col(CampaignSpell.level), col(CampaignSpell.name_en))
     )
     if level is not None:
         statement = statement.where(CampaignSpell.level == level)
@@ -289,6 +289,7 @@ def create_campaign_spell(
     commit: bool = True,
     refresh: bool = True,
 ) -> CampaignSpell:
+    assert campaign.id is not None  # persisted campaign always has an id
     existing = get_campaign_spell_by_canonical_key(
         db=db,
         campaign_id=campaign.id,
@@ -303,7 +304,7 @@ def create_campaign_spell(
             ),
         )
 
-    spell = CampaignSpell(
+    spell = CampaignSpell(  # type: ignore[call-arg]  # remaining columns set by _apply_spell_data / DB defaults
         id=str(uuid4()),
         campaign_id=campaign.id,
         base_spell_id=None,

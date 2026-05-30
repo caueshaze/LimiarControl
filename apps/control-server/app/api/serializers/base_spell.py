@@ -1,7 +1,19 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 from app.models.base_spell import BaseSpell
 from app.schemas.base_spell import BaseSpellCreate, BaseSpellRead
+
+if TYPE_CHECKING:
+    from app.schemas.base_spell import (
+        AttackAdvantageCondition,
+        SpellCantripScalingConfig,
+        SpellDeclarativeEffect,
+        SpellPersistentAreaEffect,
+        SpellUpcastConfig,
+        SpellVariant,
+    )
 from app.services.combat_service.spell_automation import (
     CombatSpellAutomationMixin,
 )
@@ -68,20 +80,26 @@ def to_base_spell_read(spell: BaseSpell) -> BaseSpellRead:
         damageDice=spell.damage_dice,
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
-        effects=spell.effects_json,
-        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
-        onEndEffects=spell.on_end_effects_json,
-        variants=spell.variants_json,
-        persistentArea=spell.persistent_area_json,
+        effects=cast("list[SpellDeclarativeEffect] | None", spell.effects_json),
+        attackAdvantageCondition=cast(
+            "AttackAdvantageCondition | None",
+            _optional_attack_advantage_condition_attr(spell),
+        ),
+        onEndEffects=cast("list[SpellDeclarativeEffect] | None", spell.on_end_effects_json),
+        variants=cast("list[SpellVariant] | None", spell.variants_json),
+        persistentArea=cast("SpellPersistentAreaEffect | None", spell.persistent_area_json),
         requiresTargetSight=spell.requires_target_sight,
         requiresTargetHearing=spell.requires_target_hearing,
         requiresTargetEffect=spell.requires_target_effect,
         requiresPointSight=spell.requires_point_sight,
         requiresPointEffect=spell.requires_point_effect,
-        upcast=spell.upcast_json if spell.level > 0 else None,
+        upcast=cast(
+            "SpellUpcastConfig | None",
+            spell.upcast_json if spell.level > 0 else None,
+        ),
         upcastMode=spell.upcast_mode,
         upcastValue=spell.upcast_value,
-        cantripScaling=spell.cantrip_scaling_json,
+        cantripScaling=cast("SpellCantripScalingConfig | None", spell.cantrip_scaling_json),
         source=spell.source,
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,
@@ -139,18 +157,24 @@ def to_base_spell_seed_entry(spell: BaseSpell) -> BaseSpellCreate:
         damageDice=spell.damage_dice,
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
-        effects=spell.effects_json,
-        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
-        onEndEffects=spell.on_end_effects_json,
-        variants=spell.variants_json,
-        persistentArea=spell.persistent_area_json,
+        effects=cast("list[SpellDeclarativeEffect] | None", spell.effects_json),
+        attackAdvantageCondition=cast(
+            "AttackAdvantageCondition | None",
+            _optional_attack_advantage_condition_attr(spell),
+        ),
+        onEndEffects=cast("list[SpellDeclarativeEffect] | None", spell.on_end_effects_json),
+        variants=cast("list[SpellVariant] | None", spell.variants_json),
+        persistentArea=cast("SpellPersistentAreaEffect | None", spell.persistent_area_json),
         requiresTargetSight=spell.requires_target_sight,
         requiresTargetHearing=spell.requires_target_hearing,
         requiresTargetEffect=spell.requires_target_effect,
         requiresPointSight=spell.requires_point_sight,
         requiresPointEffect=spell.requires_point_effect,
-        upcast=spell.upcast_json if spell.level > 0 else None,
-        cantripScaling=spell.cantrip_scaling_json,
+        upcast=cast(
+            "SpellUpcastConfig | None",
+            spell.upcast_json if spell.level > 0 else None,
+        ),
+        cantripScaling=cast("SpellCantripScalingConfig | None", spell.cantrip_scaling_json),
         source=spell.source,
         sourceRef=spell.source_ref,
         isSrd=spell.is_srd,

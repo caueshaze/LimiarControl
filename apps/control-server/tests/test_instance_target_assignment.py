@@ -493,6 +493,7 @@ class ResolveMultiInstanceCastTests(unittest.IsolatedAsyncioTestCase):
             concentration_roll_source="system",
             concentration_manual_roll=None,
             override_resource_limit=False,
+            consumable_material_key=None,
         )
         validated_targets = [
             {"instance_index": 1, "target_ref_id": "entity:goblin-a", "participant": state.participants[1]},

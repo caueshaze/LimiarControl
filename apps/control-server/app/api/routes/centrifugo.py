@@ -49,6 +49,7 @@ def subscribe_token(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    assert user.id is not None  # authenticated user always has an id
     channel = body.channel
     parts = channel.split(":", 1)
     if len(parts) != 2:

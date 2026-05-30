@@ -73,6 +73,7 @@ from ..unit_conversion import meters_to_cells
 
 
 class WildShapeMixin:
+    @classmethod
     async def wild_shape_attack(
         cls,
         db: Session,

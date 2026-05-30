@@ -24,6 +24,7 @@ DEPRECATION_REMOVAL_DATE = date(2026, 6, 1)
 
 
 def to_inventory_read(entry: InventoryItem) -> InventoryRead:
+    assert entry.id is not None  # persisted inventory item always has an id
     try:
         condition_tags = normalize_item_condition_tags(entry.condition_tags)
     except ValueError:
@@ -185,7 +186,7 @@ def buy_item(
         session.refresh(existing)
         return to_inventory_read(existing)
 
-    entry = InventoryItem(
+    entry = InventoryItem(  # type: ignore[call-arg]  # created_at/updated_at filled by DB defaults
         id=str(uuid4()),
         campaign_id=campaign_id,
         member_id=member.id,

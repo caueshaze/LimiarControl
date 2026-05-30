@@ -87,6 +87,18 @@ def _make_spell_catalog(**overrides) -> MagicMock:
         requires_point_sight=False,
         requires_point_effect=False,
         cover_applies_to_save=None,
+        material_component_consumed=False,
+        consumable_material_options_json=None,
+        concentration=False,
+        duration=None,
+        effects_json=None,
+        max_targets=None,
+        variants_json=None,
+        persistent_area_json=None,
+        requires_target_hearing=None,
+        on_end_effects_json=None,
+        attack_advantage_condition_json=None,
+        material_component_text=None,
     )
     defaults.update(overrides)
     return MagicMock(**defaults)

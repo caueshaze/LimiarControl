@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from sqlalchemy import delete, inspect
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.campaign import Campaign
 from app.models.campaign_entity import CampaignEntity
@@ -41,7 +41,8 @@ def _delete_where_ids(
 ) -> None:
     if not ids or model.__table__.name not in existing_tables:
         return
-    db.exec(delete(model).where(column.in_(ids)))
+    # sqlmodel's exec() stub only types SELECT; DELETE runs fine at runtime.
+    db.exec(delete(model).where(column.in_(ids)))  # type: ignore[call-overload]
 
 
 def _delete_where(
@@ -52,7 +53,7 @@ def _delete_where(
 ) -> None:
     if model.__table__.name not in existing_tables:
         return
-    db.exec(delete(model).where(clause))
+    db.exec(delete(model).where(clause))  # type: ignore[call-overload]
 
 
 def _existing_tables(db: Session) -> set[str]:
@@ -129,15 +130,15 @@ def delete_campaign_tree(db: Session, campaign: Campaign) -> None:
     _delete_where(db, InventoryItem, InventoryItem.campaign_id == campaign_id, existing_tables)
 
     if party_ids:
-        _delete_where(db, CharacterSheet, CharacterSheet.party_id.in_(party_ids), existing_tables)
+        _delete_where(db, CharacterSheet, col(CharacterSheet.party_id).in_(party_ids), existing_tables)
         _delete_where(
             db,
             PartyCharacterSheetDraft,
-            PartyCharacterSheetDraft.party_id.in_(party_ids),
+            col(PartyCharacterSheetDraft.party_id).in_(party_ids),
             existing_tables,
         )
-        _delete_where(db, PartyMember, PartyMember.party_id.in_(party_ids), existing_tables)
-        _delete_where(db, Party, Party.id.in_(party_ids), existing_tables)
+        _delete_where(db, PartyMember, col(PartyMember.party_id).in_(party_ids), existing_tables)
+        _delete_where(db, Party, col(Party.id).in_(party_ids), existing_tables)
 
     _delete_where(db, RollEvent, RollEvent.campaign_id == campaign_id, existing_tables)
     _delete_where(db, CampaignSpell, CampaignSpell.campaign_id == campaign_id, existing_tables)

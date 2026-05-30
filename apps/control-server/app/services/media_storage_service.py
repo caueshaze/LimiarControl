@@ -4,6 +4,7 @@ import io
 import logging
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
+from typing import Any
 
 from minio.commonconfig import CopySource
 from minio.error import S3Error
@@ -195,7 +196,8 @@ def delete_campaign_prefix_best_effort(campaign_id: str) -> None:
             prefix=prefix,
             recursive=True,
         ):
-            client.remove_object(settings.minio_bucket, entry.object_name)
+            if entry.object_name:
+                client.remove_object(settings.minio_bucket, entry.object_name)
     except S3Error as exc:
         if exc.code == "NoSuchBucket":
             return
@@ -215,17 +217,18 @@ def cleanup_expired_temporary_assets(max_age_hours: int = TEMP_ENTITY_ASSET_MAX_
             prefix=prefix,
             recursive=True,
         ):
-            if "/entities/tmp/" not in entry.object_name:
+            object_name = entry.object_name
+            if not object_name or "/entities/tmp/" not in object_name:
                 continue
             last_modified = getattr(entry, "last_modified", None)
             if last_modified is None or last_modified >= cutoff:
                 continue
             try:
-                client.remove_object(settings.minio_bucket, entry.object_name)
+                client.remove_object(settings.minio_bucket, object_name)
                 removed += 1
             except Exception:
                 logger.exception(
-                    "Failed to remove expired temporary asset %s", entry.object_name
+                    "Failed to remove expired temporary asset %s", object_name
                 )
     except S3Error as exc:
         if exc.code != "NoSuchBucket":
@@ -235,7 +238,7 @@ def cleanup_expired_temporary_assets(max_age_hours: int = TEMP_ENTITY_ASSET_MAX_
     return removed
 
 
-def stream_object_chunks(stream: object, chunk_size: int = 64 * 1024):
+def stream_object_chunks(stream: Any, chunk_size: int = 64 * 1024):
     try:
         while True:
             chunk = stream.read(chunk_size)

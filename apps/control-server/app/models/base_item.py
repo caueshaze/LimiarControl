@@ -35,6 +35,7 @@ class BaseItemCostUnit(str, Enum):
 
 
 class BaseItemEquipmentCategory(str, Enum):
+    ADVENTURING_GEAR = "adventuring_gear"
     ADVENTURING_PACK = "adventuring_pack"
     AMMUNITION = "ammunition"
     BOOK = "book"

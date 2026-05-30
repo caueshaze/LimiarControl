@@ -267,15 +267,26 @@ def derive_active_concentration(state_json: dict | None) -> dict | None:
 
     first_group: str | None = None
     first_metadata: dict | None = None
+    fallback_group: str | None = None
+    fallback_metadata: dict | None = None
     for effect in persisted:
         metadata = effect.get("metadata")
         if not isinstance(metadata, dict):
             continue
         if not metadata.get("concentration"):
             continue
+        if metadata.get("mechanical") is False:
+            if fallback_metadata is None:
+                fallback_group = metadata.get("concentration_group")
+                fallback_metadata = metadata
+            continue
         first_group = metadata.get("concentration_group")
         first_metadata = metadata
         break
+
+    if first_metadata is None:
+        first_metadata = fallback_metadata
+        first_group = fallback_group
 
     if first_metadata is None:
         return None

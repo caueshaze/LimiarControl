@@ -10,7 +10,7 @@ DRAGONBORN_BREATH_WEAPON_ACTION_ID = "dragonborn_breath_weapon"
 DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY = "dragonbornBreathWeapon"
 
 
-def _safe_int(value: object, fallback: int = 0) -> int:
+def _safe_int(value: Any, fallback: int = 0) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -44,7 +44,8 @@ def compute_dragonborn_breath_weapon_dc(
 ) -> int:
     payload = dict(data) if isinstance(data, dict) else {}
     level = _safe_int(payload.get("level"), 1)
-    abilities = payload.get("abilities") if isinstance(payload.get("abilities"), dict) else {}
+    abilities_raw = payload.get("abilities")
+    abilities = abilities_raw if isinstance(abilities_raw, dict) else {}
     constitution_score = _safe_int(abilities.get("constitution"), 10)
     prof_bonus = proficiency_bonus if isinstance(proficiency_bonus, int) else _get_proficiency_bonus(level)
     return 8 + prof_bonus + _ability_modifier(constitution_score)
@@ -57,10 +58,9 @@ def compute_dragonborn_breath_weapon_uses_max(_: int | None = None) -> int:
 def apply_dragonborn_breath_weapon_canonical_state(data: dict | None) -> dict:
     payload = dict(data) if isinstance(data, dict) else {}
     lineage = resolve_dragonborn_lineage_state(payload)
-    class_resources = (
-        dict(payload.get("classResources"))
-        if isinstance(payload.get("classResources"), dict)
-        else {}
+    class_resources_raw = payload.get("classResources")
+    class_resources: dict[str, Any] = (
+        dict(class_resources_raw) if isinstance(class_resources_raw, dict) else {}
     )
 
     if not lineage.get("ancestry"):

@@ -7,6 +7,7 @@ from sqlmodel import Session as DbSession, select
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
+from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
@@ -17,7 +18,7 @@ from app.services.session_state_finalize import finalize_session_state_data
 from app.services.wild_shape_catalog import WildFormStats, get_form, get_forms_for_level
 from app.services.wild_shape_service import WildShapeError, revert, transform
 
-from .sessions._shared import record_session_activity
+from .sessions._shared import record_session_activity, require_identifier
 from .sessions.shop import _ensure_player_session_state, _publish_session_state_realtime
 
 router = APIRouter()
@@ -142,6 +143,21 @@ def _require_joined_player(entry: Session, user: User, db: DbSession) -> PartyMe
     return member
 
 
+def _resolve_actor(entry: Session, user: User, db: DbSession) -> tuple[str, str]:
+    """Resolve (member_id, actor_name) for activity records from the campaign member."""
+    user_id = require_identifier(user.id, "User is missing an id")
+    member = db.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user_id,
+        )
+    ).first()
+    member_id = require_identifier(
+        member.id if member else None, "Campaign member is missing an id"
+    )
+    return member_id, member.display_name if member else user_id
+
+
 def _build_wild_shape_state(state_json: dict) -> WildShapeStateRead:
     ws: dict = state_json.get("wildShape") or {}
     form_key = ws.get("formKey")
@@ -176,7 +192,8 @@ def get_available_forms(
     _require_active_session(entry)
     _require_joined_player(entry, user, db)
 
-    state = _ensure_player_session_state(entry, user.id, db)
+    player_user_id = require_identifier(user.id, "User is missing an id")
+    state = _ensure_player_session_state(entry, player_user_id, db)
     state_json = state.state_json if isinstance(state.state_json, dict) else {}
     level = int(state_json.get("level", 1))
 
@@ -197,7 +214,8 @@ def get_wild_shape_state(
     _require_active_session(entry)
     _require_joined_player(entry, user, db)
 
-    state = _ensure_player_session_state(entry, user.id, db)
+    player_user_id = require_identifier(user.id, "User is missing an id")
+    state = _ensure_player_session_state(entry, player_user_id, db)
     state_json = state.state_json if isinstance(state.state_json, dict) else {}
     return _build_wild_shape_state(state_json)
 
@@ -215,9 +233,11 @@ async def wild_shape_transform(
     """Enter beast form. Consumes one Wild Shape use."""
     entry = _get_session_or_404(session_id, db)
     _require_active_session(entry)
-    member = _require_joined_player(entry, user, db)
+    _require_joined_player(entry, user, db)
 
-    state = _ensure_player_session_state(entry, user.id, db)
+    player_user_id = require_identifier(user.id, "User is missing an id")
+    member_id, actor_name = _resolve_actor(entry, user, db)
+    state = _ensure_player_session_state(entry, player_user_id, db)
     try:
         next_state_json = transform(
             state.state_json if isinstance(state.state_json, dict) else {},
@@ -234,9 +254,9 @@ async def wild_shape_transform(
         entry,
         "wild_shape_transform",
         db,
-        member_id=str(member.id),
-        user_id=user.id,
-        actor_name=member.display_name,
+        member_id=member_id,
+        user_id=player_user_id,
+        actor_name=actor_name,
         payload={
             "formKey": payload.form_key,
             "formName": form.display_name if form else payload.form_key,
@@ -261,7 +281,7 @@ async def wild_shape_transform(
         "usesRemaining": ws_read.uses_remaining,
     }
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(require_identifier(entry.id, "Session is missing an id")),
         build_event("wild_shape_transform", event_data, version=version),
     )
     await centrifugo.publish(
@@ -270,7 +290,7 @@ async def wild_shape_transform(
     )
     await _publish_session_state_realtime(
         entry,
-        user.id,
+        player_user_id,
         state.updated_at or state.created_at,
         state_json,
     )
@@ -290,9 +310,11 @@ async def wild_shape_revert(
     """Leave beast form and restore humanoid HP."""
     entry = _get_session_or_404(session_id, db)
     _require_active_session(entry)
-    member = _require_joined_player(entry, user, db)
+    _require_joined_player(entry, user, db)
 
-    state = _ensure_player_session_state(entry, user.id, db)
+    player_user_id = require_identifier(user.id, "User is missing an id")
+    member_id, actor_name = _resolve_actor(entry, user, db)
+    state = _ensure_player_session_state(entry, player_user_id, db)
     try:
         next_state_json = revert(
             state.state_json if isinstance(state.state_json, dict) else {}
@@ -307,9 +329,9 @@ async def wild_shape_revert(
         entry,
         "wild_shape_revert",
         db,
-        member_id=str(member.id),
-        user_id=user.id,
-        actor_name=member.display_name,
+        member_id=member_id,
+        user_id=player_user_id,
+        actor_name=actor_name,
         payload={
             "restoredHP": next_state_json.get("currentHP", 0),
         },
@@ -330,7 +352,7 @@ async def wild_shape_revert(
         "usesRemaining": ws_read.uses_remaining,
     }
     await centrifugo.publish(
-        session_channel(entry.id),
+        session_channel(require_identifier(entry.id, "Session is missing an id")),
         build_event("wild_shape_revert", event_data, version=version),
     )
     await centrifugo.publish(
@@ -339,7 +361,7 @@ async def wild_shape_revert(
     )
     await _publish_session_state_realtime(
         entry,
-        user.id,
+        player_user_id,
         state.updated_at or state.created_at,
         state_json,
     )

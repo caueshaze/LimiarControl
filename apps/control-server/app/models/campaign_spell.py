@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import ClassVar, Optional
+from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
@@ -17,7 +17,7 @@ def _enum_values(enum_cls: type[SpellSchool]) -> list[str]:
 
 
 class CampaignSpell(SQLModel, table=True):
-    __tablename__: ClassVar[str] = "campaign_spell"
+    __tablename__ = "campaign_spell"  # type: ignore[assignment]
     __table_args__ = (
         UniqueConstraint(
             "campaign_id",

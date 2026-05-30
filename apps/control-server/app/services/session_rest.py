@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 import re
 from math import floor
-from typing import Callable, Literal
+from typing import Any, Callable, Literal, cast
 
 from app.services.dragonborn_breath_weapon import (
     DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY,
@@ -23,7 +23,7 @@ class SessionRestError(ValueError):
 
 def normalize_rest_state(value: object) -> RestState:
     if isinstance(value, str) and value in _REST_STATES:
-        return value
+        return cast(RestState, value)
     return "exploration"
 
 
@@ -201,15 +201,8 @@ def _force_revert_wild_shape_inline(data: dict) -> dict:
     wild_shape = data.get("wildShape")
     if not isinstance(wild_shape, dict) or not wild_shape.get("active"):
         return data
-    saved_hp = wild_shape.get("savedHumanoidHP")
-    try:
-        saved_hp = int(saved_hp)
-    except (TypeError, ValueError):
-        saved_hp = 0
-    try:
-        max_hp = int(data.get("maxHP", 0))
-    except (TypeError, ValueError):
-        max_hp = 0
+    saved_hp = _safe_int(wild_shape.get("savedHumanoidHP"))
+    max_hp = _safe_int(data.get("maxHP", 0))
     restored_hp = min(saved_hp, max_hp)
     new_ws = {
         **wild_shape,
@@ -285,7 +278,7 @@ def _parse_hit_die(value: object) -> tuple[str, int]:
     return normalized, sides
 
 
-def _safe_int(value: object, fallback: int = 0) -> int:
+def _safe_int(value: Any, fallback: int = 0) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):

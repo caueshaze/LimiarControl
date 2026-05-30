@@ -1,11 +1,15 @@
+from __future__ import annotations
+
+from typing import cast
+
 from app.models.item import Item
-from app.schemas.item import ItemRead
+from app.schemas.item import ItemRead, MagicItemCastSpellEffect, MagicItemRechargeType
 from app.services.money import to_copper
 
 
 def to_item_read(item: Item) -> ItemRead:
     return ItemRead(
-        id=item.id,
+        id=cast(str, item.id),
         campaignId=item.campaign_id,
         name=item.name,
         type=item.type,
@@ -22,8 +26,8 @@ def to_item_read(item: Item) -> ItemRead:
         healDice=item.heal_dice,
         healBonus=item.heal_bonus,
         chargesMax=item.charges_max,
-        rechargeType=item.recharge_type,
-        magicEffect=item.magic_effect_json,
+        rechargeType=cast("MagicItemRechargeType | None", item.recharge_type),
+        magicEffect=cast("MagicItemCastSpellEffect | None", item.magic_effect_json),
         rangeMeters=item.range_meters,
         rangeLongMeters=item.range_long_meters,
         versatileDamage=item.versatile_damage,

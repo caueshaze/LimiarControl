@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
@@ -78,19 +80,19 @@ def to_campaign_spell_read(
         damageDice=spell.damage_dice,
         damageType=spell.damage_type,
         healDice=spell.heal_dice,
-        effects=spell.effects_json,
-        attackAdvantageCondition=_optional_attack_advantage_condition_attr(spell),
-        onEndEffects=spell.on_end_effects_json,
-        variants=spell.variants_json,
-        persistentArea=spell.persistent_area_json,
+        effects=cast(Any, spell.effects_json),
+        attackAdvantageCondition=cast(Any, _optional_attack_advantage_condition_attr(spell)),
+        onEndEffects=cast(Any, spell.on_end_effects_json),
+        variants=cast(Any, spell.variants_json),
+        persistentArea=cast(Any, spell.persistent_area_json),
         savingThrow=spell.saving_throw,
         saveSuccessOutcome=spell.save_success_outcome,
         attackMissOutcome=_optional_str_attr(spell, "attack_miss_outcome"),
         coverAppliesToSave=spell.cover_applies_to_save,
-        upcast=spell.upcast_json if spell.level > 0 else None,
+        upcast=cast(Any, spell.upcast_json) if spell.level > 0 else None,
         upcastMode=spell.upcast_mode,
         upcastValue=spell.upcast_value,
-        cantripScaling=spell.cantrip_scaling_json,
+        cantripScaling=cast(Any, spell.cantrip_scaling_json),
         requiresTargetSight=spell.requires_target_sight,
         requiresTargetHearing=spell.requires_target_hearing,
         requiresTargetEffect=spell.requires_target_effect,

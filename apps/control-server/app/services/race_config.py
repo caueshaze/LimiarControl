@@ -109,7 +109,8 @@ def validate_race_state(data: object) -> tuple[bool, str | None]:
     race_config = normalized["raceConfig"] or {}
 
     if race == "dragonborn":
-        raw_race_config = data.get("raceConfig") if isinstance(data.get("raceConfig"), dict) else {}
+        raw_race_config_value = data.get("raceConfig")
+        raw_race_config = raw_race_config_value if isinstance(raw_race_config_value, dict) else {}
         raw_ancestry = (
             raw_race_config.get(DRAGONBORN_DRACONIC_ANCESTRY_RACE_CONFIG_KEY)
             or raw_race_config.get(LEGACY_DRAGONBORN_ANCESTRY_RACE_CONFIG_KEY)

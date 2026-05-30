@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import HTTPException
-from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlalchemy import case, func
+from sqlmodel import Session, col, select
 
 from app.models.campaign import Campaign, RoleMode, SystemType
 from app.models.campaign_member import CampaignMember
@@ -23,7 +23,7 @@ def list_admin_campaigns(
     limit: int = 100,
 ) -> list[AdminCampaignRead]:
     statement = (
-        select(
+        select(  # type: ignore[call-overload]  # sqlmodel select() typed overloads cap at 4 columns
             Campaign.id,
             Campaign.name,
             Campaign.system,
@@ -38,7 +38,7 @@ def list_admin_campaigns(
             func.count(
                 func.distinct(
                     case(
-                        (CampaignSession.status == SessionStatus.ACTIVE, CampaignSession.id),
+                        (col(CampaignSession.status) == SessionStatus.ACTIVE, CampaignSession.id),
                     )
                 )
             ).label("active_sessions_count"),
@@ -57,12 +57,12 @@ def list_admin_campaigns(
             Campaign.created_at,
             Campaign.updated_at,
         )
-        .order_by(Campaign.created_at.desc())
+        .order_by(col(Campaign.created_at).desc())
         .limit(limit)
     )
 
     if search and search.strip():
-        statement = statement.where(Campaign.name.ilike(f"%{search.strip()}%"))
+        statement = statement.where(col(Campaign.name).ilike(f"%{search.strip()}%"))
     if system is not None:
         statement = statement.where(Campaign.system == system)
 
@@ -74,10 +74,10 @@ def list_admin_campaigns(
         gm_rows = db.exec(
             select(CampaignMember.campaign_id, CampaignMember.display_name)
             .where(
-                CampaignMember.campaign_id.in_(campaign_ids),
+                col(CampaignMember.campaign_id).in_(campaign_ids),
                 CampaignMember.role_mode == RoleMode.GM,
             )
-            .order_by(CampaignMember.created_at)
+            .order_by(col(CampaignMember.created_at))
         ).all()
         for campaign_id, display_name in gm_rows:
             if display_name not in gm_names_by_campaign[campaign_id]:

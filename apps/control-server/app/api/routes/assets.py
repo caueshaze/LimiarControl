@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
 from app.db.session import get_session
@@ -47,7 +47,7 @@ def _ensure_visible_entity_asset(
 
     visible = session.exec(
         select(SessionEntity.id)
-        .join(CampaignSession, CampaignSession.id == SessionEntity.session_id)
+        .join(CampaignSession, col(CampaignSession.id) == SessionEntity.session_id)
         .where(
             SessionEntity.campaign_entity_id == entity_id,
             SessionEntity.visible_to_players == True,  # noqa: E712

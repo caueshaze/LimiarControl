@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, cast
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, col, select, or_
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
@@ -22,8 +22,8 @@ def search_users(
         select(User)
         .where(
             or_(
-                User.display_name.ilike(search_term),
-                User.username.ilike(search_term),
+                col(User.display_name).ilike(search_term),
+                col(User.username).ilike(search_term),
             )
         )
         .limit(20)
@@ -32,7 +32,7 @@ def search_users(
     
     return [
         UserSearchRead(
-            id=result.id,
+            id=cast(str, result.id),
             displayName=result.display_name or result.username,
             username=result.username,
         )

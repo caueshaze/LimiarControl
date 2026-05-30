@@ -1,4 +1,5 @@
 from datetime import date
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
@@ -125,7 +126,7 @@ def list_members(
     ).all()
     return [
         MemberSummary(
-            id=entry.id,
+            id=cast(str, entry.id),
             userId=entry.user_id,
             displayName=entry.display_name,
             roleMode=entry.role_mode,

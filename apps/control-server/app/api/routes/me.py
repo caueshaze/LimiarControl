@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
@@ -19,7 +19,7 @@ def list_my_campaigns(
     session: Session = Depends(get_session),
 ):
     statement = (
-        select(
+        select(  # type: ignore[call-overload]  # sqlmodel select() typed overloads cap at 4 columns
             Campaign.id,
             Campaign.name,
             Campaign.system,
@@ -27,9 +27,9 @@ def list_my_campaigns(
             Campaign.updated_at,
             CampaignMember.role_mode,
         )
-        .join(CampaignMember, CampaignMember.campaign_id == Campaign.id)
+        .join(CampaignMember, col(CampaignMember.campaign_id) == Campaign.id)
         .where(CampaignMember.user_id == user.id)
-        .order_by(Campaign.created_at.desc())
+        .order_by(col(Campaign.created_at).desc())
     )
     entries = session.exec(statement).all()
     return [

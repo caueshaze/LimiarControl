@@ -24,6 +24,7 @@ async def action_attack(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.attack(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -41,6 +42,7 @@ async def action_attack_damage(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.attack_damage(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )
@@ -63,6 +65,7 @@ async def action_wild_shape_attack(
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
+    assert user.id is not None  # authenticated user always has an id
     result = await CombatService.wild_shape_attack(
         db, session_id, req, user.id, _is_session_gm(db, session_id, user)
     )

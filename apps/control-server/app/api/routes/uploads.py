@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlmodel import Session, select
 
@@ -78,12 +80,14 @@ async def upload_image(
                 raise HTTPException(status_code=404, detail="Entity not found")
 
     contents = await _read_limited(file, MAX_FILE_SIZE_BYTES)
+    assert current_user.id is not None  # authenticated user always has an id
 
     try:
         if kind == "campaign_map":
-            url = upload_map_image(contents, file.content_type or "", campaignId)
+            # campaignId is validated non-None above for non-user uploads.
+            url = upload_map_image(contents, file.content_type or "", cast(str, campaignId))
         elif kind == "campaign_entity":
-            url = upload_entity_image(contents, file.content_type or "", campaignId)
+            url = upload_entity_image(contents, file.content_type or "", cast(str, campaignId))
         elif kind == "user_avatar":
             url = upload_user_avatar(contents, file.content_type or "", current_user.id)
         elif kind == "user_token":

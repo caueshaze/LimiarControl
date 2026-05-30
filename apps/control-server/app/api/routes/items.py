@@ -2,7 +2,7 @@ from typing import List
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, require_campaign_member, require_gm
 from app.api.serializers.item import to_item_read
@@ -72,7 +72,7 @@ def list_items(
 ):
     require_campaign_member(campaign_id, user, session)
     statement = select(Item).where(Item.campaign_id == campaign_id).order_by(
-        Item.created_at.desc()
+        col(Item.created_at).desc()
     )
     items = session.exec(statement).all()
     return [to_item_read(item) for item in items]
@@ -100,7 +100,7 @@ def create_item(
         campaign_id=campaign_id,
         magic_effect=payload.magicEffect.model_dump(mode="json") if payload.magicEffect else None,
     )
-    item = Item(
+    item = Item(  # type: ignore[call-arg]  # name/type/description set by _apply_item_payload; created_at/updated_at by DB defaults
         id=str(uuid4()),
         campaign_id=campaign_id,
         is_custom=True,

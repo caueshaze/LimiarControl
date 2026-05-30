@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
@@ -90,7 +90,7 @@ def _resolve_inventory_item_for_material(
 
     inventory_rows = db.exec(
         select(InventoryItem, Item)
-        .join(Item, Item.id == InventoryItem.item_id)
+        .join(Item, col(Item.id) == InventoryItem.item_id)
         .where(
             InventoryItem.campaign_id == session_entry.campaign_id,
             InventoryItem.member_id == member.id,

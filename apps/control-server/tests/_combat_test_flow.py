@@ -372,6 +372,7 @@ class CombatFlowTestsMixin:
             "player-123",
             {"currentWeaponId": "inv-1"},
             None,
+            None,
         )
 
     def test_build_player_attack_context_applies_archery_to_ranged_weapon(self):
@@ -1005,6 +1006,7 @@ class CombatFlowTestsMixin:
             7,
             damage_type="slashing",
             is_crit=False,
+            is_magical_damage=False,
             state=self.state,
             attacker_participant_id="p1",
         )
@@ -2699,6 +2701,7 @@ class CombatFlowTestsMixin:
             12,
             damage_type="piercing",
             is_crit=False,
+            is_magical_damage=False,
             state=self.state,
             attacker_participant_id="p1",
         )

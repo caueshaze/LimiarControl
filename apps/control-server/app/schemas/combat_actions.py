@@ -5,11 +5,10 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.campaign_entity_shared import AbilityName
-from app.schemas.roll import RollResult, RollSource
+from app.schemas.roll import RollResult, RollSource, WeaponDamageBreakdown
 
 from .combat_lifecycle import CombatActionCost
 from .combat_spells import CombatGridCell
-
 
 class CombatEntityActionRequest(BaseModel):
     actor_participant_id: Optional[str] = None

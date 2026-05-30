@@ -93,6 +93,8 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 target_type="ranged", area_shape="sphere",
                 range_meters=45,
                 radius_meters=6,
+                material_component_consumed=False,
+                consumable_material_options_json=None,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",
@@ -242,6 +244,8 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 target_type="ranged", area_shape="cylinder",
                 range_meters=18,
                 radius_meters=3,
+                material_component_consumed=False,
+                consumable_material_options_json=None,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",
@@ -380,6 +384,8 @@ class CombatAreaTargetingIntegrationTests(TestCombatServiceBase):
                 target_type="ranged", area_shape="sphere",
                 range_meters=45,
                 radius_meters=6,
+                material_component_consumed=False,
+                consumable_material_options_json=None,
             ),
         ), patch(
             "app.services.combat.CombatService._get_stats",

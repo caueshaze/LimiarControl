@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models.base_spell import BaseSpell, BaseSpellAlias, SpellSchool
 from app.models.campaign_spell import CampaignSpell
@@ -121,7 +121,7 @@ def list_base_spells(
             | func.lower(func.coalesce(BaseSpell.name_pt, "")).contains(needle)
         )
 
-    statement = statement.order_by(BaseSpell.level, BaseSpell.name_en)
+    statement = statement.order_by(col(BaseSpell.level), col(BaseSpell.name_en))
     results = list(db.exec(statement).all())
 
     if class_name:
@@ -182,7 +182,7 @@ def _create_base_spell(
             detail=f"Base spell with canonical_key '{payload.canonicalKey}' already exists for system '{payload.system.value}'",
         )
 
-    spell = BaseSpell(id=str(uuid4()), system=payload.system)
+    spell = BaseSpell(id=str(uuid4()), system=payload.system)  # type: ignore[call-arg]  # required columns set by _apply_payload
     data = payload.model_dump(exclude={"system"})
     _apply_payload(spell, data)
     db.add(spell)

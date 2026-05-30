@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from app.models.base_item import BaseItem
-from app.schemas.base_item import BaseItemCreate, BaseItemRead
+from typing import cast
+
+from app.models.base_item import BaseItem, BaseItemProperty
+from app.schemas.base_item import (
+    BaseItemCreate,
+    BaseItemRead,
+    MagicItemCastSpellEffect,
+    MagicItemRechargeType,
+)
 from app.services.item_properties import normalize_item_properties
 
 
-def _normalize_weapon_properties(value: object) -> list[str]:
+def _normalize_weapon_properties(value: object) -> list[BaseItemProperty]:
+    # normalize_item_properties returns plain slug strings; the BaseItemWrite
+    # "before" validator coerces them into BaseItemProperty at runtime, so we cast
+    # to the schema-facing type for the static checker.
     if isinstance(value, (list, tuple)):
         candidates = list(value)
     elif value:
@@ -13,7 +23,7 @@ def _normalize_weapon_properties(value: object) -> list[str]:
     else:
         candidates = []
     normalized_properties, _invalid_properties = normalize_item_properties(candidates)
-    return normalized_properties
+    return cast("list[BaseItemProperty]", normalized_properties)
 
 
 def to_base_item_read(item: BaseItem) -> BaseItemRead:
@@ -37,8 +47,8 @@ def to_base_item_read(item: BaseItem) -> BaseItemRead:
         healDice=item.heal_dice,
         healBonus=item.heal_bonus,
         chargesMax=item.charges_max,
-        rechargeType=item.recharge_type,
-        magicEffect=item.magic_effect_json,
+        rechargeType=cast("MagicItemRechargeType | None", item.recharge_type),
+        magicEffect=cast("MagicItemCastSpellEffect | None", item.magic_effect_json),
         rangeNormalMeters=item.range_normal_meters,
         rangeLongMeters=item.range_long_meters,
         versatileDamage=item.versatile_damage,
@@ -78,8 +88,8 @@ def to_base_item_seed_entry(item: BaseItem) -> BaseItemCreate:
         healDice=item.heal_dice,
         healBonus=item.heal_bonus,
         chargesMax=item.charges_max,
-        rechargeType=item.recharge_type,
-        magicEffect=item.magic_effect_json,
+        rechargeType=cast("MagicItemRechargeType | None", item.recharge_type),
+        magicEffect=cast("MagicItemCastSpellEffect | None", item.magic_effect_json),
         rangeNormalMeters=item.range_normal_meters,
         rangeLongMeters=item.range_long_meters,
         versatileDamage=item.versatile_damage,

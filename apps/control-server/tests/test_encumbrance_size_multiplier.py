@@ -59,7 +59,7 @@ def _make_db(strength: int = 10, weight_lb: float = 0.0) -> MagicMock:
         MagicMock(first=MagicMock(return_value=session_state)),
         MagicMock(first=MagicMock(return_value=campaign_session)),
         MagicMock(first=MagicMock(return_value=member)),
-        MagicMock(scalar=MagicMock(return_value=weight_lb)),
+        MagicMock(first=MagicMock(return_value=weight_lb)),
     ]
     return db
 
