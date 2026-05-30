@@ -307,6 +307,13 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
         await cls._resolve_turn_end_repeat_saves(db, session_id, state, outgoing)
         await cls._resolve_turn_end_delayed_damage_effects(db, session_id, state, outgoing)
+        # Compelled Duel ends if its caster ends their turn >9m from the target.
+        from app.services.compelled_duel import break_compelled_duels_exceeding_distance
+
+        broken_duels = break_compelled_duels_exceeding_distance(state, outgoing.get("ref_id"))
+        for effect in broken_duels:
+            label = (cls._get_effect_metadata(effect) or {}).get("source_spell_name") or "Duelo Compelido"
+            await cls._emit_log(session_id, {"message": f"'{label}' terminou: o conjurador terminou o turno a mais de 9m do alvo.", "source": "effect_expired"})
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):

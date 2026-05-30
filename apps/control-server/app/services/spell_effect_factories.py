@@ -257,6 +257,57 @@ def build_shillelagh_effect(ctx: SpellEffectBuildContext) -> dict:
     return _build_timed_spell_effect_base(ctx, metadata=metadata)
 
 
+def build_compelled_duel_effect(ctx: SpellEffectBuildContext) -> dict:
+    """Build the Compelled Duel effect placed on the compelled target.
+
+    The effect lives only on the target but is created with the caster as
+    ``source_participant_id`` and a ``concentration_group`` (set via the combat
+    context), so the engine derives the caster's concentration from it — no
+    separate caster marker is needed. Identity for break/distance checks uses
+    ref_id (``duel_caster_ref_id``/``duel_target_ref_id``); the attack-roll
+    disadvantage exclusion also keys on ref_id.
+    """
+    caster_ref = ctx.extra_metadata.get("duel_caster_ref_id")
+    target_ref = ctx.extra_metadata.get("duel_target_ref_id")
+    metadata = _build_base_metadata(ctx)
+    metadata.update(
+        {
+            "source_spell_key": "compelled_duel",
+            "source_spell_name": ctx.spell_name,
+            "utility": "compelled_duel",
+            "control_debuff": True,
+            "compelled_duel": True,
+            "duel_caster_ref_id": caster_ref,
+            "duel_target_ref_id": target_ref,
+            "attack_disadvantage_against_others": True,
+            "movement_restriction": True,
+            "movement_restriction_save_ability": "wisdom",
+            "movement_restriction_save_dc": ctx.spell_save_dc or 0,
+            "max_distance_meters": 9,
+            "breaks_if_caster_attacks_other_creature": True,
+            "breaks_if_caster_casts_hostile_spell_on_other_creature": True,
+            "breaks_if_caster_ally_damages_target": True,
+            "breaks_if_caster_ally_casts_harmful_spell_on_target": True,
+            "breaks_if_caster_ends_turn_beyond_max_distance": True,
+            "concentration": True,
+            "requires_concentration": True,
+            "duration_seconds": ctx.duration_seconds,
+            # Drives attacker-side disadvantage in resolve_attack_advantage:
+            # disadvantage on attacks against everyone EXCEPT the caster.
+            "declarative_effect": {
+                "type": "roll_disadvantage_modifier",
+                "params": {
+                    "mode": "disadvantage",
+                    "roll_types": ["attack"],
+                    "applies_unless_attacking_ref_id": caster_ref,
+                    "source": "Duelo Compelido",
+                },
+            },
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
 def build_warding_bond_effects(ctx: SpellEffectBuildContext) -> tuple[dict, dict]:
     """Build the linked Warding Bond effects.
 

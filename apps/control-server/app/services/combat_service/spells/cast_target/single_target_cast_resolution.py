@@ -7,6 +7,10 @@ from uuid import uuid4
 from app.models.inventory import InventoryItem
 from app.services.magic_item_effects import consume_inventory_item_charge, get_inventory_item_charges_current
 
+from app.services.compelled_duel import (
+    break_compelled_duel_if_ally_harms_target,
+    break_compelled_duel_if_caster_attacks_other,
+)
 from ...combat_targeting import get_combat_targeting_service
 from ...exceptions import CombatServiceError
 from ...host_protocol import CombatServiceHostProtocol
@@ -102,6 +106,15 @@ class CastTargetSingleTargetCastResolutionMixin(_CastTargetSingleTargetCastResol
                 attacker,
                 target_p,
                 action_label="a hostile spell",
+            )
+            # Compelled Duel: caster casting a hostile spell on a creature other
+            # than the duel target ends it; an ally of the caster casting a
+            # harmful spell on the duel target ends it.
+            break_compelled_duel_if_caster_attacks_other(
+                state, attacker.get("ref_id"), target_p.get("ref_id")
+            )
+            break_compelled_duel_if_ally_harms_target(
+                state, attacker.get("ref_id"), target_p.get("ref_id")
             )
         cls._validate_spell_automation_target(
             db,

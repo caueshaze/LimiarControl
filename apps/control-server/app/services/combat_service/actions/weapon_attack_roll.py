@@ -9,6 +9,7 @@ from app.schemas.roll import RollActorStats
 from app.services.combat_service.condition_effects import get_attack_auto_crit, resolve_attack_advantage
 from app.services.combat_service.cover_modifiers import cover_label, resolve_cover_modifier
 from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
+from app.services.compelled_duel import break_compelled_duel_if_caster_attacks_other
 from app.services.combat_service.visibility import resolve_target_visibility
 
 from ..exceptions import CombatServiceError
@@ -80,6 +81,8 @@ class WeaponAttackRollMixin(_WeaponAttackRollBase):
         cls._assert_hostile_action_allowed(attacker, target, action_label="an attack")
         # Attacker is declaring a weapon attack — their own sanctuary ends immediately.
         break_sanctuary_if_active(attacker, state)
+        # Compelled Duel ends if its caster attacks any creature other than the target.
+        break_compelled_duel_if_caster_attacks_other(state, attacker.get("ref_id"), target.get("ref_id"))
         was_overridden = cls._consume_turn_resource(attacker, "action", is_gm=is_gm, override_resource_limit=req.override_resource_limit)
         cls._clear_participant_pending_attack(attacker)
         # Check if the target is protected by Sanctuary; roll Wisdom save for attacker.

@@ -79,6 +79,11 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
         applies_when = params.get("applies_when_attacking_participant_id")
         if isinstance(applies_when, str) and applies_when and applies_when != target.get("id"):
             continue
+        # Compelled Duel: disadvantage applies against every creature EXCEPT the
+        # named one (the duel caster), keyed by ref_id.
+        applies_unless_ref = params.get("applies_unless_attacking_ref_id")
+        if isinstance(applies_unless_ref, str) and applies_unless_ref and applies_unless_ref == target.get("ref_id"):
+            continue
         dis.append(params.get("source") or metadata.get("source_spell_name") or "roll_disadvantage_modifier")
         if params.get("consume_on_apply") is True:
             effect_id = effect.get("id")

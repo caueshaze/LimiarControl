@@ -16,6 +16,10 @@ from app.services.warding_bond import (
     find_target_role_effect,
     remove_warding_bonds_involving_participants,
 )
+from app.services.compelled_duel import (
+    break_compelled_duel_if_ally_harms_target,
+    break_compelled_duel_on_target_defeated,
+)
 
 
 class CombatDamageCoreMixin:
@@ -128,6 +132,35 @@ class CombatDamageCoreMixin:
         )
 
     @classmethod
+    def _apply_compelled_duel_breaks_after_damage(
+        cls,
+        state: CombatState | None,
+        target_participant: dict | None,
+        *,
+        target_new_hp: int | None,
+        attacker_participant_id: str | None,
+    ) -> None:
+        if state is None or not isinstance(target_participant, dict):
+            return
+        target_ref = target_participant.get("ref_id")
+        # Target died -> the duel ends.
+        if isinstance(target_new_hp, int) and target_new_hp <= 0:
+            break_compelled_duel_on_target_defeated(state, target_ref)
+            return
+        # A creature friendly to the caster damaging the target ends the duel.
+        if attacker_participant_id:
+            attacker = next(
+                (
+                    p
+                    for p in (state.participants or [])
+                    if isinstance(p, dict) and p.get("id") == attacker_participant_id
+                ),
+                None,
+            )
+            if attacker is not None:
+                break_compelled_duel_if_ally_harms_target(state, attacker.get("ref_id"), target_ref)
+
+    @classmethod
     def _apply_damage_to_target(
         cls,
         db: Session,
@@ -210,6 +243,12 @@ class CombatDamageCoreMixin:
                     is_crit=is_crit,
                     warding_bond_share=warding_bond_share,
                 )
+                cls._apply_compelled_duel_breaks_after_damage(
+                    state,
+                    target_participant,
+                    target_new_hp=ws_new_hp,
+                    attacker_participant_id=attacker_participant_id,
+                )
                 return ws_new_hp, message, None, concentration_check
             current = max(0, cls._safe_int(data.get("currentHP"), 0))
             data["currentHP"] = max(0, current - amount)
@@ -256,6 +295,12 @@ class CombatDamageCoreMixin:
                 is_crit=is_crit,
                 warding_bond_share=warding_bond_share,
             )
+            cls._apply_compelled_duel_breaks_after_damage(
+                state,
+                target_participant,
+                target_new_hp=player_new_hp,
+                attacker_participant_id=attacker_participant_id,
+            )
             return player_new_hp, message, current, concentration_check
         npc = db.exec(select(CampaignEntity).where(CampaignEntity.id == target_model.campaign_entity_id)).first()
         base_hp = npc.max_hp if npc else 0
@@ -293,6 +338,12 @@ class CombatDamageCoreMixin:
             final_amount=amount,
             is_crit=is_crit,
             warding_bond_share=warding_bond_share,
+        )
+        cls._apply_compelled_duel_breaks_after_damage(
+            state,
+            target_participant,
+            target_new_hp=target_model.current_hp,
+            attacker_participant_id=attacker_participant_id,
         )
         return target_model.current_hp, message, current, concentration_check
 

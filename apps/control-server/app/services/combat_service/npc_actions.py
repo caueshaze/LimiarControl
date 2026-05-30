@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.schemas.combat import CombatResolveDamageRequest
 from app.schemas.roll import RollResult
 from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
+from app.services.compelled_duel import break_compelled_duel_if_caster_attacks_other
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 
 from .combat_targeting import get_combat_targeting_service
@@ -57,6 +58,12 @@ class CombatNpcActionMixin(
         if context["action_kind"] in ("weapon_attack", "spell_attack") and context["target_p"] is not None:
             if cls._is_hostile_team_context(context["attacker"], context["target_p"]):
                 break_sanctuary_if_active(context["attacker"], context["state"])
+            # Compelled Duel ends if its caster attacks any creature other than the target.
+            break_compelled_duel_if_caster_attacks_other(
+                context["state"],
+                context["attacker"].get("ref_id"),
+                context["target_p"].get("ref_id"),
+            )
         # Check if the target is protected by Sanctuary for direct attacks.
         if context["action_kind"] in ("weapon_attack", "spell_attack") and context["target_p"] is not None:
             if cls._is_hostile_team_context(context["attacker"], context["target_p"]):

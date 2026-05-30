@@ -34,6 +34,11 @@ class MageHandActionRequest(BaseModel):
     anchor_id: str
     destination: dict
 
+
+class CompelledDuelMovementSaveRequest(BaseModel):
+    actor_participant_id: str | None = None
+    manual_roll: int | None = None
+
 router = APIRouter()
 
 
@@ -157,6 +162,26 @@ async def action_move(
         req,
         actor_user_id=user.id,
         is_gm=_is_session_gm(db, session_id, user),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spell/compelled-duel/movement-save",
+)
+async def action_compelled_duel_movement_save(
+    session_id: str,
+    req: CompelledDuelMovementSaveRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_compelled_duel_movement_save(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        manual_roll=req.manual_roll,
     )
 
 

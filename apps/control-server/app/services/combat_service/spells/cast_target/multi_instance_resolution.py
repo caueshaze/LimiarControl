@@ -8,6 +8,10 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.inventory import InventoryItem
 from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active, resolve_sanctuary_guard
+from app.services.compelled_duel import (
+    break_compelled_duel_if_ally_harms_target,
+    break_compelled_duel_if_caster_attacks_other,
+)
 from app.services.magic_item_effects import consume_inventory_item_charge, get_inventory_item_charges_current
 from app.services.spell_material_components import SpellMaterialError, consume_spell_material
 
@@ -97,6 +101,14 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
                         attacker, vt["participant"], action_label="a hostile spell",
                     )
                     seen.add(ref_id)
+                # Compelled Duel: caster hitting a non-target creature, or an ally
+                # of the caster hitting the duel target, ends the duel.
+                break_compelled_duel_if_caster_attacks_other(
+                    state, attacker.get("ref_id"), vt["participant"].get("ref_id")
+                )
+                break_compelled_duel_if_ally_harms_target(
+                    state, attacker.get("ref_id"), vt["participant"].get("ref_id")
+                )
             # Caster is casting a hostile spell — their own sanctuary ends immediately.
             break_sanctuary_if_active(attacker, state)
 

@@ -112,6 +112,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_command_automation",
         ),
+        "compelled_duel": SpellAutomationSpec(
+            canonical_key="compelled_duel",
+            default_mode="save",
+            requires_effect_payload=False,
+            handler_name="_cast_compelled_duel_automation",
+        ),
         "protection_from_evil_and_good": SpellAutomationSpec(
             canonical_key="protection_from_evil_and_good",
             default_mode="utility",

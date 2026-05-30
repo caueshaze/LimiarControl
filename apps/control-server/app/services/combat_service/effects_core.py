@@ -9,6 +9,9 @@ class CombatEffectsCoreMixin:
         "bonus_action_used": False,
         "reaction_used": False,
         "colossus_slayer_used": False,
+        # Set when a Compelled Duel target passes its Wisdom save to move beyond
+        # 9m; reset at turn start so the save is required again each turn.
+        "compelled_duel_movement_free": False,
     }
 
     @classmethod
