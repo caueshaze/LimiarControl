@@ -205,6 +205,8 @@ def _derive_range_cells(intent: ActionIntent) -> int | None:
         if isinstance(intent.range_meters, (int, float)) and intent.range_meters > 0:
             return meters_to_cells(intent.range_meters)
         return None
+    if not isinstance(intent, WeaponAttackIntent):
+        return None
     profile = resolve_weapon_attack_range_profile(
         range_meters=intent.range_meters,
         range_long_meters=intent.range_long_meters,

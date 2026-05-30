@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import logging
 import random
 from math import floor
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
 from typing import Any
@@ -63,6 +64,7 @@ from app.services.combat_service.condition_effects import get_attack_auto_crit, 
 
 from ..combat_targeting import get_combat_targeting_service
 from ..exceptions import CombatServiceError, _parse_dice
+from ..host_protocol import CombatServiceHostProtocol
 from ..targeting_requirements import (
     resolve_spell_targeting_requirements,
     resolve_weapon_targeting_requirements,
@@ -72,7 +74,13 @@ from ..unit_conversion import meters_to_cells
 
 
 
-class WildShapeMixin:
+if TYPE_CHECKING:
+    _WildShapeBase = CombatServiceHostProtocol
+else:
+    _WildShapeBase = object
+
+
+class WildShapeMixin(_WildShapeBase):
     @classmethod
     async def wild_shape_attack(
         cls,
@@ -91,6 +99,8 @@ class WildShapeMixin:
 
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         attacker = cls._resolve_actor_participant(
             state, actor_user_id, is_gm, req.actor_participant_id
         )

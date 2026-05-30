@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from sqlmodel import Session
 
 from app.models.combat import CombatState
 from app.services.combat_service.exceptions import CombatServiceError
 from app.schemas.roll import RollResult
+
+from ..host_protocol import CombatServiceHostProtocol
+
+if TYPE_CHECKING:
+    _SpellResolutionCommonBase = CombatServiceHostProtocol
+else:
+    _SpellResolutionCommonBase = object
 
 
 @dataclass
@@ -35,7 +43,7 @@ class SpellResolutionResult:
     vis_ctx: object = None
 
 
-class SpellResolutionCommonMixin:
+class SpellResolutionCommonMixin(_SpellResolutionCommonBase):
     @classmethod
     def _normalize_pending_target_variant_assignments(
         cls,
@@ -214,8 +222,8 @@ class SpellResolutionCommonMixin:
             notes = entry.get("manual_notes")
             if not isinstance(notes, list) or not notes:
                 continue
-            labels = [
-                note.get("label")
+            labels: list[str] = [
+                str(note["label"])
                 for note in notes
                 if isinstance(note, dict) and isinstance(note.get("label"), str)
             ]
@@ -264,7 +272,7 @@ class SpellResolutionCommonMixin:
             if target_name is None and isinstance(ref_id, str):
                 target_name = display_names_by_ref.get(ref_id)
             if target_name is None:
-                target_name = participant_id or ref_id or "Target"
+                target_name = str(participant_id or ref_id or "Target")
             chunks.append(f"{target_name}={variant_label}")
         return f" Variantes: {'; '.join(chunks)}." if chunks else ""
 

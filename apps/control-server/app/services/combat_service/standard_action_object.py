@@ -1,23 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Callable, ClassVar
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatStandardObjectActionMixin:
-    _get_session_entry: ClassVar[Callable[[Any, str], Any]]
-    _apply_healing_to_target: ClassVar[
-        Callable[[Any, str, str, int, Any], tuple[int, str, int]]
-    ]
-    _get_stats: ClassVar[Callable[[Any, str, str, str], tuple[Any, Any, Any, Any, Any, Any]]]
-    _safe_int: ClassVar[Callable[[object, int], int]]
-    _as_dict: ClassVar[Callable[[object], dict[str, Any]]]
-    _get_session_entity_and_campaign_entity: ClassVar[
-        Callable[[Any, str], tuple[Any, Any]]
-    ]
-    _assert_hostile_action_allowed: ClassVar[Callable[..., None]]
+class CombatStandardObjectActionMixin(CombatServiceHostProtocol):
 
     @classmethod
     async def _action_use_object(cls, db, session_id, state, actor, req):

@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.schemas.roll import RollResult
 
 from ..exceptions import CombatServiceError
+from ..host_protocol import CombatServiceHostProtocol
 
 
-class CastTargetEffectMixin:
+if TYPE_CHECKING:
+    _CastTargetEffectBase = CombatServiceHostProtocol
+else:
+    _CastTargetEffectBase = object
+
+
+class CastTargetEffectMixin(_CastTargetEffectBase):
     @classmethod
     async def cast_spell_effect(
         cls,
@@ -19,6 +28,8 @@ class CastTargetEffectMixin:
     ):
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("Combat state not found.", 404)
         attacker = cls._resolve_actor_participant(
             state,
             actor_user_id,
@@ -77,10 +88,11 @@ class CastTargetEffectMixin:
             raise CombatServiceError(
                 "Pending spell effect is missing target information.", 400
             )
+        participants = state.participants if state else []
         target_participant = next(
             (
                 participant
-                for participant in state.participants
+                for participant in participants
                 if participant.get("ref_id") == target_ref_id and participant.get("kind") == target_kind
             ),
             None,
@@ -145,8 +157,11 @@ class CastTargetEffectMixin:
                 target_participant=target_participant,
                 spell_context=pending_spell_context,
             )
+            effects_payload = declarative_application.get("applied_effects", []) if declarative_application else []
+            if not isinstance(effects_payload, list):
+                effects_payload = []
             applied_declarative_effects_by_target = cls._build_applied_declarative_effects_by_target(
-                declarative_application.get("applied_effects")
+                effects_payload
             )
 
         cls._clear_participant_pending_attack(attacker)

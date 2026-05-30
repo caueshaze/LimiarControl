@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Callable, ClassVar
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
 
@@ -12,6 +14,16 @@ from app.services.session_state_finalize import finalize_session_state_data
 
 
 class CombatDamageCoreMixin:
+    _normalize_damage_type: ClassVar[Callable[[object], str | None]]
+    _get_stats: ClassVar[Callable[..., tuple[Any, Any, Any, Any, Any, Any]]]
+    _get_participant_by_ref: ClassVar[Callable[[CombatState | None, str | None], dict[str, Any] | None]]
+    _as_dict: ClassVar[Callable[[object], dict[str, Any]]]
+    _safe_int: ClassVar[Callable[[object, int], int]]
+    _reset_death_saves: ClassVar[Callable[[dict[str, Any]], None]]
+    _sync_participant_status: ClassVar[Callable[..., str]]
+    _resolve_concentration_check_after_damage: ClassVar[Callable[..., dict[str, Any] | None]]
+    _is_player_dead_state: ClassVar[Callable[[dict[str, Any] | None], bool]]
+
     @classmethod
     def _build_concentration_roll_kwargs(cls, roll_source: str = "system", manual_roll: int | None = None) -> dict:
         if roll_source == "system" and manual_roll is None:

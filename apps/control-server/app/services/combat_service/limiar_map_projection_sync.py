@@ -36,6 +36,8 @@ def _sync_existing_map_turn(
                 exc,
             )
             return "turn_sync_state_unavailable"
+    if map_state is None:
+        return "turn_sync_state_unavailable"
 
     if map_state.initiative_order and tuple(desired_order) != tuple(
         map_state.initiative_order

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -25,6 +25,7 @@ from app.services.spell_material_components import (
 from ..combat_targeting import get_combat_targeting_service
 from ..cover_modifiers import cover_label, resolve_cover_modifier, resolve_cover_save_dc, resolve_cover_save_modifier, should_cover_apply_to_save
 from ..exceptions import CombatServiceError
+from ..host_protocol import CombatServiceHostProtocol
 from ..limiar_map_projection import maybe_sync_active_area_effects_to_limiar_map
 from ..persistent_area_effects import build_persistent_spell_area_effect
 from ..targeting_intent import AreaTargetingIntent
@@ -34,7 +35,13 @@ from .area_guardrails import build_area_guardrail_outcome, evaluate_area_target_
 logger = logging.getLogger(__name__)
 
 
-class CastAreaMixin:
+if TYPE_CHECKING:
+    _CastAreaBase = CombatServiceHostProtocol
+else:
+    _CastAreaBase = object
+
+
+class CastAreaMixin(_CastAreaBase):
     @classmethod
     def _get_area_per_target_cover(
         cls,

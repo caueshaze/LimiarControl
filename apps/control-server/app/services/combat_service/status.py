@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import random
 from math import floor
-from typing import Any, Callable, ClassVar
+from typing import Any
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
@@ -41,21 +41,10 @@ from app.services.realtime import build_event, campaign_channel, event_version, 
 from app.services.session_state_finalize import finalize_session_state_data
 
 from .exceptions import CombatServiceError, _roll_dice_expression
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatStatusMixin:
-    _as_dict: ClassVar[Callable[[object], dict[str, Any]]]
-    _safe_int: ClassVar[Callable[[object, int], int]]
-    _get_participant_by_ref: ClassVar[
-        Callable[[CombatState | None, str | None], dict[str, Any] | None]
-    ]
-    _clear_concentration_for_participant_status: ClassVar[
-        Callable[..., bool]
-    ]
-    get_state: ClassVar[Callable[[Session, str], CombatState | None]]
-    _get_stats: ClassVar[
-        Callable[[Session, str, str, str], tuple[Any, Any, Any, Any, Any, Any]]
-    ]
+class CombatStatusMixin(CombatServiceHostProtocol):
 
     @classmethod
     def _normalize_player_death_saves(cls, death_saves: dict | None) -> dict[str, int]:

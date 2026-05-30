@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -9,9 +10,16 @@ from app.models.combat import CombatState
 from app.services.game_time import get_game_time_seconds
 from app.services.spell_effect_factories import build_barkskin_effect, build_blur_effect
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class BuffsDefenseAutomationMixin:
+if TYPE_CHECKING:
+    _BuffsDefenseBase = CombatServiceHostProtocol
+else:
+    _BuffsDefenseBase = object
+
+
+class BuffsDefenseAutomationMixin(_BuffsDefenseBase):
     @classmethod
     async def _cast_barkskin_automation(
         cls,

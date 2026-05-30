@@ -9,11 +9,12 @@ from app.models.campaign_spell import CampaignSpell
 from app.services.base_spells import get_base_spell_by_canonical_key
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 logger = logging.getLogger("app.services.combat_service.core")
 
 
-class CombatSpellLookupMixin:
+class CombatSpellLookupMixin(CombatServiceHostProtocol):
 
     @classmethod
     def _get_spell_catalog_entry_for_session(

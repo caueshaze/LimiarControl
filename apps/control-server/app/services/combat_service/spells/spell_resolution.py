@@ -5,5 +5,5 @@ from .spell_resolution_common import SpellResolutionCommonMixin, SpellResolution
 from .spell_resolution_save import SpellResolutionSaveMixin
 
 
-class SpellResolutionMixin(SpellResolutionAttackMixin, SpellResolutionSaveMixin, SpellResolutionCommonMixin):
+class SpellResolutionMixin(SpellResolutionAttackMixin, SpellResolutionSaveMixin):
     pass

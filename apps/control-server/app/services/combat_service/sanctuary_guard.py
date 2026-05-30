@@ -49,14 +49,17 @@ def resolve_sanctuary_guard(
         attacker_participant.get("display_name", ""),
     )
 
-    save_mod_ctx = modify_saving_throw(attacker_stats, "wisdom", source_kind="spell_effect")
+    save_mod_ctx = modify_saving_throw(
+        attacker_participant, "wisdom", source_kind="spell_effect"
+    )
     save_result = resolve_saving_throw(
         attacker_stats,
         ability="wisdom",
         dc=save_dc,
         advantage_mode=save_mod_ctx.result,
-        auto_fail=save_mod_ctx.auto_fail,
     )
+    if save_mod_ctx.auto_fail:
+        save_result.success = False
 
     if save_result.success:
         return None

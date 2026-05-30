@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, cast
+
+from app.schemas.campaign_entity_shared import AbilityName
 
 from .condition_effects_predicates import (
     _get_save_declarative_context,
@@ -55,9 +57,22 @@ def modify_saving_throw(
         dis.append("actor_restrained")
 
     # Declarative active effects
-    auto_mode, decl_adv_strs, decl_dis_strs, decl_details = _get_save_declarative_context(
-        actor, normalized, source_participant=source_participant
-    )
+    if normalized in {
+        "strength",
+        "dexterity",
+        "constitution",
+        "intelligence",
+        "wisdom",
+        "charisma",
+    }:
+        auto_mode, decl_adv_strs, decl_dis_strs, decl_details = _get_save_declarative_context(
+            actor, cast(AbilityName, normalized), source_participant=source_participant
+        )
+    else:
+        auto_mode = "normal"
+        decl_adv_strs = []
+        decl_dis_strs = []
+        decl_details = []
 
     # Merge hardcoded + declarative automatic sources
     automatic_mode = combine_advantage_modes(

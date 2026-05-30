@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
@@ -10,9 +10,16 @@ from app.schemas.combat import CombatResolveSpellEffectRequest
 from app.schemas.roll import RollResult
 
 from ..exceptions import CombatServiceError
+from ..host_protocol import CombatServiceHostProtocol
 
 
-class CastAreaEffectMixin:
+if TYPE_CHECKING:
+    _CastAreaEffectBase = CombatServiceHostProtocol
+else:
+    _CastAreaEffectBase = object
+
+
+class CastAreaEffectMixin(_CastAreaEffectBase):
 
     @classmethod
     async def _cast_area_spell_effect(
@@ -163,9 +170,9 @@ class CastAreaEffectMixin:
             )
         if concentration_checks:
             summaries = [
-                check.get("summary_text")
-                for check in concentration_checks
-                if isinstance(check.get("summary_text"), str)
+                str(item)
+                for item in [check.get("summary_text") for check in concentration_checks]
+                if item is not None
             ]
             if summaries:
                 log_text = f"{log_text} {' '.join(summaries)}".strip()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import random
 from math import floor
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -28,7 +28,11 @@ from app.schemas.combat import (
     CombatAttackRequest,
     CombatCastSpellRequest,
     CombatEntityActionRequest,
+    CombatGridCell,
     CombatMapPreviewState,
+    CombatActiveAreaEffect,
+    CombatMapPreviewToken,
+    CombatMapPreviewObstacle,
     CombatResolveDamageRequest,
     CombatResolveSpellEffectRequest,
     CombatSetInitiativeRequest,
@@ -69,9 +73,16 @@ from ..unit_conversion import meters_to_cells
 from .area_spatial_metadata import build_area_affected_target_spatial_metadata, get_area_per_target_cover
 from .area_guardrails import build_area_guardrail_outcome, evaluate_area_target_guardrail
 
+from ..host_protocol import CombatServiceHostProtocol
 
 
-class AreaTargetingMixin:
+if TYPE_CHECKING:
+    _AreaTargetingBase = CombatServiceHostProtocol
+else:
+    _AreaTargetingBase = object
+
+
+class AreaTargetingMixin(_AreaTargetingBase):
     @classmethod
     def _normalize_area_shape(cls, value: object) -> str | None:
         if not isinstance(value, str):
@@ -119,7 +130,7 @@ class AreaTargetingMixin:
     def _resolve_supported_area_spell_spec(
         cls,
         spell_context: dict[str, Any],
-    ) -> dict[str, int | str] | None:
+    ) -> dict[str, Any] | None:
         area_shape = cls._normalize_area_shape(spell_context.get("area_shape"))
         if area_shape is None:
             return None
@@ -181,6 +192,8 @@ class AreaTargetingMixin:
     ) -> CombatMapPreviewState:
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("Combat state not found.", 404)
         if not state.use_map:
             raise CombatServiceError("This combat was opened without a tactical map.", 400)
         actor = cls._resolve_actor_participant(
@@ -209,35 +222,33 @@ class AreaTargetingMixin:
             grid_width=map_state.grid_width,
             grid_height=map_state.grid_height,
             tokens=[
-                {
-                    "token_id": token.token_id,
-                    "label": token.label or token.token_id,
-                    "position": {
-                        "x": token.position_x,
-                        "y": token.position_y,
-                    },
-                    "combatant_id": token.combatant_id,
-                    "controller_type": token.controller_type,
-                    "movement_speed_cells": token.movement_speed_cells,
-                    "movement_budget": token.movement_budget,
-                }
+                CombatMapPreviewToken(
+                    token_id=token.token_id,
+                    label=token.label or token.token_id,
+                    position=CombatGridCell(x=token.position_x, y=token.position_y),
+                    combatant_id=token.combatant_id,
+                    controller_type=token.controller_type,
+                    movement_speed_cells=token.movement_speed_cells,
+                    movement_budget=token.movement_budget,
+                )
                 for token in map_state.tokens
                 if token.position_x is not None and token.position_y is not None
             ],
             obstacles=[
-                {
-                    "cells": [
-                        {"x": cell.x, "y": cell.y}
-                        for cell in obstacle.cells
-                    ],
-                    "blocks_movement": obstacle.blocks_movement,
-                    "blocks_vision": obstacle.blocks_vision,
-                    "blocks_effect": obstacle.blocks_effect,
-                    "cover": obstacle.cover,
-                }
+                CombatMapPreviewObstacle(
+                    cells=[CombatGridCell(x=cell.x, y=cell.y) for cell in obstacle.cells],
+                    blocks_movement=obstacle.blocks_movement,
+                    blocks_vision=obstacle.blocks_vision,
+                    blocks_effect=obstacle.blocks_effect,
+                    cover=obstacle.cover,
+                )
                 for obstacle in map_state.obstacles
             ],
-            active_area_effects=list(state.active_area_effects or []),
+            active_area_effects=[
+                CombatActiveAreaEffect.model_validate(effect)
+                for effect in list(state.active_area_effects or [])
+                if isinstance(effect, dict)
+            ],
         )
 
     @classmethod
@@ -251,6 +262,8 @@ class AreaTargetingMixin:
     ) -> dict[str, Any]:
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("Combat state not found.", 404)
         if not state.use_map:
             raise CombatServiceError("This combat was opened without a tactical map.", 400)
         attacker = cls._resolve_actor_participant(

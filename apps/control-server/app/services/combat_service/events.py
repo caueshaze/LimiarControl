@@ -55,7 +55,7 @@ class CombatEventsMixin:
         return state.participants[state.current_turn_index]
 
     @classmethod
-    def _get_participant_by_ref(cls, state: CombatState | None, ref_id: str) -> dict | None:
+    def _get_participant_by_ref(cls, state: CombatState | None, ref_id: str | None) -> dict | None:
         if not state:
             return None
         return next((p for p in state.participants if p.get("ref_id") == ref_id), None)
@@ -121,6 +121,7 @@ class CombatEventsMixin:
             actor_name=actor_name,
             command_type="combat_log_entry",
             payload_json=log_payload,
+            created_at=datetime.now(timezone.utc),
         ))
         db.commit()
         notify = build_event("session_activity_updated", {"sessionId": session_id, "campaignId": entry.campaign_id})
@@ -227,5 +228,7 @@ class CombatEventsMixin:
             payload,
             version=event_version(timestamp),
         )
+        if not entry.id:
+            return
         await centrifugo.publish(session_channel(entry.id), event)
         await centrifugo.publish(campaign_channel(entry.campaign_id), event)

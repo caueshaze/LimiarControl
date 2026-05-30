@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from app.models.inventory import InventoryItem
@@ -8,13 +9,20 @@ from app.services.magic_item_effects import consume_inventory_item_charge, get_i
 
 from ...combat_targeting import get_combat_targeting_service
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_intent import SpellCastIntent
 from ..spell_resolution import SpellResolutionResult
 
 logger = logging.getLogger(__name__)
 
 
-class CastTargetSingleTargetCastResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetSingleTargetCastResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetSingleTargetCastResolutionBase = object
+
+
+class CastTargetSingleTargetCastResolutionMixin(_CastTargetSingleTargetCastResolutionBase):
     @classmethod
     async def _resolve_cast_resolution(
         cls, db, session_id, req, state, attacker, attacker_model,
@@ -282,9 +290,12 @@ class CastTargetSingleTargetCastResolutionMixin:
                         repeat_save["dc"] = result.effective_dc
                         repeat_save["ability"] = str(spell_context.get("save_ability") or "wisdom")
                         repeat_save["source_participant_id"] = attacker.get("id")
+                applied_effects = application.get("applied_effects")
+                if not isinstance(applied_effects, list):
+                    applied_effects = []
                 on_hit_applied_declarative_effects_by_target = (
                     cls._build_applied_declarative_effects_by_target(
-                        application.get("applied_effects")
+                        applied_effects
                     )
                 )
         else:
@@ -318,4 +329,3 @@ class CastTargetSingleTargetCastResolutionMixin:
             "automation_result": automation_result,
             "on_hit_applied_declarative_effects_by_target": on_hit_applied_declarative_effects_by_target,
         }
-

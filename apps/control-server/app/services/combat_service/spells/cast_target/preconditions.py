@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.inventory import InventoryItem
@@ -7,9 +9,16 @@ from app.models.session import Session as CampaignSession
 from app.services.spell_material_components import SpellMaterialError, validate_spell_material
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class CastTargetPreconditionsMixin:
+if TYPE_CHECKING:
+    _CastTargetPreconditionsBase = CombatServiceHostProtocol
+else:
+    _CastTargetPreconditionsBase = object
+
+
+class CastTargetPreconditionsMixin(_CastTargetPreconditionsBase):
     @classmethod
     def _validate_cast_prerequisites(
         cls,
@@ -23,6 +32,8 @@ class CastTargetPreconditionsMixin:
     ):
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("Combat state not found.", 404)
         attacker = cls._resolve_actor_participant(
             state, actor_user_id, is_gm, req.actor_participant_id,
         )
@@ -152,4 +163,3 @@ class CastTargetPreconditionsMixin:
             db, session_id, attacker, attacker_model, req,
         )
         return cls._build_resolved_spell_context_response(req, spell_context)
-

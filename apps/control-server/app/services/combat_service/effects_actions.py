@@ -18,21 +18,22 @@ from app.schemas.combat import (
 from .condition_effects_predicates import has_condition_immunity, is_reaction_blocked
 from .effects_core import CombatEffectsCoreMixin
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
+class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtocol):
     @classmethod
-    def _consume_turn_resource(cls, participant: dict, cost: str, *, is_gm: bool = False, override_resource_limit: bool = False) -> bool:
-        if cost == "free":
+    def _consume_turn_resource(cls, participant: dict, resource: str, *, is_gm: bool = False, override_resource_limit: bool = False) -> bool:
+        if resource == "free":
             return False
-        if cost == "reaction" and is_reaction_blocked(participant):
+        if resource == "reaction" and is_reaction_blocked(participant):
             raise CombatServiceError("Reaction is restricted by active effect.", 403)
         resources = cls._get_turn_resources(participant)
-        key = f"{cost}_used"
+        key = f"{resource}_used"
         if key not in resources:
-            raise CombatServiceError(f"Unknown action cost: {cost}")
+            raise CombatServiceError(f"Unknown action cost: {resource}")
         if resources.get(key):
-            label = cost.replace("_", " ")
+            label = resource.replace("_", " ")
             if not is_gm:
                 raise CombatServiceError(f"Your {label} has already been used this turn.", 403)
             if not override_resource_limit:
@@ -45,6 +46,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
     @classmethod
     async def apply_effect(cls, db: Session, session_id: str, req: CombatApplyEffectRequest) -> CombatState:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         target = next((participant for participant in state.participants if participant["id"] == req.target_participant_id), None)
         if not target:
@@ -96,6 +99,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
     @classmethod
     async def remove_effect(cls, db: Session, session_id: str, req: CombatRemoveEffectRequest) -> CombatState:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         target = next((participant for participant in state.participants if participant["id"] == req.target_participant_id), None)
         if not target:
@@ -131,12 +136,16 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
         await cls._emit_log(session_id, {"message": f"Effect '{cls._effect_label(removed)}' removed from {target['display_name']}.", "source": "effect_removed"})
         if target.get("kind") == "player":
             from .persistent_effects import sync_effect_removal_to_state_json
-            sync_effect_removal_to_state_json(db, session_id, target, removed.get("id"))
+            removed_effect_id = removed.get("id")
+            if removed_effect_id is not None:
+                sync_effect_removal_to_state_json(db, session_id, target, removed_effect_id)
         return state
 
     @classmethod
     async def consume_reaction(cls, db: Session, session_id: str, req: CombatConsumeReactionRequest, actor_user_id: str, is_gm: bool) -> CombatState:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         target = next((participant for participant in state.participants if participant["id"] == req.participant_id), None)
         if not target:
@@ -159,6 +168,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
     @classmethod
     async def request_reaction(cls, db: Session, session_id: str, req: CombatReactionRequestRequest, actor_user_id: str) -> CombatState:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         target = next((participant for participant in state.participants if participant["id"] == req.actor_participant_id), None)
         if not target:
@@ -178,6 +189,8 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin):
     @classmethod
     async def resolve_reaction(cls, db: Session, session_id: str, req: CombatReactionResolveRequest) -> CombatState:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         target = next((participant for participant in state.participants if participant["id"] == req.actor_participant_id), None)
         if not target:

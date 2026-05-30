@@ -1,22 +1,26 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
-from app.schemas.roll import RollActorStats
+from app.schemas.roll import AdvantageMode, RollActorStats
 from app.services.dragonborn_breath_weapon import DRAGONBORN_BREATH_WEAPON_ACTION_ID
 from app.services.roll_resolution import resolve_skill_check
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 from .standard_action_object import CombatStandardObjectActionMixin
 
 
-class CombatStandardCombatActionMixin(CombatStandardObjectActionMixin):
+class CombatStandardCombatActionMixin(CombatStandardObjectActionMixin, CombatServiceHostProtocol):
     @classmethod
     async def standard_action(cls, db, session_id: str, req, actor_user_id: str, is_gm: bool) -> dict:
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         actor = cls._resolve_actor_participant(state, actor_user_id, is_gm, req.actor_participant_id)
         cls._require_actor_status(actor, ("active",), "You can only use actions when active.")
         cls._require_action_capable(actor)
@@ -120,12 +124,15 @@ class CombatStandardCombatActionMixin(CombatStandardObjectActionMixin):
         roll_result = resolve_skill_check(
             cls._build_roll_actor_stats_for_skill(db, session_id, actor["ref_id"], actor["kind"], actor["display_name"]),
             "stealth",
-            advantage_mode=cls._resolve_skill_check_advantage_mode_for_actor(
-                db,
-                session_id,
-                actor_kind=actor["kind"],
-                actor_ref_id=actor["ref_id"],
-                skill="stealth",
+            advantage_mode=cast(
+                AdvantageMode,
+                cls._resolve_skill_check_advantage_mode_for_actor(
+                    db,
+                    session_id,
+                    actor_kind=actor["kind"],
+                    actor_ref_id=actor["ref_id"],
+                    skill="stealth",
+                ),
             ),
             roll_source=req.roll_source,
             manual_roll=req.manual_roll,

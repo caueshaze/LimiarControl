@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from app.models.base_item import BaseItemKind, BaseItemProperty, BaseItemWeaponRangeType
 from app.models.item import ItemType
 
@@ -7,6 +9,19 @@ from .exceptions import CombatServiceError
 
 
 class CombatEntityWeaponActionMixin:
+    if TYPE_CHECKING:
+
+        @classmethod
+        def _get_campaign_item_for_session(
+            cls, db: Any, session_id: str, item_key: str
+        ) -> Any: ...
+
+        @classmethod
+        def _get_campaign_system_for_session(cls, db: Any, session_id: str) -> Any: ...
+
+        @classmethod
+        def _normalize_damage_type(cls, value: object) -> str | None: ...
+
     @staticmethod
     def _has_reach_property(properties: list[str] | None) -> bool:
         return BaseItemProperty.REACH.value in {str(value).strip().lower() for value in (properties or []) if isinstance(value, str)}

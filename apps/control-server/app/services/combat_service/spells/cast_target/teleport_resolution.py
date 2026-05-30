@@ -1,15 +1,23 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from app.services.spell_material_components import MaterialConsumptionResult, SpellMaterialError, validate_spell_material
 from app.integrations import LimiarMapClientError
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class CastTargetTeleportResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetTeleportResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetTeleportResolutionBase = object
+
+
+class CastTargetTeleportResolutionMixin(_CastTargetTeleportResolutionBase):
     @classmethod
     async def _resolve_teleport_spell(
         cls, db, session_id, req, state, attacker, attacker_model, spell_context, actor_user_id, is_gm

@@ -46,6 +46,8 @@ def resolve_check_advantage_mode(
 
         effect_type = declarative.get("type")
         params = declarative.get("params")
+        if not isinstance(effect_type, str):
+            continue
         if not isinstance(params, dict) or params.get("ability") != ability:
             continue
 

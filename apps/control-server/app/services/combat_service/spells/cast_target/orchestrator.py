@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from .plain_multi_target_resolution import CastTargetPlainMultiTargetResolutionMixin
 
 logger = logging.getLogger(__name__)
 
 
-class CastTargetOrchestratorMixin:
+if TYPE_CHECKING:
+    _CastTargetOrchestratorBase = CombatServiceHostProtocol
+else:
+    _CastTargetOrchestratorBase = object
+
+
+class CastTargetOrchestratorMixin(_CastTargetOrchestratorBase):
     @classmethod
     async def cast_spell(
         cls,
@@ -80,7 +88,10 @@ class CastTargetOrchestratorMixin:
             )
         variant_map = cls._get_spell_variants_map(spell_context)
         if variant_map:
-            selected_variant_key = spell_context.get("selected_variant_key")
+            selected_variant_key_raw = spell_context.get("selected_variant_key")
+            selected_variant_key = (
+                selected_variant_key_raw if isinstance(selected_variant_key_raw, str) else ""
+            )
             selected_variant = variant_map.get(selected_variant_key)
             if selected_variant is None:
                 raise CombatServiceError(
@@ -95,6 +106,11 @@ class CastTargetOrchestratorMixin:
                 ),
                 attacker if spell_context.get("selection_type") in ("self", "none") else None,
             )
+            if not isinstance(selected_participant, dict):
+                raise CombatServiceError(
+                    "Target not found in combat",
+                    400,
+                )
             single_target_assignment = (
                 [
                     {

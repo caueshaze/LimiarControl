@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
@@ -8,6 +10,7 @@ from app.schemas.roll import RollActorStats
 from app.services.game_time import get_game_time_seconds
 from app.services.roll_resolution import resolve_attack_base
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 _PRODUCE_FLAME_DURATION_SECONDS = 600
 _PRODUCE_FLAME_BRIGHT_LIGHT_METERS = 3
@@ -15,7 +18,13 @@ _PRODUCE_FLAME_DIM_LIGHT_METERS = 3
 _PRODUCE_FLAME_THROW_RANGE_METERS = 9
 
 
-class ProduceFlameAutomationMixin:
+if TYPE_CHECKING:
+    _ProduceFlameBase = CombatServiceHostProtocol
+else:
+    _ProduceFlameBase = object
+
+
+class ProduceFlameAutomationMixin(_ProduceFlameBase):
     @classmethod
     def _remove_existing_produce_flame_effects(
         cls,
@@ -146,6 +155,13 @@ class ProduceFlameAutomationMixin:
                 session_id,
                 combat_state=state,
             )
+            has_adv = bool(getattr(req, "has_advantage", False))
+            has_dis = bool(getattr(req, "has_disadvantage", False))
+            adv_mode = (
+                "advantage" if has_adv and not has_dis
+                else "disadvantage" if has_dis and not has_adv
+                else "normal"
+            )
             roll_result = resolve_attack_base(
                 RollActorStats(
                     display_name=attacker["display_name"],
@@ -153,13 +169,12 @@ class ProduceFlameAutomationMixin:
                     actor_kind="player",
                     actor_ref_id=attacker["ref_id"],
                 ),
+                advantage_mode=adv_mode,
                 bonus_override=cls._safe_int(spell_context.get("attack_bonus"), 0),
                 target_ac=target_ac or 10,
                 roll_source=getattr(req, "roll_source", "system"),
                 manual_roll=getattr(req, "manual_roll", None),
                 manual_rolls=getattr(req, "manual_rolls", None),
-                has_advantage=bool(getattr(req, "has_advantage", False)),
-                has_disadvantage=bool(getattr(req, "has_disadvantage", False)),
             )
             roll_result.is_gm_roll = is_gm
             is_hit = bool(roll_result.success)
@@ -169,7 +184,6 @@ class ProduceFlameAutomationMixin:
                 _, rolled_damage = cls._resolve_damage_roll(
                     damage_dice,
                     roll_source=getattr(req, "roll_source", "system"),
-                    manual_roll=None,
                     manual_rolls=None,
                 )
                 damage = max(0, rolled_damage)
@@ -185,7 +199,11 @@ class ProduceFlameAutomationMixin:
                     attacker_participant_id=attacker.get("id"),
                 )
 
-            cls._consume_effect_ids(attacker, [active_effect.get("id")])
+            effect_ids = [
+                eid for eid in [active_effect.get("id")]
+                if isinstance(eid, str)
+            ]
+            cls._consume_effect_ids(attacker, effect_ids)
             flag_modified(state, "participants")
 
             target_name = target_participant.get("display_name") or target_participant.get("ref_id") or "Alvo"

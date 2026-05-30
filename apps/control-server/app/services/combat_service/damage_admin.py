@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any, Callable, ClassVar
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -20,6 +21,23 @@ from .fall_damage import FallDamageComputation, FallDamageResolution, compute_fa
 
 
 class CombatDamageAdminMixin(CombatDamageCoreMixin):
+    get_state: ClassVar[Callable[[Any, str], Any]]
+    _require_active: ClassVar[Callable[[Any], None]]
+    _get_stats: ClassVar[Callable[..., tuple[Any, Any, Any, Any, Any, Any]]]
+    _as_dict: ClassVar[Callable[[object], dict[str, Any]]]
+    _is_player_dead_state: ClassVar[Callable[[dict[str, Any] | None], bool]]
+    _safe_int: ClassVar[Callable[[object, int], int]]
+    _reset_death_saves: ClassVar[Callable[[dict[str, Any]], None]]
+    _sync_participant_status: ClassVar[Callable[..., str]]
+    _get_participant_effects: ClassVar[Callable[[dict[str, Any]], list[dict[str, Any]]]]
+    _set_participant_effects: ClassVar[Callable[[dict[str, Any], list[dict[str, Any]]], None]]
+    _get_effect_metadata: ClassVar[Callable[[dict[str, Any] | None], dict[str, Any]]]
+    _normalize_lookup: ClassVar[Callable[[object], str]]
+    _emit_state: ClassVar[Callable[[str, Any], Any]]
+    _emit_player_state_update: ClassVar[Callable[..., Any]]
+    _emit_entity_hp_update: ClassVar[Callable[..., Any]]
+    _emit_and_persist_log: ClassVar[Callable[..., Any]]
+
     @staticmethod
     def _build_fall_log_payload(
         *,
@@ -270,7 +288,7 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                 causes_damage=True,
                 applied_damage=False,
                 prevented=True,
-                prevention_sources=[immunity_label],
+                prevention_sources=[src for src in [immunity_label] if src is not None],
             )
             db.commit()
             await cls._emit_state(session_id, state)
@@ -287,12 +305,12 @@ class CombatDamageAdminMixin(CombatDamageCoreMixin):
                     damage_total=0,
                     applied_damage=False,
                     prevented=True,
-                    prevention_sources=[immunity_label],
+                    prevention_sources=[src for src in [immunity_label] if src is not None],
                     applied_conditions=[],
                 ),
             )
             return {"resolution": resolution.model_dump(mode="json"), "new_hp": None, "concentration_check": None}
-        damage_total = _roll_dice_expression(computation.damage_formula)
+        damage_total = _roll_dice_expression(computation.damage_formula or "0")
         new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
             db,
             ref_id,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
@@ -8,9 +10,16 @@ from app.schemas.roll import RollActorStats
 from app.services.roll_resolution import resolve_attack_base
 from ...condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class ChillTouchAutomationMixin:
+if TYPE_CHECKING:
+    _ChillTouchBase = CombatServiceHostProtocol
+else:
+    _ChillTouchBase = object
+
+
+class ChillTouchAutomationMixin(_ChillTouchBase):
     @classmethod
     async def _cast_chill_touch_automation(
         cls,

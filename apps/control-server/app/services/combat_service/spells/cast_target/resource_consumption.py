@@ -1,30 +1,39 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.services.combat_service.condition_effects_predicates import is_reaction_blocked
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class CastTargetResourceConsumptionMixin:
+if TYPE_CHECKING:
+    _CastTargetResourceConsumptionBase = CombatServiceHostProtocol
+else:
+    _CastTargetResourceConsumptionBase = object
+
+
+class CastTargetResourceConsumptionMixin(_CastTargetResourceConsumptionBase):
     @classmethod
     def _ensure_turn_resource_available(
         cls,
         participant: dict,
-        cost: str,
+        resource: str,
         *,
         is_gm: bool = False,
         override_resource_limit: bool = False,
     ) -> None:
-        if cost == "free":
+        if resource == "free":
             return
-        if cost == "reaction" and is_reaction_blocked(participant):
+        if resource == "reaction" and is_reaction_blocked(participant):
             raise CombatServiceError("Reaction is restricted by active effect.", 403)
         resources = cls._get_turn_resources(participant)
-        key = f"{cost}_used"
+        key = f"{resource}_used"
         if key not in resources:
-            raise CombatServiceError(f"Unknown action cost: {cost}")
+            raise CombatServiceError(f"Unknown action cost: {resource}")
         if resources.get(key):
-            label = cost.replace("_", " ")
+            label = resource.replace("_", " ")
             if is_gm and override_resource_limit:
                 return
             raise CombatServiceError(
@@ -92,4 +101,3 @@ class CastTargetResourceConsumptionMixin:
                 "Os alvos de Queda Suave devem estar no evento de queda.",
                 400,
             )
-

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.schemas.roll import RollActorStats
@@ -9,10 +11,17 @@ from app.services.roll_resolution import resolve_attack_base
 
 from ...cover_modifiers import resolve_cover_modifier
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_result import TargetingResult
 
 
-class CastTargetInstanceResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetInstanceResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetInstanceResolutionBase = object
+
+
+class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
     @classmethod
     def _build_delayed_damage_metadata_from_spell_context(
         cls,
@@ -56,9 +65,9 @@ class CastTargetInstanceResolutionMixin:
     def _apply_spell_attack_delayed_damage_effect(
         cls,
         *,
-        target_participant: dict,
-        spell_context: dict,
-        attacker: dict,
+        target_participant: dict[str, Any],
+        spell_context: dict[str, Any],
+        attacker: dict[str, Any],
     ) -> bool:
         metadata = cls._build_delayed_damage_metadata_from_spell_context(
             spell_context=spell_context,
@@ -286,4 +295,3 @@ class CastTargetInstanceResolutionMixin:
             "effective_ac": target_ac,
             "cover_modifier": cover_modifier,
         }
-

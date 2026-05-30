@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.combat import CombatPhase
+from app.schemas.campaign_entity_shared import AbilityName
 from app.services.game_time import (
     COMBAT_ROUND_GAME_TIME_SECONDS,
     advance_game_time_seconds,
@@ -12,6 +15,7 @@ from app.services.combat_service.condition_effects_saves import modify_saving_th
 from app.services.roll_resolution import resolve_saving_throw
 
 from .exceptions import CombatServiceError, _roll_dice_expression
+from .host_protocol import CombatServiceHostProtocol
 from .limiar_map_projection import (
     maybe_project_combat_advance_to_limiar_map as _project_combat_advance_to_limiar_map,
     maybe_project_combat_end_to_limiar_map as _project_combat_end_to_limiar_map,
@@ -48,7 +52,7 @@ def maybe_project_combat_end_to_limiar_map(session_id: str, state) -> None:
     _project_combat_end_to_limiar_map(session_id, state)
 
 
-class CombatLifecycleTurnsMixin:
+class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
     @classmethod
     async def _resolve_turn_end_delayed_damage_effects(
         cls,
@@ -157,7 +161,7 @@ class CombatLifecycleTurnsMixin:
                     participant["kind"],
                     participant["display_name"],
                 ),
-                ability=ability,
+                ability=cast(AbilityName, ability),
                 advantage_mode=save_mod.result,
                 dc=dc,
                 roll_source="system",
@@ -178,7 +182,7 @@ class CombatLifecycleTurnsMixin:
                     if not still_has_group and isinstance(metadata.get("source_participant_id"), str):
                         cls._clear_concentration_for_source(
                             state,
-                            source_participant_id=metadata.get("source_participant_id"),
+                            source_participant_id=metadata.get("source_participant_id") or "",
                             db=db,
                         )
                 await cls._emit_log(
@@ -264,6 +268,8 @@ class CombatLifecycleTurnsMixin:
         skip_turn_end_validation: bool = False,
     ):
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         cls._ensure_active_combat_time_accounting_started(db, session_id, state)
         attacker = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)

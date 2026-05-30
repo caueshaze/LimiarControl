@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.inventory import InventoryItem
-from app.services.magic_item_effects import consume_inventory_item_charge
+from app.services.magic_item_effects import (
+    consume_inventory_item_charge,
+    get_inventory_item_charges_current,
+)
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_result import TargetingResult
 
 
-class CastTargetModalMultiTargetResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetModalMultiTargetResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetModalMultiTargetResolutionBase = object
+
+
+class CastTargetModalMultiTargetResolutionMixin(_CastTargetModalMultiTargetResolutionBase):
     @classmethod
     async def _resolve_modal_multi_target_cast(
         cls,
@@ -184,10 +195,10 @@ class CastTargetModalMultiTargetResolutionMixin:
                 )
                 outcome["variant_key"] = assignment["variant_key"]
                 outcome["variant_label"] = assignment["variant_label"]
-                if outcome.get("roll_result") and (
-                    outcome.get("roll_result").pending_spell_id
-                    or outcome.get("roll_result").pending_save_id
-                ):
+                roll_result = outcome.get("roll_result")
+                pending_spell_id = getattr(roll_result, "pending_spell_id", None)
+                pending_save_id = getattr(roll_result, "pending_save_id", None)
+                if pending_spell_id or pending_save_id:
                     raise CombatServiceError(
                         "Multi-target modal spells do not support pending follow-up resolution yet.",
                         400,
@@ -360,4 +371,3 @@ class CastTargetModalMultiTargetResolutionMixin:
             "target_variant_assignments": target_variant_assignments,
             "manual_notes_by_target": manual_notes_by_target,
         }
-

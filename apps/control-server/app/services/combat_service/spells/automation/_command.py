@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
@@ -7,6 +9,7 @@ from app.models.combat import CombatState
 from app.services.roll_resolution import resolve_saving_throw
 from ...condition_effects_saves import modify_saving_throw
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
 def _build_command_effect_metadata(
@@ -54,7 +57,13 @@ def _build_command_effect_metadata(
     return base
 
 
-class CommandAutomationMixin:
+if TYPE_CHECKING:
+    _CommandBase = CombatServiceHostProtocol
+else:
+    _CommandBase = object
+
+
+class CommandAutomationMixin(_CommandBase):
     @classmethod
     async def _cast_command_automation(
         cls,

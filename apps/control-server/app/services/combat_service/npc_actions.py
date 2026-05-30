@@ -132,6 +132,8 @@ class CombatNpcActionMixin(
         is_gm: bool,
     ):
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         attacker = cls._resolve_actor_participant(
             state,

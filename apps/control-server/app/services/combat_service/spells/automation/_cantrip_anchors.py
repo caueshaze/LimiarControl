@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -18,6 +19,7 @@ from app.services.item_condition_tags import (
 )
 from app.services.session_state_finalize import finalize_session_state_data
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...spell_anchors import (
     create_spell_anchor,
     get_spell_anchor_by_id,
@@ -28,6 +30,11 @@ from ...spell_anchors import (
 )
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    _CantripAnchorsBase = CombatServiceHostProtocol
+else:
+    _CantripAnchorsBase = object
 
 
 def _to_inventory_read_dict(entry: InventoryItem) -> dict:
@@ -58,7 +65,7 @@ def _to_inventory_read_dict(entry: InventoryItem) -> dict:
     }
 
 
-class CantripAnchorsAutomationMixin:
+class CantripAnchorsAutomationMixin(_CantripAnchorsBase):
     @classmethod
     async def _cast_mage_hand_automation(
         cls,
@@ -145,6 +152,8 @@ class CantripAnchorsAutomationMixin:
 
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
 
         attacker = cls._find_participant_by_id(state, req.actor_participant_id)
         if not attacker:
@@ -167,7 +176,7 @@ class CantripAnchorsAutomationMixin:
             anchor_id=req.anchor_id,
             destination={"x": req.destination["x"], "y": req.destination["y"]},
             max_movement_meters=9.0,
-            battle_map=battle_map,
+            battle_map=battle_map or {},
         )
         anchor = get_spell_anchor_by_id(state, req.anchor_id) or anchor
         flag_modified(state, "spell_anchors")
@@ -375,8 +384,15 @@ class CantripAnchorsAutomationMixin:
         raw_inventory_item_id = getattr(req, "inventory_item_id", None)
         if isinstance(raw_inventory_item_id, str) and raw_inventory_item_id.strip():
             inventory_item_id = raw_inventory_item_id.strip()
-        elif isinstance(spell_context.get("inventory_item_id"), str) and spell_context.get("inventory_item_id").strip():
-            inventory_item_id = spell_context.get("inventory_item_id").strip()
+        else:
+            spell_context_item_id = spell_context.get("inventory_item_id")
+            spell_context_item_id_cleaned = (
+                spell_context_item_id.strip()
+                if isinstance(spell_context_item_id, str)
+                else ""
+            )
+            if spell_context_item_id_cleaned:
+                inventory_item_id = spell_context_item_id_cleaned
         if not inventory_item_id:
             raise CombatServiceError("Mending exige inventory_item_id.", 400)
 

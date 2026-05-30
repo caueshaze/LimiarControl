@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 from .targeting_intent import SpellCastIntent, WeaponAttackIntent
-from .targeting_requirements import resolve_spell_targeting_requirements
+from .targeting_requirements import TargetingRequirements, resolve_spell_targeting_requirements
 
 
-class CombatNpcActionStepsMixin:
+class CombatNpcActionStepsMixin(CombatServiceHostProtocol):
     @classmethod
     def _resolve_npc_weapon_targeting_requirements(
         cls, resolved_action: dict
-    ) -> object:
-        from .targeting_requirements import TargetingRequirements
-
+    ) -> TargetingRequirements:
         requires_sight = resolved_action.get("requiresTargetSight")
         requires_effect = resolved_action.get("requiresTargetEffect")
         return TargetingRequirements(
@@ -31,6 +30,8 @@ class CombatNpcActionStepsMixin:
         is_gm: bool,
     ) -> dict:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         attacker = cls._resolve_actor_participant(
             state,
@@ -96,7 +97,7 @@ class CombatNpcActionStepsMixin:
         if action_kind in ("weapon_attack", "spell_attack", "saving_throw"):
             cls._assert_hostile_action_allowed(
                 attacker,
-                target_p,
+                target_p or {},
                 action_label="a hostile action",
             )
         return target_p
@@ -122,8 +123,8 @@ class CombatNpcActionStepsMixin:
                 requested_target_ref_id=target_p["ref_id"],
                 weapon_item_id=None,
                 weapon_canonical_key=None,
-                range_meters=cls._safe_int(resolved_action.get("rangeMeters"), None),
-                range_long_meters=cls._safe_int(resolved_action.get("rangeLongMeters"), None),
+                range_meters=cls._safe_int(resolved_action.get("rangeMeters"), 0),
+                range_long_meters=cls._safe_int(resolved_action.get("rangeLongMeters"), 0),
                 weapon_range_type=resolved_action.get("rangeType"),
                 has_reach=bool(resolved_action.get("hasReach")),
                 actor_effective_size=attacker.get("effective_size") or attacker.get("base_size"),
@@ -151,7 +152,7 @@ class CombatNpcActionStepsMixin:
             spell_mode=action_kind,
             target_type=resolved_action.get("targetType"),
             area_shape=resolved_action.get("areaShape"),
-            range_meters=cls._safe_int(resolved_action.get("rangeMeters"), None),
+            range_meters=cls._safe_int(resolved_action.get("rangeMeters"), 0),
             requires_sight=spell_targeting.requires_target_sight,
             requires_effect=spell_targeting.requires_target_effect,
         )

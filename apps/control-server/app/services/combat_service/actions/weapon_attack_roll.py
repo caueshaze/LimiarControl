@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -11,6 +12,7 @@ from app.services.combat_service.sanctuary_guard import break_sanctuary_if_activ
 from app.services.combat_service.visibility import resolve_target_visibility
 
 from ..exceptions import CombatServiceError
+from ..host_protocol import CombatServiceHostProtocol
 from ..reach import resolve_weapon_attack_kind
 from ..targeting_intent import WeaponAttackIntent
 from ..targeting_requirements import resolve_weapon_targeting_requirements
@@ -18,13 +20,21 @@ from ..targeting_requirements import resolve_weapon_targeting_requirements
 logger = logging.getLogger(__name__)
 
 
-class WeaponAttackRollMixin:
+if TYPE_CHECKING:
+    _WeaponAttackRollBase = CombatServiceHostProtocol
+else:
+    _WeaponAttackRollBase = object
+
+
+class WeaponAttackRollMixin(_WeaponAttackRollBase):
     @classmethod
     async def attack(cls, db, session_id: str, req, actor_user_id: str, is_gm: bool):
         from . import weapon_attacks as weapon_attacks_module
 
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         attacker = cls._resolve_actor_participant(state, actor_user_id, is_gm, req.actor_participant_id)
         cls._require_actor_status(attacker, ("active",), "You can only attack when active.")
         cls._require_action_capable(attacker)

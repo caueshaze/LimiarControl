@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
@@ -11,9 +13,35 @@ from app.services.dragonborn_breath_weapon import (
 from app.services.session_state_finalize import finalize_session_state_data
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatDragonbornBreathMixin:
+def _encode_storage_dict(source: dict[str, Any] | dict[bytes, Any] | None) -> dict[bytes, Any]:
+    encoded: dict[bytes, Any] = {}
+    if not isinstance(source, dict):
+        return encoded
+    for key, value in source.items():
+        if isinstance(key, str):
+            encoded[key.encode("utf-8")] = value
+        elif isinstance(key, (bytes, bytearray)):
+            encoded[bytes(key)] = value
+    return encoded
+
+
+def _decode_storage_dict(source: dict[bytes, Any] | dict[str, Any] | None) -> dict[str, Any]:
+    decoded: dict[str, Any] = {}
+    if not isinstance(source, dict):
+        return decoded
+    for key, value in source.items():
+        decoded_key = key.decode("utf-8") if isinstance(key, (bytes, bytearray)) else str(key)
+        if isinstance(value, dict):
+            decoded[decoded_key] = _decode_storage_dict(value)
+        else:
+            decoded[decoded_key] = value
+    return decoded
+
+
+class CombatDragonbornBreathMixin(CombatServiceHostProtocol):
 
     @classmethod
     def _precheck_dragonborn_breath_weapon(cls, db, session_id, state, actor, req) -> None:
@@ -21,8 +49,9 @@ class CombatDragonbornBreathMixin:
             raise CombatServiceError("Only players can use Dragonborn Breath Weapon.", 400)
         target = cls._resolve_required_hostile_target(state, actor, req.target_participant_id)
         attacker_state, *_ = cls._get_stats(db, actor["ref_id"], actor["kind"], session_id)
+        attacker_state_json = attacker_state.state_json if attacker_state is not None else None
         attacker_data = apply_dragonborn_breath_weapon_canonical_state(
-            cls._as_dict(attacker_state.state_json),
+            cls._as_dict(attacker_state_json) if attacker_state_json is not None else {},
         )
         action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
         if action_state is None:
@@ -42,32 +71,33 @@ class CombatDragonbornBreathMixin:
 
         target = cls._resolve_required_hostile_target(state, actor, req.target_participant_id)
         attacker_state, *_ = cls._get_stats(db, actor["ref_id"], actor["kind"], session_id)
+        attacker_state_json = attacker_state.state_json if attacker_state is not None else None
         attacker_data = apply_dragonborn_breath_weapon_canonical_state(
-            cls._as_dict(attacker_state.state_json),
+            cls._as_dict(attacker_state_json) if attacker_state_json is not None else {},
         )
         action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
         if action_state is None:
             raise CombatServiceError("Dragonborn Breath Weapon is not available for this actor.", 400)
 
-        class_resources = (
-            dict(attacker_data.get("classResources"))
-            if isinstance(attacker_data.get("classResources"), dict)
-            else {}
+        class_resources_source = attacker_data.get("classResources")
+        class_resources = _encode_storage_dict(class_resources_source if isinstance(class_resources_source, dict) else None)
+        resource_key = DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY.encode("utf-8")
+        resource_source = class_resources.get(resource_key)
+        resource = _encode_storage_dict(resource_source if isinstance(resource_source, dict) else None)
+        uses_max_key = b"usesMax"
+        uses_remaining_key = b"usesRemaining"
+        uses_max = cls._safe_int(
+            resource.get(uses_max_key),
+            cls._safe_int(action_state.get("usesMax"), 1),
         )
-        resource = (
-            dict(class_resources.get(DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY))
-            if isinstance(class_resources.get(DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY), dict)
-            else {}
-        )
-        uses_max = cls._safe_int(resource.get("usesMax"), cls._safe_int(action_state.get("usesMax"), 1))
-        uses_remaining = cls._safe_int(resource.get("usesRemaining"), uses_max)
+        uses_remaining = cls._safe_int(resource.get(uses_remaining_key), uses_max)
         if uses_remaining <= 0:
             raise CombatServiceError("No Dragonborn Breath Weapon uses remaining.", 400)
 
-        resource["usesMax"] = uses_max
-        resource["usesRemaining"] = uses_remaining - 1
-        class_resources[DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY] = resource
-        attacker_data["classResources"] = class_resources
+        resource[uses_max_key] = uses_max
+        resource[uses_remaining_key] = uses_remaining - 1
+        class_resources[resource_key] = resource
+        attacker_data["classResources"] = _decode_storage_dict(class_resources)
         attacker_state.state_json = finalize_session_state_data(attacker_data)
         flag_modified(attacker_state, "state_json")
         db.add(attacker_state)
@@ -92,7 +122,14 @@ class CombatDragonbornBreathMixin:
         roll_total = roll_result.total
         is_saved = bool(roll_result.success)
 
-        effect_rolls, base_damage = cls._resolve_damage_roll(action_state["damageDice"])
+        damage_dice = action_state.get("damageDice")
+        if not isinstance(damage_dice, str) or not damage_dice.strip():
+            raise CombatServiceError("Dragonborn Breath Weapon damage dice is missing.", 400)
+        effect_rolls, base_damage = cls._resolve_damage_roll(
+            damage_dice,
+            roll_source="system",
+            manual_rolls=None,
+        )
         rolled_damage = max(0, base_damage)
         damage = cls._resolve_save_damage_amount(
             rolled_damage,
@@ -127,7 +164,7 @@ class CombatDragonbornBreathMixin:
             f"{actor['display_name']} uses Dragonborn Breath Weapon on {target['display_name']}. "
             f"{target['display_name']} {save_text} the {action_state.get('saveType')} save "
             f"(roll {roll_total} vs DC {action_state.get('dc')}) and takes {applied_damage} {damage_type} damage"
-            f"{effect_msg}. Uses remaining: {resource['usesRemaining']}."
+            f"{effect_msg}. Uses remaining: {resource[uses_remaining_key]}."
         )
 
         return {
@@ -146,7 +183,7 @@ class CombatDragonbornBreathMixin:
             "effect_dice": action_state["damageDice"],
             "effect_rolls": effect_rolls,
             "effect_roll_source": "system",
-            "uses_remaining": resource["usesRemaining"],
+            "uses_remaining": resource[uses_remaining_key],
             "concentration_check": concentration_check,
             "_actor_player_user_id": actor["ref_id"],
             "_actor_player_state": attacker_state,

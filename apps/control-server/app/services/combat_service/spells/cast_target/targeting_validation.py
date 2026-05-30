@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from app.schemas.base_spell import SpellVariant
 
 from ...combat_targeting import get_combat_targeting_service
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_intent import SpellCastIntent
 from ...targeting_result import TargetingResult
 from .helpers import resolve_instance_spatial_error_phrase
 
 
-class CastTargetTargetingValidationMixin:
+if TYPE_CHECKING:
+    _CastTargetTargetingValidationBase = CombatServiceHostProtocol
+else:
+    _CastTargetTargetingValidationBase = object
+
+
+class CastTargetTargetingValidationMixin(_CastTargetTargetingValidationBase):
     @classmethod
     def _get_spell_variants_map(cls, spell_context: dict) -> dict[str, SpellVariant]:
         variants = cls._normalize_spell_variants(spell_context.get("variant_definitions"))
@@ -198,10 +206,11 @@ class CastTargetTargetingValidationMixin:
                 reason = cls._map_spell_rejection_reason(
                     diag.primary_failure() if diag else None
                 )
+                actor_user_id = attacker.get("actor_user_id")
                 cls._record_spell_cast_rejected_activity(
                     db,
                     session_id=session_id,
-                    actor_user_id=attacker.get("actor_user_id"),
+                    actor_user_id=actor_user_id if isinstance(actor_user_id, str) else "",
                     actor_ref_id=attacker["ref_id"],
                     actor_display_name=attacker.get("display_name") or attacker["ref_id"],
                     spell_context=spell_context,
@@ -332,10 +341,11 @@ class CastTargetTargetingValidationMixin:
                 reason = cls._map_spell_rejection_reason(
                     result.diagnostics.primary_failure() if result.diagnostics else None
                 )
+                actor_user_id = attacker.get("actor_user_id")
                 cls._record_spell_cast_rejected_activity(
                     db,
                     session_id=session_id,
-                    actor_user_id=attacker.get("actor_user_id"),
+                    actor_user_id=actor_user_id if isinstance(actor_user_id, str) else "",
                     actor_ref_id=attacker["ref_id"],
                     actor_display_name=attacker.get("display_name") or attacker["ref_id"],
                     spell_context=spell_context,
@@ -353,4 +363,3 @@ class CastTargetTargetingValidationMixin:
             results_by_ref[target_ref_id] = result
 
         return results_by_ref
-

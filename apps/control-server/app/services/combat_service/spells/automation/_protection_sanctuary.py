@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -12,9 +13,16 @@ from app.services.spell_effect_factories import (
     build_sanctuary_effect,
 )
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class ProtectionSanctuaryAutomationMixin:
+if TYPE_CHECKING:
+    _ProtectionSanctuaryBase = CombatServiceHostProtocol
+else:
+    _ProtectionSanctuaryBase = object
+
+
+class ProtectionSanctuaryAutomationMixin(_ProtectionSanctuaryBase):
     @classmethod
     async def _cast_protection_from_evil_and_good_automation(
         cls,

@@ -1,20 +1,29 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.inventory import InventoryItem
 from app.services.magic_item_effects import consume_inventory_item_charge, get_inventory_item_charges_current
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ..spell_resolution import SpellResolutionResult
 
 
-class CastTargetSingleTargetNoExternalResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetSingleTargetNoExternalResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetSingleTargetNoExternalResolutionBase = object
+
+
+class CastTargetSingleTargetNoExternalResolutionMixin(_CastTargetSingleTargetNoExternalResolutionBase):
     @classmethod
     async def _resolve_no_external_target_cast(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm,
-    ):
+    ) -> dict[str, Any]:
         slot_spent = False
         is_shield = cls._normalize_lookup(spell_context.get("spell_canonical_key")) == "shield"
         shield_pending_attacker = None
@@ -73,7 +82,8 @@ class CastTargetSingleTargetNoExternalResolutionMixin:
                 attacker,
                 source_participant_id=attacker.get("id"),
             )
-            pending_roll = cls._safe_int(shield_pending_payload.get("roll"), 0)
+            pending_options = shield_pending_payload or {}
+            pending_roll = cls._safe_int(pending_options.get("roll"), 0)
             _, recalculated_ac, *_ = cls._get_stats(
                 db,
                 attacker["ref_id"],
@@ -83,8 +93,9 @@ class CastTargetSingleTargetNoExternalResolutionMixin:
             )
             recalculated_ac = recalculated_ac or 10
             if pending_roll < recalculated_ac:
-                cls._clear_participant_pending_attack(shield_pending_attacker)
-                flag_modified(state, "participants")
+                if isinstance(shield_pending_attacker, dict):
+                    cls._clear_participant_pending_attack(shield_pending_attacker)
+                    flag_modified(state, "participants")
 
         automation_result = await cls._cast_spell_via_automation(
             db,
@@ -219,4 +230,3 @@ class CastTargetSingleTargetNoExternalResolutionMixin:
     # ------------------------------------------------------------------
     # Plain multi-target automation cast (no variants, no effect instances)
     # ------------------------------------------------------------------
-

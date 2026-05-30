@@ -1,9 +1,56 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+from sqlmodel import Session
+
 from .exceptions import CombatServiceError
 
 
 class CombatEntitySpellActionMixin:
+    if TYPE_CHECKING:
+
+        @classmethod
+        def _get_spell_catalog_entry_for_session(
+            cls, db: Session, session_id: str, canonical_key: str
+        ) -> Any: ...
+
+        @classmethod
+        def _get_campaign_system_for_session(cls, db: Session, session_id: str) -> Any: ...
+
+        @classmethod
+        def _as_dict(cls, value: object) -> dict[str, Any]: ...
+
+        @classmethod
+        def _normalize_damage_type(cls, value: object) -> str | None: ...
+
+        @classmethod
+        def _normalize_ability_name(cls, value: object) -> str | None: ...
+
+        @classmethod
+        def _get_structured_spell_upcast(cls, raw_upcast: object) -> dict[str, Any] | None: ...
+
+        @classmethod
+        def _apply_structured_spell_upcast(
+            cls,
+            *,
+            spell_level: int,
+            slot_level: int | None,
+            effect_kind: str,
+            effect_dice: str,
+            effect_bonus: int,
+            upcast: dict[str, Any] | None,
+        ) -> dict[str, Any]: ...
+
+        @classmethod
+        def _safe_int(cls, value: object, default: int = 0) -> int: ...
+
+        @classmethod
+        def _normalize_attack_miss_outcome(cls, value: object) -> str | None: ...
+
+        @classmethod
+        def _normalize_save_success_outcome(cls, value: object) -> str | None: ...
+
     @classmethod
     def _resolve_spell_combat_action(cls, db, session_id: str, npc, action) -> dict:
         from . import entity_actions as entity_actions_module
@@ -17,6 +64,8 @@ class CombatEntitySpellActionMixin:
                 system=cls._get_campaign_system_for_session(db, session_id),
                 canonical_key=action.spellCanonicalKey,
             )
+        if base_spell is None:
+            raise CombatServiceError("Referenced spellCanonicalKey was not found in the catalog.")
         spellcasting = cls._as_dict(npc.spellcasting)
         damage_type = action.damageType or cls._normalize_damage_type(base_spell.damage_type)
         save_ability = cls._normalize_ability_name(action.saveAbility or base_spell.saving_throw)

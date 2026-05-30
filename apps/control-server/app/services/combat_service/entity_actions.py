@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 from math import floor
+from typing import cast
 
 from app.services.base_items import get_base_item_by_canonical_key
 from app.services.base_spells import get_base_spell_by_canonical_key
+from app.schemas.campaign_entity_shared import AbilityName
 from app.schemas.campaign_entity import resolve_saving_throw_bonus as resolve_entity_saving_throw_bonus
 
 from .entity_action_spell import CombatEntitySpellActionMixin
 from .entity_action_weapon import CombatEntityWeaponActionMixin
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatEntityActionMixin(CombatEntitySpellActionMixin, CombatEntityWeaponActionMixin):
+class CombatEntityActionMixin(
+    CombatServiceHostProtocol,
+    CombatEntitySpellActionMixin,
+    CombatEntityWeaponActionMixin,
+):
     @classmethod
     def _resolve_entity_combat_action(cls, db, session_id: str, npc, action) -> dict:
         if action.kind == "utility":
@@ -46,4 +53,8 @@ class CombatEntityActionMixin(CombatEntitySpellActionMixin, CombatEntityWeaponAc
         session_entity, npc = cls._get_session_entity_and_campaign_entity(db, ref_id)
         overrides = cls._as_dict(session_entity.overrides)
         abilities = {ability: cls._get_entity_ability_score(cls._as_dict(npc.abilities), overrides, ability) for ability in cls._ENTITY_ABILITY_ALIASES}
-        return resolve_entity_saving_throw_bonus(abilities, cls._get_entity_saving_throw_overrides(npc, overrides), normalized_ability)
+        return resolve_entity_saving_throw_bonus(
+            abilities,
+            cls._get_entity_saving_throw_overrides(npc, overrides),
+            cast(AbilityName, normalized_ability),
+        )

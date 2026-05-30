@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
@@ -7,6 +9,7 @@ from app.models.combat import CombatState
 from app.schemas.roll import RollActorStats
 from app.services.roll_resolution import resolve_attack_base
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...spell_anchors import (
     create_spell_anchor,
     get_spell_anchor_by_id,
@@ -21,7 +24,13 @@ def resolve_spiritual_weapon_damage_dice(slot_level: int) -> str:
     return f"{num_dice}d8"
 
 
-class SpiritualWeaponAutomationMixin:
+if TYPE_CHECKING:
+    _SpiritualWeaponBase = CombatServiceHostProtocol
+else:
+    _SpiritualWeaponBase = object
+
+
+class SpiritualWeaponAutomationMixin(_SpiritualWeaponBase):
     @classmethod
     async def _cast_spiritual_weapon_automation(
         cls,
@@ -159,6 +168,8 @@ class SpiritualWeaponAutomationMixin:
 
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
 
         attacker = cls._find_participant_by_id(state, req.actor_participant_id)
         if not attacker:
@@ -182,7 +193,7 @@ class SpiritualWeaponAutomationMixin:
         spell_mod = cls._safe_int(metadata.get("spell_mod"), 0)
 
         if req.destination:
-            battle_map = None
+            battle_map: dict[str, object] | None = None
             if state.use_map and state.map_selection:
                 battle_map = state.map_selection
             move_spell_anchor(
@@ -190,7 +201,7 @@ class SpiritualWeaponAutomationMixin:
                 anchor_id=req.anchor_id,
                 destination={"x": req.destination["x"], "y": req.destination["y"]},
                 max_movement_meters=6.0,
-                battle_map=battle_map,
+                battle_map=battle_map or {},
             )
             anchor = get_spell_anchor_by_id(state, req.anchor_id) or anchor
             flag_modified(state, "spell_anchors")
@@ -267,8 +278,10 @@ class SpiritualWeaponAutomationMixin:
 
     @classmethod
     def _find_participant_by_ref_id(
-        cls, state, ref_id: str, kind: str | None = None
+        cls, state, ref_id: str | None, kind: str | None = None
     ) -> dict | None:
+        if ref_id is None:
+            return None
         for p in state.participants:
             if p.get("ref_id") == ref_id:
                 if kind is None or p.get("kind") == kind:

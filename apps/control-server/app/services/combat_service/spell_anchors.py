@@ -31,9 +31,11 @@ def _validate_position(position: dict[str, Any]) -> dict[str, int]:
 def _normalize_anchor(anchor: dict[str, Any]) -> dict[str, Any]:
     normalized = deepcopy(anchor)
     normalized["id"] = str(normalized.get("id") or f"spell_anchor:{uuid4()}")
-    normalized["position"] = _validate_position(
-        normalized.get("position") if isinstance(normalized.get("position"), dict) else {}
+    raw_position = normalized.get("position")
+    validated_position_input: dict[str, Any] = (
+        raw_position if isinstance(raw_position, dict) else {}
     )
+    normalized["position"] = _validate_position(validated_position_input)
     normalized["source_spell_key"] = str(normalized.get("source_spell_key") or "").strip()
     if not normalized["source_spell_key"]:
         raise CombatServiceError("Spell anchor source_spell_key is required.", 400)
@@ -200,7 +202,11 @@ def move_spell_anchor(
     for anchor in anchors:
         if not isinstance(anchor, dict) or anchor.get("id") != anchor_id:
             continue
-        current_position = _validate_position(anchor.get("position") if isinstance(anchor.get("position"), dict) else {})
+        raw_position = anchor.get("position")
+        current_position_input: dict[str, Any] = (
+            raw_position if isinstance(raw_position, dict) else {}
+        )
+        current_position = _validate_position(current_position_input)
         if _distance_cells(current_position, next_position) > max_cells:
             raise CombatServiceError("Spell anchor destination is out of movement range.", 400)
         anchor["position"] = next_position

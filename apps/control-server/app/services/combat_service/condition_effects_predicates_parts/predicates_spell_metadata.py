@@ -141,6 +141,7 @@ def _normalize_roll_dice_modifier_declarative(declarative: dict) -> dict | None:
     params = declarative.get("params")
     if not isinstance(params, dict):
         return None
+    consume_on_apply = False
     if raw_type == "roll_bonus_dice":
         mode = "bonus"
         roll_types = params.get("roll_types")
@@ -152,8 +153,6 @@ def _normalize_roll_dice_modifier_declarative(declarative: dict) -> dict | None:
         consume_on_apply = params.get("consume_on_apply") is True
     else:
         return None
-    if raw_type == "roll_bonus_dice":
-        consume_on_apply = False
     if mode not in {"bonus", "penalty"}:
         return None
     if not isinstance(roll_types, list) or not all(isinstance(rt, str) for rt in roll_types):

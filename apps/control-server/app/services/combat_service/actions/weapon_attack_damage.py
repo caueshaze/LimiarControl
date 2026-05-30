@@ -1,16 +1,27 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.schemas.roll import RollResult
 from app.services.combat_service.sanctuary_guard import break_sanctuary_if_active
 
 from ..exceptions import CombatServiceError
+from ..host_protocol import CombatServiceHostProtocol
 
 
-class WeaponAttackDamageMixin:
+if TYPE_CHECKING:
+    _WeaponAttackDamageBase = CombatServiceHostProtocol
+else:
+    _WeaponAttackDamageBase = object
+
+
+class WeaponAttackDamageMixin(_WeaponAttackDamageBase):
     @classmethod
     async def attack_damage(cls, db, session_id: str, req, actor_user_id: str, is_gm: bool):
         state = cls.get_state(db, session_id)
         cls._require_active(state)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         attacker = cls._resolve_actor_participant(state, actor_user_id, is_gm, req.actor_participant_id)
         cls._require_actor_status(attacker, ("active",), "You can only roll damage when active.")
         if attacker["kind"] != "player":

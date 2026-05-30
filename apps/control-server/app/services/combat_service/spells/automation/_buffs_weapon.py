@@ -1,17 +1,26 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.models.combat import CombatState
+from app.models.item import Item
 from app.services.game_time import get_game_time_seconds
 from app.services.spell_effect_factories import build_shillelagh_effect
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class BuffsWeaponAutomationMixin:
+if TYPE_CHECKING:
+    _BuffsWeaponBase = CombatServiceHostProtocol
+else:
+    _BuffsWeaponBase = object
+
+
+class BuffsWeaponAutomationMixin(_BuffsWeaponBase):
     @classmethod
     async def _cast_true_strike_automation(
         cls,
@@ -109,13 +118,19 @@ class BuffsWeaponAutomationMixin:
         db: Session,
         session_id: str,
         *,
-        attacker: dict,
-        weapon_item_id: str,
-    ) -> tuple:
+        player_user_id: str,
+        requested_weapon_item_id: str | None,
+    ) -> dict[str, object]:
+        if not isinstance(requested_weapon_item_id, str) or not requested_weapon_item_id.strip():
+            raise CombatServiceError(
+                "weapon_item_id (weaponItemId) é obrigatório para Bordão Místico.",
+                400,
+            )
+        weapon_item_id = requested_weapon_item_id.strip()
         inventory_item, item = cls._resolve_player_weapon_item(
             db,
             session_id,
-            attacker.get("ref_id", ""),
+            player_user_id,
             weapon_item_id,
         )
         if not inventory_item.is_equipped:
@@ -131,7 +146,12 @@ class BuffsWeaponAutomationMixin:
                 "Bordão Místico só pode afetar porrete (club) ou bordão (quarterstaff).",
                 400,
             )
-        return inventory_item, item, weapon_key
+        return {
+            "inventory_item": inventory_item,
+            "item": item,
+            "weapon_key": weapon_key,
+            "weapon_item_id": weapon_item_id,
+        }
 
     @classmethod
     async def _cast_shillelagh_automation(
@@ -162,12 +182,17 @@ class BuffsWeaponAutomationMixin:
                 400,
             )
 
-        _, weapon_item, weapon_key = cls._resolve_shillelagh_weapon(
+        shillelagh_weapon = cls._resolve_shillelagh_weapon(
             db,
             session_id,
-            attacker=attacker,
-            weapon_item_id=weapon_item_id,
+            player_user_id=attacker["ref_id"],
+            requested_weapon_item_id=weapon_item_id,
         )
+        weapon_item = cast(Item, shillelagh_weapon["item"])
+        weapon_key = shillelagh_weapon["weapon_key"]
+        weapon_item_id = shillelagh_weapon["weapon_item_id"]
+        if not isinstance(weapon_key, str):
+            raise CombatServiceError("Falha ao resolver arma para Bordão Místico.", 400)
 
         spell_name = spell_context["spell_name"]
         game_time = get_game_time_seconds(session_id, db)

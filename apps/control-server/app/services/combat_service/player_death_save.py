@@ -8,9 +8,10 @@ from sqlmodel import Session
 from app.services.session_state_finalize import finalize_session_state_data
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatPlayerDeathSaveMixin:
+class CombatPlayerDeathSaveMixin(CombatServiceHostProtocol):
     @classmethod
     async def death_save(
         cls,
@@ -21,6 +22,8 @@ class CombatPlayerDeathSaveMixin:
         actor_participant_id: str | None = None,
     ):
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         attacker_p = cls._resolve_actor_participant(
             state,

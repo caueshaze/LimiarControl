@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -24,9 +24,10 @@ from .condition_effects_predicates import (
 )
 from .condition_effects_saves import modify_saving_throw
 from .exceptions import CombatServiceError, _roll_dice_expression
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatSpellDeclarativeEffectsMixin:
+class CombatSpellDeclarativeEffectsMixin(CombatServiceHostProtocol):
     @classmethod
     def _apply_roll_bonus_dice_to_roll_result(
         cls,
@@ -167,8 +168,9 @@ class CombatSpellDeclarativeEffectsMixin:
     @classmethod
     def _build_applied_declarative_effects_by_target(
         cls,
-        applied_effects: list[dict] | None,
+        effects: list[dict] | None,
     ) -> list[dict]:
+        applied_effects = effects
         if not isinstance(applied_effects, list) or not applied_effects:
             return []
 
@@ -613,10 +615,10 @@ class CombatSpellDeclarativeEffectsMixin:
     def _execute_on_end_effects_for_removed(
         cls,
         *,
-        state,
-        removed_effects: list[dict],
-    ) -> list[dict]:
-        executed: list[dict] = []
+        state: CombatState,
+        removed_effects: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        executed: list[dict[str, Any]] = []
         processed_groups: set[str] = set()
         for removed in removed_effects:
             metadata = cls._get_effect_metadata(removed)

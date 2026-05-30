@@ -13,6 +13,7 @@ from app.services.spell_keys import normalize_spell_key
 
 from .condition_effects import resolve_spell_attack_kind
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class SpellAutomationSpec:
     handler_name: str
 
 
-class CombatSpellAutomationMixin:
+class CombatSpellAutomationMixin(CombatServiceHostProtocol):
     _SPELL_AUTOMATION_REGISTRY: dict[str, SpellAutomationSpec] = {
         "animal_friendship": SpellAutomationSpec(
             canonical_key="animal_friendship",

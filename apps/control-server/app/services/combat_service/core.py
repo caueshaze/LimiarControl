@@ -4,6 +4,7 @@ from enum import Enum
 import logging
 import random
 from math import floor
+from typing import TYPE_CHECKING
 import unicodedata
 from uuid import uuid4
 
@@ -18,9 +19,15 @@ from app.services.session_state_finalize import calculate_player_armor_class_fro
 
 from .exceptions import CombatServiceError, _parse_dice
 from .condition_effects import is_action_blocked, is_movement_blocked
+from .host_protocol import CombatServiceHostProtocol
+
+if TYPE_CHECKING:
+    _CombatCoreBase = CombatServiceHostProtocol
+else:
+    _CombatCoreBase = object
 
 
-class CombatCoreMixin:
+class CombatCoreMixin(_CombatCoreBase):
     _PLAYER_SHIELD_BONUS = 2
     _SAVE_SUCCESS_OUTCOME_VALUES = {"none", "half_damage"}
     _COMBAT_SPELL_ACTION_COSTS = {"action", "bonus_action", "reaction"}
@@ -166,12 +173,12 @@ class CombatCoreMixin:
             )
             for ability_name in cls._ENTITY_ABILITY_ALIASES
         }
-        saving_throws = cls._get_entity_saving_throw_overrides(npc, overrides) or None
+        calculated_saving_throws: dict | None = cls._get_entity_saving_throw_overrides(npc, overrides) or None
         _, _, _, _, prof_bonus, _ = cls._get_stats(db, ref_id, kind, session_id)
         return RollActorStats(
             display_name=display_name,
             abilities=abilities,
-            saving_throws=saving_throws,
+            saving_throws=calculated_saving_throws,
             proficiency_bonus=prof_bonus,
             actor_kind="session_entity",
             actor_ref_id=ref_id,

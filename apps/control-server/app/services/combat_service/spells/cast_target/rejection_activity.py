@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlmodel import select
@@ -117,6 +118,7 @@ class CastTargetRejectionActivityMixin:
                 actor_name=actor_display_name,
                 command_type="spell_cast_rejected",
                 payload_json=payload,
+                created_at=datetime.now(timezone.utc),
             )
         )
         db.commit()

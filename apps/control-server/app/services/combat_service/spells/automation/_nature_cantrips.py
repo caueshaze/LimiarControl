@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -9,9 +10,16 @@ from app.models.combat import CombatState
 from app.services.game_time import get_game_time_seconds
 from app.services.session_state_finalize import finalize_session_state_data
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class NatureCantripsAutomationMixin:
+if TYPE_CHECKING:
+    _NatureCantripsBase = CombatServiceHostProtocol
+else:
+    _NatureCantripsBase = object
+
+
+class NatureCantripsAutomationMixin(_NatureCantripsBase):
     @classmethod
     async def _cast_druidcraft_automation(
         cls,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.services.combat_service.cover_modifiers import resolve_cover_save_dc
 from app.services.combat_service.condition_effects_saves import modify_saving_throw
 
@@ -23,17 +25,18 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
         effect_kind: str | None,
         effect_bonus: int,
         effect_roll_required: bool,
-        save_success_outcome: str | None,
-        targeting_result,
+        save_success_outcome: str | None = None,
+        targeting_result: Any | None = None,
     ) -> SpellResolutionResult:
         from . import cast_target as cast_target_module
 
         result = SpellResolutionResult()
-        result.cover = targeting_result.spatial_metadata.cover
+        _spatial = targeting_result.spatial_metadata if targeting_result is not None else None
+        result.cover = _spatial.cover if _spatial is not None else None
         result.base_save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
         result.effective_dc, result.cover_modifier = resolve_cover_save_dc(
             result.base_save_dc,
-            result.cover,
+            str(result.cover) if result.cover else None,
             spell_context.get("cover_applies_to_save"),
             spell_context.get("save_ability"),
         )
@@ -88,7 +91,7 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
                 state,
                 target_p["ref_id"],
                 target_p["kind"],
-                effect_kind,
+                effect_kind or "",
                 amount,
                 damage_type=spell_context.get("damage_type"),
                 concentration_roll_source=req.concentration_roll_source,
@@ -134,7 +137,7 @@ class SpellResolutionSaveMixin(SpellResolutionCommonMixin):
                 state,
                 target_p["ref_id"],
                 target_p["kind"],
-                effect_kind,
+                effect_kind or "",
                 amount,
                 damage_type=spell_context.get("damage_type"),
                 concentration_roll_source=req.concentration_roll_source,

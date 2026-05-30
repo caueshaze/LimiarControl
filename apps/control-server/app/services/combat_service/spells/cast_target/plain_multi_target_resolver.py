@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from ...host_protocol import CombatServiceHostProtocol
 
-class CastTargetPlainMultiTargetResolverMixin:
+
+if TYPE_CHECKING:
+    _CastTargetPlainMultiTargetResolverBase = CombatServiceHostProtocol
+else:
+    _CastTargetPlainMultiTargetResolverBase = object
+
+
+class CastTargetPlainMultiTargetResolverMixin(_CastTargetPlainMultiTargetResolverBase):
     @classmethod
     async def _resolve_plain_multi_target_automation_cast(
         cls,

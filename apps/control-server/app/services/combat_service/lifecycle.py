@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.combat import CombatPhase
+from app.schemas.campaign import CampaignMapCalibration
 from app.schemas.combat import CombatMapSelection
 from app.services.game_time import get_game_time_seconds
 from app.services.persistent_effect_expiry import should_prune_timed_effect
@@ -25,7 +26,7 @@ class CombatLifecycleMixin(CombatLifecycleInitiativeMixin, CombatLifecycleTurnsM
         imageUrl="/maps/map.jpg",
         gridWidth=20,
         gridHeight=14,
-        calibration={"x": 0, "y": 0, "width": 1, "height": 1},
+        calibration=CampaignMapCalibration(x=0, y=0, width=1, height=1),
     )
 
     @classmethod

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from .cover_modifiers import cover_label
+from .host_protocol import CombatServiceHostProtocol
 
 
-class CombatNpcActionCommitMixin:
+class CombatNpcActionCommitMixin(CombatServiceHostProtocol):
     @classmethod
     async def _commit_npc_action_result(
         cls,

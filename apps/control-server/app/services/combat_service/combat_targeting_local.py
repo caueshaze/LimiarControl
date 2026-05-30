@@ -274,7 +274,7 @@ class LocalCombatTargetingService(CombatTargetingService):
             is_valid=True,
             validated_primary_target_ref_id=requested_ref_id,
             affected_target_ref_ids=[requested_ref_id],
-            target_kind=target_kind,
+            target_kind=target_kind or "session_entity",
             spatial_metadata=spatial_metadata,
             diagnostics=diag,
         )

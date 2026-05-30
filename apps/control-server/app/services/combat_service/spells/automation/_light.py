@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -12,9 +13,16 @@ from app.models.session import Session as CampaignSession
 from app.services.game_time import get_game_time_seconds
 from app.services.session_state_finalize import finalize_session_state_data
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class LightAutomationMixin:
+if TYPE_CHECKING:
+    _LightAutomationBase = CombatServiceHostProtocol
+else:
+    _LightAutomationBase = object
+
+
+class LightAutomationMixin(_LightAutomationBase):
     @classmethod
     async def _cast_light_automation(
         cls,
@@ -79,7 +87,8 @@ class LightAutomationMixin:
             item_name = f"Item {item_entry.id}"
             description = f"{item_name} emite luz mágica."
         else:
-            description = raw_description.strip()
+            description_value = raw_description
+            description = description_value.strip() if description_value is not None else ""
             if not description:
                 raise CombatServiceError("Luz exige descrição textual não vazia.", 400)
             if len(description) > 300:

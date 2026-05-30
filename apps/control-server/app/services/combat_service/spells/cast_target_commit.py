@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 
+from ..host_protocol import CombatServiceHostProtocol
 
-class CastTargetCommitMixin:
+if TYPE_CHECKING:
+    _CastTargetCommitBase = CombatServiceHostProtocol
+else:
+    _CastTargetCommitBase = object
+
+
+class CastTargetCommitMixin(_CastTargetCommitBase):
     @classmethod
     async def _commit_cast_result(
         cls, db, session_id, state, attacker, spell_context,

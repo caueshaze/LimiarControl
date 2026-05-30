@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.schemas.base_spell import SpellVariant, SpellVariantSummary
 from app.services.draconic_ancestry import resolve_elemental_affinity
 from app.services.magic_item_effects import get_magic_item_spell_key
@@ -11,9 +13,16 @@ from ..targeting_requirements import (
     TargetingRequirements,
     resolve_spell_targeting_requirements,
 )
+from ..host_protocol import CombatServiceHostProtocol
 
 
-class SpellContextResolveMixin:
+if TYPE_CHECKING:
+    _SpellContextResolveBase = CombatServiceHostProtocol
+else:
+    _SpellContextResolveBase = object
+
+
+class SpellContextResolveMixin(_SpellContextResolveBase):
     UTILITY_SPELL_CONTEXT_META: dict[str, dict] = {
         "produce_flame": {
             "type": "produce_flame",
@@ -702,7 +711,7 @@ class SpellContextResolveMixin:
         if upcast_bonus_val > 0:
             _, count, sides, mod = _parse_dice(base_dice)
             total_mod = mod + upcast_bonus_val
-            resolved_formula = cls._build_dice_expression(count, sides, total_mod) or base_dice
+            resolved_formula = cls._build_dice_expression(dice_count=count, dice_size=sides, bonus=total_mod) or base_dice
         else:
             resolved_formula = base_dice
         return {

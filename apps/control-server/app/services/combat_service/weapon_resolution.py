@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from math import floor
-from typing import Any, ClassVar
+from typing import Any
 import unicodedata
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -15,6 +15,7 @@ from app.models.item import Item, ItemType
 from app.models.session import Session as CampaignSession
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 
 _SPECIFIC_WEAPON_PROFICIENCY_ALIASES = {
@@ -63,30 +64,9 @@ def _normalize_class_id(value: object) -> str:
     return str(value or "").strip().lower()
 
 
-class CombatWeaponResolutionMixin:
+class CombatWeaponResolutionMixin(CombatServiceHostProtocol):
     _SPECIFIC_WEAPON_PROFICIENCY_ALIASES = _SPECIFIC_WEAPON_PROFICIENCY_ALIASES
     _SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
-    _ENTITY_ABILITY_ALIASES: ClassVar[set[str]]
-
-    @classmethod
-    def _ability_modifier(cls, score: int) -> int:
-        raise NotImplementedError
-
-    @classmethod
-    def _get_player_ability_score(cls, data: dict, ability_name: str) -> int:
-        raise NotImplementedError
-
-    @classmethod
-    def _safe_int(cls, value: object, default: int = 0) -> int:
-        raise NotImplementedError
-
-    @classmethod
-    def _get_player_fighting_style(cls, data: dict) -> str | None:
-        raise NotImplementedError
-
-    @classmethod
-    def _as_dict(cls, value: object) -> dict[str, Any]:
-        raise NotImplementedError
 
     @staticmethod
     def _enum_value_or_none(value: object) -> str | None:
@@ -217,8 +197,9 @@ class CombatWeaponResolutionMixin:
         db: Session,
         session_id: str,
         player_user_id: str,
-        inventory_item_id: str,
+        weapon_item_id: str,
     ) -> tuple[InventoryItem, Item]:
+        inventory_item_id = weapon_item_id
         session_entry = db.exec(
             select(CampaignSession).where(CampaignSession.id == session_id)
         ).first()

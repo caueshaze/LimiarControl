@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ...combat_targeting import get_combat_targeting_service
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_intent import SpellCastIntent
 from ...targeting_result import TargetingResult
 from .helpers import resolve_instance_spatial_error_phrase
 
 
-class CastTargetPlainMultiTargetValidationMixin:
+if TYPE_CHECKING:
+    _CastTargetPlainMultiTargetValidationBase = CombatServiceHostProtocol
+else:
+    _CastTargetPlainMultiTargetValidationBase = object
+
+
+class CastTargetPlainMultiTargetValidationMixin(_CastTargetPlainMultiTargetValidationBase):
     @classmethod
     def _validate_plain_multi_target_refs(
         cls,
@@ -118,10 +127,11 @@ class CastTargetPlainMultiTargetValidationMixin:
             result = targeting_service.validate(intent, state)
             if not result.is_valid:
                 diag = result.diagnostics
+                actor_user_id = attacker.get("actor_user_id")
                 cls._record_spell_cast_rejected_activity(
                     db,
                     session_id=session_id,
-                    actor_user_id=attacker.get("actor_user_id"),
+                    actor_user_id=actor_user_id if isinstance(actor_user_id, str) else "",
                     actor_ref_id=attacker["ref_id"],
                     actor_display_name=attacker.get("display_name") or attacker["ref_id"],
                     spell_context=spell_context,

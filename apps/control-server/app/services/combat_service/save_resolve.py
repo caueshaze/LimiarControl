@@ -9,14 +9,17 @@ from app.services.combat_service.condition_effects_saves import modify_saving_th
 from app.services.roll_resolution import resolve_saving_throw
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 logger = logging.getLogger(__name__)
 
 
-class CombatSaveResolveMixin:
+class CombatSaveResolveMixin(CombatServiceHostProtocol):
     @classmethod
     async def resolve_pending_save(cls, db, session_id: str, req, actor_user_id: str, is_gm: bool):
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
 
         target_p = next(
@@ -148,6 +151,7 @@ class CombatSaveResolveMixin:
                     effect_dice,
                     critical=False,
                     roll_source="system",
+                    manual_rolls=None,
                 )
                 rolled_total = max(0, (base_effect or 0) + effect_bonus)
             else:

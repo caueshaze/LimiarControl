@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
@@ -11,9 +12,16 @@ from app.services.goodberry_inventory import (
     grant_catalog_item_to_player_inventory,
 )
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class HuntersMarkInventoryAutomationMixin:
+if TYPE_CHECKING:
+    _HuntersMarkInventoryBase = CombatServiceHostProtocol
+else:
+    _HuntersMarkInventoryBase = object
+
+
+class HuntersMarkInventoryAutomationMixin(_HuntersMarkInventoryBase):
     @classmethod
     async def _cast_hunters_mark_automation(
         cls, db: Session, session_id: str, *, attacker: dict, attacker_model,

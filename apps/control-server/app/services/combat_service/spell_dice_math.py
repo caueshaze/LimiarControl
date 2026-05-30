@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from .exceptions import CombatServiceError, _parse_dice
+from .host_protocol import CombatServiceHostProtocol
 from .spell_automation_metadata import _RESOLUTION_TYPE_TO_SPELL_MODE as _SPELL_MODE_MAP
 
 
-class CombatSpellDiceMathMixin:
+class CombatSpellDiceMathMixin(CombatServiceHostProtocol):
     _SAVE_SUCCESS_OUTCOME_VALUES = {"none", "half_damage"}
     _ATTACK_MISS_OUTCOME_VALUES = {"none", "half_damage"}
     _COMBAT_SPELL_ACTION_COSTS = {"action", "bonus_action", "reaction"}
@@ -104,7 +105,13 @@ class CombatSpellDiceMathMixin:
                     )
         if not normalized_thresholds:
             return None
-        normalized_thresholds.sort(key=lambda entry: int(entry["characterLevel"]))
+        def _threshold_sort_key(entry: dict[str, object]) -> int:
+            raw_level = entry.get("characterLevel")
+            if isinstance(raw_level, (int, float, str)):
+                return int(raw_level)
+            return 0
+
+        normalized_thresholds.sort(key=_threshold_sort_key)
         return {
             "scalingMode": "character_level",
             "scalingEffectType": scaling_effect_type,
@@ -113,15 +120,19 @@ class CombatSpellDiceMathMixin:
 
     @classmethod
     def _build_dice_expression(
-        cls, count: int, sides: int, modifier: int
-    ) -> str | None:
-        if count <= 0:
-            return str(modifier) if modifier else None
-        expression = f"{count}d{sides}"
-        if modifier > 0:
-            expression += f"+{modifier}"
-        elif modifier < 0:
-            expression += str(modifier)
+        cls,
+        *,
+        dice_count: int,
+        dice_size: int,
+        bonus: int = 0,
+    ) -> str:
+        if dice_count <= 0:
+            return str(bonus) if bonus else "0"
+        expression = f"{dice_count}d{dice_size}"
+        if bonus > 0:
+            expression += f"+{bonus}"
+        elif bonus < 0:
+            expression += str(bonus)
         return expression
 
     @classmethod
@@ -155,7 +166,7 @@ class CombatSpellDiceMathMixin:
         total_sides = base_sides or extra_sides
         total_count = base_count + scaled_count
         total_mod = base_mod + scaled_mod
-        return cls._build_dice_expression(total_count, total_sides, total_mod)
+        return cls._build_dice_expression(dice_count=total_count, dice_size=total_sides, bonus=total_mod)
 
     @classmethod
     def _apply_structured_spell_upcast(
@@ -338,7 +349,7 @@ class CombatSpellDiceMathMixin:
             total_count = count * selected_instances
             total_mod = mod * selected_instances
             return {
-                "effect_dice": cls._build_dice_expression(total_count, sides, total_mod),
+                "effect_dice": cls._build_dice_expression(dice_count=total_count, dice_size=sides, bonus=total_mod),
                 "cantrip_instance_count": selected_instances,
                 "cantrip_instance_dice": instance_dice,
             }

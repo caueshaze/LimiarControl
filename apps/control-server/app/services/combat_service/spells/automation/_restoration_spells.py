@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.models.combat import CombatState
 from app.services.session_state_finalize import finalize_session_state_data
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 
 
-class RestorationSpellsAutomationMixin:
+if TYPE_CHECKING:
+    _RestorationSpellsBase = CombatServiceHostProtocol
+else:
+    _RestorationSpellsBase = object
+
+
+class RestorationSpellsAutomationMixin(_RestorationSpellsBase):
     @classmethod
     async def _cast_lesser_restoration_automation(
         cls,

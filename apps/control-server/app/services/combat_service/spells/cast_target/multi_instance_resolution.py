@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -11,19 +12,26 @@ from app.services.magic_item_effects import consume_inventory_item_charge, get_i
 from app.services.spell_material_components import SpellMaterialError, consume_spell_material
 
 from ...exceptions import CombatServiceError
+from ...host_protocol import CombatServiceHostProtocol
 from ...targeting_result import TargetingResult
 
 logger = logging.getLogger(__name__)
 
 
-class CastTargetMultiInstanceResolutionMixin:
+if TYPE_CHECKING:
+    _CastTargetMultiInstanceResolutionBase = CombatServiceHostProtocol
+else:
+    _CastTargetMultiInstanceResolutionBase = object
+
+
+class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionBase):
     @classmethod
     async def _resolve_multi_instance_cast(
         cls, db, session_id, req, state, attacker, attacker_model,
         spell_context, actor_user_id, is_gm, validated_targets,
         *,
         spatial_results_by_target_ref: dict[str, TargetingResult] | None = None,
-    ):
+    ) -> dict[str, Any]:
         slot_spent = False
         if spell_context.get("source_kind") == "magic_item":
             inventory_item = spell_context.get("inventory_item")
@@ -266,4 +274,3 @@ class CastTargetMultiInstanceResolutionMixin:
             "effect_instance_outcomes": outcomes,
             "effect_instance_target_totals": list(per_target_totals.values()),
         }
-

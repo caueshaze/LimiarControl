@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.schemas.campaign_entity_shared import AbilityName
 from app.schemas.roll import RollActorStats
 from app.services.roll_resolution import resolve_attack_base, resolve_saving_throw
 from app.services.combat_service.condition_effects import (
@@ -19,12 +21,13 @@ from app.services.combat_service.cover_modifiers import (
 from app.services.combat_service.visibility import resolve_target_visibility
 
 from .exceptions import CombatServiceError, _roll_dice_expression
+from .host_protocol import CombatServiceHostProtocol
 from .reach import resolve_weapon_attack_kind
 
 logger = logging.getLogger(__name__)
 
 
-class CombatNpcActionResolutionMixin:
+class CombatNpcActionResolutionMixin(CombatServiceHostProtocol):
     @classmethod
     def _resolve_npc_action_result(
         cls,
@@ -108,11 +111,14 @@ class CombatNpcActionResolutionMixin:
             context["targeting_result"] = targeting_result
 
         if action_kind in ("weapon_attack", "spell_attack"):
+            if not isinstance(target_p, dict):
+                raise CombatServiceError("Target is required for this action.", 400)
+            target_participant: dict[str, Any] = target_p
             cls._clear_participant_pending_attack(attacker)
             _, target_ac, *_ = cls._get_stats(
                 db,
-                target_p["ref_id"],
-                target_p["kind"],
+                target_participant["ref_id"],
+                target_participant["kind"],
                 session_id,
                 combat_state=state,
             )
@@ -137,17 +143,17 @@ class CombatNpcActionResolutionMixin:
                 if action_kind == "weapon_attack"
                 else resolve_spell_attack_kind(resolved_action)
             )
-            adv_ctx = resolve_attack_advantage(attacker, target_p, attack_kind)
+            adv_ctx = resolve_attack_advantage(attacker, target_participant, attack_kind)
             vis_ctx = resolve_target_visibility(
                 attacker,
-                target_p,
+                target_participant,
                 has_line_of_sight=bool(context["targeting_result"].spatial_metadata.has_line_of_sight or True) if context.get("targeting_result") else True,
             )
             has_adv = req.has_advantage or cls._has_effect_kind(attacker, "advantage_on_attacks") or bool(adv_ctx.advantage_sources)
             has_dis = (
                 req.has_disadvantage
                 or cls._has_effect_kind(attacker, "disadvantage_on_attacks")
-                or cls._has_effect_kind(target_p, "dodging")
+                or cls._has_effect_kind(target_participant, "dodging")
                 or bool(adv_ctx.disadvantage_sources)
                 or bool(context["targeting_result"].spatial_metadata.is_in_long_range)
                 or not vis_ctx.is_directly_visible
@@ -156,7 +162,7 @@ class CombatNpcActionResolutionMixin:
                 cls._consume_first_effect(attacker, "advantage_on_attacks")
             if adv_ctx.consumed_effect_ids_on_roll:
                 cls._consume_effect_ids(attacker, adv_ctx.consumed_effect_ids_on_roll)
-                cls._consume_effect_ids(target_p, adv_ctx.consumed_effect_ids_on_roll)
+                cls._consume_effect_ids(target_participant, adv_ctx.consumed_effect_ids_on_roll)
             adv_mode = "advantage" if (has_adv and not has_dis) else ("disadvantage" if (has_dis and not has_adv) else "normal")
             roll_result = npc_actions_module.resolve_attack_base(
                 RollActorStats(
@@ -192,9 +198,9 @@ class CombatNpcActionResolutionMixin:
                         "type": "entity_attack",
                         "action_name": action_name,
                         "action_kind": action_kind,
-                        "target_ref_id": target_p["ref_id"],
-                        "target_kind": target_p["kind"],
-                        "target_display_name": target_p["display_name"],
+                        "target_ref_id": target_participant["ref_id"],
+                        "target_kind": target_participant["kind"],
+                        "target_display_name": target_participant["display_name"],
                         "target_ac": target_ac or 10,
                         "damage_dice": damage_dice,
                         "damage_bonus": damage_bonus,
@@ -226,6 +232,9 @@ class CombatNpcActionResolutionMixin:
             return context
 
         if action_kind == "saving_throw":
+            if not isinstance(target_p, dict):
+                raise CombatServiceError("Target is required for this action.", 400)
+            target_participant: dict[str, Any] = target_p
             ability_name = cls._normalize_ability_name(resolved_action.get("saveAbility"))
             save_dc_base = cls._safe_int(resolved_action.get("saveDc"), 0)
             damage_dice = resolved_action.get("damageDice") if isinstance(resolved_action.get("damageDice"), str) else None
@@ -240,7 +249,7 @@ class CombatNpcActionResolutionMixin:
                 ability_name,
             )
             save_mod = modify_saving_throw(
-                target_p,
+                target_participant,
                 ability_name,
                 source_participant=attacker,
                 source_kind="participant",
@@ -249,18 +258,18 @@ class CombatNpcActionResolutionMixin:
                 cls._build_roll_actor_stats_for_save(
                     db,
                     session_id,
-                    target_p["ref_id"],
-                    target_p["kind"],
-                    target_p["display_name"],
+                    target_participant["ref_id"],
+                    target_participant["kind"],
+                    target_participant["display_name"],
                 ),
-                ability=ability_name,
+                ability=cast(AbilityName, ability_name),
                 advantage_mode=save_mod.result,
                 dc=effective_dc,
                 roll_source=req.roll_source,
                 manual_roll=req.manual_roll,
             )
             cls._apply_roll_bonus_dice_to_roll_result(
-                participant=target_p,
+                participant=target_participant,
                 roll_result=roll_result,
                 roll_type="save",
             )
@@ -299,8 +308,8 @@ class CombatNpcActionResolutionMixin:
                         concentration_check,
                     ) = cls._apply_damage_to_target(
                         db,
-                        target_p["ref_id"],
-                        target_p["kind"],
+                        target_participant["ref_id"],
+                        target_participant["kind"],
                         damage,
                         damage_type=damage_type,
                         is_crit=False,
@@ -332,6 +341,9 @@ class CombatNpcActionResolutionMixin:
             return context
 
         if action_kind == "heal":
+            if not isinstance(target_p, dict):
+                raise CombatServiceError("Target is required for this action.", 400)
+            target_participant: dict[str, Any] = target_p
             healing = max(
                 0,
                 npc_actions_module._roll_dice_expression(resolved_action.get("healDice") or "")
@@ -339,7 +351,7 @@ class CombatNpcActionResolutionMixin:
             )
             if healing > 0:
                 new_hp, effect_msg, previous_hp = cls._apply_healing_to_target(
-                    db, target_p["ref_id"], target_p["kind"], healing, state
+                    db, target_participant["ref_id"], target_participant["kind"], healing, state
                 )
                 context.update(
                     {

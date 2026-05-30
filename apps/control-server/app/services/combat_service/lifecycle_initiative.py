@@ -1,18 +1,26 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from pydantic import ValidationError
-from sqlmodel import select
+from sqlmodel import col, select
 
 from app.models.campaign_entity import CampaignEntity
 from app.models.campaign_tactical_map import CampaignTacticalMap
 from app.models.combat import CombatPhase
 from app.models.session_entity import SessionEntity
 from app.models.session import Session as CampaignSession
-from app.schemas.campaign import decode_blocked_cells, decode_edge_obstacles, decode_obstacles
+from app.schemas.campaign import (
+    CampaignMapCalibration,
+    decode_blocked_cells,
+    decode_edge_obstacles,
+    decode_obstacles,
+)
 from app.schemas.combat import CombatMapSelection
 
 from .condition_effects_predicates import compute_encumbrance_tier_from_lb, get_carrying_capacity_multiplier, get_effective_capacity_multiplier
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 from .limiar_map_projection import (
     maybe_project_combat_start_to_limiar_map as _project_combat_start_to_limiar_map,
 )
@@ -58,7 +66,7 @@ def get_player_total_inventory_weight_lb(db, session_id: str, player_user_id: st
             0.0,
         ))
         .select_from(InventoryItem)
-        .join(Item, InventoryItem.item_id == Item.id)
+        .join(Item, col(InventoryItem.item_id) == Item.id)
         .where(
             InventoryItem.campaign_id == session_entry.campaign_id,
             InventoryItem.member_id == member.id,
@@ -96,7 +104,7 @@ def _encumbrance_tier_for_player(db, session_id: str, player_user_id: str, *, ac
     return compute_encumbrance_tier_from_lb(strength, total_lb, capacity_multiplier=capacity_multiplier)
 
 
-class CombatLifecycleInitiativeMixin:
+class CombatLifecycleInitiativeMixin(CombatServiceHostProtocol):
     @classmethod
     def _participant_requires_initiative(cls, participant: dict) -> bool:
         return participant.get("status") not in cls._INITIATIVE_SKIPPED_STATUSES
@@ -258,6 +266,8 @@ class CombatLifecycleInitiativeMixin:
             participants=built_participants,
             map_selection=map_selection,
             use_map=req.useMap,
+            created_at=datetime.now(timezone.utc),
+            updated_at=None,
         )
         if req.initialDistances and not req.useMap:
             cls._validate_distance_participant_refs(new_state, req.initialDistances)
@@ -344,12 +354,12 @@ class CombatLifecycleInitiativeMixin:
             raise CombatServiceError("Selected tactical map is missing an image", 400)
         if campaign_map.grid_width is None or campaign_map.grid_height is None:
             raise CombatServiceError("Selected tactical map is missing grid dimensions", 400)
-        calibration = {
-            "x": campaign_map.calibration_x if campaign_map.calibration_x is not None else 0,
-            "y": campaign_map.calibration_y if campaign_map.calibration_y is not None else 0,
-            "width": campaign_map.calibration_width if campaign_map.calibration_width is not None else 1,
-            "height": campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
-        }
+        calibration = CampaignMapCalibration(
+            x=campaign_map.calibration_x if campaign_map.calibration_x is not None else 0,
+            y=campaign_map.calibration_y if campaign_map.calibration_y is not None else 0,
+            width=campaign_map.calibration_width if campaign_map.calibration_width is not None else 1,
+            height=campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
+        )
         obstacles = decode_obstacles(getattr(campaign_map, "obstacles_json", None))
         try:
             selection = CombatMapSelection(

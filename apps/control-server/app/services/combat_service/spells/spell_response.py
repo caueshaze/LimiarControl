@@ -5,9 +5,10 @@ from typing import Any
 from app.services.combat_service.cover_modifiers import cover_label
 
 from ..exceptions import CombatServiceError
+from .spell_resolution_common import SpellResolutionCommonMixin
 
 
-class SpellResponseMixin:
+class SpellResponseMixin(SpellResolutionCommonMixin):
 
     @classmethod
     def _build_multi_instance_log_message(
@@ -66,7 +67,7 @@ class SpellResponseMixin:
         save_success_outcome: str | None,
         was_overridden: bool,
         action_cost: str,
-        custom_log_message: str | None,
+        custom_log_message: str | None = None,
     ) -> str:
         if isinstance(custom_log_message, str) and custom_log_message.strip():
             log_message = custom_log_message.strip()

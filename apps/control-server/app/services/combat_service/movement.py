@@ -7,16 +7,18 @@ from sqlmodel import Session
 
 from app.integrations import LimiarMapClientError
 from app.schemas.combat import (
+    CombatGridCell,
     CombatMovementPreviewRequest,
     CombatMovementPreviewResponse,
 )
 from .exceptions import CombatServiceError
 from .fall_damage import FALL_DAMAGE_METERS_PER_DIE
+from .host_protocol import CombatServiceHostProtocol
 from .movement_hazards import compute_movement_hazard_outcomes
 from .spells.area_targeting import AreaTargetingMixin
 
 
-class CombatMovementMixin(AreaTargetingMixin):
+class CombatMovementMixin(AreaTargetingMixin, CombatServiceHostProtocol):
     @classmethod
     async def _preview_or_confirm_movement(
         cls,
@@ -29,6 +31,8 @@ class CombatMovementMixin(AreaTargetingMixin):
         confirm: bool,
     ) -> CombatMovementPreviewResponse:
         state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
         cls._require_active(state)
         if not state.use_map:
             raise CombatServiceError("This combat was opened without a tactical map.", 400)
@@ -94,15 +98,15 @@ class CombatMovementMixin(AreaTargetingMixin):
             is_valid=response.is_valid,
             reason=response.reason,
             source_cell=(
-                {"x": response.source_cell.x, "y": response.source_cell.y}
+                CombatGridCell(x=response.source_cell.x, y=response.source_cell.y)
                 if response.source_cell is not None
                 else None
             ),
-            destination_cell={
-                "x": response.destination_cell.x,
-                "y": response.destination_cell.y,
-            },
-            path=[{"x": cell.x, "y": cell.y} for cell in response.path],
+            destination_cell=CombatGridCell(
+                x=response.destination_cell.x,
+                y=response.destination_cell.y,
+            ),
+            path=[CombatGridCell(x=cell.x, y=cell.y) for cell in response.path],
             path_cost_units=response.path_cost_units,
             movement_budget=response.movement_budget,
             movement_speed_cells=response.movement_speed_cells,

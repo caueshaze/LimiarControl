@@ -8,13 +8,15 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 
 from app.models.combat import CombatState
+from app.schemas.roll import RollSource
 
 from .exceptions import CombatServiceError
+from .host_protocol import CombatServiceHostProtocol
 
 logger = logging.getLogger(__name__)
 
 
-class CombatConcentrationMixin:
+class CombatConcentrationMixin(CombatServiceHostProtocol):
     @classmethod
     def _get_effect_metadata(cls, effect: dict | None) -> dict:
         metadata = (
@@ -24,9 +26,9 @@ class CombatConcentrationMixin:
 
     @classmethod
     def _find_participant_by_id(
-        cls, state: CombatState, participant_id: str | None
+        cls, state: CombatState | None, participant_id: str | None
     ) -> dict | None:
-        if not participant_id:
+        if state is None or not participant_id:
             return None
         return next(
             (
@@ -250,7 +252,7 @@ class CombatConcentrationMixin:
     @classmethod
     def _assert_hostile_action_allowed(
         cls,
-        attacker: dict,
+        actor: dict,
         target: dict | None,
         *,
         action_label: str,
@@ -258,7 +260,7 @@ class CombatConcentrationMixin:
         if not target or not isinstance(target.get("id"), str):
             return
         blocked_effect = cls._get_charmed_effect_against_target(
-            attacker,
+            actor,
             target_participant_id=target["id"],
         )
         if blocked_effect is None:
@@ -314,6 +316,10 @@ class CombatConcentrationMixin:
         from . import spell_automation as spell_automation_module
 
         dc = max(10, damage_taken // 2)
+        if roll_source == "manual":
+            validated_roll_source: RollSource = "manual"
+        else:
+            validated_roll_source = "system"
         roll_result = spell_automation_module.resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -324,10 +330,10 @@ class CombatConcentrationMixin:
             ),
             ability="constitution",
             dc=dc,
-            roll_source=roll_source,
+            roll_source=validated_roll_source,
             manual_roll=manual_roll,
         )
-        roll_result.roll_source = roll_source
+        roll_result.roll_source = validated_roll_source
         succeeded = bool(roll_result.success)
 
         broken_effect_labels: list[str] = []
