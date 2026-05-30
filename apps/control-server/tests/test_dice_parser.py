@@ -1,34 +1,42 @@
-from app.services.combat_service.exceptions import _parse_dice, _roll_dice_expression
+from __future__ import annotations
 
-def test_parse_dice_positive():
-    assert _parse_dice("1d4") == (1, 1, 4, 0)
-    assert _parse_dice("2d6+3") == (1, 2, 6, 3)
-    assert _parse_dice("1d8-2") == (1, 1, 8, -2)
+import random
 
-def test_parse_dice_negative():
-    assert _parse_dice("-1d4") == (-1, 1, 4, 0)
-    assert _parse_dice("-2d6+2") == (-1, 2, 6, 2)
-    assert _parse_dice("- 1d4") == (-1, 1, 4, 0)
-    assert _parse_dice("+1d4") == (1, 1, 4, 0)
+from app.services.dice import DiceRoll, parse_dice, roll_dice
 
-def test_parse_dice_static():
-    assert _parse_dice("5") == (1, 0, 0, 5)
-    assert _parse_dice("-3") == (1, 0, 0, -3)
-    assert _parse_dice("+2") == (1, 0, 0, 2)
 
-def test_roll_dice_expression(mocker):
-    # Mock random.randint to always return 2 for deterministic testing
-    mocker.patch("app.services.combat_service.exceptions.random.randint", return_value=2)
-    
-    # 1d4 => 1 * 2 + 0 = 2
-    assert _roll_dice_expression("1d4") == 2
-    # -1d4 => -1 * 2 + 0 = -2
-    assert _roll_dice_expression("-1d4") == -2
-    # 2d6+3 => 1 * (2+2) + 3 = 7
-    assert _roll_dice_expression("2d6+3") == 7
-    # -2d6+2 => -1 * (2+2) + 2 = -2
-    assert _roll_dice_expression("-2d6+2") == -2
-    # 5 => 5
-    assert _roll_dice_expression("5") == 5
-    # -3 => -3
-    assert _roll_dice_expression("-3") == -3
+def test_parse_dice_basic():
+    assert parse_dice("2d6") == DiceRoll(count=2, sides=6, modifier=0)
+    assert parse_dice("1d20+5") == DiceRoll(count=1, sides=20, modifier=5)
+    assert parse_dice("3d8-2") == DiceRoll(count=3, sides=8, modifier=-2)
+
+
+def test_parse_dice_ignores_whitespace():
+    assert parse_dice("  4d10 + 3 ") == DiceRoll(count=4, sides=10, modifier=3)
+
+
+def test_parse_dice_invalid_returns_none():
+    assert parse_dice("not-a-dice") is None
+    assert parse_dice("d20") is None
+    assert parse_dice("") is None
+
+
+def test_roll_dice_is_deterministic_with_seeded_rng():
+    rng = random.Random(42)
+    first = roll_dice("3d6+2", rng=rng)
+    rng = random.Random(42)
+    second = roll_dice("3d6+2", rng=rng)
+    assert first == second
+
+
+def test_roll_dice_respects_bounds():
+    rng = random.Random(0)
+    for _ in range(100):
+        total = roll_dice("2d6+1", rng=rng)
+        assert total is not None
+        # 2 dice in [1,6] plus modifier 1 -> range [3, 13]
+        assert 3 <= total <= 13
+
+
+def test_roll_dice_invalid_returns_none():
+    assert roll_dice("garbage") is None

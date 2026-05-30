@@ -254,6 +254,9 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
                         "controllerId": "gm-control",
                         "controllerType": "gm",
                         "movementSpeedCells": 8,
+                        "base_size": "Medium",
+                        "effective_size": "Medium",
+                        "effective_footprint": {"width": 1, "height": 1},
                     },
                     {
                         "tokenId": "tok_player",
@@ -263,6 +266,9 @@ class LimiarMapCombatProjectionTests(unittest.TestCase):
                         "controllerId": "user-1",
                         "controllerType": "player",
                         "movementSpeedCells": 6,
+                        "base_size": "Medium",
+                        "effective_size": "Medium",
+                        "effective_footprint": {"width": 1, "height": 1},
                     },
                 ]
             },
