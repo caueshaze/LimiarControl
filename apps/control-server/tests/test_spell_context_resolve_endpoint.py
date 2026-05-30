@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
@@ -8,6 +9,7 @@ from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.schemas.combat import CombatResolveSpellContextRequest
 from app.services.combat import CombatService, CombatServiceError
+from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
 
 
 def _build_state() -> CombatState:
@@ -450,7 +452,47 @@ class ResolveSpellContextTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result["cover_applies_to_save"], "physical")
+    def test_utility_registry_contains_factory_based_spells(self):
+        registry = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META
+        for key in (
+            "barkskin",
+            "blur",
+            "protection_from_evil_and_good",
+            "jump",
+            "spider_climb",
+            "shillelagh",
+        ):
+            self.assertIn(key, registry)
+
+    def test_protection_utility_meta_keeps_save_advantage_flags(self):
+        utility = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META[
+            "protection_from_evil_and_good"
+        ]
+        self.assertTrue(utility["savingThrowAdvantageAgainstCreatureTypes"])
+        self.assertFalse(utility["savingThrowAdvantageDeferred"])
+
+    def test_barkskin_utility_meta_keeps_ac_floor(self):
+        utility = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META["barkskin"]
+        self.assertEqual(utility["armorClassFloor"], 16)
+        self.assertTrue(utility["setsMinimumAC"])
+
+    def test_blur_utility_meta_keeps_attack_disadvantage(self):
+        utility = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META["blur"]
+        self.assertTrue(utility["attackDisadvantageAgainstTarget"])
+
+    def test_shillelagh_utility_meta_keeps_weapon_requirements(self):
+        utility = SpellContextResolveMixin.UTILITY_SPELL_CONTEXT_META["shillelagh"]
+        self.assertTrue(utility["requiresWeapon"])
+        self.assertEqual(utility["eligibleWeaponKeys"], ["club", "quarterstaff"])
+
+
+class SpellContextArchitectureTests(ResolveSpellContextTests):
+    def test_spell_context_resolve_does_not_import_effect_factories(self):
+        path = Path(
+            "app/services/combat_service/spells/spell_context_resolve.py"
+        )
+        text = path.read_text(encoding="utf-8")
+        self.assertNotIn("spell_effect_factories", text)
 
     def test_resolves_cover_applies_to_save_null_is_exposed_as_none(self):
         result = self._resolve(

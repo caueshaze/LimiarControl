@@ -13,164 +13,180 @@ from ..targeting_requirements import (
 
 
 class SpellContextResolveMixin:
-    _PRODUCE_FLAME_UTILITY_META = {
-        "type": "produce_flame",
-        "creates_light": True,
-        "bright_light_meters": 3,
-        "dim_light_meters": 3,
-        "can_throw": True,
-        "throw_range_meters": 9,
-        "throw_attack_type": "ranged_spell",
+    UTILITY_SPELL_CONTEXT_META: dict[str, dict] = {
+        "produce_flame": {
+            "type": "produce_flame",
+            "creates_light": True,
+            "bright_light_meters": 3,
+            "dim_light_meters": 3,
+            "can_throw": True,
+            "throw_range_meters": 9,
+            "throw_attack_type": "ranged_spell",
+        },
+        "shillelagh": {
+            "type": "weapon_buff",
+            "subtype": "shillelagh",
+            "requiresWeapon": True,
+            "eligibleWeaponKeys": ["club", "quarterstaff"],
+            "durationSeconds": 60,
+            "requiresConcentration": False,
+            "attackAbilityOverride": "spellcasting",
+            "damageAbilityOverride": "spellcasting",
+            "damageDieOverride": "1d8",
+            "damageCountsAsMagical": True,
+            "endsOnRecast": True,
+            "endsOnDropWeapon": True,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self",
+        },
+        "jump": {
+            "type": "movement_buff",
+            "subtype": "jump",
+            "requiresTarget": True,
+            "requiresConcentration": False,
+            "durationSeconds": 60,
+            "jumpDistanceMultiplier": 3,
+            "affectsJumpDistance": True,
+            "grantsExtraMovement": False,
+            "grantsFlight": False,
+            "preventsFallDamage": False,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self_or_ally",
+        },
+        "spider_climb": {
+            "type": "movement_mode_buff",
+            "subtype": "spider_climb",
+            "requiresTarget": True,
+            "requiresConcentration": True,
+            "durationSeconds": 3600,
+            "grantsClimbSpeed": True,
+            "climbSpeedEqualsWalkingSpeed": True,
+            "canMoveOnVerticalSurfaces": True,
+            "canMoveOnCeilings": True,
+            "canMoveUpsideDown": True,
+            "handsFreeWhileClimbing": True,
+            "grantsExtraMovement": False,
+            "grantsFlight": False,
+            "preventsFallDamage": False,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self_or_ally",
+        },
+        "barkskin": {
+            "type": "defense_buff",
+            "subtype": "barkskin",
+            "requiresTarget": True,
+            "requiresConcentration": True,
+            "durationSeconds": 3600,
+            "armorClassFloor": 16,
+            "setsMinimumAC": True,
+            "isFlatBonus": False,
+            "stacksAsFloor": True,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self_or_ally",
+        },
+        "blur": {
+            "type": "defense_buff",
+            "subtype": "blur",
+            "requiresTarget": False,
+            "requiresConcentration": True,
+            "durationSeconds": 60,
+            "attackDisadvantageAgainstTarget": True,
+            "appliesToAttackRolls": True,
+            "ignoredByBlindsight": True,
+            "ignoredByTruesight": True,
+            "ignoredIfAttackerDoesNotRelyOnSight": True,
+            "grantsACBonus": False,
+            "armorClassBonus": 0,
+            "grantsResistance": False,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self",
+        },
+        "lesser_restoration": {
+            "type": "condition_removal",
+            "subtype": "lesser_restoration",
+            "requiresTarget": True,
+            "requiresConcentration": False,
+            "durationSeconds": 0,
+            "removableConditions": ["blinded", "deafened", "paralyzed", "poisoned", "disease"],
+            "requiresVariantKey": True,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self_or_ally",
+        },
+        "command": {
+            "type": "control",
+            "subtype": "command",
+            "requiresTarget": True,
+            "requiresConcentration": False,
+            "requiresVariantKey": True,
+            "saveAbility": "wisdom",
+            "saveEffect": "negates",
+            "durationRounds": 1,
+            "expiresOnTargetTurnEnd": True,
+            "allowedCommands": ["approach", "drop", "flee", "grovel", "halt"],
+            "invalidAgainstUndead": True,
+            "requiresSharedLanguage": True,
+            "disallowsDirectlyHarmfulCommand": True,
+            "supportsUpcastAdditionalTargets": True,
+            "targetsPerSlotAboveBase": 1,
+            "outOfCombatCastable": False,
+        },
+        "protection_from_evil_and_good": {
+            "type": "defense_buff",
+            "subtype": "protection_from_evil_and_good",
+            "requiresTarget": True,
+            "requiresConcentration": True,
+            "durationSeconds": 600,
+            "protectedCreatureTypes": [
+                "aberration", "celestial", "elemental", "fey", "fiend", "undead"
+            ],
+            "attackDisadvantageAgainstProtectedTarget": True,
+            "conditionImmunity": True,
+            "immuneConditions": ["charmed", "frightened"],
+            "immuneConditionsFromCreatureTypes": [
+                "aberration", "celestial", "elemental", "fey", "fiend", "undead"
+            ],
+            "savingThrowAdvantageAgainstCreatureTypes": True,
+            "savingThrowAdvantageDeferred": False,
+            "possessedConditionSupported": False,
+            "grantsACBonus": False,
+            "armorClassBonus": 0,
+            "grantsResistance": False,
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "self_or_ally",
+        },
+        "feather_fall": {
+            "type": "reaction_fall_protection",
+            "subtype": "feather_fall",
+            "requiresReaction": True,
+            "trigger": "creature_falls",
+            "maxTargets": 5,
+            "rangeMeters": 18,
+            "durationSeconds": 60,
+            "fallSpeedMetersPerRound": 18,
+            "preventsFallDamage": True,
+            "preventsProneFromFall": True,
+            "landsOnFeet": True,
+            "endsOnLanding": True,
+            "requiresConcentration": False,
+            "grantsFlight": False,
+            "grantsExtraMovement": False,
+            "outOfCombatCastable": False,
+        },
     }
-    _SHILLELAGH_UTILITY_META = {
-        "type": "weapon_buff",
-        "subtype": "shillelagh",
-        "requiresWeapon": True,
-        "eligibleWeaponKeys": ["club", "quarterstaff"],
-        "durationSeconds": 60,
-        "requiresConcentration": False,
-        "attackAbilityOverride": "spellcasting",
-        "damageAbilityOverride": "spellcasting",
-        "damageDieOverride": "1d8",
-        "damageCountsAsMagical": True,
-        "endsOnRecast": True,
-        "endsOnDropWeapon": True,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self",
-    }
-    _JUMP_UTILITY_META = {
-        "type": "movement_buff",
-        "subtype": "jump",
-        "requiresTarget": True,
-        "requiresConcentration": False,
-        "durationSeconds": 60,
-        "jumpDistanceMultiplier": 3,
-        "affectsJumpDistance": True,
-        "grantsExtraMovement": False,
-        "grantsFlight": False,
-        "preventsFallDamage": False,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self_or_ally",
-    }
-    _SPIDER_CLIMB_UTILITY_META = {
-        "type": "movement_mode_buff",
-        "subtype": "spider_climb",
-        "requiresTarget": True,
-        "requiresConcentration": True,
-        "durationSeconds": 3600,
-        "grantsClimbSpeed": True,
-        "climbSpeedEqualsWalkingSpeed": True,
-        "canMoveOnVerticalSurfaces": True,
-        "canMoveOnCeilings": True,
-        "canMoveUpsideDown": True,
-        "handsFreeWhileClimbing": True,
-        "grantsExtraMovement": False,
-        "grantsFlight": False,
-        "preventsFallDamage": False,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self_or_ally",
-    }
-    _BARKSKIN_UTILITY_META = {
-        "type": "defense_buff",
-        "subtype": "barkskin",
-        "requiresTarget": True,
-        "requiresConcentration": True,
-        "durationSeconds": 3600,
-        "armorClassFloor": 16,
-        "setsMinimumAC": True,
-        "isFlatBonus": False,
-        "stacksAsFloor": True,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self_or_ally",
-    }
-    _BLUR_UTILITY_META = {
-        "type": "defense_buff",
-        "subtype": "blur",
-        "requiresTarget": False,
-        "requiresConcentration": True,
-        "durationSeconds": 60,
-        "attackDisadvantageAgainstTarget": True,
-        "appliesToAttackRolls": True,
-        "ignoredByBlindsight": True,
-        "ignoredByTruesight": True,
-        "ignoredIfAttackerDoesNotRelyOnSight": True,
-        "grantsACBonus": False,
-        "armorClassBonus": 0,
-        "grantsResistance": False,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self",
-    }
-    _LESSER_RESTORATION_UTILITY_META = {
-        "type": "condition_removal",
-        "subtype": "lesser_restoration",
-        "requiresTarget": True,
-        "requiresConcentration": False,
-        "durationSeconds": 0,
-        "removableConditions": ["blinded", "deafened", "paralyzed", "poisoned", "disease"],
-        "requiresVariantKey": True,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self_or_ally",
-    }
-    _PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META = {
-        "type": "defense_buff",
-        "subtype": "protection_from_evil_and_good",
-        "requiresTarget": True,
-        "requiresConcentration": True,
-        "durationSeconds": 600,
-        "protectedCreatureTypes": [
-            "aberration", "celestial", "elemental", "fey", "fiend", "undead"
-        ],
-        "attackDisadvantageAgainstProtectedTarget": True,
-        "conditionImmunity": True,
-        "immuneConditions": ["charmed", "frightened"],
-        "immuneConditionsFromCreatureTypes": [
-            "aberration", "celestial", "elemental", "fey", "fiend", "undead"
-        ],
-        "savingThrowAdvantageAgainstCreatureTypes": True,
-        "savingThrowAdvantageDeferred": False,
-        "possessedConditionSupported": False,
-        "grantsACBonus": False,
-        "armorClassBonus": 0,
-        "grantsResistance": False,
-        "outOfCombatCastable": True,
-        "outOfCombatTarget": "self_or_ally",
-    }
-    _COMMAND_UTILITY_META = {
-        "type": "control",
-        "subtype": "command",
-        "requiresTarget": True,
-        "requiresConcentration": False,
-        "requiresVariantKey": True,
-        "saveAbility": "wisdom",
-        "saveEffect": "negates",
-        "durationRounds": 1,
-        "expiresOnTargetTurnEnd": True,
-        "allowedCommands": ["approach", "drop", "flee", "grovel", "halt"],
-        "invalidAgainstUndead": True,
-        "requiresSharedLanguage": True,
-        "disallowsDirectlyHarmfulCommand": True,
-        "supportsUpcastAdditionalTargets": True,
-        "targetsPerSlotAboveBase": 1,
-        "outOfCombatCastable": False,
-    }
-    _FEATHER_FALL_UTILITY_META = {
-        "type": "reaction_fall_protection",
-        "subtype": "feather_fall",
-        "requiresReaction": True,
-        "trigger": "creature_falls",
-        "maxTargets": 5,
-        "rangeMeters": 18,
-        "durationSeconds": 60,
-        "fallSpeedMetersPerRound": 18,
-        "preventsFallDamage": True,
-        "preventsProneFromFall": True,
-        "landsOnFeet": True,
-        "endsOnLanding": True,
-        "requiresConcentration": False,
-        "grantsFlight": False,
-        "grantsExtraMovement": False,
-        "outOfCombatCastable": False,
-    }
+    # Backward-compatible aliases for existing tests and call sites that still
+    # reference the legacy constant names directly.
+    _PRODUCE_FLAME_UTILITY_META = UTILITY_SPELL_CONTEXT_META["produce_flame"]
+    _SHILLELAGH_UTILITY_META = UTILITY_SPELL_CONTEXT_META["shillelagh"]
+    _JUMP_UTILITY_META = UTILITY_SPELL_CONTEXT_META["jump"]
+    _SPIDER_CLIMB_UTILITY_META = UTILITY_SPELL_CONTEXT_META["spider_climb"]
+    _BARKSKIN_UTILITY_META = UTILITY_SPELL_CONTEXT_META["barkskin"]
+    _BLUR_UTILITY_META = UTILITY_SPELL_CONTEXT_META["blur"]
+    _LESSER_RESTORATION_UTILITY_META = UTILITY_SPELL_CONTEXT_META["lesser_restoration"]
+    _PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META = UTILITY_SPELL_CONTEXT_META[
+        "protection_from_evil_and_good"
+    ]
+    _COMMAND_UTILITY_META = UTILITY_SPELL_CONTEXT_META["command"]
+    _FEATHER_FALL_UTILITY_META = UTILITY_SPELL_CONTEXT_META["feather_fall"]
 
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
@@ -828,27 +844,8 @@ class SpellContextResolveMixin:
             "effect_instance_dice": effect_instance_dice,
             "base_effect_instance_count": base_effect_instance_count,
             "utility": (
-                cls._PRODUCE_FLAME_UTILITY_META
-                if spell_key == "produce_flame"
-                else cls._SHILLELAGH_UTILITY_META
-                if spell_key == "shillelagh"
-                else cls._JUMP_UTILITY_META
-                if spell_key == "jump"
-                else cls._SPIDER_CLIMB_UTILITY_META
-                if spell_key == "spider_climb"
-                else cls._BARKSKIN_UTILITY_META
-                if spell_key == "barkskin"
-                else cls._BLUR_UTILITY_META
-                if spell_key == "blur"
-                else cls._LESSER_RESTORATION_UTILITY_META
-                if spell_key == "lesser_restoration"
-                else cls._COMMAND_UTILITY_META
-                if spell_key == "command"
-                else cls._PROTECTION_FROM_EVIL_AND_GOOD_UTILITY_META
-                if spell_key == "protection_from_evil_and_good"
-                else cls._FEATHER_FALL_UTILITY_META
-                if spell_key == "feather_fall"
-                else cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
+                cls.UTILITY_SPELL_CONTEXT_META.get(spell_key)
+                or cls._NARRATIVE_UTILITY_META_BY_SPELL.get(spell_key)
             ),
             "materialComponent": {
                 "text": getattr(catalog_spell, "material_component_text", None),
