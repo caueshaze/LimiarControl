@@ -162,3 +162,66 @@ def build_protection_from_evil_and_good_effect(ctx: SpellEffectBuildContext) -> 
         }
     )
     return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
+def build_jump_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    metadata.update(
+        {
+            "movement_modifier": True,
+            "jump_distance_multiplier": 3,
+            "affects_jump_distance": True,
+            "grants_extra_movement": False,
+            "grants_flight": False,
+            "prevents_fall_damage": False,
+            "duration_seconds": ctx.duration_seconds,
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
+def build_spider_climb_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    metadata.update(
+        {
+            "movement_modifier": True,
+            "movement_mode": "spider_climb",
+            "grants_climb_speed": True,
+            "climb_speed_equals_walking_speed": True,
+            "can_move_on_vertical_surfaces": True,
+            "can_move_on_ceilings": True,
+            "can_move_upside_down": True,
+            "hands_free_while_climbing": True,
+            "grants_extra_movement": False,
+            "grants_flight": False,
+            "prevents_fall_damage": False,
+            "ignores_difficult_terrain": False,
+            "duration_seconds": ctx.duration_seconds,
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
+def build_shillelagh_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    weapon_item_id = ctx.extra_metadata.get("weapon_item_id")
+    weapon_key = ctx.extra_metadata.get("weapon_key")
+    weapon_name = ctx.extra_metadata.get("weapon_name")
+    weapon_canonical_key = ctx.extra_metadata.get("weapon_canonical_key")
+    metadata.update(
+        {
+            "weapon_item_id": weapon_item_id,
+            "weapon_key": weapon_key,
+            "weapon_name": weapon_name,
+            "eligible_weapon_keys": ["club", "quarterstaff"],
+            "override_attack_ability": "spellcasting",
+            "override_damage_ability": "spellcasting",
+            "override_damage_die": "1d8",
+            "damage_counts_as_magical": True,
+            "ends_on_recast": True,
+            "ends_on_drop_weapon": True,
+        }
+    )
+    if isinstance(weapon_canonical_key, str) and weapon_canonical_key.strip():
+        metadata["weapon_canonical_key"] = weapon_canonical_key
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)

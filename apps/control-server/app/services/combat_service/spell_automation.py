@@ -27,7 +27,10 @@ from app.services.spell_effect_factories import (
     SpellEffectBuildContext,
     build_barkskin_effect,
     build_blur_effect,
+    build_jump_effect,
     build_protection_from_evil_and_good_effect,
+    build_shillelagh_effect,
+    build_spider_climb_effect,
 )
 
 from .condition_effects import resolve_attack_advantage, resolve_spell_attack_kind
@@ -940,29 +943,25 @@ class CombatSpellAutomationMixin:
             )
             != "shillelagh"
         ]
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 60,
-            metadata={
-                "source_spell_key": "shillelagh",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "shillelagh",
-                "weapon_item_id": weapon_item_id,
-                "weapon_key": weapon_key,
-                "weapon_name": weapon_item.name,
-                "eligible_weapon_keys": ["club", "quarterstaff"],
-                "override_attack_ability": "spellcasting",
-                "override_damage_ability": "spellcasting",
-                "override_damage_die": "1d8",
-                "damage_counts_as_magical": True,
-                "ends_on_recast": True,
-                "ends_on_drop_weapon": True,
-            },
-            display_label=spell_name,
+        effect = build_shillelagh_effect(
+            SpellEffectBuildContext(
+                spell_key="shillelagh",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=60,
+                concentration=False,
+                concentration_group=None,
+                source_participant_id=attacker["id"],
+                owner_participant_id=attacker["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+                extra_metadata={
+                    "weapon_item_id": weapon_item_id,
+                    "weapon_key": weapon_key,
+                    "weapon_canonical_key": weapon_key,
+                    "weapon_name": weapon_item.name,
+                },
+            )
         )
         cls._append_effect_to_participant(attacker, effect)
         flag_modified(state, "participants")
@@ -1026,26 +1025,19 @@ class CombatSpellAutomationMixin:
             != "jump"
         ]
 
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 60,
-            metadata={
-                "source_spell_key": "jump",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "jump",
-                "movement_modifier": True,
-                "jump_distance_multiplier": 3,
-                "affects_jump_distance": True,
-                "grants_extra_movement": False,
-                "grants_flight": False,
-                "prevents_fall_damage": False,
-                "duration_seconds": 60,
-            },
-            display_label=spell_name,
+        effect = build_jump_effect(
+            SpellEffectBuildContext(
+                spell_key="jump",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=60,
+                concentration=False,
+                concentration_group=None,
+                source_participant_id=attacker["id"],
+                owner_participant_id=target_participant["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+            )
         )
         cls._append_effect_to_participant(target_participant, effect)
         flag_modified(state, "participants")
@@ -1118,37 +1110,19 @@ class CombatSpellAutomationMixin:
             != "spider climb"
         ]
 
-        effect = cls._build_active_effect(
-            kind="spell_effect",
-            source_participant_id=attacker["id"],
-            duration_type="timed",
-            created_at_game_time_seconds=game_time,
-            expires_at_game_time_seconds=game_time + 3600,
-            metadata={
-                "source_spell_key": "spider_climb",
-                "source_spell_name": spell_name,
-                "mechanical": True,
-                "utility": "spider_climb",
-                "concentration": True,
-                "concentration_group": concentration_group,
-                "source_participant_id": attacker["id"],
-                "owner_participant_id": target_participant["id"],
-                "created_by_participant_id": attacker["id"],
-                "movement_modifier": True,
-                "movement_mode": "spider_climb",
-                "grants_climb_speed": True,
-                "climb_speed_equals_walking_speed": True,
-                "can_move_on_vertical_surfaces": True,
-                "can_move_on_ceilings": True,
-                "can_move_upside_down": True,
-                "hands_free_while_climbing": True,
-                "grants_extra_movement": False,
-                "grants_flight": False,
-                "prevents_fall_damage": False,
-                "ignores_difficult_terrain": False,
-                "duration_seconds": 3600,
-            },
-            display_label=spell_name,
+        effect = build_spider_climb_effect(
+            SpellEffectBuildContext(
+                spell_key="spider_climb",
+                spell_name=spell_name,
+                game_time_seconds=game_time,
+                duration_seconds=3600,
+                concentration=True,
+                concentration_group=concentration_group,
+                source_participant_id=attacker["id"],
+                owner_participant_id=target_participant["id"],
+                created_by_participant_id=attacker["id"],
+                context_origin="combat",
+            )
         )
         cls._append_effect_to_participant(target_participant, effect)
         flag_modified(state, "participants")

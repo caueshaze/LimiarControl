@@ -6,7 +6,10 @@ from app.services.spell_effect_factories import (
     SpellEffectBuildContext,
     build_barkskin_effect,
     build_blur_effect,
+    build_jump_effect,
     build_protection_from_evil_and_good_effect,
+    build_shillelagh_effect,
+    build_spider_climb_effect,
 )
 
 
@@ -123,6 +126,112 @@ class SpellEffectFactoriesTests(unittest.TestCase):
     def test_barkskin_combat_ooc_mechanical_parity(self):
         combat = build_barkskin_effect(_combat_ctx("barkskin", "Barkskin", 3600))
         ooc = build_barkskin_effect(_ooc_ctx("barkskin", "Barkskin", 3600))
+        self.assertEqual(
+            _normalize_metadata_for_mechanical_parity(combat["metadata"]),
+            _normalize_metadata_for_mechanical_parity(ooc["metadata"]),
+        )
+
+    def test_jump_contains_movement_metadata(self):
+        effect = build_jump_effect(_combat_ctx("jump", "Jump", 60))
+        md = effect["metadata"]
+        self.assertTrue(md["movement_modifier"])
+        self.assertEqual(md["jump_distance_multiplier"], 3)
+        self.assertTrue(md["affects_jump_distance"])
+
+    def test_spider_climb_contains_movement_mode_metadata(self):
+        effect = build_spider_climb_effect(_combat_ctx("spider_climb", "Spider Climb", 3600))
+        md = effect["metadata"]
+        self.assertEqual(md["movement_mode"], "spider_climb")
+        self.assertTrue(md["grants_climb_speed"])
+        self.assertTrue(md["can_move_on_ceilings"])
+
+    def test_shillelagh_contains_weapon_and_override_metadata(self):
+        effect = build_shillelagh_effect(
+            SpellEffectBuildContext(
+                spell_key="shillelagh",
+                spell_name="Shillelagh",
+                game_time_seconds=100,
+                duration_seconds=60,
+                concentration=False,
+                concentration_group=None,
+                source_participant_id="src-1",
+                owner_participant_id="owner-1",
+                created_by_participant_id="src-1",
+                context_origin="combat",
+                extra_metadata={
+                    "weapon_item_id": "inv-1",
+                    "weapon_key": "club",
+                    "weapon_name": "Club",
+                    "weapon_canonical_key": "club",
+                },
+            )
+        )
+        md = effect["metadata"]
+        self.assertEqual(md["weapon_item_id"], "inv-1")
+        self.assertEqual(md["weapon_key"], "club")
+        self.assertEqual(md["override_damage_die"], "1d8")
+        self.assertTrue(md["damage_counts_as_magical"])
+
+    def test_jump_combat_ooc_mechanical_parity(self):
+        combat = build_jump_effect(_combat_ctx("jump", "Jump", 60))
+        ooc = build_jump_effect(_ooc_ctx("jump", "Jump", 60))
+        self.assertEqual(
+            _normalize_metadata_for_mechanical_parity(combat["metadata"]),
+            _normalize_metadata_for_mechanical_parity(ooc["metadata"]),
+        )
+
+    def test_spider_climb_combat_ooc_mechanical_parity(self):
+        combat = build_spider_climb_effect(_combat_ctx("spider_climb", "Spider Climb", 3600))
+        ooc = build_spider_climb_effect(_ooc_ctx("spider_climb", "Spider Climb", 3600))
+        self.assertEqual(
+            _normalize_metadata_for_mechanical_parity(combat["metadata"]),
+            _normalize_metadata_for_mechanical_parity(ooc["metadata"]),
+        )
+
+    def test_shillelagh_combat_ooc_mechanical_parity(self):
+        combat = build_shillelagh_effect(
+            SpellEffectBuildContext(
+                spell_key="shillelagh",
+                spell_name="Shillelagh",
+                game_time_seconds=100,
+                duration_seconds=60,
+                concentration=False,
+                concentration_group=None,
+                source_participant_id="src-1",
+                owner_participant_id="owner-1",
+                created_by_participant_id="src-1",
+                context_origin="combat",
+                extra_metadata={
+                    "weapon_item_id": "inv-1",
+                    "weapon_key": "club",
+                    "weapon_name": "Club",
+                    "weapon_canonical_key": "club",
+                },
+            )
+        )
+        ooc = build_shillelagh_effect(
+            SpellEffectBuildContext(
+                spell_key="shillelagh",
+                spell_name="Shillelagh",
+                game_time_seconds=100,
+                duration_seconds=60,
+                concentration=False,
+                concentration_group=None,
+                source_participant_id=None,
+                owner_participant_id="user-1",
+                created_by_participant_id="user-1",
+                context_origin="out_of_combat_cast",
+                caster_user_id="user-1",
+                target_user_id="user-1",
+                created_out_of_combat=True,
+                extra_metadata={
+                    "weapon_item_id": "inv-1",
+                    "weapon_key": "club",
+                    "weapon_name": "Club",
+                    "weapon_canonical_key": "club",
+                },
+            )
+        )
         self.assertEqual(
             _normalize_metadata_for_mechanical_parity(combat["metadata"]),
             _normalize_metadata_for_mechanical_parity(ooc["metadata"]),

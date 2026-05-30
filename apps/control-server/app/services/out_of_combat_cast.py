@@ -16,7 +16,10 @@ from app.services.spell_effect_factories import (
     SpellEffectBuildContext,
     build_barkskin_effect,
     build_blur_effect,
+    build_jump_effect,
     build_protection_from_evil_and_good_effect,
+    build_shillelagh_effect,
+    build_spider_climb_effect,
 )
 
 _SPECIAL_OOC_UTILITY_SPELLS = {
@@ -426,133 +429,74 @@ def build_persisted_effects(
                 return []
             normalized_weapon_key = weapon_canonical_key.strip().lower()
             spell_name = spell.name_pt or spell.name_en
-            return [{
-                "id": str(uuid4()),
-                "source_participant_id": None,
-                "kind": "spell_effect",
-                "condition_type": None,
-                "numeric_value": None,
-                "duration_type": "timed",
-                "remaining_rounds": None,
-                "expires_on": None,
-                "expires_at_participant_id": None,
-                "created_at_game_time_seconds": game_time_seconds,
-                "expires_at_game_time_seconds": game_time_seconds + 60,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "metadata": {
-                    "source_spell_key": "shillelagh",
-                    "source_spell_name": spell_name,
-                    "selected_variant_key": None,
-                    "selected_variant_label": None,
-                    "context_origin": "out_of_combat_cast",
-                    "concentration": False,
-                    "caster_player_user_id": caster_user_id,
-                    "target_player_user_id": target_user_id,
-                    "owner_participant_id": caster_user_id,
-                    "created_by_participant_id": caster_user_id,
-                    "mechanical": True,
-                    "utility": "shillelagh",
-                    "weapon_item_id": weapon_item_id.strip(),
-                    "weapon_key": normalized_weapon_key,
-                    "weapon_canonical_key": normalized_weapon_key,
-                    "weapon_name": weapon_name,
-                    "eligible_weapon_keys": ["club", "quarterstaff"],
-                    "override_attack_ability": "spellcasting",
-                    "override_damage_ability": "spellcasting",
-                    "override_damage_die": "1d8",
-                    "damage_counts_as_magical": True,
-                    "ends_on_recast": True,
-                    "ends_on_drop_weapon": True,
-                    "created_out_of_combat": True,
-                },
-                "display_label": spell_name,
-            }]
+            return [
+                build_shillelagh_effect(
+                    SpellEffectBuildContext(
+                        spell_key="shillelagh",
+                        spell_name=spell_name,
+                        game_time_seconds=game_time_seconds,
+                        duration_seconds=60,
+                        concentration=False,
+                        concentration_group=None,
+                        source_participant_id=None,
+                        owner_participant_id=caster_user_id,
+                        created_by_participant_id=caster_user_id,
+                        context_origin="out_of_combat_cast",
+                        caster_user_id=caster_user_id,
+                        target_user_id=target_user_id,
+                        created_out_of_combat=True,
+                        extra_metadata={
+                            "weapon_item_id": weapon_item_id.strip(),
+                            "weapon_key": normalized_weapon_key,
+                            "weapon_canonical_key": normalized_weapon_key,
+                            "weapon_name": weapon_name,
+                        },
+                    )
+                )
+            ]
         if canonical_key == "jump":
             spell_name = spell.name_pt or spell.name_en
-            return [{
-                "id": str(uuid4()),
-                "source_participant_id": None,
-                "kind": "spell_effect",
-                "condition_type": None,
-                "numeric_value": None,
-                "duration_type": "timed",
-                "remaining_rounds": None,
-                "expires_on": None,
-                "expires_at_participant_id": None,
-                "created_at_game_time_seconds": game_time_seconds,
-                "expires_at_game_time_seconds": game_time_seconds + 60,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "metadata": {
-                    "source_spell_key": "jump",
-                    "source_spell_name": spell_name,
-                    "selected_variant_key": None,
-                    "selected_variant_label": None,
-                    "context_origin": "out_of_combat_cast",
-                    "concentration": False,
-                    "caster_player_user_id": caster_user_id,
-                    "target_player_user_id": target_user_id,
-                    "owner_participant_id": target_user_id,
-                    "created_by_participant_id": caster_user_id,
-                    "mechanical": True,
-                    "utility": "jump",
-                    "movement_modifier": True,
-                    "jump_distance_multiplier": 3,
-                    "affects_jump_distance": True,
-                    "grants_extra_movement": False,
-                    "grants_flight": False,
-                    "prevents_fall_damage": False,
-                    "duration_seconds": 60,
-                    "created_out_of_combat": True,
-                },
-                "display_label": spell_name,
-            }]
+            return [
+                build_jump_effect(
+                    SpellEffectBuildContext(
+                        spell_key="jump",
+                        spell_name=spell_name,
+                        game_time_seconds=game_time_seconds,
+                        duration_seconds=60,
+                        concentration=False,
+                        concentration_group=None,
+                        source_participant_id=None,
+                        owner_participant_id=target_user_id,
+                        created_by_participant_id=caster_user_id,
+                        context_origin="out_of_combat_cast",
+                        caster_user_id=caster_user_id,
+                        target_user_id=target_user_id,
+                        created_out_of_combat=True,
+                    )
+                )
+            ]
         if canonical_key == "spider_climb":
             spell_name = spell.name_pt or spell.name_en
             group_id = str(uuid4()) if spell.concentration else None
-            return [{
-                "id": str(uuid4()),
-                "source_participant_id": None,
-                "kind": "spell_effect",
-                "condition_type": None,
-                "numeric_value": None,
-                "duration_type": "timed",
-                "remaining_rounds": None,
-                "expires_on": None,
-                "expires_at_participant_id": None,
-                "created_at_game_time_seconds": game_time_seconds,
-                "expires_at_game_time_seconds": game_time_seconds + 3600,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "metadata": {
-                    "source_spell_key": "spider_climb",
-                    "source_spell_name": spell_name,
-                    "selected_variant_key": None,
-                    "selected_variant_label": None,
-                    "context_origin": "out_of_combat_cast",
-                    "concentration": True,
-                    "concentration_group": group_id,
-                    "caster_player_user_id": caster_user_id,
-                    "target_player_user_id": target_user_id,
-                    "owner_participant_id": target_user_id,
-                    "created_by_participant_id": caster_user_id,
-                    "mechanical": True,
-                    "utility": "spider_climb",
-                    "movement_modifier": True,
-                    "movement_mode": "spider_climb",
-                    "grants_climb_speed": True,
-                    "climb_speed_equals_walking_speed": True,
-                    "can_move_on_vertical_surfaces": True,
-                    "can_move_on_ceilings": True,
-                    "can_move_upside_down": True,
-                    "hands_free_while_climbing": True,
-                    "grants_extra_movement": False,
-                    "grants_flight": False,
-                    "prevents_fall_damage": False,
-                    "ignores_difficult_terrain": False,
-                    "duration_seconds": 3600,
-                    "created_out_of_combat": True,
-                },
-                "display_label": spell_name,
-            }]
+            return [
+                build_spider_climb_effect(
+                    SpellEffectBuildContext(
+                        spell_key="spider_climb",
+                        spell_name=spell_name,
+                        game_time_seconds=game_time_seconds,
+                        duration_seconds=3600,
+                        concentration=True,
+                        concentration_group=group_id,
+                        source_participant_id=None,
+                        owner_participant_id=target_user_id,
+                        created_by_participant_id=caster_user_id,
+                        context_origin="out_of_combat_cast",
+                        caster_user_id=caster_user_id,
+                        target_user_id=target_user_id,
+                        created_out_of_combat=True,
+                    )
+                )
+            ]
         if canonical_key == "barkskin":
             spell_name = spell.name_pt or spell.name_en
             group_id = str(uuid4()) if spell.concentration else None
