@@ -279,6 +279,61 @@ class CombatSpellAutomationMixin:
         return cls._normalize_lookup(value).replace(" ", "_")
 
     @classmethod
+    def _build_combat_spell_effect_context(
+        cls,
+        *,
+        spell_key: str,
+        spell_name: str,
+        caster_participant_id: str,
+        target_participant_id: str,
+        game_time_seconds: int,
+        duration_seconds: int,
+        concentration: bool,
+        concentration_group: str | None,
+        extra_metadata: dict | None = None,
+    ) -> SpellEffectBuildContext:
+        return SpellEffectBuildContext(
+            spell_key=spell_key,
+            spell_name=spell_name,
+            game_time_seconds=game_time_seconds,
+            duration_seconds=duration_seconds,
+            concentration=concentration,
+            concentration_group=concentration_group,
+            source_participant_id=caster_participant_id,
+            owner_participant_id=target_participant_id,
+            created_by_participant_id=caster_participant_id,
+            context_origin="combat",
+            extra_metadata=extra_metadata or {},
+        )
+
+    @classmethod
+    def _apply_factory_spell_effect_to_target(
+        cls,
+        *,
+        state: CombatState,
+        target_participant: dict,
+        effect: dict,
+        source_spell_key: str,
+        replace_existing: bool = True,
+    ) -> None:
+        active_effects = target_participant.get("active_effects")
+        if not isinstance(active_effects, list):
+            active_effects = []
+            target_participant["active_effects"] = active_effects
+        if replace_existing:
+            expected_key = cls._normalize_lookup(source_spell_key).replace(" ", "_")
+            target_participant["active_effects"] = [
+                e
+                for e in active_effects
+                if cls._normalize_lookup(
+                    (cls._get_effect_metadata(e) or {}).get("source_spell_key")
+                ).replace(" ", "_")
+                != expected_key
+            ]
+        cls._append_effect_to_participant(target_participant, effect)
+        flag_modified(state, "participants")
+
+    @classmethod
     def _get_spell_automation_spec(
         cls, canonical_key: object
     ) -> SpellAutomationSpec | None:
@@ -931,30 +986,16 @@ class CombatSpellAutomationMixin:
 
         spell_name = spell_context["spell_name"]
         game_time = get_game_time_seconds(session_id, db)
-        active_effects = attacker.get("active_effects")
-        if not isinstance(active_effects, list):
-            active_effects = []
-            attacker["active_effects"] = active_effects
-        attacker["active_effects"] = [
-            effect
-            for effect in active_effects
-            if cls._normalize_lookup(
-                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
-            )
-            != "shillelagh"
-        ]
         effect = build_shillelagh_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="shillelagh",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=attacker["id"],
                 game_time_seconds=game_time,
                 duration_seconds=60,
                 concentration=False,
                 concentration_group=None,
-                source_participant_id=attacker["id"],
-                owner_participant_id=attacker["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
                 extra_metadata={
                     "weapon_item_id": weapon_item_id,
                     "weapon_key": weapon_key,
@@ -963,8 +1004,12 @@ class CombatSpellAutomationMixin:
                 },
             )
         )
-        cls._append_effect_to_participant(attacker, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=attacker,
+            effect=effect,
+            source_spell_key="shillelagh",
+        )
 
         return cls._base_spell_result(
             spell_name=spell_name,
@@ -1012,35 +1057,24 @@ class CombatSpellAutomationMixin:
         spell_name = spell_context["spell_name"]
         game_time = get_game_time_seconds(session_id, db)
 
-        active_effects = target_participant.get("active_effects")
-        if not isinstance(active_effects, list):
-            active_effects = []
-            target_participant["active_effects"] = active_effects
-        target_participant["active_effects"] = [
-            effect
-            for effect in active_effects
-            if cls._normalize_lookup(
-                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
-            )
-            != "jump"
-        ]
-
         effect = build_jump_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="jump",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=target_participant["id"],
                 game_time_seconds=game_time,
                 duration_seconds=60,
                 concentration=False,
                 concentration_group=None,
-                source_participant_id=attacker["id"],
-                owner_participant_id=target_participant["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
             )
         )
-        cls._append_effect_to_participant(target_participant, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=target_participant,
+            effect=effect,
+            source_spell_key="jump",
+        )
 
         return cls._base_spell_result(
             spell_name=spell_name,
@@ -1097,35 +1131,24 @@ class CombatSpellAutomationMixin:
         concentration_group = str(uuid4())
         game_time = get_game_time_seconds(session_id, db)
 
-        active_effects = target_participant.get("active_effects")
-        if not isinstance(active_effects, list):
-            active_effects = []
-            target_participant["active_effects"] = active_effects
-        target_participant["active_effects"] = [
-            effect
-            for effect in active_effects
-            if cls._normalize_lookup(
-                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
-            )
-            != "spider climb"
-        ]
-
         effect = build_spider_climb_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="spider_climb",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=target_participant["id"],
                 game_time_seconds=game_time,
                 duration_seconds=3600,
                 concentration=True,
                 concentration_group=concentration_group,
-                source_participant_id=attacker["id"],
-                owner_participant_id=target_participant["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
             )
         )
-        cls._append_effect_to_participant(target_participant, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=target_participant,
+            effect=effect,
+            source_spell_key="spider_climb",
+        )
 
         summary_text = (
             f"{spell_name}: {target_participant['display_name']} pode escalar superfícies e tetos por até 1 hora."
@@ -1189,35 +1212,24 @@ class CombatSpellAutomationMixin:
         concentration_group = str(uuid4())
         game_time = get_game_time_seconds(session_id, db)
 
-        active_effects = target_participant.get("active_effects")
-        if not isinstance(active_effects, list):
-            active_effects = []
-            target_participant["active_effects"] = active_effects
-        target_participant["active_effects"] = [
-            effect
-            for effect in active_effects
-            if cls._normalize_lookup(
-                (cls._get_effect_metadata(effect) or {}).get("source_spell_key")
-            )
-            != "barkskin"
-        ]
-
         effect = build_barkskin_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="barkskin",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=target_participant["id"],
                 game_time_seconds=game_time,
                 duration_seconds=3600,
                 concentration=True,
                 concentration_group=concentration_group,
-                source_participant_id=attacker["id"],
-                owner_participant_id=target_participant["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
             )
         )
-        cls._append_effect_to_participant(target_participant, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=target_participant,
+            effect=effect,
+            source_spell_key="barkskin",
+        )
 
         summary_text = (
             f"{spell_name}: a CA de {target_participant['display_name']} não pode ser menor que 16 por até 1 hora."
@@ -1272,35 +1284,28 @@ class CombatSpellAutomationMixin:
         )
         cls._sync_area_effects_if_changed(session_id, state, result["removed_area_effects"])
 
-        active_effects = attacker.get("active_effects")
-        if isinstance(active_effects, list):
-            attacker["active_effects"] = [
-                e for e in active_effects
-                if cls._normalize_lookup(
-                    (cls._get_effect_metadata(e) or {}).get("source_spell_key")
-                ) != "blur"
-            ]
-
         spell_name = spell_context["spell_name"]
         concentration_group = str(uuid4())
         game_time = get_game_time_seconds(session_id, db)
 
         effect = build_blur_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="blur",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=attacker["id"],
                 game_time_seconds=game_time,
                 duration_seconds=60,
                 concentration=True,
                 concentration_group=concentration_group,
-                source_participant_id=attacker["id"],
-                owner_participant_id=attacker["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
             )
         )
-        cls._append_effect_to_participant(attacker, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=attacker,
+            effect=effect,
+            source_spell_key="blur",
+        )
 
         summary_text = (
             f"{spell_name}: ataques contra {attacker['display_name']} têm desvantagem "
@@ -3426,14 +3431,6 @@ class CombatSpellAutomationMixin:
         )
         concentration_group = str(uuid4())
 
-        existing = target_participant.get("active_effects") or []
-        target_participant["active_effects"] = [
-            e for e in existing
-            if cls._normalize_lookup(
-                (cls._get_effect_metadata(e) or {}).get("source_spell_key")
-            ) != "protection_from_evil_and_good"
-        ]
-
         suppressed_conditions: list[str] = []
         remaining_effects = []
         for e in (target_participant.get("active_effects") or []):
@@ -3463,21 +3460,23 @@ class CombatSpellAutomationMixin:
         protected_types = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES)
         immune_conditions = sorted(PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
         effect = build_protection_from_evil_and_good_effect(
-            SpellEffectBuildContext(
+            cls._build_combat_spell_effect_context(
                 spell_key="protection_from_evil_and_good",
                 spell_name=spell_name,
+                caster_participant_id=attacker["id"],
+                target_participant_id=target_participant["id"],
                 game_time_seconds=game_time,
                 duration_seconds=600,
                 concentration=True,
                 concentration_group=concentration_group,
-                source_participant_id=attacker["id"],
-                owner_participant_id=target_participant["id"],
-                created_by_participant_id=attacker["id"],
-                context_origin="combat",
             )
         )
-        cls._append_effect_to_participant(target_participant, effect)
-        flag_modified(state, "participants")
+        cls._apply_factory_spell_effect_to_target(
+            state=state,
+            target_participant=target_participant,
+            effect=effect,
+            source_spell_key="protection_from_evil_and_good",
+        )
 
         suppression_note = ""
         if suppressed_conditions:
