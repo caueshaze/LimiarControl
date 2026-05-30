@@ -23,12 +23,41 @@ from app.services.spell_effect_factories import (
     build_spider_climb_effect,
 )
 
-_SPECIAL_OOC_UTILITY_SPELLS = {
-    "detect_magic", "detect_poison_disease", "detect_evil_and_good",
-    "druidcraft", "produce_flame", "thaumaturgy", "comprehend_languages",
-    "purify_food_and_drink", "spare_the_dying", "shillelagh", "jump", "spider_climb",
-    "barkskin", "blur", "lesser_restoration", "protection_from_evil_and_good",
+OOC_NARRATIVE_UTILITY_SPELLS = {
+    "detect_magic",
+    "detect_poison_disease",
+    "detect_evil_and_good",
+    "druidcraft",
+    "produce_flame",
+    "thaumaturgy",
+    "comprehend_languages",
+    "purify_food_and_drink",
+    "spare_the_dying",
 }
+
+OOC_FACTORY_EFFECT_SPELLS = {
+    "jump",
+    "spider_climb",
+    "barkskin",
+    "blur",
+    "protection_from_evil_and_good",
+}
+
+OOC_REMOVAL_UTILITY_SPELLS = {
+    "lesser_restoration",
+}
+
+OOC_SPECIAL_INPUT_SPELLS = {
+    "shillelagh",
+}
+
+# Backward-compatible aggregate alias kept for legacy tests/imports.
+_SPECIAL_OOC_UTILITY_SPELLS = (
+    OOC_NARRATIVE_UTILITY_SPELLS
+    | OOC_FACTORY_EFFECT_SPELLS
+    | OOC_REMOVAL_UTILITY_SPELLS
+    | OOC_SPECIAL_INPUT_SPELLS
+)
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
     "alter_eyes",
@@ -48,6 +77,15 @@ _OOC_PERSISTED_FACTORY_REGISTRY: dict[str, tuple[_OOCFactory, int, bool]] = {
     "jump": (build_jump_effect, 60, False),
     "spider_climb": (build_spider_climb_effect, 3600, True),
 }
+
+
+def _is_ooc_utility_spell(canonical_key: str) -> bool:
+    return (
+        canonical_key in OOC_NARRATIVE_UTILITY_SPELLS
+        or canonical_key in OOC_FACTORY_EFFECT_SPELLS
+        or canonical_key in OOC_REMOVAL_UTILITY_SPELLS
+        or canonical_key in OOC_SPECIAL_INPUT_SPELLS
+    )
 
 
 def _resolve_ooc_factory_duration_seconds(spell, fallback_seconds: int) -> int:
@@ -525,6 +563,10 @@ def build_persisted_effects(
                     )
                 )
             ]
+        # Removal-only utilities (e.g., lesser_restoration) do not create
+        # persisted spell effects in OOC flow.
+        if canonical_key in OOC_REMOVAL_UTILITY_SPELLS:
+            return []
         return []
 
     group_id = str(uuid4())
@@ -700,7 +742,7 @@ def _resolve_effects(spell, variant_key: str | None) -> list[dict]:
 
 def _has_resolvable_effects(spell, variant_key: str | None) -> bool:
     canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
-    if canonical_key in _SPECIAL_OOC_UTILITY_SPELLS:
+    if _is_ooc_utility_spell(canonical_key):
         return True
     return bool(_resolve_effects(spell, variant_key))
 
@@ -712,7 +754,7 @@ def has_castable_effects(spell) -> bool:
     rejected at cast time due to having no persistable effects.
     """
     canonical_key = str(getattr(spell, "canonical_key", "") or "").strip().lower()
-    if canonical_key in _SPECIAL_OOC_UTILITY_SPELLS:
+    if _is_ooc_utility_spell(canonical_key):
         return True
     if spell.effects_json:
         return True

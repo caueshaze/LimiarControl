@@ -30,6 +30,10 @@ from app.schemas.base_spell_effects import SpellDeclarativeEffect
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.out_of_combat_cast import (
     _OOC_PERSISTED_FACTORY_REGISTRY,
+    OOC_FACTORY_EFFECT_SPELLS,
+    OOC_NARRATIVE_UTILITY_SPELLS,
+    OOC_REMOVAL_UTILITY_SPELLS,
+    OOC_SPECIAL_INPUT_SPELLS,
     build_concentration_marker,
     build_persisted_effects,
     check_out_of_combat_cast_eligibility,
@@ -3392,6 +3396,30 @@ class TestLongstriderOutOfCombatCast(unittest.TestCase):
 
 
 class TestOocPersistedFactoryDispatch(unittest.TestCase):
+    def test_ooc_spell_categories_are_disjoint(self):
+        categories = [
+            OOC_NARRATIVE_UTILITY_SPELLS,
+            OOC_FACTORY_EFFECT_SPELLS,
+            OOC_REMOVAL_UTILITY_SPELLS,
+            OOC_SPECIAL_INPUT_SPELLS,
+        ]
+        all_keys: list[str] = []
+        for category in categories:
+            all_keys.extend(category)
+        self.assertEqual(len(all_keys), len(set(all_keys)))
+
+    def test_factory_category_matches_factory_registry_keys(self):
+        self.assertEqual(
+            OOC_FACTORY_EFFECT_SPELLS,
+            set(_OOC_PERSISTED_FACTORY_REGISTRY),
+        )
+
+    def test_ooc_utility_categories_cover_expected_spells(self):
+        self.assertIn("detect_magic", OOC_NARRATIVE_UTILITY_SPELLS)
+        self.assertIn("barkskin", OOC_FACTORY_EFFECT_SPELLS)
+        self.assertIn("lesser_restoration", OOC_REMOVAL_UTILITY_SPELLS)
+        self.assertIn("shillelagh", OOC_SPECIAL_INPUT_SPELLS)
+
     def test_registry_contains_exact_generic_spells(self):
         self.assertEqual(
             set(_OOC_PERSISTED_FACTORY_REGISTRY.keys()),
