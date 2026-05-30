@@ -239,6 +239,9 @@ class LesserRestorationAllowlistTests(unittest.TestCase):
         # disease is handled separately, not in the frozenset
         self.assertNotIn("disease", LESSER_RESTORATION_CONDITIONS)
 
+    def test_excludes_possessed(self):
+        self.assertNotIn("possessed", LESSER_RESTORATION_CONDITIONS)
+
 
 # ---------------------------------------------------------------------------
 # 5. Automation handler (combat cast)

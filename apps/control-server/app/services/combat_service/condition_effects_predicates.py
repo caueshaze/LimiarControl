@@ -912,7 +912,7 @@ PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES: frozenset[str] = frozenset({
 })
 
 PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS: frozenset[str] = frozenset({
-    "charmed", "frightened",
+    "charmed", "frightened", "possessed",
 })
 
 COMMAND_VARIANTS: frozenset[str] = frozenset({"approach", "drop", "flee", "grovel", "halt"})

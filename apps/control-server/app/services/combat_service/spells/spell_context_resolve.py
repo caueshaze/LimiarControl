@@ -142,13 +142,13 @@ class SpellContextResolveMixin:
             ],
             "attackDisadvantageAgainstProtectedTarget": True,
             "conditionImmunity": True,
-            "immuneConditions": ["charmed", "frightened"],
+            "immuneConditions": ["charmed", "frightened", "possessed"],
             "immuneConditionsFromCreatureTypes": [
                 "aberration", "celestial", "elemental", "fey", "fiend", "undead"
             ],
             "savingThrowAdvantageAgainstCreatureTypes": True,
             "savingThrowAdvantageDeferred": False,
-            "possessedConditionSupported": False,
+            "possessedConditionSupported": True,
             "grantsACBonus": False,
             "armorClassBonus": 0,
             "grantsResistance": False,

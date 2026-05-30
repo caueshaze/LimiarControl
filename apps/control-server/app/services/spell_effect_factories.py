@@ -121,7 +121,7 @@ def build_protection_from_evil_and_good_effect(ctx: SpellEffectBuildContext) -> 
     protected_types = sorted(
         {"aberration", "celestial", "elemental", "fey", "fiend", "undead"}
     )
-    immune_conditions = sorted({"charmed", "frightened"})
+    immune_conditions = sorted({"charmed", "frightened", "possessed"})
     metadata = _build_base_metadata(ctx)
     metadata.update(
         {

@@ -359,9 +359,10 @@ class ProtectionFromEvilAndGoodConstantsTests(unittest.TestCase):
         for t in ["aberration", "celestial", "elemental", "fey", "fiend", "undead"]:
             self.assertIn(t, PROTECTION_FROM_EVIL_AND_GOOD_CREATURE_TYPES)
 
-    def test_immune_conditions_contains_charmed_frightened(self):
+    def test_immune_conditions_contains_charmed_frightened_possessed(self):
         self.assertIn("charmed", PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
         self.assertIn("frightened", PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
+        self.assertIn("possessed", PROTECTION_FROM_EVIL_AND_GOOD_CONDITIONS)
 
     def test_get_participant_creature_type_from_dict(self):
         p = {"creature_type": "fiend"}
@@ -425,6 +426,10 @@ class ProtectionFromEvilAndGoodAutomationTests(unittest.IsolatedAsyncioTestCase)
     async def test_immune_conditions_has_frightened(self):
         _, _, target = await _cast()
         self.assertIn("frightened", target["active_effects"][0]["metadata"]["immune_conditions"])
+
+    async def test_immune_conditions_has_possessed(self):
+        _, _, target = await _cast()
+        self.assertIn("possessed", target["active_effects"][0]["metadata"]["immune_conditions"])
 
     async def test_grants_ac_bonus_false(self):
         _, _, target = await _cast()
@@ -539,6 +544,21 @@ class ProtectionFromEvilAndGoodAutomationTests(unittest.IsolatedAsyncioTestCase)
         remaining = [e for e in target["active_effects"] if e.get("condition_type") == "frightened"]
         self.assertEqual(len(remaining), 0)
 
+    async def test_suppresses_possessed_from_fiend_source(self):
+        fiend_participant = {"id": "fiend1", "creature_type": "fiend", "active_effects": []}
+        possessed_effect = {
+            "id": "p1",
+            "kind": "condition",
+            "condition_type": "possessed",
+            "source_participant_id": "fiend1",
+        }
+        _, _, target = await _cast(
+            target_extra={"active_effects": [possessed_effect]},
+            extra_participants=[fiend_participant],
+        )
+        remaining = [e for e in target["active_effects"] if e.get("condition_type") == "possessed"]
+        self.assertEqual(len(remaining), 0)
+
     async def test_does_not_suppress_charmed_from_humanoid(self):
         humanoid_p = {"id": "h1", "creature_type": "humanoid", "active_effects": []}
         charmed_effect = {
@@ -563,6 +583,32 @@ class ProtectionFromEvilAndGoodAutomationTests(unittest.IsolatedAsyncioTestCase)
         }
         _, _, target = await _cast(target_extra={"active_effects": [charmed_effect]})
         remaining = [e for e in target["active_effects"] if e.get("condition_type") == "charmed"]
+        self.assertEqual(len(remaining), 1)
+
+    async def test_does_not_suppress_possessed_without_source(self):
+        possessed_effect = {
+            "id": "p1",
+            "kind": "condition",
+            "condition_type": "possessed",
+            "source_participant_id": None,
+        }
+        _, _, target = await _cast(target_extra={"active_effects": [possessed_effect]})
+        remaining = [e for e in target["active_effects"] if e.get("condition_type") == "possessed"]
+        self.assertEqual(len(remaining), 1)
+
+    async def test_does_not_suppress_possessed_from_beast(self):
+        beast_p = {"id": "b1", "creature_type": "beast", "active_effects": []}
+        possessed_effect = {
+            "id": "p1",
+            "kind": "condition",
+            "condition_type": "possessed",
+            "source_participant_id": "b1",
+        }
+        _, _, target = await _cast(
+            target_extra={"active_effects": [possessed_effect]},
+            extra_participants=[beast_p],
+        )
+        remaining = [e for e in target["active_effects"] if e.get("condition_type") == "possessed"]
         self.assertEqual(len(remaining), 1)
 
     async def test_suppressed_conditions_in_extra(self):
@@ -662,6 +708,20 @@ class ConditionImmunityTests(unittest.TestCase):
     def test_has_condition_immunity_from_source_charmed_no_source_false(self):
         p = self._protected_participant()
         self.assertFalse(has_condition_immunity_from_source(p, "charmed", None))
+
+    def test_has_condition_immunity_from_source_possessed_fiend(self):
+        p = self._protected_participant()
+        source = {"id": "s1", "creature_type": "fiend"}
+        self.assertTrue(has_condition_immunity_from_source(p, "possessed", source))
+
+    def test_has_condition_immunity_from_source_possessed_humanoid_false(self):
+        p = self._protected_participant()
+        source = {"id": "s1", "creature_type": "humanoid"}
+        self.assertFalse(has_condition_immunity_from_source(p, "possessed", source))
+
+    def test_has_condition_immunity_from_source_possessed_no_source_false(self):
+        p = self._protected_participant()
+        self.assertFalse(has_condition_immunity_from_source(p, "possessed", None))
 
     def test_has_condition_immunity_legacy_still_works(self):
         p = {
@@ -811,14 +871,17 @@ class ProtectionFromEvilAndGoodSpellContextTests(unittest.TestCase):
     def test_immune_conditions_frightened(self):
         self.assertIn("frightened", self.meta["immuneConditions"])
 
+    def test_immune_conditions_possessed(self):
+        self.assertIn("possessed", self.meta["immuneConditions"])
+
     def test_saving_throw_advantage_deferred(self):
         self.assertFalse(self.meta["savingThrowAdvantageDeferred"])
 
     def test_saving_throw_advantage_not_in_v1(self):
         self.assertTrue(self.meta["savingThrowAdvantageAgainstCreatureTypes"])
 
-    def test_possessed_not_supported(self):
-        self.assertFalse(self.meta["possessedConditionSupported"])
+    def test_possessed_supported(self):
+        self.assertTrue(self.meta["possessedConditionSupported"])
 
     def test_ooc_castable(self):
         self.assertTrue(self.meta["outOfCombatCastable"])

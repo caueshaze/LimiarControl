@@ -143,6 +143,7 @@ ActiveEffectConditionType = Literal[
     "paralyzed",
     "petrified",
     "poisoned",
+    "possessed",
     "prone",
     "restrained",
     "stunned",
