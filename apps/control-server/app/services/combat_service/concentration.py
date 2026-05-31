@@ -150,6 +150,26 @@ class CombatConcentrationMixin(CombatServiceHostProtocol):
         area_removed = cls._remove_area_effects_for_concentration_group(
             state, concentration_group=concentration_group
         )
+        moonbeam_area_effect_ids = {
+            str(effect.get("id"))
+            for effect in area_removed
+            if isinstance(effect, dict) and effect.get("effect_kind") == "moonbeam"
+        }
+        if moonbeam_area_effect_ids:
+            for participant in state.participants:
+                effects = cls._get_participant_effects(participant)
+                if not effects:
+                    continue
+                kept_effects: list[dict] = []
+                for effect in effects:
+                    metadata = cls._get_effect_metadata(effect)
+                    if (
+                        metadata.get("moonbeam_shapechange_lock") is True
+                        and str(metadata.get("source_effect_id")) in moonbeam_area_effect_ids
+                    ):
+                        continue
+                    kept_effects.append(effect)
+                cls._set_participant_effects(participant, kept_effects)
         return {"removed_effects": removed, "removed_area_effects": area_removed}
 
     @classmethod

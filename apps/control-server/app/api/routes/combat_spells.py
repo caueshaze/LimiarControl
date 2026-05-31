@@ -96,6 +96,23 @@ class MoonbeamTriggerEnterRequest(BaseModel):
     )
 
 
+class MoonbeamMoveRequest(BaseModel):
+    area_effect_id: str = Field(
+        validation_alias=AliasChoices("area_effect_id", "areaEffectId"),
+    )
+    new_point: dict = Field(
+        validation_alias=AliasChoices("new_point", "newPoint"),
+    )
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId"),
+    )
+    override_resource_limit: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("override_resource_limit", "overrideResourceLimit"),
+    )
+
+
 router = APIRouter()
 
 
@@ -459,6 +476,28 @@ async def action_moonbeam_trigger_enter(
         area_effect_id=req.area_effect_id,
         target_ref_id=req.target_ref_id,
         actor_participant_id=req.actor_participant_id,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spells/moonbeam/move",
+)
+async def action_moonbeam_move(
+    session_id: str,
+    req: MoonbeamMoveRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None
+    return await CombatService.resolve_moonbeam_move(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        area_effect_id=req.area_effect_id,
+        new_point=req.new_point,
+        actor_participant_id=req.actor_participant_id,
+        override_resource_limit=req.override_resource_limit,
     )
 
 

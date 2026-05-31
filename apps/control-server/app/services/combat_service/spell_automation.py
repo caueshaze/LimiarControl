@@ -13,6 +13,7 @@ from app.models.combat import CombatState
 from app.services.roll_resolution import resolve_saving_throw
 from app.services.spell_effect_factories import SpellEffectBuildContext
 from app.services.spell_keys import normalize_spell_key
+from app.services.wild_shape_service import force_revert
 from app.services.combat_service.condition_effects_predicates import is_reaction_blocked
 from app.services.combat_service.condition_effects_saves import modify_saving_throw
 
@@ -671,6 +672,42 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
         turn_applied[key] = True
 
     @classmethod
+    def _is_shapechanger_participant(cls, participant: dict[str, Any]) -> bool:
+        creature_type = str(participant.get("creature_type") or "").strip().lower()
+        if creature_type == "shapechanger":
+            return True
+        tags = participant.get("tags")
+        if isinstance(tags, list):
+            for value in tags:
+                if isinstance(value, str) and value.strip().lower() == "shapechanger":
+                    return True
+        metadata = participant.get("metadata")
+        if isinstance(metadata, dict) and metadata.get("shapechanger") is True:
+            return True
+        return False
+
+    @classmethod
+    def _has_participant_concentration_for_spell(
+        cls,
+        participant: dict[str, Any],
+        *,
+        source_spell_key: str,
+        concentration_group: object,
+    ) -> bool:
+        expected_group = str(concentration_group).strip() if isinstance(concentration_group, str) else ""
+        expected_key = normalize_spell_key(source_spell_key)
+        for effect in cls._get_participant_effects(participant):
+            metadata = cls._get_effect_metadata(effect)
+            if metadata.get("concentration") is not True:
+                continue
+            if normalize_spell_key(metadata.get("source_spell_key")) != expected_key:
+                continue
+            group_value = metadata.get("concentration_group")
+            if expected_group and isinstance(group_value, str) and group_value == expected_group:
+                return True
+        return False
+
+    @classmethod
     async def _resolve_moonbeam_damage_trigger(
         cls,
         db: Session,
@@ -723,6 +760,13 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             source_participant=caster,
             source_kind="participant",
         )
+        advantage_mode = save_mod.result
+        is_shapechanger = cls._is_shapechanger_participant(target_participant)
+        if is_shapechanger:
+            if advantage_mode == "advantage":
+                advantage_mode = "normal"
+            elif advantage_mode == "normal":
+                advantage_mode = "disadvantage"
         roll_result = resolve_saving_throw(
             cls._build_roll_actor_stats_for_save(
                 db,
@@ -732,7 +776,7 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
                 target_participant.get("display_name") or "Alvo",
             ),
             ability="constitution",
-            advantage_mode=save_mod.result,
+            advantage_mode=advantage_mode,
             dc=cls._safe_int(spell_save_dc, 10),
             roll_source="system",
         )
@@ -756,6 +800,49 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             attacker_participant_id=caster.get("id"),
             damage_type="radiant",
         )
+        shapechanger_effect: dict[str, Any] | None = None
+        if is_shapechanger and not is_saved:
+            existing_lock = None
+            for effect_entry in cls._get_participant_effects(target_participant):
+                metadata = cls._get_effect_metadata(effect_entry)
+                if (
+                    metadata.get("moonbeam_shapechange_lock") is True
+                    and metadata.get("source_effect_id") == effect.get("id")
+                ):
+                    existing_lock = effect_entry
+                    break
+            if existing_lock is None:
+                cls._append_effect_to_participant(
+                    target_participant,
+                    cls._build_active_effect(
+                        kind="spell_effect",
+                        source_participant_id=caster.get("id"),
+                        duration_type="manual",
+                        metadata={
+                            "source_spell_key": "moonbeam",
+                            "source_effect_id": effect.get("id"),
+                            "moonbeam_shapechange_lock": True,
+                            "blocks_shapechange": True,
+                        },
+                        display_label="Moonbeam Shapechange Lock",
+                    ),
+                )
+            if target_participant.get("kind") == "player":
+                target_model, *_ = cls._get_stats(
+                    db,
+                    target_participant.get("ref_id"),
+                    target_participant.get("kind"),
+                    session_id,
+                    combat_state=state,
+                )
+                data = cls._as_dict(getattr(target_model, "state_json", None))
+                target_model.state_json = force_revert(data)
+                db.add(target_model)
+            shapechanger_effect = {
+                "applied": True,
+                "reverted_to_original_form": target_participant.get("kind") == "player",
+                "blocks_shapechange_until_exit": True,
+            }
         cls._moonbeam_mark_applied(
             effect,
             target_participant_id=target_participant_id,
@@ -790,6 +877,7 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             "concentration_check": concentration_check,
             "roll_result": roll_result,
             "trigger": trigger,
+            "shapechanger_effect": shapechanger_effect,
         }
 
     @classmethod
@@ -891,6 +979,105 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             "spell_key": "moonbeam",
             "area_effect_id": area_effect_id,
             **outcome,
+        }
+
+    @classmethod
+    async def resolve_moonbeam_move(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_user_id: str,
+        is_gm: bool,
+        area_effect_id: str,
+        new_point: dict[str, Any],
+        actor_participant_id: str | None = None,
+        override_resource_limit: bool = False,
+    ) -> dict:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+        actor = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)
+        if not is_gm:
+            active_participant = state.participants[state.current_turn_index] if state.participants else None
+            if not isinstance(active_participant, dict) or active_participant.get("id") != actor.get("id"):
+                raise CombatServiceError("Only the active participant can move Moonbeam on this turn.", 403)
+
+        effect = cls._find_active_area_effect(state, effect_id=area_effect_id)
+        if not isinstance(effect, dict) or effect.get("effect_kind") != "moonbeam":
+            raise CombatServiceError("Moonbeam area effect not found.", 404)
+        if effect.get("caster_participant_id") != actor.get("id") and not is_gm:
+            raise CombatServiceError("Only the caster can move this Moonbeam.", 403)
+        if not cls._has_participant_concentration_for_spell(
+            actor,
+            source_spell_key="moonbeam",
+            concentration_group=effect.get("concentration_group"),
+        ):
+            raise CombatServiceError("Caster is not concentrating on this Moonbeam.", 400)
+
+        x = new_point.get("x") if isinstance(new_point, dict) else None
+        y = new_point.get("y") if isinstance(new_point, dict) else None
+        if not isinstance(x, int) or not isinstance(y, int):
+            raise CombatServiceError("Moonbeam destination point must use integer x/y.", 400)
+
+        origin = effect.get("origin_point")
+        if not isinstance(origin, dict):
+            raise CombatServiceError("Moonbeam origin point is missing.", 400)
+        ox = origin.get("x")
+        oy = origin.get("y")
+        if not isinstance(ox, int) or not isinstance(oy, int):
+            raise CombatServiceError("Moonbeam origin point is invalid.", 400)
+        dx = x - ox
+        dy = y - oy
+        distance_cells = max(abs(dx), abs(dy))
+        distance_meters = distance_cells * 1.5
+        if distance_meters > 18:
+            raise CombatServiceError("Moonbeam can only move up to 18 meters.", 400)
+
+        was_overridden = cls._consume_turn_resource(
+            actor,
+            "action",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+
+        effect["origin_point"] = {"x": x, "y": y}
+        effect["anchor_cell"] = {"x": x, "y": y}
+        affected_cells = effect.get("affected_cells")
+        if isinstance(affected_cells, list):
+            shifted_cells: list[dict[str, int]] = []
+            for cell in affected_cells:
+                if not isinstance(cell, dict):
+                    continue
+                cx = cell.get("x")
+                cy = cell.get("y")
+                if isinstance(cx, int) and isinstance(cy, int):
+                    shifted_cells.append({"x": cx + dx, "y": cy + dy})
+            effect["affected_cells"] = shifted_cells
+
+        flag_modified(state, "participants")
+        flag_modified(state, "active_area_effects")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+        await cls._emit_log(
+            session_id,
+            {
+                "message": f"{actor.get('display_name', 'Conjurador')} moveu o Raio Lunar.",
+                "source": "moonbeam_move",
+                "spellCanonicalKey": "moonbeam",
+                "effectId": area_effect_id,
+                "is_override": was_overridden,
+                "overridden_resource": "action" if was_overridden else None,
+            },
+        )
+        return {
+            "spell_key": "moonbeam",
+            "area_effect_id": area_effect_id,
+            "new_origin_point": {"x": x, "y": y},
+            "action_consumed": True,
         }
 
     @classmethod
