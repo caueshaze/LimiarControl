@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+import unittest
 
 from app.models.combat import CombatPhase, CombatState
 from app.services.combat import CombatService
@@ -121,3 +124,126 @@ def test_reaction_opportunity_expires_on_turn_boundary():
     changed = CombatService._expire_reaction_opportunities_turn_boundary(state)
     assert changed is True
     assert state.reaction_opportunities == [{"id": "op-2", "status": "used", "kind": "damage_taken"}]
+
+
+class TestHellishRebukeResolver(unittest.IsolatedAsyncioTestCase):
+    async def test_hellish_rebuke_resolve_success_consumes_reaction_slot_and_deals_damage(self):
+        state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=2,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "caster",
+                    "ref_id": "caster-ref",
+                    "kind": "player",
+                    "display_name": "Caster",
+                    "status": "active",
+                    "actor_user_id": "user-1",
+                    "turn_resources": {"reaction_used": False},
+                    "active_effects": [],
+                },
+                {
+                    "id": "attacker",
+                    "ref_id": "attacker-ref",
+                    "kind": "session_entity",
+                    "display_name": "Attacker",
+                    "status": "active",
+                    "active_effects": [],
+                },
+            ],
+            local_distances={"caster-ref": {"attacker-ref": 6}},
+            reaction_opportunities=[
+                {
+                    "id": "op-1",
+                    "kind": "damage_taken",
+                    "spell_key": "hellish_rebuke",
+                    "actor_participant_id": "caster",
+                    "source_participant_id": "attacker",
+                    "status": "available",
+                }
+            ],
+        )
+        actor_model = MagicMock()
+        actor_model.state_json = {
+            "spellcasting": {
+                "slots": {"1": {"used": 0, "max": 2}},
+                "spells": [{"canonicalKey": "hellish_rebuke", "level": 1, "prepared": True}],
+            }
+        }
+        db = MagicMock()
+        roll_result = SimpleNamespace(success=False, total=7, check_modifier_sources=[])
+
+        with patch.object(CombatService, "get_state", return_value=state), patch.object(
+            CombatService, "_get_stats", return_value=(actor_model, 10, 2, 3, 2, 13)
+        ), patch.object(
+            CombatService, "_build_roll_actor_stats_for_save", return_value=MagicMock()
+        ), patch(
+            "app.services.combat_service.spell_automation.resolve_saving_throw",
+            return_value=roll_result,
+        ), patch(
+            "app.services.combat_service.spell_automation._roll_dice_expression",
+            return_value=([8, 5], 13),
+        ), patch.object(
+            CombatService, "_apply_damage_to_target", return_value=(4, "", 17, None)
+        ), patch.object(
+            CombatService, "_emit_state", new=AsyncMock()
+        ), patch.object(
+            CombatService, "_emit_and_persist_log", new=AsyncMock()
+        ):
+            result = await CombatService.resolve_hellish_rebuke_reaction(
+                db,
+                "session-1",
+                actor_user_id="user-1",
+                is_gm=False,
+                reaction_opportunity_id="op-1",
+                slot_level=1,
+                actor_participant_id="caster",
+                override_resource_limit=False,
+            )
+
+        self.assertEqual(result["applied_damage"], 13)
+        self.assertTrue(result["reaction_consumed"])
+        self.assertTrue(result["slot_consumed"])
+        self.assertEqual(actor_model.state_json["spellcasting"]["slots"]["1"]["used"], 1)
+        self.assertEqual(len(state.reaction_opportunities), 1)
+        self.assertEqual(state.reaction_opportunities[0]["status"], "used")
+
+    async def test_hellish_rebuke_rejects_missing_opportunity_without_consuming_resources(self):
+        state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=2,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "caster",
+                    "ref_id": "caster-ref",
+                    "kind": "player",
+                    "display_name": "Caster",
+                    "status": "active",
+                    "actor_user_id": "user-1",
+                    "turn_resources": {"reaction_used": False},
+                    "active_effects": [],
+                }
+            ],
+            reaction_opportunities=[],
+        )
+        db = MagicMock()
+        with patch.object(CombatService, "get_state", return_value=state):
+            with self.assertRaises(Exception):
+                await CombatService.resolve_hellish_rebuke_reaction(
+                    db,
+                    "session-1",
+                    actor_user_id="user-1",
+                    is_gm=False,
+                    reaction_opportunity_id="missing",
+                    slot_level=1,
+                    actor_participant_id="caster",
+                    override_resource_limit=False,
+                )
+        resources = CombatService._get_turn_resources(state.participants[0])
+        self.assertFalse(resources.get("reaction_used"))

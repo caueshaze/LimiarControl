@@ -66,6 +66,23 @@ class MaintainCastRequest(BaseModel):
     override_resource_limit: bool = False
 
 
+class HellishRebukeRequest(BaseModel):
+    reaction_opportunity_id: str = Field(
+        validation_alias=AliasChoices("reaction_opportunity_id", "reactionOpportunityId"),
+    )
+    slot_level: int = Field(
+        validation_alias=AliasChoices("slot_level", "slotLevel"),
+    )
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId"),
+    )
+    override_resource_limit: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("override_resource_limit", "overrideResourceLimit"),
+    )
+
+
 router = APIRouter()
 
 
@@ -385,6 +402,28 @@ async def action_maintain_pending_spell_cast(
         is_gm=_is_session_gm(db, session_id, user),
         actor_participant_id=req.actor_participant_id,
         pending_cast_id=req.pending_cast_id,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spells/hellish-rebuke",
+)
+async def action_hellish_rebuke(
+    session_id: str,
+    req: HellishRebukeRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None
+    return await CombatService.resolve_hellish_rebuke_reaction(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        reaction_opportunity_id=req.reaction_opportunity_id,
+        slot_level=req.slot_level,
+        actor_participant_id=req.actor_participant_id,
         override_resource_limit=req.override_resource_limit,
     )
 

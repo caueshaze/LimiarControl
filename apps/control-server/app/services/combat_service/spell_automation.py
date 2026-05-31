@@ -13,6 +13,7 @@ from app.services.roll_resolution import resolve_saving_throw
 from app.services.spell_effect_factories import SpellEffectBuildContext
 from app.services.spell_keys import normalize_spell_key
 from app.services.combat_service.condition_effects_predicates import is_reaction_blocked
+from app.services.combat_service.condition_effects_saves import modify_saving_throw
 
 from .condition_effects import resolve_spell_attack_kind
 from .exceptions import CombatServiceError, _roll_dice_expression
@@ -382,6 +383,192 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             damage_taken=damage_taken,
         )
         return True
+
+    @classmethod
+    async def resolve_hellish_rebuke_reaction(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_user_id: str,
+        is_gm: bool,
+        reaction_opportunity_id: str,
+        slot_level: int,
+        actor_participant_id: str | None,
+        override_resource_limit: bool = False,
+    ) -> dict:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+        actor = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)
+        opportunity = cls._find_reaction_opportunity(state, opportunity_id=reaction_opportunity_id)
+        if not isinstance(opportunity, dict):
+            raise CombatServiceError("Reaction opportunity not found.", 404)
+        if opportunity.get("status") != "available":
+            raise CombatServiceError("Reaction opportunity is not available.", 400)
+        if opportunity.get("kind") != "damage_taken" or opportunity.get("spell_key") != "hellish_rebuke":
+            raise CombatServiceError("Reaction opportunity is not compatible with Hellish Rebuke.", 400)
+        if opportunity.get("actor_participant_id") != actor.get("id"):
+            raise CombatServiceError("Reaction opportunity belongs to another participant.", 403)
+        if slot_level < 1:
+            raise CombatServiceError("Hellish Rebuke requires slot level 1 or higher.", 400)
+
+        source_participant_id = opportunity.get("source_participant_id")
+        source = next(
+            (participant for participant in (state.participants or []) if participant.get("id") == source_participant_id),
+            None,
+        )
+        if not isinstance(source, dict):
+            raise CombatServiceError("Damage source no longer exists in combat.", 400)
+
+        if str(actor.get("status") or "").strip().lower() != "active":
+            raise CombatServiceError("Only active participants can cast Hellish Rebuke.", 400)
+        cls._ensure_turn_resource_available(
+            actor,
+            "reaction",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+
+        actor_model, _ac, _atk_bonus, _spell_mod, _prof, spell_save_dc = cls._get_stats(
+            db,
+            actor.get("ref_id"),
+            actor.get("kind"),
+            session_id,
+            combat_state=state,
+        )
+        actor_data = cls._as_dict(getattr(actor_model, "state_json", None))
+        spells = actor_data.get("spellcasting", {}).get("spells") or []
+        spell_entry = next(
+            (
+                spell
+                for spell in spells
+                if isinstance(spell, dict)
+                and cls._normalize_spell_automation_key(spell.get("canonicalKey")) == "hellish_rebuke"
+            ),
+            None,
+        )
+        if spell_entry is None:
+            raise CombatServiceError("Caster does not know Hellish Rebuke.", 400)
+        if cls._safe_int(spell_entry.get("level"), 0) > 0 and spell_entry.get("prepared") is False:
+            raise CombatServiceError("Hellish Rebuke is not prepared.", 400)
+
+        cls._ensure_player_spell_slot_available(actor_model, slot_level)
+        distance = None
+        local_distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+        from_ref = actor.get("ref_id")
+        to_ref = source.get("ref_id")
+        if isinstance(from_ref, str) and isinstance(to_ref, str):
+            source_map = local_distances.get(from_ref)
+            if isinstance(source_map, dict):
+                distance = source_map.get(to_ref)
+        if isinstance(distance, (int, float)) and distance > 18:
+            raise CombatServiceError("Damage source is out of range for Hellish Rebuke.", 400)
+
+        was_overridden = cls._consume_turn_resource(
+            actor,
+            "reaction",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+        cls._consume_player_spell_slot(actor_model, slot_level)
+        db.add(actor_model)
+
+        save_mod = modify_saving_throw(
+            source,
+            "dexterity",
+            source_participant=actor,
+            source_kind="participant",
+        )
+        roll_result = resolve_saving_throw(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                source.get("ref_id"),
+                source.get("kind"),
+                source.get("display_name") or "Alvo",
+            ),
+            ability="dexterity",
+            advantage_mode=save_mod.result,
+            dc=cls._safe_int(spell_save_dc, 10),
+            roll_source="system",
+        )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
+        is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+        damage_dice_count = 2 + max(0, slot_level - 1)
+        damage_dice = f"{damage_dice_count}d10"
+        _rolls, rolled_total = _roll_dice_expression(damage_dice)
+        final_damage = rolled_total if not is_saved else rolled_total // 2
+
+        new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+            db,
+            state,
+            source.get("ref_id"),
+            source.get("kind"),
+            final_damage,
+            attacker_participant_id=actor.get("id"),
+            damage_type="fire",
+        )
+
+        opportunity["status"] = "used"
+        opportunity["used_by_spell_key"] = "hellish_rebuke"
+        opportunity["slot_level"] = slot_level
+        opportunity["save_success"] = is_saved
+        opportunity["rolled_damage"] = rolled_total
+        opportunity["applied_damage"] = final_damage
+        opportunity["resolved_at_round"] = cls._safe_int(getattr(state, "round", 0), 0)
+        cls._expire_reaction_opportunities_for_actor(
+            state,
+            actor_participant_id=str(actor.get("id")),
+        )
+        flag_modified(state, "participants")
+        flag_modified(state, "reaction_opportunities")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        await cls._emit_state(session_id, state)
+        await cls._emit_and_persist_log(
+            db,
+            session_id,
+            actor_user_id,
+            actor.get("display_name"),
+            {
+                "message": (
+                    f"{actor.get('display_name', 'Conjurador')} lançou Repreensão Infernal contra "
+                    f"{source.get('display_name', 'alvo')}: {final_damage} de dano de fogo."
+                    f"{effect_msg}"
+                ),
+                "source": "hellish_rebuke",
+                "is_override": was_overridden,
+                "overridden_resource": "reaction" if was_overridden else None,
+            },
+        )
+        return {
+            "spell_key": "hellish_rebuke",
+            "slot_level": slot_level,
+            "target_ref_id": source.get("ref_id"),
+            "target_kind": source.get("kind"),
+            "target_display_name": source.get("display_name"),
+            "save_ability": "dexterity",
+            "save_dc": cls._safe_int(spell_save_dc, 10),
+            "is_saved": is_saved,
+            "roll_result": roll_result,
+            "damage_dice": damage_dice,
+            "rolled_damage": rolled_total,
+            "applied_damage": final_damage,
+            "new_hp": new_hp,
+            "previous_hp": previous_hp,
+            "concentration_check": concentration_check,
+            "reaction_opportunity_id": reaction_opportunity_id,
+            "reaction_consumed": True,
+            "slot_consumed": True,
+        }
 
     @classmethod
     def _list_pending_spell_casts(cls, state: CombatState) -> list[dict]:
