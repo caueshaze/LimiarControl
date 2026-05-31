@@ -6,9 +6,15 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from fastapi import HTTPException
+
 from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.schemas.combat import CombatResolveSpellContextRequest
+from app.schemas.session_state import OutOfCombatCastRequest
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
+)
 from app.services.combat import CombatService
 from app.services.combat_service.condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
@@ -746,3 +752,108 @@ class LesserRestorationSpellContextTests(unittest.TestCase):
         utility = self._resolve().get("utility") or {}
         self.assertTrue(utility["outOfCombatCastable"])
         self.assertEqual(utility["outOfCombatTarget"], "self_or_ally")
+
+
+class LesserRestorationOutOfCombatCastTests(unittest.IsolatedAsyncioTestCase):
+    """Orchestration-level coverage for the Lesser Restoration OOC cast path
+    (``cast_spell_out_of_combat_for_player`` → the lesser_restoration handler)."""
+
+    def _spell(self):
+        return SimpleNamespace(
+            canonical_key="lesser_restoration",
+            name_pt="Restauração Menor",
+            name_en="Lesser Restoration",
+            out_of_combat_castable=True,
+            out_of_combat_target="self_or_ally",
+            concentration=False,
+            level=2,
+            effects_json=[],
+            variants_json=[],
+        )
+
+    def _caster(self):
+        return SimpleNamespace(
+            state_json={
+                "spellcasting": {
+                    "slots": {"2": {"used": 0, "max": 1}},
+                    "spells": [{"id": "spell-lr", "canonicalKey": "lesser_restoration", "level": 2, "prepared": True}],
+                }
+            },
+            player_user_id="u1",
+            updated_at=None,
+            created_at=None,
+        )
+
+    async def _cast(self, *, caster, target, variant_key, record=None):
+        entry = SimpleNamespace(campaign_id="camp-1", party_id="party-1")
+        session = MagicMock()
+        session.exec.side_effect = [_first(caster), _first(target), _first(self._spell())]
+        payload = {"spellId": "spell-lr", "slotLevel": 2, "targetPlayerUserId": "u2"}
+        if variant_key is not None:
+            payload["variantKey"] = variant_key
+        req = OutOfCombatCastRequest.model_validate(payload)
+        with (
+            patch("app.services.ooc_spell_cast_service.ensure_session_state", return_value=caster),
+            patch("app.services.ooc_spell_cast_service.check_out_of_combat_cast_eligibility", return_value=(True, None)),
+            patch("app.services.ooc_spell_cast_service.build_persisted_effects", return_value=[]),
+            patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda data, **_: data),
+            patch("app.services.ooc_spell_cast_service.get_game_time_seconds", return_value=200),
+            patch("app.services.ooc_spell_cast_service._resolve_ooc_activity_actor", return_value=("m1", "Caster")),
+            patch("app.services.ooc_spell_cast_service.record_session_activity", record or MagicMock()),
+            patch("app.services.ooc_spell_cast_service._prune_out_of_combat_session_activity"),
+            patch("app.services.ooc_spell_cast_service.flag_modified"),
+            patch("app.services.ooc_spell_cast_service.publish_state_update", new_callable=AsyncMock),
+            patch("app.services.ooc_spell_cast_service.to_state_read", side_effect=lambda s: s),
+        ):
+            await _cast_spell_out_of_combat_for_player(
+                entry=entry,
+                session_id="s1",
+                req=req,
+                actor_user=SimpleNamespace(id="u1"),
+                caster_user_id="u1",
+                session=session,
+                cast_by_gm=False,
+            )
+
+    async def test_ooc_cast_removes_matching_condition_and_logs(self):
+        caster = self._caster()
+        target = SimpleNamespace(
+            state_json={"active_spell_effects": [_condition_effect("poisoned"), _condition_effect("blinded", effect_id="cond-2")]},
+            player_user_id="u2",
+            updated_at=None,
+            created_at=None,
+        )
+        mock_record = MagicMock()
+        await self._cast(caster=caster, target=target, variant_key="poisoned", record=mock_record)
+
+        remaining = [e["condition_type"] for e in target.state_json.get("active_spell_effects", [])]
+        self.assertNotIn("poisoned", remaining, "poisoned condition must be removed")
+        self.assertIn("blinded", remaining, "unrelated condition must remain")
+        mock_record.assert_called_once()
+        payload = mock_record.call_args.kwargs["payload"]
+        self.assertEqual(payload["spell_key"], "lesser_restoration")
+        self.assertEqual(payload["removed_condition"], "poisoned")
+
+    async def test_ooc_cast_without_variant_rejected(self):
+        caster = self._caster()
+        target = SimpleNamespace(
+            state_json={"active_spell_effects": [_condition_effect("poisoned")]},
+            player_user_id="u2",
+            updated_at=None,
+            created_at=None,
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            await self._cast(caster=caster, target=target, variant_key=None)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    async def test_ooc_cast_condition_absent_rejected(self):
+        caster = self._caster()
+        target = SimpleNamespace(
+            state_json={"active_spell_effects": [_condition_effect("blinded")]},
+            player_user_id="u2",
+            updated_at=None,
+            created_at=None,
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            await self._cast(caster=caster, target=target, variant_key="poisoned")
+        self.assertEqual(ctx.exception.status_code, 400)

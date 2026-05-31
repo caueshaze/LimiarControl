@@ -4,8 +4,14 @@ import json
 import os
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from fastapi import HTTPException
+
+from app.schemas.session_state import OutOfCombatCastRequest
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
+)
 from app.models.combat import CombatPhase, CombatState
 from app.services.combat import CombatService
 from app.services.combat_service.spell_automation import CombatSpellAutomationMixin
@@ -384,6 +390,142 @@ class WardingBondOocTests(unittest.TestCase):
         self.assertEqual(len(modified), 2)
         self.assertNotIn("active_spell_effects", caster_state.state_json)
         self.assertNotIn("active_spell_effects", target_state.state_json)
+
+
+class WardingBondOutOfCombatCastTests(unittest.IsolatedAsyncioTestCase):
+    """Orchestration-level coverage for the Warding Bond OOC cast path
+    (``cast_spell_out_of_combat_for_player`` → the warding_bond handler)."""
+
+    async def test_ooc_cast_creates_linked_effects_and_publishes_both(self):
+        entry = SimpleNamespace(campaign_id="camp-1", party_id="party-1")
+        caster_state = SimpleNamespace(
+            state_json={
+                "spellcasting": {
+                    "slots": {"2": {"used": 0, "max": 1}},
+                    "spells": [{"id": "spell-wb", "canonicalKey": "warding_bond", "level": 2, "prepared": True}],
+                }
+            },
+            player_user_id="u1",
+            updated_at=None,
+            created_at=None,
+        )
+        target_state = SimpleNamespace(
+            state_json={}, player_user_id="u2", updated_at=None, created_at=None
+        )
+        campaign_spell = SimpleNamespace(
+            canonical_key="warding_bond",
+            name_pt="Vínculo de Proteção",
+            name_en="Warding Bond",
+            out_of_combat_castable=True,
+            out_of_combat_target="ally",
+            concentration=False,
+            level=2,
+            effects_json=None,
+        )
+        session = MagicMock()
+        session.exec.side_effect = [_first(caster_state), _first(target_state), _first(campaign_spell)]
+        mock_record = MagicMock()
+
+        req = OutOfCombatCastRequest.model_validate(
+            {"spellId": "spell-wb", "slotLevel": 2, "targetPlayerUserId": "u2"}
+        )
+        with (
+            patch("app.services.ooc_spell_cast_service.ensure_session_state", return_value=caster_state),
+            patch("app.services.ooc_spell_cast_service.check_out_of_combat_cast_eligibility", return_value=(True, None)),
+            patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda data, **_: data),
+            patch("app.services.ooc_spell_cast_service.get_game_time_seconds", return_value=200),
+            patch("app.services.ooc_spell_cast_service.clear_warding_bonds_across_session"),
+            patch("app.services.ooc_spell_cast_service._resolve_ooc_activity_actor", return_value=("m1", "Caster")),
+            patch("app.services.ooc_spell_cast_service.record_session_activity", mock_record),
+            patch("app.services.ooc_spell_cast_service._prune_out_of_combat_session_activity"),
+            patch("app.services.ooc_spell_cast_service.flag_modified"),
+            patch("app.services.ooc_spell_cast_service.publish_state_update", new_callable=AsyncMock) as mock_pub,
+            patch("app.services.ooc_spell_cast_service.to_state_read", side_effect=lambda s: s),
+        ):
+            await _cast_spell_out_of_combat_for_player(
+                entry=entry,
+                session_id="s1",
+                req=req,
+                actor_user=SimpleNamespace(id="u1"),
+                caster_user_id="u1",
+                session=session,
+                cast_by_gm=False,
+            )
+
+        caster_bonds = [
+            e for e in caster_state.state_json.get("active_spell_effects", [])
+            if (e.get("metadata") or {}).get("bond_group")
+        ]
+        target_bonds = [
+            e for e in target_state.state_json.get("active_spell_effects", [])
+            if (e.get("metadata") or {}).get("bond_group")
+        ]
+        self.assertEqual(len(caster_bonds), 1, "caster must receive the bond marker")
+        self.assertEqual(len(target_bonds), 1, "target must receive the bond effect")
+        self.assertEqual(
+            caster_bonds[0]["metadata"]["bond_group"],
+            target_bonds[0]["metadata"]["bond_group"],
+            "both ends must share one bond_group",
+        )
+
+        # caster's level-2 slot spent
+        self.assertEqual(caster_state.state_json["spellcasting"]["slots"]["2"]["used"], 1)
+
+        # activity logged with warding_bond + bond_group
+        mock_record.assert_called_once()
+        payload = mock_record.call_args.kwargs["payload"]
+        self.assertEqual(payload["spell_key"], "warding_bond")
+        self.assertIsNotNone(payload["bond_group"])
+
+        # both ends published exactly once
+        published = {call.args[1] for call in mock_pub.call_args_list}
+        self.assertEqual(published, {"u1", "u2"})
+
+    async def test_ooc_cast_requires_ally_target(self):
+        """Self-targeting warding_bond is rejected (needs another creature)."""
+        entry = SimpleNamespace(campaign_id="camp-1", party_id="party-1")
+        caster_state = SimpleNamespace(
+            state_json={
+                "spellcasting": {
+                    "slots": {"2": {"used": 0, "max": 1}},
+                    "spells": [{"id": "spell-wb", "canonicalKey": "warding_bond", "level": 2, "prepared": True}],
+                }
+            },
+            player_user_id="u1",
+            updated_at=None,
+            created_at=None,
+        )
+        campaign_spell = SimpleNamespace(
+            canonical_key="warding_bond",
+            name_pt="Vínculo de Proteção",
+            name_en="Warding Bond",
+            out_of_combat_castable=True,
+            out_of_combat_target="ally",
+            concentration=False,
+            level=2,
+            effects_json=None,
+        )
+        session = MagicMock()
+        session.exec.side_effect = [_first(caster_state), _first(campaign_spell)]
+
+        req = OutOfCombatCastRequest.model_validate({"spellId": "spell-wb", "slotLevel": 2})
+        with (
+            patch("app.services.ooc_spell_cast_service.ensure_session_state", return_value=caster_state),
+            patch("app.services.ooc_spell_cast_service.check_out_of_combat_cast_eligibility", return_value=(True, None)),
+            patch("app.services.ooc_spell_cast_service.get_game_time_seconds", return_value=200),
+            patch("app.services.ooc_spell_cast_service.clear_warding_bonds_across_session"),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                await _cast_spell_out_of_combat_for_player(
+                    entry=entry,
+                    session_id="s1",
+                    req=req,
+                    actor_user=SimpleNamespace(id="u1"),
+                    caster_user_id="u1",
+                    session=session,
+                    cast_by_gm=False,
+                )
+        self.assertEqual(ctx.exception.status_code, 400)
 
 
 if __name__ == "__main__":

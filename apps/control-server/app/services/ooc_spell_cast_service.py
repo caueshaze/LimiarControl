@@ -117,6 +117,7 @@ class OocCastContext:
     resolve_ooc_activity_actor: Callable
     resolve_ooc_activity_target_display_name: Callable
     prune_out_of_combat_session_activity: Callable
+    build_ooc_warding_bond_effects: Callable
 
 
 def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
@@ -161,6 +162,119 @@ def _strip_effects_by_source_spell_key(state_json: dict, spell_key: str) -> tupl
     else:
         result.pop("active_spell_effects", None)
     return result, replaced
+
+
+async def _cast_warding_bond_ooc(ctx: OocCastContext) -> SessionStateRead:
+    """Whole-cast handler for Warding Bond (OOC): persist two linked effects across
+    caster and target. Extracted verbatim; behavior unchanged."""
+    if not ctx.is_ally_target or ctx.target_state is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Vínculo de Proteção deve ser conjurado em outra criatura voluntária.",
+        )
+
+    # Recast: end any prior bond involving the caster or the target across the
+    # whole session — the other end of a prior bond may be a third creature.
+    # This stages removals on every store; the caster/target stores are then
+    # fully rebuilt below (with the slot already consumed) and override it.
+    clear_warding_bonds_across_session(
+        ctx.session, ctx.session_id, [ctx.caster_user_id, ctx.target_user_id]
+    )
+
+    def _strip_warding_bond(effects: list | None) -> list:
+        return [
+            e
+            for e in (effects or [])
+            if not (
+                isinstance(e, dict)
+                and str(((e.get("metadata") or {}).get("source_spell_key")) or "").strip().lower()
+                == "warding_bond"
+            )
+        ]
+
+    # updated_caster_json already has the spell slot consumed.
+    wb_caster_json = dict(ctx.updated_caster_json)
+    wb_target_json = dict(ctx.target_state.state_json or {})
+
+    wb_target_effect, wb_caster_effect = ctx.build_ooc_warding_bond_effects(
+        spell=ctx.campaign_spell,
+        caster_user_id=ctx.caster_user_id,
+        target_user_id=ctx.target_user_id,
+        game_time_seconds=ctx.current_game_time_seconds,
+    )
+
+    wb_target_effects = _strip_warding_bond(wb_target_json.get("active_spell_effects"))
+    wb_target_effects.append(wb_target_effect)
+    wb_target_json["active_spell_effects"] = wb_target_effects
+    ctx.target_state.state_json = ctx.finalize_session_state_data(
+        wb_target_json, game_time_seconds=ctx.current_game_time_seconds
+    )
+    flag_modified(ctx.target_state, "state_json")
+    ctx.session.add(ctx.target_state)
+
+    wb_caster_effects = _strip_warding_bond(wb_caster_json.get("active_spell_effects"))
+    wb_caster_effects.append(wb_caster_effect)
+    wb_caster_json["active_spell_effects"] = wb_caster_effects
+    ctx.caster_state.state_json = ctx.finalize_session_state_data(
+        wb_caster_json, game_time_seconds=ctx.current_game_time_seconds
+    )
+    flag_modified(ctx.caster_state, "state_json")
+    ctx.session.add(ctx.caster_state)
+
+    spell_name = ctx.campaign_spell.name_pt or ctx.campaign_spell.name_en or ctx.campaign_spell.canonical_key
+    actor_member_id, actor_display_name = ctx.resolve_ooc_activity_actor(ctx.entry, ctx.actor_user, ctx.session)
+    if actor_member_id:
+        ctx.record_session_activity(
+            ctx.entry,
+            "out_of_combat_spell_cast",
+            ctx.session,
+            member_id=actor_member_id,
+            user_id=ctx.actor_user.id,
+            actor_name=actor_display_name,
+            payload={
+                "actor_user_id": ctx.actor_user.id,
+                "actor_player_user_id": ctx.actor_user.id,
+                "actor_display_name": actor_display_name,
+                "caster_player_user_id": ctx.caster_user_id,
+                "target_player_user_id": ctx.target_user_id,
+                "spell_key": "warding_bond",
+                "spell_name": spell_name,
+                "variant_key": None,
+                "variant_label": None,
+                "created_effect_ids": [
+                    eid
+                    for eid in (wb_target_effect.get("id"), wb_caster_effect.get("id"))
+                    if isinstance(eid, str) and eid
+                ],
+                "concentration_group": None,
+                "replaced_concentration": False,
+                "previous_concentration_group": None,
+                "new_concentration_group": None,
+                "previous_spell_name": None,
+                "previous_variant_label": None,
+                "cast_by_gm": ctx.cast_by_gm,
+                "bond_group": (wb_target_effect.get("metadata") or {}).get("bond_group"),
+            },
+        )
+        ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
+
+    ctx.session.commit()
+    ctx.session.refresh(ctx.caster_state)
+    ctx.session.refresh(ctx.target_state)
+
+    states_to_publish: dict[str, SessionState] = {
+        ctx.caster_user_id: ctx.caster_state,
+        ctx.target_user_id: ctx.target_state,
+    }
+    for player_id, publish_state in states_to_publish.items():
+        await ctx.publish_state_update(
+            ctx.entry,
+            player_id,
+            publish_state.updated_at or publish_state.created_at,
+            publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+        )
+
+    return ctx.to_state_read(ctx.caster_state)
 
 
 async def _cast_spare_the_dying_ooc(ctx: OocCastContext) -> SessionStateRead:
@@ -242,6 +356,116 @@ async def _cast_spare_the_dying_ooc(ctx: OocCastContext) -> SessionStateRead:
                 "previous_variant_label": None,
                 "cast_by_gm": ctx.cast_by_gm,
                 "spare_the_dying_stabilized": True,
+            },
+        )
+        ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
+
+    ctx.session.commit()
+    ctx.session.refresh(ctx.caster_state)
+    if ctx.is_ally_target and ctx.target_state is not None:
+        ctx.session.refresh(ctx.target_state)
+
+    states_to_publish: dict[str, SessionState] = {ctx.caster_user_id: ctx.caster_state}
+    if ctx.is_ally_target and ctx.target_state is not None:
+        states_to_publish[ctx.target_user_id] = ctx.target_state
+
+    for player_id, publish_state in states_to_publish.items():
+        await ctx.publish_state_update(
+            ctx.entry,
+            player_id,
+            publish_state.updated_at or publish_state.created_at,
+            publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+        )
+
+    return ctx.to_state_read(ctx.caster_state)
+
+
+async def _cast_lesser_restoration_ooc(ctx: OocCastContext) -> SessionStateRead:
+    """Whole-cast handler for Lesser Restoration (OOC): remove one matching
+    condition/disease effect from the target. Extracted verbatim."""
+    from app.services.combat_service.condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
+
+    lr_variant_key = str(ctx.req.variantKey or "").strip().lower()
+    if not lr_variant_key:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Especifique o que remover via variantKey "
+                "(ex: 'poisoned', 'blinded', 'deafened', 'paralyzed', 'disease')."
+            ),
+        )
+    if lr_variant_key not in LESSER_RESTORATION_CONDITIONS and lr_variant_key != "disease":
+        raise HTTPException(
+            status_code=400,
+            detail=f"lesser_restoration não pode remover '{lr_variant_key}'.",
+        )
+
+    lr_target_json: dict = (
+        dict(ctx.target_state.state_json or {})
+        if ctx.is_ally_target and ctx.target_state is not None
+        else dict(ctx.updated_caster_json)
+    )
+    lr_active = lr_target_json.get("active_spell_effects") or []
+
+    if lr_variant_key == "disease":
+        def _lr_is_removable_disease(e: dict) -> bool:
+            if e.get("kind") != "condition":
+                return False
+            meta = e.get("metadata") or {}
+            return meta.get("removable_by_lesser_restoration") is True or meta.get("disease") is True
+        lr_matching = [e for e in lr_active if _lr_is_removable_disease(e)]
+    else:
+        lr_matching = [
+            e for e in lr_active
+            if e.get("kind") == "condition" and e.get("condition_type") == lr_variant_key
+        ]
+
+    if not lr_matching:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Alvo não possui a condição '{lr_variant_key}' para ser removida.",
+        )
+
+    lr_matching_ids = {id(e) for e in lr_matching}
+    lr_target_json["active_spell_effects"] = [e for e in lr_active if id(e) not in lr_matching_ids]
+
+    spell_name = ctx.campaign_spell.name_pt or ctx.campaign_spell.name_en or ctx.campaign_spell.canonical_key
+
+    if ctx.is_ally_target and ctx.target_state is not None:
+        ctx.target_state.state_json = ctx.finalize_session_state_data(
+            lr_target_json,
+            game_time_seconds=ctx.current_game_time_seconds,
+        )
+        flag_modified(ctx.target_state, "state_json")
+        ctx.session.add(ctx.target_state)
+    else:
+        ctx.caster_state.state_json = ctx.finalize_session_state_data(
+            lr_target_json,
+            game_time_seconds=ctx.current_game_time_seconds,
+        )
+        flag_modified(ctx.caster_state, "state_json")
+        ctx.session.add(ctx.caster_state)
+
+    actor_member_id, actor_display_name = ctx.resolve_ooc_activity_actor(ctx.entry, ctx.actor_user, ctx.session)
+    if actor_member_id:
+        ctx.record_session_activity(
+            ctx.entry,
+            "out_of_combat_spell_cast",
+            ctx.session,
+            member_id=actor_member_id,
+            user_id=ctx.actor_user.id,
+            actor_name=actor_display_name,
+            payload={
+                "actor_user_id": ctx.actor_user.id,
+                "actor_player_user_id": ctx.actor_user.id,
+                "actor_display_name": actor_display_name,
+                "caster_player_user_id": ctx.caster_user_id,
+                "target_player_user_id": ctx.target_user_id,
+                "spell_key": "lesser_restoration",
+                "spell_name": spell_name,
+                "variant_key": lr_variant_key,
+                "removed_condition": lr_variant_key,
+                "cast_by_gm": ctx.cast_by_gm,
             },
         )
         ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
@@ -585,116 +809,30 @@ async def cast_spell_out_of_combat_for_player(
 
     current_game_time_seconds = get_game_time_seconds(session_id, session)
 
+    # Shared context for the extracted whole-cast handlers. Built once here (valid
+    # for every dispatch checkpoint below — none of these fields change between
+    # here and the later dispatches).
+    ctx = OocCastContext(
+        entry=entry, session=session, session_id=session_id, actor_user=actor_user,
+        caster_user_id=caster_user_id, target_user_id=target_user_id,
+        is_ally_target=is_ally_target, cast_by_gm=cast_by_gm,
+        caster_state=caster_state, target_state=target_state,
+        campaign_spell=campaign_spell, req=req,
+        current_game_time_seconds=current_game_time_seconds,
+        updated_caster_json=updated_caster_json,
+        finalize_session_state_data=finalize_session_state_data,
+        publish_state_update=publish_state_update,
+        to_state_read=to_state_read,
+        record_session_activity=record_session_activity,
+        resolve_ooc_activity_actor=_resolve_ooc_activity_actor,
+        resolve_ooc_activity_target_display_name=_resolve_ooc_activity_target_display_name,
+        prune_out_of_combat_session_activity=_prune_out_of_combat_session_activity,
+        build_ooc_warding_bond_effects=build_ooc_warding_bond_effects,
+    )
+
     # --- Warding Bond: two linked effects across caster and target (OOC) ---
     if canonical_key == "warding_bond":
-        if not is_ally_target or target_state is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Vínculo de Proteção deve ser conjurado em outra criatura voluntária.",
-            )
-
-        # Recast: end any prior bond involving the caster or the target across the
-        # whole session — the other end of a prior bond may be a third creature.
-        # This stages removals on every store; the caster/target stores are then
-        # fully rebuilt below (with the slot already consumed) and override it.
-        clear_warding_bonds_across_session(
-            session, session_id, [caster_user_id, target_user_id]
-        )
-
-        def _strip_warding_bond(effects: list | None) -> list:
-            return [
-                e
-                for e in (effects or [])
-                if not (
-                    isinstance(e, dict)
-                    and str(((e.get("metadata") or {}).get("source_spell_key")) or "").strip().lower()
-                    == "warding_bond"
-                )
-            ]
-
-        # updated_caster_json already has the spell slot consumed.
-        wb_caster_json = dict(updated_caster_json)
-        wb_target_json = dict(target_state.state_json or {})
-
-        wb_target_effect, wb_caster_effect = build_ooc_warding_bond_effects(
-            spell=campaign_spell,
-            caster_user_id=caster_user_id,
-            target_user_id=target_user_id,
-            game_time_seconds=current_game_time_seconds,
-        )
-
-        wb_target_effects = _strip_warding_bond(wb_target_json.get("active_spell_effects"))
-        wb_target_effects.append(wb_target_effect)
-        wb_target_json["active_spell_effects"] = wb_target_effects
-        target_state.state_json = finalize_session_state_data(
-            wb_target_json, game_time_seconds=current_game_time_seconds
-        )
-        flag_modified(target_state, "state_json")
-        session.add(target_state)
-
-        wb_caster_effects = _strip_warding_bond(wb_caster_json.get("active_spell_effects"))
-        wb_caster_effects.append(wb_caster_effect)
-        wb_caster_json["active_spell_effects"] = wb_caster_effects
-        caster_state.state_json = finalize_session_state_data(
-            wb_caster_json, game_time_seconds=current_game_time_seconds
-        )
-        flag_modified(caster_state, "state_json")
-        session.add(caster_state)
-
-        spell_name = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
-        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
-        if actor_member_id:
-            record_session_activity(
-                entry,
-                "out_of_combat_spell_cast",
-                session,
-                member_id=actor_member_id,
-                user_id=actor_user.id,
-                actor_name=actor_display_name,
-                payload={
-                    "actor_user_id": actor_user.id,
-                    "actor_player_user_id": actor_user.id,
-                    "actor_display_name": actor_display_name,
-                    "caster_player_user_id": caster_user_id,
-                    "target_player_user_id": target_user_id,
-                    "spell_key": "warding_bond",
-                    "spell_name": spell_name,
-                    "variant_key": None,
-                    "variant_label": None,
-                    "created_effect_ids": [
-                        eid
-                        for eid in (wb_target_effect.get("id"), wb_caster_effect.get("id"))
-                        if isinstance(eid, str) and eid
-                    ],
-                    "concentration_group": None,
-                    "replaced_concentration": False,
-                    "previous_concentration_group": None,
-                    "new_concentration_group": None,
-                    "previous_spell_name": None,
-                    "previous_variant_label": None,
-                    "cast_by_gm": cast_by_gm,
-                    "bond_group": (wb_target_effect.get("metadata") or {}).get("bond_group"),
-                },
-            )
-            _prune_out_of_combat_session_activity(session, session_id)
-
-        session.commit()
-        session.refresh(caster_state)
-        session.refresh(target_state)
-
-        states_to_publish: dict[str, SessionState] = {
-            caster_user_id: caster_state,
-            target_user_id: target_state,
-        }
-        for player_id, publish_state in states_to_publish.items():
-            await publish_state_update(
-                entry,
-                player_id,
-                publish_state.updated_at or publish_state.created_at,
-                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
-            )
-
-        return to_state_read(caster_state)
+        return await _cast_warding_bond_ooc(ctx)
 
     # --- Build target effects ---
     caster_spell_save_dc = int(
@@ -776,132 +914,11 @@ async def cast_spell_out_of_combat_for_player(
 
     # --- Spare the Dying: stabilize target at 0 HP (OOC) ---
     if canonical_key == "spare_the_dying":
-        ctx = OocCastContext(
-            entry=entry, session=session, session_id=session_id, actor_user=actor_user,
-            caster_user_id=caster_user_id, target_user_id=target_user_id,
-            is_ally_target=is_ally_target, cast_by_gm=cast_by_gm,
-            caster_state=caster_state, target_state=target_state,
-            campaign_spell=campaign_spell, req=req,
-            current_game_time_seconds=current_game_time_seconds,
-            updated_caster_json=updated_caster_json,
-            finalize_session_state_data=finalize_session_state_data,
-            publish_state_update=publish_state_update,
-            to_state_read=to_state_read,
-            record_session_activity=record_session_activity,
-            resolve_ooc_activity_actor=_resolve_ooc_activity_actor,
-            resolve_ooc_activity_target_display_name=_resolve_ooc_activity_target_display_name,
-            prune_out_of_combat_session_activity=_prune_out_of_combat_session_activity,
-        )
         return await _cast_spare_the_dying_ooc(ctx)
 
     # --- Lesser Restoration: remove a condition/disease (OOC) ---
     if canonical_key == "lesser_restoration":
-        from app.services.combat_service.condition_effects_predicates import LESSER_RESTORATION_CONDITIONS
-
-        lr_variant_key = str(req.variantKey or "").strip().lower()
-        if not lr_variant_key:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Especifique o que remover via variantKey "
-                    "(ex: 'poisoned', 'blinded', 'deafened', 'paralyzed', 'disease')."
-                ),
-            )
-        if lr_variant_key not in LESSER_RESTORATION_CONDITIONS and lr_variant_key != "disease":
-            raise HTTPException(
-                status_code=400,
-                detail=f"lesser_restoration não pode remover '{lr_variant_key}'.",
-            )
-
-        lr_target_json: dict = (
-            dict(target_state.state_json or {})
-            if is_ally_target and target_state is not None
-            else dict(updated_caster_json)
-        )
-        lr_active = lr_target_json.get("active_spell_effects") or []
-
-        if lr_variant_key == "disease":
-            def _lr_is_removable_disease(e: dict) -> bool:
-                if e.get("kind") != "condition":
-                    return False
-                meta = e.get("metadata") or {}
-                return meta.get("removable_by_lesser_restoration") is True or meta.get("disease") is True
-            lr_matching = [e for e in lr_active if _lr_is_removable_disease(e)]
-        else:
-            lr_matching = [
-                e for e in lr_active
-                if e.get("kind") == "condition" and e.get("condition_type") == lr_variant_key
-            ]
-
-        if not lr_matching:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Alvo não possui a condição '{lr_variant_key}' para ser removida.",
-            )
-
-        lr_matching_ids = {id(e) for e in lr_matching}
-        lr_target_json["active_spell_effects"] = [e for e in lr_active if id(e) not in lr_matching_ids]
-
-        spell_name = campaign_spell.name_pt or campaign_spell.name_en or campaign_spell.canonical_key
-
-        if is_ally_target and target_state is not None:
-            target_state.state_json = finalize_session_state_data(
-                lr_target_json,
-                game_time_seconds=current_game_time_seconds,
-            )
-            flag_modified(target_state, "state_json")
-            session.add(target_state)
-        else:
-            updated_caster_json = lr_target_json
-            caster_state.state_json = finalize_session_state_data(
-                updated_caster_json,
-                game_time_seconds=current_game_time_seconds,
-            )
-            flag_modified(caster_state, "state_json")
-            session.add(caster_state)
-
-        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
-        if actor_member_id:
-            record_session_activity(
-                entry,
-                "out_of_combat_spell_cast",
-                session,
-                member_id=actor_member_id,
-                user_id=actor_user.id,
-                actor_name=actor_display_name,
-                payload={
-                    "actor_user_id": actor_user.id,
-                    "actor_player_user_id": actor_user.id,
-                    "actor_display_name": actor_display_name,
-                    "caster_player_user_id": caster_user_id,
-                    "target_player_user_id": target_user_id,
-                    "spell_key": "lesser_restoration",
-                    "spell_name": spell_name,
-                    "variant_key": lr_variant_key,
-                    "removed_condition": lr_variant_key,
-                    "cast_by_gm": cast_by_gm,
-                },
-            )
-            _prune_out_of_combat_session_activity(session, session_id)
-
-        session.commit()
-        session.refresh(caster_state)
-        if is_ally_target and target_state is not None:
-            session.refresh(target_state)
-
-        states_to_publish: dict[str, SessionState] = {caster_user_id: caster_state}
-        if is_ally_target and target_state is not None:
-            states_to_publish[target_user_id] = target_state
-
-        for player_id, publish_state in states_to_publish.items():
-            await publish_state_update(
-                entry,
-                player_id,
-                publish_state.updated_at or publish_state.created_at,
-                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
-            )
-
-        return to_state_read(caster_state)
+        return await _cast_lesser_restoration_ooc(ctx)
 
     if not new_target_effects and not consumables_granted_count and not heal_rolled and not temp_hp_rolled:
         raise HTTPException(status_code=400, detail="No persistable effects could be created for this spell")
