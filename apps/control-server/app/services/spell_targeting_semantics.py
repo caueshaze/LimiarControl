@@ -31,6 +31,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "eldritch_blast": SpellTargetingSemantics("creature", "caster", "selected_target", "ranged_spell", "distance", "immediate"),
     "thorn_whip": SpellTargetingSemantics("creature", "caster", "selected_target", "melee_spell", "distance", "immediate"),
     "fireball": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "immediate"),
+    "shatter": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "immediate"),
     "fog_cloud": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
     "spike_growth": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
     "entangle": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),

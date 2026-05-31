@@ -32,6 +32,11 @@ from app.services.create_or_destroy_water import (
     resolve_water_amount,
     select_obscurement_effects_in_cells,
 )
+from app.services.shatter import (
+    INORGANIC_SAVE_DISADV_SOURCE,
+    SHATTER_KEY,
+    is_inorganic_participant,
+)
 from ..condition_effects_predicates import has_condition_immunity_from_source
 from ..exceptions import CombatServiceError, _roll_dice_expression
 from ..host_protocol import CombatServiceHostProtocol
@@ -712,6 +717,23 @@ class CastAreaMixin(_CastAreaBase):
         }
 
     @classmethod
+    def _area_save_spell_specific_mode(
+        cls,
+        spell_context: dict[str, Any],
+        target_participant: dict,
+    ) -> tuple[str, str | None]:
+        """Spell-specific one-off save advantage/disadvantage for an area save.
+
+        No-op (``("normal", None)``) for every spell except Shatter, which gives
+        disadvantage to creatures carrying explicit inorganic material metadata.
+        """
+        if spell_context.get("spell_canonical_key") == SHATTER_KEY and is_inorganic_participant(
+            target_participant
+        ):
+            return "disadvantage", INORGANIC_SAVE_DISADV_SOURCE
+        return "normal", None
+
+    @classmethod
     async def _cast_create_or_destroy_water(
         cls,
         db: Session,
@@ -1293,9 +1315,13 @@ class CastAreaMixin(_CastAreaBase):
                 cover_applies_to_save,
                 spell_context.get("save_ability"),
             )
+            spell_save_mode, extra_save_source = cls._area_save_spell_specific_mode(
+                spell_context, target_participant
+            )
             save_mod = modify_saving_throw(
                 target_participant,
                 spell_context["save_ability"],
+                spell_save_mode,
                 source_participant=attacker,
                 source_kind="participant",
             )
@@ -1311,9 +1337,15 @@ class CastAreaMixin(_CastAreaBase):
                 advantage_mode=save_mod.result,
                 dc=effective_dc,
             )
+            extra_sources = (
+                [{"type": "disadvantage", "source": extra_save_source}]
+                if extra_save_source
+                else []
+            )
             roll_result.check_modifier_sources = [
                 *save_mod.advantage_source_details,
                 *save_mod.disadvantage_source_details,
+                *extra_sources,
                 *(roll_result.check_modifier_sources or []),
             ]
             roll_result.is_gm_roll = is_gm
@@ -1332,6 +1364,7 @@ class CastAreaMixin(_CastAreaBase):
                 "effective_save_dc": effective_dc,
                 "base_save_dc": base_save_dc,
                 "cover_modifier": resolve_cover_save_modifier(target_cover) if should_cover_apply_to_save(cover_applies_to_save) else 0,
+                "save_disadvantage_sources": [extra_save_source] if extra_save_source else [],
             }
             area_target_outcomes.append(outcome)
             target_results_for_pending.append(
