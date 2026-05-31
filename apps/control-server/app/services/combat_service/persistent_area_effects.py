@@ -34,8 +34,12 @@ def _metadata_from_persistent_area(persistent_area: dict[str, Any]) -> dict[str,
             "obscurement": params.get("obscurement"),
         }
     if kind == "hazard":
+        effect_kind = params.get("effectKind")
+        if not isinstance(effect_kind, str) or not effect_kind.strip():
+            effect_kind = "hazard"
         return {
-            "effect_kind": "hazard",
+            "kind": "hazard",
+            "effect_kind": effect_kind,
             "terrain_effect": params.get("terrainEffect"),
             "movement_damage_dice": params.get("movementDamageDice"),
             "damage_type": params.get("damageType"),

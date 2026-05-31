@@ -10,6 +10,7 @@ from app.models.combat import CombatState
 from app.models.inventory import InventoryItem
 from app.schemas.combat import CombatCastSpellRequest
 from app.services.magic_item_effects import consume_inventory_item_charge
+from app.services.game_time import get_game_time_seconds
 from app.services.combat_service.condition_effects_saves import modify_saving_throw
 from app.services.roll_resolution import resolve_saving_throw
 from app.services.spell_material_components import (MaterialConsumptionResult, SpellMaterialError, consume_spell_material, validate_spell_material)
@@ -720,6 +721,20 @@ class CastAreaMixin(
                 targeting_result=targeting_result,
                 was_overridden=was_overridden,
             )
+        if spell_context.get("spell_canonical_key") == "moonbeam":
+            return await cls._cast_moonbeam_persistent_area(
+                db,
+                session_id,
+                req=req,
+                attacker=attacker,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                state=state,
+                spell_context=spell_context,
+                area_spec=area_spec,
+                targeting_result=targeting_result,
+                was_overridden=was_overridden,
+            )
 
         active_area_effect: dict[str, Any] | None = None
         concentration_group: str | None = None
@@ -823,6 +838,168 @@ class CastAreaMixin(
             "effect_roll_required": False,
             "base_effect": None,
             "action_cost": action_cost,
+            "summary_text": None,
+            "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
+            "material_consumed": bool(spell_context.get("material_consumed")),
+            "material_key": spell_context.get("material_key"),
+            "material_label": spell_context.get("material_label"),
+            "material_quantity": spell_context.get("material_quantity"),
+            "material_inventory_item_id": spell_context.get("material_inventory_item_id"),
+            "concentration_check": None,
+            "concentration_checks": [],
+            "area_shape": area_spec["shape"],
+            "affected_target_ref_ids": affected_target_ref_ids,
+            "affected_cells": affected_cells,
+            "area_target_outcomes": [],
+            "target_count": len(affected_target_ref_ids),
+            "active_area_effect": active_area_effect,
+            "elemental_affinity_eligible": bool(spell_context.get("elemental_affinity_eligible")),
+            "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+            "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+        }
+
+    @classmethod
+    async def _cast_moonbeam_persistent_area(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        req: CombatCastSpellRequest,
+        attacker: dict,
+        actor_user_id: str,
+        is_gm: bool,
+        state: CombatState,
+        spell_context: dict[str, Any],
+        area_spec: dict[str, int | str],
+        targeting_result,
+        was_overridden: bool,
+    ) -> dict[str, Any]:
+        prev = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        if prev["removed_effects"]:
+            flag_modified(state, "participants")
+        if prev["removed_area_effects"]:
+            flag_modified(state, "active_area_effects")
+            maybe_sync_active_area_effects_to_limiar_map(session_id, state)
+
+        concentration_group = str(uuid4())
+        try:
+            active_area_effect = build_persistent_spell_area_effect(
+                state=state,
+                attacker=attacker,
+                spell_context=spell_context,
+                area_spec=area_spec,
+                targeting_result=targeting_result,
+                origin_cell=req.origin_cell.model_dump() if req.origin_cell is not None else None,
+                anchor_cell=req.anchor_cell.model_dump() if req.anchor_cell is not None else None,
+                concentration_group=concentration_group,
+            )
+        except ValueError as exc:
+            raise CombatServiceError(str(exc), 400) from exc
+
+        slot_level = cls._safe_int(spell_context.get("slot_level"), 2)
+        active_area_effect.update(
+            {
+                "kind": "hazard",
+                "effect_kind": "moonbeam",
+                "slot_level": slot_level,
+                "save_ability": "constitution",
+                "save_effect": "half_damage",
+                "damage_dice_base": "2d10",
+                "damage_type": "radiant",
+                "move_distance_meters": 18,
+                "damage_triggers": ["enter_first_time_on_turn", "start_turn"],
+                "turn_applied": {},
+                "shapechanger": {
+                    "save_disadvantage": True,
+                    "revert_on_failed_save": True,
+                    "block_shapechange_until_exit": True,
+                },
+            }
+        )
+        state.active_area_effects = [*(state.active_area_effects or []), active_area_effect]
+
+        now = get_game_time_seconds(session_id, db)
+        duration_seconds = max(0, cls._safe_int(spell_context.get("duration_seconds"), 60))
+        cls._append_effect_to_participant(
+            attacker,
+            cls._build_active_effect(
+                kind="spell_effect",
+                source_participant_id=attacker["id"],
+                duration_type="timed",
+                created_at_game_time_seconds=now,
+                expires_at_game_time_seconds=now + duration_seconds,
+                metadata={
+                    "concentration": True,
+                    "concentration_group": concentration_group,
+                    "source_spell_key": "moonbeam",
+                    "concentration_area_effect_id": active_area_effect["id"],
+                },
+                display_label=spell_context["spell_name"],
+            ),
+        )
+        flag_modified(state, "participants")
+        flag_modified(state, "active_area_effects")
+
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        maybe_sync_active_area_effects_to_limiar_map(session_id, state)
+        target_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
+        await cls._emit_player_state_update(db, session_id, attacker["ref_id"], target_state)
+        await cls._emit_state(session_id, state)
+
+        log_message = (
+            f"{attacker['display_name']} conjurou {spell_context['spell_name']} em area "
+            f"({area_spec['shape']}): efeito persistente sem dano imediato."
+        )
+        if was_overridden:
+            log_message = f"[OVERRIDE: Limit for 'action' ignored] {log_message}"
+        await cls._emit_and_persist_log(
+            db,
+            session_id,
+            actor_user_id,
+            attacker.get("display_name"),
+            {
+                "message": log_message,
+                "actorUserId": actor_user_id,
+                "source": "gm_override" if is_gm else "player_turn",
+                "is_override": was_overridden,
+                "overridden_resource": "action" if was_overridden else None,
+            },
+        )
+
+        affected_target_ref_ids = list(targeting_result.affected_target_ref_ids)
+        affected_cells = list(targeting_result.spatial_metadata.affected_cells)
+        return {
+            "spell_name": spell_context["spell_name"],
+            "spell_canonical_key": spell_context["spell_canonical_key"],
+            "action_kind": spell_context["spell_mode"],
+            "effect_kind": spell_context["effect_kind"],
+            "damage": 0,
+            "healing": 0,
+            "damage_type": spell_context.get("damage_type"),
+            "is_critical": False,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": "Area effect",
+            "target_kind": "session_entity",
+            "save_ability": spell_context.get("save_ability"),
+            "save_dc": spell_context.get("save_dc"),
+            "save_success_outcome": spell_context.get("save_success_outcome"),
+            "effect_dice": spell_context.get("effect_dice"),
+            "effect_bonus": cls._safe_int(spell_context.get("effect_bonus"), 0),
+            "pending_spell_id": None,
+            "effect_roll_required": False,
+            "base_effect": None,
+            "action_cost": "action",
             "summary_text": None,
             "inventory_refresh_required": spell_context.get("source_kind") == "magic_item",
             "material_consumed": bool(spell_context.get("material_consumed")),
