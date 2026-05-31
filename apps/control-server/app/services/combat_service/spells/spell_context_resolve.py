@@ -729,9 +729,12 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
                         f"Spell slot level {slot_level} is not available for this caster.",
                         400,
                     )
-        action_cost = cls._resolve_spell_action_cost(
-            getattr(catalog_spell, "casting_time_type", None)
-        )
+        if normalized_key == "prayer_of_healing":
+            action_cost = "action"
+        else:
+            action_cost = cls._resolve_spell_action_cost(
+                getattr(catalog_spell, "casting_time_type", None)
+            )
         return {
             "action_cost": action_cost,
             "catalog_save_ability": catalog_save_ability,

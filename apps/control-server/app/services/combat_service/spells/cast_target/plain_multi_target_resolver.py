@@ -68,6 +68,19 @@ class CastTargetPlainMultiTargetResolverMixin(_CastTargetPlainMultiTargetResolve
             spell_context=spell_context,
             targets=targets,
         )
+        if cls._normalize_spell_automation_key(spell_context.get("spell_canonical_key")) == "prayer_of_healing":
+            return await cls._start_prayer_of_healing_long_cast(
+                db,
+                session_id,
+                req=req,
+                state=state,
+                attacker=attacker,
+                attacker_model=attacker_model,
+                spell_context=spell_context,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                targets=targets,
+            )
 
         slot_spent = False
         action_cost = spell_context.get("action_cost") or "action"

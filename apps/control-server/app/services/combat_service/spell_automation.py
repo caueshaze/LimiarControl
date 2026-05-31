@@ -541,3 +541,152 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             spell_context=spell_context,
             target_participant=target_participant,
         )
+
+    @classmethod
+    async def _start_prayer_of_healing_long_cast(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        req,
+        state: CombatState,
+        attacker: dict,
+        attacker_model,
+        spell_context: dict,
+        actor_user_id: str,
+        is_gm: bool,
+        targets: list[dict],
+    ) -> dict:
+        spell_key = cls._normalize_spell_automation_key(spell_context.get("spell_canonical_key"))
+        if spell_key != "prayer_of_healing":
+            raise CombatServiceError("Long-cast start helper only supports Prayer of Healing.", 400)
+        if len(targets) < 1 or len(targets) > 6:
+            raise CombatServiceError("Prayer of Healing requires 1 to 6 targets.", 400)
+
+        target_ref_ids: list[str] = [str(p.get("ref_id")) for p in targets if isinstance(p.get("ref_id"), str)]
+        if len(target_ref_ids) != len(targets):
+            raise CombatServiceError("All targets must have valid combat references.", 400)
+        if len(set(target_ref_ids)) != len(target_ref_ids):
+            raise CombatServiceError("Prayer of Healing targets cannot repeat.", 400)
+        if any(
+            isinstance(pending, dict)
+            and pending.get("status") == "casting"
+            and pending.get("spell_key") == spell_key
+            and pending.get("caster_participant_id") == attacker.get("id")
+            for pending in cls._list_pending_spell_casts(state)
+        ):
+            raise CombatServiceError("Caster already has an active Prayer of Healing cast.", 400)
+
+        slot_level = cls._safe_int(spell_context.get("slot_level"), 0)
+        if slot_level < 2:
+            raise CombatServiceError("Prayer of Healing requires a level 2 or higher spell slot.", 400)
+
+        action_cost = spell_context.get("action_cost") or "action"
+        cls._ensure_turn_resource_available(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+        cls._ensure_player_spell_slot_available(attacker_model, slot_level)
+        was_overridden = cls._consume_turn_resource(
+            attacker,
+            action_cost,
+            is_gm=is_gm,
+            override_resource_limit=req.override_resource_limit,
+        )
+        cls._consume_player_spell_slot(attacker_model, slot_level)
+        db.add(attacker_model)
+
+        pending_cast = cls._create_pending_spell_cast(
+            state,
+            spell_key=spell_key,
+            spell_name=spell_context.get("spell_name") or "Prayer of Healing",
+            caster_participant_id=str(attacker.get("id")),
+            caster_ref_id=str(attacker.get("ref_id")),
+            target_ref_ids=target_ref_ids,
+            slot_level=slot_level,
+            required_rounds=100,
+            completed_rounds=1,
+            requires_action_each_turn=True,
+            requires_concentration_during_casting=True,
+            maintained_this_turn=True,
+            metadata={
+                "started_round": state.round,
+                "started_turn_index": state.current_turn_index,
+            },
+        )
+
+        flag_modified(state, "participants")
+        flag_modified(state, "pending_spell_casts")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+
+        caster_state, *_ = cls._get_stats(db, attacker["ref_id"], "player", session_id)
+        await cls._emit_player_state_update(db, session_id, attacker["ref_id"], caster_state)
+        await cls._emit_state(session_id, state)
+        await cls._emit_and_persist_log(
+            db,
+            session_id,
+            actor_user_id,
+            attacker.get("display_name"),
+            {
+                "message": (
+                    f"{attacker.get('display_name', 'Conjurador')} iniciou a conjuração longa de "
+                    f"{spell_context.get('spell_name') or 'Prayer of Healing'} "
+                    f"(100 rounds; {len(target_ref_ids)} alvo(s))."
+                ),
+                "source": "long_casting",
+                "is_override": was_overridden,
+                "overridden_resource": action_cost if was_overridden else None,
+            },
+        )
+
+        return {
+            "spell_name": spell_context.get("spell_name") or "Prayer of Healing",
+            "spell_canonical_key": spell_key,
+            "selected_variant_key": None,
+            "selected_variant_label": None,
+            "context_origin": "initial_cast",
+            "concentration_group": None,
+            "action_kind": "utility",
+            "effect_kind": "healing",
+            "damage": 0,
+            "healing": 0,
+            "damage_type": None,
+            "is_critical": None,
+            "is_hit": None,
+            "is_saved": None,
+            "new_hp": None,
+            "roll": None,
+            "roll_result": None,
+            "target_ac": None,
+            "target_display_name": f"{len(target_ref_ids)} alvos",
+            "target_kind": "session_entity",
+            "save_ability": None,
+            "save_dc": None,
+            "save_success_outcome": None,
+            "effect_dice": None,
+            "effect_bonus": 0,
+            "pending_spell_id": None,
+            "pending_save_id": None,
+            "effect_roll_required": False,
+            "base_effect": None,
+            "action_cost": action_cost,
+            "summary_text": "Conjuração longa iniciada; manutenção por ação a cada turno é necessária.",
+            "inventory_refresh_required": False,
+            "concentration_check": None,
+            "concentration_checks": [],
+            "pending_cast": {
+                "id": pending_cast.get("id"),
+                "required_rounds": 100,
+                "completed_rounds": pending_cast.get("completed_rounds"),
+                "remaining_rounds": pending_cast.get("remaining_rounds"),
+                "status": pending_cast.get("status"),
+            },
+            "affected_target_ref_ids": target_ref_ids,
+            "affected_cells": [],
+            "area_target_outcomes": [],
+            "target_count": len(target_ref_ids),
+        }
