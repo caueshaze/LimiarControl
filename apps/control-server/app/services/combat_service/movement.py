@@ -45,6 +45,14 @@ class CombatMovementMixin(AreaTargetingMixin, CombatServiceHostProtocol):
         )
         cls._require_actor_status(actor, ("active",), "You can only move while active.")
         cls._require_movement_capable(actor)
+        resources = cls._get_turn_resources(actor)
+        if resources.get("crown_of_madness_forced_attack_pending") and not resources.get(
+            "crown_of_madness_forced_attack_resolved"
+        ):
+            raise CombatServiceError(
+                "This participant must resolve Crown of Madness forced attack before moving.",
+                403,
+            )
 
         client = cls._build_limiar_map_client()
         destination_cell = {

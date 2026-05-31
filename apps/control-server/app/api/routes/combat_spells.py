@@ -40,6 +40,20 @@ class CompelledDuelMovementSaveRequest(BaseModel):
     actor_participant_id: str | None = None
     manual_roll: int | None = None
 
+
+class CrownOfMadnessForcedAttackRequest(BaseModel):
+    controlled_target_ref_id: str
+    forced_attack_target_ref_id: str | None = None
+    weapon_item_id: str | None = None
+    combat_action_id: str | None = None
+
+
+class CrownOfMadnessMaintainRequest(BaseModel):
+    actor_participant_id: str | None = None
+    target_ref_id: str
+    override_resource_limit: bool = False
+
+
 router = APIRouter()
 
 
@@ -207,6 +221,49 @@ async def action_condition_escape(
         roll_source=req.roll_source,
         manual_roll=req.manual_roll,
         manual_rolls=req.manual_rolls,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spell/crown-of-madness/forced-attack",
+)
+async def action_crown_of_madness_forced_attack(
+    session_id: str,
+    req: CrownOfMadnessForcedAttackRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_crown_of_madness_forced_attack(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        controlled_target_ref_id=req.controlled_target_ref_id,
+        forced_attack_target_ref_id=req.forced_attack_target_ref_id,
+        weapon_item_id=req.weapon_item_id,
+        combat_action_id=req.combat_action_id,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spell/crown-of-madness/maintain",
+)
+async def action_crown_of_madness_maintain(
+    session_id: str,
+    req: CrownOfMadnessMaintainRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_crown_of_madness_maintain(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        actor_participant_id=req.actor_participant_id,
+        target_ref_id=req.target_ref_id,
         override_resource_limit=req.override_resource_limit,
     )
 

@@ -77,6 +77,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "lesser_restoration": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "immediate"),
     "command": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
     "compelled_duel": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
+    "crown_of_madness": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
     "protection_from_evil_and_good": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "persistent"),
     "sanctuary": SpellTargetingSemantics("single_target", "caster", "target", "none", "distance", "persistent"),
     "warding_bond": SpellTargetingSemantics("single_target", "caster", "target", "none", "touch", "persistent"),

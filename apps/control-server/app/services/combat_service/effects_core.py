@@ -12,6 +12,9 @@ class CombatEffectsCoreMixin:
         # Set when a Compelled Duel target passes its Wisdom save to move beyond
         # 9m; reset at turn start so the save is required again each turn.
         "compelled_duel_movement_free": False,
+        "crown_of_madness_forced_attack_pending": False,
+        "crown_of_madness_forced_attack_resolved": False,
+        "crown_of_madness_forced_attack_skipped": False,
     }
 
     @classmethod

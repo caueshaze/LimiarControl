@@ -99,7 +99,7 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
         target_participant: dict,
     ) -> None:
         spell_key = cls._normalize_lookup(spell_canonical_key).replace(" ", "_")
-        if spell_key not in {"hold_person", "charm_person"}:
+        if spell_key not in {"hold_person", "charm_person", "crown_of_madness"}:
             return
         creature_type = cls.resolve_effective_creature_type(
             db,
@@ -107,7 +107,12 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
             target_participant,
         )
         if creature_type is not None and creature_type != "humanoid":
-            spell_name = "Hold Person" if spell_key == "hold_person" else "Charm Person"
+            if spell_key == "hold_person":
+                spell_name = "Hold Person"
+            elif spell_key == "charm_person":
+                spell_name = "Charm Person"
+            else:
+                spell_name = "Crown of Madness"
             raise CombatServiceError(f"{spell_name} can only target humanoids.", 400)
 
     @classmethod

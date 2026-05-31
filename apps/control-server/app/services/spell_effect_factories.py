@@ -335,6 +335,46 @@ def build_faerie_fire_effect(ctx: SpellEffectBuildContext) -> dict:
     return _build_timed_spell_effect_base(ctx, metadata=metadata)
 
 
+def build_crown_of_madness_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    cast_round = ctx.extra_metadata.get("cast_round")
+    cast_turn_participant_id = ctx.extra_metadata.get("cast_turn_participant_id")
+    target_ref_id = ctx.extra_metadata.get("target_ref_id")
+    metadata.update(
+        {
+            "source_spell_key": "crown_of_madness",
+            "source_spell_name": ctx.spell_name,
+            "utility": "crown_of_madness",
+            "control_debuff": True,
+            "crown_of_madness": True,
+            "forced_action_control": True,
+            "forced_action_type": "melee_attack",
+            "forced_action_timing": "before_movement_on_target_turn",
+            "forced_attack_target_chosen_by_caster": True,
+            "forced_attack_cannot_target_self": True,
+            "target_acts_normally_if_no_chosen_target": True,
+            "forced_attack_pending": False,
+            "forced_attack_resolved": False,
+            "requires_caster_action_to_maintain": True,
+            "repeat_save_at_end_of_target_turn": True,
+            "repeat_save_ability": "wisdom",
+            "repeat_save_dc": ctx.spell_save_dc or 0,
+            "requires_attacker_can_see_target": True,
+            "outlined_by_crown_of_madness": True,
+            "target_creature_type_restriction": ["humanoid"],
+            "cast_round": cast_round,
+            "cast_turn_participant_id": cast_turn_participant_id,
+            "last_maintained_round": cast_round,
+            "last_maintained_turn_participant_id": cast_turn_participant_id,
+            "crown_target_ref_id": target_ref_id,
+            "concentration": True,
+            "requires_concentration": True,
+            "duration_seconds": ctx.duration_seconds,
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
 def build_warding_bond_effects(ctx: SpellEffectBuildContext) -> tuple[dict, dict]:
     """Build the linked Warding Bond effects.
 

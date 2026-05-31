@@ -130,6 +130,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_faerie_fire_automation",
         ),
+        "crown_of_madness": SpellAutomationSpec(
+            canonical_key="crown_of_madness",
+            default_mode="save",
+            requires_effect_payload=False,
+            handler_name="_cast_crown_of_madness_automation",
+        ),
         "protection_from_evil_and_good": SpellAutomationSpec(
             canonical_key="protection_from_evil_and_good",
             default_mode="utility",

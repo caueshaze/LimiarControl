@@ -306,6 +306,12 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             label = anchor.get("source_spell_name") or anchor.get("source_spell_key") or "Spell anchor"
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (end of {outgoing['display_name']}'s turn).", "source": "effect_expired"})
         await cls._resolve_turn_end_repeat_saves(db, session_id, state, outgoing)
+        await cls._resolve_crown_of_madness_repeat_save_on_turn_end(
+            db,
+            session_id,
+            state,
+            outgoing,
+        )
         await cls._resolve_turn_end_delayed_damage_effects(db, session_id, state, outgoing)
         # Compelled Duel ends if its caster ends their turn >9m from the target.
         from app.services.compelled_duel import break_compelled_duels_exceeding_distance
@@ -314,6 +320,12 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
         for effect in broken_duels:
             label = (cls._get_effect_metadata(effect) or {}).get("source_spell_name") or "Duelo Compelido"
             await cls._emit_log(session_id, {"message": f"'{label}' terminou: o conjurador terminou o turno a mais de 9m do alvo.", "source": "effect_expired"})
+        await cls._resolve_crown_of_madness_maintenance_on_turn_end(
+            db,
+            session_id,
+            state,
+            outgoing,
+        )
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
@@ -361,6 +373,16 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
         cls._activate_deferred_spell_effects(state, incoming["id"])
         cls._reset_turn_resources(incoming)
+        pending_crown_forced_attack = cls._apply_crown_of_madness_turn_start_state(
+            state,
+            incoming,
+        )
+        if pending_crown_forced_attack:
+            resources = cls._get_turn_resources(incoming)
+            resources["crown_of_madness_forced_attack_pending"] = True
+            resources["crown_of_madness_forced_attack_resolved"] = False
+            resources["crown_of_madness_forced_attack_skipped"] = False
+            incoming["turn_resources"] = resources
         await cls._process_recurring_temp_hp(db, session_id, state, incoming)
         from app.services.warding_bond import break_warding_bonds_exceeding_distance
 
