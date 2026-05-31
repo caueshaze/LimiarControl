@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -88,6 +89,11 @@ OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES = (
 )
 OUT_OF_COMBAT_ACTIVITY_CAP = 50
 _SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
+
+# Sentinel for injectable dependencies on `_cast_spell_out_of_combat_for_player`
+# (issue #396): distinguishes "caller did not inject" from a legitimately falsy
+# override, so the unset case can be resolved from the module at call time.
+_UNSET = object()
 
 
 def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
@@ -183,6 +189,29 @@ def _require_session_participant(entry, session: DbSession, player_user_id: str,
         raise HTTPException(status_code=400, detail=f"{label} is not a participant in this session")
 
 
+def _prune_out_of_combat_session_activity(session: DbSession, session_id: str) -> None:
+    stale_event_ids = [
+        event_id
+        for event_id in session.exec(
+            select(SessionCommandEvent.id)
+            .where(
+                SessionCommandEvent.session_id == session_id,
+                SessionCommandEvent.command_type.in_(OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES),  # type: ignore[arg-type]
+            )
+            .order_by(SessionCommandEvent.created_at.desc(), SessionCommandEvent.id.desc())
+            .offset(OUT_OF_COMBAT_ACTIVITY_CAP)
+        ).all()
+        if isinstance(event_id, str) and event_id
+    ]
+    if not stale_event_ids:
+        return
+    session.exec(
+        delete(SessionCommandEvent).where(
+            SessionCommandEvent.id.in_(stale_event_ids),  # type: ignore[arg-type]
+        )
+    )
+
+
 def _list_out_of_combat_castable_spells_for_player(
     *,
     entry,
@@ -262,7 +291,54 @@ async def _cast_spell_out_of_combat_for_player(
     session: DbSession,
     cast_by_gm: bool,
     enforce_target_membership: bool = False,
+    # --- Injected dependencies (issue #396): tests call this function directly and
+    # pass fakes by keyword instead of patching `app.api.routes.sessions.state.X`.
+    # Each kwarg reuses the exact name the body already calls, so the local
+    # parameter shadows the module global with no body changes. Unset kwargs are
+    # resolved from the module at call time (see below) so existing
+    # `@patch("...state.X")` tests and the live endpoints keep working. ---
+    ensure_session_state=_UNSET,
+    finalize_session_state_data=_UNSET,
+    publish_state_update=_UNSET,
+    to_state_read=_UNSET,
+    clear_concentration_group_across_session=_UNSET,
+    clear_persisted_concentration_effects=_UNSET,
+    build_ooc_warding_bond_effects=_UNSET,
+    get_game_time_seconds=_UNSET,
+    record_session_activity=_UNSET,
+    _resolve_ooc_activity_actor=_UNSET,
+    _resolve_ooc_activity_target_display_name=_UNSET,
+    _prune_out_of_combat_session_activity=_UNSET,
 ) -> SessionStateRead:
+    # Resolve any dependency left unset to the current module attribute, so that
+    # callers who don't inject (live endpoints) and tests that still
+    # `@patch("...state.X")` observe the patched value at call time.
+    _mod = sys.modules[__name__]
+    if ensure_session_state is _UNSET:
+        ensure_session_state = _mod.ensure_session_state
+    if finalize_session_state_data is _UNSET:
+        finalize_session_state_data = _mod.finalize_session_state_data
+    if publish_state_update is _UNSET:
+        publish_state_update = _mod.publish_state_update
+    if to_state_read is _UNSET:
+        to_state_read = _mod.to_state_read
+    if clear_concentration_group_across_session is _UNSET:
+        clear_concentration_group_across_session = _mod.clear_concentration_group_across_session
+    if clear_persisted_concentration_effects is _UNSET:
+        clear_persisted_concentration_effects = _mod.clear_persisted_concentration_effects
+    if build_ooc_warding_bond_effects is _UNSET:
+        build_ooc_warding_bond_effects = _mod.build_ooc_warding_bond_effects
+    if get_game_time_seconds is _UNSET:
+        get_game_time_seconds = _mod.get_game_time_seconds
+    if record_session_activity is _UNSET:
+        record_session_activity = _mod.record_session_activity
+    if _resolve_ooc_activity_actor is _UNSET:
+        _resolve_ooc_activity_actor = _mod._resolve_ooc_activity_actor
+    if _resolve_ooc_activity_target_display_name is _UNSET:
+        _resolve_ooc_activity_target_display_name = _mod._resolve_ooc_activity_target_display_name
+    if _prune_out_of_combat_session_activity is _UNSET:
+        _prune_out_of_combat_session_activity = _mod._prune_out_of_combat_session_activity
+
     # --- Load caster state ---
     caster_state = session.exec(
         select(SessionState).where(
@@ -1204,29 +1280,6 @@ async def _cast_spell_out_of_combat_for_player(
         )
 
     return to_state_read(caster_state)
-
-
-def _prune_out_of_combat_session_activity(session: DbSession, session_id: str) -> None:
-    stale_event_ids = [
-        event_id
-        for event_id in session.exec(
-            select(SessionCommandEvent.id)
-            .where(
-                SessionCommandEvent.session_id == session_id,
-                SessionCommandEvent.command_type.in_(OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES),  # type: ignore[arg-type]
-            )
-            .order_by(SessionCommandEvent.created_at.desc(), SessionCommandEvent.id.desc())
-            .offset(OUT_OF_COMBAT_ACTIVITY_CAP)
-        ).all()
-        if isinstance(event_id, str) and event_id
-    ]
-    if not stale_event_ids:
-        return
-    session.exec(
-        delete(SessionCommandEvent).where(
-            SessionCommandEvent.id.in_(stale_event_ids),  # type: ignore[arg-type]
-        )
-    )
 
 
 @router.get("/sessions/{session_id}/state/me", response_model=SessionStateRead)

@@ -14,7 +14,10 @@ from app.services.out_of_combat_cast import (
     check_out_of_combat_cast_eligibility,
     has_castable_effects,
 )
-from app.api.routes.sessions.state import cast_spell_out_of_combat
+from app.api.routes.sessions.state import (
+    _cast_spell_out_of_combat_for_player,
+    cast_spell_out_of_combat,
+)
 
 
 _SEED_PATH = os.path.abspath(
@@ -36,6 +39,10 @@ def _make_user(user_id: str = "user-1"):
     user = MagicMock()
     user.id = user_id
     return user
+
+
+def _make_entry():
+    return MagicMock(party_id="party-1", campaign_id="camp-1")
 
 
 def _make_campaign_spell():
@@ -125,6 +132,50 @@ def _make_db(caster_state, campaign_spell, target_state=None):
     return db
 
 
+def _make_injected(caster_state, *, resolve_actor=("member-1", "Caster One")):
+    """Build the dependency overrides that the OOC cast reads.
+
+    Issue #396: instead of patching `app.api.routes.sessions.state.X`, tests inject
+    these fakes by keyword into `_cast_spell_out_of_combat_for_player`. Returned as a
+    dict so tests can assert on individual mocks (e.g. ``record_session_activity``).
+    """
+    return {
+        "ensure_session_state": MagicMock(return_value=caster_state),
+        "finalize_session_state_data": lambda d, **kwargs: d,
+        "publish_state_update": AsyncMock(),
+        "to_state_read": MagicMock(return_value=MagicMock()),
+        "record_session_activity": MagicMock(),
+        "_prune_out_of_combat_session_activity": MagicMock(),
+        "_resolve_ooc_activity_actor": MagicMock(return_value=resolve_actor),
+        "get_game_time_seconds": MagicMock(return_value=100),
+    }
+
+
+async def _cast_ooc(
+    *,
+    db,
+    injected,
+    caster_user_id: str = "caster-1",
+    target_player_user_id: str | None = "target-2",
+):
+    """Call the OOC cast directly with injected deps (self-cast path)."""
+    req = OutOfCombatCastRequest(
+        spellId="spell-std-1",
+        slotLevel=None,
+        targetPlayerUserId=target_player_user_id,
+    )
+    return await _cast_spell_out_of_combat_for_player(
+        entry=_make_entry(),
+        session_id="session-1",
+        req=req,
+        actor_user=_make_user(caster_user_id),
+        caster_user_id=caster_user_id,
+        session=db,
+        cast_by_gm=False,
+        **injected,
+    )
+
+
 class OocAvailabilityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -172,318 +223,100 @@ class OocAvailabilityTests(unittest.TestCase):
 
 
 class OocPlayerTargetSuccessTests(unittest.IsolatedAsyncioTestCase):
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_ally_target_stabilized(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_ally_target_stabilized(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(
             current_hp=0,
             death_saves={"successes": 1, "failures": 1},
             player_user_id="target-2",
         )
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1",
-            slotLevel=None,
-            targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1",
-            req=req,
-            user=_make_user("caster-1"),
-            session=db,
-        )
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         self.assertEqual(target_state.state_json["deathSaves"]["successes"], 3)
         self.assertEqual(target_state.state_json["deathSaves"]["failures"], 0)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_hp_remains_zero(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_hp_remains_zero(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         self.assertEqual(target_state.state_json["currentHP"], 0)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_no_active_spell_effects_created(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_no_active_spell_effects_created(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         effects = target_state.state_json.get("active_spell_effects", [])
         self.assertEqual(effects, [])
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=("member-1", "Caster One"))
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_activity_recorded(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_resolve_actor, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_activity_recorded(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        injected = _make_injected(caster_state)
+        await _cast_ooc(db=db, injected=injected)
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
-
+        mock_record = injected["record_session_activity"]
         mock_record.assert_called_once()
         payload = mock_record.call_args.kwargs.get("payload") or mock_record.call_args.args[3]
         self.assertTrue(payload.get("spare_the_dying_stabilized"))
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_target_state_published(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_target_state_published(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        injected = _make_injected(caster_state)
+        await _cast_ooc(db=db, injected=injected)
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
-
-        published_ids = [call.args[1] for call in mock_publish.call_args_list]
+        published_ids = [call.args[1] for call in injected["publish_state_update"].call_args_list]
         self.assertIn("target-2", published_ids)
 
 
 class OocMissingDeathSavesTests(unittest.IsolatedAsyncioTestCase):
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_missing_death_saves_stabilized(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def _stabilize_with_target_json(self, target_json):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        target_state.state_json = {"currentHP": 0, "maxHP": 12}
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        target_state.state_json = target_json
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        await _cast_ooc(db=db, injected=_make_injected(caster_state))
+        return target_state
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
-
+    async def test_missing_death_saves_stabilized(self):
+        target_state = await self._stabilize_with_target_json({"currentHP": 0, "maxHP": 12})
         self.assertEqual(target_state.state_json["deathSaves"]["successes"], 3)
         self.assertEqual(target_state.state_json["deathSaves"]["failures"], 0)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_none_death_saves_stabilized(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
-        caster_state = _make_caster_state(player_user_id="caster-1")
-        target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        target_state.state_json = {"currentHP": 0, "maxHP": 12, "deathSaves": None}
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
+    async def test_none_death_saves_stabilized(self):
+        target_state = await self._stabilize_with_target_json(
+            {"currentHP": 0, "maxHP": 12, "deathSaves": None}
         )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
-
         self.assertEqual(target_state.state_json["deathSaves"]["successes"], 3)
         self.assertEqual(target_state.state_json["deathSaves"]["failures"], 0)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_empty_dict_death_saves_stabilized(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
-        caster_state = _make_caster_state(player_user_id="caster-1")
-        target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        target_state.state_json = {"currentHP": 0, "maxHP": 12, "deathSaves": {}}
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
+    async def test_empty_dict_death_saves_stabilized(self):
+        target_state = await self._stabilize_with_target_json(
+            {"currentHP": 0, "maxHP": 12, "deathSaves": {}}
         )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
-
         self.assertEqual(target_state.state_json["deathSaves"]["successes"], 3)
         self.assertEqual(target_state.state_json["deathSaves"]["failures"], 0)
 
 
 class OocSelfTargetTests(unittest.IsolatedAsyncioTestCase):
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_caster_at_zero_hp_stabilizes_self(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_caster_at_zero_hp_stabilizes_self(self):
         caster_state = _make_caster_state(
             current_hp=0,
             death_saves={"successes": 0, "failures": 2},
             player_user_id="caster-1",
         )
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None,
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
+        db = _make_db(caster_state, _make_campaign_spell())
+        await _cast_ooc(
+            db=db,
+            injected=_make_injected(caster_state),
+            target_player_user_id=None,
         )
 
         self.assertEqual(caster_state.state_json["deathSaves"]["successes"], 3)
@@ -492,22 +325,7 @@ class OocSelfTargetTests(unittest.IsolatedAsyncioTestCase):
 
 
 class OocInvalidTargetTests(unittest.IsolatedAsyncioTestCase):
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_hp_above_zero_rejected(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_hp_above_zero_rejected(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(
             current_hp=5,
@@ -515,39 +333,16 @@ class OocInvalidTargetTests(unittest.IsolatedAsyncioTestCase):
             player_user_id="target-2",
         )
         target_json_before = dict(target_state.state_json)
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
         with self.assertRaises(HTTPException) as ctx:
-            await cast_spell_out_of_combat(
-                session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-            )
+            await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertIn("0 HP", ctx.exception.detail)
         self.assertEqual(target_state.state_json, target_json_before)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_dead_target_rejected(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_dead_target_rejected(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(
             current_hp=0,
@@ -555,94 +350,61 @@ class OocInvalidTargetTests(unittest.IsolatedAsyncioTestCase):
             player_user_id="target-2",
         )
         target_json_before = dict(target_state.state_json)
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
         with self.assertRaises(HTTPException) as ctx:
-            await cast_spell_out_of_combat(
-                session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-            )
+            await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertIn("mortas", ctx.exception.detail)
         self.assertEqual(target_state.state_json, target_json_before)
 
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_invalid_cast_no_activity_log(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_invalid_cast_no_activity_log(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(
             current_hp=5,
             death_saves={"successes": 0, "failures": 0},
             player_user_id="target-2",
         )
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        injected = _make_injected(caster_state)
 
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
         with self.assertRaises(HTTPException):
-            await cast_spell_out_of_combat(
-                session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-            )
+            await _cast_ooc(db=db, injected=injected)
 
-        mock_record.assert_not_called()
+        injected["record_session_activity"].assert_not_called()
 
 
 class OocResourceSafetyTests(unittest.IsolatedAsyncioTestCase):
-    @patch("app.api.routes.sessions.state.get_session_entry")
-    @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_cantrip_does_not_consume_slot(
-        self, mock_time, mock_record, mock_prune, mock_to_state,
-        mock_publish, mock_finalize, mock_ensure, mock_require, mock_get_entry,
-    ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+    async def test_cantrip_does_not_consume_slot(self):
         caster_state = _make_caster_state(player_user_id="caster-1")
         target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
-        mock_ensure.return_value = caster_state
-        mock_to_state.return_value = MagicMock()
-
-        req = OutOfCombatCastRequest(
-            spellId="spell-std-1", slotLevel=None, targetPlayerUserId="target-2",
-        )
-        await cast_spell_out_of_combat(
-            session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
-        )
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        await _cast_ooc(db=db, injected=_make_injected(caster_state))
 
         slots = caster_state.state_json.get("spellcasting", {}).get("slots", {})
         self.assertEqual(slots, {})
+
+    async def test_no_concentration_group(self):
+        caster_state = _make_caster_state(player_user_id="caster-1")
+        target_state = _make_target_state(current_hp=0, player_user_id="target-2")
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
+        injected = _make_injected(caster_state)
+        await _cast_ooc(db=db, injected=injected)
+
+        mock_record = injected["record_session_activity"]
+        mock_record.assert_called_once()
+        payload = mock_record.call_args.kwargs.get("payload") or mock_record.call_args.args[3]
+        self.assertIsNone(payload.get("concentration_group"))
+
+
+class OocEndpointSmokeTests(unittest.IsolatedAsyncioTestCase):
+    """Smoke test exercising the real endpoint → wrapper → heavy-fn wiring.
+
+    This is the one place still patching `state.X`: it confirms the route resolves
+    the injectable dependencies from the module at call time (defaults preserved),
+    so the thin endpoint keeps working after issue #396.
+    """
 
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
@@ -654,17 +416,18 @@ class OocResourceSafetyTests(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
     @patch("app.api.routes.sessions.state.record_session_activity")
     @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
-    async def test_no_concentration_group(
+    async def test_endpoint_stabilizes_ally(
         self, mock_time, mock_record, mock_prune, mock_to_state,
         mock_publish, mock_finalize, mock_resolve_actor, mock_ensure, mock_require, mock_get_entry,
     ):
-        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
-        mock_get_entry.return_value = entry
-
+        mock_get_entry.return_value = _make_entry()
         caster_state = _make_caster_state(player_user_id="caster-1")
-        target_state = _make_target_state(current_hp=0, player_user_id="target-2")
-        campaign_spell = _make_campaign_spell()
-        db = _make_db(caster_state, campaign_spell, target_state)
+        target_state = _make_target_state(
+            current_hp=0,
+            death_saves={"successes": 1, "failures": 1},
+            player_user_id="target-2",
+        )
+        db = _make_db(caster_state, _make_campaign_spell(), target_state)
         mock_ensure.return_value = caster_state
         mock_to_state.return_value = MagicMock()
 
@@ -675,9 +438,8 @@ class OocResourceSafetyTests(unittest.IsolatedAsyncioTestCase):
             session_id="session-1", req=req, user=_make_user("caster-1"), session=db,
         )
 
+        self.assertEqual(target_state.state_json["deathSaves"]["successes"], 3)
         mock_record.assert_called_once()
-        payload = mock_record.call_args.kwargs.get("payload") or mock_record.call_args.args[3]
-        self.assertIsNone(payload.get("concentration_group"))
 
 
 if __name__ == "__main__":
