@@ -2667,6 +2667,60 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "silent_image",
+      "nameEn": "Silent Image",
+      "namePt": "Imagem Silenciosa",
+      "descriptionEn": "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 15-foot cube. The image appears at a spot within range and lasts for the duration. The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects. You can use your action to cause the image to move to any spot within range. Physical interaction with the image reveals it to be an illusion, because things can pass through it. A creature that uses its action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC. If a creature discerns the illusion for what it is, the creature can see through the image.",
+      "descriptionPt": "Você cria a imagem de um objeto, criatura ou outro fenômeno visível que não seja maior que um cubo de 4,5 metros. A imagem aparece em um ponto dentro do alcance e dura pela duração. A imagem é puramente visual; ela não é acompanhada por som, cheiro ou outros efeitos sensoriais. Você pode usar sua ação para fazer a imagem se mover para qualquer ponto dentro do alcance. Interação física com a imagem revela que ela é uma ilusão, pois coisas podem atravessá-la. Uma criatura que use sua ação para examinar a imagem pode determinar que ela é uma ilusão com um teste bem-sucedido de Inteligência (Investigação) contra a CD da sua magia. Se uma criatura discernir a ilusão pelo que ela é, ela pode enxergar através da imagem.",
+      "level": 1,
+      "school": "illusion",
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Wizard"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 18,
+      "rangeText": "60 feet",
+      "duration": "Concentration, up to 10 minutes",
+      "durationSeconds": 600,
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponent": "a bit of fleece",
+      "materialComponentConsumed": false,
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "utility",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": true,
+      "requiresPointEffect": true,
+      "targetType": "ranged",
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "areaShape": "cube",
+      "sideMeters": 4.5,
+      "persistentArea": {
+        "kind": "illusion",
+        "params": {
+          "illusionKind": "visual_image"
+        }
+      },
+      "outOfCombatCastable": false
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "crown_of_madness",
       "nameEn": "Crown of Madness",
       "namePt": "Coroa da Loucura",

@@ -17,6 +17,7 @@ from .spell_declarative_effects import CombatSpellDeclarativeEffectsMixin
 from .spell_dice_math import CombatSpellDiceMathMixin
 from .spell_lookup import CombatSpellLookupMixin
 from .spells.cast_area_effect import CastAreaEffectMixin
+from .spells.illusions import IllusionsMixin
 from .spells.spell_resolution import SpellResolutionMixin
 from .spells.spell_response import SpellResponseMixin
 from .spells.automation._social_spells import SocialSpellsAutomationMixin
@@ -79,6 +80,7 @@ class CombatService(
     SpellResolutionMixin,
     SpellResponseMixin,
     CastAreaEffectMixin,
+    IllusionsMixin,
     CombatWeaponResolutionMixin,
     CombatPlayerDeathSaveMixin,
     CombatPlayerActionMixin,

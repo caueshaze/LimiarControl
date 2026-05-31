@@ -41,6 +41,12 @@ def _metadata_from_persistent_area(persistent_area: dict[str, Any]) -> dict[str,
             "damage_type": params.get("damageType"),
             "damage_per_meters": _safe_float(params.get("damagePerMeters")),
         }
+    if kind == "illusion":
+        return {
+            "effect_kind": "illusion",
+            "illusion_kind": params.get("illusionKind") or "visual_image",
+            "purely_visual": True,
+        }
     if kind == "no_semantic_effect":
         return {"effect_kind": "spell_area"}
     raise ValueError(f"Unknown persistent area kind: {kind}")
@@ -165,6 +171,11 @@ def active_area_effects_for_map(state: CombatState) -> list[dict[str, Any]]:
             "movementDamageDice": effect.get("movement_damage_dice"),
             "damageType": effect.get("damage_type"),
             "damagePerMeters": effect.get("damage_per_meters"),
+            "illusionKind": effect.get("illusion_kind"),
+            "purelyVisual": effect.get("purely_visual"),
+            "appearance": effect.get("appearance"),
+            "investigationDc": effect.get("investigation_dc"),
+            "discernedByRefIds": effect.get("discerned_by_ref_ids") or [],
         }
         for effect in effects
         if isinstance(effect, dict) and isinstance(effect.get("id"), str)

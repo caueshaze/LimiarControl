@@ -10,6 +10,9 @@ from app.schemas.combat import (
     CombatAreaPreviewResponse,
     CombatCastSpellRequest,
     CombatConditionEscapeRequest,
+    IllusionInvestigateRequest,
+    IllusionUpdateRequest,
+    IllusionRevealRequest,
     CombatMapPreviewState,
     CombatMovementPreviewRequest,
     CombatMovementPreviewResponse,
@@ -222,6 +225,72 @@ async def action_condition_escape(
         manual_roll=req.manual_roll,
         manual_rolls=req.manual_rolls,
         override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/illusions/investigate",
+)
+async def action_illusion_investigate(
+    session_id: str,
+    req: IllusionInvestigateRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_illusion_investigation(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        illusion_id=req.illusion_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        roll_source=req.roll_source,
+        manual_roll=req.manual_roll,
+        manual_rolls=req.manual_rolls,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/illusions/update",
+)
+async def action_illusion_update(
+    session_id: str,
+    req: IllusionUpdateRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_illusion_update(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        illusion_id=req.illusion_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        point=req.point.model_dump() if req.point is not None else None,
+        appearance=req.appearance.model_dump() if req.appearance is not None else None,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/illusions/reveal-by-interaction",
+)
+async def action_illusion_reveal_by_interaction(
+    session_id: str,
+    req: IllusionRevealRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_illusion_reveal_by_interaction(
+        db,
+        session_id,
+        actor_ref_id=req.actor_ref_id,
+        illusion_id=req.illusion_id,
+        is_gm=_is_session_gm(db, session_id, user),
     )
 
 

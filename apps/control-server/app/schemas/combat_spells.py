@@ -67,6 +67,11 @@ class TargetVariantAssignment(BaseModel):
     variant_key: str
 
 
+class IllusionAppearance(BaseModel):
+    description: str
+    category: str = "other"
+
+
 class CombatCastSpellRequest(BaseModel):
     actor_participant_id: Optional[str] = None
     target_ref_id: str | None = None
@@ -122,6 +127,10 @@ class CombatCastSpellRequest(BaseModel):
     concentration_manual_roll: int | None = Field(default=None, ge=1, le=20)
     override_resource_limit: bool = False
     effect_instance_targets: list[EffectInstanceTarget] | None = None
+    illusion_appearance: IllusionAppearance | None = Field(
+        default=None,
+        validation_alias=AliasChoices("illusion_appearance", "illusionAppearance"),
+    )
 
 
 class CombatResolveSpellContextRequest(BaseModel):
@@ -221,6 +230,42 @@ class SpellVariantSummaryPayload(BaseModel):
 class CombatGridCell(BaseModel):
     x: int = Field(ge=0)
     y: int = Field(ge=0)
+
+
+class IllusionInvestigateRequest(BaseModel):
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId", "actorRefId"),
+    )
+    illusion_id: str = Field(
+        validation_alias=AliasChoices("illusion_id", "illusionId"),
+    )
+    roll_source: RollSource = "system"
+    manual_roll: int | None = Field(default=None, ge=1, le=20)
+    manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
+
+
+class IllusionUpdateRequest(BaseModel):
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId", "actorRefId"),
+    )
+    illusion_id: str = Field(
+        validation_alias=AliasChoices("illusion_id", "illusionId"),
+    )
+    point: CombatGridCell | None = None
+    appearance: IllusionAppearance | None = None
+    override_resource_limit: bool = False
+
+
+class IllusionRevealRequest(BaseModel):
+    actor_ref_id: str = Field(
+        validation_alias=AliasChoices("actor_ref_id", "actorRefId"),
+    )
+    illusion_id: str = Field(
+        validation_alias=AliasChoices("illusion_id", "illusionId"),
+    )
 
 
 class CombatAreaTargetOutcome(BaseModel):
