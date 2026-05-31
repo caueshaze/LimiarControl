@@ -9,6 +9,7 @@ import unittest
 from app.models.combat import CombatPhase, CombatState
 from app.services.combat import CombatService
 from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
+from app.services.out_of_combat_cast import check_out_of_combat_cast_eligibility
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
 
@@ -124,6 +125,24 @@ def test_reaction_opportunity_expires_on_turn_boundary():
     changed = CombatService._expire_reaction_opportunities_turn_boundary(state)
     assert changed is True
     assert state.reaction_opportunities == [{"id": "op-2", "status": "used", "kind": "damage_taken"}]
+
+
+def test_hellish_rebuke_not_ooc_castable():
+    spell = SimpleNamespace(
+        canonical_key="hellish_rebuke",
+        out_of_combat_castable=False,
+        level=1,
+        effects_json=[],
+        variants_json=[],
+    )
+    ok, reason = check_out_of_combat_cast_eligibility(
+        spell=spell,
+        state_json={},
+        slot_level=1,
+        variant_key=None,
+    )
+    assert ok is False
+    assert isinstance(reason, str)
 
 
 class TestHellishRebukeResolver(unittest.IsolatedAsyncioTestCase):
@@ -242,6 +261,60 @@ class TestHellishRebukeResolver(unittest.IsolatedAsyncioTestCase):
                     is_gm=False,
                     reaction_opportunity_id="missing",
                     slot_level=1,
+                    actor_participant_id="caster",
+                    override_resource_limit=False,
+                )
+        resources = CombatService._get_turn_resources(state.participants[0])
+        self.assertFalse(resources.get("reaction_used"))
+
+    async def test_hellish_rebuke_rejects_invalid_slot_without_consuming_reaction(self):
+        state = CombatState(
+            id="combat-1",
+            session_id="session-1",
+            phase=CombatPhase.active,
+            round=2,
+            current_turn_index=0,
+            participants=[
+                {
+                    "id": "caster",
+                    "ref_id": "caster-ref",
+                    "kind": "player",
+                    "display_name": "Caster",
+                    "status": "active",
+                    "actor_user_id": "user-1",
+                    "turn_resources": {"reaction_used": False},
+                    "active_effects": [],
+                },
+                {
+                    "id": "attacker",
+                    "ref_id": "attacker-ref",
+                    "kind": "session_entity",
+                    "display_name": "Attacker",
+                    "status": "active",
+                    "active_effects": [],
+                },
+            ],
+            reaction_opportunities=[
+                {
+                    "id": "op-1",
+                    "kind": "damage_taken",
+                    "spell_key": "hellish_rebuke",
+                    "actor_participant_id": "caster",
+                    "source_participant_id": "attacker",
+                    "status": "available",
+                }
+            ],
+        )
+        db = MagicMock()
+        with patch.object(CombatService, "get_state", return_value=state):
+            with self.assertRaises(Exception):
+                await CombatService.resolve_hellish_rebuke_reaction(
+                    db,
+                    "session-1",
+                    actor_user_id="user-1",
+                    is_gm=False,
+                    reaction_opportunity_id="op-1",
+                    slot_level=0,
                     actor_participant_id="caster",
                     override_resource_limit=False,
                 )
