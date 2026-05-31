@@ -38,6 +38,10 @@ class OutOfCombatCastRequest(BaseModel):
     slotLevel: int | None = None
     variantKey: str | None = None
     targetPlayerUserId: str | None = None
+    targetPlayerUserIds: list[str] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetPlayerUserIds", "target_player_user_ids"),
+    )
     consumable_material_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("consumable_material_key", "consumableMaterialKey"),

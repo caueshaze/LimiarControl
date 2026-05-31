@@ -101,6 +101,7 @@ class OocCastContext:
     actor_user: Any
     caster_user_id: str
     target_user_id: str
+    target_user_ids: tuple[str, ...]
     is_ally_target: bool
     cast_by_gm: bool
     caster_state: Any
@@ -118,6 +119,154 @@ class OocCastContext:
     resolve_ooc_activity_target_display_name: Callable
     prune_out_of_combat_session_activity: Callable
     build_ooc_warding_bond_effects: Callable
+
+
+async def _cast_prayer_of_healing_ooc(ctx: OocCastContext) -> SessionStateRead:
+    target_user_ids = list(ctx.target_user_ids)
+    if len(target_user_ids) == 0 and isinstance(ctx.req.targetPlayerUserId, str):
+        target_user_ids = [ctx.req.targetPlayerUserId]
+    if len(target_user_ids) == 0:
+        raise HTTPException(status_code=400, detail="Prayer of Healing requires at least one target.")
+    if len(target_user_ids) > 6:
+        raise HTTPException(status_code=400, detail="Prayer of Healing can target at most 6 creatures.")
+    if len(set(target_user_ids)) != len(target_user_ids):
+        raise HTTPException(status_code=400, detail="Prayer of Healing targets cannot repeat.")
+    if not isinstance(ctx.req.slotLevel, int) or ctx.req.slotLevel < 2:
+        raise HTTPException(status_code=400, detail="slotLevel must be >= 2")
+
+    target_states: list[SessionState] = []
+    target_states_by_user_id: dict[str, SessionState] = {}
+    for target_user_id in target_user_ids:
+        state = ctx.session.exec(
+            select(SessionState).where(
+                SessionState.session_id == ctx.session_id,
+                SessionState.player_user_id == target_user_id,
+            )
+        ).first()
+        if not state:
+            raise HTTPException(status_code=400, detail=f"Target is not a participant in this session: {target_user_id}")
+        target_states.append(state)
+        target_states_by_user_id[target_user_id] = state
+
+    updated_caster_json = dict(ctx.caster_state.state_json or {})
+    try:
+        updated_caster_json = consume_spell_slot(updated_caster_json, ctx.req.slotLevel)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    heal_effects = collect_heal_effects(ctx.campaign_spell, ctx.req.variantKey)
+    heal_rolled = roll_spell_heal_effects(
+        heal_effects,
+        ctx.campaign_spell,
+        ctx.req.slotLevel,
+        updated_caster_json,
+    )
+    if not heal_rolled:
+        raise HTTPException(status_code=400, detail="Prayer of Healing has no heal effects configured.")
+    shared_roll = heal_rolled[0]
+    shared_amount = max(0, int(shared_roll.get("amount") or 0))
+
+    healing_by_target: dict[str, dict[str, int]] = {}
+    unaffected_target_player_user_ids: list[str] = []
+    unaffected_reason_by_target: dict[str, str] = {}
+
+    for target_user_id in target_user_ids:
+        target_state = target_states_by_user_id[target_user_id]
+        target_json = dict(target_state.state_json or {})
+        creature_type = str(target_json.get("creatureType") or "humanoid").strip().lower()
+        if creature_type in {"undead", "construct"}:
+            unaffected_target_player_user_ids.append(target_user_id)
+            unaffected_reason_by_target[target_user_id] = f"excluded_creature_type:{creature_type}"
+            continue
+
+        previous_hp, max_hp = _extract_hp_snapshot(target_json)
+        updated_target_json = _apply_heal_to_state_dict(target_json, shared_amount)
+        new_hp, _ = _extract_hp_snapshot(updated_target_json)
+        healed = max(0, new_hp - previous_hp)
+        healing_by_target[target_user_id] = {
+            "previous_hp": previous_hp,
+            "new_hp": new_hp,
+            "max_hp": max_hp,
+            "healed": healed,
+        }
+        target_state.state_json = ctx.finalize_session_state_data(
+            updated_target_json, game_time_seconds=ctx.current_game_time_seconds
+        )
+        flag_modified(target_state, "state_json")
+        ctx.session.add(target_state)
+
+    ctx.caster_state.state_json = ctx.finalize_session_state_data(
+        updated_caster_json, game_time_seconds=ctx.current_game_time_seconds
+    )
+    flag_modified(ctx.caster_state, "state_json")
+    ctx.session.add(ctx.caster_state)
+
+    actor_member_id, actor_display_name = ctx.resolve_ooc_activity_actor(
+        ctx.entry, ctx.actor_user, ctx.session
+    )
+    if actor_member_id:
+        spell_name = (
+            ctx.campaign_spell.name_pt
+            or ctx.campaign_spell.name_en
+            or ctx.campaign_spell.canonical_key
+        )
+        target_display_names = [
+            ctx.resolve_ooc_activity_target_display_name(ctx.entry, user_id, ctx.session)
+            for user_id in target_user_ids
+        ]
+        payload: dict[str, Any] = {
+            "actor_user_id": ctx.actor_user.id,
+            "actor_player_user_id": ctx.actor_user.id,
+            "actor_display_name": actor_display_name,
+            "caster_player_user_id": ctx.caster_user_id,
+            "caster_display_name": (
+                actor_display_name if ctx.caster_user_id == ctx.actor_user.id else ctx.caster_user_id
+            ),
+            "spell_key": "prayer_of_healing",
+            "spell_name": spell_name,
+            "slot_level": ctx.req.slotLevel,
+            "target_player_user_ids": target_user_ids,
+            "target_display_names": target_display_names,
+            "healing_roll": {
+                "dice": shared_roll.get("effective_dice"),
+                "rolls": shared_roll.get("rolls") or [],
+                "ability_modifier": int(shared_roll.get("modifier") or 0),
+                "total": shared_amount,
+            },
+            "healing_by_target": healing_by_target,
+            "unaffected_target_player_user_ids": unaffected_target_player_user_ids,
+            "unaffected_reason_by_target": unaffected_reason_by_target,
+            "max_targets": 6,
+            "cast_by_gm": ctx.cast_by_gm,
+        }
+        ctx.record_session_activity(
+            ctx.entry,
+            "out_of_combat_spell_cast",
+            ctx.session,
+            member_id=actor_member_id,
+            user_id=ctx.actor_user.id,
+            actor_name=actor_display_name,
+            payload=payload,
+        )
+        ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
+
+    ctx.session.commit()
+    ctx.session.refresh(ctx.caster_state)
+    for target_state in target_states:
+        ctx.session.refresh(target_state)
+
+    states_to_publish: dict[str, SessionState] = {ctx.caster_user_id: ctx.caster_state}
+    for target_state in target_states:
+        states_to_publish[target_state.player_user_id] = target_state
+    for player_id, state in states_to_publish.items():
+        await ctx.publish_state_update(
+            ctx.entry,
+            player_id,
+            state.updated_at or state.created_at,
+            state.state_json if isinstance(state.state_json, dict) else None,
+        )
+
+    return ctx.to_state_read(ctx.caster_state)
 
 
 def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
@@ -560,6 +709,12 @@ async def cast_spell_out_of_combat_for_player(
         raise HTTPException(status_code=404, detail="Session state not found")
 
     # --- Resolve target ---
+    requested_target_user_ids = tuple(
+        user_id
+        for user_id in (req.targetPlayerUserIds or [])
+        if isinstance(user_id, str) and user_id.strip()
+        for user_id in [user_id.strip()]
+    )
     target_user_id = req.targetPlayerUserId or caster_user_id
     is_ally_target = target_user_id != caster_user_id
 
@@ -701,22 +856,23 @@ async def cast_spell_out_of_combat_for_player(
         if normalized_weapon_key not in _SHILLELAGH_ELIGIBLE_WEAPONS:
             raise HTTPException(status_code=400, detail="Bordão Místico só pode afetar porrete ou bordão.")
 
-    target_state_json_for_check = (
-        target_state.state_json if target_state and isinstance(target_state.state_json, dict)
-        else state_json
-    )
-    ok, rejection = check_out_of_combat_cast_eligibility(
-        spell=campaign_spell,
-        state_json=state_json,
-        slot_level=req.slotLevel,
-        variant_key=req.variantKey,
-        out_of_combat_target=campaign_spell.out_of_combat_target,
-        target_user_id=target_user_id,
-        caster_user_id=caster_user_id,
-        target_state_json=target_state_json_for_check,
-    )
-    if not ok:
-        raise HTTPException(status_code=400, detail=rejection)
+    if canonical_key != "prayer_of_healing":
+        target_state_json_for_check = (
+            target_state.state_json if target_state and isinstance(target_state.state_json, dict)
+            else state_json
+        )
+        ok, rejection = check_out_of_combat_cast_eligibility(
+            spell=campaign_spell,
+            state_json=state_json,
+            slot_level=req.slotLevel,
+            variant_key=req.variantKey,
+            out_of_combat_target=campaign_spell.out_of_combat_target,
+            target_user_id=target_user_id,
+            caster_user_id=caster_user_id,
+            target_state_json=target_state_json_for_check,
+        )
+        if not ok:
+            raise HTTPException(status_code=400, detail=rejection)
 
     try:
         validate_spell_material(
@@ -815,6 +971,7 @@ async def cast_spell_out_of_combat_for_player(
     ctx = OocCastContext(
         entry=entry, session=session, session_id=session_id, actor_user=actor_user,
         caster_user_id=caster_user_id, target_user_id=target_user_id,
+        target_user_ids=requested_target_user_ids,
         is_ally_target=is_ally_target, cast_by_gm=cast_by_gm,
         caster_state=caster_state, target_state=target_state,
         campaign_spell=campaign_spell, req=req,
@@ -833,6 +990,8 @@ async def cast_spell_out_of_combat_for_player(
     # --- Warding Bond: two linked effects across caster and target (OOC) ---
     if canonical_key == "warding_bond":
         return await _cast_warding_bond_ooc(ctx)
+    if canonical_key == "prayer_of_healing":
+        return await _cast_prayer_of_healing_ooc(ctx)
 
     # --- Build target effects ---
     caster_spell_save_dc = int(

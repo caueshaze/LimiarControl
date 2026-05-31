@@ -2915,3 +2915,164 @@ class TestOocPersistedFactoryDispatch(unittest.TestCase):
 
     def test_shillelagh_is_not_in_generic_dispatch_registry(self):
         self.assertNotIn("shillelagh", _OOC_PERSISTED_FACTORY_REGISTRY)
+
+
+class TestPrayerOfHealingOoc(unittest.IsolatedAsyncioTestCase):
+    def _build_prayer_setup(self):
+        entry = MagicMock(party_id="party-1", campaign_id="camp-1")
+        campaign_spell = _make_campaign_spell(
+            canonical_key="prayer_of_healing",
+            level=2,
+            concentration=False,
+            effects_json=[
+                {
+                    "type": "heal",
+                    "target": "selected_target",
+                    "params": {"dice": "2d8", "ability_modifier": "spellcasting"},
+                }
+            ],
+            name_pt="Oração de Cura",
+            name_en="Prayer of Healing",
+        )
+        campaign_spell.out_of_combat_target = "multi_ally"
+
+        caster_state = MagicMock()
+        caster_state.session_id = "session-1"
+        caster_state.player_user_id = "caster-1"
+        caster_state.created_at = "2026-01-01T00:00:00+00:00"
+        caster_state.updated_at = None
+        caster_state.state_json = {
+            "currentHP": 12,
+            "maxHP": 20,
+            "spellcasting": {
+                "modifier": 3,
+                "slots": {"2": {"used": 0, "max": 3}},
+                "spells": [{"id": "spell-poh-1", "canonicalKey": "prayer_of_healing", "level": 2, "prepared": True}],
+            },
+        }
+
+        ally_a = MagicMock()
+        ally_a.session_id = "session-1"
+        ally_a.player_user_id = "ally-a"
+        ally_a.created_at = "2026-01-01T00:00:00+00:00"
+        ally_a.updated_at = None
+        ally_a.state_json = {"currentHP": 3, "maxHP": 20, "creatureType": "humanoid"}
+
+        ally_b = MagicMock()
+        ally_b.session_id = "session-1"
+        ally_b.player_user_id = "ally-b"
+        ally_b.created_at = "2026-01-01T00:00:00+00:00"
+        ally_b.updated_at = None
+        ally_b.state_json = {"currentHP": 19, "maxHP": 22, "creatureType": "humanoid"}
+
+        db = MagicMock()
+        first_results = [caster_state, campaign_spell, None, ally_a, ally_b]
+        call_idx = {"i": 0}
+
+        def exec_side_effect(*_args, **_kwargs):
+            idx = call_idx["i"]
+            call_idx["i"] += 1
+            result = MagicMock()
+            result.first.return_value = first_results[idx] if idx < len(first_results) else None
+            result.all.return_value = []
+            return result
+
+        db.exec.side_effect = exec_side_effect
+        return db, entry, caster_state, ally_a, ally_b
+
+    async def test_prayer_of_healing_ooc_multi_target_success(self):
+        db, entry, caster_state, ally_a, ally_b = self._build_prayer_setup()
+        record_activity = MagicMock()
+        publish_state_update = AsyncMock()
+        req = OutOfCombatCastRequest(
+            spellId="spell-poh-1",
+            slotLevel=2,
+            targetPlayerUserIds=["ally-a", "ally-b"],
+        )
+
+        with patch(
+            "app.services.ooc_spell_cast_service.roll_spell_heal_effects",
+            return_value=[{"amount": 15, "target": "selected_target", "effective_dice": "2d8", "rolls": [8, 4], "modifier": 3}],
+        ):
+            await _cast_ooc(
+                entry=entry,
+                req=req,
+                session=db,
+                actor_user=_make_user("caster-1"),
+                caster_user_id="caster-1",
+                ensure_session_state=MagicMock(return_value=caster_state),
+                to_state_read=MagicMock(return_value=caster_state),
+                publish_state_update=publish_state_update,
+                record_session_activity=record_activity,
+                _resolve_ooc_activity_actor=MagicMock(return_value=("member-1", "Caster")),
+                _resolve_ooc_activity_target_display_name=MagicMock(side_effect=lambda _e, user_id, _s: user_id),
+            )
+
+        self.assertEqual(caster_state.state_json["spellcasting"]["slots"]["2"]["used"], 1)
+        self.assertEqual(ally_a.state_json["currentHP"], 18)
+        self.assertEqual(ally_b.state_json["currentHP"], 22)
+        self.assertEqual(record_activity.call_count, 1)
+        payload = record_activity.call_args.kwargs["payload"]
+        self.assertEqual(payload["spell_key"], "prayer_of_healing")
+        self.assertEqual(payload["target_player_user_ids"], ["ally-a", "ally-b"])
+        self.assertEqual(payload["healing_roll"]["total"], 15)
+        self.assertEqual(payload["healing_by_target"]["ally-a"]["healed"], 15)
+        self.assertEqual(payload["healing_by_target"]["ally-b"]["healed"], 3)
+        self.assertEqual(publish_state_update.await_count, 3)
+
+    async def test_prayer_of_healing_rejects_more_than_six_targets_without_spending_slot(self):
+        db, entry, caster_state, _ally_a, _ally_b = self._build_prayer_setup()
+        req = OutOfCombatCastRequest(
+            spellId="spell-poh-1",
+            slotLevel=2,
+            targetPlayerUserIds=["a", "b", "c", "d", "e", "f", "g"],
+        )
+        with self.assertRaises(Exception) as exc:
+            await _cast_ooc(
+                entry=entry,
+                req=req,
+                session=db,
+                actor_user=_make_user("caster-1"),
+                caster_user_id="caster-1",
+                ensure_session_state=MagicMock(return_value=caster_state),
+                to_state_read=MagicMock(return_value=caster_state),
+                _resolve_ooc_activity_actor=MagicMock(return_value=("member-1", "Caster")),
+            )
+        self.assertEqual(getattr(exc.exception, "status_code", None), 400)
+        self.assertEqual(caster_state.state_json["spellcasting"]["slots"]["2"]["used"], 0)
+
+    async def test_prayer_of_healing_marks_construct_as_unaffected(self):
+        db, entry, caster_state, ally_a, ally_b = self._build_prayer_setup()
+        ally_b.state_json["creatureType"] = "construct"
+        record_activity = MagicMock()
+        req = OutOfCombatCastRequest(
+            spellId="spell-poh-1",
+            slotLevel=2,
+            targetPlayerUserIds=["ally-a", "ally-b"],
+        )
+
+        with patch(
+            "app.services.ooc_spell_cast_service.roll_spell_heal_effects",
+            return_value=[{"amount": 10, "target": "selected_target", "effective_dice": "2d8", "rolls": [5, 2], "modifier": 3}],
+        ):
+            await _cast_ooc(
+                entry=entry,
+                req=req,
+                session=db,
+                actor_user=_make_user("caster-1"),
+                caster_user_id="caster-1",
+                ensure_session_state=MagicMock(return_value=caster_state),
+                to_state_read=MagicMock(return_value=caster_state),
+                record_session_activity=record_activity,
+                _resolve_ooc_activity_actor=MagicMock(return_value=("member-1", "Caster")),
+                _resolve_ooc_activity_target_display_name=MagicMock(side_effect=lambda _e, user_id, _s: user_id),
+            )
+
+        self.assertEqual(ally_a.state_json["currentHP"], 13)
+        self.assertEqual(ally_b.state_json["currentHP"], 19)
+        payload = record_activity.call_args.kwargs["payload"]
+        self.assertEqual(payload["unaffected_target_player_user_ids"], ["ally-b"])
+        self.assertEqual(
+            payload["unaffected_reason_by_target"]["ally-b"],
+            "excluded_creature_type:construct",
+        )
