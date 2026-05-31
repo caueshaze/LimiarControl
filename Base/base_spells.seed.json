@@ -4512,6 +4512,60 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "prayer_of_healing",
+      "nameEn": "Prayer of Healing",
+      "namePt": "Oração de Cura",
+      "descriptionEn": "Up to six creatures of your choice that you can see within range each regain hit points equal to 2d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs.",
+      "descriptionPt": "Até seis criaturas à sua escolha que você possa ver dentro do alcance recuperam pontos de vida iguais a 2d8 + seu modificador de habilidade de conjuração. Esta magia não tem efeito sobre mortos-vivos ou construtos.",
+      "level": 2,
+      "school": "evocation",
+      "classesJson": ["Cleric"],
+      "castingTimeType": "minutes",
+      "castingTime": "10 minutes",
+      "rangeMeters": 9,
+      "rangeText": "30 ft",
+      "duration": "Instantaneous",
+      "durationSeconds": 0,
+      "componentsJson": ["V"],
+      "concentration": false,
+      "ritual": false,
+      "resolutionType": "heal",
+      "healDice": "2d8",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": true,
+      "requiresTargetEffect": true,
+      "requiresPointSight": false,
+      "requiresPointEffect": false,
+      "targetType": "ranged",
+      "maxTargets": 6,
+      "selectionType": "multi_creature",
+      "originType": "caster",
+      "targetAnchor": "selected_targets",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "immediate",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "multi_ally",
+      "upcast": {
+        "mode": "extra_heal_dice",
+        "dice": "1d8",
+        "perLevel": 1
+      },
+      "effects": [
+        {
+          "type": "heal",
+          "target": "selected_target",
+          "params": {
+            "dice": "2d8",
+            "ability_modifier": "spellcasting"
+          }
+        }
+      ]
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "fireball",
       "nameEn": "Fireball",
       "namePt": "Bola de Fogo",

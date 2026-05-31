@@ -127,6 +127,14 @@ class SpellTargetingSemanticsTests(unittest.TestCase):
                 "range_kind": "self",
                 "effect_timing": "triggered",
             },
+            "prayer_of_healing": {
+                "selection_type": "multi_creature",
+                "origin_type": "caster",
+                "target_anchor": "selected_targets",
+                "attack_type": "none",
+                "range_kind": "distance",
+                "effect_timing": "immediate",
+            },
         }
 
         for canonical_key, expected in cases.items():

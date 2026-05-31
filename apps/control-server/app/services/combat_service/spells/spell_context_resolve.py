@@ -384,6 +384,21 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
             "grantsExtraMovement": False,
             "outOfCombatCastable": False,
         },
+        "prayer_of_healing": {
+            "type": "healing",
+            "subtype": "prayer_of_healing",
+            "healingDice": "2d8",
+            "healingAbilityModifier": True,
+            "upcastHealingDicePerSlot": "1d8",
+            "maxTargets": 6,
+            "castingTimeSeconds": 600,
+            "combatLongCast": True,
+            "requiresActionEachTurn": True,
+            "requiresConcentrationDuringCasting": True,
+            "excludedCreatureTypes": ["undead", "construct"],
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "multi_ally",
+        },
     }
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {

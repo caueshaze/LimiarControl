@@ -83,6 +83,12 @@ def _build_attacker_state() -> SessionState:
                         "level": 1,
                         "prepared": True,
                     },
+                    {
+                        "name": "Prayer of Healing",
+                        "canonicalKey": "prayer_of_healing",
+                        "level": 2,
+                        "prepared": True,
+                    },
                 ],
                 "slots": {
                     "1": {"used": 0, "max": 4},
@@ -239,6 +245,37 @@ class ResolveSpellContextTests(unittest.TestCase):
         self.assertEqual(result["upcast_added_instances"], 2)
         self.assertEqual(result["upcast_instance_effect_dice"], "1d4+1")
         self.assertEqual(result["damage_preview"], "5d4+5")
+
+    def test_resolves_prayer_of_healing_utility_metadata(self):
+        result = self._resolve(
+            CombatResolveSpellContextRequest(
+                actor_participant_id="p1",
+                spell_canonical_key="prayer_of_healing",
+                spell_mode="heal",
+                slot_level=2,
+            ),
+            _catalog_spell(
+                canonical_key="prayer_of_healing",
+                name_en="Prayer of Healing",
+                name_pt="Oração de Cura",
+                level=2,
+                resolution_type="heal",
+                heal_dice="2d8",
+                max_targets=6,
+                casting_time_type="action",
+                casting_time="10 minutes",
+                selection_type="multi_creature",
+                target_anchor="selected_targets",
+            ),
+        )
+
+        utility = result.get("utility") or {}
+        self.assertTrue(utility.get("combatLongCast"))
+        self.assertEqual(utility.get("castingTimeSeconds"), 600)
+        self.assertEqual(utility.get("maxTargets"), 6)
+        self.assertTrue(utility.get("requiresActionEachTurn"))
+        self.assertTrue(utility.get("requiresConcentrationDuringCasting"))
+        self.assertEqual(utility.get("excludedCreatureTypes"), ["undead", "construct"])
 
     def test_resolves_eldritch_blast_level_5_effect_instance_count_2(self):
         result = self._resolve(
