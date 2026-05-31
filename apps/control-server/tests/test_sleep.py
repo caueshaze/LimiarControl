@@ -162,13 +162,13 @@ class SleepCastBase(TestCombatServiceBase):
             return pool_total
 
         with patch(
-            "app.services.combat_service.spells.cast_area.get_game_time_seconds",
+            "app.services.combat_service.spells.cast_area_sleep.get_game_time_seconds",
             return_value=1000,
         ), patch(
-            "app.services.combat_service.spells.cast_area._roll_dice_expression",
+            "app.services.combat_service.spells.cast_area_sleep._roll_dice_expression",
             side_effect=_roll,
         ), patch(
-            "app.services.combat_service.spells.cast_area.has_condition_immunity_from_source",
+            "app.services.combat_service.spells.cast_area_sleep.has_condition_immunity_from_source",
             return_value=False,
         ), patch(
             "app.services.combat.CombatService._get_target_hp_snapshot",
@@ -289,13 +289,13 @@ class SleepExclusionTests(SleepCastBase):
             return participant["ref_id"] == "gob-2" and condition == "charmed"
 
         with patch(
-            "app.services.combat_service.spells.cast_area.has_condition_immunity_from_source",
+            "app.services.combat_service.spells.cast_area_sleep.has_condition_immunity_from_source",
             side_effect=_immune,
         ), patch(
-            "app.services.combat_service.spells.cast_area.get_game_time_seconds",
+            "app.services.combat_service.spells.cast_area_sleep.get_game_time_seconds",
             return_value=1000,
         ), patch(
-            "app.services.combat_service.spells.cast_area._roll_dice_expression",
+            "app.services.combat_service.spells.cast_area_sleep._roll_dice_expression",
             return_value=50,
         ), patch(
             "app.services.combat.CombatService._get_target_hp_snapshot",

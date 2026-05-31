@@ -140,14 +140,11 @@ class WaterCastBase(TestCombatServiceBase):
     async def _cast(self, *, water_payload, slot_level=1, cells=None):
         cells = cells if cells is not None else [{"x": 10, "y": 10}]
         with patch(
-            "app.services.combat_service.spells.cast_area.get_game_time_seconds",
-            return_value=1000,
-        ), patch(
             "app.services.combat.CombatService._emit_state", new_callable=AsyncMock,
         ), patch(
             "app.services.combat.CombatService._emit_and_persist_log", new_callable=AsyncMock,
         ), patch(
-            "app.services.combat_service.spells.cast_area.maybe_sync_active_area_effects_to_limiar_map",
+            "app.services.combat_service.spells.cast_area_water.maybe_sync_active_area_effects_to_limiar_map",
         ):
             return await CombatService._cast_create_or_destroy_water(
                 self.db,

@@ -354,14 +354,14 @@ class CombatLifecycleInitiativeMixin(CombatServiceHostProtocol):
             raise CombatServiceError("Selected tactical map is missing an image", 400)
         if campaign_map.grid_width is None or campaign_map.grid_height is None:
             raise CombatServiceError("Selected tactical map is missing grid dimensions", 400)
-        calibration = CampaignMapCalibration(
-            x=campaign_map.calibration_x if campaign_map.calibration_x is not None else 0,
-            y=campaign_map.calibration_y if campaign_map.calibration_y is not None else 0,
-            width=campaign_map.calibration_width if campaign_map.calibration_width is not None else 1,
-            height=campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
-        )
-        obstacles = decode_obstacles(getattr(campaign_map, "obstacles_json", None))
         try:
+            calibration = CampaignMapCalibration(
+                x=campaign_map.calibration_x if campaign_map.calibration_x is not None else 0,
+                y=campaign_map.calibration_y if campaign_map.calibration_y is not None else 0,
+                width=campaign_map.calibration_width if campaign_map.calibration_width is not None else 1,
+                height=campaign_map.calibration_height if campaign_map.calibration_height is not None else 1,
+            )
+            obstacles = decode_obstacles(getattr(campaign_map, "obstacles_json", None))
             selection = CombatMapSelection(
                 kind="campaign_map",
                 mapId=campaign_map.id,

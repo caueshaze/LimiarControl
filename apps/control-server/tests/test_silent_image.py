@@ -159,7 +159,7 @@ class SilentImageCastTests(TestCombatServiceBase):
             "app.services.combat_service.spells.cast_area.consume_spell_material",
             return_value=material_ok,
         ), patch(
-            "app.services.combat_service.spells.cast_area.get_game_time_seconds",
+            "app.services.combat_service.spells.cast_area_silent_image.get_game_time_seconds",
             return_value=1000,
         ), patch(
             "app.services.combat.CombatService._get_stats",
@@ -171,7 +171,7 @@ class SilentImageCastTests(TestCombatServiceBase):
             "app.services.combat.CombatService._emit_and_persist_log",
             new_callable=AsyncMock,
         ), patch(
-            "app.services.combat_service.spells.cast_area.maybe_sync_active_area_effects_to_limiar_map",
+            "app.services.combat_service.spells.cast_area_silent_image.maybe_sync_active_area_effects_to_limiar_map",
         ):
             return await CombatService._cast_area_spell(
                 self.db,

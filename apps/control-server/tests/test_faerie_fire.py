@@ -163,7 +163,7 @@ class FaerieFireCastTests(TestCombatServiceBase):
             "app.services.combat_service.spells.cast_area.consume_spell_material",
             return_value=material_ok,
         ), patch(
-            "app.services.combat_service.spells.cast_area.resolve_saving_throw",
+            "app.services.combat_service.spells.cast_area_faerie_fire.resolve_saving_throw",
             return_value=roll_result,
         ), patch(
             "app.services.combat.CombatService._build_roll_actor_stats_for_save",
@@ -239,7 +239,7 @@ class FaerieFireCastTests(TestCombatServiceBase):
             "app.services.combat_service.spells.cast_area.consume_spell_material",
             return_value=material_ok,
         ), patch(
-            "app.services.combat_service.spells.cast_area.resolve_saving_throw",
+            "app.services.combat_service.spells.cast_area_faerie_fire.resolve_saving_throw",
             return_value=roll_result,
         ), patch(
             "app.services.combat.CombatService._build_roll_actor_stats_for_save",
