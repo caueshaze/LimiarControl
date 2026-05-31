@@ -131,6 +131,10 @@ class CombatCastSpellRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("illusion_appearance", "illusionAppearance"),
     )
+    water_payload: "WaterPayload | None" = Field(
+        default=None,
+        validation_alias=AliasChoices("water_payload", "waterPayload", "effectPayload"),
+    )
 
 
 class CombatResolveSpellContextRequest(BaseModel):
@@ -245,6 +249,25 @@ class SpellVariantSummaryPayload(BaseModel):
 class CombatGridCell(BaseModel):
     x: int = Field(ge=0)
     y: int = Field(ge=0)
+
+
+class WaterPayload(BaseModel):
+    mode: str
+    target_kind: str = Field(
+        validation_alias=AliasChoices("target_kind", "targetKind"),
+    )
+    point: CombatGridCell | None = None
+    description: str | None = None
+    container_description: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("container_description", "containerDescription"),
+    )
+    environment_target_description: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "environment_target_description", "environmentTargetDescription"
+        ),
+    )
 
 
 class IllusionInvestigateRequest(BaseModel):

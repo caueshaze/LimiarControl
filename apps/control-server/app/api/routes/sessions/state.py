@@ -712,6 +712,7 @@ async def _cast_spell_out_of_combat_for_player(
                 else None
             ),
             spell_save_dc=caster_spell_save_dc if caster_spell_save_dc > 0 else None,
+            slot_level=req.slotLevel,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -37,6 +37,7 @@ OOC_NARRATIVE_UTILITY_SPELLS = {
     "comprehend_languages",
     "purify_food_and_drink",
     "spare_the_dying",
+    "create_or_destroy_water",
 }
 
 OOC_FACTORY_EFFECT_SPELLS = {
@@ -248,6 +249,7 @@ def build_persisted_effects(
     weapon_canonical_key: str | None = None,
     weapon_name: str | None = None,
     spell_save_dc: int | None = None,
+    slot_level: int | None = None,
 ) -> list[dict]:
     """Build the list of persisted effect dicts for an out-of-combat cast.
 
@@ -483,6 +485,53 @@ def build_persisted_effects(
                         "harmless_natural_effect",
                         "ignite_or_extinguish_small_flame",
                     ],
+                },
+                "display_label": spell_name,
+            }]
+        if canonical_key == "create_or_destroy_water":
+            from app.services.create_or_destroy_water import (
+                VARIANT_MODE_MAP,
+                resolve_water_amount,
+            )
+
+            spell_name = spell.name_pt or spell.name_en
+            mode = VARIANT_MODE_MAP.get(variant_key or "create_water", "create")
+            effective_slot = slot_level if slot_level is not None else spell.level
+            gallons, liters = resolve_water_amount(effective_slot)
+            return [{
+                "id": str(uuid4()),
+                "source_participant_id": None,
+                "kind": "spell_effect",
+                "condition_type": None,
+                "numeric_value": None,
+                "duration_type": "timed",
+                "remaining_rounds": None,
+                "expires_on": None,
+                "expires_at_participant_id": None,
+                "created_at_game_time_seconds": game_time_seconds,
+                "expires_at_game_time_seconds": game_time_seconds,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {
+                    "source_spell_key": "create_or_destroy_water",
+                    "source_spell_name": spell_name,
+                    "selected_variant_key": variant_key,
+                    "selected_variant_label": None,
+                    "context_origin": "out_of_combat_cast",
+                    "concentration": False,
+                    "caster_player_user_id": caster_user_id,
+                    "target_player_user_id": target_user_id,
+                    "owner_participant_id": caster_user_id,
+                    "created_by_participant_id": caster_user_id,
+                    "mechanical": False,
+                    "narrative": True,
+                    "instantaneous": True,
+                    "visible_to_all": True,
+                    "utility": "create_or_destroy_water",
+                    "spell_level": 1,
+                    "mode": mode,
+                    "target_kind": "container",
+                    "gallons": gallons,
+                    "liters": liters,
                 },
                 "display_label": spell_name,
             }]
