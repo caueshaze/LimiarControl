@@ -384,6 +384,29 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
             "grantsExtraMovement": False,
             "outOfCombatCastable": False,
         },
+        "hellish_rebuke": {
+            "type": "reaction_damage",
+            "subtype": "hellish_rebuke",
+            "requiresConcentration": False,
+            "outOfCombatCastable": False,
+            "reaction": {
+                "trigger": "damaged_by_visible_creature_within_range",
+                "requiresDamageTaken": True,
+                "requiresVisibleSource": True,
+                "requiresCreatureSource": True,
+                "rangeMeters": 18,
+                "consumesReaction": True,
+            },
+            "save": {
+                "ability": "dexterity",
+                "effect": "half_damage",
+            },
+            "damage": {
+                "dice": "2d10",
+                "type": "fire",
+                "upcastDicePerSlotAboveBase": "1d10",
+            },
+        },
         "prayer_of_healing": {
             "type": "healing",
             "subtype": "prayer_of_healing",
