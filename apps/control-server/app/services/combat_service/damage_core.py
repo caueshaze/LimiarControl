@@ -228,6 +228,13 @@ class CombatDamageCoreMixin:
                     manual_roll=concentration_manual_roll,
                 )
                 if state:
+                    if cls._interrupt_pending_spell_cast_after_damage(
+                        state,
+                        participant_id=target_participant.get("id") if isinstance(target_participant, dict) else None,
+                        concentration_check=concentration_check,
+                        new_hp=cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
+                    ):
+                        flag_modified(state, "pending_spell_casts")
                     flag_modified(state, "participants")
                     db.add(state)
                 if attacker_participant_id and amount > 0 and target_participant is not None:
@@ -282,6 +289,13 @@ class CombatDamageCoreMixin:
                 manual_roll=concentration_manual_roll,
             )
             if state:
+                if cls._interrupt_pending_spell_cast_after_damage(
+                    state,
+                    participant_id=target_participant.get("id") if isinstance(target_participant, dict) else None,
+                    concentration_check=concentration_check,
+                    new_hp=cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
+                ):
+                    flag_modified(state, "pending_spell_casts")
                 flag_modified(state, "participants")
                 db.add(state)
             if attacker_participant_id and amount > 0 and target_participant is not None:
@@ -329,6 +343,13 @@ class CombatDamageCoreMixin:
             manual_roll=concentration_manual_roll,
         )
         if state:
+            if cls._interrupt_pending_spell_cast_after_damage(
+                state,
+                participant_id=target_participant.get("id") if isinstance(target_participant, dict) else None,
+                concentration_check=concentration_check,
+                new_hp=target_model.current_hp,
+            ):
+                flag_modified(state, "pending_spell_casts")
             flag_modified(state, "participants")
             db.add(state)
         if attacker_participant_id and amount > 0 and target_participant is not None:

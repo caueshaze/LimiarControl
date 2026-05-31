@@ -14,7 +14,7 @@ from app.services.spell_effect_factories import SpellEffectBuildContext
 from app.services.spell_keys import normalize_spell_key
 
 from .condition_effects import resolve_spell_attack_kind
-from .exceptions import CombatServiceError
+from .exceptions import CombatServiceError, _roll_dice_expression
 from .host_protocol import CombatServiceHostProtocol
 
 logger = logging.getLogger(__name__)
@@ -354,6 +354,42 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
         ]
         state.pending_spell_casts = casts
         return pending
+
+    @classmethod
+    def _interrupt_pending_spell_cast_after_damage(
+        cls,
+        state: CombatState,
+        *,
+        participant_id: str | None,
+        concentration_check: dict | None,
+        new_hp: int | None,
+    ) -> bool:
+        if not participant_id:
+            return False
+        should_interrupt = False
+        if isinstance(concentration_check, dict) and concentration_check.get("success") is False:
+            should_interrupt = True
+        if isinstance(new_hp, int) and new_hp <= 0:
+            should_interrupt = True
+        if not should_interrupt:
+            return False
+        pending_ids = [
+            str(pending.get("id"))
+            for pending in cls._list_pending_spell_casts(state)
+            if isinstance(pending, dict)
+            and pending.get("status") == "casting"
+            and pending.get("caster_participant_id") == participant_id
+            and pending.get("requires_concentration_during_casting") is True
+        ]
+        if not pending_ids:
+            return False
+        for pending_id in pending_ids:
+            cls._cancel_pending_spell_cast(
+                state,
+                pending_cast_id=pending_id,
+                reason="concentration_failed_or_zero_hp",
+            )
+        return True
 
     @classmethod
     def _build_combat_spell_effect_context(
@@ -740,7 +776,16 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
         pending["completed_rounds"] = completed_rounds
         pending["remaining_rounds"] = max(0, required_rounds - completed_rounds)
         pending["maintained_this_turn"] = True
-        pending["status"] = "ready_to_complete" if pending["remaining_rounds"] == 0 else "casting"
+        pending["status"] = "casting"
+
+        completion_payload = None
+        if pending["remaining_rounds"] == 0:
+            completion_payload = cls._complete_prayer_of_healing_long_cast(
+                db,
+                session_id,
+                state=state,
+                pending=pending,
+            )
 
         flag_modified(state, "participants")
         flag_modified(state, "pending_spell_casts")
@@ -760,7 +805,7 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
                 "overridden_resource": "action" if was_overridden else None,
             },
         )
-        return {
+        response = {
             "maintained": True,
             "actionConsumed": True,
             "isOverride": was_overridden,
@@ -770,6 +815,95 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             "requiredRounds": required_rounds,
             "completedRounds": pending["completed_rounds"],
             "remainingRounds": pending["remaining_rounds"],
+        }
+        if completion_payload is not None:
+            response["completion"] = completion_payload
+        return response
+
+    @classmethod
+    def _complete_prayer_of_healing_long_cast(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        pending: dict,
+    ) -> dict:
+        caster_ref_id = str(pending.get("caster_ref_id") or "")
+        caster_participant = next(
+            (participant for participant in (state.participants or []) if participant.get("id") == pending.get("caster_participant_id")),
+            None,
+        )
+        if not isinstance(caster_participant, dict) or not caster_ref_id:
+            raise CombatServiceError("Pending cast has invalid caster context.", 400)
+        caster_model, *_stats = cls._get_stats(db, caster_ref_id, "player", session_id)
+        spell_mod = cls._safe_int(_stats[3] if len(_stats) >= 4 else 0, 0)
+        slot_level = max(2, cls._safe_int(pending.get("slot_level"), 2))
+        dice_count = 2 + max(0, slot_level - 2)
+        healing_dice = f"{dice_count}d8"
+        healing_rolls, rolled_total = _roll_dice_expression(healing_dice)
+        healing_total = max(0, rolled_total + spell_mod)
+
+        affected: list[str] = []
+        healing_by_target: dict[str, dict[str, int]] = {}
+        unaffected: dict[str, str] = {}
+        out_of_range_target_ref_ids: list[str] = []
+        local_distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+        caster_distances = local_distances.get(caster_ref_id) if isinstance(local_distances.get(caster_ref_id), dict) else {}
+        target_ref_ids = [ref_id for ref_id in (pending.get("target_ref_ids") or []) if isinstance(ref_id, str)]
+
+        for target_ref_id in target_ref_ids:
+            target_participant = next(
+                (participant for participant in (state.participants or []) if participant.get("ref_id") == target_ref_id),
+                None,
+            )
+            if not isinstance(target_participant, dict):
+                unaffected[target_ref_id] = "target_missing"
+                continue
+            distance = caster_distances.get(target_ref_id) if isinstance(caster_distances, dict) else None
+            if isinstance(distance, (int, float)) and distance > 9:
+                unaffected[target_ref_id] = "out_of_range"
+                out_of_range_target_ref_ids.append(target_ref_id)
+                continue
+            creature_type = cls.resolve_effective_creature_type(db, session_id, target_participant)
+            if creature_type in {"undead", "construct"}:
+                unaffected[target_ref_id] = f"excluded_creature_type:{creature_type}"
+                continue
+
+            target_kind = str(target_participant.get("kind") or "")
+            if target_kind != "player":
+                unaffected[target_ref_id] = "unsupported_target_kind"
+                continue
+            target_model, *_ = cls._get_stats(db, target_ref_id, target_kind, session_id)
+            data = cls._as_dict(target_model.state_json)
+            previous_hp = max(0, cls._safe_int(data.get("currentHP"), 0))
+            max_hp = max(previous_hp, cls._safe_int(data.get("maxHP"), previous_hp))
+            new_hp = min(max_hp, previous_hp + healing_total)
+            healed = max(0, new_hp - previous_hp)
+            data["currentHP"] = new_hp
+            target_model.state_json = data
+            db.add(target_model)
+            affected.append(target_ref_id)
+            healing_by_target[target_ref_id] = {
+                "previous_hp": previous_hp,
+                "new_hp": new_hp,
+                "max_hp": max_hp,
+                "healed": healed,
+            }
+
+        cls._complete_pending_spell_cast(state, pending_cast_id=str(pending.get("id")))
+        flag_modified(state, "pending_spell_casts")
+        return {
+            "spell_key": "prayer_of_healing",
+            "healing_dice": healing_dice,
+            "healing_rolls": healing_rolls,
+            "spellcasting_modifier": spell_mod,
+            "healing_total": healing_total,
+            "affected_target_ref_ids": affected,
+            "healing_by_target": healing_by_target,
+            "unaffected_targets": unaffected,
+            "range_validation": "best_effort",
+            "out_of_range_target_ref_ids": out_of_range_target_ref_ids,
         }
 
     @classmethod
