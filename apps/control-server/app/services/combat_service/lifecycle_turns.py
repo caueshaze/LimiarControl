@@ -396,6 +396,12 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             resources["crown_of_madness_forced_attack_skipped"] = False
             incoming["turn_resources"] = resources
         await cls._process_recurring_temp_hp(db, session_id, state, incoming)
+        await cls.resolve_moonbeam_start_turn(
+            db,
+            session_id,
+            state=state,
+            participant=incoming,
+        )
         from app.services.warding_bond import break_warding_bonds_exceeding_distance
 
         broken_bonds = break_warding_bonds_exceeding_distance(state)

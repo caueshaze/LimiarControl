@@ -83,6 +83,19 @@ class HellishRebukeRequest(BaseModel):
     )
 
 
+class MoonbeamTriggerEnterRequest(BaseModel):
+    area_effect_id: str = Field(
+        validation_alias=AliasChoices("area_effect_id", "areaEffectId"),
+    )
+    target_ref_id: str = Field(
+        validation_alias=AliasChoices("target_ref_id", "targetRefId"),
+    )
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId"),
+    )
+
+
 router = APIRouter()
 
 
@@ -425,6 +438,27 @@ async def action_hellish_rebuke(
         slot_level=req.slot_level,
         actor_participant_id=req.actor_participant_id,
         override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spells/moonbeam/trigger-enter",
+)
+async def action_moonbeam_trigger_enter(
+    session_id: str,
+    req: MoonbeamTriggerEnterRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None
+    return await CombatService.resolve_moonbeam_enter_trigger(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        area_effect_id=req.area_effect_id,
+        target_ref_id=req.target_ref_id,
+        actor_participant_id=req.actor_participant_id,
     )
 
 

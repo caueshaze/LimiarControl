@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from uuid import uuid4
+from typing import Any
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
@@ -568,6 +569,328 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             "reaction_opportunity_id": reaction_opportunity_id,
             "reaction_consumed": True,
             "slot_consumed": True,
+        }
+
+    @classmethod
+    def _list_active_area_effects(cls, state: CombatState) -> list[dict]:
+        effects = getattr(state, "active_area_effects", None)
+        if not isinstance(effects, list):
+            state.active_area_effects = []
+            return state.active_area_effects
+        return effects
+
+    @classmethod
+    def _find_active_area_effect(
+        cls,
+        state: CombatState,
+        *,
+        effect_id: str,
+    ) -> dict | None:
+        for effect in cls._list_active_area_effects(state):
+            if isinstance(effect, dict) and effect.get("id") == effect_id:
+                return effect
+        return None
+
+    @classmethod
+    def _is_participant_in_area_effect(
+        cls,
+        effect: dict[str, Any],
+        participant: dict[str, Any],
+    ) -> bool:
+        affected = effect.get("affected_cells")
+        if not isinstance(affected, list) or not affected:
+            return False
+        position = participant.get("position")
+        if not isinstance(position, dict):
+            return False
+        x = position.get("x")
+        y = position.get("y")
+        if not isinstance(x, int) or not isinstance(y, int):
+            return False
+        return any(
+            isinstance(cell, dict)
+            and isinstance(cell.get("x"), int)
+            and isinstance(cell.get("y"), int)
+            and cell.get("x") == x
+            and cell.get("y") == y
+            for cell in affected
+        )
+
+    @classmethod
+    def _moonbeam_dedup_key(
+        cls,
+        *,
+        target_participant_id: str,
+        round_value: int,
+        turn_index: int,
+        trigger: str,
+    ) -> str:
+        return f"{target_participant_id}:{round_value}:{turn_index}:{trigger}"
+
+    @classmethod
+    def _moonbeam_has_applied_this_turn(
+        cls,
+        effect: dict[str, Any],
+        *,
+        target_participant_id: str,
+        round_value: int,
+        turn_index: int,
+        trigger: str,
+    ) -> bool:
+        turn_applied = effect.get("turn_applied")
+        if not isinstance(turn_applied, dict):
+            return False
+        key = cls._moonbeam_dedup_key(
+            target_participant_id=target_participant_id,
+            round_value=round_value,
+            turn_index=turn_index,
+            trigger=trigger,
+        )
+        return bool(turn_applied.get(key))
+
+    @classmethod
+    def _moonbeam_mark_applied(
+        cls,
+        effect: dict[str, Any],
+        *,
+        target_participant_id: str,
+        round_value: int,
+        turn_index: int,
+        trigger: str,
+    ) -> None:
+        turn_applied = effect.get("turn_applied")
+        if not isinstance(turn_applied, dict):
+            turn_applied = {}
+            effect["turn_applied"] = turn_applied
+        key = cls._moonbeam_dedup_key(
+            target_participant_id=target_participant_id,
+            round_value=round_value,
+            turn_index=turn_index,
+            trigger=trigger,
+        )
+        turn_applied[key] = True
+
+    @classmethod
+    async def _resolve_moonbeam_damage_trigger(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        effect: dict[str, Any],
+        target_participant: dict[str, Any],
+        trigger: str,
+        actor_user_id: str | None,
+    ) -> dict | None:
+        if trigger not in {"start_turn", "enter_first_time_on_turn"}:
+            raise CombatServiceError("Invalid Moonbeam trigger.", 400)
+        target_participant_id = str(target_participant.get("id") or "")
+        if not target_participant_id:
+            return None
+
+        round_value = cls._safe_int(getattr(state, "round", 0), 0)
+        turn_index = cls._safe_int(getattr(state, "current_turn_index", 0), 0)
+        if cls._moonbeam_has_applied_this_turn(
+            effect,
+            target_participant_id=target_participant_id,
+            round_value=round_value,
+            turn_index=turn_index,
+            trigger=trigger,
+        ):
+            return None
+
+        caster = next(
+            (
+                participant
+                for participant in (state.participants or [])
+                if participant.get("id") == effect.get("caster_participant_id")
+            ),
+            None,
+        )
+        if not isinstance(caster, dict):
+            return None
+
+        _actor_model, _ac, _atk_bonus, _spell_mod, _prof, spell_save_dc = cls._get_stats(
+            db,
+            caster.get("ref_id"),
+            caster.get("kind"),
+            session_id,
+            combat_state=state,
+        )
+        save_mod = modify_saving_throw(
+            target_participant,
+            "constitution",
+            source_participant=caster,
+            source_kind="participant",
+        )
+        roll_result = resolve_saving_throw(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                target_participant.get("ref_id"),
+                target_participant.get("kind"),
+                target_participant.get("display_name") or "Alvo",
+            ),
+            ability="constitution",
+            advantage_mode=save_mod.result,
+            dc=cls._safe_int(spell_save_dc, 10),
+            roll_source="system",
+        )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
+        is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+        slot_level = max(2, cls._safe_int(effect.get("slot_level"), 2))
+        damage_dice_count = 2 + max(0, slot_level - 2)
+        damage_dice = f"{damage_dice_count}d10"
+        _rolls, rolled_total = _roll_dice_expression(damage_dice)
+        applied_damage = rolled_total if not is_saved else rolled_total // 2
+        new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+            db,
+            state,
+            target_participant.get("ref_id"),
+            target_participant.get("kind"),
+            applied_damage,
+            attacker_participant_id=caster.get("id"),
+            damage_type="radiant",
+        )
+        cls._moonbeam_mark_applied(
+            effect,
+            target_participant_id=target_participant_id,
+            round_value=round_value,
+            turn_index=turn_index,
+            trigger=trigger,
+        )
+        await cls._emit_log(
+            session_id,
+            {
+                "message": (
+                    f"{target_participant.get('display_name', 'Alvo')} sofreu {applied_damage} de dano radiante "
+                    f"de Raio Lunar ({trigger}).{effect_msg}"
+                ),
+                "source": "moonbeam",
+                "actorUserId": actor_user_id,
+                "spellCanonicalKey": "moonbeam",
+                "effectId": effect.get("id"),
+                "trigger": trigger,
+            },
+        )
+        return {
+            "target_ref_id": target_participant.get("ref_id"),
+            "target_display_name": target_participant.get("display_name"),
+            "is_saved": is_saved,
+            "save_dc": cls._safe_int(spell_save_dc, 10),
+            "damage_dice": damage_dice,
+            "rolled_damage": rolled_total,
+            "applied_damage": applied_damage,
+            "new_hp": new_hp,
+            "previous_hp": previous_hp,
+            "concentration_check": concentration_check,
+            "roll_result": roll_result,
+            "trigger": trigger,
+        }
+
+    @classmethod
+    async def resolve_moonbeam_start_turn(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        participant: dict[str, Any],
+    ) -> list[dict]:
+        results: list[dict] = []
+        for effect in cls._list_active_area_effects(state):
+            if not isinstance(effect, dict):
+                continue
+            if effect.get("effect_kind") != "moonbeam":
+                continue
+            if not cls._is_participant_in_area_effect(effect, participant):
+                continue
+            outcome = await cls._resolve_moonbeam_damage_trigger(
+                db,
+                session_id,
+                state=state,
+                effect=effect,
+                target_participant=participant,
+                trigger="start_turn",
+                actor_user_id=None,
+            )
+            if isinstance(outcome, dict):
+                results.append(outcome)
+        if results:
+            flag_modified(state, "active_area_effects")
+            flag_modified(state, "participants")
+            db.add(state)
+            db.commit()
+            db.refresh(state)
+            await cls._emit_state(session_id, state)
+        return results
+
+    @classmethod
+    async def resolve_moonbeam_enter_trigger(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_user_id: str,
+        is_gm: bool,
+        area_effect_id: str,
+        target_ref_id: str,
+        actor_participant_id: str | None = None,
+    ) -> dict:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+        _actor = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)
+
+        effect = cls._find_active_area_effect(state, effect_id=area_effect_id)
+        if not isinstance(effect, dict) or effect.get("effect_kind") != "moonbeam":
+            raise CombatServiceError("Moonbeam area effect not found.", 404)
+        target = next(
+            (
+                participant
+                for participant in (state.participants or [])
+                if participant.get("ref_id") == target_ref_id
+            ),
+            None,
+        )
+        if not isinstance(target, dict):
+            raise CombatServiceError("Moonbeam target not found.", 404)
+        if not cls._is_participant_in_area_effect(effect, target):
+            raise CombatServiceError("Moonbeam target is not inside the area.", 400)
+
+        outcome = await cls._resolve_moonbeam_damage_trigger(
+            db,
+            session_id,
+            state=state,
+            effect=effect,
+            target_participant=target,
+            trigger="enter_first_time_on_turn",
+            actor_user_id=actor_user_id,
+        )
+        if outcome is None:
+            return {
+                "spell_key": "moonbeam",
+                "area_effect_id": area_effect_id,
+                "target_ref_id": target_ref_id,
+                "skipped": True,
+                "reason": "already_applied_for_trigger_on_turn",
+            }
+
+        flag_modified(state, "active_area_effects")
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+        return {
+            "spell_key": "moonbeam",
+            "area_effect_id": area_effect_id,
+            **outcome,
         }
 
     @classmethod
