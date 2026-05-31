@@ -326,6 +326,11 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             state,
             outgoing,
         )
+        await cls._resolve_pending_spell_cast_maintenance_on_turn_end(
+            session_id,
+            state,
+            outgoing,
+        )
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
@@ -373,6 +378,11 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             await cls._emit_log(session_id, {"message": f"Spell anchor '{label}' expired (start of {incoming['display_name']}'s turn).", "source": "effect_expired"})
         cls._activate_deferred_spell_effects(state, incoming["id"])
         cls._reset_turn_resources(incoming)
+        if cls._reset_pending_spell_cast_maintenance_turn_start(
+            state,
+            participant_id=incoming["id"],
+        ):
+            flag_modified(state, "pending_spell_casts")
         pending_crown_forced_attack = cls._apply_crown_of_madness_turn_start_state(
             state,
             incoming,

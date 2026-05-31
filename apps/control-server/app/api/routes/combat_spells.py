@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 from sqlmodel import Session
 
 from app.api.deps import get_current_user, get_session
@@ -55,6 +55,14 @@ class CrownOfMadnessForcedAttackRequest(BaseModel):
 class CrownOfMadnessMaintainRequest(BaseModel):
     actor_participant_id: str | None = None
     target_ref_id: str
+    override_resource_limit: bool = False
+
+
+class MaintainCastRequest(BaseModel):
+    pending_cast_id: str = Field(
+        validation_alias=AliasChoices("pending_cast_id", "pendingCastId"),
+    )
+    actor_participant_id: str | None = None
     override_resource_limit: bool = False
 
 
@@ -356,6 +364,27 @@ async def action_crown_of_madness_maintain(
         is_gm=_is_session_gm(db, session_id, user),
         actor_participant_id=req.actor_participant_id,
         target_ref_id=req.target_ref_id,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/spells/maintain-cast",
+)
+async def action_maintain_pending_spell_cast(
+    session_id: str,
+    req: MaintainCastRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_pending_spell_cast_maintain(
+        db,
+        session_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        actor_participant_id=req.actor_participant_id,
+        pending_cast_id=req.pending_cast_id,
         override_resource_limit=req.override_resource_limit,
     )
 

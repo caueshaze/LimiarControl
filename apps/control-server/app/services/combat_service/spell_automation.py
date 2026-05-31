@@ -690,3 +690,149 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             "area_target_outcomes": [],
             "target_count": len(target_ref_ids),
         }
+
+    @classmethod
+    async def resolve_pending_spell_cast_maintain(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_user_id: str,
+        is_gm: bool,
+        actor_participant_id: str | None,
+        pending_cast_id: str,
+        override_resource_limit: bool = False,
+    ) -> dict:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+        actor = cls._resolve_actor_participant(state, actor_user_id, is_gm, actor_participant_id)
+        cls._require_actor_status(actor, ("active",), "Only active participants can maintain a spell cast.")
+        pending = cls._find_pending_spell_cast(state, pending_cast_id=pending_cast_id)
+        if not isinstance(pending, dict) or pending.get("status") != "casting":
+            raise CombatServiceError("Pending spell cast not found.", 404)
+        if cls._normalize_spell_automation_key(pending.get("spell_key")) != "prayer_of_healing":
+            raise CombatServiceError("Pending spell cast type is not supported by this endpoint yet.", 400)
+
+        caster_participant_id = str(pending.get("caster_participant_id") or "")
+        caster = next((p for p in (state.participants or []) if p.get("id") == caster_participant_id), None)
+        if not isinstance(caster, dict):
+            raise CombatServiceError("Pending spell cast has an invalid caster.", 400)
+        if actor.get("id") != caster_participant_id and not is_gm:
+            raise CombatServiceError("Only the original caster can maintain this spell cast.", 403)
+        current_participant = cls._get_current_participant(state)
+        if current_participant.get("id") != caster_participant_id:
+            raise CombatServiceError("Pending spell cast can only be maintained on the caster's turn.", 400)
+        cls._require_actor_status(caster, ("active",), "Caster must be active to maintain the spell cast.")
+        cls._require_action_capable(caster)
+        if pending.get("maintained_this_turn") is True:
+            raise CombatServiceError("This pending cast was already maintained this turn.", 400)
+
+        was_overridden = cls._consume_turn_resource(
+            caster,
+            "action",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+        required_rounds = max(1, cls._safe_int(pending.get("required_rounds"), 100))
+        completed_rounds = min(required_rounds, cls._safe_int(pending.get("completed_rounds"), 0) + 1)
+        pending["completed_rounds"] = completed_rounds
+        pending["remaining_rounds"] = max(0, required_rounds - completed_rounds)
+        pending["maintained_this_turn"] = True
+        pending["status"] = "ready_to_complete" if pending["remaining_rounds"] == 0 else "casting"
+
+        flag_modified(state, "participants")
+        flag_modified(state, "pending_spell_casts")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+        await cls._emit_log(
+            session_id,
+            {
+                "message": (
+                    f"{caster.get('display_name', 'Conjurador')} manteve a conjuração de "
+                    f"{pending.get('spell_name') or 'magia'} ({pending['completed_rounds']}/{required_rounds})."
+                ),
+                "source": "long_casting",
+                "is_override": was_overridden,
+                "overridden_resource": "action" if was_overridden else None,
+            },
+        )
+        return {
+            "maintained": True,
+            "actionConsumed": True,
+            "isOverride": was_overridden,
+            "pendingCastId": pending_cast_id,
+            "spellKey": pending.get("spell_key"),
+            "status": pending.get("status"),
+            "requiredRounds": required_rounds,
+            "completedRounds": pending["completed_rounds"],
+            "remainingRounds": pending["remaining_rounds"],
+        }
+
+    @classmethod
+    def _reset_pending_spell_cast_maintenance_turn_start(
+        cls,
+        state: CombatState,
+        *,
+        participant_id: str,
+    ) -> bool:
+        changed = False
+        for pending in cls._list_pending_spell_casts(state):
+            if not isinstance(pending, dict):
+                continue
+            if pending.get("status") != "casting":
+                continue
+            if pending.get("caster_participant_id") != participant_id:
+                continue
+            if pending.get("requires_action_each_turn") is not True:
+                continue
+            if pending.get("maintained_this_turn") is True:
+                pending["maintained_this_turn"] = False
+                changed = True
+        return changed
+
+    @classmethod
+    async def _resolve_pending_spell_cast_maintenance_on_turn_end(
+        cls,
+        session_id: str,
+        state: CombatState,
+        outgoing: dict,
+    ) -> None:
+        outgoing_participant_id = outgoing.get("id")
+        if not isinstance(outgoing_participant_id, str) or not outgoing_participant_id:
+            return
+        to_cancel: list[str] = []
+        for pending in cls._list_pending_spell_casts(state):
+            if not isinstance(pending, dict):
+                continue
+            if pending.get("status") != "casting":
+                continue
+            if pending.get("caster_participant_id") != outgoing_participant_id:
+                continue
+            if pending.get("requires_action_each_turn") is not True:
+                continue
+            if pending.get("maintained_this_turn") is True:
+                continue
+            to_cancel.append(str(pending.get("id")))
+        if not to_cancel:
+            return
+        for pending_cast_id in to_cancel:
+            cls._cancel_pending_spell_cast(
+                state,
+                pending_cast_id=pending_cast_id,
+                reason="missed_maintain_action",
+            )
+        flag_modified(state, "pending_spell_casts")
+        await cls._emit_log(
+            session_id,
+            {
+                "message": (
+                    f"{outgoing.get('display_name', 'Conjurador')} perdeu a manutenção de conjuração longa, "
+                    "encerrando a magia."
+                ),
+                "source": "long_casting",
+            },
+        )
