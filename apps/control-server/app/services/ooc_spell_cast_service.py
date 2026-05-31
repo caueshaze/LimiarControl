@@ -65,6 +65,20 @@ from app.api.routes.sessions.state_common import (
 
 _SHILLELAGH_ELIGIBLE_WEAPONS = {"club", "quarterstaff"}
 
+# Self-stacking OOC spells: recasting replaces the prior instance (they are not
+# concentration spells, so the orchestrator de-dups the previous effect before
+# applying the new one). This is a subset of the builder-level
+# OOC_SPECIAL_INPUT_SPELLS + OOC_FACTORY_EFFECT_SPELLS. ``scope`` selects which
+# state the prior effect is stripped from ("caster" = always the caster; "target"
+# = the resolved target, falling back to the caster for self-cast). ``payload``
+# holds the static fields each spell adds to its activity-log entry.
+_SELF_STACKING_OOC_SPELLS: dict[str, dict] = {
+    "shillelagh":   {"scope": "caster"},
+    "jump":         {"scope": "target", "payload": {"jump_distance_multiplier": 3, "duration_seconds": 60}},
+    "spider_climb": {"scope": "target", "payload": {"movement_mode": "spider_climb", "duration_seconds": 3600}},
+    "barkskin":     {"scope": "target", "payload": {"armor_class_floor": 16, "duration_seconds": 3600}},
+}
+
 # Sentinel for injectable dependencies on ``cast_spell_out_of_combat_for_player``
 # (issue #396): distinguishes "caller did not inject" from a legitimately falsy
 # override, so the unset case can be resolved from this module at call time.
@@ -88,6 +102,31 @@ def _apply_temp_hp_to_state_dict(data: dict, amount: int) -> dict:
     previous = max(0, int(data.get("tempHP") or 0))
     final = max(previous, amount)
     return {**data, "tempHP": final}
+
+
+def _strip_effects_by_source_spell_key(state_json: dict, spell_key: str) -> tuple[dict, bool]:
+    """Return ``(new_json, was_present)`` with prior ``active_spell_effects`` whose
+    ``metadata.source_spell_key`` matches ``spell_key`` removed.
+
+    Makes non-concentration self-stacking OOC spells idempotent on recast. Drops
+    the ``active_spell_effects`` key entirely when nothing remains (preserving the
+    original behavior). The input dict is not mutated.
+    """
+    result = dict(state_json)
+    existing_effects = list(result.get("active_spell_effects") or [])
+    replaced = False
+    filtered_effects = []
+    for effect in existing_effects:
+        metadata = effect.get("metadata") if isinstance(effect, dict) else None
+        if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == spell_key:
+            replaced = True
+            continue
+        filtered_effects.append(effect)
+    if filtered_effects:
+        result["active_spell_effects"] = filtered_effects
+    else:
+        result.pop("active_spell_effects", None)
+    return result, replaced
 
 
 async def cast_spell_out_of_combat_for_player(
@@ -361,81 +400,27 @@ async def cast_spell_out_of_combat_for_player(
 
     # --- Spend slot and clear caster concentration ---
     updated_caster_json = dict(state_json)
-    replaced_shillelagh = False
-    replaced_jump = False
-    replaced_spider_climb = False
-    replaced_barkskin = False
     updated_target_json: dict | None = None
-    if canonical_key == "shillelagh":
-        existing_effects = list(updated_caster_json.get("active_spell_effects") or [])
-        filtered_effects = []
-        for effect in existing_effects:
-            metadata = effect.get("metadata") if isinstance(effect, dict) else None
-            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "shillelagh":
-                replaced_shillelagh = True
-                continue
-            filtered_effects.append(effect)
-        if filtered_effects:
-            updated_caster_json["active_spell_effects"] = filtered_effects
-        else:
-            updated_caster_json.pop("active_spell_effects", None)
-    elif canonical_key == "jump":
-        base_target_json = (
-            dict(target_state.state_json or {})
-            if is_ally_target and target_state is not None
-            else dict(updated_caster_json)
-        )
-        existing_effects = list(base_target_json.get("active_spell_effects") or [])
-        filtered_effects = []
-        for effect in existing_effects:
-            metadata = effect.get("metadata") if isinstance(effect, dict) else None
-            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "jump":
-                replaced_jump = True
-                continue
-            filtered_effects.append(effect)
-        if filtered_effects:
-            base_target_json["active_spell_effects"] = filtered_effects
-        else:
-            base_target_json.pop("active_spell_effects", None)
-        updated_target_json = base_target_json
-    elif canonical_key == "spider_climb":
-        base_target_json = (
-            dict(target_state.state_json or {})
-            if is_ally_target and target_state is not None
-            else dict(updated_caster_json)
-        )
-        existing_effects = list(base_target_json.get("active_spell_effects") or [])
-        filtered_effects = []
-        for effect in existing_effects:
-            metadata = effect.get("metadata") if isinstance(effect, dict) else None
-            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "spider_climb":
-                replaced_spider_climb = True
-                continue
-            filtered_effects.append(effect)
-        if filtered_effects:
-            base_target_json["active_spell_effects"] = filtered_effects
-        else:
-            base_target_json.pop("active_spell_effects", None)
-        updated_target_json = base_target_json
-    elif canonical_key == "barkskin":
-        base_target_json = (
-            dict(target_state.state_json or {})
-            if is_ally_target and target_state is not None
-            else dict(updated_caster_json)
-        )
-        existing_effects = list(base_target_json.get("active_spell_effects") or [])
-        filtered_effects = []
-        for effect in existing_effects:
-            metadata = effect.get("metadata") if isinstance(effect, dict) else None
-            if isinstance(metadata, dict) and str(metadata.get("source_spell_key") or "").strip().lower() == "barkskin":
-                replaced_barkskin = True
-                continue
-            filtered_effects.append(effect)
-        if filtered_effects:
-            base_target_json["active_spell_effects"] = filtered_effects
-        else:
-            base_target_json.pop("active_spell_effects", None)
-        updated_target_json = base_target_json
+    # Self-stacking spells (shillelagh/jump/spider_climb/barkskin): strip any prior
+    # instance so recasting replaces rather than stacks. ``scope`` decides which
+    # state to de-dup; ``replaced_self_stacking`` feeds the per-spell activity log.
+    replaced_self_stacking: dict[str, bool] = {}
+    _self_stacking_spec = _SELF_STACKING_OOC_SPELLS.get(canonical_key)
+    if _self_stacking_spec is not None:
+        if _self_stacking_spec["scope"] == "caster":
+            updated_caster_json, _replaced = _strip_effects_by_source_spell_key(
+                updated_caster_json, canonical_key
+            )
+        else:  # "target"
+            base_target_json = (
+                dict(target_state.state_json or {})
+                if is_ally_target and target_state is not None
+                else dict(updated_caster_json)
+            )
+            updated_target_json, _replaced = _strip_effects_by_source_spell_key(
+                base_target_json, canonical_key
+            )
+        replaced_self_stacking[canonical_key] = _replaced
 
     if spell_level > 0 and req.slotLevel is not None:
         try:
@@ -1030,8 +1015,11 @@ async def cast_spell_out_of_combat_for_player(
                 {"base_dice": thr["base_dice"], "upcast_bonus": thr["upcast_bonus"], "total": thr["amount"]}
                 for thr in temp_hp_rolled
             ]
+        _self_stacking_spec = _SELF_STACKING_OOC_SPELLS.get(canonical_key)
+        if _self_stacking_spec is not None:
+            activity_payload[f"replaced_{canonical_key}"] = replaced_self_stacking.get(canonical_key, False)
+            activity_payload.update(_self_stacking_spec.get("payload", {}))
         if canonical_key == "shillelagh":
-            activity_payload["replaced_shillelagh"] = replaced_shillelagh
             activity_payload["weapon_item_id"] = weapon_item_id
             activity_payload["weapon_canonical_key"] = (
                 getattr(shillelagh_weapon_catalog_item, "canonical_key_snapshot", None)
@@ -1043,18 +1031,6 @@ async def cast_spell_out_of_combat_for_player(
                 if shillelagh_weapon_catalog_item is not None
                 else None
             )
-        if canonical_key == "jump":
-            activity_payload["replaced_jump"] = replaced_jump
-            activity_payload["jump_distance_multiplier"] = 3
-            activity_payload["duration_seconds"] = 60
-        if canonical_key == "spider_climb":
-            activity_payload["replaced_spider_climb"] = replaced_spider_climb
-            activity_payload["movement_mode"] = "spider_climb"
-            activity_payload["duration_seconds"] = 3600
-        if canonical_key == "barkskin":
-            activity_payload["replaced_barkskin"] = replaced_barkskin
-            activity_payload["armor_class_floor"] = 16
-            activity_payload["duration_seconds"] = 3600
         record_session_activity(
             entry,
             "out_of_combat_spell_cast",
