@@ -287,25 +287,25 @@ class FalseLifeRollTempHpTests(unittest.TestCase):
 
 class FalseLifeTempHpPolicyTests(unittest.TestCase):
     def test_apply_temp_hp_new(self):
-        from app.api.routes.sessions.state import _apply_temp_hp_to_state_dict
+        from app.services.ooc_spell_cast_service import _apply_temp_hp_to_state_dict
         state = {"currentHP": 10, "maxHP": 20}
         result = _apply_temp_hp_to_state_dict(state, 7)
         self.assertEqual(result["tempHP"], 7)
 
     def test_apply_temp_hp_keep_higher(self):
-        from app.api.routes.sessions.state import _apply_temp_hp_to_state_dict
+        from app.services.ooc_spell_cast_service import _apply_temp_hp_to_state_dict
         state = {"currentHP": 10, "maxHP": 20, "tempHP": 12}
         result = _apply_temp_hp_to_state_dict(state, 7)
         self.assertEqual(result["tempHP"], 12)
 
     def test_apply_temp_hp_replace_lower(self):
-        from app.api.routes.sessions.state import _apply_temp_hp_to_state_dict
+        from app.services.ooc_spell_cast_service import _apply_temp_hp_to_state_dict
         state = {"currentHP": 10, "maxHP": 20, "tempHP": 3}
         result = _apply_temp_hp_to_state_dict(state, 7)
         self.assertEqual(result["tempHP"], 7)
 
     def test_apply_temp_hp_does_not_heal_real_hp(self):
-        from app.api.routes.sessions.state import _apply_temp_hp_to_state_dict
+        from app.services.ooc_spell_cast_service import _apply_temp_hp_to_state_dict
         state = {"currentHP": 5, "maxHP": 20}
         result = _apply_temp_hp_to_state_dict(state, 10)
         self.assertEqual(result["currentHP"], 5)

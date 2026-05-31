@@ -4,12 +4,14 @@ from typing import Sequence
 from uuid import uuid4
 
 from fastapi import HTTPException
+from sqlalchemy import delete
 from sqlmodel import Session as DbSession, select
 
 from app.api.serializers.item import to_item_read
+from app.models.campaign_member import CampaignMember
 from app.models.inventory import InventoryItem
 from app.models.party import Party
-from app.models.party_member import PartyMember
+from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.roll_event import RollEvent
 from app.models.session import Session, SessionStatus
 from app.models.session_command_event import SessionCommandEvent
@@ -291,3 +293,92 @@ def record_session_activity(
     )
     db.add(entry)
     return entry
+
+
+# ---------------------------------------------------------------------------
+# Out-of-combat activity helpers (issue #396)
+#
+# Shared by the thin routes in ``state.py`` and by the orchestration service
+# ``app.services.ooc_spell_cast_service``. They live here (a neutral, cycle-free
+# module) so both sides import them top-level without re-creating the
+# state.py ↔ service circular import.
+# ---------------------------------------------------------------------------
+
+OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES = (
+    "out_of_combat_spell_cast",
+    "out_of_combat_effect_removed",
+)
+OUT_OF_COMBAT_ACTIVITY_CAP = 50
+
+
+def _resolve_ooc_activity_actor(entry, user, session: DbSession) -> tuple[str | None, str]:
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == user.id,
+        )
+    ).first()
+    member_id = getattr(member, "id", None) if member else None
+    actor_display_name = getattr(member, "display_name", None) if member else None
+    resolved_member_id = member_id if isinstance(member_id, str) and member_id else None
+    resolved_actor = actor_display_name if isinstance(actor_display_name, str) and actor_display_name else user.id
+    return resolved_member_id, resolved_actor
+
+
+def _resolve_ooc_activity_target_display_name(entry, player_user_id: str, session: DbSession) -> str:
+    member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == player_user_id,
+        )
+    ).first()
+    display_name = getattr(member, "display_name", None) if member else None
+    if isinstance(display_name, str) and display_name.strip():
+        return display_name.strip()
+    return player_user_id
+
+
+def _require_session_participant(entry, session: DbSession, player_user_id: str, *, label: str) -> None:
+    if entry.party_id:
+        party_member = session.exec(
+            select(PartyMember).where(
+                PartyMember.party_id == entry.party_id,
+                PartyMember.user_id == player_user_id,
+                PartyMember.status == PartyMemberStatus.JOINED,
+            )
+        ).first()
+        if not party_member:
+            raise HTTPException(status_code=400, detail=f"{label} is not a participant in this session")
+        return
+
+    campaign_member = session.exec(
+        select(CampaignMember).where(
+            CampaignMember.campaign_id == entry.campaign_id,
+            CampaignMember.user_id == player_user_id,
+        )
+    ).first()
+    if not campaign_member:
+        raise HTTPException(status_code=400, detail=f"{label} is not a participant in this session")
+
+
+def _prune_out_of_combat_session_activity(session: DbSession, session_id: str) -> None:
+    stale_event_ids = [
+        event_id
+        for event_id in session.exec(
+            select(SessionCommandEvent.id)
+            .where(
+                SessionCommandEvent.session_id == session_id,
+                SessionCommandEvent.command_type.in_(OUT_OF_COMBAT_ACTIVITY_EVENT_TYPES),  # type: ignore[arg-type]
+            )
+            .order_by(SessionCommandEvent.created_at.desc(), SessionCommandEvent.id.desc())
+            .offset(OUT_OF_COMBAT_ACTIVITY_CAP)
+        ).all()
+        if isinstance(event_id, str) and event_id
+    ]
+    if not stale_event_ids:
+        return
+    session.exec(
+        delete(SessionCommandEvent).where(
+            SessionCommandEvent.id.in_(stale_event_ids),  # type: ignore[arg-type]
+        )
+    )

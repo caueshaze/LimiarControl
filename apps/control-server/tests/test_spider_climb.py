@@ -9,7 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
 
-from app.api.routes.sessions.state import _cast_spell_out_of_combat_for_player
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
+)
 from app.models.combat import CombatPhase, CombatState
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.combat import CombatService, CombatServiceError
@@ -266,15 +268,15 @@ class SpiderClimbOocTests(unittest.IsolatedAsyncioTestCase):
             {"spellId": "spell-sc", "slotLevel": 2, "targetPlayerUserId": "ally-user"}
         )
         with (
-            patch("app.api.routes.sessions.state.ensure_session_state", side_effect=[caster_state, ally_state]),
-            patch("app.api.routes.sessions.state.check_out_of_combat_cast_eligibility", return_value=(True, None)),
-            patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda data, **_: data),
-            patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=200),
-            patch("app.api.routes.sessions.state.clear_concentration_group_across_session", return_value=[]),
-            patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=(None, None)),
-            patch("app.api.routes.sessions.state.flag_modified"),
-            patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock),
-            patch("app.api.routes.sessions.state.to_state_read", side_effect=lambda s: s),
+            patch("app.services.ooc_spell_cast_service.ensure_session_state", side_effect=[caster_state, ally_state]),
+            patch("app.services.ooc_spell_cast_service.check_out_of_combat_cast_eligibility", return_value=(True, None)),
+            patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda data, **_: data),
+            patch("app.services.ooc_spell_cast_service.get_game_time_seconds", return_value=200),
+            patch("app.services.ooc_spell_cast_service.clear_concentration_group_across_session", return_value=[]),
+            patch("app.services.ooc_spell_cast_service._resolve_ooc_activity_actor", return_value=(None, None)),
+            patch("app.services.ooc_spell_cast_service.flag_modified"),
+            patch("app.services.ooc_spell_cast_service.publish_state_update", new_callable=AsyncMock),
+            patch("app.services.ooc_spell_cast_service.to_state_read", side_effect=lambda s: s),
         ):
             await _cast_spell_out_of_combat_for_player(
                 entry=entry,
@@ -328,8 +330,8 @@ class SpiderClimbOocTests(unittest.IsolatedAsyncioTestCase):
         session.exec.side_effect = [q1, q2]
         req = OutOfCombatCastRequest.model_validate({"spellId": "spell-sc", "slotLevel": 2})
         with (
-            patch("app.api.routes.sessions.state.ensure_session_state", return_value=caster_state),
-            patch("app.api.routes.sessions.state.check_out_of_combat_cast_eligibility", return_value=(False, "No spell slot of level 2 remaining")),
+            patch("app.services.ooc_spell_cast_service.ensure_session_state", return_value=caster_state),
+            patch("app.services.ooc_spell_cast_service.check_out_of_combat_cast_eligibility", return_value=(False, "No spell slot of level 2 remaining")),
         ):
             with self.assertRaises(HTTPException):
                 await _cast_spell_out_of_combat_for_player(

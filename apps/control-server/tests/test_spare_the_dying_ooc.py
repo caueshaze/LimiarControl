@@ -14,10 +14,10 @@ from app.services.out_of_combat_cast import (
     check_out_of_combat_cast_eligibility,
     has_castable_effects,
 )
-from app.api.routes.sessions.state import (
-    _cast_spell_out_of_combat_for_player,
-    cast_spell_out_of_combat,
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
 )
+from app.api.routes.sessions.state import cast_spell_out_of_combat
 
 
 _SEED_PATH = os.path.abspath(
@@ -408,14 +408,14 @@ class OocEndpointSmokeTests(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state._resolve_ooc_activity_actor", return_value=("member-1", "Caster One"))
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update", new_callable=AsyncMock)
-    @patch("app.api.routes.sessions.state.to_state_read")
-    @patch("app.api.routes.sessions.state._prune_out_of_combat_session_activity")
-    @patch("app.api.routes.sessions.state.record_session_activity")
-    @patch("app.api.routes.sessions.state.get_game_time_seconds", return_value=100)
+    @patch("app.services.ooc_spell_cast_service.ensure_session_state")
+    @patch("app.services.ooc_spell_cast_service._resolve_ooc_activity_actor", return_value=("member-1", "Caster One"))
+    @patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
+    @patch("app.services.ooc_spell_cast_service.publish_state_update", new_callable=AsyncMock)
+    @patch("app.services.ooc_spell_cast_service.to_state_read")
+    @patch("app.services.ooc_spell_cast_service._prune_out_of_combat_session_activity")
+    @patch("app.services.ooc_spell_cast_service.record_session_activity")
+    @patch("app.services.ooc_spell_cast_service.get_game_time_seconds", return_value=100)
     async def test_endpoint_stabilizes_ally(
         self, mock_time, mock_record, mock_prune, mock_to_state,
         mock_publish, mock_finalize, mock_resolve_actor, mock_ensure, mock_require, mock_get_entry,

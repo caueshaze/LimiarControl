@@ -6,7 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
 
-from app.api.routes.sessions.state import _cast_spell_out_of_combat_for_player
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
+)
 from app.schemas.session_state import OutOfCombatCastRequest
 from app.services.out_of_combat_cast import _is_ooc_utility_spell, build_persisted_effects
 
@@ -110,7 +112,7 @@ class ShillelaghOocRouteGuardTests(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-        with patch("app.api.routes.sessions.state.ensure_session_state", return_value=state):
+        with patch("app.services.ooc_spell_cast_service.ensure_session_state", return_value=state):
             with self.assertRaises(HTTPException) as ctx:
                 await _cast_spell_out_of_combat_for_player(
                     entry=entry,

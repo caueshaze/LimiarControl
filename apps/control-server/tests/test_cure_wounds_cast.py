@@ -319,7 +319,7 @@ class RollSpellHealEffectsTests(unittest.TestCase):
 class ApplyHealToStateDictTests(unittest.TestCase):
     def setUp(self):
         # Import the private helper from routes (testing internal logic)
-        from app.api.routes.sessions.state import _apply_heal_to_state_dict
+        from app.services.ooc_spell_cast_service import _apply_heal_to_state_dict
         self._apply = _apply_heal_to_state_dict
 
     def test_heals_hp_correctly(self):
@@ -352,9 +352,9 @@ class ApplyHealToStateDictTests(unittest.TestCase):
         mock_form.max_hp = 34
         healed_state = {**state, "wildShape": {**state["wildShape"], "formCurrentHP": 9}}
 
-        with patch("app.api.routes.sessions.state.is_wild_shape_active", return_value=True, create=True), \
-             patch("app.api.routes.sessions.state.get_form", return_value=mock_form), \
-             patch("app.api.routes.sessions.state.apply_healing_to_form", return_value=healed_state):
+        with patch("app.services.ooc_spell_cast_service.is_wild_shape_active", return_value=True, create=True), \
+             patch("app.services.ooc_spell_cast_service.get_form", return_value=mock_form), \
+             patch("app.services.ooc_spell_cast_service.apply_healing_to_form", return_value=healed_state):
             result = self._apply(state, 4)
 
         self.assertEqual(result["wildShape"]["formCurrentHP"], 9)

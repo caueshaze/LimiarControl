@@ -16,9 +16,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import ValidationError
 
 import app.services.out_of_combat_cast as out_of_combat_cast
+# Issue #396: the OOC orchestration now lives in the service module. Behavior tests
+# call it directly (aliased to the old private name to keep `_cast_ooc` unchanged and
+# avoid clashing with the still-imported `state.cast_spell_out_of_combat_for_player`
+# *route*). `_prune_out_of_combat_session_activity` moved to `_shared`.
+from app.services.ooc_spell_cast_service import (
+    cast_spell_out_of_combat_for_player as _cast_spell_out_of_combat_for_player,
+)
+from app.api.routes.sessions._shared import _prune_out_of_combat_session_activity
 from app.api.routes.sessions.state import (
-    _cast_spell_out_of_combat_for_player,
-    _prune_out_of_combat_session_activity,
     cast_spell_out_of_combat_for_player,
     cast_spell_out_of_combat,
     list_out_of_combat_castable_spells_for_player,
@@ -807,10 +813,10 @@ class TestCastEndpointSmoke(unittest.IsolatedAsyncioTestCase):
 
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_view_access")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update")
-    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.services.ooc_spell_cast_service.ensure_session_state")
+    @patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
+    @patch("app.services.ooc_spell_cast_service.publish_state_update")
+    @patch("app.services.ooc_spell_cast_service.to_state_read")
     async def test_self_cast_endpoint_wires_through_to_heavy_fn(
         self, mock_to_state, mock_pub, mock_fin, mock_ensure, mock_req, mock_entry
     ):
@@ -2417,10 +2423,10 @@ class TestGmOutOfCombatCastingEndpoints(unittest.IsolatedAsyncioTestCase):
     @patch("app.api.routes.sessions.state.get_session_entry")
     @patch("app.api.routes.sessions.state.require_session_gm")
     @patch("app.api.routes.sessions.state._require_session_participant")
-    @patch("app.api.routes.sessions.state.ensure_session_state")
-    @patch("app.api.routes.sessions.state.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
-    @patch("app.api.routes.sessions.state.publish_state_update")
-    @patch("app.api.routes.sessions.state.to_state_read")
+    @patch("app.services.ooc_spell_cast_service.ensure_session_state")
+    @patch("app.services.ooc_spell_cast_service.finalize_session_state_data", side_effect=lambda d, **kwargs: d)
+    @patch("app.services.ooc_spell_cast_service.publish_state_update")
+    @patch("app.services.ooc_spell_cast_service.to_state_read")
     async def test_gm_can_cast_ooc_spell_as_player_self_target(
         self,
         mock_to_state,
