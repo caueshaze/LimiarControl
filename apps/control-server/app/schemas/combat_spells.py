@@ -178,6 +178,21 @@ class CombatConditionEscapeRequest(BaseModel):
     override_resource_limit: bool = False
 
 
+class CombatConditionWakeRequest(BaseModel):
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId", "actorRefId"),
+    )
+    target_ref_id: str = Field(
+        validation_alias=AliasChoices("target_ref_id", "targetRefId"),
+    )
+    source_effect_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("source_effect_id", "sourceEffectId"),
+    )
+    override_resource_limit: bool = False
+
+
 class CombatResolvedSpellContext(BaseModel):
     spell_id: str | None = None
     spell_canonical_key: str | None = None

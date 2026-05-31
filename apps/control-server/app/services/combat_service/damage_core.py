@@ -10,6 +10,7 @@ from app.models.combat import CombatState
 from app.services.draconic_ancestry import resolve_draconic_lineage_state
 from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
 from app.services.declarative_effect_lifecycle import remove_damage_terminated_effects_from_participant
+from app.services.sleep_spell import remove_sleep_unconscious_on_damage
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.warding_bond import (
     break_warding_bonds_for_caster,
@@ -285,6 +286,8 @@ class CombatDamageCoreMixin:
                 db.add(state)
             if attacker_participant_id and amount > 0 and target_participant is not None:
                 remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
+            if amount > 0 and target_participant is not None:
+                remove_sleep_unconscious_on_damage(target_participant, amount)
             player_new_hp = cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0)
             cls._apply_warding_bond_effects_after_damage(
                 db,
@@ -330,6 +333,8 @@ class CombatDamageCoreMixin:
             db.add(state)
         if attacker_participant_id and amount > 0 and target_participant is not None:
             remove_damage_terminated_effects_from_participant(state, target_participant, attacker_participant_id)
+        if amount > 0 and target_participant is not None:
+            remove_sleep_unconscious_on_damage(target_participant, amount)
         cls._apply_warding_bond_effects_after_damage(
             db,
             state,

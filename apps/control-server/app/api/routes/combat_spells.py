@@ -10,6 +10,7 @@ from app.schemas.combat import (
     CombatAreaPreviewResponse,
     CombatCastSpellRequest,
     CombatConditionEscapeRequest,
+    CombatConditionWakeRequest,
     IllusionInvestigateRequest,
     IllusionUpdateRequest,
     IllusionRevealRequest,
@@ -224,6 +225,28 @@ async def action_condition_escape(
         roll_source=req.roll_source,
         manual_roll=req.manual_roll,
         manual_rolls=req.manual_rolls,
+        override_resource_limit=req.override_resource_limit,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/conditions/wake",
+)
+async def action_condition_wake(
+    session_id: str,
+    req: CombatConditionWakeRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_condition_wake_action(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        target_ref_id=req.target_ref_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        source_effect_id=req.source_effect_id,
         override_resource_limit=req.override_resource_limit,
     )
 

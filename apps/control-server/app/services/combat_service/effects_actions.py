@@ -185,6 +185,100 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
         }
 
     @classmethod
+    async def resolve_condition_wake_action(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_participant_id: str | None,
+        target_ref_id: str,
+        actor_user_id: str,
+        is_gm: bool,
+        source_effect_id: str | None = None,
+        override_resource_limit: bool = False,
+    ) -> dict:
+        from app.services.sleep_spell import (
+            find_sleep_unconscious_effects,
+            remove_sleep_unconscious_instance,
+        )
+
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+
+        actor = cls._resolve_actor_participant(
+            state,
+            actor_user_id,
+            is_gm,
+            actor_participant_id,
+        )
+        cls._require_actor_status(
+            actor,
+            ("active",),
+            "Only active participants can wake a sleeper.",
+        )
+
+        target = cls._get_participant_by_ref(state, target_ref_id)
+        if target is None:
+            raise CombatServiceError("Wake target is not a participant in this combat.", 400)
+
+        candidates = find_sleep_unconscious_effects(target, source_effect_id=source_effect_id)
+        candidates = [
+            effect
+            for effect in candidates
+            if cls._get_effect_metadata(effect).get("wakes_on_action") is True
+        ]
+        if not candidates:
+            raise CombatServiceError(
+                "Target is not asleep from a matching Sleep source.",
+                400,
+            )
+
+        wake_effect = candidates[0]
+
+        # Action cost is consumed only after we confirmed a valid wake target.
+        was_overridden = cls._consume_turn_resource(
+            actor,
+            "action",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+
+        removed = remove_sleep_unconscious_instance(target, wake_effect.get("id"))
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+
+        message = (
+            f"{actor['display_name']} usou a ação para acordar "
+            f"{target['display_name']} do sono mágico."
+        )
+        if was_overridden:
+            message = f"[OVERRIDE: Action limit ignored] {message}"
+        await cls._emit_log(
+            session_id,
+            {
+                "message": message,
+                "source": "condition_wake",
+                "is_override": was_overridden,
+                "overridden_resource": "action" if was_overridden else None,
+            },
+        )
+
+        return {
+            "conditionType": "unconscious",
+            "sourceSpellKey": "sleep",
+            "sourceEffectId": cls._get_effect_metadata(wake_effect).get("source_effect_id"),
+            "targetRefId": target_ref_id,
+            "conditionRemoved": removed,
+            "actionConsumed": True,
+            "isOverride": was_overridden,
+        }
+
+    @classmethod
     def _consume_turn_resource(cls, participant: dict, resource: str, *, is_gm: bool = False, override_resource_limit: bool = False) -> bool:
         if resource == "free":
             return False
