@@ -4612,6 +4612,74 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "moonbeam",
+      "nameEn": "Moonbeam",
+      "namePt": "Raio Lunar",
+      "descriptionEn": "A silvery beam of pale light shines down in a 5-foot-radius, 40-foot-high cylinder centered on a point within range. When a creature enters the spell's area for the first time on a turn or starts its turn there, it must make a Constitution saving throw. On a failed save it takes 2d10 radiant damage, or half as much on a success. A shapechanger makes this save with disadvantage and reverts to its original form on a failed save.",
+      "descriptionPt": "Um feixe pálido de luz prateada brilha em um cilindro de 1,5 metro de raio e 12 metros de altura, centrado em um ponto no alcance. Quando uma criatura entra pela primeira vez ou inicia o próprio turno na área, ela deve fazer uma Salvaguarda de Constituição. Se falhar, sofre 2d10 de dano radiante, ou metade em caso de sucesso. Um metamorfo faz essa Salvaguarda com desvantagem e, se falhar, reverte à forma original.",
+      "level": 2,
+      "school": "evocation",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 36,
+      "rangeText": "120 ft",
+      "duration": "Concentration, up to 1 minute",
+      "durationSeconds": 60,
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
+      "materialComponentText": "several seeds of any moonseed plant and a piece of opalescent feldspar",
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "damage",
+      "savingThrow": "CON",
+      "saveSuccessOutcome": "half_damage",
+      "damageDice": "2d10",
+      "damageType": "Radiant",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "targetType": "ranged",
+      "areaShape": "cylinder",
+      "radiusMeters": 1.5,
+      "heightMeters": 12,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "save",
+      "savingThrowAbility": "constitution",
+      "saveEffect": "half_damage",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "outOfCombatCastable": false,
+      "upcast": {
+        "mode": "extra_damage_dice",
+        "dice": "1d10",
+        "perLevel": 1
+      },
+      "persistentArea": {
+        "kind": "hazard",
+        "params": {
+          "effectKind": "moonbeam",
+          "damageTriggers": [
+            "enter_first_time_on_turn",
+            "start_turn"
+          ],
+          "moveDistanceMeters": 18
+        }
+      }
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "fireball",
       "nameEn": "Fireball",
       "namePt": "Bola de Fogo",

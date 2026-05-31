@@ -422,6 +422,38 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
             "outOfCombatCastable": True,
             "outOfCombatTarget": "multi_ally",
         },
+        "moonbeam": {
+            "type": "persistent_area_damage",
+            "subtype": "moonbeam",
+            "requiresConcentration": True,
+            "requiresPoint": True,
+            "outOfCombatCastable": False,
+            "area": {
+                "shape": "cylinder",
+                "radiusMeters": 1.5,
+                "heightMeters": 12,
+            },
+            "save": {
+                "ability": "constitution",
+                "effect": "half_damage",
+            },
+            "damage": {
+                "dice": "2d10",
+                "type": "radiant",
+                "upcastDicePerSlotAboveBase": "1d10",
+            },
+            "persistentArea": {
+                "kind": "hazard",
+                "effectKind": "moonbeam",
+                "damageTriggers": ["enter_first_time_on_turn", "start_turn"],
+                "moveDistanceMeters": 18,
+            },
+            "shapechanger": {
+                "saveDisadvantage": True,
+                "revertOnFailedSave": True,
+                "blockShapechangeUntilExit": True,
+            },
+        },
     }
     _NARRATIVE_UTILITY_META_BY_SPELL: dict[str, dict] = {
         "thaumaturgy": {
