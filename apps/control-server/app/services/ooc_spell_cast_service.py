@@ -7,7 +7,9 @@ depend on the route module ``state`` (that would re-create a circular import).
 """
 
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any, Callable
 
 from fastapi import HTTPException
 from sqlalchemy.orm.attributes import flag_modified
@@ -85,6 +87,38 @@ _SELF_STACKING_OOC_SPELLS: dict[str, dict] = {
 _UNSET = object()
 
 
+@dataclass(frozen=True)
+class OocCastContext:
+    """Bundle of shared cast state + resolved injectable deps passed to the
+    extracted whole-cast OOC handlers, so they take one argument instead of ~15
+    while still honoring per-test dependency injection (the orchestrator resolves
+    the deps from ``_UNSET`` before constructing this)."""
+
+    # shared cast state
+    entry: Any
+    session: Any
+    session_id: str
+    actor_user: Any
+    caster_user_id: str
+    target_user_id: str
+    is_ally_target: bool
+    cast_by_gm: bool
+    caster_state: Any
+    target_state: Any
+    campaign_spell: Any
+    req: Any
+    current_game_time_seconds: int
+    updated_caster_json: dict
+    # resolved injectable deps
+    finalize_session_state_data: Callable
+    publish_state_update: Callable
+    to_state_read: Callable
+    record_session_activity: Callable
+    resolve_ooc_activity_actor: Callable
+    resolve_ooc_activity_target_display_name: Callable
+    prune_out_of_combat_session_activity: Callable
+
+
 def _apply_heal_to_state_dict(data: dict, amount: int) -> dict:
     """Apply immediate healing to a state dict in place. Handles wild shape."""
     if is_wild_shape_active(data):
@@ -127,6 +161,109 @@ def _strip_effects_by_source_spell_key(state_json: dict, spell_key: str) -> tupl
     else:
         result.pop("active_spell_effects", None)
     return result, replaced
+
+
+async def _cast_spare_the_dying_ooc(ctx: OocCastContext) -> SessionStateRead:
+    """Whole-cast handler for Spare the Dying (OOC): stabilize a target at 0 HP.
+
+    Extracted verbatim from ``cast_spell_out_of_combat_for_player``; behavior is
+    unchanged. Reads shared state and injected deps from ``ctx``.
+    """
+    if ctx.is_ally_target and ctx.target_state is not None:
+        std_target_json = ctx.target_state.state_json if isinstance(ctx.target_state.state_json, dict) else {}
+    else:
+        std_target_json = ctx.updated_caster_json
+
+    std_current_hp = _safe_int(std_target_json.get("currentHP"), 0)
+    if std_current_hp > 0:
+        raise HTTPException(status_code=400, detail="Poupar os Moribundos só pode afetar criaturas com 0 HP.")
+
+    std_death_saves = std_target_json.get("deathSaves")
+    if not isinstance(std_death_saves, dict):
+        std_death_saves = {"successes": 0, "failures": 0}
+    std_failures = _safe_int(std_death_saves.get("failures"), 0)
+    if std_failures >= 3:
+        raise HTTPException(status_code=400, detail="Poupar os Moribundos não afeta criaturas mortas.")
+
+    std_target_json = dict(std_target_json)
+    std_target_json["deathSaves"] = {"successes": 3, "failures": 0}
+
+    if ctx.is_ally_target and ctx.target_state is not None:
+        ctx.target_state.state_json = ctx.finalize_session_state_data(
+            std_target_json,
+            game_time_seconds=ctx.current_game_time_seconds,
+        )
+        flag_modified(ctx.target_state, "state_json")
+        ctx.session.add(ctx.target_state)
+    else:
+        ctx.caster_state.state_json = ctx.finalize_session_state_data(
+            std_target_json,
+            game_time_seconds=ctx.current_game_time_seconds,
+        )
+        flag_modified(ctx.caster_state, "state_json")
+        ctx.session.add(ctx.caster_state)
+
+    actor_member_id, actor_display_name = ctx.resolve_ooc_activity_actor(ctx.entry, ctx.actor_user, ctx.session)
+    if actor_member_id:
+        spell_name = (
+            ctx.campaign_spell.name_pt
+            or ctx.campaign_spell.name_en
+            or ctx.campaign_spell.canonical_key
+        )
+        ctx.record_session_activity(
+            ctx.entry,
+            "out_of_combat_spell_cast",
+            ctx.session,
+            member_id=actor_member_id,
+            user_id=ctx.actor_user.id,
+            actor_name=actor_display_name,
+            payload={
+                "actor_user_id": ctx.actor_user.id,
+                "actor_player_user_id": ctx.actor_user.id,
+                "actor_display_name": actor_display_name,
+                "caster_player_user_id": ctx.caster_user_id,
+                "caster_display_name": (
+                    actor_display_name if ctx.caster_user_id == ctx.actor_user.id else ctx.caster_user_id
+                ),
+                "target_player_user_id": ctx.target_user_id,
+                "target_display_name": (
+                    actor_display_name if ctx.target_user_id == ctx.actor_user.id else ctx.target_user_id
+                ),
+                "spell_key": "spare_the_dying",
+                "spell_name": spell_name,
+                "variant_key": None,
+                "variant_label": None,
+                "created_effect_ids": [],
+                "concentration_group": None,
+                "replaced_concentration": False,
+                "previous_concentration_group": None,
+                "new_concentration_group": None,
+                "previous_spell_name": None,
+                "previous_variant_label": None,
+                "cast_by_gm": ctx.cast_by_gm,
+                "spare_the_dying_stabilized": True,
+            },
+        )
+        ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
+
+    ctx.session.commit()
+    ctx.session.refresh(ctx.caster_state)
+    if ctx.is_ally_target and ctx.target_state is not None:
+        ctx.session.refresh(ctx.target_state)
+
+    states_to_publish: dict[str, SessionState] = {ctx.caster_user_id: ctx.caster_state}
+    if ctx.is_ally_target and ctx.target_state is not None:
+        states_to_publish[ctx.target_user_id] = ctx.target_state
+
+    for player_id, publish_state in states_to_publish.items():
+        await ctx.publish_state_update(
+            ctx.entry,
+            player_id,
+            publish_state.updated_at or publish_state.created_at,
+            publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
+        )
+
+    return ctx.to_state_read(ctx.caster_state)
 
 
 async def cast_spell_out_of_combat_for_player(
@@ -639,102 +776,23 @@ async def cast_spell_out_of_combat_for_player(
 
     # --- Spare the Dying: stabilize target at 0 HP (OOC) ---
     if canonical_key == "spare_the_dying":
-        if is_ally_target and target_state is not None:
-            std_target_json = target_state.state_json if isinstance(target_state.state_json, dict) else {}
-        else:
-            std_target_json = updated_caster_json
-
-        std_current_hp = _safe_int(std_target_json.get("currentHP"), 0)
-        if std_current_hp > 0:
-            raise HTTPException(status_code=400, detail="Poupar os Moribundos só pode afetar criaturas com 0 HP.")
-
-        std_death_saves = std_target_json.get("deathSaves")
-        if not isinstance(std_death_saves, dict):
-            std_death_saves = {"successes": 0, "failures": 0}
-        std_failures = _safe_int(std_death_saves.get("failures"), 0)
-        if std_failures >= 3:
-            raise HTTPException(status_code=400, detail="Poupar os Moribundos não afeta criaturas mortas.")
-
-        std_target_json = dict(std_target_json)
-        std_target_json["deathSaves"] = {"successes": 3, "failures": 0}
-
-        if is_ally_target and target_state is not None:
-            target_state.state_json = finalize_session_state_data(
-                std_target_json,
-                game_time_seconds=current_game_time_seconds,
-            )
-            flag_modified(target_state, "state_json")
-            session.add(target_state)
-        else:
-            updated_caster_json = std_target_json
-            caster_state.state_json = finalize_session_state_data(
-                updated_caster_json,
-                game_time_seconds=current_game_time_seconds,
-            )
-            flag_modified(caster_state, "state_json")
-            session.add(caster_state)
-
-        actor_member_id, actor_display_name = _resolve_ooc_activity_actor(entry, actor_user, session)
-        if actor_member_id:
-            spell_name = (
-                campaign_spell.name_pt
-                or campaign_spell.name_en
-                or campaign_spell.canonical_key
-            )
-            record_session_activity(
-                entry,
-                "out_of_combat_spell_cast",
-                session,
-                member_id=actor_member_id,
-                user_id=actor_user.id,
-                actor_name=actor_display_name,
-                payload={
-                    "actor_user_id": actor_user.id,
-                    "actor_player_user_id": actor_user.id,
-                    "actor_display_name": actor_display_name,
-                    "caster_player_user_id": caster_user_id,
-                    "caster_display_name": (
-                        actor_display_name if caster_user_id == actor_user.id else caster_user_id
-                    ),
-                    "target_player_user_id": target_user_id,
-                    "target_display_name": (
-                        actor_display_name if target_user_id == actor_user.id else target_user_id
-                    ),
-                    "spell_key": "spare_the_dying",
-                    "spell_name": spell_name,
-                    "variant_key": None,
-                    "variant_label": None,
-                    "created_effect_ids": [],
-                    "concentration_group": None,
-                    "replaced_concentration": False,
-                    "previous_concentration_group": None,
-                    "new_concentration_group": None,
-                    "previous_spell_name": None,
-                    "previous_variant_label": None,
-                    "cast_by_gm": cast_by_gm,
-                    "spare_the_dying_stabilized": True,
-                },
-            )
-            _prune_out_of_combat_session_activity(session, session_id)
-
-        session.commit()
-        session.refresh(caster_state)
-        if is_ally_target and target_state is not None:
-            session.refresh(target_state)
-
-        states_to_publish: dict[str, SessionState] = {caster_user_id: caster_state}
-        if is_ally_target and target_state is not None:
-            states_to_publish[target_user_id] = target_state
-
-        for player_id, publish_state in states_to_publish.items():
-            await publish_state_update(
-                entry,
-                player_id,
-                publish_state.updated_at or publish_state.created_at,
-                publish_state.state_json if isinstance(publish_state.state_json, dict) else None,
-            )
-
-        return to_state_read(caster_state)
+        ctx = OocCastContext(
+            entry=entry, session=session, session_id=session_id, actor_user=actor_user,
+            caster_user_id=caster_user_id, target_user_id=target_user_id,
+            is_ally_target=is_ally_target, cast_by_gm=cast_by_gm,
+            caster_state=caster_state, target_state=target_state,
+            campaign_spell=campaign_spell, req=req,
+            current_game_time_seconds=current_game_time_seconds,
+            updated_caster_json=updated_caster_json,
+            finalize_session_state_data=finalize_session_state_data,
+            publish_state_update=publish_state_update,
+            to_state_read=to_state_read,
+            record_session_activity=record_session_activity,
+            resolve_ooc_activity_actor=_resolve_ooc_activity_actor,
+            resolve_ooc_activity_target_display_name=_resolve_ooc_activity_target_display_name,
+            prune_out_of_combat_session_activity=_prune_out_of_combat_session_activity,
+        )
+        return await _cast_spare_the_dying_ooc(ctx)
 
     # --- Lesser Restoration: remove a condition/disease (OOC) ---
     if canonical_key == "lesser_restoration":
