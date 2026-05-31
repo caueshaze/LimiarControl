@@ -73,7 +73,7 @@ class CastTargetPreconditionsMixin(_CastTargetPreconditionsBase):
             value = spell_context.get("radius_meters")
         elif area_shape == "line":
             value = spell_context.get("length_meters")
-        elif area_shape == "cube":
+        elif area_shape in ("cube", "square"):
             value = spell_context.get("side_meters")
         elif area_shape == "cone":
             value = (

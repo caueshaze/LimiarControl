@@ -9,6 +9,7 @@ from app.schemas.combat import (
     CombatAreaPreviewRequest,
     CombatAreaPreviewResponse,
     CombatCastSpellRequest,
+    CombatConditionEscapeRequest,
     CombatMapPreviewState,
     CombatMovementPreviewRequest,
     CombatMovementPreviewResponse,
@@ -182,6 +183,31 @@ async def action_compelled_duel_movement_save(
         actor_user_id=user.id,
         is_gm=_is_session_gm(db, session_id, user),
         manual_roll=req.manual_roll,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/conditions/escape",
+)
+async def action_condition_escape(
+    session_id: str,
+    req: CombatConditionEscapeRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.resolve_condition_escape_action(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+        condition_type=req.condition_type,
+        source_effect_id=req.source_effect_id,
+        roll_source=req.roll_source,
+        manual_roll=req.manual_roll,
+        manual_rolls=req.manual_rolls,
+        override_resource_limit=req.override_resource_limit,
     )
 
 

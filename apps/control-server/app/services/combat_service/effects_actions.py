@@ -14,14 +14,176 @@ from app.schemas.combat import (
     CombatReactionResolveRequest,
     CombatRemoveEffectRequest,
 )
+from app.services.roll_resolution import resolve_ability_check
 
-from .condition_effects_predicates import has_condition_immunity, is_reaction_blocked
+from .condition_effects_predicates import (
+    has_condition_immunity,
+    is_reaction_blocked,
+    resolve_check_advantage_mode,
+)
 from .effects_core import CombatEffectsCoreMixin
 from .exceptions import CombatServiceError
 from .host_protocol import CombatServiceHostProtocol
 
 
 class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtocol):
+    @classmethod
+    async def resolve_condition_escape_action(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        actor_participant_id: str | None,
+        actor_user_id: str,
+        is_gm: bool,
+        condition_type: str,
+        source_effect_id: str | None = None,
+        roll_source: str = "system",
+        manual_roll: int | None = None,
+        manual_rolls: list[int] | None = None,
+        override_resource_limit: bool = False,
+    ) -> dict:
+        state = cls.get_state(db, session_id)
+        if state is None:
+            raise CombatServiceError("No combat active for this session", 404)
+        cls._require_active(state)
+
+        actor = cls._resolve_actor_participant(
+            state,
+            actor_user_id,
+            is_gm,
+            actor_participant_id,
+        )
+        cls._require_actor_status(
+            actor,
+            ("active",),
+            "Only active participants can attempt an escape action.",
+        )
+
+        normalized_condition = str(condition_type or "").strip().lower()
+        if normalized_condition != "restrained":
+            raise CombatServiceError("This endpoint currently supports only restrained escapes.", 400)
+
+        candidate_effects: list[dict] = []
+        for effect in cls._get_participant_effects(actor):
+            if effect.get("kind") != "condition":
+                continue
+            if str(effect.get("condition_type") or "").strip().lower() != "restrained":
+                continue
+            metadata = cls._get_effect_metadata(effect)
+            if str(metadata.get("source_spell_key") or "").strip().lower() != "entangle":
+                continue
+            if metadata.get("escape_action") is not True:
+                continue
+            if isinstance(source_effect_id, str) and source_effect_id.strip():
+                if metadata.get("source_effect_id") != source_effect_id.strip():
+                    continue
+            candidate_effects.append(effect)
+
+        if not candidate_effects:
+            raise CombatServiceError(
+                "Actor is not restrained by a matching Entangle source.",
+                400,
+            )
+
+        escape_effect = candidate_effects[0]
+        escape_metadata = cls._get_effect_metadata(escape_effect)
+        escape_dc = cls._safe_int(escape_metadata.get("escape_check_dc"), 0)
+        if escape_dc <= 0:
+            raise CombatServiceError("Escape DC is missing or invalid for this condition.", 400)
+
+        # Action cost is consumed only after we confirmed this is a valid escape attempt.
+        was_overridden = cls._consume_turn_resource(
+            actor,
+            "action",
+            is_gm=is_gm,
+            override_resource_limit=override_resource_limit,
+        )
+
+        advantage_mode = resolve_check_advantage_mode(
+            actor,
+            "strength",
+            manual_mode="normal",
+        )
+        roll_result = resolve_ability_check(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                actor["ref_id"],
+                actor["kind"],
+                actor["display_name"],
+            ),
+            "strength",
+            advantage_mode=advantage_mode,
+            dc=escape_dc,
+            roll_source=roll_source,
+            manual_roll=manual_roll,
+            manual_rolls=manual_rolls,
+        )
+        cls._apply_roll_dice_modifiers_for_actor(
+            db,
+            session_id,
+            actor_kind=actor["kind"],
+            actor_ref_id=actor["ref_id"],
+            roll_result=roll_result,
+            roll_type="ability",
+        )
+        roll_result.is_gm_roll = is_gm
+        escaped = bool(roll_result.success)
+
+        if escaped:
+            remaining = [
+                effect
+                for effect in cls._get_participant_effects(actor)
+                if effect.get("id") != escape_effect.get("id")
+            ]
+            cls._set_participant_effects(actor, remaining)
+
+        flag_modified(state, "participants")
+        db.add(state)
+        db.commit()
+        db.refresh(state)
+        await cls._emit_state(session_id, state)
+
+        source_spell_name = escape_metadata.get("source_spell_name") or "Entangle"
+        if escaped:
+            message = (
+                f"{actor['display_name']} usou a ação para escapar de {source_spell_name}: "
+                f"teste de Força {roll_result.total} vs DC {escape_dc} (sucesso)."
+            )
+        else:
+            message = (
+                f"{actor['display_name']} usou a ação para escapar de {source_spell_name}: "
+                f"teste de Força {roll_result.total} vs DC {escape_dc} (falha)."
+            )
+        if was_overridden:
+            message = f"[OVERRIDE: Action limit ignored] {message}"
+        await cls._emit_log(
+            session_id,
+            {
+                "message": message,
+                "source": "condition_escape",
+                "is_override": was_overridden,
+                "overridden_resource": "action" if was_overridden else None,
+            },
+        )
+
+        return {
+            "conditionType": "restrained",
+            "sourceSpellKey": "entangle",
+            "sourceEffectId": escape_metadata.get("source_effect_id"),
+            "escapeCheck": {
+                "ability": "strength",
+                "dc": escape_dc,
+                "success": escaped,
+                "total": roll_result.total,
+                "rollResult": roll_result,
+            },
+            "conditionRemoved": escaped,
+            "actionConsumed": True,
+            "isOverride": was_overridden,
+        }
+
     @classmethod
     def _consume_turn_resource(cls, participant: dict, resource: str, *, is_gm: bool = False, override_resource_limit: bool = False) -> bool:
         if resource == "free":

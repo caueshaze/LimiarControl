@@ -53,6 +53,7 @@ class AreaShape(str, Enum):
 
     CONE = "cone"
     CUBE = "cube"
+    SQUARE = "square"
     SPHERE = "sphere"
     LINE = "line"
     CYLINDER = "cylinder"

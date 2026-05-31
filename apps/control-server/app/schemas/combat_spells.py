@@ -151,6 +151,24 @@ class CombatResolveSpellContextRequest(BaseModel):
     spell_attack_bonus: int | None = None
 
 
+class CombatConditionEscapeRequest(BaseModel):
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId", "actorRefId"),
+    )
+    condition_type: str = Field(
+        validation_alias=AliasChoices("condition_type", "conditionType"),
+    )
+    source_effect_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("source_effect_id", "sourceEffectId"),
+    )
+    roll_source: RollSource = "system"
+    manual_roll: int | None = Field(default=None, ge=1, le=20)
+    manual_rolls: list[int] | None = None
+    override_resource_limit: bool = False
+
+
 class CombatResolvedSpellContext(BaseModel):
     spell_id: str | None = None
     spell_canonical_key: str | None = None
@@ -163,7 +181,7 @@ class CombatResolvedSpellContext(BaseModel):
     base_max_targets: int | None = None
     target_type: str | None = None
     selection_type: str | None = None
-    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    area_shape: Literal["sphere", "cone", "line", "cube", "square", "cylinder"] | None = None
     area_size_meters: float | None = None
     range_meters: float | None = None
     resolution_type: Literal[
@@ -273,7 +291,7 @@ class CombatActiveAreaEffect(BaseModel):
     caster_character_id: str | None = None
     origin_point: CombatGridCell
     anchor_cell: CombatGridCell
-    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"]
+    area_shape: Literal["sphere", "cone", "line", "cube", "square", "cylinder"]
     size_meters: float
     radius_meters: float | None = None
     length_meters: float | None = None
@@ -357,7 +375,7 @@ class AreaPreviewAffectedTargetSpatialMetadata(BaseModel):
 class CombatAreaPreviewResponse(BaseModel):
     is_valid: bool
     reason: str | None = None
-    shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    shape: Literal["sphere", "cone", "line", "cube", "square", "cylinder"] | None = None
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_token_ids: list[str] = Field(default_factory=list)
@@ -458,7 +476,7 @@ class CombatSpellResult(BaseModel):
     concentration_checks: list["CombatConcentrationCheckResult"] = Field(
         default_factory=list
     )
-    area_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    area_shape: Literal["sphere", "cone", "line", "cube", "square", "cylinder"] | None = None
     affected_target_ref_ids: list[str] = Field(default_factory=list)
     affected_cells: list[CombatGridCell] = Field(default_factory=list)
     area_target_outcomes: list[CombatAreaTargetOutcome] = Field(default_factory=list)

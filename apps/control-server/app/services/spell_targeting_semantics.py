@@ -33,6 +33,7 @@ _EXPLICIT_OVERRIDES: dict[str, SpellTargetingSemantics] = {
     "fireball": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "immediate"),
     "fog_cloud": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
     "spike_growth": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
+    "entangle": SpellTargetingSemantics("point", "selected_point", "selected_point", "none", "distance", "persistent"),
     "burning_hands": SpellTargetingSemantics("direction", "caster", "caster", "none", "self", "immediate"),
     "thunderwave": SpellTargetingSemantics("direction", "caster", "caster", "none", "self", "immediate"),
     "cure_wounds": SpellTargetingSemantics("creature", "caster", "selected_target", "none", "touch", "immediate"),

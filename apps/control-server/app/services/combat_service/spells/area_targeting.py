@@ -88,7 +88,7 @@ class AreaTargetingMixin(_AreaTargetingBase):
         if not isinstance(value, str):
             return None
         normalized = value.strip().lower()
-        if normalized in {"sphere", "cone", "line", "cube", "cylinder"}:
+        if normalized in {"sphere", "cone", "line", "cube", "square", "cylinder"}:
             return normalized
         return None
 
@@ -108,6 +108,7 @@ class AreaTargetingMixin(_AreaTargetingBase):
         "cone": "length_meters",
         "line": "length_meters",
         "cube": "side_meters",
+        "square": "side_meters",
     }
 
     @classmethod

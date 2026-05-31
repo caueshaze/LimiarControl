@@ -43,7 +43,7 @@ class CombatPreviewRequest(BaseModel):
     # AoE fields — only meaningful when action_type="spell" and the spell
     # has area targeting.  The frontend resolves size from the spell catalog
     # (meters → cells) before sending, keeping Control out of the conversion.
-    aoe_shape: Literal["sphere", "cone", "line", "cube", "cylinder"] | None = None
+    aoe_shape: Literal["sphere", "cone", "line", "cube", "square", "cylinder"] | None = None
     aoe_size_cells: int | None = Field(default=None, ge=1, le=60)
 
 

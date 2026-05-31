@@ -2573,6 +2573,56 @@
     },
     {
       "system": "DND5E",
+      "canonicalKey": "entangle",
+      "nameEn": "Entangle",
+      "namePt": "Constrição",
+      "descriptionEn": "Grasping weeds and vines sprout from the ground in a 20-foot square starting from a point within range. For the duration, these plants turn the ground in the area into difficult terrain. A creature in the area when you cast the spell must succeed on a Strength saving throw or be restrained by the entangling plants until the spell ends. A creature restrained by the plants can use its action to make a Strength check against your spell save DC. On a success, it frees itself. When the spell ends, the conjured plants wilt away.",
+      "descriptionPt": "Ervas daninhas e vinhas agarradoras brotam do chão em um quadrado de 6 metros a partir de um ponto dentro do alcance. Pela duração, essas plantas transformam o solo da área em terreno difícil. Uma criatura na área quando você conjura a magia deve passar em uma salvaguarda de Força ou fica contida pelas plantas até a magia terminar. Uma criatura contida pelas plantas pode usar sua ação para fazer um teste de Força contra a CD da sua magia. Em sucesso, ela se liberta. Quando a magia termina, as plantas conjuradas murcham.",
+      "level": 1,
+      "school": "conjuration",
+      "classesJson": [
+        "Druid"
+      ],
+      "castingTimeType": "action",
+      "castingTime": "1 action",
+      "rangeMeters": 27,
+      "rangeText": "90 ft",
+      "duration": "Concentration, up to 1 minute",
+      "durationSeconds": 60,
+      "componentsJson": [
+        "V",
+        "S"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "resolutionType": "utility",
+      "savingThrowAbility": "strength",
+      "source": "seed_json_bootstrap",
+      "isSrd": true,
+      "isActive": true,
+      "requiresTargetSight": false,
+      "requiresTargetEffect": false,
+      "requiresPointSight": false,
+      "requiresPointEffect": true,
+      "targetType": "ranged",
+      "areaShape": "square",
+      "sideMeters": 6,
+      "selectionType": "point",
+      "originType": "selected_point",
+      "targetAnchor": "selected_point",
+      "attackType": "none",
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "persistentArea": {
+        "kind": "hazard",
+        "params": {
+          "terrainEffect": "difficult_terrain"
+        }
+      },
+      "outOfCombatCastable": false
+    },
+    {
+      "system": "DND5E",
       "canonicalKey": "guiding_bolt",
       "nameEn": "Guiding Bolt",
       "namePt": "Raio Guiador",
