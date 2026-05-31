@@ -147,8 +147,13 @@ class WeaponAttackRollMixin(_WeaponAttackRollBase):
             effective_size=attacker.get("effective_size"),
             distance_meters=targeting_result.spatial_metadata.distance_meters,
         )
-        adv_ctx = resolve_attack_advantage(attacker, target, attack_kind)
         vis_ctx = resolve_target_visibility(attacker, target, has_line_of_sight=bool(targeting_result.spatial_metadata.has_line_of_sight or True))
+        adv_ctx = resolve_attack_advantage(
+            attacker,
+            target,
+            attack_kind,
+            attacker_can_see_target=vis_ctx.is_directly_visible,
+        )
         has_adv = req.has_advantage or cls._has_effect_kind(attacker, "advantage_on_attacks") or bool(adv_ctx.advantage_sources)
         has_dis = req.has_disadvantage or cls._has_effect_kind(attacker, "disadvantage_on_attacks") or cls._has_effect_kind(target, "dodging") or bool(adv_ctx.disadvantage_sources) or bool(targeting_result.spatial_metadata.is_in_long_range) or not vis_ctx.is_directly_visible
         if not req.has_advantage and cls._has_effect_kind(attacker, "advantage_on_attacks"):

@@ -7,6 +7,7 @@ from .condition_effects_predicates import (
     has_condition,
     attacker_ignores_incoming_attack_disadvantage_from_sight,
     get_participant_creature_type,
+    suppresses_invisibility_benefit,
 )
 
 
@@ -28,7 +29,25 @@ class AttackAdvantageContext:
         return f"{self.result} ({', '.join(sources)})" if sources else self.result
 
 
-def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "melee") -> AttackAdvantageContext:
+def _target_has_faerie_fire_effect(target: dict) -> bool:
+    for effect in target.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("faerie_fire") is True and metadata.get("attack_advantage_against_this_target") is True:
+            return True
+    return False
+
+
+def resolve_attack_advantage(
+    attacker: dict,
+    target: dict,
+    attack_kind: str = "melee",
+    *,
+    attacker_can_see_target: bool | None = None,
+) -> AttackAdvantageContext:
     adv: list[str] = []
     dis: list[str] = []
     consume_effect_ids: list[str] = []
@@ -50,8 +69,17 @@ def resolve_attack_advantage(attacker: dict, target: dict, attack_kind: str = "m
         adv.append("target_stunned")
     if has_condition(target, "unconscious"):
         adv.append("target_unconscious")
-    if has_condition(target, "invisible"):
+    invisibility_suppressed = suppresses_invisibility_benefit(target)
+    target_is_invisible = has_condition(target, "invisible")
+    if target_is_invisible and not invisibility_suppressed:
         dis.append("target_invisible")
+    target_has_faerie_fire = _target_has_faerie_fire_effect(target)
+    if target_has_faerie_fire:
+        target_visible_for_faerie_fire = (
+            True if attacker_can_see_target is None else bool(attacker_can_see_target)
+        )
+        if target_visible_for_faerie_fire:
+            adv.append("faerie_fire")
     if has_condition(target, "prone"):
         if attack_kind == "melee":
             adv.append("target_prone_melee")

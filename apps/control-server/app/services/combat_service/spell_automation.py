@@ -124,6 +124,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_entangle_automation",
         ),
+        "faerie_fire": SpellAutomationSpec(
+            canonical_key="faerie_fire",
+            default_mode="area_save",
+            requires_effect_payload=False,
+            handler_name="_cast_faerie_fire_automation",
+        ),
         "protection_from_evil_and_good": SpellAutomationSpec(
             canonical_key="protection_from_evil_and_good",
             default_mode="utility",

@@ -143,11 +143,16 @@ class CombatNpcActionResolutionMixin(CombatServiceHostProtocol):
                 if action_kind == "weapon_attack"
                 else resolve_spell_attack_kind(resolved_action)
             )
-            adv_ctx = resolve_attack_advantage(attacker, target_participant, attack_kind)
             vis_ctx = resolve_target_visibility(
                 attacker,
                 target_participant,
                 has_line_of_sight=bool(context["targeting_result"].spatial_metadata.has_line_of_sight or True) if context.get("targeting_result") else True,
+            )
+            adv_ctx = resolve_attack_advantage(
+                attacker,
+                target_participant,
+                attack_kind,
+                attacker_can_see_target=vis_ctx.is_directly_visible,
             )
             has_adv = req.has_advantage or cls._has_effect_kind(attacker, "advantage_on_attacks") or bool(adv_ctx.advantage_sources)
             has_dis = (

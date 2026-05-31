@@ -46,12 +46,17 @@ class SpellResolutionAttackMixin(SpellResolutionCommonMixin):
         result.cover_modifier = resolve_cover_modifier(str(result.cover) if result.cover else None)
         result.base_ac = base_ac if base_ac is not None else 10
         result.target_ac = (result.base_ac or 0) + result.cover_modifier
-        result.adv_ctx = resolve_attack_advantage(attacker, target_p, resolve_spell_attack_kind())
+        result.vis_ctx = resolve_target_visibility(attacker, target_p, has_line_of_sight=bool((_spatial.has_line_of_sight if _spatial is not None else None) or True))
+        result.adv_ctx = resolve_attack_advantage(
+            attacker,
+            target_p,
+            resolve_spell_attack_kind(),
+            attacker_can_see_target=result.vis_ctx.is_directly_visible,
+        )
         raw_adv_condition = spell_context.get("attack_advantage_condition")
         if isinstance(raw_adv_condition, dict) and raw_adv_condition.get("type") == "target_wearing_metal_armor":
             if target_wearing_metal_armor(target_p):
                 result.adv_ctx.advantage_sources.append("target_wearing_metal_armor")
-        result.vis_ctx = resolve_target_visibility(attacker, target_p, has_line_of_sight=bool((_spatial.has_line_of_sight if _spatial is not None else None) or True))
         has_adv = req.has_advantage or bool(result.adv_ctx.advantage_sources)
         has_dis = req.has_disadvantage or bool(result.adv_ctx.disadvantage_sources) or not result.vis_ctx.is_directly_visible
         adv_mode = "advantage" if (has_adv and not has_dis) else ("disadvantage" if (has_dis and not has_adv) else "normal")

@@ -308,6 +308,33 @@ def build_compelled_duel_effect(ctx: SpellEffectBuildContext) -> dict:
     return _build_timed_spell_effect_base(ctx, metadata=metadata)
 
 
+def build_faerie_fire_effect(ctx: SpellEffectBuildContext) -> dict:
+    metadata = _build_base_metadata(ctx)
+    metadata.update(
+        {
+            "source_spell_key": "faerie_fire",
+            "source_spell_name": ctx.spell_name,
+            "utility": "faerie_fire",
+            "area_debuff": True,
+            "faerie_fire": True,
+            "outlined_by_faerie_fire": True,
+            "grants_attack_advantage_against_target": True,
+            "attack_advantage_against_this_target": True,
+            "requires_attacker_can_see_target": True,
+            "suppresses_invisibility_benefit": True,
+            "prevents_invisibility_benefit": True,
+            "light_emission": True,
+            "light_type": "dim",
+            "light_radius_meters": 3,
+            "initial_save_ability": "dexterity",
+            "concentration": True,
+            "requires_concentration": True,
+            "duration_seconds": ctx.duration_seconds,
+        }
+    )
+    return _build_timed_spell_effect_base(ctx, metadata=metadata)
+
+
 def build_warding_bond_effects(ctx: SpellEffectBuildContext) -> tuple[dict, dict]:
     """Build the linked Warding Bond effects.
 

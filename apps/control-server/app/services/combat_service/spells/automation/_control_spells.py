@@ -44,6 +44,26 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
         )
 
     @classmethod
+    async def _cast_faerie_fire_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        raise CombatServiceError(
+            "Faerie Fire is resolved via the area-cast pipeline.",
+            400,
+        )
+
+    @classmethod
     async def _cast_compelled_duel_automation(
         cls,
         db: Session,

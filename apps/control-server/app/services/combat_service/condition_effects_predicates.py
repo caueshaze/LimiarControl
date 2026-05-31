@@ -59,6 +59,7 @@ from .condition_effects_predicates_parts.predicates_visibility_conditions import
     is_movement_halved,
     is_reaction_blocked,
     resolve_actor_participant,
+    suppresses_invisibility_benefit,
 )
 
 __all__ = [
@@ -108,6 +109,7 @@ __all__ = [
     "resolve_climb_speed_mode",
     "resolve_jump_distance_multiplier",
     "resolve_saving_throw_advantage_from_effects",
+    "suppresses_invisibility_benefit",
     "target_cannot_understand_command",
     "target_wearing_metal_armor",
 ]

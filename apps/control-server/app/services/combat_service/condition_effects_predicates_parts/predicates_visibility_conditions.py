@@ -150,6 +150,18 @@ def is_invisible(participant: dict) -> bool:
     return has_condition(participant, "invisible")
 
 
+def suppresses_invisibility_benefit(participant: dict) -> bool:
+    for effect in participant.get("active_effects") or []:
+        if effect.get("kind") != "spell_effect":
+            continue
+        metadata = effect.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("suppresses_invisibility_benefit") is True:
+            return True
+    return False
+
+
 def is_heavily_obscured(participant: dict) -> bool:
     return has_condition(participant, "heavily_obscured")
 
