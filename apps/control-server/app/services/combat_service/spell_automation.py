@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from dataclasses import dataclass
+from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
@@ -249,6 +251,109 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
     @classmethod
     def _normalize_spell_automation_key(cls, value: object) -> str:
         return normalize_spell_key(value)
+
+    @classmethod
+    def _list_pending_spell_casts(cls, state: CombatState) -> list[dict]:
+        pending = getattr(state, "pending_spell_casts", None)
+        if not isinstance(pending, list):
+            state.pending_spell_casts = []
+            return state.pending_spell_casts
+        return pending
+
+    @classmethod
+    def _find_pending_spell_cast(
+        cls,
+        state: CombatState,
+        *,
+        pending_cast_id: str,
+    ) -> dict | None:
+        for pending in cls._list_pending_spell_casts(state):
+            if isinstance(pending, dict) and pending.get("id") == pending_cast_id:
+                return pending
+        return None
+
+    @classmethod
+    def _create_pending_spell_cast(
+        cls,
+        state: CombatState,
+        *,
+        spell_key: str,
+        spell_name: str,
+        caster_participant_id: str,
+        caster_ref_id: str,
+        target_ref_ids: list[str],
+        slot_level: int,
+        required_rounds: int,
+        completed_rounds: int = 0,
+        requires_action_each_turn: bool = True,
+        requires_concentration_during_casting: bool = True,
+        maintained_this_turn: bool = False,
+        metadata: dict | None = None,
+    ) -> dict:
+        safe_required_rounds = max(1, int(required_rounds))
+        safe_completed_rounds = max(0, min(int(completed_rounds), safe_required_rounds))
+        pending_cast = {
+            "id": str(uuid4()),
+            "effect_kind": "pending_spell_cast",
+            "spell_key": spell_key,
+            "spell_name": spell_name,
+            "caster_participant_id": caster_participant_id,
+            "caster_ref_id": caster_ref_id,
+            "target_ref_ids": list(target_ref_ids),
+            "slot_level": int(slot_level),
+            "required_rounds": safe_required_rounds,
+            "completed_rounds": safe_completed_rounds,
+            "remaining_rounds": max(0, safe_required_rounds - safe_completed_rounds),
+            "requires_action_each_turn": bool(requires_action_each_turn),
+            "requires_concentration_during_casting": bool(requires_concentration_during_casting),
+            "maintained_this_turn": bool(maintained_this_turn),
+            "status": "casting",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": dict(metadata or {}),
+        }
+        cls._list_pending_spell_casts(state).append(pending_cast)
+        return pending_cast
+
+    @classmethod
+    def _cancel_pending_spell_cast(
+        cls,
+        state: CombatState,
+        *,
+        pending_cast_id: str,
+        reason: str,
+    ) -> dict | None:
+        pending = cls._find_pending_spell_cast(state, pending_cast_id=pending_cast_id)
+        if not isinstance(pending, dict):
+            return None
+        pending["status"] = "cancelled"
+        pending["cancel_reason"] = reason
+        casts = [
+            entry
+            for entry in cls._list_pending_spell_casts(state)
+            if not isinstance(entry, dict) or entry.get("id") != pending_cast_id
+        ]
+        state.pending_spell_casts = casts
+        return pending
+
+    @classmethod
+    def _complete_pending_spell_cast(
+        cls,
+        state: CombatState,
+        *,
+        pending_cast_id: str,
+    ) -> dict | None:
+        pending = cls._find_pending_spell_cast(state, pending_cast_id=pending_cast_id)
+        if not isinstance(pending, dict):
+            return None
+        pending["status"] = "completed"
+        pending["remaining_rounds"] = 0
+        casts = [
+            entry
+            for entry in cls._list_pending_spell_casts(state)
+            if not isinstance(entry, dict) or entry.get("id") != pending_cast_id
+        ]
+        state.pending_spell_casts = casts
+        return pending
 
     @classmethod
     def _build_combat_spell_effect_context(

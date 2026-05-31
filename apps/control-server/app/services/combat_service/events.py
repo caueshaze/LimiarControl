@@ -78,6 +78,7 @@ class CombatEventsMixin:
             "local_distances": state.local_distances,
             "active_area_effects": state.active_area_effects,
             "spell_anchors": state.spell_anchors,
+            "pending_spell_casts": state.pending_spell_casts,
             "created_at": state.created_at.isoformat() if state.created_at else None,
             "updated_at": state.updated_at.isoformat() if state.updated_at else None,
         }
