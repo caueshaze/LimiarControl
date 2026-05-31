@@ -331,6 +331,8 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
             state,
             outgoing,
         )
+        if cls._expire_reaction_opportunities_turn_boundary(state):
+            flag_modified(state, "reaction_opportunities")
         while True:
             state.current_turn_index += 1
             if state.current_turn_index >= len(state.participants):
@@ -515,6 +517,7 @@ class CombatLifecycleTurnsMixin(CombatServiceHostProtocol):
         state.phase = CombatPhase.ended
         state.active_area_effects = []
         state.spell_anchors = []
+        state.reaction_opportunities = []
 
         from sqlalchemy.orm.attributes import flag_modified
 

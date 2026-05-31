@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable, ClassVar
+from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
@@ -235,6 +236,14 @@ class CombatDamageCoreMixin:
                         new_hp=cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
                     ):
                         flag_modified(state, "pending_spell_casts")
+                    if cls._maybe_create_hellish_rebuke_reaction_opportunity(
+                        state,
+                        target_participant=target_participant,
+                        source_participant_id=attacker_participant_id,
+                        damage_taken=amount,
+                        damage_event_id=str(uuid4()),
+                    ):
+                        flag_modified(state, "reaction_opportunities")
                     flag_modified(state, "participants")
                     db.add(state)
                 if attacker_participant_id and amount > 0 and target_participant is not None:
@@ -296,6 +305,14 @@ class CombatDamageCoreMixin:
                     new_hp=cls._safe_int(cls._as_dict(target_model.state_json).get("currentHP"), 0),
                 ):
                     flag_modified(state, "pending_spell_casts")
+                if cls._maybe_create_hellish_rebuke_reaction_opportunity(
+                    state,
+                    target_participant=target_participant,
+                    source_participant_id=attacker_participant_id,
+                    damage_taken=amount,
+                    damage_event_id=str(uuid4()),
+                ):
+                    flag_modified(state, "reaction_opportunities")
                 flag_modified(state, "participants")
                 db.add(state)
             if attacker_participant_id and amount > 0 and target_participant is not None:
@@ -350,6 +367,14 @@ class CombatDamageCoreMixin:
                 new_hp=target_model.current_hp,
             ):
                 flag_modified(state, "pending_spell_casts")
+            if cls._maybe_create_hellish_rebuke_reaction_opportunity(
+                state,
+                target_participant=target_participant,
+                source_participant_id=attacker_participant_id,
+                damage_taken=amount,
+                damage_event_id=str(uuid4()),
+            ):
+                flag_modified(state, "reaction_opportunities")
             flag_modified(state, "participants")
             db.add(state)
         if attacker_participant_id and amount > 0 and target_participant is not None:

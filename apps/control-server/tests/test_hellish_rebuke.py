@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.models.combat import CombatPhase, CombatState
+from app.services.combat import CombatService
 from app.services.combat_service.spells.spell_context_resolve import SpellContextResolveMixin
 from app.services.spell_targeting_semantics import resolve_spell_targeting_semantics
 
@@ -65,3 +67,57 @@ def test_hellish_rebuke_context_metadata():
     assert damage["dice"] == "2d10"
     assert damage["type"] == "fire"
     assert damage["upcastDicePerSlotAboveBase"] == "1d10"
+
+
+def test_hellish_rebuke_reaction_opportunity_creation_from_damage_event():
+    state = CombatState(
+        id="combat-1",
+        session_id="session-1",
+        phase=CombatPhase.active,
+        round=2,
+        current_turn_index=1,
+        participants=[
+            {
+                "id": "caster",
+                "ref_id": "caster-ref",
+                "status": "active",
+                "turn_resources": {"reaction_used": False},
+                "active_effects": [],
+            },
+            {"id": "attacker", "ref_id": "attacker-ref", "status": "active"},
+        ],
+    )
+    created = CombatService._maybe_create_hellish_rebuke_reaction_opportunity(
+        state,
+        target_participant=state.participants[0],
+        source_participant_id="attacker",
+        damage_taken=8,
+        damage_event_id="damage-1",
+    )
+    assert created is True
+    assert len(state.reaction_opportunities) == 1
+    opportunity = state.reaction_opportunities[0]
+    assert opportunity["kind"] == "damage_taken"
+    assert opportunity["spell_key"] == "hellish_rebuke"
+    assert opportunity["actor_participant_id"] == "caster"
+    assert opportunity["source_participant_id"] == "attacker"
+    assert opportunity["damage_event_id"] == "damage-1"
+    assert opportunity["status"] == "available"
+
+
+def test_reaction_opportunity_expires_on_turn_boundary():
+    state = CombatState(
+        id="combat-1",
+        session_id="session-1",
+        phase=CombatPhase.active,
+        round=2,
+        current_turn_index=1,
+        participants=[],
+        reaction_opportunities=[
+            {"id": "op-1", "status": "available", "kind": "damage_taken"},
+            {"id": "op-2", "status": "used", "kind": "damage_taken"},
+        ],
+    )
+    changed = CombatService._expire_reaction_opportunities_turn_boundary(state)
+    assert changed is True
+    assert state.reaction_opportunities == [{"id": "op-2", "status": "used", "kind": "damage_taken"}]

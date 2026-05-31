@@ -54,6 +54,10 @@ class CombatState(SQLModel, table=True):
         default_factory=list,
         sa_column=Column(JSONB, nullable=False, server_default="[]"),
     )
+    reaction_opportunities: list[dict] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default="[]"),
+    )
     pending_spell_casts: list[dict] = Field(
         default_factory=list,
         sa_column=Column(JSONB, nullable=False, server_default="[]"),

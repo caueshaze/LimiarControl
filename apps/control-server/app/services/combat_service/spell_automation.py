@@ -12,6 +12,7 @@ from app.models.combat import CombatState
 from app.services.roll_resolution import resolve_saving_throw
 from app.services.spell_effect_factories import SpellEffectBuildContext
 from app.services.spell_keys import normalize_spell_key
+from app.services.combat_service.condition_effects_predicates import is_reaction_blocked
 
 from .condition_effects import resolve_spell_attack_kind
 from .exceptions import CombatServiceError, _roll_dice_expression
@@ -251,6 +252,136 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
     @classmethod
     def _normalize_spell_automation_key(cls, value: object) -> str:
         return normalize_spell_key(value)
+
+    @classmethod
+    def _list_reaction_opportunities(cls, state: CombatState) -> list[dict]:
+        opportunities = getattr(state, "reaction_opportunities", None)
+        if not isinstance(opportunities, list):
+            state.reaction_opportunities = []
+            return state.reaction_opportunities
+        return opportunities
+
+    @classmethod
+    def _find_reaction_opportunity(
+        cls,
+        state: CombatState,
+        *,
+        opportunity_id: str,
+    ) -> dict | None:
+        for opportunity in cls._list_reaction_opportunities(state):
+            if isinstance(opportunity, dict) and opportunity.get("id") == opportunity_id:
+                return opportunity
+        return None
+
+    @classmethod
+    def _create_hellish_rebuke_opportunity(
+        cls,
+        state: CombatState,
+        *,
+        actor_participant: dict,
+        source_participant: dict,
+        damage_event_id: str,
+        damage_taken: int,
+    ) -> dict:
+        opportunity = {
+            "id": str(uuid4()),
+            "kind": "damage_taken",
+            "spell_key": "hellish_rebuke",
+            "actor_participant_id": actor_participant.get("id"),
+            "actor_ref_id": actor_participant.get("ref_id"),
+            "source_participant_id": source_participant.get("id"),
+            "source_ref_id": source_participant.get("ref_id"),
+            "damage_event_id": damage_event_id,
+            "damage_taken": max(0, cls._safe_int(damage_taken, 0)),
+            "round": cls._safe_int(getattr(state, "round", 0), 0),
+            "turn_index": cls._safe_int(getattr(state, "current_turn_index", 0), 0),
+            "status": "available",
+        }
+        cls._list_reaction_opportunities(state).append(opportunity)
+        return opportunity
+
+    @classmethod
+    def _expire_reaction_opportunities_turn_boundary(
+        cls,
+        state: CombatState,
+    ) -> bool:
+        existing = cls._list_reaction_opportunities(state)
+        if not existing:
+            return False
+        kept = [
+            opportunity
+            for opportunity in existing
+            if not isinstance(opportunity, dict)
+            or opportunity.get("status") != "available"
+        ]
+        if len(kept) == len(existing):
+            return False
+        state.reaction_opportunities = kept
+        return True
+
+    @classmethod
+    def _expire_reaction_opportunities_for_actor(
+        cls,
+        state: CombatState,
+        *,
+        actor_participant_id: str,
+    ) -> bool:
+        existing = cls._list_reaction_opportunities(state)
+        if not existing:
+            return False
+        kept = []
+        removed = False
+        for opportunity in existing:
+            if (
+                isinstance(opportunity, dict)
+                and opportunity.get("status") == "available"
+                and opportunity.get("actor_participant_id") == actor_participant_id
+            ):
+                removed = True
+                continue
+            kept.append(opportunity)
+        if not removed:
+            return False
+        state.reaction_opportunities = kept
+        return True
+
+    @classmethod
+    def _maybe_create_hellish_rebuke_reaction_opportunity(
+        cls,
+        state: CombatState | None,
+        *,
+        target_participant: dict | None,
+        source_participant_id: str | None,
+        damage_taken: int,
+        damage_event_id: str,
+    ) -> bool:
+        if state is None or not isinstance(target_participant, dict):
+            return False
+        if cls._safe_int(damage_taken, 0) <= 0:
+            return False
+        if str(target_participant.get("status") or "").strip().lower() != "active":
+            return False
+        if not isinstance(source_participant_id, str) or not source_participant_id:
+            return False
+        source_participant = next(
+            (participant for participant in (state.participants or []) if participant.get("id") == source_participant_id),
+            None,
+        )
+        if not isinstance(source_participant, dict):
+            return False
+        resources = cls._get_turn_resources(target_participant)
+        if resources.get("reaction_used") is True:
+            return False
+        if is_reaction_blocked(target_participant):
+            return False
+        cls._create_hellish_rebuke_opportunity(
+            state,
+            actor_participant=target_participant,
+            source_participant=source_participant,
+            damage_event_id=damage_event_id,
+            damage_taken=damage_taken,
+        )
+        return True
 
     @classmethod
     def _list_pending_spell_casts(cls, state: CombatState) -> list[dict]:
