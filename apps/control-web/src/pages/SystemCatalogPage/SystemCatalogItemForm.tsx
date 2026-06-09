@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import type { BaseSpell } from "../../entities/base-spell";
 import type { BaseItem, BaseItemSource } from "../../entities/base-item";
 import { BaseItemArmorCategory as BaseItemArmorCategoryValues, BaseItemKind as BaseItemKindValues } from "../../entities/base-item";
 import { useLocale } from "../../shared/hooks/useLocale";
@@ -23,6 +24,7 @@ import {
 
 type Props = {
   form: FormState;
+  spells: BaseSpell[];
   setForm: Dispatch<SetStateAction<FormState>>;
   selectedItemId: string | null;
   statusMessage: string | null;
@@ -35,6 +37,7 @@ type Props = {
 
 export const SystemCatalogItemForm = ({
   form,
+  spells,
   setForm,
   selectedItemId,
   statusMessage,
@@ -152,7 +155,7 @@ export const SystemCatalogItemForm = ({
         </label>
       </div>
 
-      <SystemCatalogGeneralFields form={form} setForm={setForm} />
+      <SystemCatalogGeneralFields form={form} spells={spells} setForm={setForm} />
 
       {supportsConsumableFields && (
         <div className="space-y-4 rounded-[24px] border border-white/8 bg-black/20 p-4">
@@ -302,6 +305,20 @@ export const SystemCatalogItemForm = ({
             }
           />
           ativo
+        </label>
+
+        <label className="flex items-center gap-3 text-sm text-slate-300">
+          <input
+            type="checkbox"
+            checked={form.isPurchasable}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                isPurchasable: event.target.checked,
+              }))
+            }
+          />
+          {t("catalog.admin.form.isPurchasable")}
         </label>
       </div>
 

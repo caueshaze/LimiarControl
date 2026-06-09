@@ -19,6 +19,8 @@ import type {
   EmbeddedCombatPhase,
   EmbeddedSelectionMode,
   SpellMapHighlight,
+  SpellMapHighlightStatus,
+  GridCalibrationPixelPoint,
   TokenMovementRejectionState
 } from "./battle-map-store.types";
 
@@ -29,7 +31,9 @@ export type {
   BattleMapUIState,
   EmbeddedCombatPhase,
   EmbeddedSelectionMode,
-  SpellMapHighlight
+  SpellMapHighlight,
+  SpellMapHighlightStatus,
+  GridCalibrationPixelPoint
 } from "./battle-map-store.types";
 
 type Listener = () => void;
@@ -45,6 +49,7 @@ class BattleMapStore {
     embeddedSpellAnchors: [],
     embeddedSpellHighlights: [],
     isGridEditMode: false,
+    isTwoPointCalibrationMode: false,
     isObstaclePaintMode: false,
     obstacleBrushRadius: 1,
     obstacleBrushMode: "paint",
@@ -158,17 +163,50 @@ class BattleMapStore {
   }
 
   startGridEdit(cal: GridCalibration, gw: number, gh: number): void {
-    this.set({ isGridEditMode: true, isObstaclePaintMode: false, isElevationPaintMode: false, gridCalibrationDraft: cal, gridWidthDraft: gw, gridHeightDraft: gh, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
+    this.set({ isGridEditMode: true, isTwoPointCalibrationMode: false, twoPointCalibrationFirstPoint: undefined, twoPointCalibrationSecondPoint: undefined, isObstaclePaintMode: false, isElevationPaintMode: false, gridCalibrationDraft: cal, gridWidthDraft: gw, gridHeightDraft: gh, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
   }
 
   updateGridCalibrationDraft(cal: GridCalibration): void { this.set({ gridCalibrationDraft: cal }); }
 
+  startTwoPointGridCalibration(): void {
+    this.set({
+      isTwoPointCalibrationMode: true,
+      twoPointCalibrationFirstPoint: undefined,
+      twoPointCalibrationSecondPoint: undefined,
+      message: undefined
+    });
+  }
+
+  captureTwoPointGridCalibrationPoint(point: { x: number; y: number }): void {
+    if (!this.state.twoPointCalibrationFirstPoint) {
+      this.set({
+        twoPointCalibrationFirstPoint: point,
+        twoPointCalibrationSecondPoint: undefined,
+        message: undefined
+      });
+      return;
+    }
+    this.set({
+      twoPointCalibrationSecondPoint: point,
+      message: undefined
+    });
+  }
+
+  cancelTwoPointGridCalibration(): void {
+    this.set({
+      isTwoPointCalibrationMode: false,
+      twoPointCalibrationFirstPoint: undefined,
+      twoPointCalibrationSecondPoint: undefined,
+      message: undefined
+    });
+  }
+
   cancelGridEdit(): void {
-    this.set({ isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
+    this.set({ isGridEditMode: false, isTwoPointCalibrationMode: false, twoPointCalibrationFirstPoint: undefined, twoPointCalibrationSecondPoint: undefined, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
   }
 
   startObstaclePaint(): void {
-    this.set({ isObstaclePaintMode: true, isElevationPaintMode: false, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
+    this.set({ isObstaclePaintMode: true, isElevationPaintMode: false, isGridEditMode: false, isTwoPointCalibrationMode: false, twoPointCalibrationFirstPoint: undefined, twoPointCalibrationSecondPoint: undefined, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
   }
 
   cancelObstaclePaint(): void {
@@ -187,7 +225,7 @@ class BattleMapStore {
 
   completeGridCalibrationUpdate(id?: string): boolean {
     if (!id || this.state.pendingGridCalibrationActionId !== id) return false;
-    this.set({ isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
+    this.set({ isGridEditMode: false, isTwoPointCalibrationMode: false, twoPointCalibrationFirstPoint: undefined, twoPointCalibrationSecondPoint: undefined, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined });
     return true;
   }
 
@@ -198,7 +236,7 @@ class BattleMapStore {
   failEdgePaintUpdate(id?: string): boolean { return this.completePending("pendingEdgePaintActionId", id); }
 
   startElevationPaint(): void {
-    this.set({ isElevationPaintMode: true, isObstaclePaintMode: false, isGridEditMode: false, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
+    this.set({ isElevationPaintMode: true, isObstaclePaintMode: false, isGridEditMode: false, isTwoPointCalibrationMode: false, twoPointCalibrationFirstPoint: undefined, twoPointCalibrationSecondPoint: undefined, gridCalibrationDraft: undefined, gridWidthDraft: undefined, gridHeightDraft: undefined, pendingGridCalibrationActionId: undefined, pendingObstaclePaintActionId: undefined, pendingEdgePaintActionId: undefined, pendingElevationPaintActionId: undefined, message: undefined });
   }
 
   cancelElevationPaint(): void {

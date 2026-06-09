@@ -5,10 +5,7 @@ import { MapListWidget } from "./MapListWidget";
 import { MapPreviewPanel } from "./MapPreviewPanel";
 import type { Props } from "./types";
 import { ACCEPTED_IMAGE_TYPES } from "./useCampaignMapImageUpload";
-import {
-  calibrationFieldClassName,
-  useCampaignMapConfigController,
-} from "./useCampaignMapConfigController";
+import { useCampaignMapConfigController } from "./useCampaignMapConfigController";
 
 export const CampaignMapConfigCard = ({
   campaignId,
@@ -37,79 +34,143 @@ export const CampaignMapConfigCard = ({
               {t("campaignHome.mapConfigDescription")}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200">
-              {`${controller.readyMaps}/${controller.sortedMaps.length} ${t("campaignHome.mapStatusReady")}`}
-            </span>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={controller.handleShowList}
+            className={`rounded-3xl px-5 py-5 text-left transition ${
+              controller.isCreatingNew || controller.isEditing
+                ? "border border-transparent bg-white/3 text-slate-300 hover:bg-white/6"
+                : "border border-sky-300/20 bg-sky-400/10 text-white shadow-[0_18px_40px_rgba(56,189,248,0.08)]"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+              {t("campaignHome.mapSwitchListLabel")}
+            </p>
+            <p className="mt-2 text-lg font-semibold text-inherit">
+              {t("campaignHome.mapTabList")}
+            </p>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              {t("campaignHome.mapSwitchListDescription")}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={controller.handleCreateNew}
+            className={`rounded-3xl px-5 py-5 text-left transition ${
+              controller.isCreatingNew
+                ? "border border-violet-300/20 bg-violet-400/10 text-white shadow-[0_18px_40px_rgba(167,139,250,0.08)]"
+                : "border border-transparent bg-white/3 text-slate-300 hover:bg-white/6"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+              {t("campaignHome.mapSwitchNewLabel")}
+            </p>
+            <p className="mt-2 text-lg font-semibold text-inherit">
+              {t("campaignHome.mapNew")}
+            </p>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              {t("campaignHome.mapSwitchNewDescription")}
+            </p>
+          </button>
+        </div>
+
+        {!controller.isCreatingNew && !controller.isEditing ? (
+          controller.sortedMaps.length === 0 ? (
+            <div className="mt-5 flex flex-col items-center gap-4 rounded-3xl border border-dashed border-slate-700 bg-slate-950/40 px-6 py-14 text-center">
+              <p className="text-base font-semibold text-white">
+                {t("campaignHome.mapEmptyTitle")}
+              </p>
+              <p className="max-w-md text-sm leading-7 text-slate-400">
+                {t("campaignHome.mapEmptyList")}
+              </p>
+              <button
+                type="button"
+                onClick={controller.handleCreateNew}
+                className="rounded-full border border-violet-300/30 bg-violet-400/15 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-100 transition hover:border-violet-300/50 hover:bg-violet-400/20"
+              >
+                {t("campaignHome.mapCreateNow")}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <MapListWidget
+                maps={controller.sortedMaps}
+                selectedMapId={controller.selectedMapId}
+                isCreatingNew={controller.isCreatingNew}
+                onEditMap={controller.handleEditMap}
+                onPreviewMap={controller.handlePreviewMap}
+              />
+            </div>
+          )
+        ) : (
+          <div className="mt-5">
             <button
               type="button"
-              onClick={controller.handleCreateNew}
-              className="rounded-full border border-limiar-500/30 bg-limiar-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-limiar-100 hover:border-limiar-400/60"
+              onClick={controller.handleShowList}
+              className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500"
             >
-              {t("campaignHome.mapNew")}
+              <span aria-hidden>←</span>
+              {t("campaignHome.mapTabList")}
             </button>
+
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            <MapEditorForm
+              form={controller.form}
+              isCreatingNew={controller.isCreatingNew}
+              isConfigured={controller.isConfigured}
+              isDirty={controller.isDirty}
+              calibrationSummary={controller.calibrationSummary}
+              uploading={controller.uploading}
+              deleting={controller.deleting}
+              saving={controller.saving}
+              error={controller.error}
+              success={controller.success}
+              imageInputRef={controller.imageInputRef}
+              acceptedImageTypes={ACCEPTED_IMAGE_TYPES}
+              onUpdateField={controller.updateField}
+              onChooseImage={controller.handleChooseImage}
+              onImageSelected={controller.handleImageSelected}
+              onResetCalibration={controller.handleResetCalibration}
+              onClear={controller.handleClear}
+              onDelete={() => void controller.handleDelete()}
+              onSave={() => void controller.handleSave()}
+            />
+
+            <MapPreviewPanel
+              imageUrl={controller.form.imageUrl}
+              mapName={controller.form.mapName}
+              hasMapImage={controller.hasMapImage}
+              gridSummary={controller.gridSummary}
+              calibrationSummary={controller.calibrationSummary}
+              calibrationPreview={controller.calibrationPreview}
+              previewGridWidth={controller.previewGridWidth}
+              previewGridHeight={controller.previewGridHeight}
+              obstacleMap={controller.obstacleMap}
+              edgeObstacleMap={controller.edgeObstacleMap}
+              editorMode={controller.editorMode}
+              isObstacleEditMode={controller.isObstacleEditMode}
+              isCalibrating={controller.isCalibrating}
+              calibrationCell={controller.calibrationCell}
+              obstacleEditTarget={controller.obstacleEditTarget}
+              selectedPresetId={controller.selectedPresetId}
+              selectedEdgePresetId={controller.selectedEdgePresetId}
+              edgeDirection={controller.edgeDirection}
+              onSelectMode={controller.setEditorMode}
+              onSelectPreset={controller.setSelectedPresetId}
+              onSelectEdgePreset={controller.setSelectedEdgePresetId}
+              onSelectEdgeDirection={controller.setEdgeDirection}
+              onSelectObstacleTarget={controller.setObstacleEditTarget}
+              onCalibrationChange={controller.setCalibrationBounds}
+              onOpenPreview={() => controller.setIsPreviewOpen(true)}
+              onCellToggle={controller.toggleCell}
+              onEdgeToggle={controller.toggleEdge}
+            />
+            </div>
           </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 xl:grid-cols-3">
-          <MapListWidget
-            maps={controller.sortedMaps}
-            selectedMapId={controller.selectedMapId}
-            isCreatingNew={controller.isCreatingNew}
-            onEditMap={controller.handleEditMap}
-          />
-        </div>
-
-        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
-          <MapPreviewPanel
-            imageUrl={controller.form.imageUrl}
-            mapName={controller.form.mapName}
-            hasMapImage={controller.hasMapImage}
-            gridSummary={controller.gridSummary}
-            calibrationSummary={controller.calibrationSummary}
-            calibrationPreview={controller.calibrationPreview}
-            previewGridWidth={controller.previewGridWidth}
-            previewGridHeight={controller.previewGridHeight}
-            obstacleMap={controller.obstacleMap}
-            edgeObstacleMap={controller.edgeObstacleMap}
-            isObstacleEditMode={controller.isObstacleEditMode}
-            obstacleEditTarget={controller.obstacleEditTarget}
-            selectedPresetId={controller.selectedPresetId}
-            selectedEdgePresetId={controller.selectedEdgePresetId}
-            edgeDirection={controller.edgeDirection}
-            onSelectPreset={controller.setSelectedPresetId}
-            onSelectEdgePreset={controller.setSelectedEdgePresetId}
-            onSelectEdgeDirection={controller.setEdgeDirection}
-            onSelectObstacleTarget={controller.setObstacleEditTarget}
-            onToggleObstacleEditMode={() =>
-              controller.setIsObstacleEditMode((value) => !value)
-            }
-            onOpenPreview={() => controller.setIsPreviewOpen(true)}
-            onCellToggle={controller.toggleCell}
-            onEdgeToggle={controller.toggleEdge}
-          />
-
-          <MapEditorForm
-            form={controller.form}
-            isCreatingNew={controller.isCreatingNew}
-            isConfigured={controller.isConfigured}
-            uploading={controller.uploading}
-            deleting={controller.deleting}
-            saving={controller.saving}
-            error={controller.error}
-            success={controller.success}
-            imageInputRef={controller.imageInputRef}
-            acceptedImageTypes={ACCEPTED_IMAGE_TYPES}
-            calibrationFieldClassName={calibrationFieldClassName}
-            onUpdateField={controller.updateField}
-            onChooseImage={controller.handleChooseImage}
-            onImageSelected={controller.handleImageSelected}
-            onResetCalibration={controller.handleResetCalibration}
-            onClear={controller.handleClear}
-            onDelete={() => void controller.handleDelete()}
-            onSave={() => void controller.handleSave()}
-          />
-        </div>
+        )}
       </div>
 
       <ExpandedPreviewDialog
@@ -118,29 +179,17 @@ export const CampaignMapConfigCard = ({
         mapName={controller.form.mapName}
         gridSummary={controller.gridSummary}
         calibrationPreview={controller.calibrationPreview}
+        calibrationCell={controller.calibrationCell}
+        editable={controller.isEditing || controller.isCreatingNew}
         previewGridWidth={controller.previewGridWidth}
         previewGridHeight={controller.previewGridHeight}
+        gridWidthValue={controller.form.gridWidth}
+        gridHeightValue={controller.form.gridHeight}
         obstacleMap={controller.obstacleMap}
         edgeObstacleMap={controller.edgeObstacleMap}
-        isObstacleEditMode={controller.isObstacleEditMode}
-        obstacleEditTarget={controller.obstacleEditTarget}
-        selectedPresetId={controller.selectedPresetId}
-        selectedEdgePresetId={controller.selectedEdgePresetId}
-        edgeDirection={controller.edgeDirection}
-        saving={controller.saving}
-        uploading={controller.uploading}
-        deleting={controller.deleting}
+        onUpdateField={controller.updateField}
+        onCalibrationChange={controller.setCalibrationBounds}
         onClose={() => controller.setIsPreviewOpen(false)}
-        onToggleObstacleEditMode={() =>
-          controller.setIsObstacleEditMode((value) => !value)
-        }
-        onSelectPreset={controller.setSelectedPresetId}
-        onSelectEdgePreset={controller.setSelectedEdgePresetId}
-        onSelectEdgeDirection={controller.setEdgeDirection}
-        onSelectObstacleTarget={controller.setObstacleEditTarget}
-        onCellToggle={controller.toggleCell}
-        onEdgeToggle={controller.toggleEdge}
-        onSave={() => void controller.handleSave()}
       />
     </>
   );

@@ -1,10 +1,12 @@
 import type { Item, ItemInput, ItemType } from "../../../entities/item";
+import type { BaseSpell } from "../../../entities/base-spell";
 import { CatalogItemCard } from "./CatalogItemCard";
 import { useLocale } from "../../../shared/hooks/useLocale";
 
 type CatalogItemListProps = {
   items: Item[];
   itemTypes: ItemType[];
+  spells: BaseSpell[];
   onUpdate?: (itemId: string, payload: ItemInput) => boolean | Promise<boolean>;
   onDelete?: (itemId: string) => void | Promise<void>;
 };
@@ -12,6 +14,7 @@ type CatalogItemListProps = {
 export const CatalogItemList = ({
   items,
   itemTypes,
+  spells,
   onUpdate,
   onDelete,
 }: CatalogItemListProps) => {
@@ -31,6 +34,7 @@ export const CatalogItemList = ({
           key={item.id}
           item={item}
           itemTypes={itemTypes}
+          spells={spells}
           onUpdate={onUpdate}
           onDelete={onDelete}
         />

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import { useLocale } from "../hooks/useLocale";
+import { useWorkspaceMode } from "../hooks/useWorkspaceMode";
+import { getWorkspaceModeButtonOrder } from "../lib/workspaceMode";
 import type { RoleMode } from "../types/role";
 import { BrandMark } from "./BrandMark";
 import { ManagedImage } from "./ManagedImage";
@@ -18,39 +20,14 @@ type AppLayoutProps = {
   onLogout?: () => void;
 };
 
-const MODE_KEY = "limiar_experience_mode";
-
 export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
   const { toggleLocale, locale, t } = useLocale();
   const { pathname } = useLocation();
   const isHome = pathname === routes.home;
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [focusMode, setFocusMode] = useState<"GM" | "PLAYER">(() => {
-    const saved = localStorage.getItem(MODE_KEY);
-    return saved === "GM" || saved === "PLAYER" ? saved : "GM";
-  });
-  const [buttonOrder, setButtonOrder] = useState<["GM" | "PLAYER", "GM" | "PLAYER"]>(() => {
-    const saved = localStorage.getItem(MODE_KEY);
-    return saved === "PLAYER" ? ["PLAYER", "GM"] : ["GM", "PLAYER"];
-  });
-
-  // Re-sync order when entering home so the active preference is always on the left.
-  // Does NOT run on every focusMode change — only when isHome flips to true.
-  useEffect(() => {
-    if (isHome) {
-      const saved = localStorage.getItem(MODE_KEY) as "GM" | "PLAYER" | null;
-      const current = saved === "GM" || saved === "PLAYER" ? saved : "GM";
-      setButtonOrder(current === "PLAYER" ? ["PLAYER", "GM"] : ["GM", "PLAYER"]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHome]);
-
-  const switchMode = (m: "GM" | "PLAYER") => {
-    setFocusMode(m);
-    localStorage.setItem(MODE_KEY, m);
-    window.dispatchEvent(new CustomEvent("limiar-mode-change"));
-  };
+  const { mode: focusMode, setMode: switchMode } = useWorkspaceMode();
+  const buttonOrder = getWorkspaceModeButtonOrder(focusMode);
 
   useEffect(() => {
     if (!open) return;

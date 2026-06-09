@@ -59,4 +59,5 @@ class BaseItemRead(BaseModel):
     sourceRef: Optional[str] = None
     isSrd: bool
     isActive: bool
+    isPurchasable: bool = True
     aliases: list[BaseItemAliasRead] = Field(default_factory=list)

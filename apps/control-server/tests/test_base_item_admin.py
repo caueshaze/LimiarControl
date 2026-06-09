@@ -78,6 +78,7 @@ def make_base_item(**overrides):
         "source_ref": "Dagger",
         "is_srd": False,
         "is_active": True,
+        "is_purchasable": True,
     }
     payload.update(overrides)
     return BaseItem(**payload)
@@ -100,6 +101,7 @@ class RequireSystemAdminTests(unittest.TestCase):
                 username="admin",
                 display_name="Admin",
                 role="GM",
+                preferred_workspace_mode="PLAYER",
                 is_system_admin=True,
                 avatar_url=None,
                 token_color=None,
@@ -108,6 +110,7 @@ class RequireSystemAdminTests(unittest.TestCase):
             )
         )
         self.assertTrue(profile.isSystemAdmin)
+        self.assertEqual(profile.preferredWorkspaceMode, "PLAYER")
 
 
 class BaseItemSchemaTests(unittest.TestCase):
@@ -308,6 +311,29 @@ class BaseItemSchemaTests(unittest.TestCase):
         self.assertEqual(payload.chargesMax, 1)
         self.assertEqual(payload.rechargeType, "none")
         self.assertEqual(payload.magicEffect.spellCanonicalKey, "magic_missile")
+
+    def test_accepts_is_purchasable_flag_for_base_items(self):
+        payload = BaseItemCreate(
+            canonicalKey="phantyr_bracelet_detect_magic",
+            nameEn="Phantyr Bracelet of Detect Magic",
+            itemKind=BaseItemKind.GEAR,
+            equipmentCategory=BaseItemEquipmentCategory.JEWELRY,
+            isPurchasable=False,
+        )
+
+        self.assertFalse(payload.isPurchasable)
+
+    def test_magic_bracelet_requires_magic_effect(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "magic_bracelet items must define magicEffect",
+        ):
+            BaseItemCreate(
+                canonicalKey="phantyr_bracelet_detect_magic",
+                nameEn="Phantyr Bracelet of Detect Magic",
+                itemKind=BaseItemKind.GEAR,
+                equipmentCategory=BaseItemEquipmentCategory.MAGIC_BRACELET,
+            )
 
     def test_rejects_healing_fields_for_non_consumable_base_item(self):
         with self.assertRaisesRegex(
@@ -758,6 +784,37 @@ class ItemSchemaTests(unittest.TestCase):
 
         self.assertEqual(payload.healDice, "2d4")
         self.assertEqual(payload.healBonus, 2)
+
+    def test_accepts_is_purchasable_flag_for_campaign_items(self):
+        payload = ItemCreate(
+            name="Phantyr Bracelet of Detect Magic",
+            type=ItemType.MAGIC,
+            description="Single-use bracelet.",
+            chargesMax=1,
+            rechargeType="none",
+            magicEffect={
+                "type": "cast_spell",
+                "spellCanonicalKey": "detect_magic",
+                "castLevel": 1,
+                "ignoreComponents": True,
+                "noFreeHandRequired": True,
+            },
+            isPurchasable=False,
+        )
+
+        self.assertFalse(payload.isPurchasable)
+
+    def test_magic_bracelet_campaign_item_requires_magic_type_and_effect(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "magic_bracelet items must use item type MAGIC",
+        ):
+            ItemCreate(
+                name="Phantyr Bracelet",
+                type=ItemType.MISC,
+                description="Bracelet",
+                equipmentCategory=BaseItemEquipmentCategory.MAGIC_BRACELET,
+            )
 
     def test_accepts_armor_material_on_armor_and_shield(self):
         armor_payload = ItemCreate(

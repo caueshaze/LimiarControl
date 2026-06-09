@@ -181,6 +181,11 @@ export const characterSheetSchema = z.object({
   schemaVersion: z.number().default(1),
 
   name: z.string(),
+  avatarUrl: z.preprocess((value) => {
+    if (value == null) return null;
+    if (typeof value !== "string") return value;
+    return value.trim().length > 0 ? value : null;
+  }, z.string().nullable()).default(null),
   class: z.string(),
   subclass: z.preprocess((value) => {
     if (value == null) return null;

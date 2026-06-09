@@ -6,6 +6,7 @@ import { useCampaigns, CampaignManagementPanel } from "../../features/campaign-s
 import { usePartyManagement } from "../../features/party-management/hooks/usePartyManagement";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useToast } from "../../shared/hooks/useToast";
+import { useWorkspaceMode } from "../../shared/hooks/useWorkspaceMode";
 import { campaignsRepo } from "../../shared/api/campaignsRepo";
 import { partiesRepo, type PartySummary, type PartyInvite, type PartyActiveSession } from "../../shared/api/partiesRepo";
 import { subscribe } from "../../shared/realtime/centrifugoClient";
@@ -184,6 +185,7 @@ export const UnifiedHomePage = () => {
   };
 
   const displayName = user?.displayName || user?.username || "Aventureiro";
+  const { mode: focusMode } = useWorkspaceMode();
 
   const timeOfDay = (() => {
     const h = new Date().getHours();
@@ -234,20 +236,6 @@ export const UnifiedHomePage = () => {
   } as const;
 
   const [gmTab, setGmTab] = useState<"campaigns" | "parties">("campaigns");
-
-  const [focusMode, setFocusMode] = useState<"GM" | "PLAYER">(() => {
-    const saved = localStorage.getItem("limiar_experience_mode");
-    return saved === "GM" || saved === "PLAYER" ? saved : "GM";
-  });
-
-  useEffect(() => {
-    const sync = () => {
-      const saved = localStorage.getItem("limiar_experience_mode");
-      if (saved === "GM" || saved === "PLAYER") setFocusMode(saved);
-    };
-    window.addEventListener("limiar-mode-change", sync);
-    return () => window.removeEventListener("limiar-mode-change", sync);
-  }, []);
 
   return (
     <>

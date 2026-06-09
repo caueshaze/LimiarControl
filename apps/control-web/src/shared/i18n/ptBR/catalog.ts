@@ -259,6 +259,7 @@ export const catalogPtBRDictionary = {
   "catalog.admin.form.sourceRefDetailed": "Referência da fonte",
   "catalog.admin.form.stealthDisadvantage": "Desvantagem em Furtividade",
   "catalog.admin.form.shield": "Escudo",
+  "catalog.admin.form.isPurchasable": "Disponível para compra na loja",
   "catalog.admin.form.clearFields": "Limpar campos",
   "catalog.admin.form.deleteItem": "Excluir item",
   "catalog.admin.form.weaponRangeEnabled": "Alcance habilitado",

@@ -143,6 +143,47 @@ class CampaignCatalogBaseItemCompatibilityTests(unittest.TestCase):
         self.assertEqual(item.recharge_type, "none")
         self.assertEqual(item.magic_effect_json["spellCanonicalKey"], "magic_missile")
 
+    def test_base_item_snapshot_preserves_purchasable_flag(self):
+        base_item = BaseItem(
+            id="base-bracelet",
+            system=SystemType.DND5E,
+            canonical_key="phantyr_bracelet_detect_magic",
+            name_en="Phantyr Bracelet of Detect Magic",
+            name_pt="Bracelete de Phantyr: Detectar Magia",
+            description_en="Single-use bracelet.",
+            description_pt="Bracelete de uso único.",
+            item_kind=BaseItemKind.GEAR,
+            equipment_category=BaseItemEquipmentCategory.JEWELRY,
+            is_purchasable=False,
+            is_shield=False,
+            is_srd=False,
+            is_active=True,
+        )
+
+        item = _base_item_to_campaign_item(base_item, "campaign-1")
+
+        self.assertFalse(item.is_purchasable)
+
+    def test_base_item_snapshot_preserves_equipment_category(self):
+        base_item = BaseItem(
+            id="base-bracelet",
+            system=SystemType.DND5E,
+            canonical_key="phantyr_bracelet_detect_magic",
+            name_en="Phantyr Bracelet of Detect Magic",
+            name_pt="Bracelete de Phantyr: Detectar Magia",
+            description_en="Single-use bracelet.",
+            description_pt="Bracelete de uso único.",
+            item_kind=BaseItemKind.GEAR,
+            equipment_category=BaseItemEquipmentCategory.MAGIC_BRACELET,
+            is_shield=False,
+            is_srd=False,
+            is_active=True,
+        )
+
+        item = _base_item_to_campaign_item(base_item, "campaign-1")
+
+        self.assertEqual(item.equipment_category, BaseItemEquipmentCategory.MAGIC_BRACELET)
+
 
 class CombatDamageParsingTests(unittest.TestCase):
     def test_parse_dice_supports_static_damage_values(self):

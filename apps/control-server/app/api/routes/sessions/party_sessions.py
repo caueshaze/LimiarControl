@@ -18,6 +18,7 @@ from app.models.session_state import SessionState
 from app.schemas.session import ActiveSessionRead, SessionCreateByParty, SessionRead
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
+from .state_common import ensure_initial_spell_preparation_state
 from ._shared import (
     check_character_sheets,
     get_or_create_session_runtime,
@@ -130,6 +131,7 @@ async def _start_session_for_party(
         cloned = ensure_rest_state(cloned)
         cloned["restState"] = "exploration"
         cloned = finalize_session_state_data(cloned)
+        cloned = ensure_initial_spell_preparation_state(cloned)
         if not isinstance(entry.id, str) or not entry.id:
             raise HTTPException(status_code=500, detail="Session id is missing")
         session.add(

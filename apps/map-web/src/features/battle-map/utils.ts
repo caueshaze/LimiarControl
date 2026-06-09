@@ -43,6 +43,7 @@ import { submitObstaclePaint } from "./use-obstacle-paint-actions";
 
 import { C, COVER_RANK } from "./constants";
 import type { GridEditInteraction, GridEditInteractionMode, ObstacleCellState } from "./types";
+import type { GridCalibrationPixelPoint } from "./battle-map-store.types";
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -189,6 +190,48 @@ export function applyGridCalibrationInteraction(
     ...sc,
     width: clamp(sc.width + xDelta, minWidth, 1 - sc.x),
     height: clamp(sc.height + yDelta, minHeight, 1 - sc.y),
+  };
+}
+
+export function deriveGridCalibrationFromTwoPoints(
+  pointA: GridCalibrationPixelPoint,
+  pointB: GridCalibrationPixelPoint,
+  squaresX: number,
+  squaresY: number,
+  imageWidth: number,
+  imageHeight: number,
+): { gridCalibration: GridCalibration; gridWidth: number; gridHeight: number } {
+  if (!Number.isFinite(imageWidth) || imageWidth <= 0 || !Number.isFinite(imageHeight) || imageHeight <= 0) {
+    throw new Error("invalid_image_dimensions");
+  }
+  if (!Number.isInteger(squaresX) || squaresX <= 0 || !Number.isInteger(squaresY) || squaresY <= 0) {
+    throw new Error("invalid_grid_dimensions");
+  }
+
+  const minX = Math.min(pointA.x, pointB.x);
+  const minY = Math.min(pointA.y, pointB.y);
+  const deltaX = Math.abs(pointB.x - pointA.x);
+  const deltaY = Math.abs(pointB.y - pointA.y);
+
+  if (deltaX <= 0 || deltaY <= 0) {
+    throw new Error("invalid_calibration_segment");
+  }
+
+  const gridCalibration: GridCalibration = {
+    x: clamp(minX / imageWidth, 0, 1),
+    y: clamp(minY / imageHeight, 0, 1),
+    width: clamp(deltaX / imageWidth, 1 / imageWidth, 1),
+    height: clamp(deltaY / imageHeight, 1 / imageHeight, 1),
+  };
+
+  if (gridCalibration.x + gridCalibration.width > 1 || gridCalibration.y + gridCalibration.height > 1) {
+    throw new Error("calibration_out_of_bounds");
+  }
+
+  return {
+    gridCalibration,
+    gridWidth: squaresX,
+    gridHeight: squaresY,
   };
 }
 

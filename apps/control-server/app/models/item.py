@@ -15,6 +15,7 @@ from app.models.base_item import (
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
+    BaseItemEquipmentCategory,
     BaseItemKind,
     BaseItemWeaponCategory,
     BaseItemWeaponRangeType,
@@ -48,6 +49,18 @@ class Item(SQLModel, table=True):
     type: ItemType = Field(sa_column=Column(SAEnum(ItemType), nullable=False))
     description: str
     price: float | None = None
+    equipment_category: Optional[BaseItemEquipmentCategory] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(
+                BaseItemEquipmentCategory,
+                name="baseitemequipmentcategory",
+                values_callable=_enum_values,
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+    )
     weight: float | None = None
     damage_dice: str | None = None
     damage_type: Optional[BaseItemDamageType] = Field(
@@ -186,6 +199,10 @@ class Item(SQLModel, table=True):
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
     is_enabled: bool = Field(
+        default=True,
+        sa_column=Column(Boolean, nullable=False, server_default="true"),
+    )
+    is_purchasable: bool = Field(
         default=True,
         sa_column=Column(Boolean, nullable=False, server_default="true"),
     )

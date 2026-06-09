@@ -78,6 +78,7 @@ def _base_item_to_campaign_item(
         type=item_type,
         description=base_item.description_pt or base_item.description_en or base_item.name_pt or "",
         price=_base_item_price_gp(base_item),
+        equipment_category=base_item.equipment_category,
         weight=base_item.weight,
         damage_dice=base_item.damage_dice,
         damage_type=base_item.damage_type,
@@ -107,6 +108,7 @@ def _base_item_to_campaign_item(
         cost_unit=base_item.cost_unit,
         is_custom=False,
         is_enabled=True,
+        is_purchasable=base_item.is_purchasable,
     )
 
 

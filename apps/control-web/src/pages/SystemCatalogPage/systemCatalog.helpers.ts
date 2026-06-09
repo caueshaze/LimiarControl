@@ -63,6 +63,12 @@ export const createEmptyForm = (): FormState => ({
   costQuantity: "",
   costUnit: "",
   weight: "",
+  chargesMax: "",
+  rechargeType: "",
+  magicEffectSpellCanonicalKey: "",
+  magicEffectCastLevel: "1",
+  magicEffectIgnoreComponents: true,
+  magicEffectNoFreeHandRequired: true,
   weaponCategory: "",
   weaponRangeType: "",
   damageDice: "",
@@ -82,6 +88,7 @@ export const createEmptyForm = (): FormState => ({
   sourceRef: "",
   isSrd: false,
   isActive: true,
+  isPurchasable: true,
 });
 
 export const formFromItem = (item: BaseItem): FormState => ({
@@ -92,10 +99,18 @@ export const formFromItem = (item: BaseItem): FormState => ({
   descriptionEn: item.descriptionEn ?? "",
   descriptionPt: item.descriptionPt ?? "",
   itemKind: item.itemKind,
-  equipmentCategory: item.equipmentCategory ?? "",
+  equipmentCategory:
+    item.equipmentCategory ?? (item.magicEffect?.spellCanonicalKey ? "magic_bracelet" : ""),
   costQuantity: item.costQuantity != null ? String(item.costQuantity) : "",
   costUnit: item.costUnit ?? "",
   weight: item.weight != null ? String(item.weight) : "",
+  chargesMax: item.chargesMax != null ? String(item.chargesMax) : "",
+  rechargeType: item.rechargeType ?? "",
+  magicEffectSpellCanonicalKey: item.magicEffect?.spellCanonicalKey ?? "",
+  magicEffectCastLevel:
+    item.magicEffect?.castLevel != null ? String(item.magicEffect.castLevel) : "1",
+  magicEffectIgnoreComponents: Boolean(item.magicEffect?.ignoreComponents),
+  magicEffectNoFreeHandRequired: Boolean(item.magicEffect?.noFreeHandRequired),
   weaponCategory: item.weaponCategory ?? "",
   weaponRangeType: item.weaponRangeType ?? "",
   damageDice: item.damageDice ?? "",
@@ -116,6 +131,7 @@ export const formFromItem = (item: BaseItem): FormState => ({
   sourceRef: item.sourceRef ?? "",
   isSrd: item.isSrd,
   isActive: item.isActive,
+  isPurchasable: item.isPurchasable !== false,
 });
 
 export const buildPayload = (
@@ -144,6 +160,10 @@ export const buildPayload = (
   if (armorClassBase.error) return { error: armorClassBase.error };
   const healBonus = parseOptionalInteger(form.healBonus, "Bônus de cura");
   if (healBonus.error) return { error: healBonus.error };
+  const chargesMax = parseOptionalInteger(form.chargesMax, "Cargas máximas");
+  if (chargesMax.error) return { error: chargesMax.error };
+  const magicEffectCastLevel = parseOptionalInteger(form.magicEffectCastLevel, "Nível de conjuração");
+  if (magicEffectCastLevel.error) return { error: magicEffectCastLevel.error };
   const strengthRequirement = parseOptionalInteger(form.strengthRequirement, "Força mínima");
   if (strengthRequirement.error) return { error: strengthRequirement.error };
 
@@ -156,6 +176,9 @@ export const buildPayload = (
     (form.weaponRangeType === BaseItemWeaponRangeTypeValues.RANGED || hasThrownProperty);
   const hasVersatileProperty = form.weaponPropertiesJson.includes("versatile");
   const isShieldArmor = isArmor && form.armorCategory === BaseItemArmorCategoryValues.SHIELD;
+  const isMagicBracelet =
+    form.equipmentCategory === "magic_bracelet" ||
+    Boolean(form.magicEffectSpellCanonicalKey);
 
   if (isWeapon && !form.weaponCategory)
     return { error: "Armas precisam de categoria de arma." };
@@ -187,6 +210,18 @@ export const buildPayload = (
       costQuantity: costQuantity.value,
       costUnit: form.costUnit || undefined,
       weight: weight.value,
+      chargesMax: isMagicBracelet ? chargesMax.value : undefined,
+      rechargeType: isMagicBracelet ? form.rechargeType || undefined : undefined,
+      magicEffect:
+        isMagicBracelet && form.magicEffectSpellCanonicalKey
+          ? {
+              type: "cast_spell",
+              spellCanonicalKey: form.magicEffectSpellCanonicalKey,
+              castLevel: magicEffectCastLevel.value ?? 1,
+              ignoreComponents: form.magicEffectIgnoreComponents,
+              noFreeHandRequired: form.magicEffectNoFreeHandRequired,
+            }
+          : undefined,
       weaponCategory: isWeapon ? form.weaponCategory || undefined : undefined,
       weaponRangeType: isWeapon ? form.weaponRangeType || undefined : undefined,
       damageDice: isWeapon ? normalizeOptionalText(form.damageDice) : undefined,
@@ -213,6 +248,7 @@ export const buildPayload = (
       sourceRef: normalizeOptionalText(form.sourceRef),
       isSrd: form.isSrd,
       isActive: form.isActive,
+      isPurchasable: form.isPurchasable,
     },
   };
 };

@@ -93,6 +93,7 @@ class BaseItemWrite(BaseModel):
     sourceRef: Optional[str] = None
     isSrd: bool = False
     isActive: bool = True
+    isPurchasable: bool = True
 
     @field_validator("canonicalKey")
     @classmethod
@@ -334,6 +335,12 @@ class BaseItemWrite(BaseModel):
 
         if self.magicEffect is not None and self.chargesMax is None:
             raise ValueError("chargesMax is required when magicEffect is provided")
+
+        if self.equipmentCategory == BaseItemEquipmentCategory.MAGIC_BRACELET:
+            if self.magicEffect is None:
+                raise ValueError("magic_bracelet items must define magicEffect")
+            if self.itemKind != BaseItemKind.GEAR:
+                raise ValueError("magic_bracelet items must use itemKind gear")
 
         return self
 

@@ -19,6 +19,10 @@ class User(SQLModel, table=True):
         default=RoleMode.PLAYER,
         sa_column=Column(SAEnum(RoleMode), nullable=False, server_default=RoleMode.PLAYER.value),
     )
+    preferred_workspace_mode: RoleMode | None = Field(
+        default=None,
+        sa_column=Column(SAEnum(RoleMode), nullable=True),
+    )
     is_system_admin: bool = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default="false"),

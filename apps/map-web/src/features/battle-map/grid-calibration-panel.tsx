@@ -5,6 +5,7 @@ import { useEncounterSnapshot } from "../../services/session-store";
 import { useCurrentActor } from "../../services/centrifugo-client";
 import { battleMapStore, type BattleMapUIState } from "./battle-map-store";
 import { submitGridCalibration } from "./use-grid-calibration-actions";
+import { deriveGridCalibrationFromTwoPoints } from "./utils";
 
 const panelStyle: React.CSSProperties = {
   background: "#101725",
@@ -131,6 +132,7 @@ function GridCalibrationEditor({
   uiState
 }: GridCalibrationEditorProps): React.JSX.Element {
   const [cellInputs, setCellInputs] = useState({ width: "", height: "" });
+  const [twoPointInputs, setTwoPointInputs] = useState({ x: "", y: "" });
   const draft = uiState.gridCalibrationDraft ?? gridCalibration;
   const draftGridWidth = uiState.gridWidthDraft ?? encounter.battleMap.gridWidth;
   const draftGridHeight = uiState.gridHeightDraft ?? encounter.battleMap.gridHeight;
@@ -138,9 +140,12 @@ function GridCalibrationEditor({
   const sourceWidthPx = uiState.mapImageNaturalWidthPx || uiState.mapFrameWidthPx;
   const sourceHeightPx = uiState.mapImageNaturalHeightPx || uiState.mapFrameHeightPx;
   const canAdjustCellSize = sourceWidthPx > 0 && sourceHeightPx > 0;
+  const canUseTwoPointCalibration = canAdjustCellSize;
   const minimumGridDimensions = getMinimumGridDimensions(encounter);
   const currentCellWidthPx = getCellWidthPx(draft, draftGridWidth, sourceWidthPx);
   const currentCellHeightPx = getCellHeightPx(draft, draftGridHeight, sourceHeightPx);
+  const hasFirstPoint = Boolean(uiState.twoPointCalibrationFirstPoint);
+  const hasSecondPoint = Boolean(uiState.twoPointCalibrationSecondPoint);
 
   useEffect(() => {
     if (!canAdjustCellSize) {
@@ -153,6 +158,12 @@ function GridCalibrationEditor({
       height: currentCellHeightPx.toFixed(1)
     });
   }, [canAdjustCellSize, currentCellHeightPx, currentCellWidthPx]);
+
+  useEffect(() => {
+    if (!uiState.isTwoPointCalibrationMode) {
+      setTwoPointInputs({ x: "", y: "" });
+    }
+  }, [uiState.isTwoPointCalibrationMode]);
 
   function applyCellSize(nextWidthValue: string, nextHeightValue: string): void {
     if (!canAdjustCellSize) {
@@ -175,8 +186,48 @@ function GridCalibrationEditor({
     );
   }
 
+  function applyTwoPointCalibration(): void {
+    if (
+      !uiState.twoPointCalibrationFirstPoint ||
+      !uiState.twoPointCalibrationSecondPoint ||
+      !canUseTwoPointCalibration
+    ) {
+      return;
+    }
+
+    const squaresX = Number(twoPointInputs.x);
+    const squaresY = Number(twoPointInputs.y);
+    if (!Number.isInteger(squaresX) || squaresX <= 0 || !Number.isInteger(squaresY) || squaresY <= 0) {
+      battleMapStore.setMessage("Informe quantidades inteiras positivas de celulas entre os pontos.");
+      return;
+    }
+
+    try {
+      const result = deriveGridCalibrationFromTwoPoints(
+        uiState.twoPointCalibrationFirstPoint,
+        uiState.twoPointCalibrationSecondPoint,
+        squaresX,
+        squaresY,
+        sourceWidthPx,
+        sourceHeightPx
+      );
+      battleMapStore.updateGridCalibrationDraft(result.gridCalibration);
+      battleMapStore.setGridDimensionsDraft(result.gridWidth, result.gridHeight);
+      battleMapStore.cancelTwoPointGridCalibration();
+    } catch {
+      battleMapStore.setMessage("Nao foi possivel calcular a calibracao com os dois pontos escolhidos.");
+    }
+  }
+
   const cellWidthInput = cellInputs.width;
   const cellHeightInput = cellInputs.height;
+  const twoPointStatus = !uiState.isTwoPointCalibrationMode
+    ? "Use dois cruzamentos confiaveis do grid para calcular o retangulo calibrado."
+    : !hasFirstPoint
+      ? "Clique no primeiro cruzamento do grid no canvas."
+      : !hasSecondPoint
+        ? "Clique em um segundo cruzamento distante no canvas."
+        : "Informe quantas celulas existem entre os dois pontos em X e Y.";
 
   return (
     <section style={panelStyle}>
@@ -226,6 +277,115 @@ function GridCalibrationEditor({
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              background: "rgba(20,30,46,0.75)",
+              border: "1px solid rgba(55,82,116,0.6)",
+              borderRadius: 6,
+              padding: "8px 10px"
+            }}
+          >
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7892b6" }}>
+              Calibrar com 2 pontos
+            </div>
+            <div style={{ fontSize: 11, color: "#d8e6ff", lineHeight: 1.5 }}>
+              {twoPointStatus}
+            </div>
+            <div style={{ fontSize: 11, color: "#7d94b8", lineHeight: 1.5 }}>
+              Os dois pontos definem o retangulo calibrado. As celulas em X/Y representam apenas a area entre esses pontos.
+            </div>
+            {!uiState.isTwoPointCalibrationMode ? (
+              <button
+                type="button"
+                disabled={isSaving || !canUseTwoPointCalibration}
+                onClick={() => battleMapStore.startTwoPointGridCalibration()}
+                style={{
+                  ...buttonStyle,
+                  background: "rgba(56,132,255,0.15)",
+                  borderColor: "rgba(90,160,255,0.4)",
+                  color: "#8cbcff",
+                  cursor: isSaving || !canUseTwoPointCalibration ? "not-allowed" : "pointer",
+                  opacity: isSaving || !canUseTwoPointCalibration ? 0.5 : 1
+                }}
+              >
+                Calibrar com 2 pontos
+              </button>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    step="1"
+                    disabled={isSaving || !hasSecondPoint}
+                    value={twoPointInputs.x}
+                    placeholder="Celulas entre os pontos — X"
+                    onChange={(event) =>
+                      setTwoPointInputs((current) => ({ ...current, x: event.currentTarget.value }))
+                    }
+                    style={{
+                      ...numberInputStyle,
+                      width: "100%",
+                      opacity: isSaving || !hasSecondPoint ? 0.5 : 1
+                    }}
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    step="1"
+                    disabled={isSaving || !hasSecondPoint}
+                    value={twoPointInputs.y}
+                    placeholder="Celulas entre os pontos — Y"
+                    onChange={(event) =>
+                      setTwoPointInputs((current) => ({ ...current, y: event.currentTarget.value }))
+                    }
+                    style={{
+                      ...numberInputStyle,
+                      width: "100%",
+                      opacity: isSaving || !hasSecondPoint ? 0.5 : 1
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    disabled={isSaving || !hasSecondPoint}
+                    onClick={applyTwoPointCalibration}
+                    style={{
+                      ...buttonStyle,
+                      background: "rgba(0,140,90,0.18)",
+                      borderColor: "rgba(0,200,130,0.35)",
+                      color: "#67d6a3",
+                      cursor: isSaving || !hasSecondPoint ? "not-allowed" : "pointer",
+                      opacity: isSaving || !hasSecondPoint ? 0.5 : 1
+                    }}
+                  >
+                    Aplicar 2 pontos
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => battleMapStore.cancelTwoPointGridCalibration()}
+                    style={{
+                      ...buttonStyle,
+                      background: "rgba(180,60,60,0.12)",
+                      borderColor: "rgba(220,100,100,0.3)",
+                      color: "#e49a9a",
+                      cursor: isSaving ? "not-allowed" : "pointer"
+                    }}
+                  >
+                    Cancelar 2 pontos
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
               alignItems: "center",
               gap: 8,
               background: "rgba(20,30,46,0.75)",
@@ -250,7 +410,7 @@ function GridCalibrationEditor({
                 inputMode="decimal"
                 min="1"
                 step="0.5"
-                disabled={isSaving || !canAdjustCellSize}
+                disabled={isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode}
                 value={cellWidthInput}
                 onChange={(event) => {
                   const nextValue = event.currentTarget.value;
@@ -271,8 +431,8 @@ function GridCalibrationEditor({
                 style={{
                   ...numberInputStyle,
                   width: 84,
-                  cursor: isSaving || !canAdjustCellSize ? "not-allowed" : "pointer",
-                  opacity: isSaving || !canAdjustCellSize ? 0.5 : 1
+                  cursor: isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode ? "not-allowed" : "pointer",
+                  opacity: isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode ? 0.5 : 1
                 }}
               />
 
@@ -283,7 +443,7 @@ function GridCalibrationEditor({
                 inputMode="decimal"
                 min="1"
                 step="0.5"
-                disabled={isSaving || !canAdjustCellSize}
+                disabled={isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode}
                 value={cellHeightInput}
                 onChange={(event) => {
                   const nextValue = event.currentTarget.value;
@@ -304,8 +464,8 @@ function GridCalibrationEditor({
                 style={{
                   ...numberInputStyle,
                   width: 84,
-                  cursor: isSaving || !canAdjustCellSize ? "not-allowed" : "pointer",
-                  opacity: isSaving || !canAdjustCellSize ? 0.5 : 1
+                  cursor: isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode ? "not-allowed" : "pointer",
+                  opacity: isSaving || !canAdjustCellSize || uiState.isTwoPointCalibrationMode ? 0.5 : 1
                 }}
               />
             </div>

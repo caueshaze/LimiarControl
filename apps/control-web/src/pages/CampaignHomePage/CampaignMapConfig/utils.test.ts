@@ -3,7 +3,9 @@ import type { CampaignMapConfig } from "../../../entities/campaign";
 import {
   buildEdgeObstacleMap,
   buildObstacleMap,
+  configToForm,
   formatHoveredCell,
+  getCalibrationPreview,
   getHoveredCellEdgePresets,
   getHoveredCellObstaclePreset,
   serializeEdgeObstacleMap,
@@ -11,6 +13,79 @@ import {
   serializeObstacleMap,
   summarizeObstacleMap,
 } from "./utils";
+
+describe("CampaignMapConfig cell-size calibration", () => {
+  it("reconstructs cell size from stored calibration ÷ count", () => {
+    const config: CampaignMapConfig = {
+      id: "map-cell-1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      gridWidth: 20,
+      gridHeight: 10,
+      calibration: { x: 0.1, y: 0.2, width: 0.5, height: 0.4 },
+    };
+
+    const form = configToForm(config);
+
+    expect(form.calibrationX).toBe("0.1");
+    expect(form.calibrationY).toBe("0.2");
+    expect(form.cellWidth).toBe(String(0.5 / 20));
+    expect(form.cellHeight).toBe(String(0.4 / 10));
+  });
+
+  it("derives the grid extent from count × cell size (count does not resize cells)", () => {
+    const base = {
+      mapName: "",
+      imageUrl: "",
+      calibrationX: "0",
+      calibrationY: "0",
+      cellWidth: "0.02",
+      cellHeight: "0.03",
+    };
+
+    const small = getCalibrationPreview({ ...base, gridWidth: "10", gridHeight: "10" });
+    const large = getCalibrationPreview({ ...base, gridWidth: "20", gridHeight: "20" });
+
+    expect(small).toEqual({
+      status: "custom",
+      bounds: { x: 0, y: 0, width: 0.2, height: 0.3 },
+    });
+    // Doubling the count keeps the cell size and doubles the extent.
+    expect(large.bounds).toEqual({ x: 0, y: 0, width: 0.4, height: 0.6 });
+  });
+
+  it("still previews a grid that overflows the image (save enforces fitting)", () => {
+    const preview = getCalibrationPreview({
+      mapName: "",
+      imageUrl: "",
+      calibrationX: "0.5",
+      calibrationY: "0",
+      cellWidth: "0.1",
+      cellHeight: "0.05",
+      gridWidth: "10",
+      gridHeight: "10",
+    });
+
+    // 0.5 + 10×0.1 = 1.5 > 1, but the preview still renders (clipped).
+    expect(preview.status).toBe("custom");
+    expect(preview.bounds).toEqual({ x: 0.5, y: 0, width: 1, height: 0.5 });
+  });
+
+  it("falls back to full image when no cell size is set", () => {
+    const preview = getCalibrationPreview({
+      mapName: "",
+      imageUrl: "",
+      calibrationX: "",
+      calibrationY: "",
+      cellWidth: "",
+      cellHeight: "",
+      gridWidth: "12",
+      gridHeight: "8",
+    });
+
+    expect(preview.status).toBe("full-image");
+    expect(preview.bounds).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+  });
+});
 
 describe("CampaignMapConfig utils", () => {
   it("prefers semantic obstacles over legacy blocked cells", () => {

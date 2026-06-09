@@ -182,6 +182,8 @@ export type CharacterSheet = {
 
   // Basic info
   name: string;
+  /** Managed asset URL for the character portrait (kind="user_avatar"), or null. */
+  avatarUrl: string | null;
   class: string;
   subclass: string | null;
   currentWeaponId: string | null;

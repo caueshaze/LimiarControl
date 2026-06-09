@@ -238,7 +238,8 @@ export function drawHUD(
   canvasH: number,
   activeBrushPresetLabel?: string,
   obstaclePaintTarget?: "cell" | "edge",
-  edgeDirection?: EdgeDirection
+  edgeDirection?: EdgeDirection,
+  gridEditStatus?: string
 ): void {
   container.removeChildren();
 
@@ -280,6 +281,26 @@ export function drawHUD(
       .stroke({ width: 1, color: 0xff9060, alpha: 0.3 });
     container.addChild(obsBg);
     container.addChild(obsLabel);
+  }
+
+  if (gridEditStatus && isEditMode) {
+    const statusLabel = new Text({
+      text: gridEditStatus,
+      style: new TextStyle({ fill: "#8cbcff", fontSize: 10 })
+    });
+    const statusBgW = statusLabel.width + 16;
+    const statusBgX = canvasW - statusBgW - 8;
+    statusLabel.x = statusBgX + 8;
+    statusLabel.y = 30;
+    const statusBg = new Graphics();
+    statusBg
+      .roundRect(statusBgX, 27, statusBgW, statusLabel.height + 8, 4)
+      .fill({ color: 0, alpha: 0.72 });
+    statusBg
+      .roundRect(statusBgX, 27, statusBgW, statusLabel.height + 8, 4)
+      .stroke({ width: 1, color: 0x5ca9ff, alpha: 0.3 });
+    container.addChild(statusBg);
+    container.addChild(statusLabel);
   }
 
   if (selectedToken && !isEditMode) {

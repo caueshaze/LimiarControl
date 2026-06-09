@@ -6,6 +6,7 @@ import type {
   BaseItemDexBonusRule,
   BaseItemEquipmentCategory,
   BaseItemKind,
+  MagicItemRechargeType,
   BaseItemSource,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
@@ -39,6 +40,12 @@ export type FormState = {
   costQuantity: string;
   costUnit: BaseItemCostUnit | "";
   weight: string;
+  chargesMax: string;
+  rechargeType: MagicItemRechargeType | "";
+  magicEffectSpellCanonicalKey: string;
+  magicEffectCastLevel: string;
+  magicEffectIgnoreComponents: boolean;
+  magicEffectNoFreeHandRequired: boolean;
   weaponCategory: BaseItemWeaponCategory | "";
   weaponRangeType: BaseItemWeaponRangeType | "";
   damageDice: string;
@@ -58,6 +65,7 @@ export type FormState = {
   sourceRef: string;
   isSrd: boolean;
   isActive: boolean;
+  isPurchasable: boolean;
 };
 
 export {

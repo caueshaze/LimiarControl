@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from typing import cast
 
+from pydantic import ValidationError
+
 from sqlmodel import Session, col, select
 
 from app.api.serializers.base_spell import to_base_spell_seed_entry
@@ -204,6 +206,16 @@ def bootstrap_base_spells_if_empty(
         logger.warning("Base spell seed file not found at %s", path)
         return {"inserted": 0, "updated": 0, "total": 0}
 
-    result = import_base_spell_seed_file(db, path=path, replace=False)
+    try:
+        result = import_base_spell_seed_file(db, path=path, replace=False)
+    except ValidationError as exc:
+        logger.warning(
+            "Base spell seed at %s failed validation (%d errors) — bootstrap skipped. "
+            "Use the admin UI to import spells manually.\n%s",
+            path,
+            exc.error_count(),
+            exc,
+        )
+        return {"inserted": 0, "updated": 0, "total": 0}
     logger.info("Bootstrapped base spell catalog from %s: %s", path, result)
     return result

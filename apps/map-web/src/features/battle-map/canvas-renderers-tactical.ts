@@ -9,7 +9,12 @@ import type {
   GridCalibration,
   Token
 } from "@limiarmap/shared-contracts";
-import type { TacticalPreviewState, SpellMapHighlight, SpellMapHighlightStatus } from "./battle-map-store";
+import type {
+  TacticalPreviewState,
+  SpellMapHighlight,
+  SpellMapHighlightStatus,
+  GridCalibrationPixelPoint
+} from "./battle-map-store";
 import type { FailureExplanation } from "../targeting/diagnostics-to-explanation";
 import { C } from "./constants";
 import { cellRect } from "./utils";
@@ -81,6 +86,107 @@ export function drawTacticalTokenOverlay(
   container.addChild(ring);
 }
 
+function drawPointMarker(
+  container: Container,
+  point: GridCalibrationPixelPoint,
+  label: string,
+  fillColor: number,
+  strokeColor: number,
+  imageWidth: number,
+  imageHeight: number,
+  canvasW: number,
+  canvasH: number
+): void {
+  const x = (point.x / imageWidth) * canvasW;
+  const y = (point.y / imageHeight) * canvasH;
+
+  const marker = new Graphics();
+  marker.circle(0, 0, 10).fill({ color: fillColor, alpha: 0.92 });
+  marker.circle(0, 0, 10).stroke({ width: 2, color: strokeColor, alpha: 0.95 });
+  marker.x = x;
+  marker.y = y;
+  container.addChild(marker);
+
+  const badge = new Text({
+    text: label,
+    style: new TextStyle({
+      fill: "#ffffff",
+      fontSize: 11,
+      fontWeight: "bold",
+    }),
+  });
+  badge.anchor.set(0.5);
+  badge.x = x;
+  badge.y = y - 0.5;
+  container.addChild(badge);
+}
+
+export function drawTwoPointCalibrationOverlay(
+  container: Container,
+  firstPoint: GridCalibrationPixelPoint | undefined,
+  secondPoint: GridCalibrationPixelPoint | undefined,
+  imageWidth: number,
+  imageHeight: number,
+  canvasW: number,
+  canvasH: number
+): void {
+  container.removeChildren();
+
+  if (!firstPoint || imageWidth <= 0 || imageHeight <= 0) return;
+
+  const firstX = (firstPoint.x / imageWidth) * canvasW;
+  const firstY = (firstPoint.y / imageHeight) * canvasH;
+
+  if (secondPoint) {
+    const secondX = (secondPoint.x / imageWidth) * canvasW;
+    const secondY = (secondPoint.y / imageHeight) * canvasH;
+    const minX = Math.min(firstX, secondX);
+    const minY = Math.min(firstY, secondY);
+    const width = Math.abs(secondX - firstX);
+    const height = Math.abs(secondY - firstY);
+
+    const rect = new Graphics();
+    rect.rect(minX, minY, width, height).fill({ color: 0x5ca9ff, alpha: 0.08 });
+    rect.rect(minX, minY, width, height).stroke({
+      width: 2,
+      color: 0x8cbcff,
+      alpha: 0.9,
+    });
+    rect.moveTo(firstX, firstY).lineTo(secondX, secondY).stroke({
+      width: 1.5,
+      color: 0xb9d8ff,
+      alpha: 0.7,
+    });
+    container.addChild(rect);
+  }
+
+  drawPointMarker(
+    container,
+    firstPoint,
+    "1",
+    0x22c55e,
+    0xdcfce7,
+    imageWidth,
+    imageHeight,
+    canvasW,
+    canvasH
+  );
+
+  if (secondPoint) {
+    drawPointMarker(
+      container,
+      secondPoint,
+      "2",
+      0xef4444,
+      0xfee2e2,
+      imageWidth,
+      imageHeight,
+      canvasW,
+      canvasH
+    );
+  }
+}
+
 const STATUS_PRIORITY: Record<SpellMapHighlightStatus, number> = {
   invalid: 3,
   partial: 2,
@@ -99,6 +205,7 @@ const resolveRingStyle = (status: SpellMapHighlightStatus): { color: number; alp
     case "unknown":
       return null;
   }
+  return null;
 };
 
 export function drawSpellHighlightRings(

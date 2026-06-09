@@ -41,7 +41,8 @@ export const PartyDetailsPlayerSheetsCard = ({
           players.map((player) => {
             const sheetHref = player.hasSheet
               ? `${routes.characterSheetParty.replace(":partyId", partyId)}?${new URLSearchParams({
-                  mode: "creation",
+                  mode: "view",
+                  campaignId,
                   playerId: player.userId,
                   playerName: player.displayName,
                 }).toString()}`

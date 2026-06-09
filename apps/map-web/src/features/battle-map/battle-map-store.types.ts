@@ -38,6 +38,11 @@ export interface TokenMovementRejectionState {
   exceededBy?: number;
 }
 
+export interface GridCalibrationPixelPoint {
+  x: number;
+  y: number;
+}
+
 export type SpellMapHighlightKind = "target" | "instance-target" | "area-cell" | "affected-token";
 export type SpellMapHighlightStatus = "valid" | "invalid" | "partial" | "unknown";
 export type SpellMapHighlight = {
@@ -65,10 +70,13 @@ export interface BattleMapUIState {
   embeddedSpellHighlights: SpellMapHighlight[];
   message?: string;
   isGridEditMode: boolean;
+  isTwoPointCalibrationMode: boolean;
   isObstaclePaintMode: boolean;
   gridCalibrationDraft?: GridCalibration;
   gridWidthDraft?: number;
   gridHeightDraft?: number;
+  twoPointCalibrationFirstPoint?: GridCalibrationPixelPoint;
+  twoPointCalibrationSecondPoint?: GridCalibrationPixelPoint;
   pendingGridCalibrationActionId?: string;
   pendingObstaclePaintActionId?: string;
   obstacleBrushRadius: number;

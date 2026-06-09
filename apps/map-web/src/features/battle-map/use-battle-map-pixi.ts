@@ -205,7 +205,7 @@ export function useBattleMapPixi(params: {
   }, [encounter?.battleMap.imageUrl]);
 
   useEffect(() => {
-    if (!gridEditInteraction || !encounter) return;
+    if (!gridEditInteraction || !encounter || uiState.isTwoPointCalibrationMode) return;
     const minWidth =
       1 / (uiState.gridWidthDraft ?? encounter.battleMap.gridWidth);
     const minHeight =
@@ -239,7 +239,8 @@ export function useBattleMapPixi(params: {
     encounter,
     gridEditInteraction,
     uiState.gridHeightDraft,
-    uiState.gridWidthDraft
+    uiState.gridWidthDraft,
+    uiState.isTwoPointCalibrationMode
   ]);
 
   useEffect(() => {
@@ -273,6 +274,18 @@ export function useBattleMapPixi(params: {
     uiState.isObstaclePaintMode,
     uiState.isElevationPaintMode
   ]);
+
+  useEffect(() => {
+    if (!uiState.isGridEditMode || !uiState.isTwoPointCalibrationMode) return;
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key !== "Escape") return;
+      battleMapStore.cancelTwoPointGridCalibration();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [uiState.isGridEditMode, uiState.isTwoPointCalibrationMode]);
 
   useEffect(() => {
     if (!selectedToken || !encounter) {

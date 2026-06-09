@@ -7,6 +7,8 @@ from app.db.session import get_session
 from app.core.config import settings
 from app.models.campaign import RoleMode
 from app.models.campaign_entity import CampaignEntity
+from app.models.party import Party
+from app.models.party_member import PartyMember
 from app.models.session import Session as CampaignSession, SessionStatus
 from app.models.session_entity import SessionEntity
 from app.models.user import User
@@ -58,6 +60,39 @@ def _ensure_visible_entity_asset(
     ).first()
     if visible is None:
         raise HTTPException(status_code=403, detail="Asset not available")
+
+
+def _ensure_user_avatar_access(*, target_user_id: str, user: User, session: Session) -> None:
+    """Allow the owner, or any user who shares a party with the owner (member or GM)."""
+    if user.id == target_user_id:
+        return
+
+    target_party_ids = session.exec(
+        select(PartyMember.party_id).where(PartyMember.user_id == target_user_id)
+    ).all()
+    if not target_party_ids:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    shares_membership = session.exec(
+        select(PartyMember.party_id)
+        .where(
+            col(PartyMember.party_id).in_(target_party_ids),
+            PartyMember.user_id == user.id,
+        )
+        .limit(1)
+    ).first()
+    if shares_membership is not None:
+        return
+
+    is_party_gm = session.exec(
+        select(Party.id)
+        .where(col(Party.id).in_(target_party_ids), Party.gm_user_id == user.id)
+        .limit(1)
+    ).first()
+    if is_party_gm is not None:
+        return
+
+    raise HTTPException(status_code=403, detail="Forbidden")
 
 
 def _stream_managed_asset(ref: ManagedAssetRef) -> StreamingResponse:
@@ -112,6 +147,22 @@ def get_temporary_entity_asset(
 ):
     require_gm(campaign_id, user, session)
     ref = ManagedAssetRef(kind="entity_temp", campaign_id=campaign_id, asset_id=asset_id)
+    try:
+        assert_managed_asset_exists(ref)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Asset not found") from exc
+    return _stream_managed_asset(ref)
+
+
+@router.get("/users/{user_id}/avatar/{asset_id}")
+def get_user_avatar_asset(
+    user_id: str,
+    asset_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    _ensure_user_avatar_access(target_user_id=user_id, user=user, session=session)
+    ref = ManagedAssetRef(kind="user_avatar", user_id=user_id, asset_id=asset_id)
     try:
         assert_managed_asset_exists(ref)
     except FileNotFoundError as exc:

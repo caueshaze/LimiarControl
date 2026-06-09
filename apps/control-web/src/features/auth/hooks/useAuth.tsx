@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { authRepo } from "../../../shared/api/authRepo";
+import { authRepo, type UpdateProfileRequest } from "../../../shared/api/authRepo";
 import { clearToken, getToken, setToken } from "../../../shared/auth/tokenStore";
 import { disconnectRealtime } from "../../../shared/realtime/centrifugoClient";
 import type { RoleMode } from "../../../shared/types/role";
@@ -10,6 +10,7 @@ type AuthUser = {
   username: string;
   displayName?: string | null;
   role: RoleMode;
+  preferredWorkspaceMode?: RoleMode | null;
   isSystemAdmin: boolean;
   avatarUrl?: string | null;
   tokenColor?: string | null;
@@ -30,6 +31,7 @@ type AuthContextValue = {
   login: (username: string, pin: string) => Promise<AuthUser | null>;
   logout: () => void;
   refreshUser: () => Promise<AuthUser | null>;
+  updateProfile: (payload: UpdateProfileRequest) => Promise<AuthUser | null>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -131,9 +133,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const updateProfile = useCallback(async (payload: UpdateProfileRequest) => {
+    const previousUser = user;
+    if (previousUser) {
+      setUser({
+        ...previousUser,
+        ...(payload.displayName !== undefined ? { displayName: payload.displayName || null } : {}),
+        ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl || null } : {}),
+        ...(payload.tokenColor !== undefined ? { tokenColor: payload.tokenColor || null } : {}),
+        ...(payload.tokenImageUrl !== undefined ? { tokenImageUrl: payload.tokenImageUrl || null } : {}),
+        ...(payload.preferredWorkspaceMode !== undefined
+          ? { preferredWorkspaceMode: payload.preferredWorkspaceMode }
+          : {}),
+      });
+    }
+
+    try {
+      const profile = await authRepo.updateProfile(payload);
+      setUser(profile);
+      return profile;
+    } catch {
+      setUser(previousUser);
+      return null;
+    }
+  }, [user]);
+
   const value = useMemo(
-    () => ({ user, token, loading, login, register, logout, refreshUser }),
-    [user, token, loading, login, register, logout, refreshUser]
+    () => ({ user, token, loading, login, register, logout, refreshUser, updateProfile }),
+    [user, token, loading, login, register, logout, refreshUser, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

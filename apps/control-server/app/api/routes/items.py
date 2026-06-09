@@ -33,6 +33,7 @@ def _apply_item_payload(item: Item, payload: ItemCreate | ItemUpdate) -> None:
     item.type = payload.type
     item.description = payload.description
     item.price = payload.price
+    item.equipment_category = payload.equipmentCategory
     item.weight = payload.weight
     item.damage_dice = payload.damageDice
     item.damage_type = payload.damageType
@@ -58,6 +59,7 @@ def _apply_item_payload(item: Item, payload: ItemCreate | ItemUpdate) -> None:
     item.stealth_disadvantage = payload.stealthDisadvantage
     item.is_shield = payload.isShield
     item.properties = payload.properties
+    item.is_purchasable = payload.isPurchasable
     if item.is_custom:
         item.item_kind = _infer_item_kind(payload.type)
         item.name_en_snapshot = payload.name

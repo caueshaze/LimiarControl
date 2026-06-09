@@ -15,6 +15,7 @@ export const INITIAL_SHEET: CharacterSheet = {
   schemaVersion: 1,
 
   name: "",
+  avatarUrl: null,
   class: "",
   subclass: null,
   currentWeaponId: null,

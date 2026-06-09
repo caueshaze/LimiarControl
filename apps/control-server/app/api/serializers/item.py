@@ -20,6 +20,7 @@ def to_item_read(item: Item) -> ItemRead:
             if item.price is not None
             else None
         ),
+        equipmentCategory=item.equipment_category,
         weight=item.weight,
         damageDice=item.damage_dice,
         damageType=item.damage_type,
@@ -49,6 +50,7 @@ def to_item_read(item: Item) -> ItemRead:
         costUnit=item.cost_unit,
         isCustom=item.is_custom,
         isEnabled=item.is_enabled,
+        isPurchasable=item.is_purchasable,
         createdAt=item.created_at,
         updatedAt=item.updated_at,
     )

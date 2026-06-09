@@ -41,8 +41,8 @@ def upgrade() -> None:
             UPDATE base_spell
                SET material_component_consumed = true,
                    consumable_material_options_json = '[
-                     {"key":"holy_water","nameEn":"Holy water","namePt":"Água benta","quantity":1},
-                     {"key":"powdered_silver_and_iron","nameEn":"Powdered silver and iron","namePt":"Prata e ferro em pó","quantity":1}
+                     {"key":"holy_water","nameEn":"Holy water","namePt":"Água benta","quantity"\:1},
+                     {"key":"powdered_silver_and_iron","nameEn":"Powdered silver and iron","namePt":"Prata e ferro em pó","quantity"\:1}
                    ]'::jsonb
              WHERE canonical_key = 'protection_from_evil_and_good'
             """
@@ -54,8 +54,8 @@ def upgrade() -> None:
             UPDATE campaign_spell
                SET material_component_consumed = true,
                    consumable_material_options_json = '[
-                     {"key":"holy_water","nameEn":"Holy water","namePt":"Água benta","quantity":1},
-                     {"key":"powdered_silver_and_iron","nameEn":"Powdered silver and iron","namePt":"Prata e ferro em pó","quantity":1}
+                     {"key":"holy_water","nameEn":"Holy water","namePt":"Água benta","quantity"\:1},
+                     {"key":"powdered_silver_and_iron","nameEn":"Powdered silver and iron","namePt":"Prata e ferro em pó","quantity"\:1}
                    ]'::jsonb
              WHERE canonical_key = 'protection_from_evil_and_good'
             """

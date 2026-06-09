@@ -1,11 +1,14 @@
 import { useState } from "react";
+import type { BaseSpell } from "../../../entities/base-spell";
 import type {
+  BaseItemEquipmentCategory,
   BaseItemArmorCategory,
   BaseItemDamageType,
   BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
+import { BaseItemEquipmentCategory as BaseItemEquipmentCategoryValues } from "../../../entities/base-item";
 import {
   getItemPropertyLabels,
   normalizeItemProperties,
@@ -23,6 +26,7 @@ import { CatalogItemEditView } from "./CatalogItemEditView";
 type CatalogItemCardProps = {
   item: Item;
   itemTypes: ItemType[];
+  spells: BaseSpell[];
   onUpdate?: (itemId: string, payload: ItemInput) => boolean | Promise<boolean>;
   onDelete?: (itemId: string) => void | Promise<void>;
 };
@@ -30,6 +34,7 @@ type CatalogItemCardProps = {
 export const CatalogItemCard = ({
   item,
   itemTypes,
+  spells,
   onUpdate,
   onDelete,
 }: CatalogItemCardProps) => {
@@ -40,6 +45,9 @@ export const CatalogItemCard = ({
   const [type, setType] = useState<ItemType>(item.type);
   const [description, setDescription] = useState(item.description);
   const [price, setPrice] = useState(item.price?.toString() ?? "");
+  const [equipmentCategory, setEquipmentCategory] = useState<BaseItemEquipmentCategory | "">(
+    item.equipmentCategory ?? (item.magicEffect?.spellCanonicalKey ? BaseItemEquipmentCategoryValues.MAGIC_BRACELET : ""),
+  );
   const [weight, setWeight] = useState(item.weight?.toString() ?? "");
   const [damageDice, setDamageDice] = useState(item.damageDice ?? "");
   const [damageType, setDamageType] = useState<BaseItemDamageType | "">(item.damageType ?? "");
@@ -66,6 +74,23 @@ export const CatalogItemCard = ({
   );
   const [stealthDisadvantage, setStealthDisadvantage] = useState(
     item.stealthDisadvantage ?? false,
+  );
+  const [isPurchasable, setIsPurchasable] = useState(item.isPurchasable !== false);
+  const [chargesMax, setChargesMax] = useState(item.chargesMax?.toString() ?? "");
+  const [rechargeType, setRechargeType] = useState<"" | "none" | "short_rest" | "long_rest" | "dawn" | "custom">(
+    item.rechargeType ?? "",
+  );
+  const [spellCanonicalKey, setSpellCanonicalKey] = useState(
+    item.magicEffect?.spellCanonicalKey ?? "",
+  );
+  const [castLevel, setCastLevel] = useState(
+    item.magicEffect?.castLevel != null ? String(item.magicEffect.castLevel) : "1",
+  );
+  const [ignoreComponents, setIgnoreComponents] = useState(
+    Boolean(item.magicEffect?.ignoreComponents),
+  );
+  const [noFreeHandRequired, setNoFreeHandRequired] = useState(
+    Boolean(item.magicEffect?.noFreeHandRequired),
   );
   const initialProperties = normalizeItemProperties(item.properties);
   const [selectedProperties, setSelectedProperties] = useState<ItemPropertySlug[]>(
@@ -118,6 +143,7 @@ export const CatalogItemCard = ({
         type,
         description: description.trim(),
         price,
+        equipmentCategory: equipmentCategory || undefined,
         weight,
         damageDice:
           (type === "WEAPON" || type === "MAGIC") && damageDice.trim()
@@ -159,6 +185,25 @@ export const CatalogItemCard = ({
             : undefined,
         stealthDisadvantage: type === "ARMOR" ? stealthDisadvantage : undefined,
         isShield: type === "ARMOR" && armorCategory === "shield",
+        chargesMax:
+          equipmentCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET && chargesMax.trim()
+            ? chargesMax
+            : undefined,
+        rechargeType:
+          equipmentCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET && rechargeType
+            ? rechargeType
+            : undefined,
+        magicEffect:
+          equipmentCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET && spellCanonicalKey
+            ? {
+                type: "cast_spell",
+                spellCanonicalKey,
+                castLevel: castLevel.trim() ? Number(castLevel) : 1,
+                ignoreComponents,
+                noFreeHandRequired,
+              }
+            : undefined,
+        isPurchasable,
         properties:
           type !== "ARMOR" && selectedProperties.length > 0
             ? selectedProperties
@@ -196,9 +241,11 @@ export const CatalogItemCard = ({
       localizedName={localizedName}
       editingMeta={editingMeta}
       type={type}
+      spells={spells}
       name={name}
       description={description}
       price={price}
+      equipmentCategory={equipmentCategory}
       weight={weight}
       damageDice={damageDice}
       damageType={damageType}
@@ -214,6 +261,13 @@ export const CatalogItemCard = ({
       dexBonusRule={dexBonusRule}
       strengthRequirement={strengthRequirement}
       stealthDisadvantage={stealthDisadvantage}
+      isPurchasable={isPurchasable}
+      chargesMax={chargesMax}
+      rechargeType={rechargeType}
+      spellCanonicalKey={spellCanonicalKey}
+      castLevel={castLevel}
+      ignoreComponents={ignoreComponents}
+      noFreeHandRequired={noFreeHandRequired}
       selectedProperties={selectedProperties}
       legacyUnknownProperties={initialProperties.invalid}
       canSave={canSave}
@@ -222,6 +276,21 @@ export const CatalogItemCard = ({
       onTypeChange={setType}
       onDescriptionChange={setDescription}
       onPriceChange={setPrice}
+      onEquipmentCategoryChange={(value) => {
+        setEquipmentCategory(value);
+        if (value === BaseItemEquipmentCategoryValues.MAGIC_BRACELET) {
+          setType("MAGIC");
+          setChargesMax((current) => current || "1");
+          setRechargeType((current) => current || "none");
+        } else {
+          setChargesMax("");
+          setRechargeType("");
+          setSpellCanonicalKey("");
+          setCastLevel("1");
+          setIgnoreComponents(false);
+          setNoFreeHandRequired(false);
+        }
+      }}
       onWeightChange={setWeight}
       onDamageDiceChange={setDamageDice}
       onDamageTypeChange={setDamageType}
@@ -237,6 +306,13 @@ export const CatalogItemCard = ({
       onDexBonusRuleChange={setDexBonusRule}
       onStrengthRequirementChange={setStrengthRequirement}
       onStealthDisadvantageChange={setStealthDisadvantage}
+      onIsPurchasableChange={setIsPurchasable}
+      onChargesMaxChange={setChargesMax}
+      onRechargeTypeChange={setRechargeType}
+      onSpellCanonicalKeyChange={setSpellCanonicalKey}
+      onCastLevelChange={setCastLevel}
+      onIgnoreComponentsChange={setIgnoreComponents}
+      onNoFreeHandRequiredChange={setNoFreeHandRequired}
       onPropertiesChange={setSelectedProperties}
       onCancel={() => setIsEditing(false)}
       onSave={() => void handleSave()}

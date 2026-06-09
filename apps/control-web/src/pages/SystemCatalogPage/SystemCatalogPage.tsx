@@ -1,7 +1,9 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import type { BaseItem } from "../../entities/base-item";
+import type { BaseSpell } from "../../entities/base-spell";
 import { adminBaseItemsRepo } from "../../shared/api/adminBaseItemsRepo";
+import { baseSpellsRepo } from "../../shared/api/baseSpellsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { SystemCatalogItemForm } from "./SystemCatalogItemForm";
 import { SystemCatalogSidebar } from "./SystemCatalogSidebar";
@@ -23,6 +25,7 @@ export const SystemCatalogPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(createEmptyForm());
+  const [spells, setSpells] = useState<BaseSpell[]>([]);
   const [search, setSearch] = useState("");
   const [itemKindFilter, setItemKindFilter] = useState<ItemKindFilter>("ALL");
   const [equipmentCategoryFilter, setEquipmentCategoryFilter] =
@@ -38,6 +41,25 @@ export const SystemCatalogPage = () => {
     }, 2600);
     return () => window.clearTimeout(timeoutId);
   }, [statusMessage, statusTone]);
+
+  useEffect(() => {
+    let mounted = true;
+    void baseSpellsRepo
+      .list({ system: "DND5E", isActive: true })
+      .then((result) => {
+        if (mounted) {
+          setSpells(result);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setSpells([]);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const loadItems = async () => {
     setLoading(true);
@@ -213,6 +235,7 @@ export const SystemCatalogPage = () => {
         />
         <SystemCatalogItemForm
           form={form}
+          spells={spells}
           setForm={setForm}
           selectedItemId={selectedItemId}
           statusMessage={statusMessage}

@@ -1,12 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, text
 
-from app.api.deps import require_system_admin
+from app.api.deps import get_current_user, require_system_admin
 from app.core.config import settings
 from app.db.session import get_session
 from app.models.user import User
 
 router = APIRouter()
+
+
+def _dev_or_admin(
+    request: Request, session: Session = Depends(get_session)
+) -> Optional[User]:
+    if settings.app_env == "development":
+        return None
+    return require_system_admin(get_current_user(request, session))
 
 
 def _list_resettable_tables(session: Session) -> list[str]:
@@ -46,7 +56,7 @@ def truncate_all_application_tables(session: Session) -> list[str]:
 @router.post("/reset")
 def reset_database(
     session: Session = Depends(get_session),
-    admin: User = Depends(require_system_admin),
+    _auth: Optional[User] = Depends(_dev_or_admin),
 ):
     if settings.app_env != "development":
         raise HTTPException(status_code=403, detail="Forbidden")

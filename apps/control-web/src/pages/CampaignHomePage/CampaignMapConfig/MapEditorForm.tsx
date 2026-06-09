@@ -8,6 +8,8 @@ type Props = {
   form: FormState;
   isCreatingNew: boolean;
   isConfigured: boolean;
+  isDirty: boolean;
+  calibrationSummary: string;
   uploading: boolean;
   deleting: boolean;
   saving: boolean;
@@ -15,7 +17,6 @@ type Props = {
   success: string | null;
   imageInputRef: RefObject<HTMLInputElement | null>;
   acceptedImageTypes: string;
-  calibrationFieldClassName: string;
   onUpdateField: (field: keyof FormState, value: string) => void;
   onChooseImage: () => void;
   onImageSelected: (event: FileInputChangeEvent) => void;
@@ -29,6 +30,8 @@ export const MapEditorForm = ({
   form,
   isCreatingNew,
   isConfigured,
+  isDirty,
+  calibrationSummary,
   uploading,
   deleting,
   saving,
@@ -36,7 +39,6 @@ export const MapEditorForm = ({
   success,
   imageInputRef,
   acceptedImageTypes,
-  calibrationFieldClassName,
   onUpdateField,
   onChooseImage,
   onImageSelected,
@@ -87,13 +89,6 @@ export const MapEditorForm = ({
               : hasMapImage
                 ? t("campaignHome.mapReplaceImage")
                 : t("campaignHome.mapChooseImage")}
-          </button>
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500"
-          >
-            {t("campaignHome.mapClear")}
           </button>
           {!isCreatingNew && (
             <button
@@ -179,64 +174,9 @@ export const MapEditorForm = ({
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="block w-full space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              {t("campaignHome.mapCalibrationX")}
-            </span>
-            <input
-              value={form.calibrationX}
-              onChange={(event) => onUpdateField("calibrationX", event.target.value)}
-              type="number"
-              min={0}
-              max={1}
-              step="0.001"
-              className={calibrationFieldClassName}
-            />
-          </label>
-          <label className="block w-full space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              {t("campaignHome.mapCalibrationY")}
-            </span>
-            <input
-              value={form.calibrationY}
-              onChange={(event) => onUpdateField("calibrationY", event.target.value)}
-              type="number"
-              min={0}
-              max={1}
-              step="0.001"
-              className={calibrationFieldClassName}
-            />
-          </label>
-          <label className="block w-full space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              {t("campaignHome.mapCalibrationWidth")}
-            </span>
-            <input
-              value={form.calibrationWidth}
-              onChange={(event) => onUpdateField("calibrationWidth", event.target.value)}
-              type="number"
-              min={0}
-              max={1}
-              step="0.001"
-              className={calibrationFieldClassName}
-            />
-          </label>
-          <label className="block w-full space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              {t("campaignHome.mapCalibrationHeight")}
-            </span>
-            <input
-              value={form.calibrationHeight}
-              onChange={(event) => onUpdateField("calibrationHeight", event.target.value)}
-              type="number"
-              min={0}
-              max={1}
-              step="0.001"
-              className={calibrationFieldClassName}
-            />
-          </label>
-        </div>
+        <p className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+          {calibrationSummary}
+        </p>
       </div>
 
       {error && (
@@ -259,6 +199,16 @@ export const MapEditorForm = ({
         >
           {saving ? t("campaignHome.mapSaving") : t("campaignHome.mapSave")}
         </button>
+        {isDirty && (
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={saving || uploading || deleting}
+            className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {t("campaignHome.mapDiscard")}
+          </button>
+        )}
       </div>
     </div>
   );

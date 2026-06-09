@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import type { BaseSpell } from "../../../entities/base-spell";
 import type {
+  BaseItemEquipmentCategory,
   BaseItemArmorCategory,
   BaseItemDamageType,
   BaseItemDexBonusRule,
@@ -10,6 +12,7 @@ import type { ItemPropertySlug, ItemType } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { ItemAutomationFields } from "./ItemAutomationFields";
+import { MagicBraceletFields } from "./MagicBraceletFields";
 
 type Props = {
   itemTypes: ItemType[];
@@ -19,9 +22,11 @@ type Props = {
     panelClass: string;
   };
   type: ItemType;
+  spells: BaseSpell[];
   name: string;
   description: string;
   price: string;
+  equipmentCategory: BaseItemEquipmentCategory | "";
   weight: string;
   damageDice: string;
   damageType: BaseItemDamageType | "";
@@ -37,6 +42,13 @@ type Props = {
   dexBonusRule: BaseItemDexBonusRule | "";
   strengthRequirement: string;
   stealthDisadvantage: boolean;
+  isPurchasable: boolean;
+  chargesMax: string;
+  rechargeType: "" | "none" | "short_rest" | "long_rest" | "dawn" | "custom";
+  spellCanonicalKey: string;
+  castLevel: string;
+  ignoreComponents: boolean;
+  noFreeHandRequired: boolean;
   selectedProperties: ItemPropertySlug[];
   legacyUnknownProperties: string[];
   canSave: boolean;
@@ -45,6 +57,7 @@ type Props = {
   onTypeChange: (value: ItemType) => void;
   onDescriptionChange: (value: string) => void;
   onPriceChange: (value: string) => void;
+  onEquipmentCategoryChange: (value: BaseItemEquipmentCategory | "") => void;
   onWeightChange: (value: string) => void;
   onDamageDiceChange: (value: string) => void;
   onDamageTypeChange: (value: BaseItemDamageType | "") => void;
@@ -60,6 +73,13 @@ type Props = {
   onDexBonusRuleChange: (value: BaseItemDexBonusRule | "") => void;
   onStrengthRequirementChange: (value: string) => void;
   onStealthDisadvantageChange: (value: boolean) => void;
+  onIsPurchasableChange: (value: boolean) => void;
+  onChargesMaxChange: (value: string) => void;
+  onRechargeTypeChange: (value: "" | "none" | "short_rest" | "long_rest" | "dawn" | "custom") => void;
+  onSpellCanonicalKeyChange: (value: string) => void;
+  onCastLevelChange: (value: string) => void;
+  onIgnoreComponentsChange: (value: boolean) => void;
+  onNoFreeHandRequiredChange: (value: boolean) => void;
   onPropertiesChange: (value: ItemPropertySlug[]) => void;
   onCancel: () => void;
   onSave: () => void;
@@ -70,9 +90,11 @@ export const CatalogItemEditView = ({
   localizedName,
   editingMeta,
   type,
+  spells,
   name,
   description,
   price,
+  equipmentCategory,
   weight,
   damageDice,
   damageType,
@@ -88,6 +110,13 @@ export const CatalogItemEditView = ({
   dexBonusRule,
   strengthRequirement,
   stealthDisadvantage,
+  isPurchasable,
+  chargesMax,
+  rechargeType,
+  spellCanonicalKey,
+  castLevel,
+  ignoreComponents,
+  noFreeHandRequired,
   selectedProperties,
   legacyUnknownProperties,
   canSave,
@@ -96,6 +125,7 @@ export const CatalogItemEditView = ({
   onTypeChange,
   onDescriptionChange,
   onPriceChange,
+  onEquipmentCategoryChange,
   onWeightChange,
   onDamageDiceChange,
   onDamageTypeChange,
@@ -111,11 +141,20 @@ export const CatalogItemEditView = ({
   onDexBonusRuleChange,
   onStrengthRequirementChange,
   onStealthDisadvantageChange,
+  onIsPurchasableChange,
+  onChargesMaxChange,
+  onRechargeTypeChange,
+  onSpellCanonicalKeyChange,
+  onCastLevelChange,
+  onIgnoreComponentsChange,
+  onNoFreeHandRequiredChange,
   onPropertiesChange,
   onCancel,
   onSave,
 }: Props) => {
   const { t } = useLocale();
+  const isMagicBracelet =
+    equipmentCategory === "magic_bracelet" || Boolean(spellCanonicalKey);
 
   return (
     <article className="relative overflow-hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,28,0.94),rgba(3,7,20,0.98))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.24)]">
@@ -192,6 +231,44 @@ export const CatalogItemEditView = ({
               />
             </Field>
           </div>
+
+          <Field label={t("shop.form.equipmentCategory")}>
+            <select
+              value={equipmentCategory}
+              onChange={(event) => onEquipmentCategoryChange(event.target.value as BaseItemEquipmentCategory | "")}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+            >
+              <option value="">{t("shop.form.optionNone")}</option>
+              <option value="magic_bracelet">{t("shop.form.magicBraceletCategory")}</option>
+            </select>
+          </Field>
+
+          <label className="flex items-center gap-3 rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              checked={isPurchasable}
+              onChange={(event) => onIsPurchasableChange(event.target.checked)}
+            />
+            <span>{t("shop.form.isPurchasable")}</span>
+          </label>
+
+          {isMagicBracelet && (
+            <MagicBraceletFields
+              spells={spells}
+              chargesMax={chargesMax}
+              rechargeType={rechargeType}
+              spellCanonicalKey={spellCanonicalKey}
+              castLevel={castLevel}
+              ignoreComponents={ignoreComponents}
+              noFreeHandRequired={noFreeHandRequired}
+              onChargesMaxChange={onChargesMaxChange}
+              onRechargeTypeChange={onRechargeTypeChange}
+              onSpellCanonicalKeyChange={onSpellCanonicalKeyChange}
+              onCastLevelChange={onCastLevelChange}
+              onIgnoreComponentsChange={onIgnoreComponentsChange}
+              onNoFreeHandRequiredChange={onNoFreeHandRequiredChange}
+            />
+          )}
 
           <ItemAutomationFields
             type={type}

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockState = vi.hoisted(() => ({
   dialogProps: null as Record<string, unknown> | null,
+  combatActive: false,
+  combatModeVisible: false,
   pendingSpellPreparation: {
     source: "long_rest",
     classKey: "cleric",
@@ -55,7 +57,7 @@ vi.mock("../../shared/hooks/useToast", () => ({
 vi.mock("../../features/sessions", () => ({
   useSession: () => ({
     collapseCombatUi: vi.fn(),
-    combatModeVisible: false,
+    combatModeVisible: mockState.combatModeVisible,
     combatUiExpanded: false,
     toggleCombatUiExpanded: vi.fn(),
   }),
@@ -77,7 +79,7 @@ vi.mock("./usePlayerBoardResources", () => ({
     catalogItems: {},
     clearCommand: vi.fn(),
     clearSessionEnded: vi.fn(),
-    combatActive: false,
+    combatActive: mockState.combatActive,
     effectiveCampaignId: "campaign-1",
     lastCommand: null,
     lastEvent: null,
@@ -244,6 +246,8 @@ import { PlayerBoardPage } from "./PlayerBoardPage";
 describe("PlayerBoardPage spell preparation wiring", () => {
   beforeEach(() => {
     mockState.dialogProps = null;
+    mockState.combatActive = false;
+    mockState.combatModeVisible = false;
     mockState.pendingSpellPreparation = {
       source: "long_rest",
       classKey: "cleric",
@@ -262,6 +266,7 @@ describe("PlayerBoardPage spell preparation wiring", () => {
     expect(markup).toContain("O descanso longo ainda está em andamento");
     expect(markup).toContain("during_long_rest");
     expect(mockState.dialogProps?.copyMode).toBe("during_long_rest");
+    expect(mockState.dialogProps?.open).toBe(true);
   });
 
   it("falls back to the post-rest copy when the pending prompt was created after the rest", () => {
@@ -280,5 +285,14 @@ describe("PlayerBoardPage spell preparation wiring", () => {
     expect(markup).toContain("Você concluiu um descanso longo");
     expect(markup).toContain("fallback");
     expect(mockState.dialogProps?.copyMode).toBe("fallback");
+  });
+
+  it("still renders the player board and opens spell prep outside combat even if combat mode visibility is stale", () => {
+    mockState.combatModeVisible = true;
+
+    const markup = renderToStaticMarkup(<PlayerBoardPage />);
+
+    expect(markup).toContain("Preparar magias durante o descanso");
+    expect(mockState.dialogProps?.open).toBe(true);
   });
 });

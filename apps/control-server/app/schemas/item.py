@@ -11,6 +11,7 @@ from app.models.base_item import (
     BaseItemCostUnit,
     BaseItemDamageType,
     BaseItemDexBonusRule,
+    BaseItemEquipmentCategory,
     BaseItemKind,
     BaseItemWeaponCategory,
     BaseItemWeaponRangeType,
@@ -70,6 +71,7 @@ class ItemCreate(BaseModel):
     type: ItemType
     description: str
     price: Optional[float] = None
+    equipmentCategory: Optional[BaseItemEquipmentCategory] = None
     weight: Optional[float] = None
     damageDice: Optional[str] = None
     damageType: Optional[BaseItemDamageType] = None
@@ -91,6 +93,7 @@ class ItemCreate(BaseModel):
     stealthDisadvantage: Optional[bool] = None
     isShield: bool = False
     properties: list[str] = Field(default_factory=list)
+    isPurchasable: bool = True
 
     @field_validator("name", "description")
     @classmethod
@@ -240,6 +243,11 @@ class ItemCreate(BaseModel):
             raise ValueError("chargesMax is required when magicEffect is provided")
         if self.magicEffect is not None and self.type != ItemType.MAGIC:
             raise ValueError("magicEffect requires item type MAGIC")
+        if self.equipmentCategory == BaseItemEquipmentCategory.MAGIC_BRACELET:
+            if self.type != ItemType.MAGIC:
+                raise ValueError("magic_bracelet items must use item type MAGIC")
+            if self.magicEffect is None:
+                raise ValueError("magic_bracelet items must define magicEffect")
 
         if self.type == ItemType.ARMOR:
             if self.armorCategory is None or self.armorClassBase is None:
@@ -297,6 +305,7 @@ class ItemRead(BaseModel):
     description: str
     price: Optional[float]
     priceCopperValue: Optional[int] = None
+    equipmentCategory: Optional[BaseItemEquipmentCategory] = None
     weight: Optional[float]
     damageDice: Optional[str]
     damageType: Optional[BaseItemDamageType]
@@ -326,5 +335,6 @@ class ItemRead(BaseModel):
     costUnit: Optional[BaseItemCostUnit] = None
     isCustom: bool = False
     isEnabled: bool = True
+    isPurchasable: bool = True
     createdAt: datetime
     updatedAt: Optional[datetime]

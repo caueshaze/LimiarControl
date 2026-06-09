@@ -4,6 +4,7 @@ import { routes } from "../../app/routes/routes";
 import { useCampaigns } from "../../features/campaign-select";
 import { CreateShopItemForm, useShop } from "../../features/shop";
 import type { ItemType } from "../../entities/item";
+import { useCampaignSpells } from "../../features/shop/hooks/useCampaignSpells";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { useToast } from "../../shared/hooks/useToast";
 import { Toast } from "../../shared/ui/Toast";
@@ -28,6 +29,10 @@ export const CatalogItemsPage = () => {
   } = useShop();
   const { selectedCampaign } = useCampaigns();
   const { t, locale } = useLocale();
+  const { spells: campaignSpells } = useCampaignSpells({
+    campaignId: selectedCampaignId,
+    auto: true,
+  });
   const { toast, showToast, clearToast } = useToast();
   const location = useLocation();
   const [mode, setMode] = useState<CatalogMode>("library");
@@ -181,7 +186,7 @@ export const CatalogItemsPage = () => {
               {t("catalog.openLibrary")}
             </button>
           </div>
-          <CreateShopItemForm onCreate={handleCreate} itemTypes={itemTypes} />
+          <CreateShopItemForm onCreate={handleCreate} itemTypes={itemTypes} spells={campaignSpells} />
         </section>
       ) : (
         <section className="rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.96))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
@@ -211,6 +216,7 @@ export const CatalogItemsPage = () => {
               itemsLoading={itemsLoading}
               itemTypes={itemTypes}
               items={filteredItems}
+              spells={campaignSpells}
               search={search}
               showEmptyFiltered={showEmptyFiltered}
               typeCounts={typeCounts}

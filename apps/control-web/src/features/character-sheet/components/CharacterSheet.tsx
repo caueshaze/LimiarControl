@@ -22,6 +22,7 @@ import { CharacterSheetCreationConfirmDialog } from "./CharacterSheetCreationCon
 import { CharacterSheetInventoryResetConfirmDialog } from "./CharacterSheetInventoryResetConfirmDialog";
 import { CharacterSheetStateScreen } from "./CharacterSheetStateScreen";
 import { CharacterSheetStatusBanners } from "./CharacterSheetStatusBanners";
+import { CharacterCreationMultiStepForm } from "./CharacterCreationMultiStepForm";
 import { validateCreationSheet } from "../utils/creationValidation";
 import { hasCustomCreationInventoryItems } from "../utils/creationEquipment";
 import {
@@ -90,7 +91,7 @@ export const CharacterSheet = ({
     isDraftEditor
       ? !actions.draftRecord || actions.draftRecord.status === "active"
       : isOwnCreationSheet
-        ? !actions.characterRecord || actions.characterRecord.acceptedAt == null
+        ? !actions.remoteId
         : false;
   const isSheetLocked = isCreation && !!actions.remoteId && !canEditExistingCreation;
   const canSaveCreation = isCreation && (!actions.remoteId || canEditExistingCreation);
@@ -110,6 +111,7 @@ export const CharacterSheet = ({
     !actions.characterRecord?.sourceDraftId;
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const [exitCreationWizardAfterSave, setExitCreationWizardAfterSave] = useState(false);
   const [draftName, setDraftName] = useState(t("gm.party.draftDefaultName"));
   const [pendingInventoryResetChange, setPendingInventoryResetChange] = useState<{
     field: "class" | "background" | "race";
@@ -119,7 +121,8 @@ export const CharacterSheet = ({
   const normalizedDraftName = draftName.trim() || t("gm.party.draftDefaultName");
   const isDraftNameDirty = isDraftEditor && normalizedDraftName !== savedDraftName;
   const hasUnsavedChanges = actions.isDirty || isDraftNameDirty;
-  const creationValidation = shouldValidateCreationProgress ? validateCreationSheet(sheet) : null;
+  const creationStepValidation = isCreation ? validateCreationSheet(sheet) : null;
+  const creationValidation = shouldValidateCreationProgress ? creationStepValidation : null;
   const saveBlockedReason = creationValidation && !creationValidation.isValid
     ? t("sheet.creation.saveBlocked")
     : null;
@@ -210,6 +213,31 @@ export const CharacterSheet = ({
     void actions.save(isDraftEditor ? normalizedDraftName : undefined);
   };
 
+  useEffect(() => {
+    if (!exitCreationWizardAfterSave) {
+      return;
+    }
+
+    if (actions.saving) {
+      return;
+    }
+
+    if (actions.saveError) {
+      setExitCreationWizardAfterSave(false);
+      return;
+    }
+  }, [actions.saveError, actions.saving, exitCreationWizardAfterSave]);
+
+  useEffect(() => {
+    if (!isCreation || isCreationDraft || !isOwnCreationSheet || actions.loading) {
+      return;
+    }
+    if (!actions.remoteId) {
+      return;
+    }
+    navigate(backHref ?? routes.home, { replace: true });
+  }, [actions.loading, actions.remoteId, backHref, isCreation, isCreationDraft, isOwnCreationSheet, navigate]);
+
   const handleRemoveEffect = async (effectId: string) => {
     try {
       await actions.removeActiveEffect(effectId);
@@ -274,6 +302,9 @@ export const CharacterSheet = ({
         saveDisabledReason={saveBlockedReason}
         missingRequiredFields={creationValidation?.missingRequiredFields ?? []}
         onSave={handleSave}
+        hideSaveControls={isCreation}
+        showCreationProgressSummary={!isCreation}
+        hideBackButton={isCreation}
         draftName={isDraftEditor ? draftName : undefined}
         draftNamePlaceholder={isDraftEditor ? t("sheet.header.draftNamePlaceholder") : undefined}
         draftNameDisabled={isSheetLocked}
@@ -288,10 +319,14 @@ export const CharacterSheet = ({
       <CharacterSheetCreationConfirmDialog
         open={showConfirm}
         disabled={!!saveBlockedReason}
-        onCancel={() => setShowConfirm(false)}
+        onCancel={() => {
+          setShowConfirm(false);
+          setExitCreationWizardAfterSave(false);
+        }}
         onConfirm={() => {
           if (!saveBlockedReason) {
             setShowConfirm(false);
+            setExitCreationWizardAfterSave(true);
             void actions.save();
           }
         }}
@@ -318,6 +353,39 @@ export const CharacterSheet = ({
           playContextLabel={playContextLabel}
         />
 
+        {isCreation && creationStepValidation ? (
+          <CharacterCreationMultiStepForm
+            campaignId={campaignId}
+            sheet={sheet}
+            actions={actions}
+            creationValidation={creationStepValidation}
+            creationContext={isDraftEditor ? "gm-draft" : "player-creation"}
+            isSheetLocked={isSheetLocked || (isOwnCreationSheet && exitCreationWizardAfterSave)}
+            isEditableCreationDraft={isEditableCreationDraft}
+            saveBlockedReason={saveBlockedReason}
+            draftProficiencyCatalogOptions={draftProficiencyCatalogOptions}
+            ac={ac}
+            acBreakdown={acBreakdown}
+            effectiveSpeedMeters={effectiveSpeedMeters}
+            hpColor={hpColor}
+            hpPercent={hpPercent}
+            initiative={initiative}
+            movementSpeedBonus={movementSpeedBonus ?? 0}
+            movementSpeedBonusSources={movementSpeedBonusSources ?? []}
+            passivePerceptionBonus={passivePerceptionBonus ?? 0}
+            passivePerceptionBonusSources={passivePerceptionBonusSources ?? []}
+            spellAttack={spellAttack}
+            spellSaveDC={spellSaveDC}
+            backHref={backHref}
+            backLabel={backLabel}
+            onSave={handleSave}
+            onSelectClass={(value) => requestCreationIdentityChange("class", sheet.class, value)}
+            onSelectBackground={(value) => requestCreationIdentityChange("background", sheet.background, value)}
+            onSelectRace={(value) => requestCreationIdentityChange("race", sheet.race, value)}
+          />
+        ) : null}
+
+        {!isCreation ? (
         <CharacterInfo
           sheet={sheet}
           mode={mode}
@@ -343,7 +411,9 @@ export const CharacterSheet = ({
           selectRaceConfig={actions.selectRaceConfig}
           selectSubclassConfig={actions.selectSubclassConfig}
         />
+        ) : null}
 
+        {!isCreation ? (
         <div className="grid gap-3 xl:grid-cols-12 xl:items-start">
           <div className="space-y-3 xl:col-span-8">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
@@ -471,6 +541,7 @@ export const CharacterSheet = ({
               />
           </div>
         </div>
+        ) : null}
 
         {!isCreation && (
           <div className="grid gap-3 lg:grid-cols-3">
@@ -542,13 +613,16 @@ export const CharacterSheet = ({
           />
         )}
 
-        <FeaturesTraits
-          classFeatures={sheet.classFeatures}
-          featuresAndTraits={sheet.featuresAndTraits}
-          notes={sheet.notes}
-          set={actions.set}
-          readOnly={isPlayReadOnly || isSheetLocked}
-        />
+        {!isCreation && (
+          <FeaturesTraits
+            classFeatures={sheet.classFeatures}
+            featuresAndTraits={sheet.featuresAndTraits}
+            notes={sheet.notes}
+            setFeaturesAndTraits={(value) => actions.set("featuresAndTraits", value)}
+            setNotes={(value) => actions.set("notes", value)}
+            readOnly={isPlayReadOnly || isSheetLocked}
+          />
+        )}
       </div>
 
       <Toast toast={toast} onClose={clearToast} />

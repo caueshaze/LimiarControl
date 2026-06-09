@@ -1,11 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from "react";
+import type { BaseSpell } from "../../../entities/base-spell";
 import type {
+  BaseItemEquipmentCategory,
   BaseItemArmorCategory,
   BaseItemDamageType,
   BaseItemDexBonusRule,
   BaseItemWeaponCategory,
   BaseItemWeaponRangeType,
 } from "../../../entities/base-item";
+import { BaseItemEquipmentCategory as BaseItemEquipmentCategoryValues } from "../../../entities/base-item";
 import {
   type ItemPropertySlug,
   type ItemInput,
@@ -15,18 +18,21 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 import { CATALOG_TYPE_META } from "../utils/catalogTypeMeta";
 import { getShopItemTypeLabelKey } from "../utils/shopItemTypes";
 import { ItemAutomationFields } from "./ItemAutomationFields";
+import { MagicBraceletFields } from "./MagicBraceletFields";
 
 type CreateShopItemFormProps = {
   onCreate: (payload: ItemInput) => boolean | Promise<boolean>;
   itemTypes: ItemType[];
+  spells: BaseSpell[];
 };
 
-export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormProps) => {
+export const CreateShopItemForm = ({ onCreate, itemTypes, spells }: CreateShopItemFormProps) => {
   const { t } = useLocale();
   const [name, setName] = useState("");
   const [type, setType] = useState<ItemType>(itemTypes[0]);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [equipmentCategory, setEquipmentCategory] = useState<BaseItemEquipmentCategory | "">("");
   const [weight, setWeight] = useState("");
   const [damageDice, setDamageDice] = useState("");
   const [damageType, setDamageType] = useState<BaseItemDamageType | "">("");
@@ -42,17 +48,26 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
   const [dexBonusRule, setDexBonusRule] = useState<BaseItemDexBonusRule | "">("");
   const [strengthRequirement, setStrengthRequirement] = useState("");
   const [stealthDisadvantage, setStealthDisadvantage] = useState(false);
+  const [chargesMax, setChargesMax] = useState("");
+  const [rechargeType, setRechargeType] = useState<"" | "none" | "short_rest" | "long_rest" | "dawn" | "custom">("");
+  const [spellCanonicalKey, setSpellCanonicalKey] = useState("");
+  const [castLevel, setCastLevel] = useState("1");
+  const [ignoreComponents, setIgnoreComponents] = useState(true);
+  const [noFreeHandRequired, setNoFreeHandRequired] = useState(true);
+  const [isPurchasable, setIsPurchasable] = useState(true);
   const [selectedProperties, setSelectedProperties] = useState<ItemPropertySlug[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = Boolean(name.trim() && description.trim() && price.trim());
   const meta = CATALOG_TYPE_META[type];
+  const isMagicBracelet = equipmentCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET;
 
   const resetForm = () => {
     setName("");
     setType(itemTypes[0]);
     setDescription("");
     setPrice("");
+    setEquipmentCategory("");
     setWeight("");
     setDamageDice("");
     setDamageType("");
@@ -68,6 +83,13 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
     setDexBonusRule("");
     setStrengthRequirement("");
     setStealthDisadvantage(false);
+    setChargesMax("");
+    setRechargeType("");
+    setSpellCanonicalKey("");
+    setCastLevel("1");
+    setIgnoreComponents(true);
+    setNoFreeHandRequired(true);
+    setIsPurchasable(true);
     setSelectedProperties([]);
   };
 
@@ -84,6 +106,7 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
         type,
         description: description.trim(),
         price: Number(price),
+        equipmentCategory: equipmentCategory || undefined,
         weight: weight.trim() ? Number(weight) : undefined,
         damageDice:
           (type === "WEAPON" || type === "MAGIC") && damageDice.trim()
@@ -127,6 +150,19 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
             : undefined,
         stealthDisadvantage: type === "ARMOR" ? stealthDisadvantage : undefined,
         isShield: type === "ARMOR" && armorCategory === "shield",
+        chargesMax: isMagicBracelet && chargesMax.trim() ? Number(chargesMax) : undefined,
+        rechargeType: isMagicBracelet && rechargeType ? rechargeType : undefined,
+        magicEffect:
+          isMagicBracelet && spellCanonicalKey
+            ? {
+                type: "cast_spell",
+                spellCanonicalKey,
+                castLevel: castLevel.trim() ? Number(castLevel) : 1,
+                ignoreComponents,
+                noFreeHandRequired,
+              }
+            : undefined,
+        isPurchasable,
         properties:
           type !== "ARMOR" && selectedProperties.length > 0
             ? selectedProperties
@@ -261,6 +297,63 @@ export const CreateShopItemForm = ({ onCreate, itemTypes }: CreateShopItemFormPr
               />
             </Field>
           </div>
+
+          <Field label={t("shop.form.equipmentCategory")}>
+            <select
+              value={equipmentCategory}
+              onChange={(event) => {
+                const value = event.target.value as BaseItemEquipmentCategory | "";
+                setEquipmentCategory(value);
+                if (value === BaseItemEquipmentCategoryValues.MAGIC_BRACELET) {
+                  setType("MAGIC");
+                  setChargesMax((current) => current || "1");
+                  setRechargeType((current) => current || "none");
+                  setIgnoreComponents(true);
+                  setNoFreeHandRequired(true);
+                } else {
+                  setChargesMax("");
+                  setRechargeType("");
+                  setSpellCanonicalKey("");
+                  setCastLevel("1");
+                  setIgnoreComponents(true);
+                  setNoFreeHandRequired(true);
+                }
+              }}
+              className="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 text-sm text-white focus:border-limiar-400/60 focus:outline-none"
+            >
+              <option value="">{t("shop.form.optionNone")}</option>
+              <option value={BaseItemEquipmentCategoryValues.MAGIC_BRACELET}>
+                {t("shop.form.magicBraceletCategory")}
+              </option>
+            </select>
+          </Field>
+
+          <label className="flex items-center gap-3 rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              checked={isPurchasable}
+              onChange={(event) => setIsPurchasable(event.target.checked)}
+            />
+            <span>{t("shop.form.isPurchasable")}</span>
+          </label>
+
+          {isMagicBracelet && (
+            <MagicBraceletFields
+              spells={spells}
+              chargesMax={chargesMax}
+              rechargeType={rechargeType}
+              spellCanonicalKey={spellCanonicalKey}
+              castLevel={castLevel}
+              ignoreComponents={ignoreComponents}
+              noFreeHandRequired={noFreeHandRequired}
+              onChargesMaxChange={setChargesMax}
+              onRechargeTypeChange={setRechargeType}
+              onSpellCanonicalKeyChange={setSpellCanonicalKey}
+              onCastLevelChange={setCastLevel}
+              onIgnoreComponentsChange={setIgnoreComponents}
+              onNoFreeHandRequiredChange={setNoFreeHandRequired}
+            />
+          )}
 
           <ItemAutomationFields
             type={type}

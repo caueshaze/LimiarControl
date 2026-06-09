@@ -90,6 +90,7 @@ def _me_response(user: User) -> MeResponse:
         username=user.username,
         displayName=user.display_name,
         role=user.role,
+        preferredWorkspaceMode=user.preferred_workspace_mode,
         isSystemAdmin=user.is_system_admin,
         avatarUrl=user.avatar_url,
         tokenColor=user.token_color,
@@ -122,6 +123,9 @@ def update_profile(
         changed = True
     if payload.tokenImageUrl is not None:
         user.token_image_url = payload.tokenImageUrl or None
+        changed = True
+    if payload.preferredWorkspaceMode is not None:
+        user.preferred_workspace_mode = payload.preferredWorkspaceMode
         changed = True
     if payload.markOnboarded and user.onboarded_at is None:
         user.onboarded_at = datetime.now(timezone.utc)

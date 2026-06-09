@@ -32,6 +32,10 @@ import {
   getSpellPreparationCopyKeys,
   resolveSpellPreparationCopyMode,
 } from "./spellPreparationCopy";
+import {
+  buildPendingSpellPreparationSignature,
+  shouldAutoOpenPendingSpellPreparation,
+} from "./spellPreparationAutoOpen";
 import { useSession } from "../../features/sessions";
 import { CombatModeBar } from "../../features/combat-ui/components/CombatModeBar";
 import { PlayerCombatModeShell } from "../../features/combat-ui/player/PlayerCombatModeShell";
@@ -178,6 +182,17 @@ export const PlayerBoardPage = () => {
     showToast,
     t,
   });
+  const pendingSpellPreparationSignature = useMemo(
+    () => buildPendingSpellPreparationSignature(pendingSpellPreparation),
+    [pendingSpellPreparation],
+  );
+  const autoOpenedSpellPreparationSignaturesRef = useRef<Set<string>>(
+    new Set(
+      pendingSpellPreparationSignature && !combatActive
+        ? [pendingSpellPreparationSignature]
+        : [],
+    ),
+  );
   const { handleUseHitDie, usingHitDie } = usePlayerBoardRestActions({
     activeSessionId: activeSession?.id ?? null,
     setPlayerSheet,
@@ -186,7 +201,9 @@ export const PlayerBoardPage = () => {
   });
   const [clearingConcentration, setClearingConcentration] = useState(false);
   const [removingEffectId, setRemovingEffectId] = useState<string | null>(null);
-  const [showPrepDialog, setShowPrepDialog] = useState(false);
+  const [showPrepDialog, setShowPrepDialog] = useState(
+    () => pendingSpellPreparationSignature != null && !combatActive,
+  );
   const [preparingSpells, setPreparingSpells] = useState(false);
   const [castableSpells, setCastableSpells] = useState<import("../../entities/character").OutOfCombatCastableSpell[]>([]);
   const [castingSpell, setCastingSpell] = useState(false);
@@ -356,10 +373,30 @@ export const PlayerBoardPage = () => {
     }
   }, [activeConcentration, showToast, t]);
 
+  useEffect(() => {
+    if (
+      !shouldAutoOpenPendingSpellPreparation({
+        pendingSignature: pendingSpellPreparationSignature,
+        combatActive,
+        autoOpenedSignatures: autoOpenedSpellPreparationSignaturesRef.current,
+      })
+    ) {
+      return;
+    }
+
+    const signature = pendingSpellPreparationSignature;
+    if (!signature) {
+      return;
+    }
+
+    setShowPrepDialog(true);
+    autoOpenedSpellPreparationSignaturesRef.current.add(signature);
+  }, [combatActive, pendingSpellPreparationSignature]);
+
   return (
     <section className="space-y-6">
       <Toast toast={toast} onClose={clearToast} />
-      {combatModeVisible && activeSession?.id ? (
+      {combatActive && combatModeVisible && activeSession?.id ? (
         <PlayerCombatModeShell
           campaignId={effectiveCampaignId}
           expanded={combatUiExpanded}

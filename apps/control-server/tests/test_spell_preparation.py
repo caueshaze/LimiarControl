@@ -10,6 +10,8 @@ Covers:
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from app.services.spell_preparation import (
     apply_prepared_spells,
@@ -20,6 +22,9 @@ from app.services.spell_preparation import (
     seed_long_rest_spell_preparation,
     settle_long_rest_spell_preparation,
 )
+from app.api.routes.sessions.state_common import ensure_initial_spell_preparation_state
+from app.api.routes.sessions.campaign_sessions.start_service import clone_session_states
+from app.api.routes.sessions.state_common import ensure_session_state
 
 
 class TestComputePreparedSpellLimit(unittest.TestCase):
@@ -440,6 +445,156 @@ class TestSeedInitialSpellPreparation(unittest.TestCase):
         seed_initial_spell_preparation(state)
         result = apply_prepared_spells_with_long_rest_tracking(state, ["s1"])
         self.assertNotIn("spell_preparation_completed_during_long_rest", result)
+
+
+class TestEnsureInitialSpellPreparationState(unittest.TestCase):
+    def test_seeds_pending_for_existing_eligible_state(self):
+        state = {
+            "class": "wizard",
+            "level": 5,
+            "abilities": {"intelligence": 18},
+            "spellcasting": {
+                "ability": "intelligence",
+                "spells": [
+                    {"id": "w1", "name": "Magic Missile", "level": 1, "prepared": False},
+                    {"id": "w2", "name": "Light", "level": 0, "prepared": True},
+                ],
+            },
+        }
+
+        result = ensure_initial_spell_preparation_state(state)
+
+        self.assertIs(result, state)
+        self.assertIn("pending_spell_preparation", result)
+        self.assertEqual(result["pending_spell_preparation"]["source"], "initial_setup")
+
+    def test_does_not_reseed_when_initial_completion_marker_exists(self):
+        state = {
+            "class": "wizard",
+            "level": 5,
+            "spell_preparation_initial_completed": True,
+            "abilities": {"intelligence": 18},
+            "spellcasting": {
+                "ability": "intelligence",
+                "spells": [{"id": "w1", "name": "Magic Missile", "level": 1, "prepared": False}],
+            },
+        }
+
+        result = ensure_initial_spell_preparation_state(state)
+
+        self.assertNotIn("pending_spell_preparation", result)
+
+
+class TestEnsureSessionStateInitialPreparationRepair(unittest.TestCase):
+    def _complete_state(self, **overrides):
+        state = {
+            "name": "Mago Teste",
+            "class": "wizard",
+            "level": 5,
+            "restState": "exploration",
+            "experiencePoints": 0,
+            "pendingLevelUp": False,
+            "background": "Scholar",
+            "playerName": "Player",
+            "race": "Human",
+            "alignment": "Neutral",
+            "abilities": {"strength": 10, "dexterity": 10, "constitution": 10, "intelligence": 18, "wisdom": 10, "charisma": 10},
+            "savingThrowProficiencies": {},
+            "skillProficiencies": {},
+            "equippedArmor": {},
+            "currency": {},
+            "conditions": {},
+            "spellcasting": {
+                "ability": "intelligence",
+                "spells": [{"id": "w1", "name": "Magic Missile", "level": 1, "prepared": False}],
+            },
+        }
+        state.update(overrides)
+        return state
+
+    @patch("app.api.routes.sessions.state_common.get_game_time_seconds", return_value=0)
+    @patch("app.api.routes.sessions.state_common.finalize_session_state_data", side_effect=lambda data, game_time_seconds=0: data)
+    def test_repairs_existing_state_missing_initial_pending(self, _finalize, _game_time):
+        state_model = SimpleNamespace(state_json=self._complete_state())
+        db = SimpleNamespace(add=MagicMock(), commit=MagicMock(), refresh=MagicMock())
+
+        result = ensure_session_state(state_model, "session-1", "user-1", "party-1", db)
+
+        self.assertIs(result, state_model)
+        self.assertIn("pending_spell_preparation", state_model.state_json)
+        db.add.assert_called_once_with(state_model)
+        db.commit.assert_called_once()
+        db.refresh.assert_called_once_with(state_model)
+
+    @patch("app.api.routes.sessions.state_common.get_game_time_seconds", return_value=0)
+    @patch("app.api.routes.sessions.state_common.finalize_session_state_data", side_effect=lambda data, game_time_seconds=0: data)
+    def test_does_not_repair_existing_state_after_initial_completion(self, _finalize, _game_time):
+        state_model = SimpleNamespace(
+            state_json=self._complete_state(spell_preparation_initial_completed=True)
+        )
+        db = SimpleNamespace(add=MagicMock(), commit=MagicMock(), refresh=MagicMock())
+
+        result = ensure_session_state(state_model, "session-1", "user-1", "party-1", db)
+
+        self.assertIs(result, state_model)
+        self.assertNotIn("pending_spell_preparation", state_model.state_json)
+        db.add.assert_not_called()
+        db.commit.assert_not_called()
+        db.refresh.assert_not_called()
+
+
+class _FakeQueryResult:
+    def __init__(self, value):
+        self._value = value
+
+    def all(self):
+        return self._value
+
+    def first(self):
+        return self._value
+
+
+class TestCloneSessionStatesInitialPreparation(unittest.TestCase):
+    def test_clone_session_states_seeds_initial_pending_for_spellbook_caster(self):
+        campaign_player = SimpleNamespace(user_id="player-1")
+        base_sheet = SimpleNamespace(
+            data={
+                "class": "wizard",
+                "level": 5,
+                "abilities": {"intelligence": 18},
+                "spellcasting": {
+                    "ability": "intelligence",
+                    "spells": [
+                        {"id": "w1", "name": "Magic Missile", "level": 1, "prepared": False},
+                    ],
+                },
+            }
+        )
+        query_results = iter(
+            [
+                _FakeQueryResult([campaign_player]),
+                _FakeQueryResult(base_sheet),
+            ]
+        )
+        added_models: list[object] = []
+        db = SimpleNamespace(exec=lambda _query: next(query_results), add=added_models.append)
+        entry = SimpleNamespace(id="session-1")
+
+        clone_session_states(
+            entry=entry,
+            last_closed_source=None,
+            party_id="party-1",
+            campaign_id="campaign-1",
+            session=db,
+        )
+
+        self.assertEqual(len(added_models), 1)
+        session_state = added_models[0]
+        self.assertIn("pending_spell_preparation", session_state.state_json)
+        self.assertEqual(
+            session_state.state_json["pending_spell_preparation"]["source"],
+            "initial_setup",
+        )
 
 
 if __name__ == "__main__":

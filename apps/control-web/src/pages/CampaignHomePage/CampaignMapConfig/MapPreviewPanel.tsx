@@ -4,10 +4,18 @@ import type {
   ObstaclePresetId,
 } from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import { MapEditorModeSwitcher } from "./MapEditorModeSwitcher";
+import { MapZoomControls } from "./MapZoomControls";
 import { ObstacleEditorControls } from "./ObstacleEditorControls";
 import { MapPreviewSurface } from "./MapPreviewSurface";
 import { MapPreviewReviewPanel } from "./MapPreviewReviewPanel";
-import type { CalibrationPreviewState, ObstacleEditTarget } from "./types";
+import { useMapZoom } from "./useMapZoom";
+import type {
+  CalibrationPreviewBounds,
+  CalibrationPreviewState,
+  EditorMode,
+  ObstacleEditTarget,
+} from "./types";
 
 type Props = {
   imageUrl: string;
@@ -20,16 +28,20 @@ type Props = {
   previewGridHeight: number | null;
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
   edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
+  editorMode: EditorMode;
   isObstacleEditMode: boolean;
+  isCalibrating: boolean;
+  calibrationCell: CalibrationPreviewBounds | null;
   obstacleEditTarget: ObstacleEditTarget;
   selectedPresetId: ObstaclePresetId;
   selectedEdgePresetId: EdgeObstaclePresetId;
   edgeDirection: CampaignEdgeDirection;
+  onSelectMode: (mode: EditorMode) => void;
   onSelectPreset: (presetId: ObstaclePresetId) => void;
   onSelectEdgePreset: (presetId: EdgeObstaclePresetId) => void;
   onSelectEdgeDirection: (direction: CampaignEdgeDirection) => void;
   onSelectObstacleTarget: (target: ObstacleEditTarget) => void;
-  onToggleObstacleEditMode: () => void;
+  onCalibrationChange: (bounds: CalibrationPreviewBounds) => void;
   onOpenPreview: () => void;
   onCellToggle: (x: number, y: number) => void;
   onEdgeToggle: (x: number, y: number, direction: CampaignEdgeDirection) => void;
@@ -46,21 +58,31 @@ export const MapPreviewPanel = ({
   previewGridHeight,
   obstacleMap,
   edgeObstacleMap,
+  editorMode,
   isObstacleEditMode,
+  isCalibrating,
+  calibrationCell,
   obstacleEditTarget,
   selectedPresetId,
   selectedEdgePresetId,
   edgeDirection,
+  onSelectMode,
   onSelectPreset,
   onSelectEdgePreset,
   onSelectEdgeDirection,
   onSelectObstacleTarget,
-  onToggleObstacleEditMode,
+  onCalibrationChange,
   onOpenPreview,
   onCellToggle,
   onEdgeToggle,
 }: Props) => {
   const { t } = useLocale();
+  const zoomControls = useMapZoom();
+  const hasGrid = previewGridWidth != null && previewGridHeight != null;
+  const gridOverflows =
+    calibrationPreview.bounds != null &&
+    (calibrationPreview.bounds.x + calibrationPreview.bounds.width > 1.0001 ||
+      calibrationPreview.bounds.y + calibrationPreview.bounds.height > 1.0001);
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
@@ -77,36 +99,41 @@ export const MapPreviewPanel = ({
           <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200">
             {gridSummary}
           </span>
-          <div className="flex gap-2">
-            {hasMapImage && previewGridWidth != null && previewGridHeight != null && (
-              <button
-                type="button"
-                onClick={onToggleObstacleEditMode}
-                className={`rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                  isObstacleEditMode
-                    ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
-                    : "border-slate-700 text-slate-300 hover:border-rose-500/30"
-                }`}
-              >
-                {isObstacleEditMode
-                  ? t("campaignHome.mapObstacleEditDone")
-                  : t("campaignHome.mapObstacleEditStart")}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onOpenPreview}
-              disabled={!hasMapImage}
-              className="rounded-full border border-slate-700 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-limiar-500/50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("campaignHome.mapOpenPreview")}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            disabled={!hasMapImage}
+            className="rounded-full border border-slate-700 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-limiar-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("campaignHome.mapOpenPreview")}
+          </button>
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950">
+      {hasMapImage && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <MapEditorModeSwitcher
+            editorMode={editorMode}
+            obstaclesDisabled={!hasGrid}
+            onSelectMode={onSelectMode}
+          />
+          <MapZoomControls
+            zoom={zoomControls.zoom}
+            canZoomIn={zoomControls.canZoomIn}
+            canZoomOut={zoomControls.canZoomOut}
+            onZoomIn={zoomControls.zoomIn}
+            onZoomOut={zoomControls.zoomOut}
+            onReset={zoomControls.reset}
+          />
+        </div>
+      )}
+
+      <div
+        className="mt-4 max-h-[70vh] overflow-auto border border-slate-800 bg-slate-950"
+        onWheel={zoomControls.handleWheelZoom}
+      >
         {hasMapImage ? (
+          <div className="mx-auto" style={{ width: `${zoomControls.zoom * 100}%` }}>
           <MapPreviewSurface
             imageUrl={imageUrl}
             alt={mapName || t("campaignHome.mapPreviewAlt")}
@@ -115,6 +142,9 @@ export const MapPreviewPanel = ({
             gridHeight={previewGridHeight}
             imageClassName="block w-full"
             invalidMessage={t("campaignHome.mapPreviewInvalid")}
+            calibrationEditing={isCalibrating && hasGrid}
+            calibrationCell={calibrationCell}
+            onCalibrationChange={onCalibrationChange}
             hoverHint={
               isObstacleEditMode
                 ? obstacleEditTarget === "edge"
@@ -144,6 +174,7 @@ export const MapPreviewPanel = ({
                 : undefined
             }
           />
+          </div>
         ) : (
           <div className="flex h-72 items-center justify-center px-6 text-center text-sm text-slate-500">
             {t("campaignHome.mapPreviewEmpty")}
@@ -172,6 +203,21 @@ export const MapPreviewPanel = ({
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
           {t("campaignHome.mapPreviewLegend")}
         </p>
+        {isCalibrating &&
+          (hasGrid ? (
+            <p className="mt-2 text-sm text-limiar-100">
+              {t("campaignHome.mapCalibrationDragHint")}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-amber-200">
+              {t("campaignHome.mapCalibrationNeedsGridError")}
+            </p>
+          ))}
+        {gridOverflows && (
+          <p className="mt-2 text-sm text-amber-200">
+            {t("campaignHome.mapCalibrationOverflowError")}
+          </p>
+        )}
         <p className="mt-2 text-sm text-slate-200">{calibrationSummary}</p>
       </div>
 

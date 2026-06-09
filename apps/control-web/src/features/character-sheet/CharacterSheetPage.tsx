@@ -6,6 +6,7 @@ import { partiesRepo } from "../../shared/api/partiesRepo";
 import type { RoleMode } from "../../shared/types/role";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { CharacterSheet } from "./components/CharacterSheet";
+import { CharacterSheetViewScreen } from "./components/view/CharacterSheetViewScreen";
 
 type Props = {
   viewerUserId?: string | null;
@@ -17,7 +18,9 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useLocale();
-  const requestedMode = searchParams.get("mode") === "play" ? "play" : "creation";
+  const rawMode = searchParams.get("mode");
+  const isViewMode = rawMode === "view";
+  const requestedMode = rawMode === "play" ? "play" : "creation";
   const requestedPlayerId = searchParams.get("playerId");
   const requestedCampaignId = searchParams.get("campaignId");
   const [campaignId, setCampaignId] = useState<string | null>(requestedCampaignId ?? null);
@@ -90,6 +93,23 @@ export const CharacterSheetPage = ({ viewerUserId = null, viewerRole = "PLAYER" 
     }
     navigate(routes.home, { replace: true });
   }, [lastEvent, navigate, partyId, requestedMode, viewerRole]);
+
+  if (isViewMode) {
+    // Load the target player's sheet whenever a playerId is supplied (GM inspect).
+    // Authorization is enforced server-side (party GM check), so we must not gate
+    // on the viewer's *global* role here — a campaign GM may have a PLAYER role.
+    const viewPlayerUserId =
+      requestedPlayerId && requestedPlayerId !== viewerUserId ? requestedPlayerId : null;
+    return (
+      <CharacterSheetViewScreen
+        partyId={partyId ?? null}
+        playerUserId={viewPlayerUserId}
+        campaignId={campaignId}
+        backHref={backHref}
+        backLabel={backLabel}
+      />
+    );
+  }
 
   if (requestedMode === "creation" && !campaignIdResolved) {
     return null;

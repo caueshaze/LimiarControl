@@ -3,6 +3,7 @@ import type {
   BaseItemCostUnit,
   BaseItemDamageType,
   BaseItemDexBonusRule,
+  BaseItemEquipmentCategory,
   BaseItemKind,
   MagicItemCastSpellEffect,
   MagicItemRechargeType,
@@ -29,6 +30,7 @@ export type Item = {
   price?: number | null;
   priceCopperValue?: number | null;
   priceLabel?: string;
+  equipmentCategory?: BaseItemEquipmentCategory | null;
   weight?: number | null;
   damageDice?: string | null;
   damageType?: BaseItemDamageType | null;
@@ -57,12 +59,14 @@ export type Item = {
   costUnit?: BaseItemCostUnit | null;
   isCustom?: boolean;
   isEnabled?: boolean;
+  isPurchasable?: boolean;
 };
 
 export type ItemInput = {
   name: string;
   type: ItemType;
   description: string;
+  equipmentCategory?: BaseItemEquipmentCategory | "";
   damageDice?: string;
   damageType?: BaseItemDamageType | "";
   healDice?: string;
@@ -84,4 +88,5 @@ export type ItemInput = {
   strengthRequirement?: number | string | null;
   stealthDisadvantage?: boolean;
   isShield?: boolean;
+  isPurchasable?: boolean;
 };

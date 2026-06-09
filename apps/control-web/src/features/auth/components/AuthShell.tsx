@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { APP_NAME } from "../../../app/config";
 import { routes } from "../../../app/routes/routes";
 import { BrandMark } from "../../../shared/ui";
 
@@ -33,14 +32,10 @@ export const AuthShell = ({ mode, title, subtitle, form, footer }: AuthShellProp
     <div className="relative flex min-h-screen items-center justify-center px-6 py-10">
       <div className={`w-full ${mode === "register" ? "max-w-xl" : "max-w-lg"}`}>
 
-        {/* Branding pill */}
+        {/* Branding mark */}
         <div className="mb-6 flex justify-center">
-          <Link
-            to={routes.root}
-            className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/4 px-4 py-2.5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/6"
-          >
-            <BrandMark size="sm" />
-            <span className="font-display text-sm font-bold text-white">{APP_NAME}</span>
+          <Link to={routes.root}>
+            <BrandMark size="lg" />
           </Link>
         </div>
 

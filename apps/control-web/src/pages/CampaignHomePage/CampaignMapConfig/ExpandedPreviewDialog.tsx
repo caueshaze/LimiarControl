@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import type {
-  CampaignEdgeDirection,
   EdgeObstaclePresetId,
   ObstaclePresetId,
 } from "../../../entities/campaign";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import { ObstacleEditorControls } from "./ObstacleEditorControls";
 import { MapPreviewReviewPanel } from "./MapPreviewReviewPanel";
 import { MapPreviewSurface } from "./MapPreviewSurface";
+import { MapZoomControls } from "./MapZoomControls";
+import { useMapZoom } from "./useMapZoom";
 import type {
+  CalibrationPreviewBounds,
   CalibrationPreviewState,
+  FormState,
   HoveredGridCell,
-  ObstacleEditTarget,
 } from "./types";
 
 type Props = {
@@ -20,27 +21,18 @@ type Props = {
   mapName: string;
   gridSummary: string;
   calibrationPreview: CalibrationPreviewState;
+  calibrationCell: CalibrationPreviewBounds | null;
+  /** When false the dialog is view-only (no cell/grid editing controls). */
+  editable: boolean;
   previewGridWidth: number | null;
   previewGridHeight: number | null;
+  gridWidthValue: string;
+  gridHeightValue: string;
   obstacleMap: ReadonlyMap<string, ObstaclePresetId>;
   edgeObstacleMap: ReadonlyMap<string, EdgeObstaclePresetId>;
-  isObstacleEditMode: boolean;
-  obstacleEditTarget: ObstacleEditTarget;
-  selectedPresetId: ObstaclePresetId;
-  selectedEdgePresetId: EdgeObstaclePresetId;
-  edgeDirection: CampaignEdgeDirection;
-  saving: boolean;
-  uploading: boolean;
-  deleting: boolean;
+  onUpdateField: (field: keyof FormState, value: string) => void;
+  onCalibrationChange: (cell: CalibrationPreviewBounds) => void;
   onClose: () => void;
-  onToggleObstacleEditMode: () => void;
-  onSelectPreset: (presetId: ObstaclePresetId) => void;
-  onSelectEdgePreset: (presetId: EdgeObstaclePresetId) => void;
-  onSelectEdgeDirection: (direction: CampaignEdgeDirection) => void;
-  onSelectObstacleTarget: (target: ObstacleEditTarget) => void;
-  onCellToggle: (x: number, y: number) => void;
-  onEdgeToggle: (x: number, y: number, direction: CampaignEdgeDirection) => void;
-  onSave: () => void;
 };
 
 export const ExpandedPreviewDialog = ({
@@ -49,34 +41,31 @@ export const ExpandedPreviewDialog = ({
   mapName,
   gridSummary,
   calibrationPreview,
+  calibrationCell,
+  editable,
   previewGridWidth,
   previewGridHeight,
+  gridWidthValue,
+  gridHeightValue,
   obstacleMap,
   edgeObstacleMap,
-  isObstacleEditMode,
-  obstacleEditTarget,
-  selectedPresetId,
-  selectedEdgePresetId,
-  edgeDirection,
-  saving,
-  uploading,
-  deleting,
+  onUpdateField,
+  onCalibrationChange,
   onClose,
-  onToggleObstacleEditMode,
-  onSelectPreset,
-  onSelectEdgePreset,
-  onSelectEdgeDirection,
-  onSelectObstacleTarget,
-  onCellToggle,
-  onEdgeToggle,
-  onSave,
 }: Props) => {
   const { t } = useLocale();
   const [hoveredCell, setHoveredCell] = useState<HoveredGridCell | null>(null);
+  const [showGrid, setShowGrid] = useState(true);
+  const [cellEditing, setCellEditing] = useState(false);
+  const zoomControls = useMapZoom();
+  const hasGrid = previewGridWidth != null && previewGridHeight != null;
+  const isCalibrating = editable && cellEditing && hasGrid;
 
   useEffect(() => {
     if (!isOpen) {
       setHoveredCell(null);
+      setCellEditing(false);
+      zoomControls.reset();
     }
   }, [isOpen]);
 
@@ -94,7 +83,7 @@ export const ExpandedPreviewDialog = ({
         aria-modal="true"
         aria-label={t("campaignHome.mapPreviewDialogTitle")}
         onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950/95 shadow-2xl shadow-black/40"
+        className="flex h-[88vh] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950/95 shadow-2xl shadow-black/40"
       >
         <div className="shrink-0 border-b border-white/8 px-5 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -106,14 +95,7 @@ export const ExpandedPreviewDialog = ({
                 {mapName.trim() || t("campaignHome.mapUntitled")}
               </h4>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
-                {isObstacleEditMode
-                  ? obstacleEditTarget === "edge"
-                    ? t("campaignHome.mapPreviewEdgeEditHint").replace(
-                        "{direction}",
-                        edgeDirection,
-                      )
-                    : t("campaignHome.mapPreviewEditHint")
-                  : t("campaignHome.mapPreviewHint")}
+                {t("campaignHome.mapPreviewHint")}
               </p>
             </div>
 
@@ -121,21 +103,27 @@ export const ExpandedPreviewDialog = ({
               <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200">
                 {gridSummary}
               </span>
-              {previewGridWidth != null && previewGridHeight != null && (
-                <button
-                  type="button"
-                  onClick={onToggleObstacleEditMode}
-                  className={`rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                    isObstacleEditMode
-                      ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
-                      : "border-slate-700 text-slate-300 hover:border-rose-500/30"
-                  }`}
-                >
-                  {isObstacleEditMode
-                    ? t("campaignHome.mapObstacleEditDone")
-                    : t("campaignHome.mapObstacleEditStart")}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowGrid((value) => !value)}
+                className={`rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                  showGrid
+                    ? "border-slate-700 text-slate-200 hover:border-slate-500"
+                    : "border-limiar-500/50 bg-limiar-500/15 text-limiar-100"
+                }`}
+              >
+                {showGrid
+                  ? t("campaignHome.mapPreviewHideGrid")
+                  : t("campaignHome.mapPreviewShowGrid")}
+              </button>
+              <MapZoomControls
+                zoom={zoomControls.zoom}
+                canZoomIn={zoomControls.canZoomIn}
+                canZoomOut={zoomControls.canZoomOut}
+                onZoomIn={zoomControls.zoomIn}
+                onZoomOut={zoomControls.zoomOut}
+                onReset={zoomControls.reset}
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -157,66 +145,95 @@ export const ExpandedPreviewDialog = ({
                 {t("campaignHome.mapPreviewScrollableHint")}
               </p>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="flex min-h-full items-center justify-center">
-                <div className="max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/30">
-                  <MapPreviewSurface
+            <div
+              className="min-h-0 flex-1 overflow-auto p-4"
+              onWheel={zoomControls.handleWheelZoom}
+            >
+              <div
+                className="mx-auto overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl shadow-black/30"
+                style={{ width: `${zoomControls.zoom * 100}%` }}
+              >
+                <MapPreviewSurface
                     imageUrl={imageUrl}
                     alt={mapName || t("campaignHome.mapPreviewAlt")}
                     bounds={calibrationPreview.bounds}
                     gridWidth={previewGridWidth}
                     gridHeight={previewGridHeight}
-                    imageClassName="block h-auto max-h-[62vh] w-auto max-w-full"
+                    imageClassName="block h-auto w-full"
                     invalidMessage={t("campaignHome.mapPreviewInvalid")}
-                    hoverHint={
-                      isObstacleEditMode
-                        ? obstacleEditTarget === "edge"
-                          ? t("campaignHome.mapPreviewEdgeEditHint").replace(
-                              "{direction}",
-                              edgeDirection,
-                            )
-                          : t("campaignHome.mapPreviewEditHint")
-                        : t("campaignHome.mapPreviewHoverHint")
-                    }
+                    showGridLines={showGrid}
+                    calibrationEditing={isCalibrating}
+                    calibrationCell={calibrationCell}
+                    onCalibrationChange={onCalibrationChange}
+                    hoverHint={t("campaignHome.mapPreviewHoverHint")}
                     hoverMissingGrid={t("campaignHome.mapPreviewHoverMissingGrid")}
                     hoverCellLabel={t("campaignHome.mapPreviewHoverCell")}
                     hoverColumnLabel={t("campaignHome.mapPreviewHoverColumn")}
                     hoverRowLabel={t("campaignHome.mapPreviewHoverRow")}
                     obstacleMap={obstacleMap}
                     edgeObstacleMap={edgeObstacleMap}
-                    obstacleEditTarget={obstacleEditTarget}
-                    edgeDirection={edgeDirection}
-                    onCellToggle={
-                      isObstacleEditMode && obstacleEditTarget === "cell"
-                        ? onCellToggle
-                        : undefined
-                    }
-                    onEdgeToggle={
-                      isObstacleEditMode && obstacleEditTarget === "edge"
-                        ? onEdgeToggle
-                        : undefined
-                    }
                     onHoveredCellChange={setHoveredCell}
                   />
-                </div>
               </div>
             </div>
           </div>
 
           <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
-            {isObstacleEditMode && (
-              <ObstacleEditorControls
-                obstacleEditTarget={obstacleEditTarget}
-                selectedPresetId={selectedPresetId}
-                selectedEdgePresetId={selectedEdgePresetId}
-                edgeDirection={edgeDirection}
-                obstacleMap={obstacleMap}
-                edgeObstacleMap={edgeObstacleMap}
-                onSelectTarget={onSelectObstacleTarget}
-                onSelectPreset={onSelectPreset}
-                onSelectEdgePreset={onSelectEdgePreset}
-                onSelectEdgeDirection={onSelectEdgeDirection}
-              />
+            {editable && (
+            <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {t("campaignHome.mapGridWidth")}
+                  </span>
+                  <input
+                    value={gridWidthValue}
+                    onChange={(event) => onUpdateField("gridWidth", event.target.value)}
+                    type="number"
+                    min={1}
+                    max={150}
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {t("campaignHome.mapGridHeight")}
+                  </span>
+                  <input
+                    value={gridHeightValue}
+                    onChange={(event) => onUpdateField("gridHeight", event.target.value)}
+                    type="number"
+                    min={1}
+                    max={150}
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCellEditing((value) => !value)}
+                disabled={!hasGrid}
+                className={`w-full rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  isCalibrating
+                    ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-100"
+                    : "border-slate-700 text-slate-200 hover:border-emerald-400/40"
+                }`}
+              >
+                {isCalibrating
+                  ? t("campaignHome.mapCellEditDone")
+                  : t("campaignHome.mapCellEditStart")}
+              </button>
+              {cellEditing && !hasGrid && (
+                <p className="text-sm text-amber-200">
+                  {t("campaignHome.mapCalibrationNeedsGridError")}
+                </p>
+              )}
+              {isCalibrating && (
+                <p className="text-sm text-emerald-100">
+                  {t("campaignHome.mapCalibrationDragHint")}
+                </p>
+              )}
+            </div>
             )}
 
             <MapPreviewReviewPanel
@@ -227,31 +244,6 @@ export const ExpandedPreviewDialog = ({
               edgeObstacleMap={edgeObstacleMap}
               hoveredCell={hoveredCell}
             />
-          </div>
-        </div>
-
-        <div className="shrink-0 border-t border-white/8 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-400">
-              {t("campaignHome.mapPreviewSaveHint")}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-slate-500"
-              >
-                {t("campaignHome.mapPreviewClose")}
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={saving || uploading || deleting}
-                className="rounded-full bg-limiar-500 px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white hover:bg-limiar-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? t("campaignHome.mapSaving") : t("campaignHome.mapSave")}
-              </button>
-            </div>
           </div>
         </div>
       </div>

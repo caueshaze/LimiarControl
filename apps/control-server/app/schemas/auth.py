@@ -27,6 +27,7 @@ class MeResponse(BaseModel):
     username: str
     displayName: Optional[str]
     role: RoleMode
+    preferredWorkspaceMode: Optional[RoleMode] = None
     isSystemAdmin: bool
     avatarUrl: Optional[str] = None
     tokenColor: Optional[str] = None
@@ -42,6 +43,7 @@ class UpdateProfileRequest(BaseModel):
     avatarUrl: Optional[str] = Field(default=None, max_length=1024)
     tokenColor: Optional[str] = Field(default=None, max_length=9)
     tokenImageUrl: Optional[str] = Field(default=None, max_length=1024)
+    preferredWorkspaceMode: Optional[RoleMode] = None
     markOnboarded: Optional[bool] = None
 
     @field_validator("tokenColor")

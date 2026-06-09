@@ -103,7 +103,12 @@ def list_session_shop_items_service(
     if not member:
         raise HTTPException(status_code=403, detail="Not a campaign member")
     items = list(
-        session.exec(select(Item).where(Item.campaign_id == entry.campaign_id)).all()
+        session.exec(
+            select(Item).where(
+                Item.campaign_id == entry.campaign_id,
+                Item.is_purchasable == True,  # noqa: E712
+            )
+        ).all()
     )
     items.sort(
         key=lambda item: item.created_at.timestamp() if item.created_at is not None else 0.0,
@@ -128,6 +133,8 @@ async def buy_session_shop_item_service(
         raise HTTPException(status_code=404, detail="Item not found")
     if item.campaign_id != entry.campaign_id:
         raise HTTPException(status_code=400, detail="Item does not belong to campaign")
+    if not item.is_purchasable:
+        raise HTTPException(status_code=400, detail="Item is not available in the shop")
     item_id = require_identifier(item.id, "Item is missing an id")
     if payload.quantity < 1:
         raise HTTPException(status_code=400, detail="Invalid quantity")

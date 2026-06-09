@@ -2,25 +2,40 @@ import { useEffect, useMemo, useState } from "react";
 import type { CampaignMapConfig } from "../../../entities/campaign";
 import { campaignsRepo } from "../../../shared/api/campaignsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
-import type { Props } from "./types";
+import type {
+  CalibrationPreviewBounds,
+  EditorMode,
+  FormState,
+  Props,
+} from "./types";
 import { useCampaignMapObstacleEditor } from "./useCampaignMapObstacleEditor";
 import { useCampaignMapImageUpload } from "./useCampaignMapImageUpload";
 import {
   EMPTY_FORM,
+  buildEdgeObstacleMap,
+  buildObstacleMap,
   configToForm,
-  formatCalibrationBounds,
   getCalibrationPreview,
   isMapReady,
   normalizeOptionalFloat,
   normalizeOptionalInt,
+  parsePreviewFloat,
   parsePreviewInt,
   serializeEdgeObstacleMap,
   serializeObstacleMap,
   sortMaps,
 } from "./utils";
-export const calibrationFieldClassName =
-  "block w-full rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-limiar-500 focus:outline-none";
 
+const presetMapsEqual = (
+  left: ReadonlyMap<string, string>,
+  right: ReadonlyMap<string, string>,
+) => {
+  if (left.size !== right.size) return false;
+  for (const [key, value] of left) {
+    if (right.get(key) !== value) return false;
+  }
+  return true;
+};
 export function useCampaignMapConfigController({
   campaignId,
   initialMaps,
@@ -31,11 +46,15 @@ export function useCampaignMapConfigController({
   const [selectedMapId, setSelectedMapId] = useState<string | null>(
     sortedMaps[0]?.id ?? null,
   );
-  const [isCreatingNew, setIsCreatingNew] = useState(sortedMaps.length === 0);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  // True while editing an existing map in the full editor view. When both this
+  // and isCreatingNew are false we show only the catalog (the list of maps).
+  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState(() => configToForm(sortedMaps[0] ?? null));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState<EditorMode>("calibrate");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const obstacleEditor = useCampaignMapObstacleEditor(sortedMaps[0] ?? null);
@@ -60,14 +79,20 @@ export function useCampaignMapConfigController({
   const previewGridWidth = parsePreviewInt(form.gridWidth);
   const previewGridHeight = parsePreviewInt(form.gridHeight);
   const previewBounds = calibrationPreview.bounds;
+  const previewCellWidth = parsePreviewFloat(form.cellWidth);
+  const previewCellHeight = parsePreviewFloat(form.cellHeight);
   const calibrationSummary =
     calibrationPreview.status === "full-image"
       ? t("campaignHome.mapPreviewUsingFullImage")
-      : calibrationPreview.status === "custom" && previewBounds != null
-        ? t("campaignHome.mapPreviewCustom").replace(
-            "{bounds}",
-            formatCalibrationBounds(previewBounds),
-          )
+      : calibrationPreview.status === "custom" &&
+          previewBounds != null &&
+          previewCellWidth != null &&
+          previewCellHeight != null
+        ? t("campaignHome.mapPreviewCellSummary")
+            .replace("{cellW}", `${(previewCellWidth * 100).toFixed(1)}%`)
+            .replace("{cellH}", `${(previewCellHeight * 100).toFixed(1)}%`)
+            .replace("{extentW}", `${(previewBounds.width * 100).toFixed(0)}%`)
+            .replace("{extentH}", `${(previewBounds.height * 100).toFixed(0)}%`)
         : t("campaignHome.mapPreviewInvalid");
   const gridSummary =
     previewGridWidth != null && previewGridHeight != null
@@ -76,10 +101,54 @@ export function useCampaignMapConfigController({
           .replace("{rows}", String(previewGridHeight))
       : t("campaignHome.mapPreviewGridMissing");
 
+  const isCalibrating = editorMode === "calibrate";
+  const isObstacleEditMode = editorMode === "obstacles";
+
+  const baselineConfig = isCreatingNew ? null : selectedMap;
+  const baselineForm = useMemo(() => configToForm(baselineConfig), [baselineConfig]);
+  const isDirty = useMemo(() => {
+    const formChanged = (Object.keys(form) as (keyof FormState)[]).some(
+      (key) => form[key] !== baselineForm[key],
+    );
+    if (formChanged) return true;
+    return (
+      !presetMapsEqual(obstacleEditor.obstacleMap, buildObstacleMap(baselineConfig)) ||
+      !presetMapsEqual(
+        obstacleEditor.edgeObstacleMap,
+        buildEdgeObstacleMap(baselineConfig),
+      )
+    );
+  }, [form, baselineForm, baselineConfig, obstacleEditor.obstacleMap, obstacleEditor.edgeObstacleMap]);
+
+  // The reference (top-left) cell the user manipulates while calibrating. Derived
+  // from the previewed grid extent ÷ count so it always reflects the current cell
+  // size (including the full-image default).
+  const calibrationCell =
+    previewBounds != null && previewGridWidth != null && previewGridHeight != null
+      ? {
+          x: previewBounds.x,
+          y: previewBounds.y,
+          width: previewBounds.width / previewGridWidth,
+          height: previewBounds.height / previewGridHeight,
+        }
+      : null;
+
+  const setCalibrationBounds = (cell: CalibrationPreviewBounds) => {
+    // The dragged rectangle IS one cell; the grid replicates it by the count.
+    setForm((current) => ({
+      ...current,
+      calibrationX: String(cell.x),
+      calibrationY: String(cell.y),
+      cellWidth: String(cell.width),
+      cellHeight: String(cell.height),
+    }));
+  };
+
   useEffect(() => {
     const nextSelected = sortedMaps[0] ?? null;
     setSelectedMapId(nextSelected?.id ?? null);
-    setIsCreatingNew(nextSelected == null);
+    setIsCreatingNew(false);
+    setIsEditing(false);
     setForm(configToForm(nextSelected));
     obstacleEditor.resetFromConfig(nextSelected);
     setError(null);
@@ -87,7 +156,7 @@ export function useCampaignMapConfigController({
   }, [campaignId]);
 
   useEffect(() => {
-    if (isCreatingNew) {
+    if (isCreatingNew || !isEditing) {
       return;
     }
 
@@ -101,7 +170,7 @@ export function useCampaignMapConfigController({
     setSelectedMapId(fallback?.id ?? null);
     setForm(configToForm(fallback));
     obstacleEditor.resetFromConfig(fallback);
-  }, [isCreatingNew, selectedMap, sortedMaps]);
+  }, [isCreatingNew, isEditing, selectedMap, sortedMaps]);
 
   useEffect(() => {
     if (!isPreviewOpen) {
@@ -138,12 +207,28 @@ export function useCampaignMapConfigController({
   const handleEditMap = (map: CampaignMapConfig) => {
     setSelectedMapId(map.id);
     setIsCreatingNew(false);
+    setIsEditing(true);
     resetEditorState(map);
+  };
+
+  // Open the expanded preview for a catalog map without entering the editor.
+  const handlePreviewMap = (map: CampaignMapConfig) => {
+    setSelectedMapId(map.id);
+    resetEditorState(map);
+    setIsPreviewOpen(true);
+  };
+
+  // Back to the catalog: show only the list, no editor.
+  const handleShowList = () => {
+    setIsCreatingNew(false);
+    setIsEditing(false);
+    resetEditorState(selectedMap);
   };
 
   const handleCreateNew = () => {
     setSelectedMapId(null);
     setIsCreatingNew(true);
+    setIsEditing(false);
     setForm(EMPTY_FORM);
     obstacleEditor.clearAll();
     setError(null);
@@ -151,13 +236,19 @@ export function useCampaignMapConfigController({
   };
 
   const handleResetCalibration = () => {
-    setForm((current) => ({
-      ...current,
-      calibrationX: "0",
-      calibrationY: "0",
-      calibrationWidth: "1",
-      calibrationHeight: "1",
-    }));
+    setForm((current) => {
+      // Fill the whole image: origin at 0,0 and a cell that tiles exactly to the
+      // current count (cell = 1 / count). Falls back to clearing if no count.
+      const cols = parsePreviewInt(current.gridWidth);
+      const rows = parsePreviewInt(current.gridHeight);
+      return {
+        ...current,
+        calibrationX: "0",
+        calibrationY: "0",
+        cellWidth: cols != null ? String(1 / cols) : "",
+        cellHeight: rows != null ? String(1 / rows) : "",
+      };
+    });
     setSuccess(null);
   };
 
@@ -178,45 +269,36 @@ export function useCampaignMapConfigController({
         t("campaignHome.mapGridHeight"),
       );
 
-      const calibrationRawValues = [
-        form.calibrationX,
-        form.calibrationY,
-        form.calibrationWidth,
-        form.calibrationHeight,
-      ].map((value) => value.trim());
-
-      const someCalibrationFilled = calibrationRawValues.some(Boolean);
-      const allCalibrationFilled = calibrationRawValues.every(Boolean);
-      if (someCalibrationFilled && !allCalibrationFilled) {
+      // Cell size is the editor's source of truth; the persisted calibration
+      // rectangle is derived as count × cell size (keeps the backend model).
+      const cellRawValues = [form.cellWidth, form.cellHeight].map((value) =>
+        value.trim(),
+      );
+      const someCellFilled = cellRawValues.some(Boolean);
+      const allCellFilled = cellRawValues.every(Boolean);
+      if (someCellFilled && !allCellFilled) {
         throw new Error(t("campaignHome.mapCalibrationPartialError"));
       }
 
       let calibration: CampaignMapConfig["calibration"] = null;
-      if (allCalibrationFilled) {
-        const x = normalizeOptionalFloat(form.calibrationX, t("campaignHome.mapCalibrationX"));
-        const y = normalizeOptionalFloat(form.calibrationY, t("campaignHome.mapCalibrationY"));
-        const width = normalizeOptionalFloat(
-          form.calibrationWidth,
-          t("campaignHome.mapCalibrationWidth"),
-        );
-        const height = normalizeOptionalFloat(
-          form.calibrationHeight,
-          t("campaignHome.mapCalibrationHeight"),
-        );
+      if (allCellFilled) {
+        if (gridWidth == null || gridHeight == null) {
+          throw new Error(t("campaignHome.mapCalibrationNeedsGridError"));
+        }
+        const x = normalizeOptionalFloat(form.calibrationX, t("campaignHome.mapCalibration")) ?? 0;
+        const y = normalizeOptionalFloat(form.calibrationY, t("campaignHome.mapCalibration")) ?? 0;
+        const cellWidth = normalizeOptionalFloat(form.cellWidth, t("campaignHome.mapCellWidth"));
+        const cellHeight = normalizeOptionalFloat(form.cellHeight, t("campaignHome.mapCellHeight"));
 
-        if (
-          x == null ||
-          y == null ||
-          width == null ||
-          height == null ||
-          x < 0 ||
-          y < 0 ||
-          width <= 0 ||
-          height <= 0 ||
-          x + width > 1 ||
-          y + height > 1
-        ) {
+        if (cellWidth == null || cellHeight == null || cellWidth <= 0 || cellHeight <= 0) {
           throw new Error(t("campaignHome.mapCalibrationBoundsError"));
+        }
+
+        const width = gridWidth * cellWidth;
+        const height = gridHeight * cellHeight;
+
+        if (x < 0 || y < 0 || x + width > 1 || y + height > 1) {
+          throw new Error(t("campaignHome.mapCalibrationOverflowError"));
         }
 
         calibration = { x, y, width, height };
@@ -245,6 +327,7 @@ export function useCampaignMapConfigController({
       onSaved(nextMaps);
       setSelectedMapId(savedConfig.id);
       setIsCreatingNew(false);
+      setIsEditing(true);
       setForm(configToForm(savedConfig));
       obstacleEditor.resetFromConfig(savedConfig);
       setSuccess(t("campaignHome.mapSaved"));
@@ -274,7 +357,8 @@ export function useCampaignMapConfigController({
       const fallback = nextMaps[0] ?? null;
       onSaved(nextMaps);
       setSelectedMapId(fallback?.id ?? null);
-      setIsCreatingNew(fallback == null);
+      setIsCreatingNew(false);
+      setIsEditing(false);
       setForm(configToForm(fallback));
       obstacleEditor.resetFromConfig(fallback);
       setSuccess(t("campaignHome.mapDeleted"));
@@ -294,14 +378,22 @@ export function useCampaignMapConfigController({
     sortedMaps,
     selectedMapId,
     isCreatingNew,
+    isEditing,
     form,
     saving,
     uploading,
     deleting,
     isPreviewOpen,
+    editorMode,
+    setEditorMode,
+    isCalibrating,
+    calibrationCell,
+    setCalibrationBounds,
+    isDirty,
     error,
     success,
     ...obstacleEditor,
+    isObstacleEditMode,
     hasMapImage,
     isConfigured,
     readyMaps,
@@ -311,6 +403,8 @@ export function useCampaignMapConfigController({
     calibrationSummary,
     gridSummary,
     handleEditMap,
+    handlePreviewMap,
+    handleShowList,
     handleCreateNew,
     handleChooseImage,
     handleImageSelected,

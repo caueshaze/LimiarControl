@@ -17,6 +17,7 @@ from app.models.user import User
 from app.schemas.session import ActiveSessionRead, LobbyPlayer, SessionActivateRequest
 from app.services.session_rest import ensure_rest_state
 from app.services.session_state_finalize import finalize_session_state_data
+from ..state_common import ensure_initial_spell_preparation_state
 from .._shared import check_character_sheets, get_or_create_session_runtime, to_session_read
 from .common import (
     build_expected_players,
@@ -97,6 +98,7 @@ def clone_session_states(
         cloned = ensure_rest_state(cloned)
         cloned["restState"] = "exploration"
         cloned = finalize_session_state_data(cloned)
+        cloned = ensure_initial_spell_preparation_state(cloned)
         session.add(
             SessionState(
                 id=str(uuid4()),

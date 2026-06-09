@@ -10,7 +10,32 @@ import {
   type CampaignObstacle,
   type ObstaclePresetId,
 } from "../../../entities/campaign";
-import type { FormState, CalibrationPreviewState, HoveredGridCell } from "./types";
+import type {
+  FormState,
+  CalibrationPreviewBounds,
+  CalibrationPreviewState,
+  HoveredGridCell,
+} from "./types";
+
+/** Smallest grid rectangle (as a fraction of the image) the user can draw. */
+const MIN_CALIBRATION_SIZE = 0.02;
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+/**
+ * Clamp a freshly-dragged rectangle so it stays inside the image (0-1 on both
+ * axes) and keeps a minimum size. Mirrors the validation rules in
+ * `getCalibrationPreview` / the save handler.
+ */
+export const clampCalibrationBounds = (
+  bounds: CalibrationPreviewBounds,
+): CalibrationPreviewBounds => {
+  const width = Math.min(1, Math.max(MIN_CALIBRATION_SIZE, bounds.width));
+  const height = Math.min(1, Math.max(MIN_CALIBRATION_SIZE, bounds.height));
+  const x = clamp01(Math.min(bounds.x, 1 - width));
+  const y = clamp01(Math.min(bounds.y, 1 - height));
+  return { x, y, width, height };
+};
 
 export const EMPTY_FORM: FormState = {
   mapName: "",
@@ -19,22 +44,36 @@ export const EMPTY_FORM: FormState = {
   gridHeight: "",
   calibrationX: "",
   calibrationY: "",
-  calibrationWidth: "",
-  calibrationHeight: "",
+  cellWidth: "",
+  cellHeight: "",
 };
 
-export const configToForm = (config: CampaignMapConfig | null | undefined): FormState => ({
-  mapName: config?.mapName ?? "",
-  imageUrl: config?.imageUrl ?? "",
-  gridWidth: config?.gridWidth != null ? String(config.gridWidth) : "",
-  gridHeight: config?.gridHeight != null ? String(config.gridHeight) : "",
-  calibrationX: config?.calibration?.x != null ? String(config.calibration.x) : "",
-  calibrationY: config?.calibration?.y != null ? String(config.calibration.y) : "",
-  calibrationWidth:
-    config?.calibration?.width != null ? String(config.calibration.width) : "",
-  calibrationHeight:
-    config?.calibration?.height != null ? String(config.calibration.height) : "",
-});
+export const configToForm = (config: CampaignMapConfig | null | undefined): FormState => {
+  // Cell size is the source of truth in the editor; reconstruct it from the
+  // stored calibration area divided by the grid count (round-trips on save).
+  const cols = config?.gridWidth ?? null;
+  const rows = config?.gridHeight ?? null;
+  const calibration = config?.calibration ?? null;
+  const cellWidth =
+    calibration?.width != null && cols != null && cols > 0
+      ? calibration.width / cols
+      : null;
+  const cellHeight =
+    calibration?.height != null && rows != null && rows > 0
+      ? calibration.height / rows
+      : null;
+
+  return {
+    mapName: config?.mapName ?? "",
+    imageUrl: config?.imageUrl ?? "",
+    gridWidth: cols != null ? String(cols) : "",
+    gridHeight: rows != null ? String(rows) : "",
+    calibrationX: calibration?.x != null ? String(calibration.x) : "",
+    calibrationY: calibration?.y != null ? String(calibration.y) : "",
+    cellWidth: cellWidth != null ? String(cellWidth) : "",
+    cellHeight: cellHeight != null ? String(cellHeight) : "",
+  };
+};
 
 export const normalizeOptionalInt = (value: string, label: string): number | null => {
   const trimmed = value.trim();
@@ -77,36 +116,44 @@ export const parsePreviewFloat = (value: string): number | null => {
 };
 
 export const getCalibrationPreview = (form: FormState): CalibrationPreviewState => {
-  const x = parsePreviewFloat(form.calibrationX);
-  const y = parsePreviewFloat(form.calibrationY);
-  const width = parsePreviewFloat(form.calibrationWidth);
-  const height = parsePreviewFloat(form.calibrationHeight);
+  const cols = parsePreviewInt(form.gridWidth);
+  const rows = parsePreviewInt(form.gridHeight);
+  const cellWidth = parsePreviewFloat(form.cellWidth);
+  const cellHeight = parsePreviewFloat(form.cellHeight);
+  const originX = parsePreviewFloat(form.calibrationX) ?? 0;
+  const originY = parsePreviewFloat(form.calibrationY) ?? 0;
 
-  if (x == null && y == null && width == null && height == null) {
+  // No cell size set yet → the grid fills the whole image.
+  if (cellWidth == null && cellHeight == null) {
     return {
       status: "full-image",
       bounds: { x: 0, y: 0, width: 1, height: 1 },
     };
   }
 
-  if (x == null || y == null || width == null || height == null) {
-    return { status: "invalid", bounds: null };
-  }
-
   if (
-    x < 0 ||
-    y < 0 ||
-    width <= 0 ||
-    height <= 0 ||
-    x + width > 1 ||
-    y + height > 1
+    cellWidth == null ||
+    cellHeight == null ||
+    cols == null ||
+    rows == null ||
+    cellWidth <= 0 ||
+    cellHeight <= 0
   ) {
     return { status: "invalid", bounds: null };
   }
 
+  if (originX < 0 || originY < 0) {
+    return { status: "invalid", bounds: null };
+  }
+
+  // The grid may extend past the image (count × cell size). We still preview it
+  // (clipped by the surface's overflow-hidden); saving is what enforces fitting.
+  const width = cols * cellWidth;
+  const height = rows * cellHeight;
+
   return {
     status: "custom",
-    bounds: { x, y, width, height },
+    bounds: { x: originX, y: originY, width, height },
   };
 };
 

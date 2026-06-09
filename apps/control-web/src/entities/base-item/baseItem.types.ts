@@ -26,6 +26,7 @@ export type BaseItemCostUnit =
   (typeof BaseItemCostUnit)[keyof typeof BaseItemCostUnit];
 
 export const BaseItemEquipmentCategory = {
+  ADVENTURING_GEAR: "adventuring_gear",
   ADVENTURING_PACK: "adventuring_pack",
   AMMUNITION: "ammunition",
   BOOK: "book",
@@ -36,6 +37,7 @@ export const BaseItemEquipmentCategory = {
   GAMING_SET: "gaming_set",
   INSIGNIA: "insignia",
   JEWELRY: "jewelry",
+  MAGIC_BRACELET: "magic_bracelet",
   MEMENTO: "memento",
   MUSICAL_INSTRUMENT: "musical_instrument",
   PET: "pet",
@@ -176,6 +178,7 @@ export type BaseItem = {
   sourceRef?: string | null;
   isSrd: boolean;
   isActive: boolean;
+  isPurchasable: boolean;
   aliases: BaseItemAlias[];
 };
 
@@ -223,4 +226,5 @@ export type BaseItemWritePayload = {
   sourceRef?: string | null;
   isSrd?: boolean;
   isActive?: boolean;
+  isPurchasable?: boolean;
 };

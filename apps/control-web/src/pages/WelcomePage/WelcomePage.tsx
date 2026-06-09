@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
-import { authRepo } from "../../shared/api/authRepo";
 import { useAuth } from "../../features/auth";
+import { workspaceModeStorage } from "../../shared/lib/workspaceMode";
 import { StepWelcome } from "./steps/StepWelcome";
 import { StepProfile } from "./steps/StepProfile";
 import { StepToken } from "./steps/StepToken";
@@ -11,11 +11,9 @@ import { StepExperience } from "./steps/StepExperience";
 type Step = 0 | 1 | 2 | 3;
 type ExperienceMode = "GM" | "PLAYER";
 
-const EXPERIENCE_MODE_KEY = "limiar_experience_mode";
-
 export const WelcomePage = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [step, setStep] = useState<Step>(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -30,17 +28,21 @@ export const WelcomePage = () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await authRepo.updateProfile({
+      if (experienceMode && user?.userId) {
+        workspaceModeStorage.writeLegacyMode(experienceMode, user.userId);
+      }
+      const profile = await updateProfile({
         displayName: nickname.trim() || undefined,
         avatarUrl,
         tokenColor,
         tokenImageUrl,
+        preferredWorkspaceMode: experienceMode ?? undefined,
         markOnboarded: true,
       });
-      if (experienceMode) {
-        localStorage.setItem(EXPERIENCE_MODE_KEY, experienceMode);
+      if (!profile) {
+        throw new Error("Falha ao salvar perfil.");
       }
-      await refreshUser();
+      workspaceModeStorage.clearLegacyMode();
       navigate(routes.home);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Falha ao salvar perfil.";

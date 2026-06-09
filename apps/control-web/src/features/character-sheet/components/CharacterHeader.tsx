@@ -11,29 +11,7 @@ import { formatClassDisplayName } from "../data/classes";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import type { LocaleKey } from "../../../shared/i18n";
 import { canNavigateBack, navigateBackOrFallback } from "../../../shared/lib/navigation";
-
-const REQUIRED_FIELD_LABEL_KEY: Record<RequiredField, LocaleKey> = {
-  name: "sheet.basicInfo.characterName",
-  class: "sheet.basicInfo.class",
-  subclass: "sheet.basicInfo.subclass",
-  subclassConfig: "sheet.basicInfo.subclassConfig",
-  raceConfig: "sheet.raceConfig.title",
-  race: "sheet.basicInfo.race",
-  background: "sheet.basicInfo.background",
-  alignment: "sheet.basicInfo.alignment",
-  playerName: "sheet.basicInfo.playerName",
-  fightingStyle: "sheet.basicInfo.fightingStyle",
-  classSkills: "sheet.skillPicker.classSkills",
-  classToolProficiencies: "sheet.toolPicker.title",
-  raceToolProficiency: "sheet.raceToolPicker.title",
-  equipmentChoices: "sheet.creation.equipmentChoices",
-  languageChoices: "sheet.languages.choiceTitle",
-  cantrips: "sheet.spells.cantrip",
-  leveledSpells: "sheet.spells.knownTitle",
-  expertise: "sheet.expertisePicker.title",
-};
-
-const TOTAL_REQUIRED_FIELDS = Object.keys(REQUIRED_FIELD_LABEL_KEY).length;
+import { REQUIRED_FIELD_LABEL_KEY, TOTAL_REQUIRED_FIELDS } from "../utils/creationFieldLabels";
 
 type Props = {
   sheet: CharacterSheet;
@@ -59,6 +37,9 @@ type Props = {
   saveDisabledReason?: string | null;
   missingRequiredFields?: RequiredField[];
   onSave: () => void;
+  hideSaveControls?: boolean;
+  showCreationProgressSummary?: boolean;
+  hideBackButton?: boolean;
   draftName?: string;
   draftNamePlaceholder?: string;
   draftNameDisabled?: boolean;
@@ -76,6 +57,7 @@ export const CharacterHeader = ({
   passivePerceptionBonus, passivePerceptionBonusSources,
   spellSaveDC, spellAttack, hpTextColor,
   partyId, backHref, backLabel, isDirty, saving, saveError, saveDisabledReason, missingRequiredFields = [], onSave,
+  hideSaveControls = false, showCreationProgressSummary = true, hideBackButton = false,
   draftName, draftNamePlaceholder, draftNameDisabled = false, onDraftNameChange,
   importRef, importError, onExport, onImport, onReset,
 }: Props) => {
@@ -111,7 +93,7 @@ export const CharacterHeader = ({
   return (
     <div className="space-y-4 px-4 pt-4 lg:px-6">
       <div className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-3">
-        {showBackButton && (
+        {showBackButton && !hideBackButton && (
           <button
             type="button"
             onClick={handleBack}
@@ -119,22 +101,6 @@ export const CharacterHeader = ({
           >
             {backButtonLabel}
           </button>
-        )}
-        {showResetImport && (
-          <button type="button" onClick={onReset}
-            className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-rose-500/40 hover:text-rose-300">
-            {t("sheet.header.reset")}
-          </button>
-        )}
-        <button type="button" onClick={onExport}
-          className="rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
-          {t("sheet.header.exportJson")}
-        </button>
-        {showResetImport && (
-          <label className="cursor-pointer rounded-full border border-white/8 bg-white/2 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-300 transition-all hover:border-limiar-500/40 hover:text-limiar-300">
-            {t("sheet.header.importJson")}
-            <input ref={importRef} type="file" accept=".json" className="hidden" onChange={onImport} />
-          </label>
         )}
         {partyId && onDraftNameChange && (
           <label className="flex min-w-[260px] flex-1 items-center gap-3 rounded-[20px] border border-white/8 bg-white/3 px-4 py-2">
@@ -152,7 +118,7 @@ export const CharacterHeader = ({
         )}
 
         {/* Save UX — only shown when backed by a party */}
-        {partyId && canSave && (
+        {partyId && canSave && !hideSaveControls && (
           <div className="ml-auto flex items-center gap-2">
             <SaveStatus isDirty={isDirty} saving={saving} saveError={saveError} showSaved={showSaved} t={t} />
             <button
@@ -240,7 +206,7 @@ export const CharacterHeader = ({
         </div>
       )}
 
-      {canSave && missingRequiredFields.length > 0 && (
+      {canSave && showCreationProgressSummary && missingRequiredFields.length > 0 && (
         <div className="mx-auto max-w-[88rem] space-y-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
           {/* Progress bar */}
           <div className="flex items-center gap-3">

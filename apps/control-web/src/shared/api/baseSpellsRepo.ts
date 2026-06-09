@@ -22,6 +22,9 @@ const toQueryString = (filters?: BaseSpellFilters) => {
   if (filters.canonicalKey) {
     params.set("canonical_key", filters.canonicalKey);
   }
+  if (filters.isActive !== undefined) {
+    params.set("is_active", String(filters.isActive));
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";

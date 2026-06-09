@@ -206,7 +206,7 @@ def seed_state_from_character_sheet(
         base_sheet.data if isinstance(base_sheet.data, dict) else {},
         game_time_seconds=get_game_time_seconds(session_id, db),
     )
-    seed_initial_spell_preparation(state_json)
+    ensure_initial_spell_preparation_state(state_json)
     entry = SessionState(
         id=str(uuid4()),
         session_id=session_id,
@@ -219,6 +219,13 @@ def seed_state_from_character_sheet(
     db.commit()
     db.refresh(entry)
     return entry
+
+
+def ensure_initial_spell_preparation_state(state_json: dict) -> dict:
+    if not isinstance(state_json, dict):
+        return {}
+    seed_initial_spell_preparation(state_json)
+    return state_json
 
 
 def ensure_session_state(
@@ -255,6 +262,7 @@ def ensure_session_state(
         merged_state,
         game_time_seconds=get_game_time_seconds(session_id, db),
     )
+    merged_state = ensure_initial_spell_preparation_state(merged_state)
     if merged_state != state.state_json:
         state.state_json = merged_state
         db.add(state)

@@ -11,8 +11,8 @@ import { getEdgeBrushPreset, getObstacleBrushPreset } from "./obstacle-presets";
 import { HttpClient } from "../../services/http-client";
 import { postEmbeddedCellHovered, postEmbeddedCellSelected, postEmbeddedTokenSelected } from "../../services/embedded-map-bridge";
 import { buildFailureExplanation } from "../targeting/diagnostics-to-explanation";
-import { drawCellFills, drawEdgeObstacles, drawCellElevationBadges, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer } from "./canvas-renderers";
-import { canControlToken, canInteractWithToken, computePath, findTokenAtCell, getSelectionBlockedMessage, pixelToGrid } from "./utils";
+import { drawCellFills, drawEdgeObstacles, drawCellElevationBadges, drawEditHandles, drawGrid, drawHUD, drawPreviewHint, drawReachAndAoe, drawSpellHighlightRings, drawTacticalTokenOverlay, drawTokenLayer, drawTwoPointCalibrationOverlay } from "./canvas-renderers";
+import { canControlToken, canInteractWithToken, clamp, computePath, findTokenAtCell, getSelectionBlockedMessage, pixelToGrid } from "./utils";
 
 type Snapshot = {
   selectedTokenId: string | null;
@@ -91,7 +91,22 @@ export function bindPixiStageEvents(
 
   app.stage.on("pointerdown", (event: FederatedPointerEvent) => {
     const { encounter, currentActor, uiState, selectedTokenId } = cbRef.current;
-    if (!encounter || uiState.isGridEditMode) return;
+    if (!encounter) return;
+    if (uiState.isGridEditMode) {
+      if (currentActor.actorType !== "gm") return;
+      if (!uiState.isTwoPointCalibrationMode) return;
+      const sourceWidthPx = uiState.mapImageNaturalWidthPx || uiState.mapFrameWidthPx;
+      const sourceHeightPx = uiState.mapImageNaturalHeightPx || uiState.mapFrameHeightPx;
+      if (sourceWidthPx <= 0 || sourceHeightPx <= 0) {
+        battleMapStore.setMessage("Nao foi possivel ler o tamanho da imagem para calibrar com 2 pontos.");
+        return;
+      }
+      battleMapStore.captureTwoPointGridCalibrationPoint({
+        x: clamp((event.global.x / app.screen.width) * sourceWidthPx, 0, sourceWidthPx),
+        y: clamp((event.global.y / app.screen.height) * sourceHeightPx, 0, sourceHeightPx),
+      });
+      return;
+    }
     const calibration = uiState.gridCalibrationDraft ?? encounter.battleMap.gridCalibration;
     const gridWidth = uiState.gridWidthDraft ?? encounter.battleMap.gridWidth;
     const gridHeight = uiState.gridHeightDraft ?? encounter.battleMap.gridHeight;
@@ -243,15 +258,35 @@ export function buildDrawFunction(
     if (refs.tokenContainerRef.current) drawTokenLayer(refs.tokenContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, selectedTokenId, uiState.embeddedSelectedTargetRefId ?? null, encounter.combatState.activeCombatantId);
     if (refs.spellHighlightContainerRef.current) drawSpellHighlightRings(refs.spellHighlightContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.embeddedSpellHighlights);
     if (refs.tacticalOverlayContainerRef.current) drawTacticalTokenOverlay(refs.tacticalOverlayContainerRef.current, encounter.tokens, calibration, gridWidth, gridHeight, screen.width, screen.height, uiState.tacticalPreview);
+    if (refs.tacticalOverlayContainerRef.current && uiState.isGridEditMode && uiState.isTwoPointCalibrationMode) {
+      drawTwoPointCalibrationOverlay(
+        refs.tacticalOverlayContainerRef.current,
+        uiState.twoPointCalibrationFirstPoint,
+        uiState.twoPointCalibrationSecondPoint,
+        uiState.mapImageNaturalWidthPx || uiState.mapFrameWidthPx,
+        uiState.mapImageNaturalHeightPx || uiState.mapFrameHeightPx,
+        screen.width,
+        screen.height
+      );
+    }
     if (refs.editHandlesContainerRef.current) {
-      drawEditHandles(refs.editHandlesContainerRef.current, calibration, screen.width, screen.height, uiState.isGridEditMode, Boolean(uiState.pendingGridCalibrationActionId), (mode, clientX, clientY) => {
-        setGridEditInteraction({ mode, startClientX: clientX, startClientY: clientY, startCalibration: calibration });
+      drawEditHandles(refs.editHandlesContainerRef.current, calibration, screen.width, screen.height, uiState.isGridEditMode && !uiState.isTwoPointCalibrationMode, Boolean(uiState.pendingGridCalibrationActionId), (mode, clientX, clientY) => {
+        if (!uiState.isTwoPointCalibrationMode) {
+          setGridEditInteraction({ mode, startClientX: clientX, startClientY: clientY, startCalibration: calibration });
+        }
       });
     }
     if (refs.hudContainerRef.current) {
       const selectedToken = encounter.tokens.find((token: any) => token.id === selectedTokenId) ?? null;
       const activeBrushPresetLabel = uiState.isObstaclePaintMode ? (uiState.obstaclePaintTarget === "edge" ? getEdgeBrushPreset(uiState.edgeBrushPresetId).label : getObstacleBrushPreset(uiState.obstacleBrushPresetId).label) : undefined;
-      drawHUD(refs.hudContainerRef.current, encounter.battleMap.name, gridWidth, gridHeight, selectedToken, uiState.isObstaclePaintMode, uiState.obstacleBrushRadius, uiState.isGridEditMode, screen.width, screen.height, activeBrushPresetLabel, uiState.obstaclePaintTarget, uiState.edgeDirection);
+      const twoPointStatus = !uiState.isTwoPointCalibrationMode
+        ? undefined
+        : !uiState.twoPointCalibrationFirstPoint
+          ? "2 pontos: clique no primeiro cruzamento"
+          : !uiState.twoPointCalibrationSecondPoint
+            ? "2 pontos: clique no segundo cruzamento"
+            : "2 pontos: informe as celulas entre os pontos · Esc cancela";
+      drawHUD(refs.hudContainerRef.current, encounter.battleMap.name, gridWidth, gridHeight, selectedToken, uiState.isObstaclePaintMode, uiState.obstacleBrushRadius, uiState.isGridEditMode, screen.width, screen.height, activeBrushPresetLabel, uiState.obstaclePaintTarget, uiState.edgeDirection, twoPointStatus);
       drawPreviewHint(refs.hudContainerRef.current, screen.width, screen.height, uiState.tacticalPreview.diagnostics ? buildFailureExplanation(uiState.tacticalPreview.diagnostics) : null);
     }
   };

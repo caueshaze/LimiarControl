@@ -24,8 +24,11 @@ export const toItemRepoPayload = (payload: ItemInput): ItemInput => ({
   description: payload.description.trim(),
   price: payload.price,
   weight: payload.weight,
+  equipmentCategory: payload.equipmentCategory || undefined,
   damageDice: payload.damageDice,
   damageType: payload.damageType,
+  chargesMax: payload.chargesMax,
+  rechargeType: payload.rechargeType || undefined,
   magicEffect: payload.magicEffect,
   rangeMeters: payload.rangeMeters,
   rangeLongMeters: payload.rangeLongMeters,
@@ -38,6 +41,7 @@ export const toItemRepoPayload = (payload: ItemInput): ItemInput => ({
   strengthRequirement: payload.strengthRequirement,
   stealthDisadvantage: payload.stealthDisadvantage,
   isShield: payload.isShield,
+  isPurchasable: payload.isPurchasable,
   properties: payload.properties,
 });
 

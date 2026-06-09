@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from typing import cast
 
+from sqlalchemy.exc import DataError
+
 from sqlmodel import Session, select
 
 from app.api.serializers.base_item import to_base_item_seed_entry
@@ -165,6 +167,16 @@ def bootstrap_base_items_if_empty(
         logger.warning("Base item seed file not found at %s", path)
         return {"inserted": 0, "updated": 0, "total": 0}
 
-    result = import_base_item_seed_file(db, path=path, replace=False)
+    try:
+        result = import_base_item_seed_file(db, path=path, replace=False)
+    except (ValueError, DataError) as exc:
+        db.rollback()
+        logger.warning(
+            "Base item seed at %s failed to import (%s) — bootstrap skipped. "
+            "Use the admin UI to import items manually.",
+            path,
+            exc,
+        )
+        return {"inserted": 0, "updated": 0, "total": 0}
     logger.info("Bootstrapped base item catalog from %s: %s", path, result)
     return result

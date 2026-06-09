@@ -6,15 +6,25 @@ import { useLocale } from "../../../shared/hooks/useLocale";
 type Props = {
   classFeatures: CharacterSheet["classFeatures"];
   featuresAndTraits: CharacterSheet["featuresAndTraits"];
-  notes: CharacterSheet["notes"];
-  set: SheetActions["set"];
+  notes?: CharacterSheet["notes"];
+  setFeaturesAndTraits: (value: string) => void;
+  setNotes?: (value: string) => void;
   readOnly?: boolean;
+  showNotes?: boolean;
 };
 
 const textarea =
   "w-full rounded-xl border border-white/10 bg-void-900/50 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-limiar-500 focus:outline-none focus:ring-1 focus:ring-limiar-500/50 resize-none";
 
-export const FeaturesTraits = ({ classFeatures, featuresAndTraits, notes, set, readOnly = false }: Props) => {
+export const FeaturesTraits = ({
+  classFeatures,
+  featuresAndTraits,
+  notes = "",
+  setFeaturesAndTraits,
+  setNotes,
+  readOnly = false,
+  showNotes = true,
+}: Props) => {
   const { t } = useLocale();
 
   return (
@@ -43,21 +53,23 @@ export const FeaturesTraits = ({ classFeatures, featuresAndTraits, notes, set, r
           placeholder={t("sheet.features.placeholder")}
           value={featuresAndTraits}
           disabled={readOnly}
-          onChange={(e) => set("featuresAndTraits", e.target.value)}
+          onChange={(e) => setFeaturesAndTraits(e.target.value)}
           className={`${textarea} ${readOnly ? "opacity-70" : ""}`}
         />
       </Section>
 
-      <Section title={t("sheet.features.notesTitle")} color="bg-slate-500">
-        <textarea
-          rows={5}
-          placeholder={t("sheet.features.notesPlaceholder")}
-          value={notes}
-          disabled={readOnly}
-          onChange={(e) => set("notes", e.target.value)}
-          className={`${textarea} ${readOnly ? "opacity-70" : ""}`}
-        />
-      </Section>
+      {showNotes && setNotes ? (
+        <Section title={t("sheet.features.notesTitle")} color="bg-slate-500">
+          <textarea
+            rows={5}
+            placeholder={t("sheet.features.notesPlaceholder")}
+            value={notes}
+            disabled={readOnly}
+            onChange={(e) => setNotes(e.target.value)}
+            className={`${textarea} ${readOnly ? "opacity-70" : ""}`}
+          />
+        </Section>
+      ) : null}
     </>
   );
 };

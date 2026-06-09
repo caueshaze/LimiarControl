@@ -7,6 +7,7 @@ export type MeResponse = {
   username: string;
   displayName?: string | null;
   role: RoleMode;
+  preferredWorkspaceMode?: RoleMode | null;
   isSystemAdmin: boolean;
   avatarUrl?: string | null;
   tokenColor?: string | null;
@@ -19,6 +20,7 @@ export type UpdateProfileRequest = {
   avatarUrl?: string | null;
   tokenColor?: string | null;
   tokenImageUrl?: string | null;
+  preferredWorkspaceMode?: RoleMode | null;
   markOnboarded?: boolean;
 };
 

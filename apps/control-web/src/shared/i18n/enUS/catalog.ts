@@ -259,6 +259,7 @@ export const catalogEnUSDictionary = {
   "catalog.admin.form.sourceRefDetailed": "Source reference",
   "catalog.admin.form.stealthDisadvantage": "Stealth disadvantage",
   "catalog.admin.form.shield": "Shield",
+  "catalog.admin.form.isPurchasable": "Available for shop purchase",
   "catalog.admin.form.clearFields": "Clear fields",
   "catalog.admin.form.deleteItem": "Delete item",
   "catalog.admin.form.weaponRangeEnabled": "Range enabled",

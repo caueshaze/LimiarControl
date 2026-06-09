@@ -39,6 +39,7 @@ const BASE_ITEM_EQUIPMENT_CATEGORY_LABELS: Record<BaseItemEquipmentCategory, Lab
   gaming_set: label("Gaming set", "Jogo de mesa"),
   insignia: label("Insignia", "Insígnia"),
   jewelry: label("Jewelry", "Joia"),
+  magic_bracelet: label("Magic bracelet", "Bracelete mágico"),
   memento: label("Memento", "Lembrança"),
   musical_instrument: label("Musical instrument", "Instrumento musical"),
   pet: label("Pet", "Mascote"),

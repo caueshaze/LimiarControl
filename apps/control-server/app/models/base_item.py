@@ -46,6 +46,7 @@ class BaseItemEquipmentCategory(str, Enum):
     GAMING_SET = "gaming_set"
     INSIGNIA = "insignia"
     JEWELRY = "jewelry"
+    MAGIC_BRACELET = "magic_bracelet"
     MEMENTO = "memento"
     MUSICAL_INSTRUMENT = "musical_instrument"
     PET = "pet"
@@ -298,6 +299,10 @@ class BaseItem(SQLModel, table=True):
         sa_column=Column(Boolean, nullable=False, server_default="false"),
     )
     is_active: bool = Field(
+        default=True,
+        sa_column=Column(Boolean, nullable=False, server_default="true"),
+    )
+    is_purchasable: bool = Field(
         default=True,
         sa_column=Column(Boolean, nullable=False, server_default="true"),
     )

@@ -64,6 +64,7 @@ def to_base_item_read(item: BaseItem) -> BaseItemRead:
         sourceRef=item.source_ref,
         isSrd=item.is_srd,
         isActive=item.is_active,
+        isPurchasable=item.is_purchasable,
         aliases=[],
     )
 
@@ -105,4 +106,5 @@ def to_base_item_seed_entry(item: BaseItem) -> BaseItemCreate:
         sourceRef=item.source_ref,
         isSrd=item.is_srd,
         isActive=item.is_active,
+        isPurchasable=item.is_purchasable,
     )

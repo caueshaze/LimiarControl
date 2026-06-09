@@ -1,9 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import type { BaseSpell } from "../../entities/base-spell";
 import type {
   BaseItemCostUnit,
   BaseItemEquipmentCategory,
 } from "../../entities/base-item";
+import { BaseItemEquipmentCategory as BaseItemEquipmentCategoryValues } from "../../entities/base-item";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { localizeBaseItemAdminValue } from "../../shared/i18n/domainLabels";
 import {
@@ -12,14 +14,19 @@ import {
   type FormState,
   inputClassName,
 } from "./systemCatalog.types";
+import { MagicBraceletFields } from "../../features/shop/components/MagicBraceletFields";
 
 type Props = {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
+  spells: BaseSpell[];
 };
 
-export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
+export const SystemCatalogGeneralFields = ({ form, setForm, spells }: Props) => {
   const { locale, t } = useLocale();
+  const isMagicBracelet =
+    form.equipmentCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET ||
+    Boolean(form.magicEffectSpellCanonicalKey);
 
   const formatItemChoiceLabel = (value: string) =>
     value === "DND5E" ? "D&D 5e" : localizeBaseItemAdminValue(value, locale);
@@ -96,11 +103,30 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
           <select
             value={form.equipmentCategory}
             onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                equipmentCategory:
-                  event.target.value as BaseItemEquipmentCategory | "",
-              }))
+              setForm((current) => {
+                const nextCategory = event.target.value as BaseItemEquipmentCategory | "";
+                if (nextCategory === BaseItemEquipmentCategoryValues.MAGIC_BRACELET) {
+                  return {
+                    ...current,
+                    equipmentCategory: nextCategory,
+                    itemKind: "gear",
+                    chargesMax: current.chargesMax || "1",
+                    rechargeType: current.rechargeType || "none",
+                    magicEffectIgnoreComponents: true,
+                    magicEffectNoFreeHandRequired: true,
+                  };
+                }
+                return {
+                  ...current,
+                  equipmentCategory: nextCategory,
+                  chargesMax: "",
+                  rechargeType: "",
+                  magicEffectSpellCanonicalKey: "",
+                  magicEffectCastLevel: "1",
+                  magicEffectIgnoreComponents: true,
+                  magicEffectNoFreeHandRequired: true,
+                };
+              })
             }
             className={`${inputClassName} mt-2`}
           >
@@ -167,6 +193,36 @@ export const SystemCatalogGeneralFields = ({ form, setForm }: Props) => {
           />
         </label>
       </div>
+
+      {isMagicBracelet && (
+        <MagicBraceletFields
+          spells={spells}
+          chargesMax={form.chargesMax}
+          rechargeType={form.rechargeType}
+          spellCanonicalKey={form.magicEffectSpellCanonicalKey}
+          castLevel={form.magicEffectCastLevel}
+          ignoreComponents={form.magicEffectIgnoreComponents}
+          noFreeHandRequired={form.magicEffectNoFreeHandRequired}
+          onChargesMaxChange={(value) =>
+            setForm((current) => ({ ...current, chargesMax: value }))
+          }
+          onRechargeTypeChange={(value) =>
+            setForm((current) => ({ ...current, rechargeType: value }))
+          }
+          onSpellCanonicalKeyChange={(value) =>
+            setForm((current) => ({ ...current, magicEffectSpellCanonicalKey: value }))
+          }
+          onCastLevelChange={(value) =>
+            setForm((current) => ({ ...current, magicEffectCastLevel: value }))
+          }
+          onIgnoreComponentsChange={(value) =>
+            setForm((current) => ({ ...current, magicEffectIgnoreComponents: value }))
+          }
+          onNoFreeHandRequiredChange={(value) =>
+            setForm((current) => ({ ...current, magicEffectNoFreeHandRequired: value }))
+          }
+        />
+      )}
     </>
   );
 };

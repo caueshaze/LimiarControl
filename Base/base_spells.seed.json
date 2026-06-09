@@ -684,7 +684,8 @@
       "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "descriptionEn": "You extend your hand toward a creature you can see within range and project a puff of noxious gas from your palm. The creature must succeed on a Constitution saving throw or take 1d12 poison damage."
     },
     {
       "system": "DND5E",
@@ -932,14 +933,21 @@
       "descriptionPt": "Você cria uma mão esquelética fantasmagórica no espaço de uma criatura dentro do alcance. Faça um ataque mágico à distância contra a criatura. Em um acerto, o alvo sofre 1d8 de dano necrótico e não pode recuperar pontos de vida até o início do seu próximo turno. Se o alvo for um morto-vivo, ele também tem desvantagem nos ataques contra você até o início do seu próximo turno.",
       "level": 0,
       "school": "necromancy",
-      "classesJson": ["Sorcerer", "Warlock", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 36,
       "rangeText": "120 ft",
       "duration": "1 round",
       "durationSeconds": 6,
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -963,10 +971,30 @@
         "scalingMode": "character_level",
         "scalingEffectType": "damage_dice",
         "thresholds": [
-          { "characterLevel": 1, "damage": { "dice": "1d8" } },
-          { "characterLevel": 5, "damage": { "dice": "2d8" } },
-          { "characterLevel": 11, "damage": { "dice": "3d8" } },
-          { "characterLevel": 17, "damage": { "dice": "4d8" } }
+          {
+            "characterLevel": 1,
+            "damage": {
+              "dice": "1d8"
+            }
+          },
+          {
+            "characterLevel": 5,
+            "damage": {
+              "dice": "2d8"
+            }
+          },
+          {
+            "characterLevel": 11,
+            "damage": {
+              "dice": "3d8"
+            }
+          },
+          {
+            "characterLevel": 17,
+            "damage": {
+              "dice": "4d8"
+            }
+          }
         ]
       }
     },
@@ -979,14 +1007,23 @@
       "descriptionPt": "Você toca uma criatura. A distância de salto da criatura é triplicada até a magia terminar.",
       "level": 1,
       "school": "transmutation",
-      "classesJson": ["Druid", "Ranger", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Druid",
+        "Ranger",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "a grasshopper's hind leg",
       "concentration": false,
       "ritual": false,
@@ -1017,14 +1054,22 @@
       "descriptionPt": "Até a magia terminar, uma criatura voluntária que você toca ganha a habilidade de se mover para cima, para baixo e através de superfícies verticais, e de cabeça para baixo pelo teto, mantendo as mãos livres. O alvo também ganha velocidade de escalada igual à sua velocidade de caminhada.",
       "level": 2,
       "school": "transmutation",
-      "classesJson": ["Sorcerer", "Warlock", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "Concentration, up to 1 hour",
       "durationSeconds": 3600,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "a drop of bitumen and a spider",
       "concentration": true,
       "ritual": false,
@@ -1055,14 +1100,21 @@
       "descriptionPt": "Você toca uma criatura voluntária. Até a magia terminar, a pele do alvo fica áspera, semelhante à casca de árvore, e a CA do alvo não pode ser menor que 16, independentemente do tipo de armadura que ele esteja usando.",
       "level": 2,
       "school": "transmutation",
-      "classesJson": ["Druid", "Ranger"],
+      "classesJson": [
+        "Druid",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "Concentration, up to 1 hour",
       "durationSeconds": 3600,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "a handful of oak bark",
       "concentration": true,
       "ritual": false,
@@ -1093,14 +1145,20 @@
       "descriptionPt": "A madeira de um porrete ou bordão que você está segurando é imbuída com o poder da natureza. Pela duração, você pode usar sua habilidade de conjuração em vez de Força nas jogadas de ataque e dano de ataques corpo a corpo com essa arma, e o dado de dano da arma se torna d8. A arma também se torna mágica, se já não for. A magia termina se você conjurá-la novamente ou se soltar a arma.",
       "level": 0,
       "school": "transmutation",
-      "classesJson": ["Druid"],
+      "classesJson": [
+        "Druid"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "mistletoe, a shamrock leaf, and a club or quarterstaff",
       "concentration": false,
       "ritual": false,
@@ -1131,14 +1189,21 @@
       "descriptionPt": "Você aponta o dedo para um alvo dentro do alcance. Sua magia concede uma breve intuição sobre as defesas do alvo. No seu próximo turno, você ganha Vantagem na sua primeira jogada de ataque contra o alvo, desde que a magia não tenha terminado.",
       "level": 0,
       "school": "divination",
-      "classesJson": ["Bard", "Sorcerer", "Warlock", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 9,
       "rangeText": "30 ft",
       "duration": "Concentration, up to 1 round",
       "durationSeconds": 6,
-      "componentsJson": ["S"],
+      "componentsJson": [
+        "S"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "utility",
@@ -1149,7 +1214,7 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "creature",
+      "targetType": "ranged",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
@@ -1166,14 +1231,19 @@
       "descriptionPt": "Seu corpo fica borrado, oscilando e tremulando para todos que podem vê-lo. Pela duração, qualquer criatura tem desvantagem nas jogadas de ataque contra você. Um atacante é imune a este efeito se não depender da visão, como com percepção às cegas, ou se puder ver através de ilusões, como com visão verdadeira.",
       "level": 2,
       "school": "illusion",
-      "classesJson": ["Sorcerer", "Wizard"],
+      "classesJson": [
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Self",
       "duration": "Concentration, up to 1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": true,
       "ritual": false,
       "resolutionType": "utility",
@@ -1203,14 +1273,23 @@
       "descriptionPt": "Você toca uma criatura e pode encerrar uma doença ou uma condição que a aflige. A condição pode ser cego, surdo, paralisado ou envenenado.",
       "level": 2,
       "school": "abjuration",
-      "classesJson": ["Bard", "Cleric", "Druid", "Paladin", "Ranger"],
+      "classesJson": [
+        "Bard",
+        "Cleric",
+        "Druid",
+        "Paladin",
+        "Ranger"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 0,
       "rangeText": "Touch",
       "duration": "Instantaneous",
       "durationSeconds": 0,
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "utility",
@@ -1221,10 +1300,10 @@
       "requiresTargetEffect": false,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "touch",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
       "effectTiming": "immediate",
@@ -1240,14 +1319,23 @@
       "descriptionPt": "Até a magia terminar, uma criatura voluntária que você toca fica protegida contra certos tipos de criaturas: aberrações, celestiais, elementais, fadas, ínferos e mortos-vivos. Essas criaturas têm desvantagem nas jogadas de ataque contra o alvo. O alvo também não pode ser enfeitiçado ou amedrontado por elas.",
       "level": 1,
       "school": "abjuration",
-      "classesJson": ["Cleric", "Paladin", "Warlock", "Wizard"],
+      "classesJson": [
+        "Cleric",
+        "Paladin",
+        "Warlock",
+        "Wizard"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "Concentration, up to 10 minutes",
       "durationSeconds": 600,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "holy water or powdered silver and iron, which the spell consumes",
       "materialComponentConsumed": true,
       "consumableMaterialOptions": [
@@ -1274,10 +1362,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "touch",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
       "effectTiming": "persistent",
@@ -1293,17 +1381,22 @@
       "descriptionPt": "Você profere uma ordem de uma palavra para uma criatura que possa ver dentro do alcance. O alvo deve passar em uma salvaguarda de Sabedoria ou seguir o comando no próximo turno. A magia não tem efeito se o alvo for morto-vivo, se não entender seu idioma ou se o comando for diretamente prejudicial a ele.",
       "level": 1,
       "school": "enchantment",
-      "classesJson": ["Cleric", "Paladin"],
+      "classesJson": [
+        "Cleric",
+        "Paladin"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "duration": "1 round",
       "durationSeconds": 6,
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": false,
       "ritual": false,
-      "resolutionType": "save",
+      "resolutionType": "control",
       "savingThrowAbility": "wisdom",
       "savingThrowEffect": "negates",
       "source": "seed_json_bootstrap",
@@ -1313,10 +1406,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "ranged",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent",
@@ -1335,17 +1428,21 @@
       "descriptionPt": "Você tenta compelir uma criatura a duelar com você. Uma criatura que você possa ver dentro do alcance deve realizar uma salvaguarda de Sabedoria. Em falha, a criatura é atraída a você, compelida por sua exigência divina. Pela duração, ela tem desvantagem em jogadas de ataque contra criaturas que não sejam você, e deve realizar uma salvaguarda de Sabedoria sempre que tentar se mover para um espaço a mais de 9 metros de você; se passar, a magia não restringe seu movimento naquele turno. A magia termina se você atacar qualquer outra criatura, conjurar uma magia que alveje uma criatura hostil diferente do alvo, se uma criatura aliada a você causar dano ao alvo ou conjurar uma magia nociva contra ele, ou se você terminar seu turno a mais de 9 metros do alvo.",
       "level": 1,
       "school": "enchantment",
-      "classesJson": ["Paladin"],
+      "classesJson": [
+        "Paladin"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 9,
       "rangeText": "30 feet",
       "duration": "1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": true,
       "ritual": false,
-      "resolutionType": "save",
+      "resolutionType": "control",
       "savingThrowAbility": "wisdom",
       "savingThrowEffect": "negates",
       "source": "seed_json_bootstrap",
@@ -1355,10 +1452,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "ranged",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent",
@@ -1516,7 +1613,7 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "melee",
+      "targetType": "touch",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
@@ -2337,7 +2434,7 @@
       "ritual": false,
       "resolutionType": "buff",
       "upcast": {
-        "mode": "extra_temp_hp",
+        "mode": "flat_bonus",
         "flat": 5,
         "perLevel": 1
       },
@@ -2712,10 +2809,7 @@
       "areaShape": "cube",
       "sideMeters": 4.5,
       "persistentArea": {
-        "kind": "illusion",
-        "params": {
-          "illusionKind": "visual_image"
-        }
+        "kind": "no_semantic_effect"
       },
       "outOfCombatCastable": false
     },
@@ -2813,8 +2907,7 @@
       "effectTiming": "persistent",
       "areaShape": "cube",
       "sideMeters": 9,
-      "outOfCombatCastable": true,
-      "outOfCombatTarget": "environment"
+      "outOfCombatCastable": true
     },
     {
       "system": "DND5E",
@@ -2852,10 +2945,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "ranged",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent",
@@ -3270,13 +3363,14 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "melee",
+      "targetType": "touch",
       "selectionType": "creature",
       "originType": "caster",
       "targetAnchor": "selected_target",
       "attackType": "melee_spell",
       "rangeKind": "touch",
-      "effectTiming": "immediate"
+      "effectTiming": "immediate",
+      "descriptionEn": "Make a melee spell attack against a creature you can reach. On a hit, the target takes 3d10 necrotic damage."
     },
     {
       "system": "DND5E",
@@ -3466,14 +3560,21 @@
       "descriptionPt": "Escolha até cinco criaturas caindo dentro do alcance. A velocidade de queda de uma criatura caindo diminui para 18 metros por rodada até a magia terminar. Se a criatura pousar antes da magia terminar, ela não sofre dano de queda, pode pousar de pé, e a magia termina para aquela criatura.",
       "level": 1,
       "school": "transmutation",
-      "classesJson": ["Bard", "Sorcerer", "Wizard"],
+      "classesJson": [
+        "Bard",
+        "Sorcerer",
+        "Wizard"
+      ],
       "castingTimeType": "reaction",
       "castingTime": "1 reaction, which you take when you or a creature within range falls",
       "rangeMeters": 18,
       "rangeText": "60 ft",
       "duration": "1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V", "M"],
+      "componentsJson": [
+        "V",
+        "M"
+      ],
       "materialComponent": "a small feather or piece of down",
       "concentration": false,
       "ritual": false,
@@ -3485,10 +3586,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "creature",
-      "selectionType": "multi_creature",
+      "targetType": "special",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "selected_targets",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent",
@@ -3543,7 +3644,9 @@
       "descriptionPt": "Você aponta o dedo, e a criatura que causou dano a você é momentaneamente cercada por chamas infernais. Ela deve fazer uma Salvaguarda de Destreza. Se falhar, sofre 2d10 de dano ígneo, ou metade em caso de sucesso.",
       "level": 1,
       "school": "evocation",
-      "classesJson": ["Warlock"],
+      "classesJson": [
+        "Warlock"
+      ],
       "castingTimeType": "reaction",
       "castingTime": "1 reaction",
       "reactionTrigger": "damaged_by_visible_creature_within_range",
@@ -3551,7 +3654,10 @@
       "rangeText": "60 ft",
       "duration": "Instantaneous",
       "durationSeconds": 0,
-      "componentsJson": ["V", "S"],
+      "componentsJson": [
+        "V",
+        "S"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "damage",
@@ -3571,13 +3677,13 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "reaction_source",
-      "originType": "damaged_caster",
-      "targetAnchor": "damage_source",
-      "attackType": "save",
+      "targetType": "ranged",
+      "selectionType": "none",
+      "originType": "caster",
+      "targetAnchor": "trigger_target",
+      "attackType": "none",
       "rangeKind": "distance",
-      "effectTiming": "reaction",
+      "effectTiming": "triggered",
       "outOfCombatCastable": false
     },
     {
@@ -4565,14 +4671,18 @@
       "descriptionPt": "Até seis criaturas à sua escolha que você possa ver dentro do alcance recuperam pontos de vida iguais a 2d8 + seu modificador de habilidade de conjuração. Esta magia não tem efeito sobre mortos-vivos ou construtos.",
       "level": 2,
       "school": "evocation",
-      "classesJson": ["Cleric"],
-      "castingTimeType": "minutes",
+      "classesJson": [
+        "Cleric"
+      ],
+      "castingTimeType": "10_minutes",
       "castingTime": "10 minutes",
       "rangeMeters": 9,
       "rangeText": "30 ft",
       "duration": "Instantaneous",
       "durationSeconds": 0,
-      "componentsJson": ["V"],
+      "componentsJson": [
+        "V"
+      ],
       "concentration": false,
       "ritual": false,
       "resolutionType": "heal",
@@ -4586,14 +4696,14 @@
       "requiresPointEffect": false,
       "targetType": "ranged",
       "maxTargets": 6,
-      "selectionType": "multi_creature",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "selected_targets",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "immediate",
       "outOfCombatCastable": true,
-      "outOfCombatTarget": "multi_ally",
+      "outOfCombatTarget": "ally",
       "upcast": {
         "mode": "extra_heal_dice",
         "dice": "1d8",
@@ -4655,7 +4765,7 @@
       "selectionType": "point",
       "originType": "selected_point",
       "targetAnchor": "selected_point",
-      "attackType": "save",
+      "attackType": "none",
       "savingThrowAbility": "constitution",
       "saveEffect": "half_damage",
       "rangeKind": "distance",
@@ -4741,14 +4851,20 @@
       "descriptionPt": "Você protege uma criatura dentro do alcance contra ataques. Até a magia terminar, qualquer criatura que alveje a criatura protegida com um ataque ou magia nociva deve primeiro realizar uma salvaguarda de Sabedoria. Em falha, a criatura deve escolher outro alvo ou perder o ataque ou magia. Esta magia não protege contra efeitos de área. Se a criatura protegida fizer um ataque, conjurar uma magia que afete um inimigo ou causar dano a outra criatura, a magia termina.",
       "level": 1,
       "school": "abjuration",
-      "classesJson": ["Cleric"],
+      "classesJson": [
+        "Cleric"
+      ],
       "castingTimeType": "bonus_action",
       "castingTime": "1 bonus action",
       "rangeMeters": 9,
       "rangeText": "30 feet",
       "duration": "1 minute",
       "durationSeconds": 60,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponentText": "a small silver mirror",
       "concentration": false,
       "ritual": false,
@@ -4760,10 +4876,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "ranged",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "distance",
       "effectTiming": "persistent",
@@ -4779,14 +4895,20 @@
       "descriptionPt": "Esta magia protege uma criatura voluntária que você toca e cria uma conexão mística entre você e o alvo até a magia terminar. Enquanto o alvo estiver a até 18 metros de você, ele recebe +1 de bônus na CA e em salvaguardas, e tem resistência a todo dano. Além disso, sempre que ele sofre dano, você sofre a mesma quantidade de dano. A magia termina se você cair a 0 pontos de vida ou se você e o alvo ficarem separados por mais de 18 metros. Ela também termina se a magia for conjurada novamente em qualquer uma das criaturas conectadas.",
       "level": 2,
       "school": "abjuration",
-      "classesJson": ["Cleric"],
+      "classesJson": [
+        "Cleric"
+      ],
       "castingTimeType": "action",
       "castingTime": "1 action",
       "rangeMeters": 1.5,
       "rangeText": "Touch",
       "duration": "1 hour",
       "durationSeconds": 3600,
-      "componentsJson": ["V", "S", "M"],
+      "componentsJson": [
+        "V",
+        "S",
+        "M"
+      ],
       "materialComponent": "a pair of platinum rings worth at least 50 gp each, which you and the target must wear for the duration",
       "materialComponentConsumed": false,
       "concentration": false,
@@ -4799,10 +4921,10 @@
       "requiresTargetEffect": true,
       "requiresPointSight": false,
       "requiresPointEffect": false,
-      "targetType": "single",
-      "selectionType": "single_target",
+      "targetType": "touch",
+      "selectionType": "creature",
       "originType": "caster",
-      "targetAnchor": "target",
+      "targetAnchor": "selected_target",
       "attackType": "none",
       "rangeKind": "touch",
       "effectTiming": "persistent",

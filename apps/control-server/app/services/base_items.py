@@ -113,6 +113,7 @@ def _apply_payload(item: BaseItem, payload: BaseItemCreate | BaseItemUpdate) -> 
     item.source_ref = payload.sourceRef
     item.is_srd = payload.isSrd
     item.is_active = payload.isActive
+    item.is_purchasable = payload.isPurchasable
 
 
 def create_base_item(

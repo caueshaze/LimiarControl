@@ -8,6 +8,7 @@ type MapListWidgetProps = {
   selectedMapId: string | null;
   isCreatingNew: boolean;
   onEditMap: (map: CampaignMapConfig) => void;
+  onPreviewMap: (map: CampaignMapConfig) => void;
 };
 
 export const MapListWidget = ({
@@ -15,15 +16,12 @@ export const MapListWidget = ({
   selectedMapId,
   isCreatingNew,
   onEditMap,
+  onPreviewMap,
 }: MapListWidgetProps) => {
   const { t } = useLocale();
 
   if (maps.length === 0) {
-    return (
-      <div className="flex min-h-48 items-center justify-center rounded-3xl border border-dashed border-slate-700 bg-slate-950/40 px-6 text-center text-sm text-slate-400 xl:col-span-3">
-        {t("campaignHome.mapEmptyList")}
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -32,17 +30,24 @@ export const MapListWidget = ({
         const ready = isMapReady(map);
         const selected = !isCreatingNew && selectedMapId === map.id;
         return (
-          <button
+          <div
             key={map.id}
-            type="button"
-            onClick={() => onEditMap(map)}
-            className={`overflow-hidden rounded-3xl border text-left transition-all ${
+            role="button"
+            tabIndex={0}
+            onClick={() => onPreviewMap(map)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onPreviewMap(map);
+              }
+            }}
+            className={`cursor-pointer overflow-hidden rounded-3xl border text-left transition-all ${
               selected
                 ? "border-limiar-400/60 bg-limiar-500/10 shadow-lg shadow-limiar-950/20"
                 : "border-slate-800 bg-slate-950/60 hover:border-slate-700"
             }`}
           >
-            <div className="h-36 overflow-hidden border-b border-white/6 bg-slate-950">
+            <div className="relative h-36 overflow-hidden border-b border-white/6 bg-slate-950">
               {map.imageUrl ? (
                 <ManagedImage
                   src={map.imageUrl}
@@ -54,6 +59,30 @@ export const MapListWidget = ({
                   {t("campaignHome.mapPreviewEmpty")}
                 </div>
               )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditMap(map);
+                }}
+                aria-label={t("campaignHome.mapEdit")}
+                className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-limiar-100 hover:border-limiar-400/60 hover:bg-slate-900"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-3 w-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                {t("campaignHome.mapEdit")}
+              </button>
             </div>
             <div className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -80,7 +109,7 @@ export const MapListWidget = ({
                 </span>
               </div>
             </div>
-          </button>
+          </div>
         );
       })}
     </>

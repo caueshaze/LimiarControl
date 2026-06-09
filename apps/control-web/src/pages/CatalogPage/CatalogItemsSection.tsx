@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Item, ItemInput, ItemType } from "../../entities/item";
+import type { BaseSpell } from "../../entities/base-spell";
 import { CatalogItemList } from "../../features/shop";
 import { useLocale } from "../../shared/hooks/useLocale";
 import { CatalogFilters } from "./CatalogFilters";
@@ -10,6 +11,7 @@ type Props = {
   itemsLoading: boolean;
   itemTypes: ItemType[];
   items: Item[];
+  spells: BaseSpell[];
   search: string;
   showEmptyFiltered: boolean;
   typeCounts: Record<ItemType, number>;
@@ -27,6 +29,7 @@ export const CatalogItemsSection = ({
   itemsLoading,
   itemTypes,
   items,
+  spells,
   search,
   showEmptyFiltered,
   typeCounts,
@@ -71,6 +74,7 @@ export const CatalogItemsSection = ({
         <CatalogItemList
           items={items}
           itemTypes={itemTypes}
+          spells={spells}
           onUpdate={onUpdate}
           onDelete={onDelete}
         />

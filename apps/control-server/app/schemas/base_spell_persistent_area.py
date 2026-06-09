@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -21,6 +21,12 @@ class PersistentAreaHazardParams(BaseModel):
     movementDamageDice: str | None = None
     damageType: str | None = None
     damagePerMeters: float | None = None
+    # Spell-level identifier for hazards whose semantics are implemented in code (e.g. "moonbeam").
+    effectKind: Optional[str] = None
+    # Triggers that cause the hazard damage to fire (e.g. enter_first_time_on_turn, start_turn).
+    damageTriggers: Optional[list[str]] = None
+    # Distance in meters the caster can move the area per turn.
+    moveDistanceMeters: Optional[float] = None
 
     @model_validator(mode="after")
     def validate_hazard_params(self):
@@ -28,8 +34,9 @@ class PersistentAreaHazardParams(BaseModel):
         has_damage_dice = isinstance(self.movementDamageDice, str) and bool(self.movementDamageDice.strip())
         has_damage_type = isinstance(self.damageType, str) and bool(self.damageType.strip())
         has_damage_per_meters = isinstance(self.damagePerMeters, (int, float))
+        has_effect_kind = isinstance(self.effectKind, str) and bool(self.effectKind.strip())
 
-        if not has_terrain and not has_damage_dice and not has_damage_type and not has_damage_per_meters:
+        if not has_terrain and not has_damage_dice and not has_damage_type and not has_damage_per_meters and not has_effect_kind:
             raise ValueError("hazard params must define at least one semantic effect")
         if has_damage_dice != has_damage_per_meters:
             raise ValueError(

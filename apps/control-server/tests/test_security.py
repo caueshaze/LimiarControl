@@ -221,6 +221,60 @@ class TestRegistrationSecurity(unittest.TestCase):
             RegisterRequest(username="user", pin="12")  # too short
 
 
+class TestAuthProfilePreferences(unittest.TestCase):
+    def test_me_response_exposes_preferred_workspace_mode(self):
+        from app.api.routes.auth import me
+
+        profile = me(
+            SimpleNamespace(
+                id="user-1",
+                username="gm",
+                display_name="GM",
+                role=RoleMode.GM,
+                preferred_workspace_mode=RoleMode.PLAYER,
+                is_system_admin=False,
+                avatar_url=None,
+                token_color=None,
+                token_image_url=None,
+                onboarded_at=None,
+            )
+        )
+
+        self.assertEqual(profile.preferredWorkspaceMode, RoleMode.PLAYER)
+        self.assertEqual(profile.role, RoleMode.GM)
+
+    def test_update_profile_updates_preferred_workspace_mode_without_touching_role(self):
+        from app.api.routes.auth import update_profile
+        from app.schemas.auth import UpdateProfileRequest
+
+        user = SimpleNamespace(
+            id="user-1",
+            username="gm",
+            display_name="GM",
+            role=RoleMode.GM,
+            preferred_workspace_mode=None,
+            is_system_admin=False,
+            avatar_url=None,
+            token_color=None,
+            token_image_url=None,
+            onboarded_at=None,
+        )
+        session = MagicMock()
+
+        profile = update_profile(
+            UpdateProfileRequest(preferredWorkspaceMode=RoleMode.PLAYER),
+            user,
+            session,
+        )
+
+        self.assertEqual(user.preferred_workspace_mode, RoleMode.PLAYER)
+        self.assertEqual(user.role, RoleMode.GM)
+        self.assertEqual(profile.preferredWorkspaceMode, RoleMode.PLAYER)
+        session.add.assert_called_once_with(user)
+        session.commit.assert_called_once()
+        session.refresh.assert_called_once_with(user)
+
+
 # ---------------------------------------------------------------------------
 # 3. Combat authorization — must use campaign role, not global role
 # ---------------------------------------------------------------------------

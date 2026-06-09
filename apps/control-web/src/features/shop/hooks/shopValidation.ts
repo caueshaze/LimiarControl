@@ -64,6 +64,23 @@ const validateStructuredPayload = (payload: ItemInput) => {
     return "catalog.validation.magicDamageType" as const;
   }
 
+  if (payload.equipmentCategory === "magic_bracelet") {
+    if (payload.type !== "MAGIC") {
+      return "catalog.validation.generic" as const;
+    }
+    if (!payload.magicEffect?.spellCanonicalKey?.trim()) {
+      return "catalog.validation.generic" as const;
+    }
+    if (
+      payload.chargesMax === null ||
+      payload.chargesMax === undefined ||
+      `${payload.chargesMax}`.trim() === "" ||
+      !payload.rechargeType
+    ) {
+      return "catalog.validation.generic" as const;
+    }
+  }
+
   if (payload.type === "ARMOR") {
     if (
       !payload.armorCategory ||
