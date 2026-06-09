@@ -219,6 +219,8 @@ export const playerBoardPtBRDictionary = {
   "playerBoard.prepareSpellsSelected": "Selecionadas: {count} / {limit}",
   "playerBoard.prepareSpellsOverLimit": "Limite excedido",
   "playerBoard.prepareSpellsCantrips": "Truques",
+  "playerBoard.prepareSpellsCantripsAlwaysPrepared": "Truques (sempre preparados)",
+  "playerBoard.prepareSpellsPrepared": "Preparado",
   "playerBoard.prepareSpellsLevel": "Nível {level}",
   "playerBoard.prepareSpellsErrorTitle": "Erro ao preparar magias",
   "playerBoard.prepareSpellsErrorDescription": "Não foi possível salvar as magias preparadas.",

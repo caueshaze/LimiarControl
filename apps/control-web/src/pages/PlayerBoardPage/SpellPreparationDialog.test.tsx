@@ -2,8 +2,25 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SpellPreparationDialog } from "./SpellPreparationDialog";
 
+vi.mock("../../entities/dnd-base", () => ({
+  loadSpellCatalog: vi.fn(() => Promise.resolve()),
+  resolveSpellByAuthority: vi.fn((catalog: Array<{ canonicalKey?: string | null; namePt?: string | null; name: string }>, spell: { canonicalKey?: string | null }) =>
+    catalog.find((entry) => entry.canonicalKey === spell.canonicalKey) ?? null),
+}));
+
+vi.mock("../../features/character-sheet/utils/creationSpells", () => ({
+  getCatalogSpellOptions: vi.fn(() => [
+    {
+      canonicalKey: "light",
+      name: "Light",
+      namePt: "Luz",
+    },
+  ]),
+}));
+
 vi.mock("../../shared/hooks/useLocale", () => ({
   useLocale: () => ({
+    locale: "pt",
     t: (key: string) =>
       ({
         "playerBoard.prepareSpellsPrompt": "Preparar magias",
@@ -14,6 +31,8 @@ vi.mock("../../shared/hooks/useLocale", () => ({
         "playerBoard.prepareSpellsSelected": "Selecionadas: {count} / {limit}",
         "playerBoard.prepareSpellsOverLimit": "Limite excedido",
         "playerBoard.prepareSpellsCantrips": "Truques",
+        "playerBoard.prepareSpellsCantripsAlwaysPrepared": "Truques (sempre preparados)",
+        "playerBoard.prepareSpellsPrepared": "Preparado",
         "playerBoard.prepareSpellsLevel": "Nível {level}",
         "common.cancel": "Cancelar",
         "common.saving": "Salvando...",
@@ -54,5 +73,33 @@ describe("SpellPreparationDialog", () => {
 
     expect(markup).toContain("Preparar magias");
     expect(markup).toContain("Você concluiu um descanso longo");
+  });
+
+  it("marks cantrips as always prepared", () => {
+    const markup = renderToStaticMarkup(
+      <SpellPreparationDialog
+        open
+        spells={[
+          {
+            id: "spell-1",
+            name: "Light",
+            canonicalKey: "light",
+            level: 0,
+            school: "Evocation",
+            prepared: true,
+            notes: "",
+            campaignSpellId: null,
+          },
+        ]}
+        preparedLimit={3}
+        currentPreparedIds={["spell-1"]}
+        onClose={() => undefined}
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("Truques (sempre preparados)");
+    expect(markup).toContain("Preparado");
+    expect(markup).toContain("Luz");
   });
 });

@@ -219,6 +219,8 @@ export const playerBoardEnUSDictionary = {
   "playerBoard.prepareSpellsSelected": "Selected: {count} / {limit}",
   "playerBoard.prepareSpellsOverLimit": "Limit exceeded",
   "playerBoard.prepareSpellsCantrips": "Cantrips",
+  "playerBoard.prepareSpellsCantripsAlwaysPrepared": "Cantrips (always prepared)",
+  "playerBoard.prepareSpellsPrepared": "Prepared",
   "playerBoard.prepareSpellsLevel": "Level {level}",
   "playerBoard.prepareSpellsErrorTitle": "Failed to prepare spells",
   "playerBoard.prepareSpellsErrorDescription": "Could not save prepared spells.",

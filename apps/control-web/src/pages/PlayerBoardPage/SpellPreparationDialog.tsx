@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { loadSpellCatalog, resolveSpellByAuthority } from "../../entities/dnd-base";
+import { getCatalogSpellOptions } from "../../features/character-sheet/utils/creationSpells";
 import { useLocale } from "../../shared/hooks/useLocale";
 import type { Spell } from "../../features/character-sheet/model/characterSheet.types";
 import { getSpellPreparationCopyKeys, type SpellPreparationCopyMode } from "./spellPreparationCopy";
@@ -12,6 +14,8 @@ type Props = {
   onSubmit: (preparedIds: string[]) => void;
   isSubmitting?: boolean;
   copyMode?: SpellPreparationCopyMode;
+  campaignId?: string | null;
+  characterClass?: string | null;
 };
 
 export const SpellPreparationDialog = ({
@@ -23,8 +27,10 @@ export const SpellPreparationDialog = ({
   onSubmit,
   isSubmitting,
   copyMode = "fallback",
+  campaignId = null,
+  characterClass = null,
 }: Props) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const copyKeys = getSpellPreparationCopyKeys(copyMode);
   const currentPreparedKey = currentPreparedIds.join("|");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -35,6 +41,11 @@ export const SpellPreparationDialog = ({
     if (!open) return;
     setSelectedIds(new Set(currentPreparedIds));
   }, [currentPreparedIds, currentPreparedKey, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    void loadSpellCatalog(campaignId).catch(() => undefined);
+  }, [campaignId, open]);
 
   const grouped = useMemo(() => {
     const byLevel: Record<number, Spell[]> = {};
@@ -50,6 +61,19 @@ export const SpellPreparationDialog = ({
       }))
       .sort((a, b) => a.level - b.level);
   }, [spells]);
+
+  const spellCatalog = useMemo(
+    () => getCatalogSpellOptions(characterClass ?? "", campaignId),
+    [campaignId, characterClass],
+  );
+
+  const getSpellDisplayName = (spell: Spell) => {
+    const match = resolveSpellByAuthority(spellCatalog, spell);
+    if (match) {
+      return locale === "pt" ? match.namePt ?? match.name : match.name;
+    }
+    return spell.name;
+  };
 
   const leveledCount = useMemo(() => {
     return spells.filter(
@@ -106,7 +130,7 @@ export const SpellPreparationDialog = ({
             <div key={level}>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
                 {level === 0
-                  ? t("playerBoard.prepareSpellsCantrips")
+                  ? t("playerBoard.prepareSpellsCantripsAlwaysPrepared")
                   : t("playerBoard.prepareSpellsLevel").replace(
                       "{level}",
                       String(level),
@@ -135,11 +159,11 @@ export const SpellPreparationDialog = ({
                           className="h-4 w-4 accent-violet-500"
                         />
                         <span className="text-sm text-slate-200">
-                          {spell.name}
+                          {getSpellDisplayName(spell)}
                         </span>
                         {isCantrip ? (
                           <span className="ml-auto text-[10px] uppercase tracking-wider text-slate-500">
-                            {t("playerBoard.prepareSpellsCantrips")}
+                            {t("playerBoard.prepareSpellsPrepared")}
                           </span>
                         ) : null}
                       </label>

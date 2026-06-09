@@ -667,6 +667,8 @@ export const PlayerBoardPage = () => {
         onSubmit={handlePrepareSpells}
         isSubmitting={preparingSpells}
         copyMode={spellPreparationCopyMode}
+        campaignId={effectiveCampaignId}
+        characterClass={playerSheet?.class ?? null}
       />
       <DiceVisualizer events={rollEvents} />
         </>
