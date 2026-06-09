@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { GmDashboardPlayerInventoryCard } from "./GmDashboardPlayerInventoryCard";
 
@@ -112,7 +113,8 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
     testState.sessionStatesRepoMock.castSpellOutOfCombatForPlayer.mockClear();
 
     renderToStaticMarkup(
-      <GmDashboardPlayerInventoryCard
+      <MemoryRouter>
+        <GmDashboardPlayerInventoryCard
         activeSessionId="session-1"
         activeSessionPartyId="party-1"
         catalogItems={{}}
@@ -165,7 +167,8 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
         setHpDraftByUserId={() => ({})}
         setItemDraft={() => ({ itemId: "", quantity: "" })}
         setXpDraftByUserId={() => ({})}
-      />,
+        />
+      </MemoryRouter>,
     );
 
     const onCast = requireCastCardCapture(testState.lastCastCardProps).onCast;
@@ -190,7 +193,8 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
     testState.sessionStatesRepoMock.removePersistedEffectForPlayer.mockClear();
 
     renderToStaticMarkup(
-      <GmDashboardPlayerInventoryCard
+      <MemoryRouter>
+        <GmDashboardPlayerInventoryCard
         activeSessionId="session-1"
         activeSessionPartyId="party-1"
         catalogItems={{}}
@@ -243,7 +247,8 @@ describe("GmDashboardPlayerInventoryCard OOC cast", () => {
         setHpDraftByUserId={() => ({})}
         setItemDraft={() => ({ itemId: "", quantity: "" })}
         setXpDraftByUserId={() => ({})}
-      />,
+        />
+      </MemoryRouter>,
     );
 
     const onRemoveEffect = requireEffectsPanelCapture(testState.lastEffectsPanelProps).onRemoveEffect;

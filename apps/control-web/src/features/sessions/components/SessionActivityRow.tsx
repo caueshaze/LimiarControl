@@ -90,5 +90,10 @@ export const SessionActivityRow = ({ event, isGm = false }: { event: ActivityEve
     return <SessionActivityOutOfCombatEffectRemovedRow event={event} actor={actor} />;
   }
 
+  // Game-time advancements are surfaced elsewhere, not as activity-feed rows.
+  if (event.type === "game_time") {
+    return null;
+  }
+
   return <SessionActivityPurchaseRow event={event} actor={actor} />;
 };

@@ -6,6 +6,7 @@ import { useCharacterSheetDerived } from "../../features/character-sheet/hooks/u
 import { useCarryingCapacity } from "../../features/character-sheet/hooks/useCarryingCapacity";
 import { INITIAL_SHEET } from "../../features/character-sheet/model/initialSheet";
 import { getCharacterProgressState } from "../../features/character-sheet/utils/progression";
+import { getRace } from "../../features/character-sheet/data/races";
 import { computeTotalWeight, computeEncumbranceTier, applyEncumbranceMovementPenalty, computeMovementSpeedBonus, computeMovementSpeedBonusSources, computeEffectiveSize, LB_TO_KG } from "../../features/character-sheet/utils/calculations";
 import type { CharacterSheet } from "../../features/character-sheet/model/characterSheet.types";
 import type { ActiveEffect } from "../../shared/api/combatRepo";
@@ -46,7 +47,8 @@ export const usePlayerBoardSummary = ({
   const effectiveSize = useMemo<CreatureSize | undefined>(() => {
     if (participant?.effective_size) return participant.effective_size as CreatureSize;
     if (!playerSheet || !activeEffects?.length) return undefined;
-    const baseSize = (playerSheet.size as CreatureSize) || "Medium";
+    const race = getRace(playerSheet.race, playerSheet.raceConfig ?? null);
+    const baseSize: CreatureSize = race?.size === "Pequeno" ? "Small" : "Medium";
     return computeEffectiveSize(baseSize, activeEffects);
   }, [participant?.effective_size, playerSheet, activeEffects]);
 

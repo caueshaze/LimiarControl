@@ -1,5 +1,6 @@
 import { formatMod } from "../../../features/character-sheet/utils/calculations";
 import { useLocale } from "../../../shared/hooks/useLocale";
+import type { LocaleKey } from "../../../shared/i18n";
 import type { PendingRoll, PlayerBoardStatusSummary } from "../playerBoard.types";
 
 type StatCardProps = {
@@ -54,7 +55,7 @@ export const LoadSummaryCard = ({
 }: LoadSummaryCardProps) => {
   const { t } = useLocale();
   const carryingHelper = carryingCapacitySources?.length
-    ? `${t("playerBoard.carryingCapacityBase")}: ${baseCarryingCapacityKg} kg\u2003${carryingCapacitySources.map((s) => `${s.groupKey === "__size_multiplier" ? t(`playerBoard.creatureSize.${s.label}`) : s.label} ×${s.multiplier}`).join(", ")}`
+    ? `${t("playerBoard.carryingCapacityBase")}: ${baseCarryingCapacityKg} kg\u2003${carryingCapacitySources.map((s) => `${s.groupKey === "__size_multiplier" ? t(`playerBoard.creatureSize.${s.label}` as LocaleKey) : s.label} ×${s.multiplier}`).join(", ")}`
     : null;
 
   return (

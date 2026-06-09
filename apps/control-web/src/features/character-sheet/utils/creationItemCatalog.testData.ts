@@ -35,6 +35,7 @@ const makeBaseItem = (
   sourceRef: null,
   isSrd: false,
   isActive: true,
+  isPurchasable: true,
   aliases: [],
   ...overrides,
 });

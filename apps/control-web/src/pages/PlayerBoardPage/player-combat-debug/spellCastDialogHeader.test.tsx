@@ -36,6 +36,7 @@ const baseTargetingPreview = {
   maxRangeMeters: null,
   rangeStatus: "unknown" as const,
   hasDisadvantage: false,
+  effectiveReachMeters: null,
   failureReasons: [],
 };
 

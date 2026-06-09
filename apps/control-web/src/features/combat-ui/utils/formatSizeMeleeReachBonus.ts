@@ -1,5 +1,6 @@
 import { getSizeMeleeReachBonusCells, METERS_PER_CELL } from "@limiarmap/shared-contracts";
 import type { CreatureSize } from "@limiarmap/shared-contracts";
+import type { LocaleKey } from "../../../shared/i18n";
 
 export function getSizeMeleeReachBonusMeters(size: CreatureSize): number {
   return getSizeMeleeReachBonusCells(size) * METERS_PER_CELL;
@@ -16,7 +17,7 @@ export function formatMetersCompact(meters: number): string {
 
 export function formatSizeMeleeReachBonusSource(
   effectiveSize: CreatureSize | undefined,
-  t: (key: string) => string,
+  t: (key: LocaleKey) => string,
 ): { label: string; bonusMeters: number } | null {
   if (!effectiveSize) return null;
   const bonusCells = getSizeMeleeReachBonusCells(effectiveSize);

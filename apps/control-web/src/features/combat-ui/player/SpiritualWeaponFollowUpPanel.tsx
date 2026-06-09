@@ -1,4 +1,5 @@
 import type { CombatParticipant } from "../../../shared/api/combatRepo";
+import type { LocaleKey } from "../../../shared/i18n";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
   onTargetChange: (id: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
-  t: (key: string) => string;
+  t: (key: LocaleKey) => string;
 };
 
 /**

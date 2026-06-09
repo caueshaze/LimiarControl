@@ -406,7 +406,7 @@ class TestDevRoutesSecurity(unittest.TestCase):
                 "app.api.routes.dev.truncate_all_application_tables",
                 return_value=["app_user"],
             ):
-                result = reset_database(session=session_mock, admin=admin_mock)
+                result = reset_database(session=session_mock, _auth=admin_mock)
             self.assertTrue(result["ok"])
         finally:
             settings.app_env = previous

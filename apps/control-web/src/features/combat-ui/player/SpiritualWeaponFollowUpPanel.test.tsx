@@ -42,7 +42,7 @@ const makeParticipant = (
   override: Partial<CombatParticipant> = {},
 ): CombatParticipant => ({
   id: "p-1",
-  kind: "npc",
+  kind: "session_entity",
   ref_id: "npc-ref-1",
   display_name: "Goblin",
   initiative: 8,

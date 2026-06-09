@@ -436,7 +436,6 @@ export const PlayerSpellCastDialog = ({
 
   const highlights = useMemo(
     () => buildSpellMapPreviewHighlights(mapPreviewModel, target?.ref_id ?? null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       mapPreviewModel.status,
       mapPreviewModel.reason,

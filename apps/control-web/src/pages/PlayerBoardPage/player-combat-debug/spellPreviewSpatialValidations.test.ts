@@ -65,6 +65,7 @@ describe("spellPreviewSpatialValidations", () => {
           maxRangeMeters: null,
           rangeStatus: "unknown",
           hasDisadvantage: false,
+          effectiveReachMeters: null,
           failureReasons: [],
         },
         "enemy-1",

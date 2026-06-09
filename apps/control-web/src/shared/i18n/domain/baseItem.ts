@@ -29,6 +29,7 @@ const BASE_ITEM_KIND_LABELS: Record<BaseItemKind, LabelEntry> = {
 };
 
 const BASE_ITEM_EQUIPMENT_CATEGORY_LABELS: Record<BaseItemEquipmentCategory, LabelEntry> = {
+  adventuring_gear: label("Adventuring gear", "Equipamento de aventura"),
   adventuring_pack: label("Adventuring pack", "Pacote de aventura"),
   ammunition: label("Ammunition", "Munição"),
   book: label("Book", "Livro"),

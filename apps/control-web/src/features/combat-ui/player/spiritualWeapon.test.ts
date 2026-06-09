@@ -258,8 +258,8 @@ describe("test_spiritual_weapon_follow_up_passes_anchor_highlights_to_map", () =
       (h) =>
         h.kind === "area-cell" &&
         h.status === "partial" &&
-        h.cell.x === anchorPosition.x &&
-        h.cell.y === anchorPosition.y,
+        h.cell?.x === anchorPosition.x &&
+        h.cell?.y === anchorPosition.y,
     );
     expect(anchorHighlight).toBeDefined();
   });
