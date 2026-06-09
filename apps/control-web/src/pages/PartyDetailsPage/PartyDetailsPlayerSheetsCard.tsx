@@ -62,7 +62,10 @@ export const PartyDetailsPlayerSheetsCard = ({
                 className="rounded-3xl border border-white/8 bg-white/3 p-4"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
+                  <Link
+                    to={routes.userProfile.replace(":userId", player.userId)}
+                    className="min-w-0 rounded-2xl transition hover:bg-white/5"
+                  >
                     <p className="text-base font-semibold text-white">{player.displayName}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       {player.sheet
@@ -71,7 +74,7 @@ export const PartyDetailsPlayerSheetsCard = ({
                           ? t("gm.party.sheetPendingAcceptance")
                           : t("gm.party.sheetMissing")}
                     </p>
-                  </div>
+                  </Link>
                   <div className="flex flex-wrap gap-2">
                     <span
                       className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${

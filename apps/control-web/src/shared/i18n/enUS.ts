@@ -19,6 +19,7 @@ import { rollsEnUSDictionary } from "./enUS/rolls";
 import { sheetEnUSDictionary } from "./enUS/sheet";
 import { combatUiEnUSDictionary } from "./enUS/combatUi";
 import { adminEnUSDictionary } from "./enUS/admin";
+import { profileEnUSDictionary } from "./enUS/profile";
 
 export const enUS = {
   ...navEnUSDictionary,
@@ -42,4 +43,5 @@ export const enUS = {
   ...sheetEnUSDictionary,
   ...combatUiEnUSDictionary,
   ...adminEnUSDictionary,
+  ...profileEnUSDictionary,
 } as const;

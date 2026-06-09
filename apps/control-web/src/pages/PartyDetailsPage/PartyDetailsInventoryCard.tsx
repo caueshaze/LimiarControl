@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { routes } from "../../app/routes/routes";
 import type { ItemType } from "../../entities/item";
 import { formatDamageLabel } from "../../shared/i18n/domainLabels";
 import { useLocale } from "../../shared/hooks/useLocale";
@@ -199,7 +201,10 @@ const PartyPlayerInventorySection = ({
   return (
     <article className="rounded-3xl border border-white/8 bg-white/3 p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
+        <Link
+          to={routes.userProfile.replace(":userId", player.userId)}
+          className="min-w-0 rounded-2xl transition hover:bg-white/5"
+        >
           <p className="text-base font-semibold text-white">{player.displayName}</p>
           <p className="mt-2 text-xs text-slate-400">
             {t("gm.party.inventoryItemsCount").replace("{n}", String(totalItems))}
@@ -208,7 +213,7 @@ const PartyPlayerInventorySection = ({
             {" · "}
             {t("gm.party.inventoryEquippedCount").replace("{n}", String(equippedCount))}
           </p>
-        </div>
+        </Link>
         <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
           {player.totalItems}
         </span>

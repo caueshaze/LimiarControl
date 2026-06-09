@@ -1,3 +1,6 @@
+import { Link } from "react-router-dom";
+import { routes } from "../../app/routes/routes";
+
 type Props = {
   players: { userId: string; displayName: string }[];
   onClose: () => void;
@@ -16,8 +19,13 @@ export const GmDashboardMissingSheetsBanner = ({ players, onClose }: Props) => {
           </p>
           <ul className="mt-2 space-y-1">
             {players.map((player) => (
-              <li key={player.userId} className="text-sm text-amber-200">
-                {player.displayName}
+              <li key={player.userId}>
+                <Link
+                  to={routes.userProfile.replace(":userId", player.userId)}
+                  className="text-sm text-amber-200 underline decoration-amber-400/40 underline-offset-4 transition hover:text-amber-100"
+                >
+                  {player.displayName}
+                </Link>
               </li>
             ))}
           </ul>

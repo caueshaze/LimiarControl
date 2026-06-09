@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { routes } from "../../../app/routes/routes";
 import type { PartyMemberSummary } from "../../../shared/api/partiesRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { ManagedImage } from "../../../shared/ui";
@@ -57,7 +59,10 @@ export const PlayerPartyMembersCard = ({
               key={member.userId}
               className="flex items-center justify-between gap-4 rounded-3xl border border-white/8 bg-white/3 px-4 py-4"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <Link
+                to={routes.userProfile.replace(":userId", member.userId)}
+                className="flex min-w-0 items-center gap-3 rounded-2xl transition hover:bg-white/5"
+              >
                 <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5 text-sm font-bold uppercase text-limiar-100">
                   {member.avatarUrl ? (
                     <ManagedImage src={member.avatarUrl} alt={name} className="h-full w-full object-cover" />
@@ -79,7 +84,7 @@ export const PlayerPartyMembersCard = ({
                     <p className="truncate text-xs text-slate-500">@{member.username}</p>
                   ) : null}
                 </div>
-              </div>
+              </Link>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {isReady ? (

@@ -19,6 +19,7 @@ import { rollsPtBRDictionary } from "./ptBR/rolls";
 import { sheetPtBRDictionary } from "./ptBR/sheet";
 import { combatUiPtBRDictionary } from "./ptBR/combatUi";
 import { adminPtBRDictionary } from "./ptBR/admin";
+import { profilePtBRDictionary } from "./ptBR/profile";
 
 export const ptBR = {
   ...navPtBRDictionary,
@@ -42,4 +43,5 @@ export const ptBR = {
   ...sheetPtBRDictionary,
   ...combatUiPtBRDictionary,
   ...adminPtBRDictionary,
+  ...profilePtBRDictionary,
 } as const;

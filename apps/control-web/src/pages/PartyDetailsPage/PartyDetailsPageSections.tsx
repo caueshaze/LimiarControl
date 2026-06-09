@@ -137,13 +137,14 @@ export const PartyDetailsLobbyCard = ({
               const isReady = lobbyStatus.ready.includes(player.userId);
               const isOnline = Boolean(onlineUsers[player.userId]);
               return (
-                <div
+                <Link
                   key={player.userId}
+                  to={routes.userProfile.replace(":userId", player.userId)}
                   className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                     isReady
                       ? "border-emerald-500/20 bg-emerald-500/10"
                       : "border-slate-800 bg-slate-900/40"
-                  }`}
+                  } transition hover:bg-white/5`}
                 >
                   <div className="relative">
                     <div
@@ -169,7 +170,7 @@ export const PartyDetailsLobbyCard = ({
                       {isReady ? "Entrou no lobby" : isOnline ? "Online" : "Offline"}
                     </p>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -216,14 +217,17 @@ export const PartyDetailsMembersCard = ({
               key={member.userId}
               className="flex items-center justify-between rounded-xl border border-slate-800/60 bg-slate-900/40 p-3"
             >
-              <div>
+              <Link
+                to={routes.userProfile.replace(":userId", member.userId)}
+                className="min-w-0 rounded-xl transition hover:bg-white/5"
+              >
                 <span className="block text-sm font-medium text-white">
                   {member.displayName || member.username || t("campaignHome.unknownPlayer")}
                 </span>
                 {member.username && (
                   <span className="block text-xs text-slate-500">@{member.username}</span>
                 )}
-              </div>
+              </Link>
               <span
                 className={`rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wider ${
                   member.status === "joined"

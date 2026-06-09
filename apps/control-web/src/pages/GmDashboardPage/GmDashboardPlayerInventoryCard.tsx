@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { routes } from "../../app/routes/routes";
 import type { PartyMemberSummary } from "../../shared/api/partiesRepo";
 import type { CurrencyWallet } from "../../shared/api/inventoryRepo";
@@ -242,7 +243,11 @@ export const GmDashboardPlayerInventoryCard = ({
         onClick={onOpenInventory}
         className="flex w-full cursor-pointer items-center justify-between px-4 py-3 transition-colors hover:bg-slate-900/40"
       >
-        <div className="flex items-center gap-3">
+        <Link
+          to={routes.userProfile.replace(":userId", player.userId)}
+          onClick={(event) => event.stopPropagation()}
+          className="flex items-center gap-3 rounded-2xl transition hover:bg-white/5"
+        >
           <div className="relative">
             <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-sm font-bold text-limiar-400">
               {(player.displayName || player.username || "?").charAt(0).toUpperCase()}
@@ -261,7 +266,7 @@ export const GmDashboardPlayerInventoryCard = ({
               {isOnline ? "Online" : "Offline"}
             </span>
           </div>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           {sheet?.pendingLevelUp && (
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-200">

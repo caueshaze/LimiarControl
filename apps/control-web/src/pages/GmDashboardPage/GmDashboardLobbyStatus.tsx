@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { routes } from "../../app/routes/routes";
 import type { LobbyStatus } from "../../shared/api/sessionsRepo";
 import { useLocale } from "../../shared/hooks/useLocale";
 
@@ -25,13 +27,14 @@ export const GmDashboardLobbyStatus = ({ lobbyStatus, onlineUsers }: Props) => {
           const isReady = lobbyStatus.ready.includes(player.userId);
           const isOnline = Boolean(onlineUsers[player.userId]);
           return (
-            <div
+            <Link
               key={player.userId}
+              to={routes.userProfile.replace(":userId", player.userId)}
               className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${
                 isReady
                   ? "border-emerald-500/20 bg-emerald-500/10"
                   : "border-slate-800/40 bg-slate-900/40"
-              }`}
+              } hover:bg-white/5`}
             >
               <div className="relative shrink-0">
                 <div
@@ -61,7 +64,7 @@ export const GmDashboardLobbyStatus = ({ lobbyStatus, onlineUsers }: Props) => {
                     : t("gm.dashboard.playerOffline")}
                 </p>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

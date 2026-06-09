@@ -6,6 +6,8 @@ export const routes = {
   login: "/login",
   register: "/register",
   welcome: "/welcome",
+  profile: "/profile",
+  userProfile: "/users/:userId",
   join: "/join", // Legacy URL
 
   // GM Routes

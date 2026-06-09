@@ -155,6 +155,17 @@ export const AppLayout = ({ title, user, onLogout }: AppLayoutProps) => {
                     </span>
                   </button>
 
+                  <Link
+                    to={routes.profile}
+                    onClick={() => setOpen(false)}
+                    className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/6 hover:text-white"
+                  >
+                    <span className="uppercase tracking-widest text-slate-500">
+                      {t("profile.menuLabel")}
+                    </span>
+                    <span className="text-limiar-100">→</span>
+                  </Link>
+
                   {user.isSystemAdmin && (
                     <Link
                       to={routes.adminHome}

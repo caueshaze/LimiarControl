@@ -72,6 +72,10 @@ const PlayerPartyPage = lazy(async () => {
   const module = await import("../../pages/PlayerPartyPage");
   return { default: module.PlayerPartyPage };
 });
+const ProfilePage = lazy(async () => {
+  const module = await import("../../pages/ProfilePage/ProfilePage");
+  return { default: module.ProfilePage };
+});
 const CharacterSheetPage = lazy(async () => {
   const module = await import("../../features/character-sheet");
   return { default: module.CharacterSheetPage };
@@ -185,6 +189,22 @@ export const AppRoutes = () => {
           element={
             <RequireAuth>
               {renderRoute(<CampaignMapsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.profile}
+          element={
+            <RequireAuth>
+              {renderRoute(<ProfilePage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={routes.userProfile}
+          element={
+            <RequireAuth>
+              {renderRoute(<ProfilePage />)}
             </RequireAuth>
           }
         />

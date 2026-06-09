@@ -275,6 +275,42 @@ class TestAuthProfilePreferences(unittest.TestCase):
         session.refresh.assert_called_once_with(user)
 
 
+class TestUserProfiles(unittest.TestCase):
+    def test_get_user_profile_returns_public_profile_fields(self):
+        from app.api.routes.users import get_user_profile
+
+        session = MagicMock()
+        session.exec.return_value.first.return_value = SimpleNamespace(
+            id="user-1",
+            username="lia",
+            display_name="Lia",
+            avatar_url="https://example.com/avatar.png",
+            token_color="#8b5cf6",
+            token_image_url="https://example.com/token.png",
+            preferred_workspace_mode=RoleMode.PLAYER,
+        )
+
+        result = get_user_profile("user-1", MagicMock(), session)
+
+        self.assertEqual(result.id, "user-1")
+        self.assertEqual(result.displayName, "Lia")
+        self.assertEqual(result.username, "lia")
+        self.assertEqual(result.avatarUrl, "https://example.com/avatar.png")
+        self.assertEqual(result.tokenColor, "#8b5cf6")
+        self.assertEqual(result.tokenImageUrl, "https://example.com/token.png")
+        self.assertEqual(result.preferredWorkspaceMode, RoleMode.PLAYER)
+
+    def test_get_user_profile_raises_not_found(self):
+        from app.api.routes.users import get_user_profile
+
+        session = MagicMock()
+        session.exec.return_value.first.return_value = None
+
+        with self.assertRaises(HTTPException) as ctx:
+            get_user_profile("missing", MagicMock(), session)
+        self.assertEqual(ctx.exception.status_code, 404)
+
+
 # ---------------------------------------------------------------------------
 # 3. Combat authorization — must use campaign role, not global role
 # ---------------------------------------------------------------------------
