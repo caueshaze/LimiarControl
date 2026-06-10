@@ -40,6 +40,7 @@ type Props = {
   spellMode: CombatSpellMode;
   targetDisplayName?: string | null;
   targetPreview: TargetingPreviewResult;
+  isPerTargetRangeSpell?: boolean;
 };
 
 const formatRangeMeters = (meters: number | null): string | null =>
@@ -105,6 +106,7 @@ export const SpellCastDialogHeader = ({
   spellMode,
   targetDisplayName,
   targetPreview,
+  isPerTargetRangeSpell = false,
 }: Props) => {
   const flowDamageType =
     spellMode !== "heal" && spellMode !== "utility" && previewModel.damageType
@@ -333,27 +335,36 @@ export const SpellCastDialogHeader = ({
 
       {!isAreaSpell ? (
         <div className="mb-6">
-          <RangeStatusBadge preview={targetPreview} />
+          <RangeStatusBadge preview={targetPreview} perTargetRange={isPerTargetRangeSpell} />
         </div>
       ) : null}
 
       {spell.level > 0 && spell.sourceType !== "magic_item" ? (
-        <label className="mb-6 block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Slot level
-          </span>
-          <select
-            value={selectedSlotLevel ?? spell.level}
-            onChange={(event) => setSelectedSlotLevel(Number.parseInt(event.target.value, 10))}
-            className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400"
-          >
-            {slotOptions.map((slotLevel) => (
-              <option key={slotLevel} value={slotLevel}>
-                {slotLevel}
-              </option>
-            ))}
-          </select>
-        </label>
+        slotOptions.length > 1 ? (
+          <label className="mb-6 block">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Conjurar com espaço de
+            </span>
+            <select
+              value={selectedSlotLevel ?? spell.level}
+              onChange={(event) => setSelectedSlotLevel(Number.parseInt(event.target.value, 10))}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none transition focus:border-fuchsia-400"
+            >
+              {slotOptions.map((slotLevel) => (
+                <option key={slotLevel} value={slotLevel}>
+                  {slotLevel}º nível
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="mb-6 text-xs text-slate-400">
+            Espaço:{" "}
+            <span className="font-semibold text-slate-200">
+              {(selectedSlotLevel ?? spell.level)}º nível
+            </span>
+          </p>
+        )
       ) : null}
 
       {shouldShowConcentrationControl ? (

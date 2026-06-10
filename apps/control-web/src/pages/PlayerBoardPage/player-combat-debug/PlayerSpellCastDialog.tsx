@@ -731,8 +731,8 @@ export const PlayerSpellCastDialog = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
-      <div className="w-full max-w-4xl rounded-3xl border border-fuchsia-400/30 bg-void-950 p-6 text-slate-100 shadow-2xl shadow-fuchsia-950/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm sm:p-4">
+      <div className="my-auto flex max-h-[92vh] w-full max-w-3xl flex-col overflow-y-auto overscroll-contain rounded-2xl border border-fuchsia-400/30 bg-void-950 p-4 text-slate-100 shadow-2xl shadow-fuchsia-950/30 sm:p-5 [scrollbar-width:thin]">
         <SpellCastDialogHeader
           actionCostLabel={actionCostLabel}
           actorDisplayName={actor.display_name}
@@ -758,6 +758,9 @@ export const PlayerSpellCastDialog = ({
               : target?.display_name ?? null
           }
           targetPreview={rangePreview}
+          isPerTargetRangeSpell={
+            isMultiInstanceSpell || isVariantMultiTargetSpell || isPlainMultiTargetAutomationSpell
+          }
         />
 
         {!result && isVariantSpell && !isVariantMultiTargetSpell ? (
@@ -940,6 +943,7 @@ export const PlayerSpellCastDialog = ({
         ) : null}
 
         {!result ? (
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 mt-2 border-t border-white/5 bg-void-950/95 px-4 pb-4 pt-3 backdrop-blur sm:-mx-5 sm:px-5">
           <SpellCastDialogActions
             attackMode={attackMode}
             canSubmitArea={canSubmitArea}
@@ -984,6 +988,7 @@ export const PlayerSpellCastDialog = ({
                   : null
             }
           />
+          </div>
         ) : null}
       </div>
     </div>

@@ -100,6 +100,7 @@ export const combatUiPtBRDictionary = {
   "combatUi.spellMode.heal": "Cura direta",
   "combatUi.spellMode.utility": "Utilidade",
   "combatUi.rangeUnknown": "Alcance indisponível",
+  "combatUi.rangePerDie": "Alcance por dado",
   "combatUi.action": "Ação",
   "combatUi.bonusAction": "Ação bônus",
   "combatUi.reaction": "Reação",

@@ -99,6 +99,7 @@ export const combatUiEnUSDictionary = {
   "combatUi.spellMode.heal": "Direct heal",
   "combatUi.spellMode.utility": "Utility",
   "combatUi.rangeUnknown": "Range unavailable",
+  "combatUi.rangePerDie": "Range per die",
   "combatUi.action": "Action",
   "combatUi.bonusAction": "Bonus Action",
   "combatUi.reaction": "Reaction",

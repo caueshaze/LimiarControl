@@ -6,6 +6,13 @@ import { formatSizeMeleeReachBonusSource, formatMetersCompact } from "../utils/f
 type Props = {
   preview: TargetingPreviewState;
   effectiveSize?: CreatureSize;
+  /**
+   * Spells whose targeting is resolved per instance/target (e.g. Magic Missile)
+   * have no single target to measure against, so the per-target distance check
+   * is meaningless. Show an informational "range per die" badge instead of the
+   * default "range unavailable" fallback.
+   */
+  perTargetRange?: boolean;
 };
 
 const STATUS_STYLES: Record<RangeStatus, string> = {
@@ -31,7 +38,7 @@ const statusLabel = (
   }
 };
 
-export const RangeStatusBadge = ({ preview, effectiveSize }: Props) => {
+export const RangeStatusBadge = ({ preview, effectiveSize, perTargetRange = false }: Props) => {
   const { t } = useLocale();
   const {
     loading,
@@ -46,6 +53,14 @@ export const RangeStatusBadge = ({ preview, effectiveSize }: Props) => {
   const sizeBonusSource = effectiveSize
     ? formatSizeMeleeReachBonusSource(effectiveSize, t)
     : null;
+
+  if (perTargetRange) {
+    return (
+      <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${STATUS_STYLES.unknown}`}>
+        {t("combatUi.rangePerDie")}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
