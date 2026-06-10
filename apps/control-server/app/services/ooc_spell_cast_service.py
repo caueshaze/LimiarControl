@@ -10,6 +10,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
+from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy.orm.attributes import flag_modified
@@ -40,6 +41,12 @@ from app.services.out_of_combat_cast import (
     consume_spell_slot,
     roll_spell_heal_effects,
     roll_spell_temp_hp_effects,
+)
+from app.services.pass_without_trace_effects import (
+    PASS_WITHOUT_TRACE_BONUS_VALUE,
+    PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+    PASS_WITHOUT_TRACE_RADIUS_METERS,
+    build_pass_without_trace_effect,
 )
 from app.services.session_state_finalize import finalize_session_state_data
 from app.services.spell_material_components import (
@@ -266,6 +273,144 @@ async def _cast_prayer_of_healing_ooc(ctx: OocCastContext) -> SessionStateRead:
             state.state_json if isinstance(state.state_json, dict) else None,
         )
 
+    return ctx.to_state_read(ctx.caster_state)
+
+
+async def _cast_pass_without_trace_ooc(ctx: OocCastContext) -> SessionStateRead:
+    target_user_ids = list(ctx.target_user_ids)
+    if isinstance(ctx.req.targetPlayerUserId, str) and ctx.req.targetPlayerUserId.strip():
+        target_user_ids.append(ctx.req.targetPlayerUserId.strip())
+    if len(target_user_ids) != len(set(target_user_ids)):
+        raise HTTPException(status_code=400, detail="Pass Without Trace targets cannot repeat.")
+
+    selected_user_ids = [ctx.caster_user_id]
+    for user_id in target_user_ids:
+        if user_id == ctx.caster_user_id:
+            continue
+        _require_session_participant(ctx.entry, ctx.session, user_id, label="Target")
+        selected_user_ids.append(user_id)
+
+    if any(user_id != ctx.caster_user_id for user_id in selected_user_ids):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Pass Without Trace outside combat cannot validate which allies are within 9m "
+                "without combat distance data. Outside combat, cast it on yourself only."
+            ),
+        )
+
+    spell_name = (
+        ctx.campaign_spell.name_pt
+        or ctx.campaign_spell.name_en
+        or ctx.campaign_spell.canonical_key
+    )
+    concentration_group = str(uuid4())
+    expires_at = ctx.current_game_time_seconds + (60 * 60)
+
+    marker = build_concentration_marker(
+        spell=ctx.campaign_spell,
+        caster_user_id=ctx.caster_user_id,
+        target_user_id=ctx.caster_user_id,
+        concentration_group=concentration_group,
+        variant_key=ctx.req.variantKey,
+        duration_type="timed",
+        created_at_game_time_seconds=ctx.current_game_time_seconds,
+        expires_at_game_time_seconds=expires_at,
+    )
+    marker_metadata = marker.get("metadata") if isinstance(marker.get("metadata"), dict) else {}
+    marker_metadata.update(
+        {
+            "source_spell_key": "pass_without_trace",
+            "effect_role": "concentration_marker",
+            "radius_m": PASS_WITHOUT_TRACE_RADIUS_METERS,
+            "max_duration_minutes": PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+            "selected_participant_ids": list(selected_user_ids),
+            "selected_ref_ids": list(selected_user_ids),
+            "origin_caster_ref_id": ctx.caster_user_id,
+            "origin_caster_participant_id": ctx.caster_user_id,
+            "trace_suppression": {
+                "suppresses_tracks": True,
+                "prevents_nonmagical_tracking": True,
+                "exception": "magical_tracking",
+            },
+        }
+    )
+    marker["metadata"] = marker_metadata
+
+    effect = build_pass_without_trace_effect(
+        source_participant_id=None,
+        spell_name=spell_name,
+        concentration_group=concentration_group,
+        origin_caster_participant_id=ctx.caster_user_id,
+        origin_caster_ref_id=ctx.caster_user_id,
+        selected_participant_ids=list(selected_user_ids),
+        selected_ref_ids=list(selected_user_ids),
+        duration_type="timed",
+        created_at_game_time_seconds=ctx.current_game_time_seconds,
+        expires_at_game_time_seconds=expires_at,
+        context_origin="out_of_combat_cast",
+        caster_user_id=ctx.caster_user_id,
+        target_user_id=ctx.caster_user_id,
+        owner_participant_id=ctx.caster_user_id,
+        created_by_participant_id=ctx.caster_user_id,
+    )
+
+    caster_effects = list(ctx.updated_caster_json.get("active_spell_effects") or [])
+    caster_effects.extend([marker, effect])
+    ctx.updated_caster_json["active_spell_effects"] = caster_effects
+
+    ctx.caster_state.state_json = ctx.finalize_session_state_data(
+        ctx.updated_caster_json,
+        game_time_seconds=ctx.current_game_time_seconds,
+    )
+    flag_modified(ctx.caster_state, "state_json")
+    ctx.session.add(ctx.caster_state)
+
+    actor_member_id, actor_display_name = ctx.resolve_ooc_activity_actor(
+        ctx.entry, ctx.actor_user, ctx.session
+    )
+    if actor_member_id:
+        payload: dict[str, Any] = {
+            "actor_user_id": ctx.actor_user.id,
+            "actor_player_user_id": ctx.actor_user.id,
+            "actor_display_name": actor_display_name,
+            "caster_player_user_id": ctx.caster_user_id,
+            "caster_display_name": actor_display_name,
+            "spell_key": "pass_without_trace",
+            "spell_name": spell_name,
+            "created_effect_ids": [marker.get("id"), effect.get("id")],
+            "concentration_group": concentration_group,
+            "target_player_user_ids": list(selected_user_ids),
+            "bonus": {
+                "skill": "stealth",
+                "ability": "dexterity",
+                "value": PASS_WITHOUT_TRACE_BONUS_VALUE,
+            },
+            "trace_suppression": {
+                "suppresses_tracks": True,
+                "prevents_nonmagical_tracking": True,
+                "exception": "magical_tracking",
+            },
+            "duration": {
+                "type": "concentration",
+                "max_minutes": PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+            },
+            "cast_by_gm": ctx.cast_by_gm,
+        }
+        ctx.record_session_activity(
+            ctx.entry,
+            "out_of_combat_spell_cast",
+            ctx.session,
+            member_id=actor_member_id,
+            user_id=ctx.actor_user.id,
+            actor_name=actor_display_name,
+            payload=payload,
+        )
+        ctx.prune_out_of_combat_session_activity(ctx.session, ctx.session_id)
+
+    ctx.session.commit()
+    ctx.session.refresh(ctx.caster_state)
+    await ctx.publish_state_update(ctx.session_id, ctx.caster_user_id)
     return ctx.to_state_read(ctx.caster_state)
 
 
@@ -992,6 +1137,8 @@ async def cast_spell_out_of_combat_for_player(
         return await _cast_warding_bond_ooc(ctx)
     if canonical_key == "prayer_of_healing":
         return await _cast_prayer_of_healing_ooc(ctx)
+    if canonical_key == "pass_without_trace":
+        return await _cast_pass_without_trace_ooc(ctx)
 
     # --- Build target effects ---
     caster_spell_save_dc = int(

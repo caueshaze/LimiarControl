@@ -19,6 +19,12 @@ from app.services.crown_of_madness import (
     remove_crown_of_madness_instance,
 )
 from app.services.game_time import get_game_time_seconds
+from app.services.pass_without_trace_effects import (
+    PASS_WITHOUT_TRACE_BONUS_VALUE,
+    PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+    PASS_WITHOUT_TRACE_RADIUS_METERS,
+    build_pass_without_trace_effect,
+)
 from app.services.roll_resolution import resolve_saving_throw
 from app.services.spell_effect_factories import (
     build_compelled_duel_effect,
@@ -89,6 +95,39 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
             caster_participant_id=caster_participant_id,
             spell_name=spell_name,
             concentration_group=concentration_group,
+        )
+
+    @classmethod
+    def _build_pass_without_trace_concentration_marker(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+        selected_participant_ids: list[str],
+        selected_ref_ids: list[str],
+        created_at_game_time_seconds: int,
+        expires_at_game_time_seconds: int,
+    ) -> dict:
+        return cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=caster_participant_id,
+            duration_type="timed",
+            created_at_game_time_seconds=created_at_game_time_seconds,
+            expires_at_game_time_seconds=expires_at_game_time_seconds,
+            metadata={
+                "source_spell_key": "pass_without_trace",
+                "source_spell_name": spell_name,
+                "effect_role": "concentration_marker",
+                "concentration": True,
+                "concentration_group": concentration_group,
+                "origin_caster_participant_id": caster_participant_id,
+                "selected_participant_ids": list(selected_participant_ids),
+                "selected_ref_ids": list(selected_ref_ids),
+                "radius_m": PASS_WITHOUT_TRACE_RADIUS_METERS,
+                "max_duration_minutes": PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+            },
+            display_label=spell_name,
         )
 
     @classmethod
@@ -787,6 +826,218 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
                 "rider_armed": True,
                 "save_dc": save_dc,
                 "effect_dice": effect_dice,
+            },
+        )
+
+    @classmethod
+    def _resolve_pass_without_trace_targets(
+        cls,
+        *,
+        state: CombatState,
+        caster: dict,
+        req,
+    ) -> tuple[list[dict], list[dict]]:
+        raw_target_ref_ids = getattr(req, "target_ref_ids", None)
+        if raw_target_ref_ids is None:
+            requested_ref_ids: list[str] = []
+        elif not isinstance(raw_target_ref_ids, list):
+            raise CombatServiceError("Pass Without Trace target_ref_ids must be a list when provided.", 400)
+        else:
+            requested_ref_ids = []
+            for raw_ref_id in raw_target_ref_ids:
+                if not isinstance(raw_ref_id, str) or not raw_ref_id.strip():
+                    raise CombatServiceError("Pass Without Trace target_ref_ids must contain only non-empty strings.", 400)
+                requested_ref_ids.append(raw_ref_id.strip())
+
+        if getattr(req, "target_ref_id", None) is not None:
+            raise CombatServiceError("Pass Without Trace does not use target_ref_id; use target_ref_ids instead.", 400)
+        if getattr(req, "target_variant_assignments", None):
+            raise CombatServiceError("Pass Without Trace does not use target variants.", 400)
+        if getattr(req, "effect_instance_targets", None):
+            raise CombatServiceError("Pass Without Trace does not use effect_instance_targets.", 400)
+        if len(requested_ref_ids) != len(set(requested_ref_ids)):
+            raise CombatServiceError("Pass Without Trace target_ref_ids cannot repeat.", 400)
+
+        caster_ref_id = caster.get("ref_id")
+        if not isinstance(caster_ref_id, str) or not caster_ref_id.strip():
+            raise CombatServiceError("Caster is missing a combat reference for Pass Without Trace.", 400)
+
+        caster_status = str(caster.get("status") or "").strip().lower()
+        if caster_status in {"dead", "defeated", "removed"}:
+            raise CombatServiceError("Pass Without Trace requires a valid active caster.", 400)
+
+        local_distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+        caster_distances = local_distances.get(caster_ref_id) if isinstance(local_distances.get(caster_ref_id), dict) else {}
+
+        affected: list[dict] = [caster]
+        affected_ids = {caster.get("id")}
+        rejected: list[dict] = []
+        for ref_id in requested_ref_ids:
+            participant = next(
+                (entry for entry in (state.participants or []) if entry.get("ref_id") == ref_id),
+                None,
+            )
+            if participant is None:
+                rejected.append({"target_ref_id": ref_id, "reason": "not_found"})
+                continue
+            if participant.get("id") in affected_ids:
+                continue
+            status = str(participant.get("status") or "").strip().lower()
+            if status in {"dead", "defeated", "removed"}:
+                rejected.append({"target_ref_id": ref_id, "target_participant_id": participant.get("id"), "reason": "invalid_status"})
+                continue
+            if ref_id != caster_ref_id:
+                raw_distance = caster_distances.get(ref_id) if isinstance(caster_distances, dict) else None
+                if not isinstance(raw_distance, (int, float)):
+                    rejected.append({"target_ref_id": ref_id, "target_participant_id": participant.get("id"), "reason": "missing_distance"})
+                    continue
+                if float(raw_distance) > PASS_WITHOUT_TRACE_RADIUS_METERS:
+                    rejected.append(
+                        {
+                            "target_ref_id": ref_id,
+                            "target_participant_id": participant.get("id"),
+                            "reason": "out_of_range",
+                            "distance_m": float(raw_distance),
+                        }
+                    )
+                    continue
+            affected.append(participant)
+            affected_ids.add(participant.get("id"))
+
+        return affected, rejected
+
+    @classmethod
+    async def _cast_pass_without_trace_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Pass Without Trace não possui variantes.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(session_id, state, result["removed_area_effects"])
+
+        affected_participants, rejected_targets = cls._resolve_pass_without_trace_targets(
+            state=state,
+            caster=attacker,
+            req=req,
+        )
+        spell_name = spell_context["spell_name"]
+        concentration_group = str(uuid4())
+        game_time = get_game_time_seconds(session_id, db)
+        expires_at_game_time_seconds = game_time + (60 * 60)
+        selected_participant_ids = [
+            str(participant.get("id"))
+            for participant in affected_participants
+            if isinstance(participant.get("id"), str)
+        ]
+        selected_ref_ids = [
+            str(participant.get("ref_id"))
+            for participant in affected_participants
+            if isinstance(participant.get("ref_id"), str)
+        ]
+
+        marker = cls._build_pass_without_trace_concentration_marker(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+            selected_participant_ids=selected_participant_ids,
+            selected_ref_ids=selected_ref_ids,
+            created_at_game_time_seconds=game_time,
+            expires_at_game_time_seconds=expires_at_game_time_seconds,
+        )
+        cls._append_effect_to_participant(attacker, marker)
+
+        for participant in affected_participants:
+            cls._append_effect_to_participant(
+                participant,
+                build_pass_without_trace_effect(
+                    source_participant_id=attacker["id"],
+                    spell_name=spell_name,
+                    concentration_group=concentration_group,
+                    origin_caster_participant_id=attacker.get("id") if isinstance(attacker.get("id"), str) else None,
+                    origin_caster_ref_id=attacker.get("ref_id") if isinstance(attacker.get("ref_id"), str) else None,
+                    selected_participant_ids=selected_participant_ids,
+                    selected_ref_ids=selected_ref_ids,
+                    duration_type="timed",
+                    created_at_game_time_seconds=game_time,
+                    expires_at_game_time_seconds=expires_at_game_time_seconds,
+                    context_origin="combat_spell_cast",
+                ),
+            )
+        flag_modified(state, "participants")
+
+        affected_ids = [
+            str(participant.get("id"))
+            for participant in affected_participants
+            if isinstance(participant.get("id"), str)
+        ]
+        affected_names = ", ".join(
+            participant.get("display_name") or participant.get("ref_id") or "Target"
+            for participant in affected_participants
+        )
+        summary_text = (
+            f"{spell_name} ativa: {affected_names} recebem +{PASS_WITHOUT_TRACE_BONUS_VALUE} em "
+            "Destreza (Furtividade) e deixam de gerar rastros mundanos."
+        )
+        if result["removed_effects"] or result["removed_area_effects"]:
+            summary_text += " A concentração anterior terminou."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} começou a se concentrar em {spell_name}. "
+                f"{affected_names} recebem +{PASS_WITHOUT_TRACE_BONUS_VALUE} em Furtividade, "
+                "não deixam rastros e não podem ser rastreados exceto por meios mágicos."
+            ),
+            extra={
+                "concentration_group": concentration_group,
+                "origin_caster_participant_id": attacker["id"],
+                "affected_participant_ids": affected_ids,
+                "affected_target_ref_ids": [
+                    participant.get("ref_id")
+                    for participant in affected_participants
+                    if isinstance(participant.get("ref_id"), str)
+                ],
+                "rejected_targets": rejected_targets,
+                "effect_applied": True,
+                "bonus": {
+                    "skill": "stealth",
+                    "ability": "dexterity",
+                    "value": PASS_WITHOUT_TRACE_BONUS_VALUE,
+                },
+                "trace_suppression": {
+                    "suppresses_tracks": True,
+                    "prevents_nonmagical_tracking": True,
+                    "exception": "magical_tracking",
+                },
+                "duration": {
+                    "type": "concentration",
+                    "max_minutes": PASS_WITHOUT_TRACE_MAX_DURATION_MINUTES,
+                },
+                "__player_state_ids_to_emit": {
+                    participant.get("ref_id")
+                    for participant in affected_participants
+                    if participant.get("kind") == "player" and isinstance(participant.get("ref_id"), str)
+                },
             },
         )
 

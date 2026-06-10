@@ -60,7 +60,7 @@ OOC_SPECIAL_INPUT_SPELLS = {
 # Warding Bond persists two linked effects across two creatures, so it does not
 # fit the single-effect factory dispatch. It is handled by a dedicated route
 # block; this set only exists so eligibility/listing treat it as castable.
-OOC_LINKED_EFFECT_SPELLS = frozenset({"warding_bond"})
+OOC_LINKED_EFFECT_SPELLS = frozenset({"warding_bond", "pass_without_trace"})
 
 _THAUMATURGY_ALLOWED_EFFECTS = [
     "alter_eyes",

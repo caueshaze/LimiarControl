@@ -59,6 +59,18 @@ class CastTargetOrchestratorMixin(_CastTargetOrchestratorBase):
                 validated_variant_assignments,
                 spatial_results_by_participant_id=spatial_results_by_participant_id,
             )
+        if cls._normalize_spell_automation_key(spell_context.get("spell_canonical_key")) == "pass_without_trace":
+            return await cls._resolve_no_external_target_cast(
+                db,
+                session_id,
+                req,
+                state,
+                attacker,
+                attacker_model,
+                spell_context,
+                actor_user_id,
+                is_gm,
+            )
         validated_plain_targets = cls._validate_plain_multi_target_refs(
             req=req,
             spell_context=spell_context,

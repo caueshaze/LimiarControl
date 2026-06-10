@@ -6,11 +6,15 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import select
 from app.models.combat import CombatPhase, CombatState
 from app.models.session_state import SessionState
 from app.schemas.base_spell import SpellDeclarativeEffect
 from app.services.game_time import get_game_time_seconds
 from app.services.out_of_combat_cast import _target_has_armor, _check_requires_unarmored_eligibility
+from app.services.pass_without_trace_effects import (
+    resolve_skill_check_bonus_sources_from_effects,
+)
 
 logger = logging.getLogger(__name__)
 from app.schemas.campaign_entity_shared import AbilityName, SKILL_ABILITY_MAP, SkillName
@@ -29,6 +33,82 @@ from .host_protocol import CombatServiceHostProtocol
 
 
 class CombatSpellDeclarativeEffectsMixin(CombatServiceHostProtocol):
+    @classmethod
+    def _distance_between_refs_in_state(
+        cls,
+        state: CombatState,
+        from_ref_id: str,
+        to_ref_id: str,
+    ) -> float | None:
+        local_distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+        source_map = local_distances.get(from_ref_id)
+        if isinstance(source_map, dict):
+            distance = source_map.get(to_ref_id)
+            if isinstance(distance, (int, float)):
+                return float(distance)
+        target_map = local_distances.get(to_ref_id)
+        if isinstance(target_map, dict):
+            distance = target_map.get(from_ref_id)
+            if isinstance(distance, (int, float)):
+                return float(distance)
+        return None
+
+    @classmethod
+    def _concentration_group_is_active_in_state(
+        cls,
+        state: CombatState,
+        concentration_group: str,
+    ) -> bool:
+        for participant in state.participants or []:
+            for effect in cls._get_participant_effects(participant):
+                if effect.get("kind") != "spell_effect":
+                    continue
+                metadata = cls._get_effect_metadata(effect)
+                if metadata.get("concentration") is not True:
+                    continue
+                if metadata.get("concentration_group") == concentration_group:
+                    return True
+        return False
+
+    @classmethod
+    def _apply_flat_skill_check_bonus_to_roll_result(
+        cls,
+        *,
+        effects: list[dict] | None,
+        participant_status: str | None,
+        participant_ref_id: str | None,
+        roll_result,
+        roll_type: Literal["attack", "save", "ability", "skill"],
+        concentration_group_is_active,
+        distance_lookup,
+    ) -> int:
+        sources = resolve_skill_check_bonus_sources_from_effects(
+            effects,
+            roll_type=roll_type,
+            ability=getattr(roll_result, "ability", None),
+            skill=getattr(roll_result, "skill", None),
+            participant_status=participant_status,
+            participant_ref_id=participant_ref_id,
+            concentration_group_is_active=concentration_group_is_active,
+            distance_lookup=distance_lookup,
+        )
+        if not sources:
+            return 0
+        extra_total = sum(int(source.get("signed_total") or 0) for source in sources)
+        if extra_total:
+            roll_result.total = int(roll_result.total) + extra_total
+            roll_result.modifier_used = int(getattr(roll_result, "modifier_used", 0)) + extra_total
+            formula = getattr(roll_result, "formula", None)
+            if isinstance(formula, str) and formula.strip():
+                sign = "+" if extra_total >= 0 else "-"
+                roll_result.formula = f"{formula} {sign} {abs(extra_total)}"
+        merged = list(roll_result.check_modifier_sources or [])
+        merged.extend(sources)
+        roll_result.check_modifier_sources = merged
+        if roll_type == "skill" and roll_result.dc is not None:
+            roll_result.success = roll_result.total >= roll_result.dc
+        return extra_total
+
     @classmethod
     def _apply_roll_bonus_dice_to_roll_result(
         cls,
@@ -117,22 +197,62 @@ class CombatSpellDeclarativeEffectsMixin(CombatServiceHostProtocol):
         roll_type: Literal["attack", "save", "ability", "skill"],
     ) -> list[str]:
         state = cls.get_state(db, session_id)
-        if state is None or state.phase == CombatPhase.ended:
+        if state is not None and state.phase != CombatPhase.ended:
+            participant = resolve_actor_participant(state, actor_ref_id)
+            if isinstance(participant, dict) and participant.get("kind") == actor_kind:
+                consumed_effect_ids = cls._apply_roll_bonus_dice_to_roll_result(
+                    participant=participant,
+                    roll_result=roll_result,
+                    roll_type=roll_type,
+                    state=state,
+                )
+                cls._apply_flat_skill_check_bonus_to_roll_result(
+                    effects=cls._get_participant_effects(participant),
+                    participant_status=participant.get("status"),
+                    participant_ref_id=participant.get("ref_id"),
+                    roll_result=roll_result,
+                    roll_type=roll_type,
+                    concentration_group_is_active=lambda group: cls._concentration_group_is_active_in_state(state, group),
+                    distance_lookup=lambda origin_ref_id: cls._distance_between_refs_in_state(
+                        state,
+                        str(participant.get("ref_id") or ""),
+                        origin_ref_id,
+                    ),
+                )
+                if consumed_effect_ids:
+                    db.add(state)
+                    db.commit()
+                    db.refresh(state)
+                return consumed_effect_ids
+
+        if actor_kind != "player":
             return []
-        participant = resolve_actor_participant(state, actor_ref_id)
-        if not isinstance(participant, dict) or participant.get("kind") != actor_kind:
+
+        session_state = db.exec(
+            select(SessionState).where(
+                SessionState.session_id == session_id,
+                SessionState.player_user_id == actor_ref_id,
+            )
+        ).first()
+        if session_state is None:
             return []
-        consumed_effect_ids = cls._apply_roll_bonus_dice_to_roll_result(
-            participant=participant,
+        state_json = session_state.state_json if isinstance(session_state.state_json, dict) else {}
+        cls._apply_flat_skill_check_bonus_to_roll_result(
+            effects=state_json.get("active_spell_effects") if isinstance(state_json.get("active_spell_effects"), list) else [],
+            participant_status="active",
+            participant_ref_id=actor_ref_id,
             roll_result=roll_result,
             roll_type=roll_type,
-            state=state,
+            concentration_group_is_active=lambda group: any(
+                isinstance(effect, dict)
+                and isinstance(effect.get("metadata"), dict)
+                and effect["metadata"].get("concentration") is True
+                and effect["metadata"].get("concentration_group") == group
+                for effect in (state_json.get("active_spell_effects") or [])
+            ),
+            distance_lookup=lambda origin_ref_id: 0.0 if origin_ref_id == actor_ref_id else None,
         )
-        if consumed_effect_ids:
-            db.add(state)
-            db.commit()
-            db.refresh(state)
-        return consumed_effect_ids
+        return []
 
     @classmethod
     def _build_temp_hp_observability_from_metadata(

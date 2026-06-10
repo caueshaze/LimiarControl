@@ -183,6 +183,27 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
             },
             "outOfCombatCastable": False,
         },
+        "pass_without_trace": {
+            "type": "utility_buff",
+            "subtype": "pass_without_trace",
+            "requiresTarget": False,
+            "requiresConcentration": True,
+            "durationSeconds": 3600,
+            "source_spell_key": "pass_without_trace",
+            "effect_role": "party_stealth_trace_suppression",
+            "duration_type": "concentration",
+            "max_duration_minutes": 60,
+            "radius_m": 9,
+            "applies_skill_bonus": True,
+            "skill": "stealth",
+            "ability": "dexterity",
+            "bonus_value": 10,
+            "suppresses_tracks": True,
+            "prevents_nonmagical_tracking": True,
+            "tracking_exception": "magical_tracking",
+            "outOfCombatCastable": True,
+            "outOfCombatTarget": "multi_ally",
+        },
         "entangle": {
             "type": "area_control",
             "subtype": "entangle",
@@ -1055,6 +1076,8 @@ class SpellContextResolveMixin(_SpellContextResolveBase):
             effect_instance_count = 1
             effect_instance_dice = None
         spell_key = normalize_spell_key(catalog_spell.canonical_key)
+        if spell_key == "pass_without_trace" and effective_max_targets is None:
+            effective_max_targets = 999
         range_meters = getattr(catalog_spell, "range_meters", None)
         target_type = getattr(catalog_spell, "target_type", None)
         if spell_key == "produce_flame" and resolved_mode["spell_mode"] == "spell_attack":

@@ -136,6 +136,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_hail_of_thorns_automation",
         ),
+        "pass_without_trace": SpellAutomationSpec(
+            canonical_key="pass_without_trace",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_pass_without_trace_automation",
+        ),
         "entangle": SpellAutomationSpec(
             canonical_key="entangle",
             default_mode="area_save",

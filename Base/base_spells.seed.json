@@ -2092,12 +2092,15 @@
       "requiresPointSight": false,
       "requiresPointEffect": false,
       "targetType": "self",
-      "selectionType": "self",
+      "maxTargets": 999,
+      "selectionType": "multi_creature",
       "originType": "caster",
-      "targetAnchor": "caster",
+      "targetAnchor": "selected_targets",
       "attackType": "none",
-      "rangeKind": "self",
-      "effectTiming": "persistent"
+      "rangeKind": "distance",
+      "effectTiming": "persistent",
+      "outOfCombatCastable": true,
+      "outOfCombatTarget": "multi_ally"
     },
     {
       "system": "DND5E",
