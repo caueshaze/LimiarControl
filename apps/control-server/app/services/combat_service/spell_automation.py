@@ -124,6 +124,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_compelled_duel_automation",
         ),
+        "ensnaring_strike": SpellAutomationSpec(
+            canonical_key="ensnaring_strike",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_ensnaring_strike_automation",
+        ),
         "entangle": SpellAutomationSpec(
             canonical_key="entangle",
             default_mode="area_save",

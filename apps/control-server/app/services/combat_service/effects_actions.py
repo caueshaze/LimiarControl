@@ -34,6 +34,7 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
         session_id: str,
         *,
         actor_participant_id: str | None,
+        target_participant_id: str | None = None,
         actor_user_id: str,
         is_gm: bool,
         condition_type: str,
@@ -60,19 +61,30 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
             "Only active participants can attempt an escape action.",
         )
 
+        target = actor
+        if isinstance(target_participant_id, str) and target_participant_id.strip():
+            target = next(
+                (
+                    participant
+                    for participant in (state.participants or [])
+                    if participant.get("id") == target_participant_id.strip()
+                ),
+                None,
+            )
+            if target is None:
+                raise CombatServiceError("Escape target not found in combat.", 404)
+
         normalized_condition = str(condition_type or "").strip().lower()
         if normalized_condition != "restrained":
             raise CombatServiceError("This endpoint currently supports only restrained escapes.", 400)
 
         candidate_effects: list[dict] = []
-        for effect in cls._get_participant_effects(actor):
+        for effect in cls._get_participant_effects(target):
             if effect.get("kind") != "condition":
                 continue
             if str(effect.get("condition_type") or "").strip().lower() != "restrained":
                 continue
             metadata = cls._get_effect_metadata(effect)
-            if str(metadata.get("source_spell_key") or "").strip().lower() != "entangle":
-                continue
             if metadata.get("escape_action") is not True:
                 continue
             if isinstance(source_effect_id, str) and source_effect_id.strip():
@@ -82,9 +94,42 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
 
         if not candidate_effects:
             raise CombatServiceError(
-                "Actor is not restrained by a matching Entangle source.",
+                "Target is not restrained by a matching escapable source.",
                 400,
             )
+
+        if not (
+            target.get("id") == actor.get("id")
+            and target.get("ref_id") == actor.get("ref_id")
+        ):
+            actor_ref_id = actor.get("ref_id")
+            target_ref_id = target.get("ref_id")
+            if not isinstance(actor_ref_id, str) or not isinstance(target_ref_id, str):
+                raise CombatServiceError("Escape participants are missing combat references.", 400)
+            distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+            source_distances = distances.get(actor_ref_id)
+            if not isinstance(source_distances, dict):
+                raise CombatServiceError("Distance between helper and restrained target is not configured.", 400)
+            raw_distance = source_distances.get(target_ref_id)
+            if not isinstance(raw_distance, (int, float)):
+                raise CombatServiceError("Distance between helper and restrained target is not configured.", 400)
+            if float(raw_distance) > 1.5:
+                raise CombatServiceError("Helper must be adjacent to the restrained target.", 400)
+
+        if source_effect_id is None or not source_effect_id.strip():
+            unique_ids = {
+                metadata_id
+                for metadata_id in (
+                    cls._get_effect_metadata(effect).get("source_effect_id")
+                    for effect in candidate_effects
+                )
+                if isinstance(metadata_id, str) and metadata_id.strip()
+            }
+            if len(candidate_effects) > 1 and len(unique_ids) > 1:
+                raise CombatServiceError(
+                    "Multiple restrained escape effects match; provide source_effect_id.",
+                    400,
+                )
 
         escape_effect = candidate_effects[0]
         escape_metadata = cls._get_effect_metadata(escape_effect)
@@ -134,10 +179,10 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
         if escaped:
             remaining = [
                 effect
-                for effect in cls._get_participant_effects(actor)
+                for effect in cls._get_participant_effects(target)
                 if effect.get("id") != escape_effect.get("id")
             ]
-            cls._set_participant_effects(actor, remaining)
+            cls._set_participant_effects(target, remaining)
 
         flag_modified(state, "participants")
         db.add(state)
@@ -145,17 +190,21 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
         db.refresh(state)
         await cls._emit_state(session_id, state)
 
-        source_spell_name = escape_metadata.get("source_spell_name") or "Entangle"
+        source_spell_name = escape_metadata.get("source_spell_name") or "Spell"
+        source_spell_key = str(escape_metadata.get("source_spell_key") or "").strip().lower() or "unknown"
+        target_name = target.get("display_name") or "Target"
         if escaped:
             message = (
-                f"{actor['display_name']} usou a ação para escapar de {source_spell_name}: "
+                f"{actor['display_name']} usou a ação para libertar {target_name} de {source_spell_name}: "
                 f"teste de Força {roll_result.total} vs DC {escape_dc} (sucesso)."
             )
         else:
             message = (
-                f"{actor['display_name']} usou a ação para escapar de {source_spell_name}: "
+                f"{actor['display_name']} usou a ação para libertar {target_name} de {source_spell_name}: "
                 f"teste de Força {roll_result.total} vs DC {escape_dc} (falha)."
             )
+        if target.get("id") == actor.get("id"):
+            message = message.replace("para libertar " + target_name + " de", "para escapar de")
         if was_overridden:
             message = f"[OVERRIDE: Action limit ignored] {message}"
         await cls._emit_log(
@@ -170,8 +219,9 @@ class CombatEffectsActionsMixin(CombatEffectsCoreMixin, CombatServiceHostProtoco
 
         return {
             "conditionType": "restrained",
-            "sourceSpellKey": "entangle",
+            "sourceSpellKey": source_spell_key,
             "sourceEffectId": escape_metadata.get("source_effect_id"),
+            "targetParticipantId": target.get("id"),
             "escapeCheck": {
                 "ability": "strength",
                 "dc": escape_dc,

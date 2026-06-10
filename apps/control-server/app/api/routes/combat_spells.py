@@ -273,6 +273,7 @@ async def action_condition_escape(
         db,
         session_id,
         actor_participant_id=req.actor_participant_id,
+        target_participant_id=req.target_participant_id,
         actor_user_id=user.id,
         is_gm=_is_session_gm(db, session_id, user),
         condition_type=req.condition_type,

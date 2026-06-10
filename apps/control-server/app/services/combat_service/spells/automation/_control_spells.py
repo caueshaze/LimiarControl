@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.models.combat import CombatState
 from app.schemas.combat_actions import CombatEntityActionRequest
 from app.schemas.combat_spells import CombatAttackRequest
+from app.services.combat_service.entity_size import SizeCategory, normalize_size_category
 from app.services.combat_service.condition_effects_predicates import has_condition_immunity_from_source
 from app.services.crown_of_madness import (
     find_crown_of_madness_effect_on_target,
@@ -25,7 +26,7 @@ from app.services.spell_effect_factories import (
 )
 from app.services.compelled_duel import find_compelled_duel_effect_on_target
 from ...condition_effects_saves import modify_saving_throw
-from ...exceptions import CombatServiceError
+from ...exceptions import CombatServiceError, _roll_dice_expression
 from ...host_protocol import CombatServiceHostProtocol
 
 
@@ -36,6 +37,423 @@ else:
 
 
 class ControlSpellsAutomationMixin(_ControlSpellsBase):
+    @classmethod
+    def _build_ensnaring_strike_concentration_marker(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+    ) -> dict:
+        return cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=caster_participant_id,
+            duration_type="manual",
+            expires_at_participant_id=caster_participant_id,
+            metadata={
+                "source_spell_key": "ensnaring_strike",
+                "source_spell_name": spell_name,
+                "effect_role": "concentration_marker",
+                "concentration": True,
+                "concentration_group": concentration_group,
+            },
+            display_label=spell_name,
+        )
+
+    @classmethod
+    def _build_ensnaring_strike_rider_effect(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+        save_dc: int,
+    ) -> dict:
+        return cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=caster_participant_id,
+            duration_type="manual",
+            expires_at_participant_id=caster_participant_id,
+            metadata={
+                "source_spell_key": "ensnaring_strike",
+                "source_spell_name": spell_name,
+                "effect_role": "next_weapon_hit_rider",
+                "trigger": "next_weapon_hit",
+                "consume_on": "weapon_hit",
+                "weapon_attack_only": True,
+                "save_ability": "strength",
+                "save_dc": save_dc,
+                "recurring_damage_timing": "start_of_target_turn",
+                "recurring_damage_dice": "1d6",
+                "recurring_damage_type": "piercing",
+                "escape_action": True,
+                "escape_check_ability": "strength",
+                "escape_check_dc": save_dc,
+                "concentration": False,
+                "concentration_group": concentration_group,
+            },
+            display_label=spell_name,
+        )
+
+    @classmethod
+    def _build_ensnaring_strike_target_effect(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+        save_dc: int,
+    ) -> dict:
+        effect = cls._build_active_effect(
+            kind="condition",
+            condition_type="restrained",
+            source_participant_id=caster_participant_id,
+            duration_type="manual",
+            metadata={
+                "source_spell_key": "ensnaring_strike",
+                "source_spell_name": spell_name,
+                "effect_role": "persistent_spell_condition",
+                "concentration": False,
+                "concentration_group": concentration_group,
+                "recurring_damage_timing": "start_of_target_turn",
+                "recurring_damage_dice": "1d6",
+                "recurring_damage_type": "piercing",
+                "escape_action": True,
+                "escape_check_ability": "strength",
+                "escape_check_dc": save_dc,
+            },
+            display_label="Restrained (Ensnaring Strike)",
+        )
+        metadata = effect.get("metadata") or {}
+        metadata["source_effect_id"] = effect.get("id")
+        effect["metadata"] = metadata
+        return effect
+
+    @classmethod
+    def _list_next_weapon_hit_riders(
+        cls,
+        participant: dict,
+    ) -> list[dict]:
+        riders: list[dict] = []
+        for effect in cls._get_participant_effects(participant):
+            metadata = cls._get_effect_metadata(effect)
+            if effect.get("kind") != "spell_effect":
+                continue
+            if metadata.get("effect_role") != "next_weapon_hit_rider":
+                continue
+            if metadata.get("trigger") != "next_weapon_hit":
+                continue
+            if metadata.get("consume_on") != "weapon_hit":
+                continue
+            riders.append(effect)
+        riders.sort(
+            key=lambda effect: (
+                cls._safe_int(effect.get("created_at_game_time_seconds"), 0),
+                str(effect.get("created_at") or ""),
+            )
+        )
+        return riders
+
+    @classmethod
+    def _target_has_large_or_larger_ensnaring_save_advantage(
+        cls,
+        target_participant: dict,
+    ) -> bool:
+        size_value = target_participant.get("effective_size") or target_participant.get("base_size")
+        return normalize_size_category(size_value) in {
+            SizeCategory.LARGE,
+            SizeCategory.HUGE,
+            SizeCategory.GARGANTUAN,
+        }
+
+    @classmethod
+    def _merge_advantage_modes(
+        cls,
+        base_mode: str,
+        *,
+        extra_advantage: bool = False,
+        extra_disadvantage: bool = False,
+    ) -> str:
+        if extra_advantage:
+            if base_mode == "normal":
+                base_mode = "advantage"
+            elif base_mode == "disadvantage":
+                base_mode = "normal"
+        if extra_disadvantage:
+            if base_mode == "normal":
+                base_mode = "disadvantage"
+            elif base_mode == "advantage":
+                base_mode = "normal"
+        return base_mode
+
+    @classmethod
+    async def _resolve_ensnaring_strike_weapon_hit(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        attacker: dict,
+        target_participant: dict,
+        rider_effect: dict,
+    ) -> dict:
+        rider_metadata = cls._get_effect_metadata(rider_effect)
+        spell_name = str(rider_metadata.get("source_spell_name") or "Ensnaring Strike")
+        save_dc = cls._safe_int(rider_metadata.get("save_dc"), 0)
+        if save_dc <= 0:
+            raise CombatServiceError("Ensnaring Strike rider is missing a valid save DC.", 400)
+
+        save_mod = modify_saving_throw(
+            target_participant,
+            "strength",
+            source_participant=attacker,
+            source_kind="participant",
+        )
+        advantage_mode = cls._merge_advantage_modes(
+            save_mod.result,
+            extra_advantage=cls._target_has_large_or_larger_ensnaring_save_advantage(target_participant),
+        )
+        roll_result = resolve_saving_throw(
+            cls._build_roll_actor_stats_for_save(
+                db,
+                session_id,
+                target_participant["ref_id"],
+                target_participant["kind"],
+                target_participant["display_name"],
+            ),
+            ability="strength",
+            advantage_mode=advantage_mode,
+            dc=save_dc,
+            roll_source="system",
+        )
+        roll_result.check_modifier_sources = [
+            *save_mod.advantage_source_details,
+            *save_mod.disadvantage_source_details,
+            *(roll_result.check_modifier_sources or []),
+        ]
+        is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+        concentration_group = rider_metadata.get("concentration_group")
+        if not isinstance(concentration_group, str) or not concentration_group.strip():
+            raise CombatServiceError("Ensnaring Strike rider is missing a concentration group.", 400)
+
+        if is_saved:
+            removed = cls._remove_effect_group(
+                state,
+                concentration_group=concentration_group,
+            )
+            if removed["removed_effects"]:
+                flag_modified(state, "participants")
+            return {
+                "spell_key": "ensnaring_strike",
+                "spell_name": spell_name,
+                "triggered": True,
+                "effect_applied": False,
+                "is_saved": True,
+                "roll_result": roll_result,
+                "save_dc": save_dc,
+                "log_suffix": (
+                    f" {target_participant['display_name']} resistiu ao {spell_name} "
+                    f"(Força {roll_result.total} vs CD {save_dc})."
+                ),
+            }
+
+        target_effect = cls._build_ensnaring_strike_target_effect(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+            save_dc=save_dc,
+        )
+        cls._append_effect_to_participant(target_participant, target_effect)
+        flag_modified(state, "participants")
+        return {
+            "spell_key": "ensnaring_strike",
+            "spell_name": spell_name,
+            "triggered": True,
+            "effect_applied": True,
+            "is_saved": False,
+            "roll_result": roll_result,
+            "save_dc": save_dc,
+            "source_effect_id": target_effect.get("id"),
+            "log_suffix": (
+                f" {target_participant['display_name']} falhou no save de Força "
+                f"({roll_result.total} vs CD {save_dc}) e ficou restrained por {spell_name}."
+            ),
+        }
+
+    @classmethod
+    async def resolve_next_weapon_hit_riders(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        attacker: dict,
+        target_participant: dict | None,
+        is_weapon_attack: bool,
+    ) -> dict:
+        if not is_weapon_attack or not isinstance(target_participant, dict):
+            return {"log_suffix": ""}
+
+        riders = cls._list_next_weapon_hit_riders(attacker)
+        if not riders:
+            return {"log_suffix": ""}
+
+        rider = riders[0]
+        rider_metadata = cls._get_effect_metadata(rider)
+        spell_key = str(rider_metadata.get("source_spell_key") or "").strip().lower()
+
+        if spell_key == "ensnaring_strike":
+            removed = cls._consume_effect_ids(attacker, [str(rider.get("id") or "")])
+            if removed:
+                flag_modified(state, "participants")
+            return await cls._resolve_ensnaring_strike_weapon_hit(
+                db,
+                session_id,
+                state=state,
+                attacker=attacker,
+                target_participant=target_participant,
+                rider_effect=rider,
+            )
+
+        return {"log_suffix": ""}
+
+    @classmethod
+    async def resolve_ensnaring_strike_start_turn(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        participant: dict,
+    ) -> list[dict]:
+        outcomes: list[dict] = []
+        for effect in cls._get_participant_effects(participant):
+            metadata = cls._get_effect_metadata(effect)
+            if effect.get("kind") != "condition":
+                continue
+            if effect.get("condition_type") != "restrained":
+                continue
+            if metadata.get("source_spell_key") != "ensnaring_strike":
+                continue
+            if metadata.get("effect_role") != "persistent_spell_condition":
+                continue
+            if metadata.get("recurring_damage_timing") != "start_of_target_turn":
+                continue
+            damage_formula = str(metadata.get("recurring_damage_dice") or "").strip()
+            damage_type = str(metadata.get("recurring_damage_type") or "").strip()
+            if not damage_formula or not damage_type:
+                continue
+            rolled_damage = max(0, _roll_dice_expression(damage_formula))
+            new_hp = previous_hp = concentration_check = None
+            effect_msg = ""
+            if rolled_damage > 0:
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+                    db,
+                    participant["ref_id"],
+                    participant["kind"],
+                    rolled_damage,
+                    damage_type=damage_type,
+                    is_magical_damage=True,
+                    is_crit=False,
+                    state=state,
+                    attacker_participant_id=effect.get("source_participant_id"),
+                )
+            spell_name = metadata.get("source_spell_name") or "Ensnaring Strike"
+            await cls._emit_log(
+                session_id,
+                {
+                    "message": (
+                        f"{participant['display_name']} sofreu {rolled_damage} de dano {damage_type} "
+                        f"de {spell_name} no início do turno.{effect_msg}"
+                    ),
+                    "source": "ensnaring_strike",
+                },
+            )
+            outcomes.append(
+                {
+                    "source_effect_id": effect.get("id"),
+                    "damage": rolled_damage,
+                    "damage_type": damage_type,
+                    "previous_hp": previous_hp,
+                    "new_hp": new_hp,
+                    "concentration_check": concentration_check,
+                }
+            )
+        return outcomes
+
+    @classmethod
+    async def _cast_ensnaring_strike_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Ensnaring Strike não possui variantes.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(
+            session_id,
+            state,
+            result["removed_area_effects"],
+        )
+
+        spell_name = spell_context["spell_name"]
+        save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
+        if save_dc <= 0:
+            raise CombatServiceError("Ensnaring Strike requires a valid spell save DC.", 400)
+
+        concentration_group = str(uuid4())
+        marker = cls._build_ensnaring_strike_concentration_marker(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+        )
+        rider = cls._build_ensnaring_strike_rider_effect(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+            save_dc=save_dc,
+        )
+        cls._append_effect_to_participant(attacker, marker)
+        cls._append_effect_to_participant(attacker, rider)
+        flag_modified(state, "participants")
+
+        summary_text = (
+            f"{spell_name} armada: o próximo ataque com arma que acertar tentará enredar o alvo."
+        )
+        if result["removed_effects"] or result["removed_area_effects"]:
+            summary_text += " A concentração anterior terminou."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} sobre si e armou o próximo ataque com arma."
+            ),
+            extra={
+                "concentration_group": concentration_group,
+                "effect_applied": True,
+                "rider_armed": True,
+                "save_dc": save_dc,
+            },
+        )
+
     @classmethod
     async def _cast_entangle_automation(
         cls,

@@ -169,6 +169,10 @@ class CombatConditionEscapeRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("actor_participant_id", "actorParticipantId", "actorRefId"),
     )
+    target_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("target_participant_id", "targetParticipantId", "targetRefId"),
+    )
     condition_type: str = Field(
         validation_alias=AliasChoices("condition_type", "conditionType"),
     )

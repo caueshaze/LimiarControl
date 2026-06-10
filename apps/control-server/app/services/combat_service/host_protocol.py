@@ -157,6 +157,28 @@ class CombatServiceHostProtocol(Protocol):
     ) -> dict[str, Any] | None: ...
 
     @classmethod
+    async def resolve_next_weapon_hit_riders(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        attacker: dict[str, Any],
+        target_participant: dict[str, Any] | None,
+        is_weapon_attack: bool,
+    ) -> dict[str, Any]: ...
+
+    @classmethod
+    async def resolve_ensnaring_strike_start_turn(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        participant: dict[str, Any],
+    ) -> list[dict[str, Any]]: ...
+
+    @classmethod
     def _player_has_colossus_slayer(cls, data: dict[str, Any] | None) -> bool: ...
 
     @classmethod
