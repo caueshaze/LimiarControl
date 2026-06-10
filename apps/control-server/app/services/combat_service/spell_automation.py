@@ -130,6 +130,12 @@ class CombatSpellAutomationMixin(CombatServiceHostProtocol):
             requires_effect_payload=False,
             handler_name="_cast_ensnaring_strike_automation",
         ),
+        "hail_of_thorns": SpellAutomationSpec(
+            canonical_key="hail_of_thorns",
+            default_mode="utility",
+            requires_effect_payload=False,
+            handler_name="_cast_hail_of_thorns_automation",
+        ),
         "entangle": SpellAutomationSpec(
             canonical_key="entangle",
             default_mode="area_save",

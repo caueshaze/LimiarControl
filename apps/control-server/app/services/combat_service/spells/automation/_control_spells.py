@@ -38,9 +38,10 @@ else:
 
 class ControlSpellsAutomationMixin(_ControlSpellsBase):
     @classmethod
-    def _build_ensnaring_strike_concentration_marker(
+    def _build_next_weapon_hit_concentration_marker(
         cls,
         *,
+        spell_key: str,
         caster_participant_id: str,
         spell_name: str,
         concentration_group: str,
@@ -51,13 +52,43 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
             duration_type="manual",
             expires_at_participant_id=caster_participant_id,
             metadata={
-                "source_spell_key": "ensnaring_strike",
+                "source_spell_key": spell_key,
                 "source_spell_name": spell_name,
                 "effect_role": "concentration_marker",
                 "concentration": True,
                 "concentration_group": concentration_group,
             },
             display_label=spell_name,
+        )
+
+    @classmethod
+    def _build_ensnaring_strike_concentration_marker(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+    ) -> dict:
+        return cls._build_next_weapon_hit_concentration_marker(
+            spell_key="ensnaring_strike",
+            caster_participant_id=caster_participant_id,
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+        )
+
+    @classmethod
+    def _build_hail_of_thorns_concentration_marker(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+    ) -> dict:
+        return cls._build_next_weapon_hit_concentration_marker(
+            spell_key="hail_of_thorns",
+            caster_participant_id=caster_participant_id,
+            spell_name=spell_name,
+            concentration_group=concentration_group,
         )
 
     @classmethod
@@ -89,6 +120,45 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
                 "escape_action": True,
                 "escape_check_ability": "strength",
                 "escape_check_dc": save_dc,
+                "concentration": False,
+                "concentration_group": concentration_group,
+            },
+            display_label=spell_name,
+        )
+
+    @classmethod
+    def _build_hail_of_thorns_rider_effect(
+        cls,
+        *,
+        caster_participant_id: str,
+        spell_name: str,
+        concentration_group: str,
+        save_dc: int,
+        effect_dice: str,
+    ) -> dict:
+        return cls._build_active_effect(
+            kind="spell_effect",
+            source_participant_id=caster_participant_id,
+            duration_type="manual",
+            expires_at_participant_id=caster_participant_id,
+            metadata={
+                "source_spell_key": "hail_of_thorns",
+                "source_spell_name": spell_name,
+                "effect_role": "next_weapon_hit_rider",
+                "trigger": "next_weapon_hit",
+                "consume_on": "weapon_hit",
+                "weapon_attack_only": True,
+                "ranged_weapon_attack_only": True,
+                "save_ability": "dexterity",
+                "save_dc": save_dc,
+                "effect_dice": effect_dice,
+                "reactive_burst": {
+                    "origin": "hit_target",
+                    "shape": "sphere",
+                    "radius_m": 1.5,
+                    "damage_type": "piercing",
+                    "save_success": "half",
+                },
                 "concentration": False,
                 "concentration_group": concentration_group,
             },
@@ -153,6 +223,19 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
             )
         )
         return riders
+
+    @classmethod
+    def _get_next_weapon_hit_pending_attack_flags(
+        cls,
+        attacker: dict,
+    ) -> tuple[bool, bool]:
+        pending_attack = attacker.get("pending_attack") if isinstance(attacker, dict) else None
+        if not isinstance(pending_attack, dict):
+            return False, False
+        return (
+            pending_attack.get("is_weapon_attack") is True,
+            pending_attack.get("is_ranged_weapon") is True,
+        )
 
     @classmethod
     def _target_has_large_or_larger_ensnaring_save_advantage(
@@ -281,6 +364,163 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
         }
 
     @classmethod
+    def _collect_hail_of_thorns_secondary_targets(
+        cls,
+        *,
+        state: CombatState,
+        origin_target: dict,
+    ) -> tuple[list[dict], list[str]]:
+        affected_targets: list[dict] = [origin_target]
+        skipped_missing_distance: list[str] = []
+        origin_ref_id = origin_target.get("ref_id")
+        if not isinstance(origin_ref_id, str):
+            return affected_targets, skipped_missing_distance
+
+        local_distances = state.local_distances if isinstance(state.local_distances, dict) else {}
+        origin_distances = local_distances.get(origin_ref_id) if isinstance(local_distances.get(origin_ref_id), dict) else {}
+
+        for participant in state.participants or []:
+            if participant.get("id") == origin_target.get("id"):
+                continue
+            if participant.get("status") == "dead":
+                continue
+            ref_id = participant.get("ref_id")
+            if not isinstance(ref_id, str):
+                continue
+            distance = origin_distances.get(ref_id) if isinstance(origin_distances, dict) else None
+            if not isinstance(distance, (int, float)):
+                skipped_missing_distance.append(ref_id)
+                continue
+            if float(distance) <= 1.5:
+                affected_targets.append(participant)
+
+        return affected_targets, skipped_missing_distance
+
+    @classmethod
+    async def _resolve_hail_of_thorns_weapon_hit(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        state: CombatState,
+        attacker: dict,
+        target_participant: dict,
+        rider_effect: dict,
+    ) -> dict:
+        rider_metadata = cls._get_effect_metadata(rider_effect)
+        spell_name = str(rider_metadata.get("source_spell_name") or "Hail of Thorns")
+        save_dc = cls._safe_int(rider_metadata.get("save_dc"), 0)
+        if save_dc <= 0:
+            raise CombatServiceError("Hail of Thorns rider is missing a valid save DC.", 400)
+        effect_dice = str(rider_metadata.get("effect_dice") or "").strip()
+        if not effect_dice:
+            raise CombatServiceError("Hail of Thorns rider is missing damage dice.", 400)
+        concentration_group = rider_metadata.get("concentration_group")
+        if not isinstance(concentration_group, str) or not concentration_group.strip():
+            raise CombatServiceError("Hail of Thorns rider is missing a concentration group.", 400)
+
+        burst_targets, skipped_missing_distance = cls._collect_hail_of_thorns_secondary_targets(
+            state=state,
+            origin_target=target_participant,
+        )
+
+        outcomes: list[dict] = []
+        hp_updates: list[dict] = []
+        log_lines = [f" {spell_name} explodiu ao redor de {target_participant['display_name']}."]
+
+        for burst_target in burst_targets:
+            save_mod = modify_saving_throw(
+                burst_target,
+                "dexterity",
+                source_participant=attacker,
+                source_kind="participant",
+            )
+            roll_result = resolve_saving_throw(
+                cls._build_roll_actor_stats_for_save(
+                    db,
+                    session_id,
+                    burst_target["ref_id"],
+                    burst_target["kind"],
+                    burst_target["display_name"],
+                ),
+                ability="dexterity",
+                advantage_mode=save_mod.result,
+                dc=save_dc,
+                roll_source="system",
+            )
+            roll_result.check_modifier_sources = [
+                *save_mod.advantage_source_details,
+                *save_mod.disadvantage_source_details,
+                *(roll_result.check_modifier_sources or []),
+            ]
+            is_saved = False if save_mod.auto_fail else bool(roll_result.success)
+            rolled_damage = max(0, _roll_dice_expression(effect_dice))
+            applied_damage = rolled_damage // 2 if is_saved else rolled_damage
+            new_hp = previous_hp = concentration_check = None
+            effect_msg = ""
+            if applied_damage > 0:
+                new_hp, effect_msg, previous_hp, concentration_check = cls._apply_damage_to_target(
+                    db,
+                    burst_target["ref_id"],
+                    burst_target["kind"],
+                    applied_damage,
+                    damage_type="piercing",
+                    is_magical_damage=True,
+                    is_crit=False,
+                    state=state,
+                    attacker_participant_id=attacker.get("id"),
+                )
+                hp_updates.append(
+                    {
+                        "target_ref_id": burst_target["ref_id"],
+                        "target_kind": burst_target["kind"],
+                        "previous_hp": previous_hp,
+                        "new_hp": new_hp,
+                    }
+                )
+            concentration_summary = (
+                f" {concentration_check['summary_text']}"
+                if isinstance(concentration_check, dict)
+                and isinstance(concentration_check.get("summary_text"), str)
+                else ""
+            )
+            log_lines.append(
+                f" {burst_target['display_name']}: DEX {roll_result.total} vs CD {save_dc}, "
+                f"{'passou' if is_saved else 'falhou'} e sofreu {applied_damage} dano perfurante."
+                f"{effect_msg}{concentration_summary}"
+            )
+            outcomes.append(
+                {
+                    "target_ref_id": burst_target["ref_id"],
+                    "target_kind": burst_target["kind"],
+                    "target_display_name": burst_target["display_name"],
+                    "is_saved": is_saved,
+                    "roll_result": roll_result,
+                    "rolled_damage": rolled_damage,
+                    "damage_applied": applied_damage,
+                    "concentration_check": concentration_check,
+                }
+            )
+
+        removed = cls._remove_effect_group(
+            state,
+            concentration_group=concentration_group,
+        )
+        if removed["removed_effects"]:
+            flag_modified(state, "participants")
+
+        return {
+            "spell_key": "hail_of_thorns",
+            "spell_name": spell_name,
+            "triggered": True,
+            "effect_applied": True,
+            "affected_targets": outcomes,
+            "hp_updates": hp_updates,
+            "skipped_missing_distance": skipped_missing_distance,
+            "log_suffix": "\n".join(log_lines),
+        }
+
+    @classmethod
     async def resolve_next_weapon_hit_riders(
         cls,
         db: Session,
@@ -298,22 +538,40 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
         if not riders:
             return {"log_suffix": ""}
 
-        rider = riders[0]
-        rider_metadata = cls._get_effect_metadata(rider)
-        spell_key = str(rider_metadata.get("source_spell_key") or "").strip().lower()
+        _, is_ranged_weapon = cls._get_next_weapon_hit_pending_attack_flags(attacker)
 
-        if spell_key == "ensnaring_strike":
-            removed = cls._consume_effect_ids(attacker, [str(rider.get("id") or "")])
-            if removed:
-                flag_modified(state, "participants")
-            return await cls._resolve_ensnaring_strike_weapon_hit(
-                db,
-                session_id,
-                state=state,
-                attacker=attacker,
-                target_participant=target_participant,
-                rider_effect=rider,
-            )
+        # V1 contract: resolve only the first matching rider in creation order.
+        for rider in riders:
+            rider_metadata = cls._get_effect_metadata(rider)
+            if rider_metadata.get("weapon_attack_only") is True and not is_weapon_attack:
+                continue
+            if rider_metadata.get("ranged_weapon_attack_only") is True and not is_ranged_weapon:
+                continue
+            spell_key = str(rider_metadata.get("source_spell_key") or "").strip().lower()
+            if spell_key == "ensnaring_strike":
+                removed = cls._consume_effect_ids(attacker, [str(rider.get("id") or "")])
+                if removed:
+                    flag_modified(state, "participants")
+                return await cls._resolve_ensnaring_strike_weapon_hit(
+                    db,
+                    session_id,
+                    state=state,
+                    attacker=attacker,
+                    target_participant=target_participant,
+                    rider_effect=rider,
+                )
+            if spell_key == "hail_of_thorns":
+                removed = cls._consume_effect_ids(attacker, [str(rider.get("id") or "")])
+                if removed:
+                    flag_modified(state, "participants")
+                return await cls._resolve_hail_of_thorns_weapon_hit(
+                    db,
+                    session_id,
+                    state=state,
+                    attacker=attacker,
+                    target_participant=target_participant,
+                    rider_effect=rider,
+                )
 
         return {"log_suffix": ""}
 
@@ -451,6 +709,84 @@ class ControlSpellsAutomationMixin(_ControlSpellsBase):
                 "effect_applied": True,
                 "rider_armed": True,
                 "save_dc": save_dc,
+            },
+        )
+
+    @classmethod
+    async def _cast_hail_of_thorns_automation(
+        cls,
+        db: Session,
+        session_id: str,
+        *,
+        attacker: dict,
+        attacker_model,
+        actor_user_id: str,
+        is_gm: bool,
+        req,
+        state: CombatState,
+        spell_context: dict,
+        target_participant: dict | None,
+    ) -> dict:
+        if getattr(req, "variant_key", None):
+            raise CombatServiceError("Hail of Thorns não possui variantes.", 400)
+
+        result = cls._clear_concentration_for_source(
+            state,
+            source_participant_id=attacker["id"],
+            db=db,
+        )
+        cls._sync_area_effects_if_changed(
+            session_id,
+            state,
+            result["removed_area_effects"],
+        )
+
+        spell_name = spell_context["spell_name"]
+        save_dc = cls._safe_int(spell_context.get("save_dc"), 0)
+        if save_dc <= 0:
+            raise CombatServiceError("Hail of Thorns requires a valid spell save DC.", 400)
+        effect_dice = str(spell_context.get("effect_dice") or "").strip()
+        if not effect_dice:
+            raise CombatServiceError("Hail of Thorns requires effect dice in spell context.", 400)
+
+        concentration_group = str(uuid4())
+        marker = cls._build_hail_of_thorns_concentration_marker(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+        )
+        rider = cls._build_hail_of_thorns_rider_effect(
+            caster_participant_id=attacker["id"],
+            spell_name=spell_name,
+            concentration_group=concentration_group,
+            save_dc=save_dc,
+            effect_dice=effect_dice,
+        )
+        cls._append_effect_to_participant(attacker, marker)
+        cls._append_effect_to_participant(attacker, rider)
+        flag_modified(state, "participants")
+
+        summary_text = (
+            f"{spell_name} armada: o próximo ataque com arma à distância que acertar detonará o burst reativo."
+        )
+        if result["removed_effects"] or result["removed_area_effects"]:
+            summary_text += " A concentração anterior terminou."
+
+        return cls._base_spell_result(
+            spell_name=spell_name,
+            spell_context=spell_context,
+            target_display_name=attacker["display_name"],
+            target_kind=attacker["kind"],
+            summary_text=summary_text,
+            log_message=(
+                f"{attacker['display_name']} conjurou {spell_name} sobre si e armou o próximo ataque com arma à distância."
+            ),
+            extra={
+                "concentration_group": concentration_group,
+                "effect_applied": True,
+                "rider_armed": True,
+                "save_dc": save_dc,
+                "effect_dice": effect_dice,
             },
         )
 

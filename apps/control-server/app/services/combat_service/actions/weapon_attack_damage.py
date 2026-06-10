@@ -203,6 +203,11 @@ class WeaponAttackDamageMixin(_WeaponAttackDamageBase):
             is_weapon_attack=is_weapon_attack,
         )
         rider_log_suffix = str(rider_result.get("log_suffix") or "")
+        rider_hp_updates = [
+            entry
+            for entry in (rider_result.get("hp_updates") or [])
+            if isinstance(entry, dict)
+        ]
         roll_result = RollResult.model_validate(pending_attack.get("roll_result")) if isinstance(pending_attack.get("roll_result"), dict) else None
         cls._clear_participant_pending_attack(attacker)
         # Attacker dealt damage — their own sanctuary ends.
@@ -219,6 +224,18 @@ class WeaponAttackDamageMixin(_WeaponAttackDamageBase):
             await cls._emit_player_state_update(db, session_id, target_ref_id, target_state)
         elif final_damage > 0 and previous_hp != new_hp:
             await cls._emit_entity_hp_update(db, session_id, target_ref_id, previous_hp)
+        for hp_update in rider_hp_updates:
+            rider_target_ref_id = hp_update.get("target_ref_id")
+            rider_target_kind = hp_update.get("target_kind")
+            rider_previous_hp = hp_update.get("previous_hp")
+            rider_new_hp = hp_update.get("new_hp")
+            if rider_target_ref_id == target_ref_id and rider_target_kind == target_kind:
+                continue
+            if rider_target_kind == "player":
+                target_state, *_ = cls._get_stats(db, rider_target_ref_id, rider_target_kind, session_id)
+                await cls._emit_player_state_update(db, session_id, rider_target_ref_id, target_state)
+            elif rider_previous_hp != rider_new_hp:
+                await cls._emit_entity_hp_update(db, session_id, rider_target_ref_id, rider_previous_hp)
         await cls._emit_state(session_id, state)
         concentration_summary = f" {concentration_check['summary_text']}" if isinstance(concentration_check, dict) and isinstance(concentration_check.get("summary_text"), str) else ""
         await cls._emit_and_persist_log(db, session_id, actor_user_id, attacker["display_name"], {"message": f"{attacker['display_name']} rolled damage with {pending_attack.get('weapon_name') or 'Attack'} against {target_display_name}: {final_damage} damage.{extra_damage_label}{effect_msg}{rider_log_suffix}{concentration_summary}", "actorUserId": actor_user_id, "source": "gm_override" if is_gm else "player_turn"})
