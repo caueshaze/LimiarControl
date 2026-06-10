@@ -1,9 +1,12 @@
 import {
+  Assets,
   Container,
   type FederatedPointerEvent,
   Graphics,
+  Sprite,
   Text,
-  TextStyle
+  TextStyle,
+  Texture
 } from "pixi.js";
 import type {
   GridCalibration,
@@ -12,9 +15,54 @@ import type {
 } from "@limiarmap/shared-contracts";
 import { C } from "./constants";
 import type { GridEditInteractionMode } from "./types";
-import { getTokenBadgeLabel, cellRect } from "./utils";
+import { getTokenBadgeLabel, cellRect, resolveTokenImageUrl } from "./utils";
 import { getTokenFootprint } from "@limiarmap/tactical-engine";
 import { getConditionIndicators } from "../conditions/condition-indicators";
+
+// Token portraits load asynchronously via Assets. Cache resolved textures so
+// repeated redraws are synchronous, and dedupe in-flight loads by URL. Failed
+// loads are remembered so we don't retry (and re-warn) every frame.
+const tokenTextureCache = new Map<string, Texture>();
+const tokenTextureLoading = new Map<string, Promise<void>>();
+const tokenTextureFailed = new Set<string>();
+
+/**
+ * Assign the portrait texture to `sprite`, loading it on first use. The Pixi
+ * ticker re-renders continuously, so the sprite updates once the load resolves
+ * even without a fresh draw pass. Until then the colored base disc shows.
+ */
+function applyTokenPortrait(sprite: Sprite, url: string, diameter: number): void {
+  const assign = (texture: Texture): void => {
+    sprite.texture = texture;
+    sprite.width = diameter;
+    sprite.height = diameter;
+  };
+  const cached = tokenTextureCache.get(url);
+  if (cached) {
+    assign(cached);
+    return;
+  }
+  if (tokenTextureFailed.has(url)) return;
+  if (!tokenTextureLoading.has(url)) {
+    // Force the texture parser: the proxied URL ends in `/asset` (the real
+    // extension is in the query string), so Pixi's format auto-detection fails.
+    const loading = Assets.load({ src: url, parser: "loadTextures" })
+      .then((texture: Texture) => {
+        tokenTextureCache.set(url, texture);
+      })
+      .catch(() => {
+        tokenTextureFailed.add(url);
+      })
+      .finally(() => {
+        tokenTextureLoading.delete(url);
+      });
+    tokenTextureLoading.set(url, loading);
+  }
+  void tokenTextureLoading.get(url)?.then(() => {
+    const texture = tokenTextureCache.get(url);
+    if (texture) assign(texture);
+  });
+}
 
 export function drawTokenLayer(
   container: Container,
@@ -26,7 +74,8 @@ export function drawTokenLayer(
   canvasH: number,
   selectedTokenId: string | null,
   selectedCombatantId: string | null,
-  activeCombatantId: string | null | undefined
+  activeCombatantId: string | null | undefined,
+  sessionId: string
 ): void {
   container.removeChildren();
 
@@ -71,26 +120,45 @@ export function drawTokenLayer(
     const borderAlpha = isActive || isSelected ? 1 : C.tokenBorderNormalAlpha;
     const borderWidth = isActive || isSelected ? 3 : 1.5;
 
+    // Base disc — solid color (also the fallback when an image fails to load).
     const gfx = new Graphics();
     gfx.circle(0, 0, radius).fill({ color: bg });
-    gfx
-      .circle(0, 0, radius)
-      .stroke({ width: borderWidth, color: borderColor, alpha: borderAlpha });
     gfx.x = cx;
     gfx.y = cy;
-
-    const label = getTokenBadgeLabel(token.label);
-    const fontSize = Math.max(8, Math.min(14, radius * 0.8));
-    const text = new Text({
-      text: label,
-      style: new TextStyle({ fill: "#ffffff", fontSize, fontWeight: "bold" })
-    });
-    text.anchor.set(0.5);
-    text.x = cx;
-    text.y = cy;
-
     container.addChild(gfx);
-    container.addChild(text);
+
+    if (token.imageUrl) {
+      // Token portrait chosen at onboarding, clipped to the disc. Starts empty
+      // (color disc shows through) and fills in once the texture loads.
+      const sprite = new Sprite(Texture.EMPTY);
+      sprite.anchor.set(0.5);
+      sprite.x = cx;
+      sprite.y = cy;
+      const mask = new Graphics();
+      mask.circle(cx, cy, radius).fill({ color: 0xffffff });
+      sprite.mask = mask;
+      container.addChild(mask);
+      container.addChild(sprite);
+      applyTokenPortrait(sprite, resolveTokenImageUrl(sessionId, token.imageUrl), radius * 2);
+    } else {
+      const label = getTokenBadgeLabel(token.label);
+      const fontSize = Math.max(8, Math.min(14, radius * 0.8));
+      const text = new Text({
+        text: label,
+        style: new TextStyle({ fill: "#ffffff", fontSize, fontWeight: "bold" })
+      });
+      text.anchor.set(0.5);
+      text.x = cx;
+      text.y = cy;
+      container.addChild(text);
+    }
+
+    // Border ring on top of the fill/portrait (active/selected/normal states).
+    const ring = new Graphics();
+    ring
+      .circle(cx, cy, radius)
+      .stroke({ width: borderWidth, color: borderColor, alpha: borderAlpha });
+    container.addChild(ring);
 
     const conditions = token.conditions ?? [];
     const isInvisible = conditions.includes("invisible");

@@ -3,6 +3,7 @@ import { useEncounterSnapshot } from "../../services/session-store";
 import { useCurrentActor } from "../../services/centrifugo-client";
 import { battleMapStore } from "./battle-map-store";
 import { SelectedTokenCard } from "./SelectedTokenCard";
+import { MapZoomControls } from "./MapZoomControls";
 import { useBattleMapPixi } from "./use-battle-map-pixi";
 
 export function BattleMapCanvas(): React.JSX.Element {
@@ -17,7 +18,7 @@ export function BattleMapCanvas(): React.JSX.Element {
 
   const selectedToken = encounter?.tokens.find((token) => token.id === selectedTokenId) ?? null;
   const selectedTokenMovementRejection = selectedTokenId != null ? (uiState.lastMovementRejectionByTokenId[selectedTokenId] ?? null) : null;
-  const { containerRef, imageAspectRatio } = useBattleMapPixi({
+  const { containerRef, imageAspectRatio, cameraScale, cameraControls } = useBattleMapPixi({
     encounter,
     currentActor,
     uiState,
@@ -25,6 +26,9 @@ export function BattleMapCanvas(): React.JSX.Element {
     setSelectedTokenId,
     selectedToken,
   });
+
+  // Camera is locked (reset to fit) while editing the grid/obstacles/elevation.
+  const cameraLocked = uiState.isGridEditMode || uiState.isObstaclePaintMode || uiState.isElevationPaintMode;
 
   const cursor = uiState.isGridEditMode
     ? "grab"
@@ -47,7 +51,9 @@ export function BattleMapCanvas(): React.JSX.Element {
             cursor,
             backgroundColor: "#111923",
             boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
-            touchAction: uiState.isGridEditMode ? "none" : "auto",
+            // Canvas owns its gestures (pan/pinch/zoom); keep the browser from
+            // hijacking touch scrolling over the map.
+            touchAction: "none",
           }}
         />
         {!encounter ? (
@@ -71,6 +77,14 @@ export function BattleMapCanvas(): React.JSX.Element {
             selectedToken={selectedToken}
             activeCombatantId={encounter?.combatState.activeCombatantId}
             movementRejection={selectedTokenMovementRejection}
+          />
+        ) : null}
+        {encounter && !cameraLocked ? (
+          <MapZoomControls
+            scale={cameraScale}
+            onZoomIn={cameraControls.zoomIn}
+            onZoomOut={cameraControls.zoomOut}
+            onReset={cameraControls.reset}
           />
         ) : null}
       </div>

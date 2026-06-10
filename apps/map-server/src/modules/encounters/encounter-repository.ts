@@ -384,6 +384,8 @@ export class InMemoryEncounterRepository {
       base_size?: Token["base_size"];
       effective_size?: Token["effective_size"];
       effective_footprint?: Token["effective_footprint"];
+      color?: string;
+      imageUrl?: string;
     }>
   ): EncounterState {
     const encounter = this.requireEncounter(sessionId);
@@ -440,6 +442,10 @@ export class InMemoryEncounterRepository {
       if (update.base_size !== undefined) patched.base_size = update.base_size;
       if (update.effective_size !== undefined) patched.effective_size = update.effective_size;
       if (update.effective_footprint !== undefined) patched.effective_footprint = update.effective_footprint;
+      // Cosmetic overrides chosen at onboarding (color / token image) — these were
+      // previously dropped on the update path, so synced tokens lost their look.
+      if (update.color !== undefined) patched.color = update.color;
+      if (update.imageUrl !== undefined) patched.imageUrl = update.imageUrl;
       return patched;
     });
     return this.saveEncounter(encounter);

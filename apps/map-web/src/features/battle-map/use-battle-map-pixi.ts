@@ -18,8 +18,15 @@ import {
   resetPixiRefs,
   type BattleMapPixiRefs
 } from "./battle-map-pixi-runtime";
+import { createCamera, type BattleMapCamera } from "./battle-map-camera";
 
 type CurrentActor = { actorId: string; actorType: "player" | "gm" };
+
+export interface BattleMapCameraControls {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+}
 
 export function useBattleMapPixi(params: {
   encounter: EncounterSnapshotResponse | null;
@@ -31,6 +38,8 @@ export function useBattleMapPixi(params: {
 }): {
   containerRef: React.RefObject<HTMLDivElement | null>;
   imageAspectRatio: number;
+  cameraScale: number;
+  cameraControls: BattleMapCameraControls;
 } {
   const {
     encounter,
@@ -46,9 +55,17 @@ export function useBattleMapPixi(params: {
   const containerRef = useRef<HTMLDivElement>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawRef = useRef<(() => void) | null>(null);
+  const cameraRef = useRef<BattleMapCamera | null>(null);
+  const [cameraScale, setCameraScale] = useState(1);
+  const cameraControls = useRef<BattleMapCameraControls>({
+    zoomIn: () => cameraRef.current?.zoomCenter(1.25),
+    zoomOut: () => cameraRef.current?.zoomCenter(1 / 1.25),
+    reset: () => cameraRef.current?.reset()
+  }).current;
   const cbRef = useRef({ selectedTokenId, encounter, currentActor, uiState });
   const refs: BattleMapPixiRefs = {
     appRef: useRef<Application | null>(null),
+    worldContainerRef: useRef<Container | null>(null),
     bgSpriteRef: useRef<Sprite | null>(null),
     backgroundUrlRef: useRef<string | null>(null),
     reachAoeGfxRef: useRef<Graphics | null>(null),
@@ -100,12 +117,24 @@ export function useBattleMapPixi(params: {
       refs.appRef.current = app;
       containerRef.current.appendChild(app.canvas);
       attachPixiLayers(app, refs);
+      if (refs.worldContainerRef.current) {
+        const camera = createCamera(app, refs.worldContainerRef.current);
+        camera.setOnChange(() => setCameraScale(camera.getScale()));
+        const { uiState: currentUi } = cbRef.current;
+        camera.setLocked(
+          currentUi.isGridEditMode ||
+            currentUi.isObstaclePaintMode ||
+            currentUi.isElevationPaintMode
+        );
+        cameraRef.current = camera;
+      }
       bindPixiStageEvents(
         app,
         cbRef,
         previewTimerRef,
         setSelectedTokenId,
-        setGridEditInteraction
+        setGridEditInteraction,
+        cameraRef
       );
       drawRef.current = buildDrawFunction(refs, cbRef, setGridEditInteraction);
       app.renderer.on("resize", () => {
@@ -128,6 +157,8 @@ export function useBattleMapPixi(params: {
         img.onload = () => {
           if (cancelled || !refs.bgSpriteRef.current) return;
           refs.backgroundUrlRef.current = initialBgUrl;
+          // Drop the dark placeholder tint so the real map shows at full color.
+          refs.bgSpriteRef.current.tint = 0xffffff;
           refs.bgSpriteRef.current.texture = Texture.from(img);
           if (img.naturalWidth > 0 && img.naturalHeight > 0) {
             const ratio = img.naturalWidth / img.naturalHeight;
@@ -155,11 +186,34 @@ export function useBattleMapPixi(params: {
       cancelled = true;
       drawRef.current = null;
       if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+      cameraRef.current?.setOnChange(null);
+      cameraRef.current = null;
       if (refs.appRef.current)
         refs.appRef.current.destroy(true, { children: true });
       resetPixiRefs(refs);
     };
   }, []);
+
+  // Camera is active only in normal play; editing modes reset and lock it so
+  // grid/obstacle/elevation handles stay aligned at base scale (screen space).
+  useEffect(() => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    const locked =
+      uiState.isGridEditMode ||
+      uiState.isObstaclePaintMode ||
+      uiState.isElevationPaintMode;
+    if (locked) {
+      camera.reset();
+      camera.setLocked(true);
+    } else {
+      camera.setLocked(false);
+    }
+  }, [
+    uiState.isGridEditMode,
+    uiState.isObstaclePaintMode,
+    uiState.isElevationPaintMode
+  ]);
 
   useEffect(() => {
     drawRef.current?.();
@@ -179,6 +233,8 @@ export function useBattleMapPixi(params: {
     image.onload = () => {
       if (cancelled || !refs.bgSpriteRef.current) return;
       refs.backgroundUrlRef.current = nextBackgroundUrl;
+      // Drop the dark placeholder tint so the real map shows at full color.
+      refs.bgSpriteRef.current.tint = 0xffffff;
       refs.bgSpriteRef.current.texture = Texture.from(image);
       if (image.naturalWidth > 0 && image.naturalHeight > 0) {
         const ratio = image.naturalWidth / image.naturalHeight;
@@ -321,5 +377,5 @@ export function useBattleMapPixi(params: {
     return () => observer.disconnect();
   }, [imageAspectRatio]);
 
-  return { containerRef, imageAspectRatio };
+  return { containerRef, imageAspectRatio, cameraScale, cameraControls };
 }

@@ -52,6 +52,22 @@ export function coordKey(c: Coordinate): string {
   return `${c.x},${c.y}`;
 }
 
+/**
+ * Resolve a token portrait URL into something the map web app can load
+ * same-origin. Control-server-hosted assets (onboarding presets and uploads)
+ * are routed through the map server's `/sessions/:id/asset` proxy to avoid
+ * cross-origin/CORS failures; absolute and already-proxied URLs pass through.
+ */
+export function resolveTokenImageUrl(sessionId: string, imageUrl: string): string {
+  if (/^https?:\/\//.test(imageUrl) || imageUrl.startsWith("/sessions/")) {
+    return imageUrl;
+  }
+  if (imageUrl.startsWith("/api/assets/") || imageUrl.startsWith("/onboarding/")) {
+    return `/sessions/${encodeURIComponent(sessionId)}/asset?src=${encodeURIComponent(imageUrl)}`;
+  }
+  return imageUrl;
+}
+
 export function getTokenBadgeLabel(label: string): string {
   const words = label.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) {
