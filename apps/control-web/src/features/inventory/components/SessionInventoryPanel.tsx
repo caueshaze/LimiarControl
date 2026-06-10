@@ -4,12 +4,7 @@ import type { CurrencyWallet } from "../../../shared/api/inventoryRepo";
 import type { SessionUseConsumableResult } from "../../../shared/api/sessionsRepo";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { SessionInventoryModal } from "./SessionInventoryModal";
-import {
-  buildInventorySummary,
-  buildWalletCoins,
-  getInventoryItemName,
-  type SessionInventorySelectOption,
-} from "./sessionInventoryPanel.utils";
+import { buildWalletCoins, type SessionInventorySelectOption } from "./sessionInventoryPanel.utils";
 
 type SessionInventoryPanelProps = {
   activeSessionId?: string | null;
@@ -53,7 +48,6 @@ export const SessionInventoryPanel = ({
   onWeaponChange,
 }: SessionInventoryPanelProps) => {
   const { locale, t } = useLocale();
-  const summary = buildInventorySummary(inventory, itemsById, locale);
   const walletCoins = buildWalletCoins(wallet);
   const selectedWeaponLabel = weaponOptions.find((option) => option.value === selectedWeaponId)?.label ?? null;
   const selectedArmorLabel = armorOptions.find((option) => option.value === selectedArmorId)?.label ?? null;
@@ -125,23 +119,6 @@ export const SessionInventoryPanel = ({
               {loadoutStatus}
             </p>
           )}
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {summary.previewItems.length > 0 ? (
-              summary.previewItems.map((entry) => (
-                <span
-                  key={entry.entry.id}
-                  className="rounded-full border border-white/8 bg-white/4 px-3 py-1 text-xs text-slate-300"
-                >
-                  {getInventoryItemName(entry.entry, entry.item, locale)} x{entry.entry.quantity}
-                </span>
-              ))
-            ) : (
-              <p className="text-sm text-slate-400">
-                {inventory === null ? t("inventory.loading") : t("inventory.empty")}
-              </p>
-            )}
-          </div>
         </div>
       </div>
 

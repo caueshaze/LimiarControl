@@ -4,6 +4,7 @@ import type { InventoryItem } from "../../../entities/inventory";
 import type { Item } from "../../../entities/item";
 import { useLocale } from "../../../shared/hooks/useLocale";
 import { formatDamageLabel } from "../../../shared/i18n/domainLabels";
+import { formatItemPrice } from "../../shop/utils/shopCurrency";
 import { getInventoryItemName } from "./sessionInventoryPanel.utils";
 
 const DetailPill = ({ label, value }: { label: string; value: string }) => (
@@ -62,6 +63,9 @@ export const SessionInventoryModalItem = ({
       item?.armorClassBase != null ||
       item?.rangeMeters != null ||
       item?.weight != null ||
+      item?.price != null ||
+      item?.priceCopperValue != null ||
+      item?.priceLabel ||
       propertyLabels.length > 0 ||
       entry.notes,
   );
@@ -176,6 +180,12 @@ export const SessionInventoryModalItem = ({
             )}
             {item?.weight != null && (
               <DetailPill label={t("inventory.weight")} value={String(item.weight)} />
+            )}
+            {(item?.price != null || item?.priceCopperValue != null || item?.priceLabel) && (
+              <DetailPill
+                label={t("inventory.price")}
+                value={formatItemPrice(item.price, item.priceLabel, item.priceCopperValue)}
+              />
             )}
             {propertyLabels.length > 0 && (
               <DetailPill label={t("inventory.properties")} value={propertyLabels.join(", ")} />

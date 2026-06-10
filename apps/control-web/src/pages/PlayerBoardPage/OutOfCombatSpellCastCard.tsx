@@ -53,8 +53,8 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast, targetOption
   };
 
   return (
-    <div className="rounded-xl border border-violet-700/40 bg-slate-900/70 p-4">
-      <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-violet-300">
+    <div className="mt-5 rounded-3xl border border-violet-500/20 bg-violet-500/8 px-4 py-4">
+      <h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-violet-300">
         {t("playerBoard.castSpells")}
       </h3>
       <ul className="space-y-2">
@@ -65,7 +65,7 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast, targetOption
           const canCast = isCastable(spell);
 
           return (
-            <li key={id} className="rounded-lg border border-slate-700/50 bg-slate-800/60">
+            <li key={id} className="rounded-2xl border border-white/8 bg-slate-950/25">
               <button
                 type="button"
                 disabled={!spell.prepared}
@@ -94,7 +94,7 @@ export const OutOfCombatSpellCastCard = ({ spells, casting, onCast, targetOption
               </button>
 
               {isExpanded && (
-                <div className="border-t border-slate-700/50 px-3 pb-3 pt-2 space-y-3">
+                <div className="border-t border-white/8 px-3 pb-3 pt-2 space-y-3">
                   {spell.variants.length > 0 && (
                     <div>
                       <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">

@@ -73,7 +73,7 @@ export const LoadSummaryCard = ({
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
-          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+          <dt className="break-words text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
             {t("playerBoard.encumbranceCurrentShortLabel")}
           </dt>
           <dd className={`mt-2 break-words text-base font-semibold ${encumbranceAccent}`}>
@@ -84,7 +84,7 @@ export const LoadSummaryCard = ({
           ) : null}
         </div>
         <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
-          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+          <dt className="break-words text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
             <span className="sm:hidden">{t("playerBoard.carryingCapacityShortLabel")}</span>
             <span className="hidden sm:inline">{t("playerBoard.carryingCapacityLabel")}</span>
           </dt>
@@ -96,7 +96,7 @@ export const LoadSummaryCard = ({
           ) : null}
         </div>
         <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3">
-          <dt className="text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
+          <dt className="break-words text-[10px] font-bold uppercase leading-4 tracking-[0.18em] text-slate-500">
             <span className="sm:hidden">{t("playerBoard.pushDragLiftShortLabel")}</span>
             <span className="hidden sm:inline">{t("playerBoard.pushDragLiftLabel")}</span>
           </dt>
