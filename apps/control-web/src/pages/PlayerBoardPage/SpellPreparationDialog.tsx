@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadSpellCatalog, resolveSpellByAuthority } from "../../entities/dnd-base";
-import { getCatalogSpellOptions } from "../../features/character-sheet/utils/creationSpells";
+import {
+  isSpellCatalogLoaded,
+  loadSpellCatalog,
+} from "../../entities/dnd-base";
 import { useLocale } from "../../shared/hooks/useLocale";
 import type { Spell } from "../../features/character-sheet/model/characterSheet.types";
 import { getSpellPreparationCopyKeys, type SpellPreparationCopyMode } from "./spellPreparationCopy";
+import {
+  buildSpellPreparationCatalog,
+  resolveSpellPreparationDisplayName,
+} from "./spellPreparationDialogModel";
 
 type Props = {
   open: boolean;
@@ -33,6 +39,7 @@ export const SpellPreparationDialog = ({
   const { t, locale } = useLocale();
   const copyKeys = getSpellPreparationCopyKeys(copyMode);
   const currentPreparedKey = currentPreparedIds.join("|");
+  const [catalogReady, setCatalogReady] = useState(() => isSpellCatalogLoaded(campaignId));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(currentPreparedIds),
   );
@@ -44,8 +51,25 @@ export const SpellPreparationDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    void loadSpellCatalog(campaignId).catch(() => undefined);
-  }, [campaignId, open]);
+    if (isSpellCatalogLoaded(campaignId)) {
+      setCatalogReady(true);
+      return;
+    }
+
+    let active = true;
+    setCatalogReady(false);
+    void loadSpellCatalog(campaignId)
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) {
+          setCatalogReady(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [campaignId, characterClass, open]);
 
   const grouped = useMemo(() => {
     const byLevel: Record<number, Spell[]> = {};
@@ -62,17 +86,12 @@ export const SpellPreparationDialog = ({
       .sort((a, b) => a.level - b.level);
   }, [spells]);
 
-  const spellCatalog = useMemo(
-    () => getCatalogSpellOptions(characterClass ?? "", campaignId),
-    [campaignId, characterClass],
-  );
+  const spellCatalog = useMemo(() => {
+    return buildSpellPreparationCatalog(catalogReady, characterClass, campaignId);
+  }, [campaignId, catalogReady, characterClass]);
 
   const getSpellDisplayName = (spell: Spell) => {
-    const match = resolveSpellByAuthority(spellCatalog, spell);
-    if (match) {
-      return locale === "pt" ? match.namePt ?? match.name : match.name;
-    }
-    return spell.name;
+    return resolveSpellPreparationDisplayName(spellCatalog, spell, locale);
   };
 
   const leveledCount = useMemo(() => {
