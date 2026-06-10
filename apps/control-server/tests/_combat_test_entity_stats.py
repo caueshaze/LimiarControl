@@ -94,6 +94,39 @@ class CombatEntityStatsTestsMixin:
 
         self.assertEqual(ac, 20)
 
+    def test_get_stats_preserves_draconic_resilience_ac_from_finalized_state(self):
+        session_state = MagicMock()
+        session_state.state_json = {
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "abilities": {
+                "strength": 10,
+                "dexterity": 14,
+                "constitution": 10,
+                "intelligence": 10,
+                "wisdom": 10,
+                "charisma": 16,
+            },
+            "equippedArmor": {"armorType": "none", "baseAC": 0},
+            "level": 1,
+            "currentHP": 7,
+            "maxHP": 7,
+            "spellcasting": None,
+        }
+        result = MagicMock()
+        result.first.return_value = session_state
+        self.db.exec.return_value = result
+
+        target, ac, *_ = CombatService._get_stats(
+            self.db,
+            "player-123",
+            "player",
+            "session-123",
+        )
+
+        self.assertIs(target, session_state)
+        self.assertEqual(ac, 15)
+
     def test_get_stats_uses_combat_participant_formula_effects_for_player_ac(self):
         session_state = MagicMock()
         session_state.state_json = {

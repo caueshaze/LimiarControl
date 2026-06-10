@@ -84,6 +84,33 @@ class SessionStateFinalizeTests(unittest.TestCase):
 
         self.assertEqual(armor_class, 15)
 
+    def test_draconic_resilience_sets_unarmored_ac_to_13_plus_dex(self):
+        state = finalize_session_state_data(
+            {
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "level": 1,
+                "abilities": {"dexterity": 14, "constitution": 10},
+                "currentHP": 6,
+                "maxHP": 6,
+            }
+        )
+
+        self.assertEqual(state["armorClass"], 15)
+        self.assertEqual(state["armorClassSource"], "draconic_resilience")
+        self.assertEqual(state["maxHP"], 7)
+
+    def test_draconic_resilience_beats_default_unarmored_at_higher_dex(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "abilities": {"dexterity": 18},
+            }
+        )
+
+        self.assertEqual(armor_class, 17)
+
     def test_armor_class_formula_competes_as_base_not_additive_bonus(self):
         armor_class = calculate_player_armor_class_from_state(
             {
@@ -117,6 +144,73 @@ class SessionStateFinalizeTests(unittest.TestCase):
         )
 
         self.assertEqual(armor_class, 13)
+
+    def test_draconic_resilience_is_disabled_while_wearing_armor(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "abilities": {"dexterity": 14},
+                "equippedArmor": {
+                    "name": "Leather",
+                    "baseAC": 11,
+                    "dexCap": None,
+                    "armorType": "light",
+                    "allowsDex": True,
+                },
+            }
+        )
+
+        self.assertEqual(armor_class, 13)
+
+    def test_draconic_resilience_does_not_stack_with_mage_armor(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "abilities": {"dexterity": 14},
+                "active_spell_effects": [
+                    {
+                        "id": "eff-mage-armor",
+                        "kind": "spell_effect",
+                        "metadata": {
+                            "declarative_effect": {
+                                "type": "armor_class_formula",
+                                "params": {
+                                    "base_value": 13,
+                                    "ability": "dexterity",
+                                    "requires_unarmored": True,
+                                },
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(armor_class, 15)
+
+    def test_draconic_resilience_does_not_stack_with_monk_unarmored_defense(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "class": "monk",
+                "subclass": "draconic_bloodline",
+                "abilities": {"dexterity": 14, "wisdom": 18},
+            }
+        )
+
+        self.assertEqual(armor_class, 16)
+
+    def test_draconic_resilience_does_not_stack_with_barbarian_unarmored_defense(self):
+        armor_class = calculate_player_armor_class_from_state(
+            {
+                "class": "barbarian",
+                "subclass": "draconic_bloodline",
+                "abilities": {"dexterity": 14, "constitution": 18},
+            }
+        )
+
+        self.assertEqual(armor_class, 16)
 
     def test_armor_class_formula_requires_unarmored(self):
         armor_class = calculate_player_armor_class_from_state(
@@ -305,6 +399,25 @@ class SessionStateFinalizeTests(unittest.TestCase):
 
         self.assertEqual(len(state["active_spell_effects"]), 1)
         self.assertEqual(state["active_spell_effects"][0]["id"], "eff-expired")
+
+    def test_finalize_recomputes_draconic_resilience_hp_idempotently(self):
+        state = {
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "level": 6,
+            "abilities": {"dexterity": 14, "constitution": 14},
+            "currentHP": 20,
+            "maxHP": 32,
+        }
+
+        once = finalize_session_state_data(state)
+        twice = finalize_session_state_data(once)
+
+        self.assertEqual(once["maxHP"], 44)
+        self.assertEqual(twice["maxHP"], 44)
+        self.assertEqual(once["currentHP"], 32)
+        self.assertEqual(twice["currentHP"], 32)
+        self.assertEqual(twice["maxHpBreakdown"]["draconicResilienceBonus"], 6)
 
     def test_finalize_prunes_timed_effect_with_invalid_expiration(self):
         state = finalize_session_state_data(

@@ -229,7 +229,25 @@ class CharacterProgressionTests(unittest.TestCase):
         self.assertEqual(lineage["damageType"], "fire")
         self.assertEqual(lineage["resistances"], [])
         self.assertFalse(lineage["hasElementalAffinity"])
-        self.assertEqual([feature["id"] for feature in data["classFeatures"]], ["draconic_ancestry"])
+        self.assertEqual(
+            [feature["id"] for feature in data["classFeatures"]],
+            ["draconic_resilience", "draconic_ancestry"],
+        )
+
+    def test_draconic_bloodline_level_1_exposes_draconic_resilience_feature(self):
+        data = apply_sorcerer_canonical_state({
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "level": 1,
+            "subclassConfig": {"draconicAncestry": "red"},
+        })
+
+        feature = next(feature for feature in data["classFeatures"] if feature["id"] == "draconic_resilience")
+        self.assertEqual(feature["levelGranted"], 1)
+        self.assertEqual(feature["metadata"]["grantsHpPerSorcererLevel"], 1)
+        self.assertTrue(feature["metadata"]["grantsUnarmoredAcFormula"])
+        self.assertEqual(feature["metadata"]["acFormula"], "13_plus_dex")
+        self.assertTrue(feature["metadata"]["requiresNoArmor"])
 
     def test_draconic_bloodline_level_6_gains_resistance_and_elemental_affinity(self):
         data = apply_sorcerer_canonical_state({
@@ -246,7 +264,7 @@ class CharacterProgressionTests(unittest.TestCase):
         self.assertTrue(lineage["hasElementalAffinity"])
         self.assertEqual(
             [feature["id"] for feature in data["classFeatures"]],
-            ["draconic_ancestry", "elemental_affinity"],
+            ["draconic_resilience", "draconic_ancestry", "elemental_affinity"],
         )
 
     def test_elemental_affinity_only_matches_spells_of_the_lineage_damage_type(self):

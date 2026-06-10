@@ -91,6 +91,60 @@ class CanonicalMaxHpTests(unittest.TestCase):
         self.assertEqual(data["maxHP"], 31)
         self.assertEqual(data["currentHP"], 23)
 
+    def test_recompute_hit_points_adds_draconic_resilience_bonus(self):
+        data = recompute_hit_points({
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "level": 6,
+            "maxHP": 32,
+            "currentHP": 20,
+            "abilities": {"constitution": 14},
+        })
+
+        self.assertEqual(data["maxHP"], 44)
+        self.assertEqual(data["currentHP"], 32)
+        self.assertEqual(data["maxHpBreakdown"]["draconicResilienceBonus"], 6)
+
+    def test_recompute_hit_points_is_stable_for_draconic_resilience(self):
+        base = {
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "level": 6,
+            "maxHP": 44,
+            "currentHP": 32,
+            "abilities": {"constitution": 14},
+        }
+
+        once = recompute_hit_points(base)
+        twice = recompute_hit_points(once)
+
+        self.assertEqual(once["maxHP"], 44)
+        self.assertEqual(twice["maxHP"], 44)
+        self.assertEqual(twice["currentHP"], 32)
+
+    def test_recompute_hit_points_does_not_grant_draconic_bonus_to_other_characters(self):
+        sorcerer = recompute_hit_points({
+            "class": "sorcerer",
+            "subclass": "wild_magic",
+            "level": 6,
+            "maxHP": 32,
+            "currentHP": 20,
+            "abilities": {"constitution": 14},
+        })
+        dragonborn = recompute_hit_points({
+            "class": "fighter",
+            "race": "dragonborn",
+            "level": 6,
+            "maxHP": 40,
+            "currentHP": 30,
+            "abilities": {"constitution": 14},
+        })
+
+        self.assertEqual(sorcerer["maxHP"], 38)
+        self.assertEqual(dragonborn["maxHP"], 52)
+        self.assertEqual(sorcerer["maxHpBreakdown"]["draconicResilienceBonus"], 0)
+        self.assertEqual(dragonborn["maxHpBreakdown"]["draconicResilienceBonus"], 0)
+
 
 # ── Spell slot tables ──────────────────────────────────────────────────────────
 
@@ -416,6 +470,23 @@ class ApplyLevelUpStatsTests(unittest.TestCase):
         original_max_hp = base["maxHP"]
         apply_level_up_stats(base, 3)
         self.assertEqual(base["maxHP"], original_max_hp)
+
+    def test_draconic_bloodline_level_up_adds_resilience_hp_gain(self):
+        base = {
+            "class": "sorcerer",
+            "subclass": "draconic_bloodline",
+            "level": 1,
+            "maxHP": 7,
+            "currentHP": 5,
+            "hitDiceTotal": 1,
+            "hitDiceRemaining": 1,
+            "abilities": {"constitution": 10},
+            "spellcasting": {"slots": {"1": {"max": 2, "used": 0}}},
+        }
+        data = apply_level_up_stats(base, 2)
+        self.assertEqual(data["maxHP"], 12)
+        self.assertEqual(data["currentHP"], 10)
+        self.assertEqual(data["maxHpBreakdown"]["draconicResilienceBonus"], 2)
 
 
 # ── Integration: approve_level_up now includes stat recalculation ──────────────

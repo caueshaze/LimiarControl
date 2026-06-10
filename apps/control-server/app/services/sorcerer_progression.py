@@ -6,12 +6,27 @@ from app.services.draconic_ancestry import (
 )
 
 
+DRACONIC_BLOODLINE_SUBCLASS_ID = "draconic_bloodline"
+
+
 def _normalize_class_id(value: object) -> str:
     return str(value or "").strip().lower()
 
 
 def is_sorcerer_class(value: object) -> bool:
     return _normalize_class_id(value) == "sorcerer"
+
+
+def is_draconic_bloodline_sorcerer(data: dict | None) -> bool:
+    payload = dict(data) if isinstance(data, dict) else {}
+    return is_sorcerer_class(payload.get("class")) and payload.get("subclass") == DRACONIC_BLOODLINE_SUBCLASS_ID
+
+
+def get_draconic_resilience_hit_point_bonus(data: dict | None) -> int:
+    payload = dict(data) if isinstance(data, dict) else {}
+    if not is_draconic_bloodline_sorcerer(payload):
+        return 0
+    return max(0, int(payload.get("level", 1) or 1))
 
 
 def build_sorcerer_class_features(data: dict | None) -> list[dict]:
@@ -21,11 +36,29 @@ def build_sorcerer_class_features(data: dict | None) -> list[dict]:
 
     level = max(1, int(next_data.get("level", 1) or 1))
     subclass = next_data.get("subclass")
-    if subclass != "draconic_bloodline":
+    if subclass != DRACONIC_BLOODLINE_SUBCLASS_ID:
         return []
 
     lineage = resolve_draconic_lineage_state(next_data)
     features: list[dict] = []
+
+    features.append(
+        {
+            "id": "draconic_resilience",
+            "source": "subclass",
+            "levelGranted": 1,
+            "label": "Resiliência Dracônica",
+            "description": "Seu máximo de pontos de vida aumenta em 1 por nível de feiticeiro e, sem armadura, sua CA base é 13 + Destreza.",
+            "kind": "passive",
+            "metadata": {
+                "sourceKey": "sorcerer_draconic_bloodline",
+                "grantsHpPerSorcererLevel": 1,
+                "grantsUnarmoredAcFormula": True,
+                "acFormula": "13_plus_dex",
+                "requiresNoArmor": True,
+            },
+        }
+    )
 
     if lineage["ancestry"] and lineage["damageType"]:
         features.append(
@@ -75,7 +108,7 @@ def apply_sorcerer_canonical_state(data: dict | None) -> dict:
         next_data.get("subclass"),
         next_data.get("subclassConfig"),
     )
-    if next_data.get("subclass") == "draconic_bloodline":
+    if next_data.get("subclass") == DRACONIC_BLOODLINE_SUBCLASS_ID:
         next_data["classFeatures"] = build_sorcerer_class_features(next_data)
     else:
         next_data["classFeatures"] = []

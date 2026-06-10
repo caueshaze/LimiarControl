@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from math import floor
 
+from app.services.sorcerer_progression import DRACONIC_BLOODLINE_SUBCLASS_ID
+
 # ── Hit Dice by class ──────────────────────────────────────────────────────────
 
 CLASS_HIT_DICE: dict[str, int] = {
@@ -219,23 +221,72 @@ def get_hp_gain_per_level(class_id: str, constitution_score: int = 10) -> int:
     return _HP_AVERAGE_BY_DIE.get(sides, 5) + _ability_modifier(constitution_score)
 
 
+def _normalize_subclass(subclass_id: object) -> str:
+    return str(subclass_id or "").strip().lower()
+
+
+def _draconic_resilience_bonus_for_level(
+    class_id: str,
+    level: int,
+    *,
+    subclass_id: object = None,
+) -> int:
+    normalized_class = _normalize_class(class_id)
+    normalized_subclass = _normalize_subclass(subclass_id)
+    if normalized_class != "sorcerer" or normalized_subclass != DRACONIC_BLOODLINE_SUBCLASS_ID:
+        return 0
+    return max(0, int(level))
+
+
+def _build_max_hp_breakdown(
+    *,
+    class_id: str,
+    level: int,
+    constitution_score: int,
+    subclass_id: object = None,
+) -> dict[str, int]:
+    normalized_class = _normalize_class(class_id)
+    sides = CLASS_HIT_DICE.get(normalized_class, 8)
+    clamped_level = max(0, int(level))
+    if clamped_level <= 0:
+        return {
+            "baseClassHp": 0,
+            "constitutionBonus": 0,
+            "draconicResilienceBonus": 0,
+            "total": 0,
+        }
+
+    constitution_modifier = _ability_modifier(constitution_score)
+    base_class_hp = sides + (max(0, clamped_level - 1) * _HP_AVERAGE_BY_DIE.get(sides, 5))
+    constitution_bonus = clamped_level * constitution_modifier
+    draconic_resilience_bonus = _draconic_resilience_bonus_for_level(
+        normalized_class,
+        clamped_level,
+        subclass_id=subclass_id,
+    )
+    return {
+        "baseClassHp": base_class_hp,
+        "constitutionBonus": constitution_bonus,
+        "draconicResilienceBonus": draconic_resilience_bonus,
+        "total": max(1, base_class_hp + constitution_bonus + draconic_resilience_bonus),
+    }
+
+
 def compute_max_hp_for_level(
     class_id: str,
     level: int,
     constitution_score: int = 10,
+    *,
+    subclass_id: object = None,
 ) -> int:
     """Compute canonical max HP for a single-class character at a given level."""
-    normalized_class = _normalize_class(class_id)
-    sides = CLASS_HIT_DICE.get(normalized_class, 8)
-    level = max(0, int(level))
-    if level <= 0:
-        return 0
-
-    constitution_modifier = _ability_modifier(constitution_score)
-    average_per_level = _HP_AVERAGE_BY_DIE.get(sides, 5)
-    extra_levels = max(0, level - 1)
-    total = sides + constitution_modifier + (extra_levels * (average_per_level + constitution_modifier))
-    return max(1, total)
+    breakdown = _build_max_hp_breakdown(
+        class_id=class_id,
+        level=level,
+        constitution_score=constitution_score,
+        subclass_id=subclass_id,
+    )
+    return breakdown["total"]
 
 
 def recompute_hit_points(data: dict, *, preserve_damage: bool = True) -> dict:
@@ -243,10 +294,15 @@ def recompute_hit_points(data: dict, *, preserve_damage: bool = True) -> dict:
     next_data = dict(data)
     current_max_hp = int(next_data.get("maxHP") or 0)
     current_hp = int(next_data.get("currentHP") or 0)
+    class_id = next_data.get("class", "")
+    level = int(next_data.get("level", 1) or 1)
+    constitution_score = _get_constitution_score(next_data)
+    subclass_id = next_data.get("subclass")
     new_max_hp = compute_max_hp_for_level(
-        next_data.get("class", ""),
-        int(next_data.get("level", 1) or 1),
-        _get_constitution_score(next_data),
+        class_id,
+        level,
+        constitution_score,
+        subclass_id=subclass_id,
     )
 
     if preserve_damage:
@@ -257,6 +313,12 @@ def recompute_hit_points(data: dict, *, preserve_damage: bool = True) -> dict:
 
     next_data["maxHP"] = new_max_hp
     next_data["currentHP"] = next_current_hp
+    next_data["maxHpBreakdown"] = _build_max_hp_breakdown(
+        class_id=class_id,
+        level=level,
+        constitution_score=constitution_score,
+        subclass_id=subclass_id,
+    )
     return next_data
 
 
@@ -275,10 +337,21 @@ def apply_level_up_stats(data: dict, new_level: int) -> dict:
 
     # ── HP ────────────────────────────────────────────────────────────────────
     hp_gain = get_hp_gain_per_level(class_id, _get_constitution_score(next_data))
+    hp_gain += _draconic_resilience_bonus_for_level(
+        class_id,
+        1,
+        subclass_id=next_data.get("subclass"),
+    )
     current_max_hp = int(next_data.get("maxHP") or 0)
     current_hp = int(next_data.get("currentHP") or 0)
     next_data["maxHP"] = max(0, current_max_hp + hp_gain)
     next_data["currentHP"] = max(0, min(next_data["maxHP"], current_hp + hp_gain))
+    next_data["maxHpBreakdown"] = _build_max_hp_breakdown(
+        class_id=class_id,
+        level=new_level,
+        constitution_score=_get_constitution_score(next_data),
+        subclass_id=next_data.get("subclass"),
+    )
 
     # ── Hit Dice ──────────────────────────────────────────────────────────────
     old_remaining = int(next_data.get("hitDiceRemaining") or 0)
