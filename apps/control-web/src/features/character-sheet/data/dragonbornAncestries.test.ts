@@ -51,9 +51,11 @@ describe("dragonbornAncestries", () => {
 
   it("scales dragonborn breath weapon damage by level bracket", () => {
     expect(getDragonbornBreathWeaponDamageDice(1)).toBe("2d6");
-    expect(getDragonbornBreathWeaponDamageDice(5)).toBe("3d6");
+    expect(getDragonbornBreathWeaponDamageDice(5)).toBe("2d6");
+    expect(getDragonbornBreathWeaponDamageDice(6)).toBe("3d6");
     expect(getDragonbornBreathWeaponDamageDice(11)).toBe("4d6");
-    expect(getDragonbornBreathWeaponDamageDice(17)).toBe("5d6");
+    expect(getDragonbornBreathWeaponDamageDice(15)).toBe("4d6");
+    expect(getDragonbornBreathWeaponDamageDice(16)).toBe("5d6");
   });
 
   it("computes dragonborn breath weapon DC from proficiency and constitution", () => {
