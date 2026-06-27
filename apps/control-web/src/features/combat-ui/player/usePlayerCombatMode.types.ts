@@ -10,7 +10,7 @@ import type {
   SpellTargetAnchor,
 } from "../../../entities/base-spell";
 import type { CharacterSheet } from "../../../features/character-sheet/model/characterSheet.types";
-import type { CombatActionCost, CombatSpellMode } from "../../../shared/api/combatRepo";
+import type { ActiveEffect, CombatActionCost, CombatSpellMode } from "../../../shared/api/combatRepo";
 import type { Locale } from "../../../shared/i18n";
 import type { PlayerBoardStatusSummary } from "../../../pages/PlayerBoardPage/playerBoard.types";
 import type { DragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
@@ -85,6 +85,8 @@ export type UsePlayerCombatModeProps = {
   locale: Locale;
   playerSheet?: CharacterSheet | null;
   playerStatus?: PlayerBoardStatusSummary | null;
+  activeSpellEffects?: ActiveEffect[] | null;
+  gameTimeSeconds?: number | null;
   sessionId: string;
   userId?: string | null;
 };

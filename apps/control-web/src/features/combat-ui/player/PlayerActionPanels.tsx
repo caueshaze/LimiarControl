@@ -17,7 +17,10 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
-import type { DraconicElementalResistanceAction } from "./draconicElementalResistance";
+import type {
+  ActiveElementalResistance,
+  DraconicElementalResistanceAction,
+} from "./draconicElementalResistance";
 import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
 import type { DragonWingsAction } from "./dragonWings";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
@@ -33,6 +36,7 @@ type Props = {
   consumableOptions: ConsumableOption[];
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
   draconicElementalResistanceAction?: DraconicElementalResistanceAction | null;
+  activeElementalResistance?: ActiveElementalResistance | null;
   lastElementalResistanceResult?: DraconicElementalResistanceResult | null;
   dragonWingsAction?: DragonWingsAction | null;
   spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
@@ -86,6 +90,7 @@ export const PlayerActionPanels = ({
   consumableOptions,
   dragonbornBreathWeaponAction,
   draconicElementalResistanceAction = null,
+  activeElementalResistance = null,
   lastElementalResistanceResult = null,
   dragonWingsAction = null,
   spiritualWeaponFollowUpAction,
@@ -450,7 +455,13 @@ export const PlayerActionPanels = ({
                     {draconicElementalResistanceAction.sorceryPointsRemaining}/
                     {draconicElementalResistanceAction.sorceryPointsMax}
                   </p>
-                  {lastElementalResistanceResult ? (
+                  {activeElementalResistance ? (
+                    <p className="mt-2 text-xs text-amber-200">
+                      {t("combatUi.elementalAffinityResistanceActive")}
+                      {" · "}
+                      {activeElementalResistance.secondsRemaining ?? 0}s
+                    </p>
+                  ) : lastElementalResistanceResult ? (
                     <p className="mt-2 text-xs text-amber-200">
                       {t("combatUi.elementalAffinityResistanceActive")}
                       {" · "}

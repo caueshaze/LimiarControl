@@ -398,8 +398,10 @@ export const PlayerBoardPage = () => {
       <Toast toast={toast} onClose={clearToast} />
       {combatActive && combatModeVisible && activeSession?.id ? (
         <PlayerCombatModeShell
+          activeSpellEffects={activeSpellEffects}
           campaignId={effectiveCampaignId}
           expanded={combatUiExpanded}
+          gameTimeSeconds={gameTimeSeconds}
           inventory={myInventory}
           isSavingLoadout={isSavingLoadout}
           itemsById={catalogItems}

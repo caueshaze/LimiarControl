@@ -18,6 +18,7 @@ vi.mock("../../../shared/hooks/useLocale", () => ({
         "combatUi.switchWeaponHint": "Escolha a arma ativa para os próximos ataques.",
         "combatUi.meleeReachEffective": "Alcance corpo a corpo",
         "combatUi.meleeReachSizePrefix": "Tamanho",
+        "combatUi.elementalAffinityResistanceActive": "Resistência elemental ativa",
         "playerBoard.creatureSize.Large": "Grande",
         "playerBoard.creatureSize.Huge": "Enorme",
       }[key] ?? key),
@@ -365,5 +366,172 @@ describe("PlayerActionPanels", () => {
 
     expect(markup).toContain("<select");
     expect(markup).toContain("disabled=\"\"");
+  });
+
+  it("renderiza o badge persistente da resistencia elemental com countdown do servidor", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerActionPanels
+        activeActionPanel="standard"
+        actionUsed={false}
+        attackRangePreview={{
+          loading: false,
+          error: null,
+          diagnostics: null,
+          distanceMeters: null,
+          normalRangeMeters: null,
+          maxRangeMeters: null,
+          effectiveReachMeters: null,
+          rangeStatus: "unknown",
+          hasDisadvantage: false,
+          failureReasons: [],
+        }}
+        canAct
+        consumableItemId=""
+        consumableOptions={[]}
+        dragonbornBreathWeaponAction={null}
+        draconicElementalResistanceAction={{
+          id: "draconic_elemental_resistance",
+          damageType: "fire",
+          sorceryPointsMax: 6,
+          sorceryPointsRemaining: 3,
+        }}
+        activeElementalResistance={{
+          damageType: "fire",
+          expiresAtGameTimeSeconds: 1060,
+          secondsRemaining: 30,
+        }}
+        spiritualWeaponFollowUpAction={null}
+        handleAttack={async () => undefined}
+        handleCast={async () => undefined}
+        handleDragonbornBreathWeapon={async () => undefined}
+        handleActivateDraconicElementalResistance={async () => undefined}
+        onEnterSpiritualWeaponMode={() => undefined}
+        handleStandardAction={async () => undefined}
+        handleUseObject={async () => undefined}
+        isSavingLoadout={false}
+        loadoutStatus={null}
+        myParticipantId="participant-1"
+        onWeaponChange={() => undefined}
+        playerStatus={null}
+        selectedConsumable={null}
+        selectedSpell={null}
+        selectedSpellId=""
+        selectedTarget={{ id: "target-1" }}
+        selectedWeaponId=""
+        setActiveActionPanel={() => undefined}
+        setConsumableItemId={() => undefined}
+        setSelectedSpellId={() => undefined}
+        setUseObjectManualRolls={() => undefined}
+        setUseObjectNote={() => undefined}
+        setUseObjectRollMode={() => undefined}
+        setUseObjectTargetParticipantId={() => undefined}
+        spellOptions={[]}
+        spellRangePreview={{
+          loading: false,
+          error: null,
+          diagnostics: null,
+          distanceMeters: null,
+          normalRangeMeters: null,
+          maxRangeMeters: null,
+          effectiveReachMeters: null,
+          rangeStatus: "unknown",
+          hasDisadvantage: false,
+          failureReasons: [],
+        }}
+        targetId="target-1"
+        turnResources={null}
+        useObjectActionDisabled={false}
+        useObjectManualRolls={[]}
+        useObjectNote=""
+        useObjectRollMode="system"
+        useObjectTargetOptions={[]}
+        useObjectTargetParticipantId=""
+        weaponOptions={[]}
+      />,
+    );
+
+    expect(markup).toContain("Resistência elemental ativa");
+    expect(markup).toContain("30s");
+  });
+
+  it("nao renderiza o badge persistente sem efeito ativo", () => {
+    const markup = renderToStaticMarkup(
+      <PlayerActionPanels
+        activeActionPanel="standard"
+        actionUsed={false}
+        attackRangePreview={{
+          loading: false,
+          error: null,
+          diagnostics: null,
+          distanceMeters: null,
+          normalRangeMeters: null,
+          maxRangeMeters: null,
+          effectiveReachMeters: null,
+          rangeStatus: "unknown",
+          hasDisadvantage: false,
+          failureReasons: [],
+        }}
+        canAct
+        consumableItemId=""
+        consumableOptions={[]}
+        dragonbornBreathWeaponAction={null}
+        draconicElementalResistanceAction={{
+          id: "draconic_elemental_resistance",
+          damageType: "fire",
+          sorceryPointsMax: 6,
+          sorceryPointsRemaining: 3,
+        }}
+        activeElementalResistance={null}
+        spiritualWeaponFollowUpAction={null}
+        handleAttack={async () => undefined}
+        handleCast={async () => undefined}
+        handleDragonbornBreathWeapon={async () => undefined}
+        handleActivateDraconicElementalResistance={async () => undefined}
+        onEnterSpiritualWeaponMode={() => undefined}
+        handleStandardAction={async () => undefined}
+        handleUseObject={async () => undefined}
+        isSavingLoadout={false}
+        loadoutStatus={null}
+        myParticipantId="participant-1"
+        onWeaponChange={() => undefined}
+        playerStatus={null}
+        selectedConsumable={null}
+        selectedSpell={null}
+        selectedSpellId=""
+        selectedTarget={{ id: "target-1" }}
+        selectedWeaponId=""
+        setActiveActionPanel={() => undefined}
+        setConsumableItemId={() => undefined}
+        setSelectedSpellId={() => undefined}
+        setUseObjectManualRolls={() => undefined}
+        setUseObjectNote={() => undefined}
+        setUseObjectRollMode={() => undefined}
+        setUseObjectTargetParticipantId={() => undefined}
+        spellOptions={[]}
+        spellRangePreview={{
+          loading: false,
+          error: null,
+          diagnostics: null,
+          distanceMeters: null,
+          normalRangeMeters: null,
+          maxRangeMeters: null,
+          effectiveReachMeters: null,
+          rangeStatus: "unknown",
+          hasDisadvantage: false,
+          failureReasons: [],
+        }}
+        targetId="target-1"
+        turnResources={null}
+        useObjectActionDisabled={false}
+        useObjectManualRolls={[]}
+        useObjectNote=""
+        useObjectRollMode="system"
+        useObjectTargetOptions={[]}
+        useObjectTargetParticipantId=""
+        weaponOptions={[]}
+      />,
+    );
+
+    expect(markup).not.toContain("Resistência elemental ativa");
   });
 });

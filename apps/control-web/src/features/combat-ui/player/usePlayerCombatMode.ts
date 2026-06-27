@@ -18,7 +18,10 @@ import {
   withActionState,
 } from "./usePlayerCombatModeHelpers";
 import { buildDragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
-import { buildDraconicElementalResistanceAction } from "./draconicElementalResistance";
+import {
+  buildDraconicElementalResistanceAction,
+  resolveActiveElementalResistance,
+} from "./draconicElementalResistance";
 import { buildDragonWingsAction } from "./dragonWings";
 import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
 import { buildSpiritualWeaponFollowUpAction } from "./spiritualWeapon";
@@ -39,6 +42,8 @@ export const usePlayerCombatMode = ({
   locale,
   playerSheet,
   playerStatus,
+  activeSpellEffects = null,
+  gameTimeSeconds = null,
   sessionId,
   userId = null,
 }: UsePlayerCombatModeProps) => {
@@ -178,6 +183,10 @@ export const usePlayerCombatMode = ({
   const draconicElementalResistanceAction = useMemo(
     () => buildDraconicElementalResistanceAction(playerSheet),
     [playerSheet],
+  );
+  const activeElementalResistance = useMemo(
+    () => resolveActiveElementalResistance(activeSpellEffects, gameTimeSeconds),
+    [activeSpellEffects, gameTimeSeconds],
   );
   const dragonWingsAction = useMemo(
     () => buildDragonWingsAction(playerSheet),
@@ -394,6 +403,7 @@ export const usePlayerCombatMode = ({
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
     draconicElementalResistanceAction,
+    activeElementalResistance,
     lastElementalResistanceResult,
     dragonWingsAction,
     spiritualWeaponFollowUpAction,

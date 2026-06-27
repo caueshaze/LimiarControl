@@ -19,7 +19,10 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
-import type { DraconicElementalResistanceAction } from "./draconicElementalResistance";
+import type {
+  ActiveElementalResistance,
+  DraconicElementalResistanceAction,
+} from "./draconicElementalResistance";
 import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
 import type { DragonWingsAction } from "./dragonWings";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
@@ -35,6 +38,7 @@ type Props = {
   deathSaveFeedback: { message?: string | null } | null;
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
   draconicElementalResistanceAction?: DraconicElementalResistanceAction | null;
+  activeElementalResistance?: ActiveElementalResistance | null;
   lastElementalResistanceResult?: DraconicElementalResistanceResult | null;
   dragonWingsAction?: DragonWingsAction | null;
   spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
@@ -119,6 +123,7 @@ export const PlayerTurnPanel = ({
   deathSaveFeedback,
   dragonbornBreathWeaponAction,
   draconicElementalResistanceAction = null,
+  activeElementalResistance = null,
   lastElementalResistanceResult = null,
   dragonWingsAction = null,
   spiritualWeaponFollowUpAction,
@@ -357,6 +362,7 @@ export const PlayerTurnPanel = ({
               consumableOptions={consumableOptions}
               dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
               draconicElementalResistanceAction={draconicElementalResistanceAction}
+              activeElementalResistance={activeElementalResistance}
               lastElementalResistanceResult={lastElementalResistanceResult}
               handleActivateDraconicElementalResistance={handleActivateDraconicElementalResistance}
               dragonWingsAction={dragonWingsAction}

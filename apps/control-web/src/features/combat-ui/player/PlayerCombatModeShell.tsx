@@ -49,7 +49,7 @@ import {
   resolveMovementCellSelection,
   useMovementPreview,
 } from "../map/useMovementPreview";
-import { combatRepo, type CombatMapPreviewToken, type PendingSave } from "../../../shared/api/combatRepo";
+import { combatRepo, type ActiveEffect, type CombatMapPreviewToken, type PendingSave } from "../../../shared/api/combatRepo";
 import { buildPendingSaveReason, resolveTargetVariantLabel } from "../spellVariantUi";
 
 type Props = {
@@ -71,6 +71,8 @@ type Props = {
   pendingRoll: PendingRoll | null;
   playerSheet?: CharacterSheet | null;
   playerStatus?: PlayerBoardStatusSummary | null;
+  activeSpellEffects?: ActiveEffect[] | null;
+  gameTimeSeconds?: number | null;
   rollMode: "virtual" | "manual" | null;
   sessionId: string;
   selectedWeaponId?: string | null;
@@ -99,6 +101,8 @@ export const PlayerCombatModeShell = ({
   pendingRoll,
   playerSheet,
   playerStatus,
+  activeSpellEffects = null,
+  gameTimeSeconds = null,
   rollMode,
   sessionId,
   selectedWeaponId = null,
@@ -121,6 +125,7 @@ export const PlayerCombatModeShell = ({
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
     draconicElementalResistanceAction,
+    activeElementalResistance,
     lastElementalResistanceResult,
     dragonWingsAction,
     spiritualWeaponFollowUpAction,
@@ -177,6 +182,8 @@ export const PlayerCombatModeShell = ({
     locale,
     playerSheet,
     playerStatus,
+    activeSpellEffects,
+    gameTimeSeconds,
     sessionId,
     userId,
   });
@@ -549,63 +556,64 @@ export const PlayerCombatModeShell = ({
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
           <div className="space-y-6">
-          <PlayerTurnPanel
-            activeActionPanel={activeActionPanel}
-            combat={combat}
-            consumableItemId={consumableItemId}
-            consumableOptions={consumableOptions}
-            deathSaveFeedback={deathSaveFeedback}
-            dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
-            draconicElementalResistanceAction={draconicElementalResistanceAction}
-            lastElementalResistanceResult={lastElementalResistanceResult}
-            dragonWingsAction={dragonWingsAction}
-            spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
-            participants={combat.state?.participants}
-            handleAttack={handleAttack}
-            handleCast={handleCast}
-            handleDeathSave={handleDeathSave}
-            handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
-            handleActivateDraconicElementalResistance={handleActivateDraconicElementalResistance}
-            handleToggleDragonWings={handleToggleDragonWings}
-            handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
-            onEnterSpiritualWeaponMode={handleEnterSwMode}
-            handleEndTurn={handleEndTurn}
-            handleRequestReaction={handleRequestReaction}
-            handleStandardAction={handleStandardAction}
-            handleUseObject={handleUseObject}
-            lastAttackResult={lastAttackResult}
-            lastSpellResult={lastSpellResult}
-            lastUseObjectResult={lastUseObjectResult}
-            myParticipant={myParticipant}
-            pendingRoll={pendingRoll}
-            playerStatus={playerStatus}
-            selectedConsumable={selectedConsumable}
-            selectedSpell={selectedSpell}
-            selectedSpellId={selectedSpellId}
-            selectedTarget={selectedTarget}
-            sessionId={sessionId}
-            setActiveActionPanel={setActiveActionPanel}
-            setConsumableItemId={setConsumableItemId}
-            setSelectedSpellId={setSelectedSpellId}
-            setTargetId={setTargetId}
-            setUseObjectManualRolls={setUseObjectManualRolls}
-            setUseObjectNote={setUseObjectNote}
-            setUseObjectRollMode={setUseObjectRollMode}
-            setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
-            selectedWeaponId={selectedWeaponId ?? ""}
-            spellOptions={spellOptions}
-            targetId={targetId}
-            useObjectManualRolls={useObjectManualRolls}
-            useObjectNote={useObjectNote}
-            useObjectRollMode={useObjectRollMode}
-            useObjectTargetOptions={useObjectTargetOptions}
-            useObjectTargetParticipantId={useObjectTargetParticipantId}
-            weaponOptions={weaponOptions}
-            isSavingLoadout={isSavingLoadout}
-            loadoutStatus={loadoutStatus}
-            onWeaponChange={onWeaponChange}
-          />
-        </div>
+            <PlayerTurnPanel
+              activeActionPanel={activeActionPanel}
+              combat={combat}
+              consumableItemId={consumableItemId}
+              consumableOptions={consumableOptions}
+              deathSaveFeedback={deathSaveFeedback}
+              dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
+              draconicElementalResistanceAction={draconicElementalResistanceAction}
+              activeElementalResistance={activeElementalResistance}
+              lastElementalResistanceResult={lastElementalResistanceResult}
+              dragonWingsAction={dragonWingsAction}
+              spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
+              participants={combat.state?.participants}
+              handleAttack={handleAttack}
+              handleCast={handleCast}
+              handleDeathSave={handleDeathSave}
+              handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
+              handleActivateDraconicElementalResistance={handleActivateDraconicElementalResistance}
+              handleToggleDragonWings={handleToggleDragonWings}
+              handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
+              onEnterSpiritualWeaponMode={handleEnterSwMode}
+              handleEndTurn={handleEndTurn}
+              handleRequestReaction={handleRequestReaction}
+              handleStandardAction={handleStandardAction}
+              handleUseObject={handleUseObject}
+              lastAttackResult={lastAttackResult}
+              lastSpellResult={lastSpellResult}
+              lastUseObjectResult={lastUseObjectResult}
+              myParticipant={myParticipant}
+              pendingRoll={pendingRoll}
+              playerStatus={playerStatus}
+              selectedConsumable={selectedConsumable}
+              selectedSpell={selectedSpell}
+              selectedSpellId={selectedSpellId}
+              selectedTarget={selectedTarget}
+              sessionId={sessionId}
+              setActiveActionPanel={setActiveActionPanel}
+              setConsumableItemId={setConsumableItemId}
+              setSelectedSpellId={setSelectedSpellId}
+              setTargetId={setTargetId}
+              setUseObjectManualRolls={setUseObjectManualRolls}
+              setUseObjectNote={setUseObjectNote}
+              setUseObjectRollMode={setUseObjectRollMode}
+              setUseObjectTargetParticipantId={setUseObjectTargetParticipantId}
+              selectedWeaponId={selectedWeaponId ?? ""}
+              spellOptions={spellOptions}
+              targetId={targetId}
+              useObjectManualRolls={useObjectManualRolls}
+              useObjectNote={useObjectNote}
+              useObjectRollMode={useObjectRollMode}
+              useObjectTargetOptions={useObjectTargetOptions}
+              useObjectTargetParticipantId={useObjectTargetParticipantId}
+              weaponOptions={weaponOptions}
+              isSavingLoadout={isSavingLoadout}
+              loadoutStatus={loadoutStatus}
+              onWeaponChange={onWeaponChange}
+            />
+          </div>
 
           <div className="space-y-6">
             <section className="rounded-4xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(2,6,23,0.94))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
