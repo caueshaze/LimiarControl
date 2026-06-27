@@ -8,6 +8,7 @@ from ...combat_targeting import get_combat_targeting_service
 from ..cast_target_commit import CastTargetCommitMixin
 from ..cast_target_effect import CastTargetEffectMixin
 from .instance_resolution import CastTargetInstanceResolutionMixin
+from .multi_instance_effect import CastMultiInstanceEffectMixin
 from .multi_target_resolution_core import CastTargetMultiTargetResolutionCoreMixin
 from .orchestrator import CastTargetOrchestratorMixin
 from .plain_multi_target_resolution import CastTargetPlainMultiTargetResolutionMixin

@@ -388,7 +388,16 @@ export const PlayerSpellCastDialog = ({
     ) ??
     effectDiceSource ??
     spellEffectDice;
-  const effectRollCount = getDamageRollCount(effectDiceSource, Boolean(result?.is_critical));
+  const pendingInstanceOutcomes =
+    result?.effect_instance_outcomes?.filter((outcome) => outcome.needs_roll) ?? [];
+  const effectRollCount =
+    result?.pending_spell_id && pendingInstanceOutcomes.length > 0
+      ? pendingInstanceOutcomes.reduce(
+          (sum, outcome) =>
+            sum + getDamageRollCount(effectDiceSource, Boolean(outcome.is_critical)),
+          0,
+        )
+      : getDamageRollCount(effectDiceSource, Boolean(result?.is_critical));
   const effectRollSides = getDamageRollSides(effectDiceSource);
   const effectRollValues = Array.from({ length: effectRollSides }, (_, i) => i + 1);
   const effectKindLabel =

@@ -60,6 +60,7 @@ class CastTargetEffectMixin(_CastTargetEffectBase):
         effect_dice = pending_spell.get("effect_dice")
         effect_bonus = cls._safe_int(pending_spell.get("effect_bonus"), 0)
         area_targets_payload = pending_spell.get("area_targets")
+        instance_targets_payload = pending_spell.get("instance_targets")
         roll_result_data = pending_spell.get("roll_result")
         roll_result = (
             RollResult.model_validate(roll_result_data)
@@ -70,6 +71,17 @@ class CastTargetEffectMixin(_CastTargetEffectBase):
         target_kind = pending_spell.get("target_kind")
         target_display_name = pending_spell.get("target_display_name") or "Target"
 
+        if isinstance(instance_targets_payload, list):
+            return await cls._cast_multi_instance_spell_effect(
+                db,
+                session_id,
+                req,
+                attacker=attacker,
+                pending_spell=pending_spell,
+                actor_user_id=actor_user_id,
+                is_gm=is_gm,
+                state=state,
+            )
         if isinstance(area_targets_payload, list):
             return await cls._cast_area_spell_effect(
                 db,

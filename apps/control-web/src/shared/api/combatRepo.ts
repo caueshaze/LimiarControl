@@ -515,6 +515,7 @@ export type CombatSpellResult = {
     base_save_dc?: number | null;
     effective_save_dc?: number | null;
     cover_modifier?: number;
+    needs_roll?: boolean;
   }>;
   target_count?: number;
   elemental_affinity_eligible?: boolean;

@@ -166,6 +166,7 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
                 if is_magic_missile and cls._is_shielded_for_magic_missile(target_p):
                     outcome["damage"] = 0
                     outcome["new_hp"] = None
+                    outcome["needs_roll"] = False
 
             outcome["instance_index"] = vt["instance_index"]
             outcomes.append(outcome)
@@ -173,6 +174,51 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
             ref_id = vt["target_ref_id"]
             if ref_id not in entity_previous_hp_map and outcome.get("previous_hp") is not None:
                 entity_previous_hp_map[ref_id] = outcome["previous_hp"]
+
+        pending_instance_outcomes = [o for o in outcomes if o.get("needs_roll")]
+        pending_spell_id: str | None = None
+        if pending_instance_outcomes:
+            serializable_outcomes = [
+                {
+                    **o,
+                    "roll_result": o["roll_result"].model_dump() if o.get("roll_result") else None,
+                }
+                for o in outcomes
+            ]
+            instance_targets_payload = [
+                {
+                    "instance_index": o["instance_index"],
+                    "target_ref_id": o["target_ref_id"],
+                    "target_kind": o["target_kind"],
+                    "target_display_name": o["target_display_name"],
+                    "is_critical": o.get("is_critical", False),
+                    "roll": o.get("roll"),
+                    "roll_result": o["roll_result"].model_dump() if o.get("roll_result") else None,
+                    "cover": o.get("cover"),
+                    "base_ac": o.get("base_ac"),
+                    "effective_ac": o.get("effective_ac"),
+                    "cover_modifier": o.get("cover_modifier", 0),
+                }
+                for o in pending_instance_outcomes
+            ]
+            pending_spell_id = cls._create_pending_spell_effect(
+                state, attacker,
+                {
+                    "spell_name": spell_context["spell_name"],
+                    "spell_canonical_key": spell_context["spell_canonical_key"],
+                    "action_kind": spell_mode,
+                    "effect_kind": spell_context.get("effect_kind"),
+                    "effect_dice": spell_context.get("effect_instance_dice"),
+                    "effect_bonus": 0,
+                    "damage_type": spell_context.get("damage_type"),
+                    "action_cost": action_cost,
+                    "instance_targets": instance_targets_payload,
+                    "all_instance_outcomes": serializable_outcomes,
+                    "elemental_affinity_eligible": spell_context.get("elemental_affinity_eligible"),
+                    "elemental_affinity_damage_type": spell_context.get("elemental_affinity_damage_type"),
+                    "elemental_affinity_bonus": spell_context.get("elemental_affinity_bonus"),
+                },
+            )
 
         flag_modified(state, "participants")
         db.add(state)
@@ -219,25 +265,6 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
         total_damage = sum(o["damage"] for o in outcomes)
         total_healing = sum(o["healing"] for o in outcomes)
         first_outcome = outcomes[0] if outcomes else None
-        per_target_totals: dict[str, dict[str, object]] = {}
-        for outcome in outcomes:
-            target_ref_id = str(outcome.get("target_ref_id") or "")
-            if not target_ref_id:
-                continue
-            bucket = per_target_totals.setdefault(
-                target_ref_id,
-                {
-                    "target_ref_id": target_ref_id,
-                    "target_display_name": outcome.get("target_display_name") or target_ref_id,
-                    "target_kind": outcome.get("target_kind") or "session_entity",
-                    "instance_count": 0,
-                    "damage": 0,
-                    "healing": 0,
-                },
-            )
-            bucket["instance_count"] = cls._safe_int(bucket.get("instance_count"), 0) + 1
-            bucket["damage"] = cls._safe_int(bucket.get("damage"), 0) + cls._safe_int(outcome.get("damage"), 0)
-            bucket["healing"] = cls._safe_int(bucket.get("healing"), 0) + cls._safe_int(outcome.get("healing"), 0)
 
         return {
             "spell_name": spell_context["spell_name"],
@@ -261,9 +288,9 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
             "save_success_outcome": spell_context.get("save_success_outcome"),
             "effect_dice": spell_context.get("effect_instance_dice"),
             "effect_bonus": 0,
-            "pending_spell_id": None,
+            "pending_spell_id": pending_spell_id,
             "pending_save_id": None,
-            "effect_roll_required": False,
+            "effect_roll_required": bool(pending_instance_outcomes),
             "effect_rolls": [],
             "base_effect": None,
             "effect_roll_source": None,
@@ -284,5 +311,5 @@ class CastTargetMultiInstanceResolutionMixin(_CastTargetMultiInstanceResolutionB
             "effect_instance_dice": spell_context.get("effect_instance_dice"),
             "base_effect_instance_count": spell_context.get("base_effect_instance_count"),
             "effect_instance_outcomes": outcomes,
-            "effect_instance_target_totals": list(per_target_totals.values()),
+            "effect_instance_target_totals": cls._build_effect_instance_target_totals(outcomes),
         }

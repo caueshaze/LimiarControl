@@ -590,6 +590,20 @@ class CombatServiceHostProtocol(Protocol):
     ) -> dict[str, Any]: ...
 
     @classmethod
+    async def _cast_multi_instance_spell_effect(
+        cls,
+        db: Session,
+        session_id: str,
+        req: Any,
+        *,
+        attacker: dict[str, Any],
+        pending_spell: dict[str, Any],
+        actor_user_id: str,
+        is_gm: bool,
+        state: CombatState,
+    ) -> dict[str, Any]: ...
+
+    @classmethod
     async def _emit_entity_hp_update(
         cls,
         db: Session,
@@ -1139,6 +1153,11 @@ class CombatServiceHostProtocol(Protocol):
         was_overridden: bool,
         action_cost: str,
     ) -> str: ...
+
+    @classmethod
+    def _build_effect_instance_target_totals(
+        cls, outcomes: list[dict[str, Any]]
+    ) -> list[dict[str, object]]: ...
 
     @classmethod
     def _is_hostile_team_context(

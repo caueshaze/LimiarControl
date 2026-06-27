@@ -154,38 +154,21 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
             raise CombatServiceError(
                 "Multi-instance spell is missing effect_instance_dice.", 400
             )
-        effect_kind = spell_context.get("effect_kind") or "damage"
-        damage_type = spell_context.get("damage_type")
-
-        _, total = cls._resolve_damage_roll(instance_dice, roll_source="system")
-        amount = max(0, total)
-
-        new_hp = None
-        previous_hp = None
-        if amount > 0:
-            new_hp, _, previous_hp, _ = cls._apply_spell_effect(
-                db, state,
-                target_p["ref_id"], target_p["kind"],
-                effect_kind, amount,
-                damage_type=damage_type,
-                concentration_roll_source=req.concentration_roll_source,
-                concentration_manual_roll=req.concentration_manual_roll,
-                attacker_participant_id=attacker.get("id"),
-            )
 
         return {
             "target_ref_id": target_p["ref_id"],
             "target_display_name": target_p.get("display_name", ""),
             "target_kind": target_p.get("kind", "session_entity"),
-            "damage": amount if effect_kind != "healing" else 0,
-            "healing": amount if effect_kind == "healing" else 0,
+            "damage": 0,
+            "healing": 0,
             "is_hit": None,
             "is_saved": None,
             "is_critical": False,
             "roll": None,
             "roll_result": None,
-            "new_hp": new_hp,
-            "previous_hp": previous_hp,
+            "new_hp": None,
+            "previous_hp": None,
+            "needs_roll": True,
         }
 
     @classmethod
@@ -199,8 +182,6 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
             raise CombatServiceError(
                 "Multi-instance spell is missing effect_instance_dice.", 400
             )
-        effect_kind = spell_context.get("effect_kind") or "damage"
-        damage_type = spell_context.get("damage_type")
         attack_bonus = cls._safe_int(spell_context.get("attack_bonus"), 0)
 
         _, target_ac_raw, *_ = cls._get_stats(
@@ -256,47 +237,24 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
         is_critical = roll_result.selected_roll == 20
         is_hit = bool(roll_result.success)
 
-        damage = 0
-        healing = 0
-        new_hp = None
-        previous_hp = None
-
-        if is_hit:
-            _, total = cls._resolve_damage_roll(instance_dice, critical=is_critical, roll_source="system")
-            amount = max(0, total)
-            if amount > 0:
-                new_hp, _, previous_hp, _ = cls._apply_spell_effect(
-                    db, state,
-                    target_p["ref_id"], target_p["kind"],
-                    effect_kind, amount,
-                    damage_type=damage_type,
-                    is_critical=is_critical,
-                    concentration_roll_source=req.concentration_roll_source,
-                    concentration_manual_roll=req.concentration_manual_roll,
-                    attacker_participant_id=attacker.get("id"),
-                )
-                if effect_kind == "healing":
-                    healing = amount
-                else:
-                    damage = amount
-        else:
-            flag_modified(state, "participants")
+        flag_modified(state, "participants")
 
         return {
             "target_ref_id": target_p["ref_id"],
             "target_display_name": target_p.get("display_name", ""),
             "target_kind": target_p.get("kind", "session_entity"),
-            "damage": damage,
-            "healing": healing,
+            "damage": 0,
+            "healing": 0,
             "is_hit": is_hit,
             "is_saved": None,
             "is_critical": is_critical,
             "roll": roll_result.total,
             "roll_result": roll_result,
-            "new_hp": new_hp,
-            "previous_hp": previous_hp,
+            "new_hp": None,
+            "previous_hp": None,
             "cover": cover,
             "base_ac": base_ac,
             "effective_ac": target_ac,
             "cover_modifier": cover_modifier,
+            "needs_roll": is_hit,
         }

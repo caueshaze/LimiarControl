@@ -11,6 +11,29 @@ from .spell_resolution_common import SpellResolutionCommonMixin
 class SpellResponseMixin(SpellResolutionCommonMixin):
 
     @classmethod
+    def _build_effect_instance_target_totals(cls, outcomes: list[dict]) -> list[dict[str, object]]:
+        per_target_totals: dict[str, dict[str, object]] = {}
+        for outcome in outcomes:
+            target_ref_id = str(outcome.get("target_ref_id") or "")
+            if not target_ref_id:
+                continue
+            bucket = per_target_totals.setdefault(
+                target_ref_id,
+                {
+                    "target_ref_id": target_ref_id,
+                    "target_display_name": outcome.get("target_display_name") or target_ref_id,
+                    "target_kind": outcome.get("target_kind") or "session_entity",
+                    "instance_count": 0,
+                    "damage": 0,
+                    "healing": 0,
+                },
+            )
+            bucket["instance_count"] = cls._safe_int(bucket.get("instance_count"), 0) + 1
+            bucket["damage"] = cls._safe_int(bucket.get("damage"), 0) + cls._safe_int(outcome.get("damage"), 0)
+            bucket["healing"] = cls._safe_int(bucket.get("healing"), 0) + cls._safe_int(outcome.get("healing"), 0)
+        return list(per_target_totals.values())
+
+    @classmethod
     def _build_multi_instance_log_message(
         cls,
         *,

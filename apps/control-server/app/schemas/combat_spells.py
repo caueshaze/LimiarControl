@@ -513,6 +513,7 @@ class EffectInstanceOutcome(BaseModel):
     base_ac: int | None = None
     effective_ac: int | None = None
     cover_modifier: int = 0
+    needs_roll: bool = False
 
 
 class CombatSpellResult(BaseModel):
