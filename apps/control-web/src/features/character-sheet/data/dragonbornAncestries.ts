@@ -73,9 +73,9 @@ export const getDragonbornBreathWeaponAreaSize = (
 
 export const getDragonbornBreathWeaponDamageDice = (level: number): string => {
   const normalizedLevel = Math.max(1, Math.trunc(level || 1));
-  if (normalizedLevel >= 17) return "5d6";
+  if (normalizedLevel >= 16) return "5d6";
   if (normalizedLevel >= 11) return "4d6";
-  if (normalizedLevel >= 5) return "3d6";
+  if (normalizedLevel >= 6) return "3d6";
   return "2d6";
 };
 

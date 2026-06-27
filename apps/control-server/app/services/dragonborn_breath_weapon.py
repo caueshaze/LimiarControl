@@ -28,11 +28,11 @@ def _get_proficiency_bonus(level: int) -> int:
 
 def compute_dragonborn_breath_weapon_damage_dice(level: int) -> str:
     normalized_level = max(1, int(level))
-    if normalized_level >= 17:
+    if normalized_level >= 16:
         return "5d6"
     if normalized_level >= 11:
         return "4d6"
-    if normalized_level >= 5:
+    if normalized_level >= 6:
         return "3d6"
     return "2d6"
 
