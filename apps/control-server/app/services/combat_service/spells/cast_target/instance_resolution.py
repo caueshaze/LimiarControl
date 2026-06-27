@@ -155,20 +155,43 @@ class CastTargetInstanceResolutionMixin(_CastTargetInstanceResolutionBase):
                 "Multi-instance spell is missing effect_instance_dice.", 400
             )
 
+        effect_kind = spell_context.get("effect_kind") or "damage"
+        damage_type = spell_context.get("damage_type")
+        _, raw_total = cls._resolve_damage_roll(
+            instance_dice,
+            roll_source="system",
+        )
+        amount = max(0, raw_total)
+        new_hp = None
+        previous_hp = None
+        if amount > 0:
+            new_hp, _, previous_hp, _ = cls._apply_spell_effect(
+                db,
+                state,
+                target_p["ref_id"],
+                target_p.get("kind", "session_entity"),
+                effect_kind,
+                amount,
+                damage_type=damage_type,
+                concentration_roll_source=req.concentration_roll_source,
+                concentration_manual_roll=req.concentration_manual_roll,
+                attacker_participant_id=attacker.get("id"),
+            )
+
         return {
             "target_ref_id": target_p["ref_id"],
             "target_display_name": target_p.get("display_name", ""),
             "target_kind": target_p.get("kind", "session_entity"),
-            "damage": 0,
-            "healing": 0,
+            "damage": amount if effect_kind != "healing" else 0,
+            "healing": amount if effect_kind == "healing" else 0,
             "is_hit": None,
             "is_saved": None,
             "is_critical": False,
-            "roll": None,
+            "roll": amount,
             "roll_result": None,
-            "new_hp": None,
-            "previous_hp": None,
-            "needs_roll": True,
+            "new_hp": new_hp,
+            "previous_hp": previous_hp,
+            "needs_roll": False,
         }
 
     @classmethod

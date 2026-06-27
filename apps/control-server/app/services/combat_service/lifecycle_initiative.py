@@ -211,7 +211,8 @@ class CombatLifecycleInitiativeMixin(CombatServiceHostProtocol):
                 entry["effective_size"] = size_payload["effective_size"]
                 entry["base_size"] = size_payload["base_size"]
                 entry["wild_shape_active"] = bool(
-                    isinstance(sj.state_json, dict)
+                    sj
+                    and isinstance(sj.state_json, dict)
                     and isinstance(sj.state_json.get("wildShape"), dict)
                     and sj.state_json["wildShape"].get("active")
                 )
