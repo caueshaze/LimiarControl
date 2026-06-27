@@ -95,6 +95,14 @@ class TestActiveElementalResistanceResolution(unittest.TestCase):
         data["active_spell_effects"] = [{"kind": "temp_ac_bonus", "numeric_value": 2}]
         self.assertEqual(resolve_active_elemental_resistances(data), [])
 
+    def test_suppresses_active_resistance_while_in_wild_shape(self):
+        data = _draconic_sorcerer_state()
+        data["wildShape"] = {"active": True, "formKey": "wolf"}
+        data["active_spell_effects"] = [
+            {"kind": "elemental_affinity_resistance", "damage_type": "Fire", "duration_type": "timed"}
+        ]
+        self.assertEqual(resolve_active_elemental_resistances(data), [])
+
     def test_finalize_prunes_expired_activation(self):
         data = _draconic_sorcerer_state()
         data["active_spell_effects"] = [
@@ -112,6 +120,38 @@ class TestActiveElementalResistanceResolution(unittest.TestCase):
         # After expiry it is pruned -> no resistance.
         expired = finalize_session_state_data(data, game_time_seconds=200)
         self.assertEqual(resolve_active_elemental_resistances(expired), [])
+
+    def test_resistance_returns_after_revert_before_expiry(self):
+        data = _draconic_sorcerer_state()
+        data["active_spell_effects"] = [
+            {
+                "id": "ea-1",
+                "kind": "elemental_affinity_resistance",
+                "damage_type": "fire",
+                "duration_type": "timed",
+                "expires_at_game_time_seconds": 1060,
+            }
+        ]
+        active_before_transform = finalize_session_state_data(data, game_time_seconds=1000)
+        self.assertEqual(resolve_active_elemental_resistances(active_before_transform), ["fire"])
+
+        transformed = finalize_session_state_data(
+            {
+                **active_before_transform,
+                "wildShape": {"active": True, "formKey": "wolf"},
+            },
+            game_time_seconds=1010,
+        )
+        self.assertEqual(resolve_active_elemental_resistances(transformed), [])
+
+        reverted_before_expiry = finalize_session_state_data(
+            {
+                **transformed,
+                "wildShape": {"active": False, "formKey": None},
+            },
+            game_time_seconds=1030,
+        )
+        self.assertEqual(resolve_active_elemental_resistances(reverted_before_expiry), ["fire"])
 
 
 class TestActivateDraconicElementalResistance(unittest.IsolatedAsyncioTestCase):
@@ -192,6 +232,13 @@ class TestActivateDraconicElementalResistance(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(CombatServiceError) as ctx:
             await self._activate(_draconic_sorcerer_state(level=5, ancestry="red"))
         self.assertIn("elemental affinity", str(ctx.exception).lower())
+
+    async def test_activation_is_rejected_while_in_wild_shape(self):
+        data = _draconic_sorcerer_state(level=6, ancestry="red")
+        data["wildShape"] = {"active": True, "formKey": "wolf"}
+        with self.assertRaises(CombatServiceError) as ctx:
+            await self._activate(data)
+        self.assertIn("wild shape", str(ctx.exception).lower())
 
 
 if __name__ == "__main__":

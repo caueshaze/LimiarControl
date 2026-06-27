@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 from math import floor
 
+from app.services.wild_shape_service import is_active as is_wild_shape_active
+
 
 DRACONIC_ANCESTRIES: tuple[dict[str, str], ...] = (
     {"id": "black", "label": "Black", "damageType": "acid", "resistanceType": "acid", "breathWeaponShape": "line", "breathWeaponSaveType": "dexterity", "breathWeaponAreaSize": "1.5m x 9m"},
@@ -147,6 +149,8 @@ def resolve_active_elemental_resistances(data: object) -> list[str]:
     """Return the normalized damage types the creature currently resists from
     an *active* Elemental Affinity activation (timed effect in state)."""
     if not isinstance(data, dict):
+        return []
+    if is_wild_shape_active(data):
         return []
     effects = data.get("active_spell_effects")
     if not isinstance(effects, list):

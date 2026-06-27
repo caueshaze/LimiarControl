@@ -109,6 +109,7 @@ export const INITIAL_SHEET: CharacterSheet = {
   classFeatures: [],
   classResources: null,
   dragonWings: null,
+  wildShape: null,
   featuresAndTraits: "",
   notes: "",
 };

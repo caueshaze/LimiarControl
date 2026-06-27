@@ -492,6 +492,49 @@ class CombatStandardActionTestsMixin:
         self.assertIn("no dragonborn breath weapon uses remaining", str(ctx.exception).lower())
         self.assertFalse(self.state.participants[0]["turn_resources"]["action_used"])
 
+    @patch("app.services.combat.CombatService._emit_state")
+    @patch("app.services.combat.CombatService._emit_log")
+    async def test_dragonborn_breath_weapon_is_rejected_in_wild_shape(
+        self,
+        mock_emit_log,
+        mock_emit_state,
+    ):
+        self._make_active_state()
+        attacker_state = SessionState(
+            id="state-player",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "race": "dragonborn",
+                "raceConfig": {"draconicAncestry": "red"},
+                "abilities": {"constitution": 14},
+                "level": 7,
+                "wildShape": {"active": True, "formKey": "wolf"},
+                "classResources": {
+                    "dragonbornBreathWeapon": {"usesMax": 1, "usesRemaining": 1},
+                },
+            },
+        )
+
+        with patch("app.services.combat.CombatService.get_state", return_value=self.state), patch(
+            "app.services.combat.CombatService._get_stats",
+            return_value=(attacker_state, 0, 0, 0, 3, 0),
+        ):
+            with self.assertRaises(CombatServiceError) as ctx:
+                await CombatService.standard_action(
+                    self.db,
+                    "session-123",
+                    CombatStandardActionRequest(
+                        action="dragonborn_breath_weapon",
+                        target_participant_id="e1",
+                    ),
+                    "user-1",
+                    False,
+                )
+
+        self.assertIn("wild shape", str(ctx.exception).lower())
+        self.assertFalse(self.state.participants[0]["turn_resources"]["action_used"])
+
     # ---- use_object ----
 
     @patch("app.services.combat.CombatService._emit_state")

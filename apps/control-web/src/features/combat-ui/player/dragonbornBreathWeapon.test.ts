@@ -38,5 +38,15 @@ describe("dragonborn breath weapon combat helper", () => {
       usesRemaining: 0,
     });
   });
-});
 
+  it("returns null while the player is in wild shape", () => {
+    expect(
+      buildDragonbornBreathWeaponAction({
+        ...INITIAL_SHEET,
+        race: "dragonborn",
+        raceConfig: { draconicAncestry: "red" },
+        wildShape: { active: true, formKey: "wolf" },
+      }),
+    ).toBeNull();
+  });
+});

@@ -11,6 +11,7 @@ from app.services.dragonborn_breath_weapon import (
     resolve_dragonborn_breath_weapon_action_state,
 )
 from app.services.session_state_finalize import finalize_session_state_data
+from app.services.wild_shape_service import is_active as is_wild_shape_active
 
 from .exceptions import CombatServiceError
 from .host_protocol import CombatServiceHostProtocol
@@ -53,6 +54,8 @@ class CombatDragonbornBreathMixin(CombatServiceHostProtocol):
         attacker_data = apply_dragonborn_breath_weapon_canonical_state(
             cls._as_dict(attacker_state_json) if attacker_state_json is not None else {},
         )
+        if is_wild_shape_active(attacker_data):
+            raise CombatServiceError("Cannot use Dragonborn Breath Weapon while in Wild Shape.", 400)
         action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
         if action_state is None:
             raise CombatServiceError("Dragonborn Breath Weapon is not available for this actor.", 400)
@@ -75,6 +78,8 @@ class CombatDragonbornBreathMixin(CombatServiceHostProtocol):
         attacker_data = apply_dragonborn_breath_weapon_canonical_state(
             cls._as_dict(attacker_state_json) if attacker_state_json is not None else {},
         )
+        if is_wild_shape_active(attacker_data):
+            raise CombatServiceError("Cannot use Dragonborn Breath Weapon while in Wild Shape.", 400)
         action_state = resolve_dragonborn_breath_weapon_action_state(attacker_data)
         if action_state is None:
             raise CombatServiceError("Dragonborn Breath Weapon is not available for this actor.", 400)

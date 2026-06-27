@@ -180,6 +180,15 @@ export type DragonWingsState = {
   active: boolean;
 };
 
+export type WildShapeState = {
+  active: boolean;
+  formKey?: string | null;
+  formCurrentHP?: number;
+  savedHumanoidHP?: number | null;
+  usesRemaining?: number;
+  usesMax?: number;
+};
+
 // ── Character Sheet ─────────────────────────────────────────────────────────
 
 export type CharacterSheet = {
@@ -270,6 +279,7 @@ export type CharacterSheet = {
   classResources: Record<string, CharacterResourcePool> | null;
   /** Dragon Wings activation state (Draconic Bloodline 14+), or null when N/A. */
   dragonWings: DragonWingsState | null;
+  wildShape: WildShapeState | null;
 
   // Text fields
   featuresAndTraits: string;

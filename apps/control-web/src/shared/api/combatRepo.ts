@@ -187,6 +187,7 @@ export type CombatParticipant = {
   team: "players" | "enemies" | "allies" | "neutral";
   visible: boolean;
   actor_user_id: string | null;
+  wild_shape_active?: boolean;
   active_effects?: ActiveEffect[];
   turn_resources?: TurnResources;
   reaction_request?: ReactionRequestState;

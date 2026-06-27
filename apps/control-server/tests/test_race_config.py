@@ -81,9 +81,10 @@ class RaceConfigTests(unittest.TestCase):
 
     def test_dragonborn_breath_weapon_damage_scales_by_level(self):
         self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(1), "2d6")
-        self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(5), "3d6")
+        self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(5), "2d6")
+        self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(6), "3d6")
         self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(11), "4d6")
-        self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(17), "5d6")
+        self.assertEqual(compute_dragonborn_breath_weapon_damage_dice(16), "5d6")
 
     def test_dragonborn_breath_weapon_dc_uses_constitution_and_proficiency(self):
         dc = compute_dragonborn_breath_weapon_dc(
@@ -113,6 +114,18 @@ class RaceConfigTests(unittest.TestCase):
         self.assertEqual(action_state["damageType"], "fire")
         self.assertEqual(action_state["saveType"], "constitution")
         self.assertEqual(action_state["damageDice"], "2d6")
+
+    def test_dragonborn_breath_weapon_action_unavailable_in_wild_shape(self):
+        normalized = apply_dragonborn_breath_weapon_canonical_state(
+            {
+                "level": 7,
+                "race": "dragonborn",
+                "raceConfig": {"draconicAncestry": "red"},
+                "wildShape": {"active": True, "formKey": "wolf"},
+            }
+        )
+
+        self.assertIsNone(resolve_dragonborn_breath_weapon_action_state(normalized))
 
     def test_half_elf_requires_two_distinct_non_charisma_ability_choices(self):
         ok, error = validate_race_state(

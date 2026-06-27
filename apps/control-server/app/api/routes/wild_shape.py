@@ -3,15 +3,21 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session as DbSession, select
 
 from app.api.deps import get_current_user
 from app.db.session import get_session
+from app.models.combat import CombatState
 from app.models.campaign_member import CampaignMember
 from app.models.party import Party
 from app.models.party_member import PartyMember, PartyMemberStatus
 from app.models.session import Session, SessionStatus
 from app.models.user import User
+from app.services.combat import CombatService
+from app.services.combat_service.participant_attributes import resolve_player_size
+from app.services.combat_service.target_creature_type import CombatTargetCreatureTypeMixin
+from app.services.combat_service.token_resolution import build_effective_size_payload
 from app.services.centrifugo import centrifugo
 from app.services.realtime import build_event, campaign_channel, event_version, session_channel
 from app.services.session_state_finalize import finalize_session_state_data
@@ -173,6 +179,52 @@ def _build_wild_shape_state(state_json: dict) -> WildShapeStateRead:
     )
 
 
+async def _sync_combat_participant_wild_shape_state(
+    db: DbSession,
+    session_id: str,
+    player_user_id: str,
+    state_json: dict,
+) -> None:
+    combat_state = db.exec(
+        select(CombatState).where(CombatState.session_id == session_id)
+    ).first()
+    if combat_state is None:
+        return
+
+    participant = next(
+        (
+            entry
+            for entry in (combat_state.participants or [])
+            if isinstance(entry, dict)
+            and entry.get("kind") == "player"
+            and entry.get("ref_id") == player_user_id
+        ),
+        None,
+    )
+    if participant is None:
+        return
+
+    size_payload = build_effective_size_payload(
+        participant,
+        base_size=resolve_player_size(state_json),
+    )
+    participant["wild_shape_active"] = bool((state_json.get("wildShape") or {}).get("active"))
+    participant["base_size"] = size_payload["base_size"]
+    participant["effective_size"] = size_payload["effective_size"]
+    participant["effective_footprint"] = size_payload["effective_footprint"]
+    creature_type = CombatTargetCreatureTypeMixin.resolve_player_effective_creature_type_from_state_json(
+        state_json
+    )
+    participant["creature_type"] = creature_type
+    participant["creatureType"] = creature_type
+
+    flag_modified(combat_state, "participants")
+    db.add(combat_state)
+    db.commit()
+    db.refresh(combat_state)
+    await CombatService._emit_state(session_id, combat_state)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -294,6 +346,12 @@ async def wild_shape_transform(
         state.updated_at or state.created_at,
         state_json,
     )
+    await _sync_combat_participant_wild_shape_state(
+        db,
+        session_id,
+        player_user_id,
+        state_json,
+    )
 
     return ws_read
 
@@ -363,6 +421,12 @@ async def wild_shape_revert(
         entry,
         player_user_id,
         state.updated_at or state.created_at,
+        state_json,
+    )
+    await _sync_combat_participant_wild_shape_state(
+        db,
+        session_id,
+        player_user_id,
         state_json,
     )
 

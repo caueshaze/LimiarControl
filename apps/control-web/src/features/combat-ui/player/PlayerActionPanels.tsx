@@ -130,6 +130,8 @@ export const PlayerActionPanels = ({
   effectiveSize,
 }: Props) => {
   const { locale, t } = useLocale();
+  const myParticipant = participants.find((participant) => participant.id === myParticipantId) ?? null;
+  const wildShapeActive = Boolean(myParticipant?.wild_shape_active);
   const selectedSpellActionCost = selectedSpell?.actionCost ?? null;
   const selectedSpellIsArea = requiresAreaTargetingSelection(selectedSpell?.selectionType, selectedSpell?.areaShape);
   const selectedSpellNeedsTarget = spellRequiresExternalTarget(selectedSpell?.selectionType, selectedSpell?.areaShape);
@@ -418,6 +420,7 @@ export const PlayerActionPanels = ({
                   disabled={
                     !canAct
                     || actionUsed
+                    || wildShapeActive
                     || !targetId
                     || dragonbornBreathWeaponAction.usesRemaining <= 0
                   }
@@ -459,6 +462,7 @@ export const PlayerActionPanels = ({
                   type="button"
                   disabled={
                     !canAct
+                    || wildShapeActive
                     || draconicElementalResistanceAction.sorceryPointsRemaining <= 0
                   }
                   onClick={() => {

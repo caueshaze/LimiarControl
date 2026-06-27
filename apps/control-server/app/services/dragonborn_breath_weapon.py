@@ -4,6 +4,7 @@ from math import ceil, floor
 from typing import Any
 
 from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
+from app.services.wild_shape_service import is_active as is_wild_shape_active
 
 
 DRAGONBORN_BREATH_WEAPON_ACTION_ID = "dragonborn_breath_weapon"
@@ -88,6 +89,8 @@ def apply_dragonborn_breath_weapon_canonical_state(data: dict | None) -> dict:
 
 def resolve_dragonborn_breath_weapon_action_state(data: dict | None) -> dict[str, Any] | None:
     payload = apply_dragonborn_breath_weapon_canonical_state(data)
+    if is_wild_shape_active(payload):
+        return None
     lineage = resolve_dragonborn_lineage_state(payload)
     ancestry = lineage.get("ancestry")
     if not ancestry:
@@ -114,4 +117,3 @@ def resolve_dragonborn_breath_weapon_action_state(data: dict | None) -> dict[str
         "usesMax": uses_max,
         "usesRemaining": max(0, min(uses_remaining, uses_max)),
     }
-

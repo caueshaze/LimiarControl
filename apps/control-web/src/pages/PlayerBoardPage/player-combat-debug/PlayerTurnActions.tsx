@@ -40,6 +40,8 @@ const StandardActionButtons = ({
   const [useObjectDesc, setUseObjectDesc] = useState("");
   const disabled = actionUsed || loading;
   const allies = participants.filter((p) => p.id !== myParticipantId);
+  const myParticipant = participants.find((participant) => participant.id === myParticipantId) ?? null;
+  const wildShapeActive = Boolean(myParticipant?.wild_shape_active);
   const dragonbornDamageLabel = localizeDamageType(
     dragonbornBreathWeaponAction?.damageType ?? null,
     locale,
@@ -68,6 +70,7 @@ const StandardActionButtons = ({
             <button
               disabled={
                 disabled
+                || wildShapeActive
                 || !targetParticipantId
                 || dragonbornBreathWeaponAction.usesRemaining <= 0
               }

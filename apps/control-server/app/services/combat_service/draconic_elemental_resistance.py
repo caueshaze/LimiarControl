@@ -17,6 +17,7 @@ from app.services.sorcerer_progression import (
     apply_sorcery_points_canonical_state,
     get_sorcery_points_remaining,
 )
+from app.services.wild_shape_service import is_active as is_wild_shape_active
 
 from .exceptions import CombatServiceError
 from .host_protocol import CombatServiceHostProtocol
@@ -53,6 +54,8 @@ class CombatDraconicElementalResistanceMixin(CombatServiceHostProtocol):
         data = apply_sorcery_points_canonical_state(
             cls._as_dict(actor_state.state_json) if actor_state is not None else {}
         )
+        if is_wild_shape_active(data):
+            raise CombatServiceError("Cannot activate Elemental Affinity while in Wild Shape.", 400)
 
         lineage = resolve_draconic_lineage_state(data)
         resistance_type = lineage.get("resistanceType")

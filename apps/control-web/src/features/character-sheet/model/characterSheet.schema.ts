@@ -256,6 +256,14 @@ export const characterSheetSchema = z.object({
   classFeatures: z.array(characterClassFeatureSchema).default([]),
   classResources: z.record(z.string(), characterResourcePoolSchema).nullable().default(null),
   dragonWings: z.object({ active: z.boolean() }).nullable().default(null),
+  wildShape: z.object({
+    active: z.boolean(),
+    formKey: z.string().nullable().optional(),
+    formCurrentHP: z.number().min(0).optional(),
+    savedHumanoidHP: z.number().min(0).nullable().optional(),
+    usesRemaining: z.number().min(0).optional(),
+    usesMax: z.number().min(0).optional(),
+  }).nullable().default(null),
 
   featuresAndTraits: z.string(),
   notes: z.string(),

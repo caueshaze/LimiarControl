@@ -210,6 +210,11 @@ class CombatLifecycleInitiativeMixin(CombatServiceHostProtocol):
                 size_payload = build_effective_size_payload(entry, base_size=player_base_size)
                 entry["effective_size"] = size_payload["effective_size"]
                 entry["base_size"] = size_payload["base_size"]
+                entry["wild_shape_active"] = bool(
+                    isinstance(sj.state_json, dict)
+                    and isinstance(sj.state_json.get("wildShape"), dict)
+                    and sj.state_json["wildShape"].get("active")
+                )
                 entry["encumbrance_tier"] = _encumbrance_tier_for_player(
                     db, session_id, p.ref_id,
                     active_effects=entry.get("active_effects"),

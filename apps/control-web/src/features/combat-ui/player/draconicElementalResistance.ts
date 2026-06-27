@@ -25,6 +25,9 @@ export const buildDraconicElementalResistanceAction = (
   if (!playerSheet) {
     return null;
   }
+  if (playerSheet.wildShape?.active) {
+    return null;
+  }
 
   const lineage = getDraconicLineageState({
     classId: playerSheet.class,
