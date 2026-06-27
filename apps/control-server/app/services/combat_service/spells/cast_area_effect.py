@@ -56,7 +56,8 @@ class CastAreaEffectMixin(_CastAreaEffectBase):
                 roll_source=req.roll_source,
                 manual_rolls=req.manual_rolls,
             )
-        rolled_effect_total = max(0, base_effect + effect_bonus)
+        affinity_bonus = cls._resolve_elemental_affinity_damage_bonus(pending_spell, effect_kind)
+        rolled_effect_total = max(0, base_effect + effect_bonus + affinity_bonus)
         save_success_outcome = cls._normalize_save_success_outcome(
             pending_spell.get("save_success_outcome")
         )
