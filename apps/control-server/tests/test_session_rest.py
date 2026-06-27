@@ -63,6 +63,47 @@ class SessionRestTests(unittest.TestCase):
             {"usesMax": 1, "usesRemaining": 1},
         )
 
+    def test_end_long_rest_recharges_dragonborn_breath_weapon(self):
+        # PHB: the breath weapon use is regained on a short OR long rest.
+        next_data, ended_rest = end_rest(
+            {
+                "restState": "long_rest",
+                "level": 7,
+                "classResources": {
+                    "dragonbornBreathWeapon": {"usesMax": 1, "usesRemaining": 0},
+                },
+            }
+        )
+
+        self.assertEqual(ended_rest, "long_rest")
+        self.assertEqual(next_data["restState"], "exploration")
+        self.assertEqual(
+            next_data["classResources"]["dragonbornBreathWeapon"],
+            {"usesMax": 1, "usesRemaining": 1},
+        )
+
+    def test_apply_long_rest_recharges_dragonborn_breath_weapon(self):
+        next_data = apply_long_rest(
+            {
+                "level": 11,
+                "classResources": {
+                    "dragonbornBreathWeapon": {"usesMax": 1, "usesRemaining": 0},
+                },
+            }
+        )
+
+        self.assertEqual(
+            next_data["classResources"]["dragonbornBreathWeapon"],
+            {"usesMax": 1, "usesRemaining": 1},
+        )
+
+    def test_rest_without_breath_weapon_resource_is_safe(self):
+        # Non-Dragonborn characters (no breath weapon resource) must not break.
+        short_data, _ = end_rest({"restState": "short_rest", "level": 5})
+        self.assertNotIn("dragonbornBreathWeapon", short_data.get("classResources", {}) or {})
+        long_data = apply_long_rest({"level": 5})
+        self.assertNotIn("dragonbornBreathWeapon", long_data.get("classResources", {}) or {})
+
     def test_long_rest_restores_sorcery_points(self):
         # Font of Magic: a long rest restores all expended sorcery points.
         next_data = apply_long_rest(
