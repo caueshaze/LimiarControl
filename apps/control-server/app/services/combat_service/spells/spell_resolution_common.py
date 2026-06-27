@@ -315,6 +315,26 @@ class SpellResolutionCommonMixin(_SpellResolutionCommonBase):
             **cls._build_concentration_roll_kwargs(concentration_roll_source, concentration_manual_roll),
         )
 
+    @staticmethod
+    def _resolve_elemental_affinity_damage_bonus(
+        pending_spell: dict,
+        effect_kind: str | None,
+    ) -> int:
+        """Elemental Affinity (Draconic Bloodline 6+): add the caster's Charisma
+        modifier to the spell's damage, **once per cast**.
+
+        Returns 0 unless the cast is affinity-eligible and deals damage. Callers must
+        add the result to the spell's damage exactly once (a single shared damage roll
+        for single-target/area spells, or the first instance for multi-instance spells),
+        never once per target.
+        """
+        if effect_kind != "damage":
+            return 0
+        if not pending_spell.get("elemental_affinity_eligible"):
+            return 0
+        bonus = pending_spell.get("elemental_affinity_bonus")
+        return bonus if isinstance(bonus, int) else 0
+
     @classmethod
     def _build_pending_spell_payload(
         cls,

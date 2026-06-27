@@ -151,7 +151,7 @@ export const SpellCastResultPanel = ({
         ) : null}
         {result.elemental_affinity_eligible ? (
           <p className="mt-2 text-xs text-amber-100">
-            Afinidade Elemental elegível: {result.elemental_affinity_damage_type ?? "tipo"}{typeof result.elemental_affinity_bonus === "number" ? ` · bonus potencial +${result.elemental_affinity_bonus}` : ""}
+            Afinidade Elemental aplicada: {result.elemental_affinity_damage_type ?? "tipo"}{typeof result.elemental_affinity_bonus === "number" ? ` · +${result.elemental_affinity_bonus} de dano (uma vez)` : ""}
           </p>
         ) : null}
         {(variantAssignmentLines.length || resolvedVariantLabel || result.context_origin || result.concentration_group) ? (

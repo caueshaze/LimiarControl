@@ -65,6 +65,11 @@ class CastMultiInstanceEffectMixin(_CastMultiInstanceEffectBase):
                 if isinstance(outcome, dict) and isinstance(outcome.get("instance_index"), int):
                     outcomes_by_index[outcome["instance_index"]] = dict(outcome)
 
+        # Elemental Affinity adds the Charisma modifier to a single instance only
+        # (RAW: "one damage roll of the spell" — e.g. one ray of Scorching Ray).
+        affinity_bonus = cls._resolve_elemental_affinity_damage_bonus(pending_spell, effect_kind)
+        affinity_applied = False
+
         total_damage = 0
         total_healing = 0
         concentration_checks: list[dict[str, Any]] = []
@@ -96,6 +101,10 @@ class CastMultiInstanceEffectMixin(_CastMultiInstanceEffectBase):
                     roll_source="system",
                 )
             effect_rolls.extend(rolls)
+
+            if affinity_bonus and not affinity_applied:
+                total += affinity_bonus
+                affinity_applied = True
 
             amount = max(0, total)
             new_hp = None

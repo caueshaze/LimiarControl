@@ -203,8 +203,11 @@ class CombatStatusTestsMixin:
                 "level": 6,
                 "subclassConfig": {"draconicAncestry": "red"},
                 "abilities": {"charisma": 18},
+                # Level-6 Draconic Bloodline sorcerer's canonical maxHP is 32
+                # (includes Draconic Resilience +1/level). The character is wounded
+                # at 24/32; finalize re-derives currentHP from this consistent max.
                 "currentHP": 24,
-                "maxHP": 24,
+                "maxHP": 32,
                 "deathSaves": {"successes": 0, "failures": 0},
             },
         )
