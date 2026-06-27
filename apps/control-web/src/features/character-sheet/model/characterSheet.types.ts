@@ -175,6 +175,11 @@ export type CharacterResourcePool = {
   usesRemaining: number;
 };
 
+/** Dragon Wings (Draconic Bloodline 14+) activation state. */
+export type DragonWingsState = {
+  active: boolean;
+};
+
 // ── Character Sheet ─────────────────────────────────────────────────────────
 
 export type CharacterSheet = {
@@ -263,6 +268,8 @@ export type CharacterSheet = {
   /** Structured class/subclass features persisted canonically for automation and display. */
   classFeatures: CharacterClassFeature[];
   classResources: Record<string, CharacterResourcePool> | null;
+  /** Dragon Wings activation state (Draconic Bloodline 14+), or null when N/A. */
+  dragonWings: DragonWingsState | null;
 
   // Text fields
   featuresAndTraits: string;

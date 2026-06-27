@@ -27,7 +27,8 @@ export type ActiveEffectKind =
   | "dodging"
   | "hidden"
   | "spell_effect"
-  | "size_modifier";
+  | "size_modifier"
+  | "elemental_affinity_resistance";
 
 export type ActiveEffectConditionType =
   | "prone"
@@ -897,6 +898,24 @@ export type CombatStandardActionResult = {
   concentration_check?: CombatConcentrationCheckResult | null;
 };
 
+export type DraconicElementalResistanceResult = {
+  action: "draconic_elemental_resistance";
+  actor_name: string;
+  damage_type: string;
+  expires_at_game_time_seconds: number;
+  duration_seconds: number;
+  sorcery_points_remaining: number;
+  message: string;
+};
+
+export type DragonWingsToggleResult = {
+  action: "dragon_wings";
+  actor_name: string;
+  active: boolean;
+  fly_speed_meters: number;
+  message: string;
+};
+
 export const combatRepo = {
   getState: (sessionId: string) =>
     http.get<CombatState>(`/sessions/${sessionId}/combat`),
@@ -1008,6 +1027,22 @@ export const combatRepo = {
   standardAction: (sessionId: string, payload: CombatStandardActionRequest) =>
     http.post<CombatStandardActionResult>(
       `/sessions/${sessionId}/combat/action/standard`,
+      payload
+    ),
+  activateDraconicElementalResistance: (
+    sessionId: string,
+    payload: { actor_participant_id?: string | null } = {}
+  ) =>
+    http.post<DraconicElementalResistanceResult>(
+      `/sessions/${sessionId}/combat/draconic/elemental-resistance/activate`,
+      payload
+    ),
+  toggleDragonWings: (
+    sessionId: string,
+    payload: { activate: boolean; actor_participant_id?: string | null }
+  ) =>
+    http.post<DragonWingsToggleResult>(
+      `/sessions/${sessionId}/combat/draconic/dragon-wings/toggle`,
       payload
     ),
   spiritualWeaponAction: (sessionId: string, payload: SpiritualWeaponActionRequest) =>

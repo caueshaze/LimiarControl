@@ -134,7 +134,9 @@ export const getDraconicLineageState = ({
     damageType,
     resistanceType,
     hasElementalAffinity,
-    resistances: hasElementalAffinity && resistanceType ? [resistanceType] : [],
+    // Elemental Affinity resistance is no longer permanent: it is granted only
+    // while voluntarily activated (1 sorcery point, 1 minute) during combat.
+    resistances: [],
   };
 };
 

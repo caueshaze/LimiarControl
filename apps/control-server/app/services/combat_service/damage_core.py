@@ -8,7 +8,10 @@ from sqlmodel import Session, select
 
 from app.models.campaign_entity import CampaignEntity
 from app.models.combat import CombatState
-from app.services.draconic_ancestry import resolve_draconic_lineage_state
+from app.services.draconic_ancestry import (
+    resolve_active_elemental_resistances,
+    resolve_draconic_lineage_state,
+)
 from app.services.dragonborn_ancestry import resolve_dragonborn_lineage_state
 from app.services.declarative_effect_lifecycle import remove_damage_terminated_effects_from_participant
 from app.services.sleep_spell import remove_sleep_unconscious_on_damage
@@ -48,9 +51,16 @@ class CombatDamageCoreMixin:
             return amount, ""
         draconic_lineage = resolve_draconic_lineage_state(data)
         dragonborn_lineage = resolve_dragonborn_lineage_state(data)
+        # Draconic Elemental Affinity resistance is only active while voluntarily
+        # invoked (timed effect); racial Dragonborn resistance stays permanent.
+        active_elemental_resistances = resolve_active_elemental_resistances(data)
         resistances = {
             str(value).strip().lower()
-            for value in [*draconic_lineage.get("resistances", []), *dragonborn_lineage.get("resistances", [])]
+            for value in [
+                *draconic_lineage.get("resistances", []),
+                *dragonborn_lineage.get("resistances", []),
+                *active_elemental_resistances,
+            ]
             if isinstance(value, str) and value.strip()
         }
         if normalized_damage_type not in resistances:

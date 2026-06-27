@@ -25,6 +25,7 @@ const EFFECT_KIND_LABELS: Record<Exclude<ActiveEffect["kind"], "condition">, Loc
   hidden: "combatUi.effect.hidden",
   spell_effect: "combatUi.effect.spell_effect",
   size_modifier: "combatUi.effect.size_modifier",
+  elemental_affinity_resistance: "combatUi.effect.elemental_affinity_resistance",
 };
 
 const CONDITION_LABELS: Record<NonNullable<ActiveEffect["condition_type"]>, LocaleKey> = {

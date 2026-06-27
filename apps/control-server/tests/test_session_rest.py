@@ -63,6 +63,55 @@ class SessionRestTests(unittest.TestCase):
             {"usesMax": 1, "usesRemaining": 1},
         )
 
+    def test_long_rest_restores_sorcery_points(self):
+        # Font of Magic: a long rest restores all expended sorcery points.
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "class": "sorcerer",
+                "level": 6,
+                "classResources": {
+                    "sorceryPoints": {"usesMax": 6, "usesRemaining": 1},
+                },
+            }
+        )
+        self.assertEqual(
+            next_data["classResources"]["sorceryPoints"],
+            {"usesMax": 6, "usesRemaining": 6},
+        )
+
+    def test_short_rest_does_not_restore_sorcery_points(self):
+        # Short rest must NOT restore sorcery points (RAW).
+        next_data, ended_rest = end_rest(
+            {
+                "restState": "short_rest",
+                "class": "sorcerer",
+                "level": 6,
+                "classResources": {
+                    "sorceryPoints": {"usesMax": 6, "usesRemaining": 2},
+                },
+            }
+        )
+        self.assertEqual(ended_rest, "short_rest")
+        self.assertEqual(
+            next_data["classResources"]["sorceryPoints"],
+            {"usesMax": 6, "usesRemaining": 2},
+        )
+
+    def test_long_rest_without_sorcery_points_is_safe(self):
+        # Non-sorcerers (no sorceryPoints resource) must not break on long rest.
+        next_data = apply_long_rest(
+            {
+                "restState": "long_rest",
+                "class": "fighter",
+                "level": 6,
+                "maxHP": 40,
+                "currentHP": 10,
+            }
+        )
+        self.assertEqual(next_data["restState"], "exploration")
+        self.assertNotIn("sorceryPoints", next_data.get("classResources", {}) or {})
+
     def test_long_rest_restores_core_resources(self):
         next_data = apply_long_rest(
             {

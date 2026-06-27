@@ -9,6 +9,10 @@ from app.services.dragonborn_breath_weapon import (
     DRAGONBORN_BREATH_WEAPON_RESOURCE_KEY,
     compute_dragonborn_breath_weapon_uses_max,
 )
+from app.services.sorcerer_progression import (
+    SORCERY_POINTS_RESOURCE_KEY,
+    compute_sorcery_points_max,
+)
 
 
 RestState = Literal["exploration", "short_rest", "long_rest"]
@@ -196,6 +200,33 @@ def _recharge_dragonborn_breath_weapon_inline(data: dict) -> dict:
     }
 
 
+def _recharge_sorcery_points_inline(data: dict) -> dict:
+    """Font of Magic (PHB 2014): regain all expended sorcery points on a long
+    rest only. Short rest does not restore them (handled by not calling this)."""
+    class_resources = data.get("classResources")
+    if not isinstance(class_resources, dict):
+        return data
+    sorcery_points = class_resources.get(SORCERY_POINTS_RESOURCE_KEY)
+    if not isinstance(sorcery_points, dict):
+        return data
+
+    uses_max = sorcery_points.get("usesMax")
+    if not isinstance(uses_max, int):
+        uses_max = compute_sorcery_points_max(_safe_int(data.get("level"), 1))
+
+    return {
+        **data,
+        "classResources": {
+            **class_resources,
+            SORCERY_POINTS_RESOURCE_KEY: {
+                **sorcery_points,
+                "usesMax": uses_max,
+                "usesRemaining": uses_max,
+            },
+        },
+    }
+
+
 def _force_revert_wild_shape_inline(data: dict) -> dict:
     """Revert beast form and restore humanoid HP. Inlined to avoid circular imports."""
     wild_shape = data.get("wildShape")
@@ -252,6 +283,7 @@ def apply_long_rest(data: dict | None) -> dict:
     next_data = _force_revert_wild_shape_inline(next_data)
     next_data = _recharge_wild_shape_inline(next_data)
     next_data = _recharge_dragonborn_breath_weapon_inline(next_data)
+    next_data = _recharge_sorcery_points_inline(next_data)
 
     next_data = _clear_rest_effects(next_data, "long_rest")
 

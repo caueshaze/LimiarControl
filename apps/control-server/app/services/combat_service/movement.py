@@ -212,6 +212,16 @@ class CombatMovementMixin(AreaTargetingMixin, CombatServiceHostProtocol):
             )
 
     @classmethod
+    def _actor_is_flying(cls, db: Session, session_id: str, actor: dict[str, Any]) -> bool:
+        if actor.get("kind") != "player" or not actor.get("ref_id"):
+            return False
+        from app.services.dragon_wings import is_dragon_wings_active
+
+        actor_state, *_ = cls._get_stats(db, actor["ref_id"], actor["kind"], session_id)
+        data = cls._as_dict(actor_state.state_json) if actor_state is not None else {}
+        return is_dragon_wings_active(data)
+
+    @classmethod
     async def _apply_movement_fall(
         cls,
         db: Session,
@@ -229,6 +239,9 @@ class CombatMovementMixin(AreaTargetingMixin, CombatServiceHostProtocol):
             return None
         fall_height = abs(delta)
         if fall_height < FALL_DAMAGE_METERS_PER_DIE:
+            return None
+        # A flying creature (e.g. active Dragon Wings) does not fall.
+        if cls._actor_is_flying(db, session_id, actor):
             return None
         result = await cls.resolve_fall(
             db,

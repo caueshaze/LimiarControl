@@ -120,11 +120,16 @@ export const PlayerCombatModeShell = ({
     consumableOptions,
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
+    draconicElementalResistanceAction,
+    lastElementalResistanceResult,
+    dragonWingsAction,
     spiritualWeaponFollowUpAction,
     handleAttack,
     handleRequestReaction,
     handleDeathSave,
     handleDragonbornBreathWeapon,
+    handleActivateDraconicElementalResistance,
+    handleToggleDragonWings,
     handleSpiritualWeaponFollowUp,
     handleEndTurn,
     handleStandardAction,
@@ -551,12 +556,17 @@ export const PlayerCombatModeShell = ({
             consumableOptions={consumableOptions}
             deathSaveFeedback={deathSaveFeedback}
             dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
+            draconicElementalResistanceAction={draconicElementalResistanceAction}
+            lastElementalResistanceResult={lastElementalResistanceResult}
+            dragonWingsAction={dragonWingsAction}
             spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
             participants={combat.state?.participants}
             handleAttack={handleAttack}
             handleCast={handleCast}
             handleDeathSave={handleDeathSave}
             handleDragonbornBreathWeapon={handleDragonbornBreathWeapon}
+            handleActivateDraconicElementalResistance={handleActivateDraconicElementalResistance}
+            handleToggleDragonWings={handleToggleDragonWings}
             handleSpiritualWeaponFollowUp={handleSpiritualWeaponFollowUp}
             onEnterSpiritualWeaponMode={handleEnterSwMode}
             handleEndTurn={handleEndTurn}

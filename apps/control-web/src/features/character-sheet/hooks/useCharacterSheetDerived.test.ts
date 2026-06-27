@@ -44,7 +44,9 @@ describe("useCharacterSheetDerived", () => {
     expect(derived.hasElementalAffinity).toBe(true);
     expect(derived.elementalAffinityDamageType).toBe("lightning");
     expect(derived.elementalAffinityBonus).toBe(4);
-    expect(derived.resistances).toEqual(["lightning"]);
+    // Elemental Affinity resistance is activation-gated, not permanent, so it
+    // is not listed among the passive sheet resistances.
+    expect(derived.resistances).toEqual([]);
   });
 
   it("does not expose draconic lineage data for other subclasses", () => {

@@ -66,7 +66,8 @@ describe("draconicAncestry", () => {
 
     expect(lineage.damageType).toBe("cold");
     expect(lineage.resistanceType).toBe("cold");
-    expect(lineage.resistances).toEqual(["cold"]);
+    // Resistance is activation-gated (1 sorcery point, 1 minute), not permanent.
+    expect(lineage.resistances).toEqual([]);
     expect(lineage.hasElementalAffinity).toBe(true);
   });
 

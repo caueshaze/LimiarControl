@@ -45,6 +45,21 @@ class CompelledDuelMovementSaveRequest(BaseModel):
     manual_roll: int | None = None
 
 
+class DraconicElementalResistanceRequest(BaseModel):
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId"),
+    )
+
+
+class DragonWingsToggleRequest(BaseModel):
+    activate: bool
+    actor_participant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("actor_participant_id", "actorParticipantId"),
+    )
+
+
 class CrownOfMadnessForcedAttackRequest(BaseModel):
     controlled_target_ref_id: str
     forced_attack_target_ref_id: str | None = None
@@ -256,6 +271,45 @@ async def action_compelled_duel_movement_save(
         actor_user_id=user.id,
         is_gm=_is_session_gm(db, session_id, user),
         manual_roll=req.manual_roll,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/draconic/elemental-resistance/activate",
+)
+async def action_draconic_elemental_resistance(
+    session_id: str,
+    req: DraconicElementalResistanceRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.activate_draconic_elemental_resistance(
+        db,
+        session_id,
+        actor_participant_id=req.actor_participant_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/combat/draconic/dragon-wings/toggle",
+)
+async def action_dragon_wings_toggle(
+    session_id: str,
+    req: DragonWingsToggleRequest,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    assert user.id is not None  # authenticated user always has an id
+    return await CombatService.toggle_dragon_wings(
+        db,
+        session_id,
+        activate=req.activate,
+        actor_participant_id=req.actor_participant_id,
+        actor_user_id=user.id,
+        is_gm=_is_session_gm(db, session_id, user),
     )
 
 

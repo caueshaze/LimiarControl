@@ -19,6 +19,9 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
+import type { DraconicElementalResistanceAction } from "./draconicElementalResistance";
+import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
+import type { DragonWingsAction } from "./dragonWings";
 import type { TargetingPreviewState } from "../hooks/useTargetingPreview";
 import { PlayerActionPanels } from "./PlayerActionPanels";
 import { parseCreatureSize } from "../utils/parseCreatureSize";
@@ -31,12 +34,17 @@ type Props = {
   consumableOptions: ConsumableOption[];
   deathSaveFeedback: { message?: string | null } | null;
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
+  draconicElementalResistanceAction?: DraconicElementalResistanceAction | null;
+  lastElementalResistanceResult?: DraconicElementalResistanceResult | null;
+  dragonWingsAction?: DragonWingsAction | null;
   spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
   participants?: CombatParticipant[];
   handleAttack: () => Promise<void>;
   handleCast: () => Promise<void>;
   handleDeathSave: () => Promise<void>;
   handleDragonbornBreathWeapon: () => Promise<void>;
+  handleActivateDraconicElementalResistance?: () => Promise<void>;
+  handleToggleDragonWings?: () => Promise<void>;
   handleSpiritualWeaponFollowUp: (
     anchorId: string,
     destination: { x: number; y: number } | null,
@@ -110,12 +118,17 @@ export const PlayerTurnPanel = ({
   consumableOptions,
   deathSaveFeedback,
   dragonbornBreathWeaponAction,
+  draconicElementalResistanceAction = null,
+  lastElementalResistanceResult = null,
+  dragonWingsAction = null,
   spiritualWeaponFollowUpAction,
   participants = [],
   handleAttack,
   handleCast,
   handleDeathSave,
   handleDragonbornBreathWeapon,
+  handleActivateDraconicElementalResistance,
+  handleToggleDragonWings,
   handleSpiritualWeaponFollowUp,
   onEnterSpiritualWeaponMode,
   handleEndTurn,
@@ -343,6 +356,11 @@ export const PlayerTurnPanel = ({
               consumableItemId={consumableItemId}
               consumableOptions={consumableOptions}
               dragonbornBreathWeaponAction={dragonbornBreathWeaponAction}
+              draconicElementalResistanceAction={draconicElementalResistanceAction}
+              lastElementalResistanceResult={lastElementalResistanceResult}
+              handleActivateDraconicElementalResistance={handleActivateDraconicElementalResistance}
+              dragonWingsAction={dragonWingsAction}
+              handleToggleDragonWings={handleToggleDragonWings}
               spiritualWeaponFollowUpAction={spiritualWeaponFollowUpAction}
               participants={participants}
               isMyTurn={combat.isMyTurn}

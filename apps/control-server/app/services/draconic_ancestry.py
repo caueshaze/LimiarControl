@@ -28,6 +28,13 @@ DRACONIC_ANCESTRY_DAMAGE_TYPES: dict[str, str] = {
 DRACONIC_ANCESTRY_SUBCLASS_CONFIG_KEY = "draconicAncestry"
 LEGACY_DRACONIC_ANCESTRY_SUBCLASS_CONFIG_KEY = "dragonAncestor"
 
+# Elemental Affinity (Draconic Bloodline 6+) grants resistance to the lineage's
+# damage type only while voluntarily activated (1 sorcery point, 1 minute). The
+# activation lives as a timed effect in the player's ``active_spell_effects``.
+ELEMENTAL_AFFINITY_RESISTANCE_EFFECT_KIND = "elemental_affinity_resistance"
+ELEMENTAL_AFFINITY_RESISTANCE_SOURCE = "elemental_affinity"
+ELEMENTAL_AFFINITY_RESISTANCE_DURATION_SECONDS = 60
+
 
 def is_valid_draconic_ancestry(value: object) -> bool:
     return isinstance(value, str) and value in DRACONIC_ANCESTRY_DAMAGE_TYPES
@@ -130,8 +137,30 @@ def resolve_draconic_lineage_state(data: object) -> dict[str, Any]:
         "damageType": damage_type,
         "resistanceType": resistance_type,
         "hasElementalAffinity": has_elemental_affinity,
-        "resistances": [resistance_type] if has_elemental_affinity and resistance_type else [],
+        # Resistance is no longer permanent: Elemental Affinity grants it only
+        # while voluntarily activated. See resolve_active_elemental_resistances.
+        "resistances": [],
     }
+
+
+def resolve_active_elemental_resistances(data: object) -> list[str]:
+    """Return the normalized damage types the creature currently resists from
+    an *active* Elemental Affinity activation (timed effect in state)."""
+    if not isinstance(data, dict):
+        return []
+    effects = data.get("active_spell_effects")
+    if not isinstance(effects, list):
+        return []
+    resistances: list[str] = []
+    for effect in effects:
+        if not isinstance(effect, dict):
+            continue
+        if effect.get("kind") != ELEMENTAL_AFFINITY_RESISTANCE_EFFECT_KIND:
+            continue
+        damage_type = effect.get("damage_type")
+        if isinstance(damage_type, str) and damage_type.strip():
+            resistances.append(damage_type.strip().lower())
+    return resistances
 
 
 def resolve_elemental_affinity(data: object, spell_damage_type: object) -> dict[str, Any]:

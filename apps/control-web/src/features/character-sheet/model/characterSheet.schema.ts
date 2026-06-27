@@ -255,6 +255,7 @@ export const characterSheetSchema = z.object({
   expertiseChoices: z.array(skillNameSchema).default([]),
   classFeatures: z.array(characterClassFeatureSchema).default([]),
   classResources: z.record(z.string(), characterResourcePoolSchema).nullable().default(null),
+  dragonWings: z.object({ active: z.boolean() }).nullable().default(null),
 
   featuresAndTraits: z.string(),
   notes: z.string(),

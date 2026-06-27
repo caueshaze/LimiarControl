@@ -108,6 +108,7 @@ export const INITIAL_SHEET: CharacterSheet = {
   expertiseChoices: [],
   classFeatures: [],
   classResources: null,
+  dragonWings: null,
   featuresAndTraits: "",
   notes: "",
 };

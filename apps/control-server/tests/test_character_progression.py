@@ -260,7 +260,10 @@ class CharacterProgressionTests(unittest.TestCase):
 
         lineage = resolve_draconic_lineage_state(data)
         self.assertEqual(lineage["damageType"], "cold")
-        self.assertEqual(lineage["resistances"], ["cold"])
+        self.assertEqual(lineage["resistanceType"], "cold")
+        # Resistance is no longer permanent; Elemental Affinity grants it only
+        # while voluntarily activated (1 sorcery point, 1 minute).
+        self.assertEqual(lineage["resistances"], [])
         self.assertTrue(lineage["hasElementalAffinity"])
         self.assertEqual(
             [feature["id"] for feature in data["classFeatures"]],

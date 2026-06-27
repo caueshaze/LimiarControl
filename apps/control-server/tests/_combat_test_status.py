@@ -192,7 +192,44 @@ class CombatStatusTestsMixin:
         self.assertEqual(new_hp, 0)
         self.assertEqual(self.state.participants[0]["status"], "dead")
 
-    def test_apply_damage_to_draconic_bloodline_player_applies_resistance_at_level_6(self):
+    def test_apply_damage_to_draconic_bloodline_player_resistance_inactive_without_activation(self):
+        # Elemental Affinity resistance is no longer permanent: with no active
+        # activation effect, a level-6 draconic sorcerer takes full damage.
+        session_state = SessionState(
+            id="state-1",
+            session_id="session-123",
+            player_user_id="player-123",
+            state_json={
+                "class": "sorcerer",
+                "subclass": "draconic_bloodline",
+                "level": 6,
+                "subclassConfig": {"draconicAncestry": "red"},
+                "abilities": {"charisma": 18},
+                "currentHP": 24,
+                "maxHP": 32,
+                "deathSaves": {"successes": 0, "failures": 0},
+            },
+        )
+
+        with patch("app.services.combat.CombatService._get_stats", return_value=(session_state, 10, 10, 10, 2, 0)):
+            new_hp, effect_msg, previous_hp, concentration_check = CombatService._apply_damage_to_target(
+                self.db,
+                "player-123",
+                "player",
+                11,
+                False,
+                self.state,
+                damage_type="fire",
+            )
+
+        self.assertEqual(previous_hp, 24)
+        self.assertEqual(new_hp, 13)
+        self.assertIsNone(concentration_check)
+        self.assertNotIn("Resistência a fire", effect_msg)
+
+    def test_apply_damage_to_draconic_bloodline_player_applies_resistance_when_active(self):
+        # With the Elemental Affinity activation effect present, the lineage
+        # damage type is resisted (halved).
         session_state = SessionState(
             id="state-1",
             session_id="session-123",
@@ -204,11 +241,20 @@ class CombatStatusTestsMixin:
                 "subclassConfig": {"draconicAncestry": "red"},
                 "abilities": {"charisma": 18},
                 # Level-6 Draconic Bloodline sorcerer's canonical maxHP is 32
-                # (includes Draconic Resilience +1/level). The character is wounded
-                # at 24/32; finalize re-derives currentHP from this consistent max.
+                # (includes Draconic Resilience +1/level). Wounded at 24/32.
                 "currentHP": 24,
                 "maxHP": 32,
                 "deathSaves": {"successes": 0, "failures": 0},
+                "active_spell_effects": [
+                    {
+                        "id": "ea-1",
+                        "kind": "elemental_affinity_resistance",
+                        "source": "elemental_affinity",
+                        "damage_type": "fire",
+                        "duration_type": "timed",
+                        "expires_at_game_time_seconds": 10_000,
+                    }
+                ],
             },
         )
 

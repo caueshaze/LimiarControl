@@ -1,6 +1,8 @@
 from .concentration import CombatConcentrationMixin
 from .core import CombatCoreMixin
 from .damage import CombatDamageMixin
+from .draconic_elemental_resistance import CombatDraconicElementalResistanceMixin
+from .dragon_wings import CombatDragonWingsMixin
 from .dragonborn_breath import CombatDragonbornBreathMixin
 from .effects import CombatEffectsMixin
 from .entity_actions import CombatEntityActionMixin
@@ -88,6 +90,8 @@ class CombatService(
     CombatSaveResolveMixin,
     CombatEffectsMixin,
     CombatDragonbornBreathMixin,
+    CombatDraconicElementalResistanceMixin,
+    CombatDragonWingsMixin,
     CombatStandardActionMixin,
 ):
     pass

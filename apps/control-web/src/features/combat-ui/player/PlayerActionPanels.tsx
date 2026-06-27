@@ -17,6 +17,9 @@ import type {
   WeaponOption,
 } from "./playerCombatShell.types";
 import { PlayerUseObjectPanel } from "./PlayerUseObjectPanel";
+import type { DraconicElementalResistanceAction } from "./draconicElementalResistance";
+import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
+import type { DragonWingsAction } from "./dragonWings";
 import type { SpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 import type { CreatureSize } from "@limiarmap/shared-contracts";
 import { formatSizeMeleeReachBonusSource, formatMetersCompact } from "../utils/formatSizeMeleeReachBonus";
@@ -29,10 +32,15 @@ type Props = {
   consumableItemId: string;
   consumableOptions: ConsumableOption[];
   dragonbornBreathWeaponAction: DragonbornBreathWeaponOption | null;
+  draconicElementalResistanceAction?: DraconicElementalResistanceAction | null;
+  lastElementalResistanceResult?: DraconicElementalResistanceResult | null;
+  dragonWingsAction?: DragonWingsAction | null;
   spiritualWeaponFollowUpAction: SpiritualWeaponFollowUpAction | null;
   handleAttack: () => Promise<void>;
   handleCast: () => Promise<void>;
   handleDragonbornBreathWeapon: () => Promise<void>;
+  handleActivateDraconicElementalResistance?: () => Promise<void>;
+  handleToggleDragonWings?: () => Promise<void>;
   onEnterSpiritualWeaponMode: () => void;
   handleStandardAction: (action: StandardActionType, targetId?: string) => Promise<void>;
   handleUseObject: () => Promise<void>;
@@ -77,10 +85,15 @@ export const PlayerActionPanels = ({
   consumableItemId,
   consumableOptions,
   dragonbornBreathWeaponAction,
+  draconicElementalResistanceAction = null,
+  lastElementalResistanceResult = null,
+  dragonWingsAction = null,
   spiritualWeaponFollowUpAction,
   handleAttack,
   handleCast,
   handleDragonbornBreathWeapon,
+  handleActivateDraconicElementalResistance,
+  handleToggleDragonWings,
   onEnterSpiritualWeaponMode,
   handleStandardAction,
   handleUseObject,
@@ -139,6 +152,10 @@ export const PlayerActionPanels = ({
   ];
   const dragonbornDamageLabel = localizeDamageType(
     dragonbornBreathWeaponAction?.damageType ?? null,
+    locale,
+  );
+  const elementalResistanceDamageLabel = localizeDamageType(
+    draconicElementalResistanceAction?.damageType ?? null,
     locale,
   );
   const selectedWeaponOption =
@@ -410,6 +427,78 @@ export const PlayerActionPanels = ({
                   className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-950 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("combatUi.useDragonbornBreathWeapon")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {draconicElementalResistanceAction ? (
+            <div className="mt-4 rounded-3xl border border-amber-500/20 bg-amber-500/8 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    {t("combatUi.elementalAffinityResistance")}
+                    {elementalResistanceDamageLabel ? ` (${elementalResistanceDamageLabel})` : ""}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-amber-100/80">
+                    {t("combatUi.elementalAffinityResistanceCost")}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">
+                    {t("combatUi.sorceryPoints")}:{" "}
+                    {draconicElementalResistanceAction.sorceryPointsRemaining}/
+                    {draconicElementalResistanceAction.sorceryPointsMax}
+                  </p>
+                  {lastElementalResistanceResult ? (
+                    <p className="mt-2 text-xs text-amber-200">
+                      {t("combatUi.elementalAffinityResistanceActive")}
+                      {" · "}
+                      {lastElementalResistanceResult.duration_seconds}s
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={
+                    !canAct
+                    || draconicElementalResistanceAction.sorceryPointsRemaining <= 0
+                  }
+                  onClick={() => {
+                    void handleActivateDraconicElementalResistance?.();
+                  }}
+                  className="rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t("combatUi.useElementalAffinityResistance")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {dragonWingsAction ? (
+            <div className="mt-4 rounded-3xl border border-indigo-500/20 bg-indigo-500/8 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    {t("combatUi.dragonWings")}
+                    {dragonWingsAction.active ? ` · ${t("combatUi.dragonWingsFlying")}` : ""}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-indigo-100/80">
+                    {t("combatUi.bonusAction")}
+                  </p>
+                  {dragonWingsAction.active ? (
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      {t("combatUi.flySpeed")}: {dragonWingsAction.flySpeedMeters}m
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={!canAct || (turnResources?.bonus_action_used ?? false)}
+                  onClick={() => {
+                    void handleToggleDragonWings?.();
+                  }}
+                  className="rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {dragonWingsAction.active
+                    ? t("combatUi.dismissDragonWings")
+                    : t("combatUi.useDragonWings")}
                 </button>
               </div>
             </div>

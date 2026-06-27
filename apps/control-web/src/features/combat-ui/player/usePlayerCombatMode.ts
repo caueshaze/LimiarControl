@@ -18,6 +18,9 @@ import {
   withActionState,
 } from "./usePlayerCombatModeHelpers";
 import { buildDragonbornBreathWeaponAction } from "./dragonbornBreathWeapon";
+import { buildDraconicElementalResistanceAction } from "./draconicElementalResistance";
+import { buildDragonWingsAction } from "./dragonWings";
+import type { DraconicElementalResistanceResult } from "../../../shared/api/combatRepo";
 import { buildSpiritualWeaponFollowUpAction } from "./spiritualWeapon";
 import { useConsumables } from "./useConsumables";
 import { spellRequiresExternalTarget } from "../../../pages/PlayerBoardPage/player-combat-debug/areaTargetingUi";
@@ -49,6 +52,8 @@ export const usePlayerCombatMode = ({
     null,
   );
   const [deathSaveFeedback, setDeathSaveFeedback] = useState<DeathSaveFeedback | null>(null);
+  const [lastElementalResistanceResult, setLastElementalResistanceResult] =
+    useState<DraconicElementalResistanceResult | null>(null);
   const [spellOptions, setSpellOptions] = useState<CombatSpellOption[]>([]);
   const [selectedSpellId, setSelectedSpellId] = useState("");
   const [spellMode, setSpellMode] = useState<CombatSpellMode>("spell_attack");
@@ -168,6 +173,14 @@ export const usePlayerCombatMode = ({
   }, [combat.defeatedParticipants, combat.livingParticipants, targetId]);
   const dragonbornBreathWeaponAction = useMemo(
     () => buildDragonbornBreathWeaponAction(playerSheet),
+    [playerSheet],
+  );
+  const draconicElementalResistanceAction = useMemo(
+    () => buildDraconicElementalResistanceAction(playerSheet),
+    [playerSheet],
+  );
+  const dragonWingsAction = useMemo(
+    () => buildDragonWingsAction(playerSheet),
     [playerSheet],
   );
 
@@ -295,6 +308,29 @@ export const usePlayerCombatMode = ({
     });
   };
 
+  const handleActivateDraconicElementalResistance = async () => {
+    if (!actorParticipantId) return;
+    await withActionState(async () => {
+      const result = await combatRepo.activateDraconicElementalResistance(sessionId, {
+        actor_participant_id: actorParticipantId,
+      });
+      setLastElementalResistanceResult(result ?? null);
+      await combat.refreshState();
+    });
+  };
+
+  const handleToggleDragonWings = async () => {
+    if (!actorParticipantId) return;
+    const shouldActivate = !(dragonWingsAction?.active ?? false);
+    await withActionState(async () => {
+      await combatRepo.toggleDragonWings(sessionId, {
+        activate: shouldActivate,
+        actor_participant_id: actorParticipantId,
+      });
+      await combat.refreshState();
+    });
+  };
+
   const handleSpiritualWeaponFollowUp = async (
     anchorId: string,
     destination: { x: number; y: number } | null,
@@ -357,9 +393,14 @@ export const usePlayerCombatMode = ({
     combat,
     deathSaveFeedback,
     dragonbornBreathWeaponAction,
+    draconicElementalResistanceAction,
+    lastElementalResistanceResult,
+    dragonWingsAction,
     spiritualWeaponFollowUpAction,
     handleAttack,
     handleDragonbornBreathWeapon,
+    handleActivateDraconicElementalResistance,
+    handleToggleDragonWings,
     handleSpiritualWeaponFollowUp,
     handleRequestReaction,
     handleDeathSave,

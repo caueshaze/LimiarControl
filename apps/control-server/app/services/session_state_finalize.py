@@ -5,6 +5,7 @@ import unicodedata
 from app.services.class_progression import recompute_hit_points
 from app.services.persistent_effect_expiry import prune_expired_persisted_effects_from_state
 from app.services.dragonborn_breath_weapon import apply_dragonborn_breath_weapon_canonical_state
+from app.services.dragon_wings import apply_dragon_wings_canonical_state
 from app.services.sorcerer_progression import apply_sorcerer_canonical_state, is_draconic_bloodline_sorcerer
 from app.services.session_rest import ensure_rest_state
 from app.services.declarative_effect_lifecycle import terminate_armor_don_effects_from_state
@@ -344,6 +345,7 @@ def finalize_session_state_data(
         next_data = prune_expired_persisted_effects_from_state(next_data, game_time_seconds)
     next_data = terminate_armor_don_effects_from_state(next_data)
     next_data = apply_sorcerer_canonical_state(next_data)
+    next_data = apply_dragon_wings_canonical_state(next_data)
     next_data = apply_dragonborn_breath_weapon_canonical_state(next_data)
     if is_draconic_bloodline_sorcerer(next_data):
         next_data = recompute_hit_points(next_data, preserve_damage=True)
